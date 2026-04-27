@@ -148,6 +148,45 @@ mod tests {
     }
 
     #[test]
+    fn durable_policy_store_roundtrips_promoted_policy() {
+        let (_state, tlog) = run_until_done(State::ready(), RuntimeConfig::default()).unwrap();
+        let promotion = PolicyPromotion::from_tlog(&tlog, 1).unwrap();
+        let path = std::env::temp_dir().join(format!(
+            "ai-policy-store-{}-{}.ndjson",
+            std::process::id(),
+            promotion.source_seq
+        ));
+        std::fs::remove_file(&path).ok();
+
+        let mut store = PolicyStore::default();
+        let entry = store.promote_durable(&path, promotion).unwrap().clone();
+        let loaded = PolicyStore::load_ndjson(&path).unwrap();
+        std::fs::remove_file(&path).ok();
+
+        assert_eq!(loaded.entries(), &[entry]);
+        assert_eq!(loaded.latest_version(), 1);
+    }
+
+    #[test]
+    fn durable_policy_append_is_disk_first() {
+        let mut store = PolicyStore::default();
+        let bad_path = std::env::temp_dir();
+
+        assert_eq!(
+            store.append_durable(
+                bad_path,
+                PolicyEntry {
+                    version: 1,
+                    key: crate::capability::learning::POLICY_PROMOTION_SOURCE_SEQ,
+                    value: 7,
+                }
+            ),
+            Err(PolicyStoreError::PolicyIo)
+        );
+        assert!(store.entries().is_empty());
+    }
+
+    #[test]
     fn eval_record_submission_drives_eval_gate_through_api() {
         let mut state = State::ready();
         state.phase = Phase::Eval;
@@ -552,5 +591,33 @@ mod tests {
         };
 
         assert_eq!(validate_event(event), Err(CanonError::UnexpectedAffectedGate));
+    }
+
+    #[test]
+    fn structurally_invalid_public_state_is_rejected() {
+        let cfg = RuntimeConfig::default();
+        let mut state = State::ready();
+        state.gates.invariant = Gate {
+            status: GateStatus::Pass,
+            evidence: Evidence::Missing,
+            version: 1,
+        };
+        let mut tlog = Vec::new();
+
+        assert_eq!(tick(&mut state, &mut tlog, cfg), Err(CanonError::InvalidStateInvariant));
+        assert!(tlog.is_empty());
+    }
+
+    #[test]
+    fn zero_step_runtime_config_is_rejected() {
+        let cfg = RuntimeConfig {
+            max_steps: 0,
+            max_recovery_attempts: 1,
+        };
+        let mut state = State::ready();
+        let mut tlog = Vec::new();
+
+        assert_eq!(tick(&mut state, &mut tlog, cfg), Err(CanonError::InvalidRuntimeConfig));
+        assert!(tlog.is_empty());
     }
 }

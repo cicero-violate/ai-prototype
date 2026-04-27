@@ -1,0 +1,28 @@
+*** Begin Patch
+*** Update File: src/codec/ndjson.rs
+@@
+-    writeln!(file, "{}", encode_event_ndjson(event)).map_err(|_| CanonError::TlogIo)
++    writeln!(file, "{}", encode_event_ndjson(event)).map_err(|_| CanonError::TlogIo)?;
++    file.sync_all().map_err(|_| CanonError::TlogIo)
+ }
+@@
+     for event in tlog {
+         writeln!(file, "{}", encode_event_ndjson(event)).map_err(|_| CanonError::TlogIo)?;
+     }
+-    Ok(())
++    file.sync_all().map_err(|_| CanonError::TlogIo)
+ }
+*** Update File: src/capability/policy/store.rs
+@@
+     let mut file = OpenOptions::new()
+         .create(true)
+         .append(true)
+         .open(path)
+         .map_err(|_| PolicyStoreError::PolicyIo)?;
+-    writeln!(file, "{}", encode_policy_entry_ndjson(entry))
+-        .map_err(|_| PolicyStoreError::PolicyIo)
++    writeln!(file, "{}", encode_policy_entry_ndjson(entry))
++        .map_err(|_| PolicyStoreError::PolicyIo)?;
++    file.sync_all().map_err(|_| PolicyStoreError::PolicyIo)
+ }
+*** End Patch

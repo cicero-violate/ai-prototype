@@ -132,6 +132,15 @@ impl Gate {
             version: 1,
         }
     }
+
+    pub fn is_structurally_valid(self) -> bool {
+        match self.status {
+            GateStatus::Unknown => self.evidence == Evidence::Missing && self.version == 0,
+            GateStatus::Pass | GateStatus::Fail => {
+                self.evidence != Evidence::Missing && self.version != 0
+            }
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -243,6 +252,13 @@ impl GateSet {
             let gate = self.get(id);
             (gate.status != GateStatus::Pass).then_some((id, gate))
         })
+    }
+
+    pub fn is_structurally_valid(self) -> bool {
+        GATE_ORDER
+            .iter()
+            .copied()
+            .all(|id| self.get(id).is_structurally_valid())
     }
 }
 
@@ -369,6 +385,29 @@ impl Packet {
         h = mix(h, self.revision);
         h
     }
+
+    pub fn is_structurally_valid(self) -> bool {
+        if self.objective_id == 0 || self.objective_required_tasks == 0 {
+            return false;
+        }
+
+        if self.objective_done_tasks > self.objective_required_tasks {
+            return false;
+        }
+
+        if self.ready_tasks > 0 && self.active_task_id == 0 {
+            return false;
+        }
+
+        if self.artifact_id == 0 {
+            self.parent_artifact_id == 0
+                && self.artifact_bytes == 0
+                && self.artifact_receipt_hash == 0
+                && self.artifact_lineage_hash == 0
+        } else {
+            self.artifact_bytes != 0 && self.artifact_receipt_hash != 0
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -420,6 +459,10 @@ impl State {
         } else {
             self.gates.set_fail(gate, evidence);
         }
+    }
+
+    pub fn is_structurally_valid(self) -> bool {
+        self.gates.is_structurally_valid() && self.packet.is_structurally_valid()
     }
 }
 
@@ -583,6 +626,12 @@ impl Default for RuntimeConfig {
             max_steps: 96,
             max_recovery_attempts: 8,
         }
+    }
+}
+
+impl RuntimeConfig {
+    pub fn is_structurally_valid(self) -> bool {
+        self.max_steps != 0 && self.max_recovery_attempts != 0
     }
 }
 

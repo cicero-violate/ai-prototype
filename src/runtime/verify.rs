@@ -154,10 +154,24 @@ pub fn verify_tlog(tlog: &[ControlEvent]) -> Result<(), CanonError> {
 }
 
 pub fn verify_tlog_from(initial: State, tlog: &[ControlEvent]) -> Result<State, CanonError> {
+    if !initial.is_structurally_valid() {
+        return Err(CanonError::InvalidStateInvariant);
+    }
+
     let mut state = initial;
     let mut prev_hash = 0;
 
     for (i, event) in tlog.iter().enumerate() {
+        if !event.runtime_config.is_structurally_valid() {
+            return Err(CanonError::InvalidRuntimeConfig);
+        }
+
+        if !event.state_before.is_structurally_valid()
+            || !event.state_after.is_structurally_valid()
+        {
+            return Err(CanonError::InvalidStateInvariant);
+        }
+
         if event.seq != i as u64 + 1 || event.prev_hash != prev_hash {
             return Err(CanonError::InvalidHashChain);
         }

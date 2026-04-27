@@ -17,6 +17,14 @@ impl CanonicalWriter {
         outcome: Outcome,
         cfg: RuntimeConfig,
     ) -> Result<ControlEvent, CanonError> {
+        if !cfg.is_structurally_valid() {
+            return Err(CanonError::InvalidRuntimeConfig);
+        }
+
+        if !before.is_structurally_valid() || !outcome.state.is_structurally_valid() {
+            return Err(CanonError::InvalidStateInvariant);
+        }
+
         let after = outcome.state;
         let delta = semantic_diff(before, after);
 

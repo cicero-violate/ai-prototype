@@ -1,0 +1,386 @@
+*** Begin Patch
+*** Update File: src/kernel/mod.rs
+@@
+ impl Gate {
+@@
+     pub const fn fail(evidence: Evidence) -> Self {
+         Self {
+             status: GateStatus::Fail,
+             evidence,
+             version: 1,
+         }
+     }
++
++    pub fn is_structurally_valid(self) -> bool {
++        match self.status {
++            GateStatus::Unknown => self.evidence == Evidence::Missing && self.version == 0,
++            GateStatus::Pass | GateStatus::Fail => {
++                self.evidence != Evidence::Missing && self.version != 0
++            }
++        }
++    }
+ }
+@@
+     pub fn first_execution_non_pass(self) -> Option<(GateId, Gate)> {
+         EXECUTION_GATE_ORDER.iter().copied().find_map(|id| {
+             let gate = self.get(id);
+             (gate.status != GateStatus::Pass).then_some((id, gate))
+         })
+     }
++
++    pub fn is_structurally_valid(self) -> bool {
++        GATE_ORDER
++            .iter()
++            .copied()
++            .all(|id| self.get(id).is_structurally_valid())
++    }
+ }
+@@
+     pub fn expected_lineage_hash(self) -> u64 {
+         let mut h = 0x9e3779b97f4a7c15u64;
+         h = mix(h, self.objective_id);
+@@
+         h = mix(h, self.revision);
+         h
+     }
++
++    pub fn is_structurally_valid(self) -> bool {
++        if self.objective_id == 0 || self.objective_required_tasks == 0 {
++            return false;
++        }
++
++        if self.objective_done_tasks > self.objective_required_tasks {
++            return false;
++        }
++
++        if self.ready_tasks > 0 && self.active_task_id == 0 {
++            return false;
++        }
++
++        if self.artifact_id == 0 {
++            self.parent_artifact_id == 0
++                && self.artifact_bytes == 0
++                && self.artifact_receipt_hash == 0
++                && self.artifact_lineage_hash == 0
++        } else {
++            self.active_task_id != 0
++                && self.artifact_bytes != 0
++                && self.artifact_receipt_hash != 0
++        }
++    }
+ }
+@@
+     pub fn apply_evidence(&mut self, gate: GateId, evidence: Evidence, passed: bool) {
+         if passed {
+             self.gates.set_pass(gate, evidence);
+         } else {
+             self.gates.set_fail(gate, evidence);
+         }
+     }
++
++    pub fn is_structurally_valid(self) -> bool {
++        self.gates.is_structurally_valid() && self.packet.is_structurally_valid()
++    }
+ }
+@@
+ impl Default for RuntimeConfig {
+@@
+     }
+ }
++
++impl RuntimeConfig {
++    pub fn is_structurally_valid(self) -> bool {
++        self.max_steps != 0 && self.max_recovery_attempts != 0
++    }
++}
+*** Update File: src/runtime/mod.rs
+@@
+     InvalidReplay,
++    InvalidStateInvariant,
++    InvalidRuntimeConfig,
+     TlogIo,
+*** Update File: src/runtime/writer.rs
+@@
+     pub(crate) fn build(
+         tlog: &[ControlEvent],
+         before: State,
+         outcome: Outcome,
+         cfg: RuntimeConfig,
+     ) -> Result<ControlEvent, CanonError> {
++        if !cfg.is_structurally_valid() {
++            return Err(CanonError::InvalidRuntimeConfig);
++        }
++
++        if !before.is_structurally_valid() || !outcome.state.is_structurally_valid() {
++            return Err(CanonError::InvalidStateInvariant);
++        }
++
+         let after = outcome.state;
+         let delta = semantic_diff(before, after);
+*** Update File: src/runtime/verify.rs
+@@
+ pub fn verify_tlog_from(initial: State, tlog: &[ControlEvent]) -> Result<State, CanonError> {
++    if !initial.is_structurally_valid() {
++        return Err(CanonError::InvalidStateInvariant);
++    }
++
+     let mut state = initial;
+     let mut prev_hash = 0;
+
+     for (i, event) in tlog.iter().enumerate() {
++        if !event.runtime_config.is_structurally_valid() {
++            return Err(CanonError::InvalidRuntimeConfig);
++        }
++
++        if !event.state_before.is_structurally_valid()
++            || !event.state_after.is_structurally_valid()
++        {
++            return Err(CanonError::InvalidStateInvariant);
++        }
++
+         if event.seq != i as u64 + 1 || event.prev_hash != prev_hash {
+             return Err(CanonError::InvalidHashChain);
+         }
+*** Update File: src/capability/policy/store.rs
+@@
+-//! Append-only policy store.
++//! Append-only policy store.
++
++use std::fs::{File, OpenOptions};
++use std::io::{BufRead, BufReader, Write};
++use std::path::Path;
+
+ use crate::capability::learning::{PolicyPromotion, POLICY_PROMOTION_SOURCE_SEQ};
++
++const POLICY_SCHEMA_VERSION: u64 = 1;
++const POLICY_RECORD_ENTRY: u64 = 1;
++const POLICY_KEY_PROMOTION_SOURCE_SEQ: u64 = 1;
+@@
+ pub enum PolicyStoreError {
+     InvalidPromotion,
+     NonMonotonicVersion,
++    UnknownPolicyKey,
++    PolicyIo,
++    InvalidPolicyRecord,
+ }
+@@
+     pub fn try_append(&mut self, entry: PolicyEntry) -> Result<(), PolicyStoreError> {
+         if entry.version <= self.latest_version() {
+             return Err(PolicyStoreError::NonMonotonicVersion);
+         }
++        key_to_id(entry.key)?;
+         self.entries.push(entry);
+         Ok(())
+     }
++
++    pub fn append_durable(
++        &mut self,
++        path: impl AsRef<Path>,
++        entry: PolicyEntry,
++    ) -> Result<&PolicyEntry, PolicyStoreError> {
++        if entry.version <= self.latest_version() {
++            return Err(PolicyStoreError::NonMonotonicVersion);
++        }
++        key_to_id(entry.key)?;
++        append_policy_ndjson(path, &entry)?;
++        self.entries.push(entry);
++        self.entries
++            .last()
++            .ok_or(PolicyStoreError::InvalidPolicyRecord)
++    }
+@@
+         self.entries.last().ok_or(PolicyStoreError::InvalidPromotion)
+     }
++
++    pub fn promote_durable(
++        &mut self,
++        path: impl AsRef<Path>,
++        promotion: PolicyPromotion,
++    ) -> Result<&PolicyEntry, PolicyStoreError> {
++        if !promotion.is_valid() {
++            return Err(PolicyStoreError::InvalidPromotion);
++        }
++
++        self.append_durable(
++            path,
++            PolicyEntry {
++                version: promotion.promoted_policy_version,
++                key: POLICY_PROMOTION_SOURCE_SEQ,
++                value: promotion.source_seq,
++            },
++        )
++    }
++
++    pub fn load_ndjson(path: impl AsRef<Path>) -> Result<Self, PolicyStoreError> {
++        let path = path.as_ref();
++        if !path.exists() {
++            return Ok(Self::default());
++        }
++
++        let file = File::open(path).map_err(|_| PolicyStoreError::PolicyIo)?;
++        let reader = BufReader::new(file);
++        let mut store = Self::default();
++
++        for line in reader.lines() {
++            let line = line.map_err(|_| PolicyStoreError::PolicyIo)?;
++            if line.trim().is_empty() {
++                continue;
++            }
++            store.try_append(decode_policy_entry_ndjson(&line)?)?;
++        }
++
++        Ok(store)
++    }
+@@
+     pub fn entries(&self) -> &[PolicyEntry] {
+         &self.entries
+     }
+ }
++
++fn append_policy_ndjson(
++    path: impl AsRef<Path>,
++    entry: &PolicyEntry,
++) -> Result<(), PolicyStoreError> {
++    let mut file = OpenOptions::new()
++        .create(true)
++        .append(true)
++        .open(path)
++        .map_err(|_| PolicyStoreError::PolicyIo)?;
++    writeln!(file, "{}", encode_policy_entry_ndjson(entry))
++        .map_err(|_| PolicyStoreError::PolicyIo)
++}
++
++fn encode_policy_entry_ndjson(entry: &PolicyEntry) -> String {
++    let key = key_to_id(entry.key).expect("validated policy key");
++    format!(
++        "[{POLICY_SCHEMA_VERSION},{POLICY_RECORD_ENTRY},{},{},{}]",
++        entry.version, key, entry.value
++    )
++}
++
++fn decode_policy_entry_ndjson(line: &str) -> Result<PolicyEntry, PolicyStoreError> {
++    let trimmed = line.trim();
++    let body = trimmed
++        .strip_prefix('[')
++        .and_then(|v| v.strip_suffix(']'))
++        .ok_or(PolicyStoreError::InvalidPolicyRecord)?;
++    let fields = body
++        .split(',')
++        .map(|raw| {
++            raw.trim()
++                .parse::<u64>()
++                .map_err(|_| PolicyStoreError::InvalidPolicyRecord)
++        })
++        .collect::<Result<Vec<_>, _>>()?;
++
++    if fields.len() != 5
++        || fields[0] != POLICY_SCHEMA_VERSION
++        || fields[1] != POLICY_RECORD_ENTRY
++    {
++        return Err(PolicyStoreError::InvalidPolicyRecord);
++    }
++
++    Ok(PolicyEntry {
++        version: fields[2],
++        key: key_from_id(fields[3])?,
++        value: fields[4],
++    })
++}
++
++fn key_to_id(key: &str) -> Result<u64, PolicyStoreError> {
++    match key {
++        POLICY_PROMOTION_SOURCE_SEQ => Ok(POLICY_KEY_PROMOTION_SOURCE_SEQ),
++        _ => Err(PolicyStoreError::UnknownPolicyKey),
++    }
++}
++
++fn key_from_id(id: u64) -> Result<&'static str, PolicyStoreError> {
++    match id {
++        POLICY_KEY_PROMOTION_SOURCE_SEQ => Ok(POLICY_PROMOTION_SOURCE_SEQ),
++        _ => Err(PolicyStoreError::UnknownPolicyKey),
++    }
++}
+*** Update File: src/lib.rs
+@@
+     fn learning_materializes_policy_entry_from_tlog_history() {
+         let (_state, tlog) = run_until_done(State::ready(), RuntimeConfig::default()).unwrap();
+@@
+         assert_eq!(store.latest(entry.key), Some(&entry));
+         verify_tlog(&tlog).unwrap();
+     }
++
++    #[test]
++    fn durable_policy_store_roundtrips_promoted_policy() {
++        let (_state, tlog) = run_until_done(State::ready(), RuntimeConfig::default()).unwrap();
++        let promotion = PolicyPromotion::from_tlog(&tlog, 1).unwrap();
++        let path = std::env::temp_dir().join(format!(
++            "ai-policy-store-{}-{}.ndjson",
++            std::process::id(),
++            promotion.source_seq
++        ));
++        std::fs::remove_file(&path).ok();
++
++        let mut store = PolicyStore::default();
++        let entry = store.promote_durable(&path, promotion).unwrap().clone();
++        let loaded = PolicyStore::load_ndjson(&path).unwrap();
++        std::fs::remove_file(&path).ok();
++
++        assert_eq!(loaded.entries(), &[entry]);
++        assert_eq!(loaded.latest_version(), 1);
++    }
++
++    #[test]
++    fn durable_policy_append_is_disk_first() {
++        let mut store = PolicyStore::default();
++        let bad_path = std::env::temp_dir();
++
++        assert_eq!(
++            store.append_durable(
++                bad_path,
++                PolicyEntry {
++                    version: 1,
++                    key: crate::capability::learning::POLICY_PROMOTION_SOURCE_SEQ,
++                    value: 7,
++                }
++            ),
++            Err(PolicyStoreError::PolicyIo)
++        );
++        assert!(store.entries().is_empty());
++    }
+@@
+     fn terminal_failure_rejects_affected_gate() {
+         let event = EventView {
+@@
+
+         assert_eq!(validate_event(event), Err(CanonError::UnexpectedAffectedGate));
+     }
++
++    #[test]
++    fn structurally_invalid_public_state_is_rejected() {
++        let cfg = RuntimeConfig::default();
++        let mut state = State::ready();
++        state.gates.invariant = Gate {
++            status: GateStatus::Pass,
++            evidence: Evidence::Missing,
++            version: 1,
++        };
++        let mut tlog = Vec::new();
++
++        assert_eq!(tick(&mut state, &mut tlog, cfg), Err(CanonError::InvalidStateInvariant));
++        assert!(tlog.is_empty());
++    }
++
++    #[test]
++    fn zero_step_runtime_config_is_rejected() {
++        let cfg = RuntimeConfig {
++            max_steps: 0,
++            max_recovery_attempts: 1,
++        };
++        let mut state = State::ready();
++        let mut tlog = Vec::new();
++
++        assert_eq!(tick(&mut state, &mut tlog, cfg), Err(CanonError::InvalidRuntimeConfig));
++        assert!(tlog.is_empty());
++    }
+ }
+*** End Patch

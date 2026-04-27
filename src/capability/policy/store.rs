@@ -1,6 +1,14 @@
 //! Append-only policy store.
 
+use std::fs::{File, OpenOptions};
+use std::io::{BufRead, BufReader, Write};
+use std::path::Path;
+
 use crate::capability::learning::{PolicyPromotion, POLICY_PROMOTION_SOURCE_SEQ};
+
+const POLICY_SCHEMA_VERSION: u64 = 1;
+const POLICY_RECORD_ENTRY: u64 = 1;
+const POLICY_KEY_PROMOTION_SOURCE_SEQ: u64 = 1;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PolicyEntry {
@@ -13,6 +21,9 @@ pub struct PolicyEntry {
 pub enum PolicyStoreError {
     InvalidPromotion,
     NonMonotonicVersion,
+    UnknownPolicyKey,
+    PolicyIo,
+    InvalidPolicyRecord,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -33,8 +44,25 @@ impl PolicyStore {
         if entry.version <= self.latest_version() {
             return Err(PolicyStoreError::NonMonotonicVersion);
         }
+        key_to_id(entry.key)?;
         self.entries.push(entry);
         Ok(())
+    }
+
+    pub fn append_durable(
+        &mut self,
+        path: impl AsRef<Path>,
+        entry: PolicyEntry,
+    ) -> Result<&PolicyEntry, PolicyStoreError> {
+        if entry.version <= self.latest_version() {
+            return Err(PolicyStoreError::NonMonotonicVersion);
+        }
+        key_to_id(entry.key)?;
+        append_policy_ndjson(path, &entry)?;
+        self.entries.push(entry);
+        self.entries
+            .last()
+            .ok_or(PolicyStoreError::InvalidPolicyRecord)
     }
 
     pub fn promote(
@@ -54,6 +82,46 @@ impl PolicyStore {
         self.entries.last().ok_or(PolicyStoreError::InvalidPromotion)
     }
 
+    pub fn promote_durable(
+        &mut self,
+        path: impl AsRef<Path>,
+        promotion: PolicyPromotion,
+    ) -> Result<&PolicyEntry, PolicyStoreError> {
+        if !promotion.is_valid() {
+            return Err(PolicyStoreError::InvalidPromotion);
+        }
+
+        self.append_durable(
+            path,
+            PolicyEntry {
+                version: promotion.promoted_policy_version,
+                key: POLICY_PROMOTION_SOURCE_SEQ,
+                value: promotion.source_seq,
+            },
+        )
+    }
+
+    pub fn load_ndjson(path: impl AsRef<Path>) -> Result<Self, PolicyStoreError> {
+        let path = path.as_ref();
+        if !path.exists() {
+            return Ok(Self::default());
+        }
+
+        let file = File::open(path).map_err(|_| PolicyStoreError::PolicyIo)?;
+        let reader = BufReader::new(file);
+        let mut store = Self::default();
+
+        for line in reader.lines() {
+            let line = line.map_err(|_| PolicyStoreError::PolicyIo)?;
+            if line.trim().is_empty() {
+                continue;
+            }
+            store.try_append(decode_policy_entry_ndjson(&line)?)?;
+        }
+
+        Ok(store)
+    }
+
     pub fn latest(&self, key: &str) -> Option<&PolicyEntry> {
         self.entries.iter().rev().find(|entry| entry.key == key)
     }
@@ -68,5 +136,70 @@ impl PolicyStore {
 
     pub fn entries(&self) -> &[PolicyEntry] {
         &self.entries
+    }
+}
+
+fn append_policy_ndjson(
+    path: impl AsRef<Path>,
+    entry: &PolicyEntry,
+) -> Result<(), PolicyStoreError> {
+    let mut file = OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(path)
+        .map_err(|_| PolicyStoreError::PolicyIo)?;
+    writeln!(file, "{}", encode_policy_entry_ndjson(entry))
+        .map_err(|_| PolicyStoreError::PolicyIo)?;
+    file.sync_all().map_err(|_| PolicyStoreError::PolicyIo)
+}
+
+fn encode_policy_entry_ndjson(entry: &PolicyEntry) -> String {
+    let key = key_to_id(entry.key).expect("validated policy key");
+    format!(
+        "[{POLICY_SCHEMA_VERSION},{POLICY_RECORD_ENTRY},{},{},{}]",
+        entry.version, key, entry.value
+    )
+}
+
+fn decode_policy_entry_ndjson(line: &str) -> Result<PolicyEntry, PolicyStoreError> {
+    let trimmed = line.trim();
+    let body = trimmed
+        .strip_prefix('[')
+        .and_then(|v| v.strip_suffix(']'))
+        .ok_or(PolicyStoreError::InvalidPolicyRecord)?;
+    let fields = body
+        .split(',')
+        .map(|raw| {
+            raw.trim()
+                .parse::<u64>()
+                .map_err(|_| PolicyStoreError::InvalidPolicyRecord)
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+
+    if fields.len() != 5
+        || fields[0] != POLICY_SCHEMA_VERSION
+        || fields[1] != POLICY_RECORD_ENTRY
+    {
+        return Err(PolicyStoreError::InvalidPolicyRecord);
+    }
+
+    Ok(PolicyEntry {
+        version: fields[2],
+        key: key_from_id(fields[3])?,
+        value: fields[4],
+    })
+}
+
+fn key_to_id(key: &str) -> Result<u64, PolicyStoreError> {
+    match key {
+        POLICY_PROMOTION_SOURCE_SEQ => Ok(POLICY_KEY_PROMOTION_SOURCE_SEQ),
+        _ => Err(PolicyStoreError::UnknownPolicyKey),
+    }
+}
+
+fn key_from_id(id: u64) -> Result<&'static str, PolicyStoreError> {
+    match id {
+        POLICY_KEY_PROMOTION_SOURCE_SEQ => Ok(POLICY_PROMOTION_SOURCE_SEQ),
+        _ => Err(PolicyStoreError::UnknownPolicyKey),
     }
 }

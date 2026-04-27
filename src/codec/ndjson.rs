@@ -23,7 +23,8 @@ pub fn append_tlog_ndjson(
         .append(true)
         .open(path)
         .map_err(|_| CanonError::TlogIo)?;
-    writeln!(file, "{}", encode_event_ndjson(event)).map_err(|_| CanonError::TlogIo)
+    writeln!(file, "{}", encode_event_ndjson(event)).map_err(|_| CanonError::TlogIo)?;
+    file.sync_all().map_err(|_| CanonError::TlogIo)
 }
 
 pub fn write_tlog_ndjson(path: impl AsRef<Path>, tlog: &[ControlEvent]) -> Result<(), CanonError> {
@@ -31,7 +32,7 @@ pub fn write_tlog_ndjson(path: impl AsRef<Path>, tlog: &[ControlEvent]) -> Resul
     for event in tlog {
         writeln!(file, "{}", encode_event_ndjson(event)).map_err(|_| CanonError::TlogIo)?;
     }
-    Ok(())
+    file.sync_all().map_err(|_| CanonError::TlogIo)
 }
 
 pub fn load_tlog_ndjson(path: impl AsRef<Path>) -> Result<TLog, CanonError> {

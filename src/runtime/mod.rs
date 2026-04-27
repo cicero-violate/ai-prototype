@@ -57,6 +57,8 @@ pub enum CanonError {
     InvalidSemanticDelta,
     InvalidHashChain,
     InvalidReplay,
+    InvalidStateInvariant,
+    InvalidRuntimeConfig,
     TlogIo,
     InvalidTlogRecord,
     MissingAffectedGate,
@@ -284,6 +286,8 @@ pub fn touch_all_surfaces() -> usize {
             CanonError::UnexpectedAffectedGate => 14,
             CanonError::TlogIo => 15,
             CanonError::InvalidTlogRecord => 16,
+            CanonError::InvalidStateInvariant => 17,
+            CanonError::InvalidRuntimeConfig => 18,
         })
         .sum::<usize>();
 

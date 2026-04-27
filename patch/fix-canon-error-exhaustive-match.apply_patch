@@ -1,0 +1,10 @@
+*** Begin Patch
+*** Update File: src/runtime/mod.rs
+@@
+             CanonError::UnexpectedAffectedGate => 14,
+             CanonError::TlogIo => 15,
+             CanonError::InvalidTlogRecord => 16,
++            CanonError::InvalidStateInvariant => 17,
++            CanonError::InvalidRuntimeConfig => 18,
+         })
+*** End Patch

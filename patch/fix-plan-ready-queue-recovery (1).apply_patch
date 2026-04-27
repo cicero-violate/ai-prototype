@@ -1,0 +1,14 @@
+*** Begin Patch
+*** Update File: src/kernel/mod.rs
+@@
+-        } else {
+-            self.active_task_id != 0
+-                && self.artifact_bytes != 0
+-                && self.artifact_receipt_hash != 0
+-        }
++        } else {
++            self.artifact_bytes != 0 && self.artifact_receipt_hash != 0
++        }
+     }
+ }
+*** End Patch
