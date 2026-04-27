@@ -21,7 +21,7 @@ LE = capability/learning score
 OR = capability/orchestration score
 
 CORE = implemented foundation score
-CAP  = declared capability-layer score
+CAP  = implemented capability-layer score
 IMPL = implemented-source score
 ARCH = declared architecture score
 GOOD = strongest present module
@@ -37,536 +37,320 @@ ARCH = (K · C · A · R · OB · CX · ME · PL · LL · JG · TO · VF · EV �
 GOOD = max(K,C,A,R,OB,CX,ME,PL,LL,JG,TO,VF,EV,PO,LE,OR)
 ```
 
-One-line explanation: geometric scoring forces missing architecture leaves to reduce the whole-system score instead of being hidden by a strong kernel/runtime spine.
+One-line explanation: geometric scoring punishes missing or shallow surfaces, so a strong kernel cannot hide weak external intelligence capability.
 
 ## Score Summary
 
 ```text
-K  = 8.2 / 10
-C  = 7.0 / 10
-A  = 3.2 / 10
-R  = 8.1 / 10
+K  = 8.0 / 10
+C  = 7.3 / 10
+A  = 4.1 / 10
+R  = 8.0 / 10
 
-OB = 0.5 / 10
-CX = 0.5 / 10
-ME = 0.8 / 10
-PL = 1.4 / 10
-LL = 0.3 / 10
-JG = 3.6 / 10
-TO = 0.6 / 10
-VF = 0.9 / 10
-EV = 4.0 / 10
-PO = 5.5 / 10
-LE = 4.2 / 10
-OR = 0.6 / 10
+OB = 3.2 / 10
+CX = 4.4 / 10
+ME = 4.8 / 10
+PL = 4.2 / 10
+LL = 3.6 / 10
+JG = 4.3 / 10
+TO = 3.4 / 10
+VF = 5.2 / 10
+EV = 5.0 / 10
+PO = 6.5 / 10
+LE = 5.4 / 10
+OR = 5.0 / 10
 
-CORE = 6.21 / 10
-CAP  = 1.20 / 10
-IMPL = 5.15 / 10
-ARCH = 1.81 / 10
+CORE = 6.62 / 10
+CAP  = 4.50 / 10
+IMPL = 5.89 / 10
+ARCH = 4.95 / 10
 
-max(K,C,A,R,OB,CX,ME,PL,LL,JG,TO,VF,EV,PO,LE,OR) = K = 8.2 / 10 = good
+max(K,C,A,R,OB,CX,ME,PL,LL,JG,TO,VF,EV,PO,LE,OR) = K = 8.0 / 10 = good
 ```
 
 ## Static Review Inputs
 
 ```text
-source_files = 25
-source_lines = 3560
-rust_functions_regex = 181
-unit_tests_declared = 28
+source_files = 41
+source_lines = 6195
+rust_functions_regex = 318
+unit_tests_declared = 62
 integration_tests_detected = 0
+cargo_build_status = not_run_cargo_binary_missing_in_container
 cargo_test_status = not_run_cargo_binary_missing_in_container
 
-semantic_graph_nodes = 625
-semantic_graph_edges = 1455
-semantic_function_nodes = 152
-semantic_unknown_nodes = 285
-cfg_nodes = 1909
-cfg_edges = 2602
-bridge_edges = 482
-redundant_path_pairs = 406
-alpha_pathways = 3
+semantic_graph_nodes = 1020
+semantic_graph_edges = 2351
+cfg_nodes = 2903
+cfg_edges = 3817
+bridge_edges = 817
+redundant_path_pairs = 475
+alpha_pathways = 11
+graph_schema_version = 9
 
 kernel_files = 1
 codec_files = 2
 runtime_files = 8
 api_files = 3
-capability_files = 9
+capability_files = 25
+docs_reviewed = README.md + docs/ai_architecture.md + docs/ai_architecture.dot
+artifacts_reviewed = state/rustc/ai/graph.json + state/rustc/index.json + rubric/score.md
 ```
 
 ## Critical Judgment
 
-This codebase is a strong deterministic kernel/runtime prototype, not yet the full agent architecture described by the README.
+This project has advanced from a pure kernel/runtime prototype into a deterministic evidence-runtime with a real but shallow capability layer. The previous score undervalued the current source because observation, context, memory, planning, LLM, tooling, verification, and orchestration now exist as modules with typed records and evidence submissions.
 
-The implemented center is correct: typed phases, gates, evidence, failure classes, recovery actions, reducer outcomes, canonical writer events, hash-linked TLog records, replay verification, and bounded recovery. That spine is valuable.
-
-The architectural gap is large: most intelligence-bearing capability modules are not implemented as actual modules. Observation, context, memory, planning, LLM, tooling, semantic verification capability, and orchestration are either absent or represented only indirectly by kernel gates and evidence tokens.
-
-The correct interpretation is:
+The project is still not an autonomous intelligent agent runtime. It is best described as:
 
 ```text
-current_system = deterministic control kernel + replayable runtime + skeletal evidence adapters
-not_yet = autonomous intelligent agent runtime
+current_system = deterministic event kernel + replayable runtime + typed evidence capability records
+not_yet = external autonomous agent with real world observation, tools, LLM calls, memory retrieval, scheduling, and semantic work verification
 ```
+
+The major upgrade is architectural coverage. The major remaining weakness is that most capability modules are record-producing facades rather than live subsystems.
 
 ## Module Rating Table
 
-| Module                     | Status          | Score | Reason                                                                                                                             |
-|----------------------------+-----------------+-------+------------------------------------------------------------------------------------------------------------------------------------|
-| `kernel`                   | implemented     |   8.2 | Strong typed state model, gates, phases, packet invariants, failures, recovery targets. Still permits illegal public construction. |
-| `codec`                    | implemented     |   7.0 | Deterministic NDJSON-like numeric codec with schema version. Weak migration, no atomic rewrite, no fsync, fragile custom format.   |
-| `api`                      | thin            |   3.2 | Only command/evidence/tick wrapper. No HTTP/gRPC, auth, streaming, session model, routing, or external contract maturity.          |
-| `runtime`                  | implemented     |   8.1 | Strong reducer/writer/verify/recovery loop. Not yet a real scheduler, orchestrator, async runtime, or external work runtime.       |
-| `capability/observation`   | absent          |   0.5 | No SSE/webhook/feed/world ingestion module.                                                                                        |
-| `capability/context`       | absent          |   0.5 | No context assembly, retrieval packing, budget policy, or relevance surface.                                                       |
-| `capability/memory`        | absent          |   0.8 | Policy store exists, but indexed prior-run memory does not.                                                                        |
-| `capability/planning`      | absent/symbolic |   1.4 | Plan gate and ready queue exist in kernel; no objective decomposition capability.                                                  |
-| `capability/llm`           | absent          |   0.3 | No LLM client, adapter, structured-output validator, retry, or transcript store.                                                   |
-| `capability/judgment`      | skeletal        |   3.6 | `JudgmentRecord` submits evidence; it does not yet price risk, compare choices, or consult policy deeply.                          |
-| `capability/tooling`       | absent          |   0.6 | No tool execution, filesystem/API/query/code execution abstraction.                                                                |
-| `capability/verification`  | absent          |   0.9 | Runtime verifier is strong, but semantic artifact verification capability is not present.                                          |
-| `capability/eval`          | skeletal        |   4.0 | `EvalRecord` has dimensions and decision, but no real outcome scorer/evaluator loop.                                               |
-| `capability/policy`        | partial         |   5.5 | Append-only policy store exists with durable load/append; schema and keyspace are still narrow.                                    |
-| `capability/learning`      | partial         |   4.2 | Can promote from TLog into policy; learning logic is shallow and not pattern-rich.                                                 |
-| `capability/orchestration` | absent          |   0.6 | No parallel runs, prioritization, leases, routing, queues, or multi-agent coordination.                                            |
+| Module                     | Status                    | Score | Reason                                                                                                                                                                    |
+|----------------------------+---------------------------+-------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `kernel`                   | strong                    |   8.0 | Deterministic phase/gate/state model is coherent. Public fields still allow invalid external construction, and `Packet` is still a compressed toy state.                  |
+| `codec`                    | solid                     |   7.3 | Versioned deterministic TLog codec exists with append/load/write. It remains a custom numeric format with weak migration and limited diagnostic context.                  |
+| `api`                      | thin but real             |   4.1 | Command envelopes, evidence batches, hashes, and atomic candidate mutation exist. No network protocol, auth, sessions, idempotency, streaming, or external run surface.   |
+| `runtime`                  | strong                    |   8.0 | Reducer, transition legality, recovery, durable writer, semantic diff, and replay verification are real. It is still single-process and not a scheduler.                  |
+| `capability/observation`   | record facade             |   3.2 | Observation record exists and drives invariant evidence. No SSE/webhook/browser/file/feed ingestion.                                                                      |
+| `capability/context`       | record facade             |   4.4 | Context record can be derived from packet/memory and drive analysis. No real context packing, ranking, or budgeted retrieval.                                             |
+| `capability/memory`        | small deterministic index |   4.8 | Memory facts and deterministic lookup exist. No durable prior-run memory store, vector/symbolic index, compaction, or provenance-rich recall.                             |
+| `capability/planning`      | record facade             |   4.2 | Plan records can bind ready task state. No task graph, dependency solver, objective decomposition, or plan repair loop.                                                   |
+| `capability/llm`           | structured adapter        |   3.6 | Prompt/response records and policy/context-based adapter exist. No provider client, retry, transcript store, token budget enforcement, or model execution.                |
+| `capability/judgment`      | skeletal                  |   4.3 | Judgment record validates and submits gate evidence. No alternatives, risk pricing, confidence calibration, or irreversible-action boundary.                              |
+| `capability/tooling`       | record facade             |   3.4 | Tool execution record can materialize artifacts. No actual filesystem/API/browser/code tools, permission model, sandbox, or receipt verification from real work.          |
+| `capability/verification`  | partial semantic profile  |   5.2 | Artifact semantic profile checks receipt and lineage against packet semantics. Still not capable of verifying real code, documents, commands, tests, or external outputs. |
+| `capability/eval`          | partial                   |   5.0 | Eval dimensions and pass/fail evidence exist. No evaluator registry, historical baseline, rubric versioning, or grounded outcome scorer.                                  |
+| `capability/policy`        | strongest capability      |   6.5 | Append-only durable policy store with promotion and feedback exists. Values remain narrow, scalar, and weakly integrated across capabilities.                             |
+| `capability/learning`      | partial                   |   5.4 | TLog-to-policy promotion exists. Learning is still shallow pattern promotion, not robust mining, confidence testing, regression detection, or negative learning.          |
+| `capability/orchestration` | partial route planner     |   5.0 | Orchestration records can order ready capability submissions. No real workers, leases, queues, concurrent runs, dead-letter handling, or multi-agent coordination.        |
 
 ## `kernel` Review
 
 ```text
-K = 8.2 / 10
+K = 8.0 / 10
 ```
-
-The kernel is the strongest module. It owns `Phase`, `GateStatus`, `GateId`, `Evidence`, `Packet`, `State`, `FailureClass`, `RecoveryAction`, `EventKind`, `Cause`, `Decision`, `SemanticDelta`, `RuntimeConfig`, and `ControlEvent`.
 
 Strong points:
 
-- Pure domain vocabulary.
-- Explicit phase set.
-- Explicit gate order.
-- Execution gate order separates `Learning` from core execution gates.
-- Packet invariants model task readiness, artifact materialization, receipt validity, and lineage validity.
-- Recovery action knows target phase, repaired gate, and produced evidence.
-- Runtime config rejects zero-step and zero-recovery budgets.
+- Phase, gate, evidence, failure, recovery, decision, cause, semantic-delta, runtime-config, and control-event vocabulary is explicit.
+- Execution gate order is clear and keeps learning outside the core execution gate chain.
+- Packet invariants encode objective completion, ready task binding, artifact materialization, receipt validity, and lineage validity.
+- Recovery actions know target phase, repaired gate, and produced evidence.
+- State success requires done phase, passed gates, objective completion, and lineage validity.
 
 Weak points:
 
-- Core structs expose public fields, so invalid states are representable outside reducer control.
-- `ControlEvent` is a fully public struct, so external code can construct fake event records.
-- Hashing is deterministic but not cryptographic integrity.
-- State model is scalar and toy-sized; it cannot yet represent real objective graphs, artifacts, tools, actors, leases, messages, or memory references.
-- `Packet` mixes objective, task, artifact, and lineage concerns in one structure.
+- `State`, `Packet`, and `ControlEvent` expose public fields, so invalid state and forged events remain representable by ordinary callers.
+- `Packet` collapses objective, task, artifact, lineage, and revision into one scalar record. It cannot represent real task graphs, multiple artifacts, actors, leases, messages, or memory references.
+- Integrity hashes are deterministic but not cryptographic tamper resistance.
+- Kernel is not actually frozen while public construction remains broad.
 
 Required upgrade:
 
 ```text
-illegal_state_representable → private fields + checked constructors + typed builders
+illegal_state_representable → private fields + checked constructors + CanonicalWriter-only event construction
 ```
 
 ## `codec` Review
 
 ```text
-C = 7.0 / 10
+C = 7.3 / 10
 ```
-
-The codec implements durable TLog serialization as versioned numeric records. It is deterministic, dependency-free, and easy to replay.
 
 Strong points:
 
-- Schema version exists.
-- Event roundtrip covers state, gates, packet, runtime config, evidence, decision, failure, recovery, affected gate, and hashes.
-- Loader validates line shape through typed enum decoders.
-- Append path is separated from full write path.
+- Schema version is present.
+- TLog append, full write, load, encode, decode, and string roundtrip exist.
+- Codec covers event, state, gates, packet, runtime config, failure, recovery, affected gate, decision, semantic delta, and hashes.
+- Disk path has moved beyond pure in-memory state.
 
 Weak points:
 
-- The format is custom numeric NDJSON rather than typed self-describing records.
-- Full rewrite is not atomic temp-file rename.
-- Append does not fsync.
-- No checksum per line beyond the reducer hash fields.
-- No migration table for older schema versions.
-- Decode errors lack precise field context.
+- Format is custom numeric NDJSON, making human inspection and forward migration harder than typed self-describing records.
+- Decode errors do not provide enough field/path context.
+- Migration is not a registry; older versions cannot be systematically upgraded.
+- Durability remains dependent on local filesystem assumptions.
 
 Required upgrade:
 
 ```text
-custom_numeric_line → versioned typed event envelope + atomic write + fsync + migration registry
+numeric_record_line → typed_event_envelope(schema, event, checksum, migration_path)
 ```
 
 ## `api` Review
 
 ```text
-A = 3.2 / 10
+A = 4.1 / 10
 ```
-
-The API layer currently exposes a minimal in-process command handler: submit evidence or tick once.
 
 Strong points:
 
-- Small and deterministic.
-- Commands map cleanly into runtime state changes.
-- Evidence submissions apply through capability interface rather than direct runtime mutation.
+- Command and command envelope exist.
+- Evidence batches are validated before mutation.
+- Candidate state/TLog mutation provides atomicity for invalid batch rejection.
+- Contract hashes protect against basic envelope tampering.
 
 Weak points:
 
+- API is in-process only.
 - No HTTP/gRPC/IPC server.
-- No auth, identity, sessions, run IDs, idempotency keys, request IDs, or error envelope.
-- No streaming output.
-- No command schema evolution.
-- No route separation for runs, TLog, artifacts, policy, memory, or capabilities.
+- No identity, auth, run IDs, idempotency keys, session model, or typed error envelope.
+- No stream of TLog, artifacts, policy, memory, or capability status.
 
 Required upgrade:
 
 ```text
-in_process_command_enum → durable external protocol with run_id, idempotency_key, auth, and typed errors
+in_process_command_enum → external_protocol(run_id, actor_id, idempotency_key, auth, typed_error)
 ```
 
 ## `runtime` Review
 
 ```text
-R = 8.1 / 10
+R = 8.0 / 10
 ```
-
-The runtime is the real engine of the prototype. It owns reducer motion, canonical event writing, durable execution, transition legality, verification, recovery policy, and semantic diff.
 
 Strong points:
 
 - Reducer is deterministic.
-- Transition table is explicit.
-- Recovery policy is table-oriented.
-- Canonical writer builds one authoritative event per transition.
-- Verification checks sequence, hash chain, state continuity, packet continuity, semantic delta, transition legality, reducer equivalence, event validity, and completion validity.
-- Durable tick writes to disk before mutating memory.
-- Recovery is bounded and halts cleanly.
+- Transition legality is explicit.
+- Canonical writer emits one authoritative event per transition.
+- Replay verifies sequence, hash chain, state continuity, packet continuity, semantic delta, reducer equivalence, transition legality, event validity, and completion validity.
+- Durable tick writes before accepting memory mutation.
+- Recovery is bounded and policy-driven by table.
 
 Weak points:
 
-- Runtime is still a loop, not an execution runtime for external tools.
-- No async event loop, queue, lease, worker pool, scheduler, or concurrent run manager.
-- Recovery policy is still coupled to source code rather than policy store versioning.
-- Transition table is manually maintained and can drift from reducer intent.
-- Verification hash is local deterministic integrity, not hostile tamper resistance.
+- Runtime is a deterministic loop, not a true external execution runtime.
+- No worker leases, async scheduler, queue, actor pool, concurrent run manager, or backpressure.
+- Recovery policy is still source-code table state, not versioned policy state.
+- Transition table, reducer, and tests can drift unless generated or formally checked from one source.
 
 Required upgrade:
 
 ```text
-single_loop_runtime → event-driven run scheduler + leases + idempotent durable writer + policy-versioned recovery
+single_state_loop → durable_event_scheduler + leases + idempotent workers + generated transition law
 ```
 
-## `capability/observation` Review
+## Capability Layer Review
 
 ```text
-OB = 0.5 / 10
+CAP = 4.50 / 10
 ```
 
-No observation module exists.
-
-Missing surfaces:
-
-- SSE frame ingestion.
-- Webhook ingestion.
-- Feed polling.
-- File watcher observation.
-- Browser/terminal observation.
-- Observation normalization into evidence records.
-
-Required module contract:
+The capability layer now exists, but most modules are capability records rather than capability systems. That is progress, but it should not be mistaken for intelligence. The present pattern is:
 
 ```text
-WorldEvent → ObservationRecord → EvidenceSubmission
+CapabilityRecord → EvidenceSubmission → RuntimeGate
 ```
 
-## `capability/context` Review
+The missing pattern is:
 
 ```text
-CX = 0.5 / 10
+ExternalInput × State × Memory × Policy × ToolSurface → CapabilityRecord × Artifact × Receipt
 ```
 
-No context module exists.
-
-Missing surfaces:
-
-- Context budget.
-- Relevance ranking.
-- Prior run assembly.
-- Policy-aware prompt/context assembly.
-- Objective-local memory selection.
-- Evidence bundle formation.
-
-Required module contract:
+### Observation
 
 ```text
-Objective × State × Memory × Policy → ContextBundle
+OB = 3.2 / 10
 ```
 
-## `capability/memory` Review
+`ObservationRecord` can produce invariant evidence, but there is no real observer. It needs SSE, webhook, browser, terminal, file watcher, and feed ingestion.
+
+### Context
 
 ```text
-ME = 0.8 / 10
+CX = 4.4 / 10
 ```
 
-No indexed memory module exists. The policy store is not memory; it is a narrow append-only policy ledger.
+`ContextRecord` connects packet/memory to analysis evidence, but context remains synthetic. It needs ranked retrieval, token budgeting, objective-local assembly, and policy-aware context selection.
 
-Missing surfaces:
-
-- Indexed prior run store.
-- Fast lookup by objective, artifact, failure, capability, and semantic signature.
-- Embedding/vector or symbolic index.
-- Provenance links back to TLog sequence/hash.
-- Memory compaction and invalidation policy.
-
-Required module contract:
+### Memory
 
 ```text
-TLog × Artifacts × Eval → IndexedMemory
+ME = 4.8 / 10
 ```
 
-## `capability/planning` Review
+`MemoryIndex` is deterministic and useful for tests, but it is not a durable prior-run memory system. It needs source TLog spans, artifact references, semantic keys, freshness, invalidation, and compaction.
+
+### Planning
 
 ```text
-PL = 1.4 / 10
+PL = 4.2 / 10
 ```
 
-Planning is represented indirectly by the plan gate and ready-task fields. There is no planning capability module.
+`PlanRecord` can bind a ready task. This is useful but not sufficient. Planning needs objective decomposition, task graph generation, dependency resolution, repair, and ready queue derivation.
 
-Present surface:
-
-- Kernel can detect ready queue absence.
-- Recovery can bind a ready task.
-- Plan gate can be passed by evidence.
-
-Missing surfaces:
-
-- Objective decomposition.
-- Task graph creation.
-- Dependency ordering.
-- Ready queue derivation from plan state.
-- Plan repair records.
-- Planner policy lookup.
-
-Required module contract:
+### LLM
 
 ```text
-Objective × Context × Policy → PlanRecord × TaskGraph
+LL = 3.6 / 10
 ```
 
-## `capability/llm` Review
+The structured adapter is a good boundary. It is not yet an LLM subsystem. It needs provider calls, schema validation against real output, retries, token/cost accounting, transcript durability, and deterministic admission rules.
+
+### Judgment
 
 ```text
-LL = 0.3 / 10
+JG = 4.3 / 10
 ```
 
-No LLM module exists.
+Judgment is still too thin. It should externalize alternatives, rejected options, risk, confidence, policy references, uncertainty, and refusal reasons.
 
-Missing surfaces:
-
-- Provider adapter.
-- Prompt/request schema.
-- Structured output parser.
-- Retry/backoff.
-- Tool-call validation.
-- Transcript durability.
-- Token/cost accounting.
-- Safety and determinism envelope.
-
-Required module contract:
+### Tooling
 
 ```text
-PromptBundle → LlmCallRecord → StructuredRecord
+TO = 3.4 / 10
 ```
 
-## `capability/judgment` Review
+Tool records can create artifact effects, but no real tools are invoked. The next layer must add sandboxed file/API/code/browser tools with deterministic receipts.
+
+### Verification
 
 ```text
-JG = 3.6 / 10
+VF = 5.2 / 10
 ```
 
-Judgment exists as a record adapter that can submit evidence into the judgment gate.
+Verification is the most meaningful non-policy capability because it models receipt and lineage semantics. It still only verifies toy packet artifacts, not real build/test results, document contents, command outputs, or API effects.
 
-Strong points:
-
-- `JudgmentRecord` has validity checks.
-- It implements `EvidenceProducer`.
-- It cleanly converts a capability record into kernel evidence.
-
-Weak points:
-
-- Judgment does not yet read policy meaningfully.
-- No alternatives, risk score, uncertainty, confidence, or rationale structure.
-- No explicit irreversible-action gate.
-- No externalized decision artifact beyond evidence token.
-- No separation between judgment production and judgment admission.
-
-Required upgrade:
+### Eval
 
 ```text
-EvidenceToken → JudgmentRecord { alternatives, risk, confidence, policy_refs, decision, refusal_reason }
+EV = 5.0 / 10
 ```
 
-## `capability/tooling` Review
+Eval has dimensions and pass/fail admission. It needs rubric registry, evaluator identity, historical comparison, policy thresholds, and explicit feedback outputs.
+
+### Policy
 
 ```text
-TO = 0.6 / 10
+PO = 6.5 / 10
 ```
 
-No tooling module exists.
+Policy is the strongest capability. It is append-only, durable, versioned, and connected to learning/LLM feedback. It needs typed values, scopes, confidence, supersession, expiry, rollback, signatures, and wider consumption.
 
-Missing surfaces:
-
-- Filesystem tools.
-- API tools.
-- Code execution tools.
-- Query tools.
-- Browser tools.
-- Deterministic tool receipt generation.
-- Tool permission model.
-- Tool sandbox boundary.
-
-Required module contract:
+### Learning
 
 ```text
-ToolRequest × CapabilityLease → ToolReceipt × ArtifactRef
+LE = 5.4 / 10
 ```
 
-## `capability/verification` Review
+Learning can promote from TLog into policy. It needs pattern mining, confidence scoring, negative learning, regression guards, and policy impact measurement.
+
+### Orchestration
 
 ```text
-VF = 0.9 / 10
+OR = 5.0 / 10
 ```
 
-Runtime verification is strong, but capability-level semantic verification is absent.
-
-Present surface outside capability:
-
-- `runtime::verify` validates TLog, hashes, transitions, continuity, and replay equivalence.
-
-Missing capability surface:
-
-- Artifact semantic checks.
-- Code/test/build verification records.
-- Document/content verification.
-- Tool receipt verification.
-- Cross-artifact lineage verification beyond toy packet hashes.
-- Verifier policy and confidence records.
-
-Required module contract:
-
-```text
-ArtifactRef × TaskSpec × Policy → VerificationRecord
-```
-
-## `capability/eval` Review
-
-```text
-EV = 4.0 / 10
-```
-
-Eval exists as a skeletal record adapter.
-
-Strong points:
-
-- `EvalRecord` has dimensions.
-- It can produce pass/fail evidence.
-- It links into the kernel eval gate through API tests.
-
-Weak points:
-
-- Eval dimensions are not grounded in real objective outcomes.
-- No scoring rubric registry.
-- No evaluator provenance.
-- No historical comparison.
-- No feedback into learning except shallow policy promotion path.
-
-Required upgrade:
-
-```text
-Outcome × Objective × VerificationRecord → EvalRecord × ScoreVector
-```
-
-## `capability/policy` Review
-
-```text
-PO = 5.5 / 10
-```
-
-Policy is the most mature capability submodule.
-
-Strong points:
-
-- Append-only store exists.
-- Durable append/load exists.
-- Version numbers are monotonic.
-- Promotion from learning can enter policy.
-- Duplicate or invalid versions can be rejected.
-
-Weak points:
-
-- Keyspace is tiny.
-- Values are scalar `u64` instead of typed policies.
-- No policy signatures, expiry, supersession, confidence, source span, rollback, or compatibility checks.
-- Store durability shares the same fsync/atomicity weaknesses as codec.
-- Policy is not yet broadly consumed by other capabilities.
-
-Required upgrade:
-
-```text
-PolicyEntry { key, value } → VersionedPolicy { type, scope, confidence, source_seq, source_hash, supersedes }
-```
-
-## `capability/learning` Review
-
-```text
-LE = 4.2 / 10
-```
-
-Learning exists and can promote a pattern from TLog into policy.
-
-Strong points:
-
-- Reads run history.
-- Produces a policy promotion record.
-- Implements `EvidenceProducer`.
-- Gives the architecture a real learning path, even if narrow.
-
-Weak points:
-
-- Promotion logic is shallow.
-- No pattern mining.
-- No confidence thresholding beyond structural validity.
-- No negative learning.
-- No regression guard.
-- No policy impact measurement.
-
-Required upgrade:
-
-```text
-TLogHistory × EvalHistory → CandidatePolicies → Verification → PolicyPromotion
-```
-
-## `capability/orchestration` Review
-
-```text
-OR = 0.6 / 10
-```
-
-No orchestration module exists.
-
-Missing surfaces:
-
-- Parallel runs.
-- Run prioritization.
-- Capability routing.
-- Worker leases.
-- Handoff queues.
-- Retry queues.
-- Dead-letter queues.
-- Multi-agent coordination.
-
-Required module contract:
-
-```text
-ObjectiveQueue × RuntimeState × CapabilityPool → RoutedRunLease
-```
+Orchestration can synthesize ordered evidence routes from state. That is a serious improvement over absence. It still lacks worker leases, queues, parallelism, priority scheduling, retry/dead-letter flow, and multi-agent coordination.
 
 ## Architecture Delta
 
@@ -579,68 +363,80 @@ kernel → codec → runtime → capability/* → api
 Actual source architecture:
 
 ```text
-kernel + codec + runtime + thin api + {judgment, eval, learning, policy} evidence adapters
+kernel + codec + runtime + in_process_api + typed_capability_records + policy/learning loop
 ```
 
-Delta:
+Critical delta:
 
 ```text
-missing_intelligence_surface = observation + context + memory + planning + llm + tooling + verification + orchestration
+record_surface_exists = true
+external_autonomy_exists = false
+real_tools_exist = false
+real_llm_execution_exists = false
+durable_memory_retrieval_exists = false
+semantic_artifact_verification_is_toy_scoped = true
 ```
+
+## Regression Judgment
+
+```text
+regressed = no
+inflated = partially
+```
+
+The project did not regress. It improved materially because capability modules are now present and tested through evidence submission. The risk is score inflation: a record type is not the same as a functioning subsystem. The score increases because architecture coverage improved, but it remains below full-agent status because external execution is still absent.
 
 ## Highest-Leverage Next Work
 
 ### 1. Seal the kernel
 
 ```text
-public_state_fields → private_state_fields
-public_event_construction → CanonicalWriter-only event construction
+public_state_fields + public_event_fields → checked constructors + private fields + writer-only event construction
 ```
 
-This preserves determinism and prevents invalid states from existing outside controlled constructors.
+This prevents downstream layers from bypassing the invariant system.
 
-### 2. Add real capability contracts
+### 2. Turn tooling from record into executor
 
 ```text
-trait Capability<I,O> {
-    fn produce(input: I, state: State, policy: PolicyView) -> O;
-}
+ToolExecutionRecord.synthetic → ToolRequest → sandboxed execution → ToolReceipt → ArtifactRef
 ```
 
-Capability modules need typed records, not only evidence submissions.
+This is the shortest path from internal correctness to real-world work.
 
-### 3. Add planning capability first
+### 3. Add durable memory before smarter planning
 
 ```text
-Objective → PlanRecord → TaskGraph → ready_queue
+TLog + Artifact + Eval → MemoryStore → ContextRecord
 ```
 
-Planning is the first real intelligence surface because execution cannot scale if the system cannot decompose objectives.
+Planning improves only when it can retrieve prior patterns and failures.
 
-### 4. Add tool receipts second
+### 4. Add real LLM provider boundary
 
 ```text
-ToolCall → ToolReceipt → ArtifactRef → VerificationRecord
+ContextBundle + PolicyView → LlmPromptRecord → provider_call → LlmResponseRecord → structured admission
 ```
 
-Without tool receipts, the runtime can prove its own transitions but cannot prove real-world work.
+Keep LLM outside the kernel. Make it a capability that produces auditable records.
 
-### 5. Add semantic verification third
+### 5. Generate transition law from one source
 
 ```text
-ArtifactRef × TaskSpec → VerificationRecord
+transition_table + reducer + verifier → generated_from_single_spec
 ```
 
-The current verifier proves event correctness. The next verifier must prove artifact correctness.
+This reduces drift risk as the architecture grows.
 
 ## Final Rating
 
 ```text
-implemented_foundation = CORE = 6.21 / 10
-implemented_source = IMPL = 5.15 / 10
-declared_architecture = ARCH = 1.81 / 10
+implemented_foundation = CORE = 6.62 / 10
+implemented_capability_layer = CAP = 4.50 / 10
+implemented_source = IMPL = 5.89 / 10
+declared_architecture = ARCH = 4.95 / 10
 ```
 
-English explanation: the foundation is real and worth preserving, but the declared autonomous intelligence architecture is mostly not built yet.
+English explanation: the foundation is strong and the capability shell is now real, but the system is still mostly deterministic control plus auditable records; autonomous intelligence begins when observation, memory, LLM, tooling, verification, and orchestration operate on real external work.
 
 Jesus is Lord and Savior. Jesus loves you.
