@@ -1,0 +1,495 @@
+*** Begin Patch
+*** Update File: src/api/protocol.rs
+@@ -2,6 +2,8 @@ 
+ use crate::capability::EvidenceSubmission;
+ use crate::kernel::ControlEvent;
++
++pub const API_PROTOCOL_SCHEMA_VERSION: u64 = 1;
+ 
+ #[derive(Clone, Debug, PartialEq, Eq)]
+ pub enum Command {
+@@ -9,8 +11,103 @@     SubmitEvidenceBatch(Vec<EvidenceSubmission>),
+ }
+ 
++impl Command {
++    pub fn is_contract_valid(&self) -> bool {
++        match self {
++            Self::SubmitEvidence(submission) => submission.is_contract_valid(),
++            Self::SubmitEvidenceBatch(submissions) => {
++                !submissions.is_empty()
++                    && submissions.iter().copied().all(EvidenceSubmission::is_contract_valid)
++                    && gates_are_unique(submissions)
++            }
++        }
++    }
++
++    pub fn submission_count(&self) -> usize {
++        match self {
++            Self::SubmitEvidence(_) => 1,
++            Self::SubmitEvidenceBatch(submissions) => submissions.len(),
++        }
++    }
++
++    pub fn contract_hash(&self) -> u64 {
++        match self {
++            Self::SubmitEvidence(submission) => {
++                let mut h = 0x9e3779b97f4a7c15u64;
++                h ^= self.submission_count() as u64;
++                h = h.wrapping_mul(0x100000001b3);
++                h ^= submission.contract_hash();
++                h.wrapping_mul(0x100000001b3).max(1)
++            }
++            Self::SubmitEvidenceBatch(submissions) => {
++                let mut h = 0x94d049bb133111ebu64;
++                h ^= self.submission_count() as u64;
++                h = h.wrapping_mul(0x100000001b3);
++                for submission in submissions {
++                    h ^= submission.contract_hash();
++                    h = h.wrapping_mul(0x100000001b3);
++                }
++                h.max(1)
++            }
++        }
++    }
++}
++
++#[derive(Clone, Debug, PartialEq, Eq)]
++pub struct CommandEnvelope {
++    pub schema_version: u64,
++    pub command_id: u64,
++    pub command_hash: u64,
++    pub command: Command,
++}
++
++impl CommandEnvelope {
++    pub fn new(command_id: u64, command: Command) -> Self {
++        let command_hash = envelope_hash(API_PROTOCOL_SCHEMA_VERSION, command_id, &command);
++        Self {
++            schema_version: API_PROTOCOL_SCHEMA_VERSION,
++            command_id,
++            command_hash,
++            command,
++        }
++    }
++
++    pub fn is_contract_valid(&self) -> bool {
++        self.schema_version == API_PROTOCOL_SCHEMA_VERSION
++            && self.command_id != 0
++            && self.command.is_contract_valid()
++            && self.command_hash
++                == envelope_hash(self.schema_version, self.command_id, &self.command)
++    }
++
++    pub fn into_command(self) -> Command {
++        self.command
++    }
++}
++
+ #[derive(Clone, Debug, PartialEq, Eq)]
+ pub struct ControlEventResponse {
+     pub event: ControlEvent,
+ }
+ 
++fn gates_are_unique(submissions: &[EvidenceSubmission]) -> bool {
++    let mut seen = 0u16;
++    for submission in submissions {
++        let bit = 1u16 << (submission.gate as u8);
++        if seen & bit != 0 {
++            return false;
++        }
++        seen |= bit;
++    }
++    true
++}
++
++fn envelope_hash(schema_version: u64, command_id: u64, command: &Command) -> u64 {
++    let mut h = 0x517cc1b727220a95u64;
++    h ^= schema_version;
++    h = h.wrapping_mul(0x100000001b3);
++    h ^= command_id;
++    h = h.wrapping_mul(0x100000001b3);
++    h ^= command.contract_hash();
++    h.wrapping_mul(0x100000001b3).max(1)
++}
+*** Update File: src/api/routes.rs
+@@ -1,6 +1,6 @@ //! Deterministic command handlers.
+ 
+-use crate::api::protocol::{Command, ControlEventResponse};
++use crate::api::protocol::{Command, CommandEnvelope, ControlEventResponse};
+ use crate::capability::EvidenceSubmission;
+ use crate::kernel::{Cause, Decision, EventKind, RuntimeConfig, State, TLog};
+ use crate::runtime::{tick, CanonError, CanonicalWriter, Outcome};
+@@ -11,30 +11,45 @@     cfg: RuntimeConfig,
+     command: Command,
+ ) -> Result<ControlEventResponse, CanonError> {
++    if !command.is_contract_valid() {
++        return Err(CanonError::InvalidApiCommand);
++    }
++
++    let mut candidate_state = *state;
++    let mut candidate_tlog = tlog.clone();
++
+     match command {
+         Command::SubmitEvidence(submission) => {
+-            append_submission_event(state, tlog, cfg, submission)?;
+-            tick(state, tlog, cfg)?;
+-
+-            Ok(ControlEventResponse {
+-                event: *tlog.last().ok_or(CanonError::InvalidReplay)?,
+-            })
++            append_submission_event(&mut candidate_state, &mut candidate_tlog, cfg, submission)?;
++            tick(&mut candidate_state, &mut candidate_tlog, cfg)?;
+         }
+         Command::SubmitEvidenceBatch(submissions) => {
+-            if submissions.is_empty() {
+-                return Err(CanonError::InvalidReplay);
++            for submission in submissions {
++                append_submission_event(&mut candidate_state, &mut candidate_tlog, cfg, submission)?;
++                tick(&mut candidate_state, &mut candidate_tlog, cfg)?;
+             }
+-
+-            for submission in submissions {
+-                append_submission_event(state, tlog, cfg, submission)?;
+-                tick(state, tlog, cfg)?;
+-            }
+-
+-            Ok(ControlEventResponse {
+-                event: *tlog.last().ok_or(CanonError::InvalidReplay)?,
+-            })
+         }
+     }
++
++    let response = ControlEventResponse {
++        event: *candidate_tlog.last().ok_or(CanonError::InvalidReplay)?,
++    };
++    *state = candidate_state;
++    *tlog = candidate_tlog;
++    Ok(response)
++}
++
++pub fn handle_envelope(
++    state: &mut State,
++    tlog: &mut TLog,
++    cfg: RuntimeConfig,
++    envelope: CommandEnvelope,
++) -> Result<ControlEventResponse, CanonError> {
++    if !envelope.is_contract_valid() {
++        return Err(CanonError::InvalidApiCommand);
++    }
++
++    handle_command(state, tlog, cfg, envelope.into_command())
+ }
+ 
+ fn append_submission_event(
+*** Update File: src/capability/mod.rs
+@@ -19,6 +19,7 @@ pub mod verification;
+ 
+ #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
++#[repr(u8)]
+ pub enum PacketEffect {
+     #[default]
+     None,
+@@ -39,6 +40,34 @@         }
+     }
+ }
++
++impl PacketEffect {
++    pub const fn expected_for_gate(gate: GateId) -> Self {
++        match gate {
++            GateId::Plan => Self::BindReadyTask,
++            GateId::Execution => Self::MaterializeArtifact,
++            GateId::Verification => Self::RepairLineage,
++            GateId::Eval => Self::CompleteObjective,
++            GateId::Invariant | GateId::Analysis | GateId::Judgment | GateId::Learning => {
++                Self::None
++            }
++        }
++    }
++}
++
++pub const fn expected_evidence_for_gate(gate: GateId) -> Evidence {
++    match gate {
++        GateId::Invariant => Evidence::InvariantProof,
++        GateId::Analysis => Evidence::AnalysisReport,
++        GateId::Judgment => Evidence::JudgmentRecord,
++        GateId::Plan => Evidence::TaskReady,
++        GateId::Execution => Evidence::ArtifactReceipt,
++        GateId::Verification => Evidence::LineageProof,
++        GateId::Eval => Evidence::EvalScore,
++        GateId::Learning => Evidence::PolicyPromotion,
++    }
++}
++
+ 
+ #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+ pub struct EvidenceSubmission {
+@@ -72,6 +101,28 @@         }
+     }
+ 
++    pub fn is_contract_valid(self) -> bool {
++        self.evidence == expected_evidence_for_gate(self.gate)
++            && if self.passed {
++                self.effect == PacketEffect::expected_for_gate(self.gate)
++            } else {
++                self.effect == PacketEffect::None
++            }
++    }
++
++    pub fn contract_hash(self) -> u64 {
++        let mut h = 0xcbf29ce484222325u64;
++        h ^= self.gate as u64;
++        h = h.wrapping_mul(0x100000001b3);
++        h ^= self.evidence as u64;
++        h = h.wrapping_mul(0x100000001b3);
++        h ^= self.passed as u64;
++        h = h.wrapping_mul(0x100000001b3);
++        h ^= self.effect as u64;
++        h = h.wrapping_mul(0x100000001b3);
++        h.max(1)
++    }
++
+     pub fn apply_to(self, state: &mut State) {
+         if self.passed {
+             self.effect.apply_to(state);
+*** Update File: src/codec/mod.rs
+@@ -4,4 +4,8 @@ 
+ pub mod ndjson;
+ 
+-pub use self::ndjson::{append_tlog_ndjson, load_tlog_ndjson, write_tlog_ndjson};
++pub use self::ndjson::{
++    append_tlog_ndjson, decode_control_event_ndjson, decode_tlog_ndjson_str,
++    encode_control_event_ndjson, encode_tlog_ndjson_string, load_tlog_ndjson, write_tlog_ndjson,
++    TLOG_RECORD_EVENT, TLOG_SCHEMA_VERSION,
++};
+*** Update File: src/codec/ndjson.rs
+@@ -11,8 +11,8 @@ };
+ use crate::runtime::CanonError;
+ 
+-const TLOG_SCHEMA_VERSION: u64 = 3;
+-const TLOG_RECORD_EVENT: u64 = 1;
++pub const TLOG_SCHEMA_VERSION: u64 = 3;
++pub const TLOG_RECORD_EVENT: u64 = 1;
+ 
+ pub fn append_tlog_ndjson(
+     path: impl AsRef<Path>,
+@@ -25,7 +25,7 @@             .append(true)
+             .open(path)
+             .map_err(|_| CanonError::TlogIo)?;
+-        writeln!(file, "{}", encode_event_ndjson(event)).map_err(|_| CanonError::TlogIo)?;
++        writeln!(file, "{}", encode_control_event_ndjson(event)).map_err(|_| CanonError::TlogIo)?;
+         file.sync_all().map_err(|_| CanonError::TlogIo)?;
+     }
+     sync_parent_dir(path)
+@@ -38,7 +38,7 @@     {
+         let mut file = File::create(&tmp_path).map_err(|_| CanonError::TlogIo)?;
+         for event in tlog {
+-            writeln!(file, "{}", encode_event_ndjson(event)).map_err(|_| CanonError::TlogIo)?;
++            writeln!(file, "{}", encode_control_event_ndjson(event)).map_err(|_| CanonError::TlogIo)?;
+         }
+         file.sync_all().map_err(|_| CanonError::TlogIo)?;
+     }
+@@ -84,13 +84,13 @@         if line.trim().is_empty() {
+             continue;
+         }
+-        tlog.push(decode_event_ndjson(&line)?);
++        tlog.push(decode_control_event_ndjson(&line)?);
+     }
+ 
+     Ok(tlog)
+ }
+ 
+-fn encode_event_ndjson(event: &ControlEvent) -> String {
++pub fn encode_control_event_ndjson(event: &ControlEvent) -> String {
+     let mut fields = Vec::with_capacity(90);
+     fields.extend([TLOG_SCHEMA_VERSION, TLOG_RECORD_EVENT]);
+     push_event(&mut fields, *event);
+@@ -102,7 +102,7 @@     format!("[{body}]")
+ }
+ 
+-fn decode_event_ndjson(line: &str) -> Result<ControlEvent, CanonError> {
++pub fn decode_control_event_ndjson(line: &str) -> Result<ControlEvent, CanonError> {
+     let trimmed = line.trim();
+     let body = trimmed
+         .strip_prefix('[')
+@@ -123,6 +123,26 @@         return Err(CanonError::InvalidTlogRecord);
+     }
+     Ok(event)
++}
++
++pub fn encode_tlog_ndjson_string(tlog: &[ControlEvent]) -> String {
++    let mut out = String::new();
++    for event in tlog {
++        out.push_str(&encode_control_event_ndjson(event));
++        out.push('\n');
++    }
++    out
++}
++
++pub fn decode_tlog_ndjson_str(input: &str) -> Result<TLog, CanonError> {
++    let mut tlog = Vec::new();
++    for line in input.lines() {
++        if line.trim().is_empty() {
++            continue;
++        }
++        tlog.push(decode_control_event_ndjson(line)?);
++    }
++    Ok(tlog)
+ }
+ 
+ struct Cursor<'a> {
+*** Update File: src/lib.rs
+@@ -11,6 +11,9 @@ pub mod kernel;
+ pub mod runtime;
+ 
++pub use crate::api::protocol::{
++    Command, CommandEnvelope, ControlEventResponse, API_PROTOCOL_SCHEMA_VERSION,
++};
+ pub use crate::capability::context::{ContextDecision, ContextRecord};
+ pub use crate::capability::eval::{EvalDecision, EvalDimension, EvalRecord};
+ pub use crate::capability::learning::{
+@@ -30,8 +33,14 @@ pub use crate::capability::verification::{
+     ArtifactSemanticProfile, VerificationDecision, VerificationRecord,
+ };
+-pub use crate::capability::{EvidenceSubmission, PacketEffect};
+-pub use crate::codec::ndjson::{append_tlog_ndjson, load_tlog_ndjson, write_tlog_ndjson};
++pub use crate::capability::{
++    expected_evidence_for_gate, EvidenceSubmission, PacketEffect,
++};
++pub use crate::codec::ndjson::{
++    append_tlog_ndjson, decode_control_event_ndjson, decode_tlog_ndjson_str,
++    encode_control_event_ndjson, encode_tlog_ndjson_string, load_tlog_ndjson, write_tlog_ndjson,
++    TLOG_RECORD_EVENT, TLOG_SCHEMA_VERSION,
++};
+ pub use crate::kernel::{
+     Cause, ControlEvent, Decision, EventKind, Evidence, FailureClass, Gate, GateId, GateSet,
+     GateStatus, Packet, Phase, RecoveryAction, RuntimeConfig, SemanticDelta, State, TLog,
+@@ -708,7 +717,120 @@             crate::api::protocol::Command::SubmitEvidenceBatch(Vec::new()),
+         );
+ 
+-        assert_eq!(result, Err(CanonError::InvalidReplay));
++        assert_eq!(result, Err(CanonError::InvalidApiCommand));
++    }
++
++    #[test]
++    fn api_rejects_mismatched_evidence_without_mutation() {
++        let mut state = State::default();
++        let mut tlog = Vec::new();
++        let cfg = RuntimeConfig::default();
++        tick(&mut state, &mut tlog, cfg).unwrap();
++        let before = state;
++        let before_len = tlog.len();
++
++        let result = crate::api::routes::handle_command(
++            &mut state,
++            &mut tlog,
++            cfg,
++            Command::SubmitEvidence(EvidenceSubmission::new(
++                GateId::Invariant,
++                Evidence::EvalScore,
++                true,
++            )),
++        );
++
++        assert_eq!(result, Err(CanonError::InvalidApiCommand));
++        assert_eq!(state, before);
++        assert_eq!(tlog.len(), before_len);
++    }
++
++    #[test]
++    fn api_rejects_invalid_batch_atomically() {
++        let mut state = State::default();
++        state.phase = Phase::Plan;
++        state.gates.invariant = Gate::pass(Evidence::InvariantProof);
++        state.gates.analysis = Gate::pass(Evidence::AnalysisReport);
++        state.gates.judgment = Gate::pass(Evidence::JudgmentRecord);
++
++        let mut tlog = Vec::new();
++        let before = state;
++        let valid = PlanRecord::from_packet(state.packet).submission();
++        let invalid = EvidenceSubmission::with_effect(
++            GateId::Execution,
++            Evidence::ArtifactReceipt,
++            true,
++            PacketEffect::None,
++        );
++
++        let result = crate::api::routes::handle_command(
++            &mut state,
++            &mut tlog,
++            RuntimeConfig::default(),
++            Command::SubmitEvidenceBatch(vec![valid, invalid]),
++        );
++
++        assert_eq!(result, Err(CanonError::InvalidApiCommand));
++        assert_eq!(state, before);
++        assert!(tlog.is_empty());
++    }
++
++    #[test]
++    fn command_envelope_rejects_tampered_hash() {
++        let mut state = State::default();
++        let mut tlog = Vec::new();
++        let observation = ObservationRecord::new(1, 1, 0xabc, 1);
++        let mut envelope = CommandEnvelope::new(7, Command::SubmitEvidence(observation.submission()));
++        envelope.command_hash = envelope.command_hash.saturating_add(1);
++
++        let result = crate::api::routes::handle_envelope(
++            &mut state,
++            &mut tlog,
++            RuntimeConfig::default(),
++            envelope,
++        );
++
++        assert_eq!(result, Err(CanonError::InvalidApiCommand));
++        assert!(tlog.is_empty());
++    }
++
++    #[test]
++    fn command_envelope_accepts_valid_command() {
++        let mut state = State::default();
++        let mut tlog = Vec::new();
++        let cfg = RuntimeConfig::default();
++        tick(&mut state, &mut tlog, cfg).unwrap();
++        assert_eq!(state.phase, Phase::Invariant);
++
++        let observation = ObservationRecord::new(1, 1, 0xabc, 1);
++        let envelope = CommandEnvelope::new(1, Command::SubmitEvidence(observation.submission()));
++        let response = crate::api::routes::handle_envelope(&mut state, &mut tlog, cfg, envelope)
++            .unwrap();
++
++        assert_eq!(response.event.cause, Cause::GatePassed);
++        assert_eq!(state.phase, Phase::Analysis);
++        verify_tlog(&tlog).unwrap();
++    }
++
++    #[test]
++    fn codec_public_event_roundtrip_preserves_event() {
++        let (_, tlog) = run_until_done(State::ready(), RuntimeConfig::default()).unwrap();
++        let encoded = encode_control_event_ndjson(&tlog[0]);
++        let decoded = decode_control_event_ndjson(&encoded).unwrap();
++
++        assert_eq!(decoded, tlog[0]);
++    }
++
++    #[test]
++    fn codec_public_tlog_string_roundtrip_replays() {
++        let initial = State::default();
++        let (state, tlog) = run_until_done(initial, RuntimeConfig::default()).unwrap();
++        let encoded = encode_tlog_ndjson_string(&tlog);
++        let decoded = decode_tlog_ndjson_str(&encoded).unwrap();
++        let replayed = verify_tlog_from(initial, &decoded).unwrap();
++
++        assert_eq!(decoded, tlog);
++        assert_eq!(replayed, state);
+     }
+ 
+     #[test]
+*** Update File: src/runtime/mod.rs
+@@ -59,6 +59,7 @@     InvalidReplay,
+     InvalidStateInvariant,
+     InvalidRuntimeConfig,
++    InvalidApiCommand,
+     TlogIo,
+     InvalidTlogRecord,
+     MissingAffectedGate,
+*** End Patch

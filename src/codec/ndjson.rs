@@ -1,6 +1,6 @@
 //! NDJSON TLog codec.
 
-use std::fs::{File, OpenOptions};
+use std::fs::{self, File, OpenOptions};
 use std::io::{BufRead, BufReader, Write};
 use std::path::Path;
 
@@ -11,28 +11,62 @@ use crate::kernel::{
 };
 use crate::runtime::CanonError;
 
-const TLOG_SCHEMA_VERSION: u64 = 3;
-const TLOG_RECORD_EVENT: u64 = 1;
+pub const TLOG_SCHEMA_VERSION: u64 = 3;
+pub const TLOG_RECORD_EVENT: u64 = 1;
 
 pub fn append_tlog_ndjson(
     path: impl AsRef<Path>,
     event: &ControlEvent,
 ) -> Result<(), CanonError> {
-    let mut file = OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open(path)
-        .map_err(|_| CanonError::TlogIo)?;
-    writeln!(file, "{}", encode_event_ndjson(event)).map_err(|_| CanonError::TlogIo)?;
-    file.sync_all().map_err(|_| CanonError::TlogIo)
+    let path = path.as_ref();
+    {
+        let mut file = OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(path)
+            .map_err(|_| CanonError::TlogIo)?;
+        writeln!(file, "{}", encode_control_event_ndjson(event)).map_err(|_| CanonError::TlogIo)?;
+        file.sync_all().map_err(|_| CanonError::TlogIo)?;
+    }
+    sync_parent_dir(path)
 }
 
 pub fn write_tlog_ndjson(path: impl AsRef<Path>, tlog: &[ControlEvent]) -> Result<(), CanonError> {
-    let mut file = File::create(path).map_err(|_| CanonError::TlogIo)?;
-    for event in tlog {
-        writeln!(file, "{}", encode_event_ndjson(event)).map_err(|_| CanonError::TlogIo)?;
+    let path = path.as_ref();
+    let tmp_path = temporary_tlog_path(path);
+
+    {
+        let mut file = File::create(&tmp_path).map_err(|_| CanonError::TlogIo)?;
+        for event in tlog {
+            writeln!(file, "{}", encode_control_event_ndjson(event)).map_err(|_| CanonError::TlogIo)?;
+        }
+        file.sync_all().map_err(|_| CanonError::TlogIo)?;
     }
-    file.sync_all().map_err(|_| CanonError::TlogIo)
+
+    fs::rename(&tmp_path, path).map_err(|_| CanonError::TlogIo)?;
+    sync_parent_dir(path)
+}
+
+fn temporary_tlog_path(path: &Path) -> std::path::PathBuf {
+    let mut tmp = path.to_path_buf();
+    let suffix = match path.extension().and_then(|v| v.to_str()) {
+        Some(ext) if !ext.is_empty() => format!("{ext}.tmp"),
+        _ => "tmp".to_string(),
+    };
+    tmp.set_extension(suffix);
+    tmp
+}
+
+fn sync_parent_dir(path: &Path) -> Result<(), CanonError> {
+    let Some(parent) = path.parent() else {
+        return Ok(());
+    };
+    if parent.as_os_str().is_empty() {
+        return Ok(());
+    }
+
+    let dir = File::open(parent).map_err(|_| CanonError::TlogIo)?;
+    dir.sync_all().map_err(|_| CanonError::TlogIo)
 }
 
 pub fn load_tlog_ndjson(path: impl AsRef<Path>) -> Result<TLog, CanonError> {
@@ -50,13 +84,13 @@ pub fn load_tlog_ndjson(path: impl AsRef<Path>) -> Result<TLog, CanonError> {
         if line.trim().is_empty() {
             continue;
         }
-        tlog.push(decode_event_ndjson(&line)?);
+        tlog.push(decode_control_event_ndjson(&line)?);
     }
 
     Ok(tlog)
 }
 
-fn encode_event_ndjson(event: &ControlEvent) -> String {
+pub fn encode_control_event_ndjson(event: &ControlEvent) -> String {
     let mut fields = Vec::with_capacity(90);
     fields.extend([TLOG_SCHEMA_VERSION, TLOG_RECORD_EVENT]);
     push_event(&mut fields, *event);
@@ -68,7 +102,7 @@ fn encode_event_ndjson(event: &ControlEvent) -> String {
     format!("[{body}]")
 }
 
-fn decode_event_ndjson(line: &str) -> Result<ControlEvent, CanonError> {
+pub fn decode_control_event_ndjson(line: &str) -> Result<ControlEvent, CanonError> {
     let trimmed = line.trim();
     let body = trimmed
         .strip_prefix('[')
@@ -89,6 +123,26 @@ fn decode_event_ndjson(line: &str) -> Result<ControlEvent, CanonError> {
         return Err(CanonError::InvalidTlogRecord);
     }
     Ok(event)
+}
+
+pub fn encode_tlog_ndjson_string(tlog: &[ControlEvent]) -> String {
+    let mut out = String::new();
+    for event in tlog {
+        out.push_str(&encode_control_event_ndjson(event));
+        out.push('\n');
+    }
+    out
+}
+
+pub fn decode_tlog_ndjson_str(input: &str) -> Result<TLog, CanonError> {
+    let mut tlog = Vec::new();
+    for line in input.lines() {
+        if line.trim().is_empty() {
+            continue;
+        }
+        tlog.push(decode_control_event_ndjson(line)?);
+    }
+    Ok(tlog)
 }
 
 struct Cursor<'a> {

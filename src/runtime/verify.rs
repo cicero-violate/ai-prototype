@@ -198,6 +198,36 @@ fn apply_expected_packet_effect(state: &mut State, gate_id: GateId, evidence: Ev
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ReplayReport {
+    pub initial_state: State,
+    pub final_state: State,
+    pub event_count: usize,
+    pub first_seq: Option<u64>,
+    pub last_seq: Option<u64>,
+    pub final_hash: u64,
+}
+
+pub fn replay_report_ndjson(
+    initial: State,
+    path: impl AsRef<Path>,
+) -> Result<ReplayReport, CanonError> {
+    let tlog = load_tlog_ndjson(path)?;
+    replay_report_from(initial, &tlog)
+}
+
+pub fn replay_report_from(initial: State, tlog: &[ControlEvent]) -> Result<ReplayReport, CanonError> {
+    let final_state = verify_tlog_from(initial, tlog)?;
+    Ok(ReplayReport {
+        initial_state: initial,
+        final_state,
+        event_count: tlog.len(),
+        first_seq: tlog.first().map(|event| event.seq),
+        last_seq: tlog.last().map(|event| event.seq),
+        final_hash: tlog.last().map(|event| event.self_hash).unwrap_or(0),
+    })
+}
+
 pub fn replay_tlog_ndjson(
     initial: State,
     path: impl AsRef<Path>,

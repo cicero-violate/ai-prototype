@@ -1,6 +1,6 @@
 //! Deterministic command handlers.
 
-use crate::api::protocol::{Command, ControlEventResponse};
+use crate::api::protocol::{Command, CommandEnvelope, ControlEventResponse};
 use crate::capability::EvidenceSubmission;
 use crate::kernel::{Cause, Decision, EventKind, RuntimeConfig, State, TLog};
 use crate::runtime::{tick, CanonError, CanonicalWriter, Outcome};
@@ -11,30 +11,45 @@ pub fn handle_command(
     cfg: RuntimeConfig,
     command: Command,
 ) -> Result<ControlEventResponse, CanonError> {
+    if !command.is_contract_valid() {
+        return Err(CanonError::InvalidApiCommand);
+    }
+
+    let mut candidate_state = *state;
+    let mut candidate_tlog = tlog.clone();
+
     match command {
         Command::SubmitEvidence(submission) => {
-            append_submission_event(state, tlog, cfg, submission)?;
-            tick(state, tlog, cfg)?;
-
-            Ok(ControlEventResponse {
-                event: *tlog.last().ok_or(CanonError::InvalidReplay)?,
-            })
+            append_submission_event(&mut candidate_state, &mut candidate_tlog, cfg, submission)?;
+            tick(&mut candidate_state, &mut candidate_tlog, cfg)?;
         }
         Command::SubmitEvidenceBatch(submissions) => {
-            if submissions.is_empty() {
-                return Err(CanonError::InvalidReplay);
-            }
-
             for submission in submissions {
-                append_submission_event(state, tlog, cfg, submission)?;
-                tick(state, tlog, cfg)?;
+                append_submission_event(&mut candidate_state, &mut candidate_tlog, cfg, submission)?;
+                tick(&mut candidate_state, &mut candidate_tlog, cfg)?;
             }
-
-            Ok(ControlEventResponse {
-                event: *tlog.last().ok_or(CanonError::InvalidReplay)?,
-            })
         }
     }
+
+    let response = ControlEventResponse {
+        event: *candidate_tlog.last().ok_or(CanonError::InvalidReplay)?,
+    };
+    *state = candidate_state;
+    *tlog = candidate_tlog;
+    Ok(response)
+}
+
+pub fn handle_envelope(
+    state: &mut State,
+    tlog: &mut TLog,
+    cfg: RuntimeConfig,
+    envelope: CommandEnvelope,
+) -> Result<ControlEventResponse, CanonError> {
+    if !envelope.is_contract_valid() {
+        return Err(CanonError::InvalidApiCommand);
+    }
+
+    handle_command(state, tlog, cfg, envelope.into_command())
 }
 
 fn append_submission_event(

@@ -18,8 +18,8 @@ pub mod verify;
 pub(crate) mod writer;
 
 pub use self::diff::semantic_diff;
-pub use self::durable::{run_until_done_durable, tick_durable};
-pub use self::verify::{legal_transition, replay_tlog_ndjson, verify_tlog, verify_tlog_from};
+pub use self::durable::{durable_replay_report, run_until_done_durable, tick_durable, tick_durable_checked};
+pub use self::verify::{legal_transition, replay_report_from, replay_report_ndjson, replay_tlog_ndjson, verify_tlog, verify_tlog_from, ReplayReport};
 
 use self::recovery_policy::{evidence_for_gate, recovery_policy_coverage_count};
 pub(crate) use self::reducer::reduce;
@@ -59,6 +59,7 @@ pub enum CanonError {
     InvalidReplay,
     InvalidStateInvariant,
     InvalidRuntimeConfig,
+    InvalidApiCommand,
     TlogIo,
     InvalidTlogRecord,
     MissingAffectedGate,
@@ -253,6 +254,7 @@ pub fn touch_all_surfaces() -> usize {
         CanonError::InvalidReplay,
         CanonError::MissingAffectedGate,
         CanonError::UnexpectedAffectedGate,
+        CanonError::InvalidApiCommand,
     ];
 
     let mut gates = GateSet::default();
@@ -289,6 +291,7 @@ pub fn touch_all_surfaces() -> usize {
             CanonError::InvalidTlogRecord => 16,
             CanonError::InvalidStateInvariant => 17,
             CanonError::InvalidRuntimeConfig => 18,
+            CanonError::InvalidApiCommand => 19,
         })
         .sum::<usize>();
 

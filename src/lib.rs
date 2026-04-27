@@ -11,6 +11,9 @@ pub mod codec;
 pub mod kernel;
 pub mod runtime;
 
+pub use crate::api::protocol::{
+    Command, CommandEnvelope, ControlEventResponse, API_PROTOCOL_SCHEMA_VERSION,
+};
 pub use crate::capability::context::{ContextDecision, ContextRecord};
 pub use crate::capability::eval::{EvalDecision, EvalDimension, EvalRecord};
 pub use crate::capability::learning::{
@@ -30,16 +33,24 @@ pub use crate::capability::tooling::{ToolDecision, ToolExecutionRecord};
 pub use crate::capability::verification::{
     ArtifactSemanticProfile, VerificationDecision, VerificationRecord,
 };
-pub use crate::capability::{EvidenceSubmission, PacketEffect};
-pub use crate::codec::ndjson::{append_tlog_ndjson, load_tlog_ndjson, write_tlog_ndjson};
+pub use crate::capability::{
+    expected_evidence_for_gate, EvidenceSubmission, PacketEffect,
+};
+pub use crate::codec::ndjson::{
+    append_tlog_ndjson, decode_control_event_ndjson, decode_tlog_ndjson_str,
+    encode_control_event_ndjson, encode_tlog_ndjson_string, load_tlog_ndjson, write_tlog_ndjson,
+    TLOG_RECORD_EVENT, TLOG_SCHEMA_VERSION,
+};
 pub use crate::kernel::{
     Cause, ControlEvent, Decision, EventKind, Evidence, FailureClass, Gate, GateId, GateSet,
     GateStatus, Packet, Phase, RecoveryAction, RuntimeConfig, SemanticDelta, State, TLog,
     EXECUTION_GATE_ORDER, GATE_ORDER, PHASES,
 };
 pub use crate::runtime::{
-    legal_transition, replay_tlog_ndjson, run_until_done, run_until_done_durable, semantic_diff,
-    tick, tick_durable, touch_all_surfaces, verify_tlog, verify_tlog_from, CanonError,
+    durable_replay_report, legal_transition, replay_report_from, replay_report_ndjson,
+    replay_tlog_ndjson, run_until_done, run_until_done_durable, semantic_diff, tick,
+    tick_durable, tick_durable_checked, touch_all_surfaces, verify_tlog, verify_tlog_from,
+    CanonError, ReplayReport,
 };
 
 #[cfg(test)]
@@ -706,7 +717,120 @@ mod tests {
             crate::api::protocol::Command::SubmitEvidenceBatch(Vec::new()),
         );
 
-        assert_eq!(result, Err(CanonError::InvalidReplay));
+        assert_eq!(result, Err(CanonError::InvalidApiCommand));
+    }
+
+    #[test]
+    fn api_rejects_mismatched_evidence_without_mutation() {
+        let mut state = State::default();
+        let mut tlog = Vec::new();
+        let cfg = RuntimeConfig::default();
+        tick(&mut state, &mut tlog, cfg).unwrap();
+        let before = state;
+        let before_len = tlog.len();
+
+        let result = crate::api::routes::handle_command(
+            &mut state,
+            &mut tlog,
+            cfg,
+            Command::SubmitEvidence(EvidenceSubmission::new(
+                GateId::Invariant,
+                Evidence::EvalScore,
+                true,
+            )),
+        );
+
+        assert_eq!(result, Err(CanonError::InvalidApiCommand));
+        assert_eq!(state, before);
+        assert_eq!(tlog.len(), before_len);
+    }
+
+    #[test]
+    fn api_rejects_invalid_batch_atomically() {
+        let mut state = State::default();
+        state.phase = Phase::Plan;
+        state.gates.invariant = Gate::pass(Evidence::InvariantProof);
+        state.gates.analysis = Gate::pass(Evidence::AnalysisReport);
+        state.gates.judgment = Gate::pass(Evidence::JudgmentRecord);
+
+        let mut tlog = Vec::new();
+        let before = state;
+        let valid = PlanRecord::from_packet(state.packet).submission();
+        let invalid = EvidenceSubmission::with_effect(
+            GateId::Execution,
+            Evidence::ArtifactReceipt,
+            true,
+            PacketEffect::None,
+        );
+
+        let result = crate::api::routes::handle_command(
+            &mut state,
+            &mut tlog,
+            RuntimeConfig::default(),
+            Command::SubmitEvidenceBatch(vec![valid, invalid]),
+        );
+
+        assert_eq!(result, Err(CanonError::InvalidApiCommand));
+        assert_eq!(state, before);
+        assert!(tlog.is_empty());
+    }
+
+    #[test]
+    fn command_envelope_rejects_tampered_hash() {
+        let mut state = State::default();
+        let mut tlog = Vec::new();
+        let observation = ObservationRecord::new(1, 1, 0xabc, 1);
+        let mut envelope = CommandEnvelope::new(7, Command::SubmitEvidence(observation.submission()));
+        envelope.command_hash = envelope.command_hash.saturating_add(1);
+
+        let result = crate::api::routes::handle_envelope(
+            &mut state,
+            &mut tlog,
+            RuntimeConfig::default(),
+            envelope,
+        );
+
+        assert_eq!(result, Err(CanonError::InvalidApiCommand));
+        assert!(tlog.is_empty());
+    }
+
+    #[test]
+    fn command_envelope_accepts_valid_command() {
+        let mut state = State::default();
+        let mut tlog = Vec::new();
+        let cfg = RuntimeConfig::default();
+        tick(&mut state, &mut tlog, cfg).unwrap();
+        assert_eq!(state.phase, Phase::Invariant);
+
+        let observation = ObservationRecord::new(1, 1, 0xabc, 1);
+        let envelope = CommandEnvelope::new(1, Command::SubmitEvidence(observation.submission()));
+        let response = crate::api::routes::handle_envelope(&mut state, &mut tlog, cfg, envelope)
+            .unwrap();
+
+        assert_eq!(response.event.cause, Cause::GatePassed);
+        assert_eq!(state.phase, Phase::Analysis);
+        verify_tlog(&tlog).unwrap();
+    }
+
+    #[test]
+    fn codec_public_event_roundtrip_preserves_event() {
+        let (_, tlog) = run_until_done(State::ready(), RuntimeConfig::default()).unwrap();
+        let encoded = encode_control_event_ndjson(&tlog[0]);
+        let decoded = decode_control_event_ndjson(&encoded).unwrap();
+
+        assert_eq!(decoded, tlog[0]);
+    }
+
+    #[test]
+    fn codec_public_tlog_string_roundtrip_replays() {
+        let initial = State::default();
+        let (state, tlog) = run_until_done(initial, RuntimeConfig::default()).unwrap();
+        let encoded = encode_tlog_ndjson_string(&tlog);
+        let decoded = decode_tlog_ndjson_str(&encoded).unwrap();
+        let replayed = verify_tlog_from(initial, &decoded).unwrap();
+
+        assert_eq!(decoded, tlog);
+        assert_eq!(replayed, state);
     }
 
     #[test]
@@ -1087,6 +1211,96 @@ mod tests {
         assert!(resumed_state.is_success());
         assert!(resumed_tlog.len() > partial_tlog.len());
         assert_eq!(replayed, resumed_state);
+    }
+
+    #[test]
+    fn replay_report_exposes_final_hash_and_seq_bounds() {
+        let initial = State::ready();
+        let (state, tlog) = run_until_done(initial, RuntimeConfig::default()).unwrap();
+        let report = replay_report_from(initial, &tlog).unwrap();
+
+        assert_eq!(report.initial_state, initial);
+        assert_eq!(report.final_state, state);
+        assert_eq!(report.event_count, tlog.len());
+        assert_eq!(report.first_seq, Some(1));
+        assert_eq!(report.last_seq, Some(tlog.len() as u64));
+        assert_eq!(report.final_hash, tlog.last().unwrap().self_hash);
+    }
+
+    #[test]
+    fn durable_replay_report_matches_disk_tlog() {
+        let initial = State::default();
+        let (state, tlog) = run_until_done(initial, RuntimeConfig::default()).unwrap();
+        let path = std::env::temp_dir().join(format!(
+            "ai-durable-report-{}-{}.ndjson",
+            std::process::id(),
+            tlog.len()
+        ));
+
+        write_tlog_ndjson(&path, &tlog).unwrap();
+        let report = durable_replay_report(initial, &path).unwrap();
+        std::fs::remove_file(&path).ok();
+
+        assert_eq!(report.final_state, state);
+        assert_eq!(report.event_count, tlog.len());
+        assert_eq!(report.final_hash, tlog.last().unwrap().self_hash);
+    }
+
+    #[test]
+    fn durable_tick_checked_rejects_memory_disk_drift() {
+        let cfg = RuntimeConfig::default();
+        let path = std::env::temp_dir().join(format!(
+            "ai-durable-drift-{}.ndjson",
+            std::process::id()
+        ));
+        std::fs::remove_file(&path).ok();
+
+        let mut state = State::default();
+        let mut tlog = Vec::new();
+        tick_durable(&mut state, &mut tlog, &path, cfg).unwrap();
+
+        let mut drifted_tlog = tlog.clone();
+        drifted_tlog.clear();
+        let before = state;
+        let result = tick_durable_checked(
+            &mut state,
+            &mut drifted_tlog,
+            &path,
+            State::default(),
+            cfg,
+        );
+
+        std::fs::remove_file(&path).ok();
+        assert_eq!(result, Err(CanonError::InvalidReplay));
+        assert_eq!(state, before);
+        assert!(drifted_tlog.is_empty());
+    }
+
+    #[test]
+    fn durable_tick_checked_rejects_state_disk_drift() {
+        let cfg = RuntimeConfig::default();
+        let path = std::env::temp_dir().join(format!(
+            "ai-durable-state-drift-{}.ndjson",
+            std::process::id()
+        ));
+        std::fs::remove_file(&path).ok();
+
+        let mut disk_state = State::default();
+        let mut tlog = Vec::new();
+        tick_durable(&mut disk_state, &mut tlog, &path, cfg).unwrap();
+
+        let mut drifted_state = State::default();
+        let result = tick_durable_checked(
+            &mut drifted_state,
+            &mut tlog,
+            &path,
+            State::default(),
+            cfg,
+        );
+
+        std::fs::remove_file(&path).ok();
+        assert_eq!(result, Err(CanonError::InvalidStateContinuity));
+        assert_eq!(drifted_state, State::default());
     }
 
     #[test]

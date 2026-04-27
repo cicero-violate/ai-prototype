@@ -1,0 +1,286 @@
+*** Begin Patch
+*** Update File: src/codec/ndjson.rs
+@@ -1,6 +1,6 @@
+ //! NDJSON TLog codec.
+ 
+-use std::fs::{File, OpenOptions};
++use std::fs::{self, File, OpenOptions};
+ use std::io::{BufRead, BufReader, Write};
+ use std::path::Path;
+ 
+@@ -18,21 +18,55 @@
+     path: impl AsRef<Path>,
+     event: &ControlEvent,
+ ) -> Result<(), CanonError> {
+-    let mut file = OpenOptions::new()
+-        .create(true)
+-        .append(true)
+-        .open(path)
+-        .map_err(|_| CanonError::TlogIo)?;
+-    writeln!(file, "{}", encode_event_ndjson(event)).map_err(|_| CanonError::TlogIo)?;
+-    file.sync_all().map_err(|_| CanonError::TlogIo)
++    let path = path.as_ref();
++    {
++        let mut file = OpenOptions::new()
++            .create(true)
++            .append(true)
++            .open(path)
++            .map_err(|_| CanonError::TlogIo)?;
++        writeln!(file, "{}", encode_event_ndjson(event)).map_err(|_| CanonError::TlogIo)?;
++        file.sync_all().map_err(|_| CanonError::TlogIo)?;
++    }
++    sync_parent_dir(path)
+ }
+ 
+ pub fn write_tlog_ndjson(path: impl AsRef<Path>, tlog: &[ControlEvent]) -> Result<(), CanonError> {
+-    let mut file = File::create(path).map_err(|_| CanonError::TlogIo)?;
+-    for event in tlog {
+-        writeln!(file, "{}", encode_event_ndjson(event)).map_err(|_| CanonError::TlogIo)?;
+-    }
+-    file.sync_all().map_err(|_| CanonError::TlogIo)
++    let path = path.as_ref();
++    let tmp_path = temporary_tlog_path(path);
++
++    {
++        let mut file = File::create(&tmp_path).map_err(|_| CanonError::TlogIo)?;
++        for event in tlog {
++            writeln!(file, "{}", encode_event_ndjson(event)).map_err(|_| CanonError::TlogIo)?;
++        }
++        file.sync_all().map_err(|_| CanonError::TlogIo)?;
++    }
++
++    fs::rename(&tmp_path, path).map_err(|_| CanonError::TlogIo)?;
++    sync_parent_dir(path)
++}
++
++fn temporary_tlog_path(path: &Path) -> std::path::PathBuf {
++    let mut tmp = path.to_path_buf();
++    let suffix = match path.extension().and_then(|v| v.to_str()) {
++        Some(ext) if !ext.is_empty() => format!("{ext}.tmp"),
++        _ => "tmp".to_string(),
++    };
++    tmp.set_extension(suffix);
++    tmp
++}
++
++fn sync_parent_dir(path: &Path) -> Result<(), CanonError> {
++    let Some(parent) = path.parent() else {
++        return Ok(());
++    };
++    if parent.as_os_str().is_empty() {
++        return Ok(());
++    }
++
++    let dir = File::open(parent).map_err(|_| CanonError::TlogIo)?;
++    dir.sync_all().map_err(|_| CanonError::TlogIo)
+ }
+ 
+ pub fn load_tlog_ndjson(path: impl AsRef<Path>) -> Result<TLog, CanonError> {
+*** Update File: src/lib.rs
+@@ -38,8 +38,10 @@
+     EXECUTION_GATE_ORDER, GATE_ORDER, PHASES,
+ };
+ pub use crate::runtime::{
+-    legal_transition, replay_tlog_ndjson, run_until_done, run_until_done_durable, semantic_diff,
+-    tick, tick_durable, touch_all_surfaces, verify_tlog, verify_tlog_from, CanonError,
++    durable_replay_report, legal_transition, replay_report_from, replay_report_ndjson,
++    replay_tlog_ndjson, run_until_done, run_until_done_durable, semantic_diff, tick,
++    tick_durable, tick_durable_checked, touch_all_surfaces, verify_tlog, verify_tlog_from,
++    CanonError, ReplayReport,
+ };
+ 
+ #[cfg(test)]
+@@ -1087,6 +1089,96 @@
+         assert!(resumed_state.is_success());
+         assert!(resumed_tlog.len() > partial_tlog.len());
+         assert_eq!(replayed, resumed_state);
++    }
++
++    #[test]
++    fn replay_report_exposes_final_hash_and_seq_bounds() {
++        let initial = State::ready();
++        let (state, tlog) = run_until_done(initial, RuntimeConfig::default()).unwrap();
++        let report = replay_report_from(initial, &tlog).unwrap();
++
++        assert_eq!(report.initial_state, initial);
++        assert_eq!(report.final_state, state);
++        assert_eq!(report.event_count, tlog.len());
++        assert_eq!(report.first_seq, Some(1));
++        assert_eq!(report.last_seq, Some(tlog.len() as u64));
++        assert_eq!(report.final_hash, tlog.last().unwrap().self_hash);
++    }
++
++    #[test]
++    fn durable_replay_report_matches_disk_tlog() {
++        let initial = State::default();
++        let (state, tlog) = run_until_done(initial, RuntimeConfig::default()).unwrap();
++        let path = std::env::temp_dir().join(format!(
++            "ai-durable-report-{}-{}.ndjson",
++            std::process::id(),
++            tlog.len()
++        ));
++
++        write_tlog_ndjson(&path, &tlog).unwrap();
++        let report = durable_replay_report(initial, &path).unwrap();
++        std::fs::remove_file(&path).ok();
++
++        assert_eq!(report.final_state, state);
++        assert_eq!(report.event_count, tlog.len());
++        assert_eq!(report.final_hash, tlog.last().unwrap().self_hash);
++    }
++
++    #[test]
++    fn durable_tick_checked_rejects_memory_disk_drift() {
++        let cfg = RuntimeConfig::default();
++        let path = std::env::temp_dir().join(format!(
++            "ai-durable-drift-{}.ndjson",
++            std::process::id()
++        ));
++        std::fs::remove_file(&path).ok();
++
++        let mut state = State::default();
++        let mut tlog = Vec::new();
++        tick_durable(&mut state, &mut tlog, &path, cfg).unwrap();
++
++        let mut drifted_tlog = tlog.clone();
++        drifted_tlog.clear();
++        let before = state;
++        let result = tick_durable_checked(
++            &mut state,
++            &mut drifted_tlog,
++            &path,
++            State::default(),
++            cfg,
++        );
++
++        std::fs::remove_file(&path).ok();
++        assert_eq!(result, Err(CanonError::InvalidReplay));
++        assert_eq!(state, before);
++        assert!(drifted_tlog.is_empty());
++    }
++
++    #[test]
++    fn durable_tick_checked_rejects_state_disk_drift() {
++        let cfg = RuntimeConfig::default();
++        let path = std::env::temp_dir().join(format!(
++            "ai-durable-state-drift-{}.ndjson",
++            std::process::id()
++        ));
++        std::fs::remove_file(&path).ok();
++
++        let mut disk_state = State::default();
++        let mut tlog = Vec::new();
++        tick_durable(&mut disk_state, &mut tlog, &path, cfg).unwrap();
++
++        let mut drifted_state = State::default();
++        let result = tick_durable_checked(
++            &mut drifted_state,
++            &mut tlog,
++            &path,
++            State::default(),
++            cfg,
++        );
++
++        std::fs::remove_file(&path).ok();
++        assert_eq!(result, Err(CanonError::InvalidStateContinuity));
++        assert_eq!(drifted_state, State::default());
+     }
+ 
+     #[test]
+*** Update File: src/runtime/durable.rs
+@@ -7,7 +7,7 @@
+ use crate::codec::ndjson::load_tlog_ndjson;
+ use crate::kernel::{Phase, RuntimeConfig, State, TLog};
+ 
+-use super::verify::verify_tlog_from;
++use super::verify::{replay_report_from, replay_report_ndjson, verify_tlog_from, ReplayReport};
+ use super::{convergence_outcome, reduce, CanonError, CanonicalWriter};
+ 
+ pub fn tick_durable(
+@@ -21,6 +21,35 @@
+     let event = CanonicalWriter::append_durable(tlog, tlog_path, before, outcome, cfg)?;
+     *state = event.state_after;
+     Ok(())
++}
++
++pub fn tick_durable_checked(
++    state: &mut State,
++    tlog: &mut TLog,
++    tlog_path: impl AsRef<Path>,
++    initial: State,
++    cfg: RuntimeConfig,
++) -> Result<ReplayReport, CanonError> {
++    let path = tlog_path.as_ref();
++    let disk_tlog = load_tlog_ndjson(path)?;
++    if disk_tlog != *tlog {
++        return Err(CanonError::InvalidReplay);
++    }
++
++    let before_report = replay_report_from(initial, &disk_tlog)?;
++    if before_report.final_state != *state {
++        return Err(CanonError::InvalidStateContinuity);
++    }
++
++    tick_durable(state, tlog, path, cfg)?;
++    replay_report_from(initial, tlog)
++}
++
++pub fn durable_replay_report(
++    initial: State,
++    tlog_path: impl AsRef<Path>,
++) -> Result<ReplayReport, CanonError> {
++    replay_report_ndjson(initial, tlog_path)
+ }
+ 
+ pub fn run_until_done_durable(
+*** Update File: src/runtime/mod.rs
+@@ -18,8 +18,8 @@
+ pub(crate) mod writer;
+ 
+ pub use self::diff::semantic_diff;
+-pub use self::durable::{run_until_done_durable, tick_durable};
+-pub use self::verify::{legal_transition, replay_tlog_ndjson, verify_tlog, verify_tlog_from};
++pub use self::durable::{durable_replay_report, run_until_done_durable, tick_durable, tick_durable_checked};
++pub use self::verify::{legal_transition, replay_report_from, replay_report_ndjson, replay_tlog_ndjson, verify_tlog, verify_tlog_from, ReplayReport};
+ 
+ use self::recovery_policy::{evidence_for_gate, recovery_policy_coverage_count};
+ pub(crate) use self::reducer::reduce;
+*** Update File: src/runtime/verify.rs
+@@ -196,6 +196,36 @@
+         }
+         _ => {}
+     }
++}
++
++#[derive(Clone, Copy, Debug, PartialEq, Eq)]
++pub struct ReplayReport {
++    pub initial_state: State,
++    pub final_state: State,
++    pub event_count: usize,
++    pub first_seq: Option<u64>,
++    pub last_seq: Option<u64>,
++    pub final_hash: u64,
++}
++
++pub fn replay_report_ndjson(
++    initial: State,
++    path: impl AsRef<Path>,
++) -> Result<ReplayReport, CanonError> {
++    let tlog = load_tlog_ndjson(path)?;
++    replay_report_from(initial, &tlog)
++}
++
++pub fn replay_report_from(initial: State, tlog: &[ControlEvent]) -> Result<ReplayReport, CanonError> {
++    let final_state = verify_tlog_from(initial, tlog)?;
++    Ok(ReplayReport {
++        initial_state: initial,
++        final_state,
++        event_count: tlog.len(),
++        first_seq: tlog.first().map(|event| event.seq),
++        last_seq: tlog.last().map(|event| event.seq),
++        final_hash: tlog.last().map(|event| event.self_hash).unwrap_or(0),
++    })
+ }
+ 
+ pub fn replay_tlog_ndjson(
+*** End Patch
