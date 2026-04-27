@@ -1,7 +1,7 @@
 //! Deterministic command handlers.
 
 use crate::api::protocol::{Command, CommandEnvelope, CommandLedger, ControlEventResponse};
-use crate::capability::EvidenceSubmission;
+use crate::capability::{CapabilityRegistry, EvidenceSubmission};
 use crate::kernel::{Cause, Decision, EventKind, RuntimeConfig, State, TLog};
 use crate::runtime::{tick, tick_with_api_command, CanonError, CanonicalWriter, Outcome};
 
@@ -30,13 +30,25 @@ fn handle_command_with_receipt(
 
     match command {
         Command::SubmitEvidence(submission) => {
-            append_submission_event(&mut candidate_state, &mut candidate_tlog, cfg, submission)?;
+            append_submission_event(
+                &mut candidate_state,
+                &mut candidate_tlog,
+                cfg,
+                submission,
+                receipt,
+            )?;
             tick_for_command_response(&mut candidate_state, &mut candidate_tlog, cfg, receipt)?;
         }
         Command::SubmitEvidenceBatch(submissions) => {
             let submission_count = submissions.len();
             for (idx, submission) in submissions.into_iter().enumerate() {
-                append_submission_event(&mut candidate_state, &mut candidate_tlog, cfg, submission)?;
+                append_submission_event(
+                    &mut candidate_state,
+                    &mut candidate_tlog,
+                    cfg,
+                    submission,
+                    receipt,
+                )?;
                 let response_receipt = if idx + 1 == submission_count {
                     receipt
                 } else {
@@ -130,6 +142,7 @@ fn append_submission_event(
     tlog: &mut TLog,
     cfg: RuntimeConfig,
     submission: EvidenceSubmission,
+    receipt: Option<(u64, u64)>,
 ) -> Result<(), CanonError> {
     let before = *state;
     let mut after = before;
@@ -148,7 +161,27 @@ fn append_submission_event(
         recovery_action: None,
         affected_gate: Some(submission.gate),
     };
-    let event = CanonicalWriter::append(tlog, before, outcome, cfg)?;
+    let registry_projection = CapabilityRegistry::canonical().projection();
+    let event = match receipt {
+        Some((command_id, command_hash)) => CanonicalWriter::append_with_command_and_registry_projection(
+            tlog,
+            before,
+            outcome,
+            cfg,
+            command_id,
+            command_hash,
+            registry_projection,
+        )?,
+        None => CanonicalWriter::append_with_command_and_registry_projection(
+            tlog,
+            before,
+            outcome,
+            cfg,
+            0,
+            0,
+            registry_projection,
+        )?,
+    };
     *state = event.state_after;
     Ok(())
 }

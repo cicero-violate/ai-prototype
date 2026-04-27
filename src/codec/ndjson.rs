@@ -4,14 +4,14 @@ use std::fs::{self, File, OpenOptions};
 use std::io::{BufRead, BufReader, Write};
 use std::path::Path;
 
+use crate::error::CanonError;
 use crate::kernel::{
-    Cause, ControlEvent, Decision, EventKind, Evidence, FailureClass, Gate, GateId,
-    GateSet, GateStatus, Packet, Phase, RecoveryAction, RuntimeConfig, SemanticDelta,
-    State, TLog, GATE_ORDER,
+    CapabilityRegistryProjection, Cause, ControlEvent, Decision, EventKind, Evidence,
+    FailureClass, Gate, GateId, GateSet, GateStatus, Packet, Phase, RecoveryAction,
+    RuntimeConfig, SemanticDelta, State, TLog, GATE_ORDER,
 };
-use crate::runtime::CanonError;
 
-pub const TLOG_SCHEMA_VERSION: u64 = 4;
+pub const TLOG_SCHEMA_VERSION: u64 = 5;
 pub const TLOG_RECORD_EVENT: u64 = 1;
 
 pub fn append_tlog_ndjson(
@@ -176,6 +176,7 @@ fn push_event(out: &mut Vec<u64>, event: ControlEvent) {
     ]);
     push_state(out, event.state_before);
     push_state(out, event.state_after);
+    push_registry_projection(out, event.capability_registry_projection);
     out.extend([
         event.api_command_id,
         event.api_command_hash,
@@ -202,6 +203,7 @@ fn pop_event(cursor: &mut Cursor<'_>) -> Result<ControlEvent, CanonError> {
     };
     let state_before = pop_state(cursor)?;
     let state_after = pop_state(cursor)?;
+    let capability_registry_projection = pop_registry_projection(cursor)?;
     let api_command_id = cursor.take()?;
     let api_command_hash = cursor.take()?;
     let prev_hash = cursor.take()?;
@@ -222,11 +224,26 @@ fn pop_event(cursor: &mut Cursor<'_>) -> Result<ControlEvent, CanonError> {
         runtime_config,
         state_before,
         state_after,
+        capability_registry_projection,
         api_command_id,
         api_command_hash,
         prev_hash,
         self_hash,
     })
+}
+
+fn push_registry_projection(out: &mut Vec<u64>, projection: CapabilityRegistryProjection) {
+    out.extend([projection.route_count, projection.policy_hash]);
+}
+
+fn pop_registry_projection(
+    cursor: &mut Cursor<'_>,
+) -> Result<CapabilityRegistryProjection, CanonError> {
+    let projection = CapabilityRegistryProjection::new(cursor.take()?, cursor.take()?);
+    if !projection.is_valid() {
+        return Err(CanonError::InvalidTlogRecord);
+    }
+    Ok(projection)
 }
 
 fn push_state(out: &mut Vec<u64>, state: State) {

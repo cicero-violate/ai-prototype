@@ -4,12 +4,11 @@
 
 use std::path::Path;
 
-use crate::api::protocol::CommandLedger;
 use crate::codec::ndjson::load_tlog_ndjson;
 use crate::kernel::{Phase, RuntimeConfig, State, TLog};
 
 use super::verify::{replay_report_from, replay_report_ndjson, verify_tlog_from, ReplayReport};
-use super::{convergence_outcome, reduce, CanonError, CanonicalWriter};
+use super::{convergence_outcome, reduce, CanonError, CanonicalWriter, CommandLedger};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct DurableRuntimeState {

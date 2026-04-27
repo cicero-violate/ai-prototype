@@ -2,7 +2,7 @@
 
 use crate::capability::EvidenceSubmission;
 use crate::kernel::{ControlEvent, TLog};
-use crate::runtime::CanonError;
+pub use crate::runtime::{CommandLedger, CommandReceipt};
 
 pub const API_PROTOCOL_SCHEMA_VERSION: u64 = 2;
 
@@ -86,94 +86,17 @@ impl CommandEnvelope {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct CommandReceipt {
-    pub command_id: u64,
-    pub command_hash: u64,
-    pub event_hash: u64,
-}
-
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct CommandLedger {
-    receipts: Vec<CommandReceipt>,
-}
-
 impl CommandLedger {
-    pub fn len(&self) -> usize {
-        self.receipts.len()
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.receipts.is_empty()
-    }
-
-    pub fn receipts(&self) -> &[CommandReceipt] {
-        &self.receipts
-    }
-
-    pub fn reconstruct_from_tlog(tlog: &TLog) -> Result<Self, CanonError> {
-        let mut ledger = Self::default();
-
-        for event in tlog {
-            if event.api_command_id == 0 && event.api_command_hash == 0 {
-                continue;
-            }
-
-            if event.api_command_id == 0 || event.api_command_hash == 0 {
-                return Err(CanonError::InvalidApiCommand);
-            }
-
-            let receipt = CommandReceipt {
-                command_id: event.api_command_id,
-                command_hash: event.api_command_hash,
-                event_hash: event.self_hash,
-            };
-
-            if ledger.receipts.iter().any(|existing| {
-                existing.command_id == receipt.command_id
-                    && existing.command_hash != receipt.command_hash
-            }) {
-                return Err(CanonError::InvalidApiCommand);
-            }
-
-            if ledger.receipts.iter().any(|existing| {
-                existing.command_id == receipt.command_id
-                    && existing.command_hash == receipt.command_hash
-                    && existing.event_hash != receipt.event_hash
-            }) {
-                return Err(CanonError::InvalidReplay);
-            }
-
-            if !ledger.receipts.iter().any(|existing| *existing == receipt) {
-                ledger.receipts.push(receipt);
-            }
-        }
-
-        Ok(ledger)
-    }
-
     pub fn receipt_for(&self, envelope: &CommandEnvelope) -> Option<CommandReceipt> {
-        self.receipts
-            .iter()
-            .copied()
-            .find(|receipt| {
-                receipt.command_id == envelope.command_id
-                    && receipt.command_hash == envelope.command_hash
-            })
+        self.receipt_for_ids(envelope.command_id, envelope.command_hash)
     }
 
     pub fn has_conflicting_command(&self, envelope: &CommandEnvelope) -> bool {
-        self.receipts.iter().any(|receipt| {
-            receipt.command_id == envelope.command_id
-                && receipt.command_hash != envelope.command_hash
-        })
+        self.has_conflicting_command_ids(envelope.command_id, envelope.command_hash)
     }
 
     pub fn replayed_event(&self, envelope: &CommandEnvelope, tlog: &TLog) -> Option<ControlEvent> {
-        let receipt = self.receipt_for(envelope)?;
-        tlog.iter()
-            .copied()
-            .find(|event| event.self_hash == receipt.event_hash)
+        self.replayed_event_by_ids(envelope.command_id, envelope.command_hash, tlog)
     }
 
     pub fn push_response(
@@ -181,13 +104,7 @@ impl CommandLedger {
         envelope: &CommandEnvelope,
         event: &ControlEvent,
     ) -> CommandReceipt {
-        let receipt = CommandReceipt {
-            command_id: envelope.command_id,
-            command_hash: envelope.command_hash,
-            event_hash: event.self_hash,
-        };
-        self.receipts.push(receipt);
-        receipt
+        self.push_receipt(envelope.command_id, envelope.command_hash, event)
     }
 }
 

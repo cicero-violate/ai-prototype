@@ -6,4 +6,7 @@
 
 pub mod record;
 
-pub use self::record::{ObservationDecision, ObservationRecord};
+pub use self::record::{
+    ObservationCursor, ObservationDecision, ObservationFrame, ObservationFrameKind,
+    ObservationRecord, MAX_OBSERVATION_PAYLOAD_BYTES,
+};

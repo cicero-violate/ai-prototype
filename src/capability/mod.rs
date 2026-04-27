@@ -3,7 +3,7 @@
 //! Capabilities own rich records, policy lookup, thresholds, and external work.
 //! They submit only kernel-visible evidence tokens through the runtime.
 
-use crate::kernel::{Evidence, GateId, State};
+use crate::kernel::{mix, CapabilityRegistryProjection, Evidence, GateId, State};
 
 pub mod context;
 pub mod eval;
@@ -17,6 +17,23 @@ pub mod planning;
 pub mod policy;
 pub mod tooling;
 pub mod verification;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[repr(u8)]
+pub enum CapabilityId {
+    Unknown = 0,
+    Observation = 1,
+    Context = 2,
+    Memory = 3,
+    Planning = 4,
+    Llm = 5,
+    Judgment = 6,
+    Tooling = 7,
+    Verification = 8,
+    Eval = 9,
+    Learning = 10,
+    Orchestration = 11,
+}
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 #[repr(u8)]
@@ -52,6 +69,220 @@ impl PacketEffect {
                 Self::None
             }
         }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct CapabilityEffectRoute {
+    pub capability: CapabilityId,
+    pub gate: GateId,
+    pub evidence: Evidence,
+    pub allowed_effect: PacketEffect,
+}
+
+impl CapabilityEffectRoute {
+    pub const fn new(
+        capability: CapabilityId,
+        gate: GateId,
+        evidence: Evidence,
+        allowed_effect: PacketEffect,
+    ) -> Self {
+        Self {
+            capability,
+            gate,
+            evidence,
+            allowed_effect,
+        }
+    }
+
+    pub fn allows(self, capability: CapabilityId, submission: EvidenceSubmission) -> bool {
+        self.capability == capability
+            && self.gate == submission.gate
+            && self.evidence == submission.evidence
+            && if submission.passed {
+                self.allowed_effect == submission.effect
+            } else {
+                submission.effect == PacketEffect::None
+            }
+    }
+
+    pub fn permits_effect(
+        self,
+        capability: CapabilityId,
+        gate: GateId,
+        evidence: Evidence,
+        effect: PacketEffect,
+    ) -> bool {
+        self.capability == capability
+            && self.gate == gate
+            && self.evidence == evidence
+            && self.allowed_effect == effect
+    }
+
+    pub fn policy_hash(self) -> u64 {
+        let mut h = 0xa076_1d64_78bd_642fu64;
+        h = mix(h, self.capability as u64);
+        h = mix(h, self.gate as u64);
+        h = mix(h, self.evidence as u64);
+        h = mix(h, self.allowed_effect as u64);
+        h.max(1)
+    }
+}
+
+pub const CAPABILITY_EFFECT_ROUTES: [CapabilityEffectRoute; 14] = [
+    CapabilityEffectRoute::new(
+        CapabilityId::Observation,
+        GateId::Invariant,
+        Evidence::InvariantProof,
+        PacketEffect::None,
+    ),
+    CapabilityEffectRoute::new(
+        CapabilityId::Context,
+        GateId::Analysis,
+        Evidence::AnalysisReport,
+        PacketEffect::None,
+    ),
+    CapabilityEffectRoute::new(
+        CapabilityId::Memory,
+        GateId::Judgment,
+        Evidence::JudgmentRecord,
+        PacketEffect::None,
+    ),
+    CapabilityEffectRoute::new(
+        CapabilityId::Llm,
+        GateId::Judgment,
+        Evidence::JudgmentRecord,
+        PacketEffect::None,
+    ),
+    CapabilityEffectRoute::new(
+        CapabilityId::Judgment,
+        GateId::Judgment,
+        Evidence::JudgmentRecord,
+        PacketEffect::None,
+    ),
+    CapabilityEffectRoute::new(
+        CapabilityId::Planning,
+        GateId::Plan,
+        Evidence::TaskReady,
+        PacketEffect::BindReadyTask,
+    ),
+    CapabilityEffectRoute::new(
+        CapabilityId::Tooling,
+        GateId::Execution,
+        Evidence::ArtifactReceipt,
+        PacketEffect::MaterializeArtifact,
+    ),
+    CapabilityEffectRoute::new(
+        CapabilityId::Verification,
+        GateId::Verification,
+        Evidence::LineageProof,
+        PacketEffect::RepairLineage,
+    ),
+    CapabilityEffectRoute::new(
+        CapabilityId::Eval,
+        GateId::Eval,
+        Evidence::EvalScore,
+        PacketEffect::CompleteObjective,
+    ),
+    CapabilityEffectRoute::new(
+        CapabilityId::Learning,
+        GateId::Learning,
+        Evidence::PolicyPromotion,
+        PacketEffect::None,
+    ),
+    CapabilityEffectRoute::new(
+        CapabilityId::Orchestration,
+        GateId::Plan,
+        Evidence::TaskReady,
+        PacketEffect::BindReadyTask,
+    ),
+    CapabilityEffectRoute::new(
+        CapabilityId::Orchestration,
+        GateId::Execution,
+        Evidence::ArtifactReceipt,
+        PacketEffect::MaterializeArtifact,
+    ),
+    CapabilityEffectRoute::new(
+        CapabilityId::Orchestration,
+        GateId::Verification,
+        Evidence::LineageProof,
+        PacketEffect::RepairLineage,
+    ),
+    CapabilityEffectRoute::new(
+        CapabilityId::Orchestration,
+        GateId::Eval,
+        Evidence::EvalScore,
+        PacketEffect::CompleteObjective,
+    ),
+];
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct CapabilityRegistry {
+    routes: &'static [CapabilityEffectRoute],
+}
+
+impl Default for CapabilityRegistry {
+    fn default() -> Self {
+        Self::canonical()
+    }
+}
+
+impl CapabilityRegistry {
+    pub const fn canonical() -> Self {
+        Self {
+            routes: &CAPABILITY_EFFECT_ROUTES,
+        }
+    }
+
+    pub const fn empty() -> Self {
+        Self { routes: &[] }
+    }
+
+    pub fn len(self) -> usize {
+        self.routes.len()
+    }
+
+    pub fn is_empty(self) -> bool {
+        self.routes.is_empty()
+    }
+
+    pub fn routes(self) -> &'static [CapabilityEffectRoute] {
+        self.routes
+    }
+
+    pub fn policy_hash(self) -> u64 {
+        let mut h = 0xe703_7ed1_a0b4_28dbu64;
+        h = mix(h, self.routes.len() as u64);
+        for route in self.routes {
+            h = mix(h, route.policy_hash());
+        }
+        h.max(1)
+    }
+
+    pub fn projection(self) -> CapabilityRegistryProjection {
+        CapabilityRegistryProjection::new(self.routes.len() as u64, self.policy_hash())
+    }
+
+    pub fn allows(self, capability: CapabilityId, submission: EvidenceSubmission) -> bool {
+        submission.is_contract_valid()
+            && self
+                .routes
+                .iter()
+                .copied()
+                .any(|route| route.allows(capability, submission))
+    }
+
+    pub fn permits_effect(
+        self,
+        capability: CapabilityId,
+        gate: GateId,
+        evidence: Evidence,
+        effect: PacketEffect,
+    ) -> bool {
+        self.routes
+            .iter()
+            .copied()
+            .any(|route| route.permits_effect(capability, gate, evidence, effect))
     }
 }
 

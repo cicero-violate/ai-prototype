@@ -638,6 +638,36 @@ impl RuntimeConfig {
 
 pub type TLog = Vec<ControlEvent>;
 
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub struct CapabilityRegistryProjection {
+    pub route_count: u64,
+    pub policy_hash: u64,
+}
+
+impl CapabilityRegistryProjection {
+    pub const fn none() -> Self {
+        Self {
+            route_count: 0,
+            policy_hash: 0,
+        }
+    }
+
+    pub const fn new(route_count: u64, policy_hash: u64) -> Self {
+        Self {
+            route_count,
+            policy_hash,
+        }
+    }
+
+    pub const fn is_empty(self) -> bool {
+        self.route_count == 0 && self.policy_hash == 0
+    }
+
+    pub const fn is_valid(self) -> bool {
+        self.is_empty() || self.policy_hash != 0
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct ControlEvent {
     pub seq: u64,
@@ -654,6 +684,7 @@ pub struct ControlEvent {
     pub runtime_config: RuntimeConfig,
     pub state_before: State,
     pub state_after: State,
+    pub capability_registry_projection: CapabilityRegistryProjection,
     pub api_command_id: u64,
     pub api_command_hash: u64,
     pub prev_hash: u64,

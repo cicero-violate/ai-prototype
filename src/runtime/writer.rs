@@ -3,7 +3,9 @@
 use std::path::Path;
 
 use crate::codec::ndjson::append_tlog_ndjson;
-use crate::kernel::{ControlEvent, Phase, RuntimeConfig, State, TLog};
+use crate::kernel::{
+    CapabilityRegistryProjection, ControlEvent, Phase, RuntimeConfig, State, TLog,
+};
 
 use super::verify::{hash_event, validate_event, EventHashInput, EventView};
 use super::{semantic_diff, CanonError, Outcome};
@@ -28,8 +30,32 @@ impl CanonicalWriter {
         api_command_id: u64,
         api_command_hash: u64,
     ) -> Result<ControlEvent, CanonError> {
+        Self::build_with_command_and_registry_projection(
+            tlog,
+            before,
+            outcome,
+            cfg,
+            api_command_id,
+            api_command_hash,
+            CapabilityRegistryProjection::none(),
+        )
+    }
+
+    pub(crate) fn build_with_command_and_registry_projection(
+        tlog: &[ControlEvent],
+        before: State,
+        outcome: Outcome,
+        cfg: RuntimeConfig,
+        api_command_id: u64,
+        api_command_hash: u64,
+        capability_registry_projection: CapabilityRegistryProjection,
+    ) -> Result<ControlEvent, CanonError> {
         if !cfg.is_structurally_valid() {
             return Err(CanonError::InvalidRuntimeConfig);
+        }
+
+        if !capability_registry_projection.is_valid() {
+            return Err(CanonError::InvalidReplay);
         }
 
         if (api_command_id == 0) != (api_command_hash == 0) {
@@ -76,6 +102,7 @@ impl CanonicalWriter {
             runtime_config: cfg,
             state_before: before,
             state_after: after,
+            capability_registry_projection,
             api_command_id,
             api_command_hash,
         });
@@ -95,6 +122,7 @@ impl CanonicalWriter {
             runtime_config: cfg,
             state_before: before,
             state_after: after,
+            capability_registry_projection,
             api_command_id,
             api_command_hash,
             prev_hash,
@@ -128,6 +156,28 @@ impl CanonicalWriter {
             cfg,
             api_command_id,
             api_command_hash,
+        )?;
+        tlog.push(event);
+        Ok(event)
+    }
+
+    pub(crate) fn append_with_command_and_registry_projection(
+        tlog: &mut TLog,
+        before: State,
+        outcome: Outcome,
+        cfg: RuntimeConfig,
+        api_command_id: u64,
+        api_command_hash: u64,
+        capability_registry_projection: CapabilityRegistryProjection,
+    ) -> Result<ControlEvent, CanonError> {
+        let event = Self::build_with_command_and_registry_projection(
+            tlog,
+            before,
+            outcome,
+            cfg,
+            api_command_id,
+            api_command_hash,
+            capability_registry_projection,
         )?;
         tlog.push(event);
         Ok(event)

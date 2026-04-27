@@ -9,6 +9,7 @@ use crate::kernel::{
     State, TLog, GATE_ORDER, PHASES,
 };
 
+pub(crate) mod command_ledger;
 pub(crate) mod diff;
 pub mod durable;
 pub(crate) mod recovery_policy;
@@ -17,6 +18,8 @@ pub(crate) mod transition_table;
 pub mod verify;
 pub(crate) mod writer;
 
+pub use crate::error::CanonError;
+pub use self::command_ledger::{CommandLedger, CommandReceipt};
 pub use self::diff::semantic_diff;
 pub use self::durable::{
     durable_replay_report, resume_durable_runtime, run_until_done_durable,
@@ -40,42 +43,6 @@ pub(crate) struct Outcome {
     pub(crate) recovery_action: Option<RecoveryAction>,
     pub(crate) affected_gate: Option<GateId>,
 }
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum CanonError {
-    IllegalEvent {
-        from: Phase,
-        to: Phase,
-        kind: EventKind,
-    },
-    MissingFailureClass,
-    UnexpectedFailureClass,
-    MissingRecoveryAction,
-    UnexpectedRecoveryAction,
-    InvalidLearnTarget,
-    InvalidRepairTarget,
-    InvalidCompletion,
-    InvalidStateContinuity,
-    InvalidPacketContinuity,
-    InvalidSemanticDelta,
-    InvalidHashChain,
-    InvalidReplay,
-    InvalidStateInvariant,
-    InvalidRuntimeConfig,
-    InvalidApiCommand,
-    TlogIo,
-    InvalidTlogRecord,
-    MissingAffectedGate,
-    UnexpectedAffectedGate,
-}
-
-impl core::fmt::Display for CanonError {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "{self:?}")
-    }
-}
-
-impl std::error::Error for CanonError {}
 
 pub fn tick(state: &mut State, tlog: &mut TLog, cfg: RuntimeConfig) -> Result<(), CanonError> {
     let before = *state;

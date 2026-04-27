@@ -6,6 +6,6 @@
 pub mod record;
 
 pub use self::record::{
-    DeterministicToolExecutor, ToolDecision, ToolExecutionRecord, ToolKind, ToolReceipt,
-    ToolRequest,
+    DeterministicToolExecutor, ToolDecision, ToolEffectReceipt, ToolExecutionRecord, ToolKind,
+    ToolReceipt, ToolRequest,
 };

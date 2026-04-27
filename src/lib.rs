@@ -8,12 +8,12 @@
 pub mod api;
 pub mod capability;
 pub mod codec;
+pub mod error;
 pub mod kernel;
 pub mod runtime;
 
 pub use crate::api::protocol::{
-    Command, CommandEnvelope, CommandLedger, CommandReceipt, ControlEventResponse,
-    API_PROTOCOL_SCHEMA_VERSION,
+    Command, CommandEnvelope, ControlEventResponse, API_PROTOCOL_SCHEMA_VERSION,
 };
 pub use crate::capability::context::{ContextDecision, ContextRecord};
 pub use crate::capability::eval::{EvalDecision, EvalDimension, EvalRecord};
@@ -24,22 +24,26 @@ pub use crate::capability::llm::{
     LlmDecision, LlmPromptRecord, LlmRecord, LlmResponseRecord, LlmStructuredAdapter,
 };
 pub use crate::capability::memory::{MemoryFact, MemoryIndex, MemoryLookupRecord};
-pub use crate::capability::observation::{ObservationDecision, ObservationRecord};
+pub use crate::capability::observation::{
+    ObservationCursor, ObservationDecision, ObservationFrame, ObservationFrameKind,
+    ObservationRecord, MAX_OBSERVATION_PAYLOAD_BYTES,
+};
 pub use crate::capability::orchestration::{
     CapabilityRoute, OrchestrationDecision, OrchestrationRecord,
 };
 pub use crate::capability::planning::{PlanDecision, PlanRecord};
 pub use crate::capability::policy::{PolicyEntry, PolicyStore, PolicyStoreError};
 pub use crate::capability::tooling::{
-    DeterministicToolExecutor, ToolDecision, ToolExecutionRecord, ToolKind, ToolReceipt,
-    ToolRequest,
+    DeterministicToolExecutor, ToolDecision, ToolEffectReceipt, ToolExecutionRecord, ToolKind,
+    ToolReceipt, ToolRequest,
 };
 pub use crate::capability::verification::{
     ArtifactSemanticProfile, DeterministicSemanticVerifier, SemanticVerificationReceipt,
     VerificationCheck, VerificationDecision, VerificationRecord, VerificationRequest,
 };
 pub use crate::capability::{
-    expected_evidence_for_gate, EvidenceSubmission, PacketEffect,
+    expected_evidence_for_gate, CapabilityEffectRoute, CapabilityId, CapabilityRegistry,
+    EvidenceSubmission, PacketEffect, CAPABILITY_EFFECT_ROUTES,
 };
 pub use crate::codec::ndjson::{
     append_tlog_ndjson, decode_control_event_ndjson, decode_tlog_ndjson_str,
@@ -47,16 +51,17 @@ pub use crate::codec::ndjson::{
     TLOG_RECORD_EVENT, TLOG_SCHEMA_VERSION,
 };
 pub use crate::kernel::{
-    Cause, ControlEvent, Decision, EventKind, Evidence, FailureClass, Gate, GateId, GateSet,
-    GateStatus, Packet, Phase, RecoveryAction, RuntimeConfig, SemanticDelta, State, TLog,
-    EXECUTION_GATE_ORDER, GATE_ORDER, PHASES,
+    CapabilityRegistryProjection, Cause, ControlEvent, Decision, EventKind, Evidence,
+    FailureClass, Gate, GateId, GateSet, GateStatus, Packet, Phase, RecoveryAction,
+    RuntimeConfig, SemanticDelta, State, TLog, EXECUTION_GATE_ORDER, GATE_ORDER, PHASES,
 };
 pub use crate::runtime::{
+    CanonError, CommandLedger, CommandReceipt,
     durable_replay_report, legal_transition, replay_report_from, replay_report_ndjson,
     replay_tlog_ndjson, resume_durable_runtime, run_until_done,
     run_until_done_durable, run_until_done_durable_with_ledger, semantic_diff, tick,
     tick_durable, tick_durable_checked, touch_all_surfaces, verify_tlog, verify_tlog_from,
-    CanonError, DurableRuntimeState, ReplayReport,
+    DurableRuntimeState, ReplayReport,
 };
 
 #[cfg(test)]
@@ -330,6 +335,55 @@ mod tests {
         assert_eq!(state.gates.invariant.status, GateStatus::Fail);
         assert_eq!(response.event.failure, Some(FailureClass::InvariantBlocked));
         verify_tlog(&tlog).unwrap();
+    }
+
+    #[test]
+    fn observation_cursor_accepts_ordered_external_frame() {
+        let frame = ObservationFrame::from_payload(
+            ObservationFrameKind::ExternalSignal,
+            7,
+            1,
+            3,
+            b"external-frame-payload",
+        );
+        let mut cursor = ObservationCursor::new(7);
+
+        let record = cursor.ingest(&frame);
+
+        assert!(frame.is_valid());
+        assert_eq!(record.decision(), ObservationDecision::Accepted);
+        assert_eq!(record.observed_hash, frame.observed_hash());
+        assert_eq!(cursor.last_sequence, 1);
+        assert_eq!(cursor.last_observed_hash, record.observed_hash);
+        assert!(record.submission().is_contract_valid());
+    }
+
+    #[test]
+    fn observation_cursor_rejects_replayed_sequence_without_advancing() {
+        let mut cursor = ObservationCursor::new(7);
+        let first = ObservationFrame::from_payload(
+            ObservationFrameKind::ExternalSignal,
+            7,
+            1,
+            3,
+            b"external-frame-payload",
+        );
+        let replay = ObservationFrame::from_payload(
+            ObservationFrameKind::ExternalSignal,
+            7,
+            1,
+            4,
+            b"external-frame-payload-replay",
+        );
+
+        let accepted = cursor.ingest(&first);
+        let rejected = cursor.ingest(&replay);
+
+        assert_eq!(accepted.decision(), ObservationDecision::Accepted);
+        assert_eq!(rejected.decision(), ObservationDecision::Rejected);
+        assert_eq!(rejected.observed_hash, 0);
+        assert_eq!(cursor.last_sequence, 1);
+        assert_eq!(cursor.last_observed_hash, accepted.observed_hash);
     }
 
     #[test]
@@ -1049,8 +1103,95 @@ mod tests {
     }
 
     #[test]
+    fn tooling_effect_receipt_binds_request_receipt_and_tlog_event() {
+        let mut state = State::default();
+        state.phase = Phase::Execute;
+        state.packet.bind_ready_task();
+        state.gates.invariant = Gate::pass(Evidence::InvariantProof);
+        state.gates.analysis = Gate::pass(Evidence::AnalysisReport);
+        state.gates.judgment = Gate::pass(Evidence::JudgmentRecord);
+        state.gates.plan = Gate::pass(Evidence::TaskReady);
+
+        let mut tlog = Vec::new();
+        let mut ledger = CommandLedger::default();
+        let record = ToolExecutionRecord::from_packet(state.packet);
+        let envelope = CommandEnvelope::new(101, Command::SubmitEvidence(record.submission()));
+        let response = crate::api::routes::handle_envelope_once(
+            &mut state,
+            &mut tlog,
+            RuntimeConfig::default(),
+            &mut ledger,
+            envelope.clone(),
+        )
+        .unwrap();
+
+        assert_eq!(response.event.from, Phase::Execute);
+        assert_eq!(response.event.to, Phase::Verify);
+        assert_eq!(ledger.len(), 1);
+
+        let persisted = tlog
+            .iter()
+            .find(|event| {
+                event.kind == EventKind::Persisted
+                    && event.cause == Cause::EvidenceSubmitted
+                    && event.affected_gate == Some(GateId::Execution)
+            })
+            .unwrap();
+
+        assert_eq!(persisted.api_command_id, envelope.command_id);
+        assert_eq!(persisted.api_command_hash, envelope.command_hash);
+        assert_eq!(response.event.api_command_id, envelope.command_id);
+        assert_eq!(response.event.api_command_hash, envelope.command_hash);
+
+        let effect_receipt = record.effect_receipt_for_event(persisted).unwrap();
+        assert_eq!(effect_receipt.receipt_hash, record.receipt.receipt_hash);
+        assert!(effect_receipt.replay_verified(&tlog));
+        verify_tlog(&tlog).unwrap();
+    }
+
+    #[test]
+    fn tooling_effect_receipt_rejects_tampered_packet_effect_replay() {
+        let mut state = State::default();
+        state.phase = Phase::Execute;
+        state.packet.bind_ready_task();
+        state.gates.invariant = Gate::pass(Evidence::InvariantProof);
+        state.gates.analysis = Gate::pass(Evidence::AnalysisReport);
+        state.gates.judgment = Gate::pass(Evidence::JudgmentRecord);
+        state.gates.plan = Gate::pass(Evidence::TaskReady);
+
+        let mut tlog = Vec::new();
+        let record = ToolExecutionRecord::from_packet(state.packet);
+        crate::api::routes::handle_command(
+            &mut state,
+            &mut tlog,
+            RuntimeConfig::default(),
+            Command::SubmitEvidence(record.submission()),
+        )
+        .unwrap();
+
+        let persisted = tlog
+            .iter()
+            .find(|event| {
+                event.kind == EventKind::Persisted
+                    && event.cause == Cause::EvidenceSubmitted
+                    && event.affected_gate == Some(GateId::Execution)
+            })
+            .unwrap();
+        let effect_receipt = record.effect_receipt_for_event(persisted).unwrap();
+
+        let mut tampered = tlog.clone();
+        tampered[0].state_after.packet.artifact_bytes =
+            tampered[0].state_after.packet.artifact_bytes.saturating_add(1);
+
+        assert!(!effect_receipt.replay_verified(&tampered));
+        assert!(!record.verifies_persisted_event(&tampered[0]));
+    }
+
+    #[test]
     fn tooling_executor_denies_invalid_request_without_packet_effect() {
         let request = ToolRequest {
+            capability: CapabilityId::Tooling,
+            registry_policy_hash: CapabilityRegistry::canonical().policy_hash(),
             tool_kind: ToolKind::Denied,
             objective_id: 1,
             task_id: 0,
@@ -1065,6 +1206,193 @@ mod tests {
         assert!(submission.is_contract_valid());
         assert!(!submission.passed);
         assert_eq!(submission.effect, PacketEffect::None);
+    }
+
+    #[test]
+    fn capability_registry_denies_unknown_routes_by_default() {
+        let mut packet = Packet::empty();
+        packet.bind_ready_task();
+
+        let executor = DeterministicToolExecutor {
+            max_input_hash: u64::MAX,
+            registry: CapabilityRegistry::empty(),
+        };
+        let record = ToolExecutionRecord::from_packet_with_executor(packet, executor);
+        let submission = record.submission();
+
+        assert!(executor.registry.is_empty());
+        assert_eq!(record.decision(), ToolDecision::Failed);
+        assert!(submission.is_contract_valid());
+        assert!(!submission.passed);
+        assert_eq!(submission.effect, PacketEffect::None);
+        assert!(!executor.registry.allows(CapabilityId::Tooling, submission));
+    }
+
+    #[test]
+    fn capability_registry_allows_only_explicit_tool_effect() {
+        let registry = CapabilityRegistry::canonical();
+        let mut packet = Packet::empty();
+        packet.bind_ready_task();
+
+        let mut request = ToolRequest::from_packet(packet);
+        assert!(registry.permits_effect(
+            CapabilityId::Tooling,
+            GateId::Execution,
+            Evidence::ArtifactReceipt,
+            PacketEffect::MaterializeArtifact
+        ));
+        assert!(!registry.permits_effect(
+            CapabilityId::Tooling,
+            GateId::Execution,
+            Evidence::ArtifactReceipt,
+            PacketEffect::RepairLineage
+        ));
+
+        request.requested_effect = PacketEffect::RepairLineage;
+        let executor = DeterministicToolExecutor {
+            max_input_hash: u64::MAX,
+            registry,
+        };
+        let receipt = executor.execute(request);
+
+        assert_eq!(receipt.exit_code, 126);
+        assert!(!receipt.is_success_for(request));
+    }
+
+    #[test]
+    fn capability_registry_policy_hash_is_execution_receipt_input() {
+        let canonical = CapabilityRegistry::canonical();
+        let drifted = CapabilityRegistry::empty();
+        let mut packet = Packet::empty();
+        packet.bind_ready_task();
+
+        let request = ToolRequest::from_packet_with_registry(packet, canonical);
+        let receipt = DeterministicToolExecutor::default().execute(request);
+
+        assert_ne!(canonical.policy_hash(), drifted.policy_hash());
+        assert_eq!(request.registry_policy_hash, canonical.policy_hash());
+        assert_eq!(receipt.registry_policy_hash, canonical.policy_hash());
+        assert!(receipt.is_success_for(request));
+    }
+
+    #[test]
+    fn tooling_effect_receipt_rejects_registry_policy_drift() {
+        let mut state = State::default();
+        state.phase = Phase::Execute;
+        state.packet.bind_ready_task();
+        state.gates.invariant = Gate::pass(Evidence::InvariantProof);
+        state.gates.analysis = Gate::pass(Evidence::AnalysisReport);
+        state.gates.judgment = Gate::pass(Evidence::JudgmentRecord);
+        state.gates.plan = Gate::pass(Evidence::TaskReady);
+
+        let mut tlog = Vec::new();
+        let record = ToolExecutionRecord::from_packet(state.packet);
+        crate::api::routes::handle_command(
+            &mut state,
+            &mut tlog,
+            RuntimeConfig::default(),
+            Command::SubmitEvidence(record.submission()),
+        )
+        .unwrap();
+
+        let persisted = tlog
+            .iter()
+            .find(|event| {
+                event.kind == EventKind::Persisted
+                    && event.cause == Cause::EvidenceSubmitted
+                    && event.affected_gate == Some(GateId::Execution)
+            })
+            .unwrap();
+        let effect_receipt = record.effect_receipt_for_event(persisted).unwrap();
+
+        assert_eq!(
+            effect_receipt.registry_policy_hash,
+            CapabilityRegistry::canonical().policy_hash()
+        );
+        assert!(effect_receipt
+            .replay_verified_with_registry(&tlog, CapabilityRegistry::canonical()));
+        assert!(!effect_receipt
+            .replay_verified_with_registry(&tlog, CapabilityRegistry::empty()));
+    }
+
+    #[test]
+    fn capability_registry_projection_is_persisted_in_execution_tlog() {
+        let mut state = State::default();
+        state.phase = Phase::Execute;
+        state.packet.bind_ready_task();
+        state.gates.invariant = Gate::pass(Evidence::InvariantProof);
+        state.gates.analysis = Gate::pass(Evidence::AnalysisReport);
+        state.gates.judgment = Gate::pass(Evidence::JudgmentRecord);
+        state.gates.plan = Gate::pass(Evidence::TaskReady);
+
+        let mut tlog = Vec::new();
+        let record = ToolExecutionRecord::from_packet(state.packet);
+        crate::api::routes::handle_command(
+            &mut state,
+            &mut tlog,
+            RuntimeConfig::default(),
+            Command::SubmitEvidence(record.submission()),
+        )
+        .unwrap();
+
+        let persisted = tlog
+            .iter()
+            .find(|event| {
+                event.kind == EventKind::Persisted
+                    && event.cause == Cause::EvidenceSubmitted
+                    && event.affected_gate == Some(GateId::Execution)
+            })
+            .unwrap();
+
+        assert_eq!(
+            persisted.capability_registry_projection,
+            CapabilityRegistry::canonical().projection()
+        );
+
+        let effect_receipt = record.effect_receipt_for_event(persisted).unwrap();
+        assert!(effect_receipt.replay_verified(&tlog));
+        verify_tlog(&tlog).unwrap();
+    }
+
+    #[test]
+    fn tooling_effect_receipt_rejects_tlog_registry_projection_drift() {
+        let mut state = State::default();
+        state.phase = Phase::Execute;
+        state.packet.bind_ready_task();
+        state.gates.invariant = Gate::pass(Evidence::InvariantProof);
+        state.gates.analysis = Gate::pass(Evidence::AnalysisReport);
+        state.gates.judgment = Gate::pass(Evidence::JudgmentRecord);
+        state.gates.plan = Gate::pass(Evidence::TaskReady);
+
+        let mut tlog = Vec::new();
+        let record = ToolExecutionRecord::from_packet(state.packet);
+        crate::api::routes::handle_command(
+            &mut state,
+            &mut tlog,
+            RuntimeConfig::default(),
+            Command::SubmitEvidence(record.submission()),
+        )
+        .unwrap();
+
+        let persisted_index = tlog
+            .iter()
+            .position(|event| {
+                event.kind == EventKind::Persisted
+                    && event.cause == Cause::EvidenceSubmitted
+                    && event.affected_gate == Some(GateId::Execution)
+            })
+            .unwrap();
+        let effect_receipt = record
+            .effect_receipt_for_event(&tlog[persisted_index])
+            .unwrap();
+
+        let mut drifted = tlog.clone();
+        drifted[persisted_index].capability_registry_projection =
+            CapabilityRegistryProjection::new(1, CapabilityRegistry::empty().policy_hash());
+
+        assert!(effect_receipt.replay_verified(&tlog));
+        assert!(!effect_receipt.replay_verified(&drifted));
+        assert_eq!(verify_tlog(&drifted), Err(CanonError::InvalidHashChain));
     }
 
     #[test]
@@ -1742,6 +2070,7 @@ mod tests {
             runtime_config: event.runtime_config,
             state_before: event.state_before,
             state_after: event.state_after,
+            capability_registry_projection: event.capability_registry_projection,
             api_command_id: event.api_command_id,
             api_command_hash: event.api_command_hash,
         });
