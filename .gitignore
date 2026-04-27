@@ -149,3 +149,5 @@ agent_state/
 
 rust_chatgpt_sandbox/
 chrome-dev-profile/
+ai.tar.gz
+target/
