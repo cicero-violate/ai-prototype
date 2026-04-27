@@ -4,11 +4,14 @@ use std::fs::{File, OpenOptions};
 use std::io::{BufRead, BufReader, Write};
 use std::path::Path;
 
-use crate::capability::learning::{PolicyPromotion, POLICY_PROMOTION_SOURCE_SEQ};
+use crate::capability::learning::{
+    PolicyPromotion, POLICY_FEEDBACK_HASH, POLICY_PROMOTION_SOURCE_SEQ,
+};
 
 const POLICY_SCHEMA_VERSION: u64 = 1;
 const POLICY_RECORD_ENTRY: u64 = 1;
 const POLICY_KEY_PROMOTION_SOURCE_SEQ: u64 = 1;
+const POLICY_KEY_FEEDBACK_HASH: u64 = 2;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PolicyEntry {
@@ -82,6 +85,23 @@ impl PolicyStore {
         self.entries.last().ok_or(PolicyStoreError::InvalidPromotion)
     }
 
+    pub fn promote_feedback(
+        &mut self,
+        promotion: PolicyPromotion,
+    ) -> Result<&PolicyEntry, PolicyStoreError> {
+        if !promotion.is_valid() {
+            return Err(PolicyStoreError::InvalidPromotion);
+        }
+
+        self.try_append(PolicyEntry {
+            version: promotion.promoted_policy_version,
+            key: POLICY_FEEDBACK_HASH,
+            value: promotion.promoted_policy_hash,
+        })?;
+
+        self.entries.last().ok_or(PolicyStoreError::InvalidPromotion)
+    }
+
     pub fn promote_durable(
         &mut self,
         path: impl AsRef<Path>,
@@ -97,6 +117,25 @@ impl PolicyStore {
                 version: promotion.promoted_policy_version,
                 key: POLICY_PROMOTION_SOURCE_SEQ,
                 value: promotion.source_seq,
+            },
+        )
+    }
+
+    pub fn promote_feedback_durable(
+        &mut self,
+        path: impl AsRef<Path>,
+        promotion: PolicyPromotion,
+    ) -> Result<&PolicyEntry, PolicyStoreError> {
+        if !promotion.is_valid() {
+            return Err(PolicyStoreError::InvalidPromotion);
+        }
+
+        self.append_durable(
+            path,
+            PolicyEntry {
+                version: promotion.promoted_policy_version,
+                key: POLICY_FEEDBACK_HASH,
+                value: promotion.promoted_policy_hash,
             },
         )
     }
@@ -132,6 +171,27 @@ impl PolicyStore {
             .map(|entry| entry.version)
             .max()
             .unwrap_or(0)
+    }
+
+    pub fn latest_value(&self, key: &str) -> Option<u64> {
+        self.latest(key).map(|entry| entry.value)
+    }
+
+    pub fn feedback_hash(&self) -> u64 {
+        self.latest_value(POLICY_FEEDBACK_HASH).unwrap_or(0)
+    }
+
+    pub fn fingerprint(&self) -> u64 {
+        let mut h = 0xcbf2_9ce4_8422_2325u64;
+
+        for entry in &self.entries {
+            let key_id = key_to_id(entry.key).expect("validated policy key");
+            h = mix(h, entry.version);
+            h = mix(h, key_id);
+            h = mix(h, entry.value);
+        }
+
+        h.max(1)
     }
 
     pub fn entries(&self) -> &[PolicyEntry] {
@@ -193,6 +253,7 @@ fn decode_policy_entry_ndjson(line: &str) -> Result<PolicyEntry, PolicyStoreErro
 fn key_to_id(key: &str) -> Result<u64, PolicyStoreError> {
     match key {
         POLICY_PROMOTION_SOURCE_SEQ => Ok(POLICY_KEY_PROMOTION_SOURCE_SEQ),
+        POLICY_FEEDBACK_HASH => Ok(POLICY_KEY_FEEDBACK_HASH),
         _ => Err(PolicyStoreError::UnknownPolicyKey),
     }
 }
@@ -200,6 +261,13 @@ fn key_to_id(key: &str) -> Result<u64, PolicyStoreError> {
 fn key_from_id(id: u64) -> Result<&'static str, PolicyStoreError> {
     match id {
         POLICY_KEY_PROMOTION_SOURCE_SEQ => Ok(POLICY_PROMOTION_SOURCE_SEQ),
+        POLICY_KEY_FEEDBACK_HASH => Ok(POLICY_FEEDBACK_HASH),
         _ => Err(PolicyStoreError::UnknownPolicyKey),
     }
+}
+
+fn mix(mut h: u64, x: u64) -> u64 {
+    h ^= x;
+    h = h.wrapping_mul(0x100000001b3);
+    h
 }

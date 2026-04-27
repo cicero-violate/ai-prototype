@@ -344,6 +344,7 @@ fn cause_from_u64(value: u64) -> Result<Cause, CanonError> {
         12 => Ok(Cause::EvalPassed), 13 => Ok(Cause::EvalFailed), 14 => Ok(Cause::RepairSelected),
         15 => Ok(Cause::RepairApplied), 16 => Ok(Cause::RecoveryLimit), 17 => Ok(Cause::MaxSteps),
         18 => Ok(Cause::Persisted), 19 => Ok(Cause::PolicyPromoted),
+        20 => Ok(Cause::EvidenceSubmitted),
         _ => Err(CanonError::InvalidTlogRecord),
     }
 }

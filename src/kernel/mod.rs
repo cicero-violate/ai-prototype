@@ -586,6 +586,7 @@ pub enum Cause {
     MaxSteps = 17,
     Persisted = 18,
     PolicyPromoted = 19,
+    EvidenceSubmitted = 20,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]

@@ -11,14 +11,31 @@ pub mod codec;
 pub mod kernel;
 pub mod runtime;
 
+pub use crate::capability::context::{ContextDecision, ContextRecord};
 pub use crate::capability::eval::{EvalDecision, EvalDimension, EvalRecord};
-pub use crate::capability::learning::PolicyPromotion;
+pub use crate::capability::learning::{
+    PolicyPromotion, POLICY_FEEDBACK_HASH, POLICY_PROMOTION_SOURCE_SEQ,
+};
+pub use crate::capability::llm::{
+    LlmDecision, LlmPromptRecord, LlmRecord, LlmResponseRecord, LlmStructuredAdapter,
+};
+pub use crate::capability::memory::{MemoryFact, MemoryIndex, MemoryLookupRecord};
+pub use crate::capability::observation::{ObservationDecision, ObservationRecord};
+pub use crate::capability::orchestration::{
+    CapabilityRoute, OrchestrationDecision, OrchestrationRecord,
+};
+pub use crate::capability::planning::{PlanDecision, PlanRecord};
 pub use crate::capability::policy::{PolicyEntry, PolicyStore, PolicyStoreError};
+pub use crate::capability::tooling::{ToolDecision, ToolExecutionRecord};
+pub use crate::capability::verification::{
+    ArtifactSemanticProfile, VerificationDecision, VerificationRecord,
+};
+pub use crate::capability::{EvidenceSubmission, PacketEffect};
 pub use crate::codec::ndjson::{append_tlog_ndjson, load_tlog_ndjson, write_tlog_ndjson};
 pub use crate::kernel::{
     Cause, ControlEvent, Decision, EventKind, Evidence, FailureClass, Gate, GateId, GateSet,
     GateStatus, Packet, Phase, RecoveryAction, RuntimeConfig, SemanticDelta, State, TLog,
-    GATE_ORDER, PHASES,
+    EXECUTION_GATE_ORDER, GATE_ORDER, PHASES,
 };
 pub use crate::runtime::{
     legal_transition, replay_tlog_ndjson, run_until_done, run_until_done_durable, semantic_diff,
@@ -216,7 +233,7 @@ mod tests {
         assert_eq!(response.event.evidence, Evidence::EvalScore);
         assert_eq!(state.phase, Phase::Persist);
         assert_eq!(state.gates.eval.status, GateStatus::Pass);
-        assert_eq!(verify_tlog_from(response.event.state_before, &tlog).unwrap(), state);
+        assert_eq!(verify_tlog_from(tlog[0].state_before, &tlog).unwrap(), state);
     }
 
     #[test]
@@ -247,6 +264,677 @@ mod tests {
 
         assert_eq!(state.gates.judgment.status, GateStatus::Pass);
         assert_eq!(state.gates.judgment.evidence, Evidence::JudgmentRecord);
+    }
+
+    #[test]
+    fn observation_record_submission_drives_invariant_gate_through_api() {
+        let mut state = State::default();
+        state.phase = Phase::Invariant;
+
+        let mut tlog = Vec::new();
+        let record = ObservationRecord::new(7, 1, 0xabc, 1);
+        let response = crate::api::routes::handle_command(
+            &mut state,
+            &mut tlog,
+            RuntimeConfig::default(),
+            crate::api::protocol::Command::SubmitEvidence(record.submission()),
+        )
+        .unwrap();
+
+        assert_eq!(tlog[0].from, Phase::Invariant);
+        assert_eq!(tlog[0].to, Phase::Invariant);
+        assert_eq!(tlog[0].cause, Cause::EvidenceSubmitted);
+        assert_eq!(tlog[0].evidence, Evidence::InvariantProof);
+        assert_eq!(response.event.from, Phase::Invariant);
+        assert_eq!(response.event.to, Phase::Analysis);
+        assert_eq!(state.gates.invariant.status, GateStatus::Pass);
+        verify_tlog(&tlog).unwrap();
+    }
+
+    #[test]
+    fn invalid_observation_fails_submission_without_advancing_gate() {
+        let mut state = State::default();
+        state.phase = Phase::Invariant;
+
+        let mut tlog = Vec::new();
+        let record = ObservationRecord::new(7, 1, 0, 1);
+        let response = crate::api::routes::handle_command(
+            &mut state,
+            &mut tlog,
+            RuntimeConfig::default(),
+            crate::api::protocol::Command::SubmitEvidence(record.submission()),
+        )
+        .unwrap();
+
+        assert_eq!(record.decision(), ObservationDecision::Rejected);
+        assert_eq!(tlog[0].cause, Cause::EvidenceSubmitted);
+        assert_eq!(tlog[0].decision, Decision::Block);
+        assert_eq!(state.phase, Phase::Recovery);
+        assert_eq!(state.gates.invariant.status, GateStatus::Fail);
+        assert_eq!(response.event.failure, Some(FailureClass::InvariantBlocked));
+        verify_tlog(&tlog).unwrap();
+    }
+
+    #[test]
+    fn memory_index_lookup_is_deterministic_and_weight_ordered() {
+        let mut memory = MemoryIndex::default();
+
+        assert!(memory.insert(MemoryFact::new(42, 900, 4, 3)));
+        assert!(memory.insert(MemoryFact::new(42, 700, 9, 2)));
+        assert!(memory.insert(MemoryFact::new(42, 800, 9, 1)));
+        assert!(memory.insert(MemoryFact::new(7, 100, 5, 1)));
+        assert!(!memory.insert(MemoryFact::new(42, 0, 9, 4)));
+
+        let lookup = memory.lookup(42, 2);
+        let lookup_again = memory.lookup(42, 2);
+
+        assert!(lookup.is_valid());
+        assert_eq!(lookup, lookup_again);
+        assert_eq!(lookup.match_count(), 2);
+        assert_eq!(lookup.matches[0], MemoryFact::new(42, 800, 9, 1));
+        assert_eq!(lookup.matches[1], MemoryFact::new(42, 700, 9, 2));
+    }
+
+    #[test]
+    fn context_record_submission_drives_analysis_gate_through_api() {
+        let mut state = State::default();
+        state.phase = Phase::Analysis;
+        state.gates.invariant = Gate::pass(Evidence::InvariantProof);
+
+        let mut memory = MemoryIndex::default();
+        assert!(memory.insert(MemoryFact::new(state.packet.objective_id, 0xfeed, 7, 1)));
+        let lookup = memory.lookup(state.packet.objective_id, 8);
+        let record = ContextRecord::from_packet_memory(state.packet, 0xabc, &lookup);
+
+        let mut tlog = Vec::new();
+        let response = crate::api::routes::handle_command(
+            &mut state,
+            &mut tlog,
+            RuntimeConfig::default(),
+            crate::api::protocol::Command::SubmitEvidence(record.submission()),
+        )
+        .unwrap();
+
+        assert_eq!(record.decision(), ContextDecision::Assembled);
+        assert_eq!(response.event.from, Phase::Analysis);
+        assert_eq!(response.event.to, Phase::Judgment);
+        assert_eq!(response.event.evidence, Evidence::AnalysisReport);
+        assert_eq!(state.gates.analysis.status, GateStatus::Pass);
+        verify_tlog(&tlog).unwrap();
+    }
+
+    #[test]
+    fn observation_memory_context_drive_start_to_judgment() {
+        let mut state = State::default();
+        let cfg = RuntimeConfig::default();
+        let mut tlog = Vec::new();
+
+        tick(&mut state, &mut tlog, cfg).unwrap();
+        assert_eq!(state.phase, Phase::Invariant);
+
+        let observation = ObservationRecord::new(7, 1, 0xabc, 1);
+        crate::api::routes::handle_command(
+            &mut state,
+            &mut tlog,
+            cfg,
+            crate::api::protocol::Command::SubmitEvidence(observation.submission()),
+        )
+        .unwrap();
+        assert_eq!(state.phase, Phase::Analysis);
+
+        let mut memory = MemoryIndex::default();
+        assert!(memory.insert(MemoryFact::new(state.packet.objective_id, 0xfeed, 7, 1)));
+        let lookup = memory.lookup(state.packet.objective_id, 8);
+        let context = ContextRecord::from_packet_memory(state.packet, observation.observed_hash, &lookup);
+
+        crate::api::routes::handle_command(
+            &mut state,
+            &mut tlog,
+            cfg,
+            crate::api::protocol::Command::SubmitEvidence(context.submission()),
+        )
+        .unwrap();
+
+        assert_eq!(state.phase, Phase::Judgment);
+        assert_eq!(state.gates.invariant.status, GateStatus::Pass);
+        assert_eq!(state.gates.analysis.status, GateStatus::Pass);
+        verify_tlog(&tlog).unwrap();
+    }
+
+    #[test]
+    fn llm_adapter_turns_context_into_judgment_record() {
+        let packet = Packet::empty();
+        let mut memory = MemoryIndex::default();
+        assert!(memory.insert(MemoryFact::new(packet.objective_id, 0xfeed, 7, 1)));
+        let lookup = memory.lookup(packet.objective_id, 8);
+        let context = ContextRecord::from_packet_memory(packet, 0xabc, &lookup);
+        let policy = PolicyStore::default();
+
+        let llm = LlmStructuredAdapter::record_from_context(&context, &policy, 11);
+        let judgment = llm.judgment_record();
+        let submission = llm.submission();
+
+        assert_eq!(llm.decision(), LlmDecision::Structured);
+        assert!(llm.prompt.is_valid());
+        assert!(llm.response.is_valid());
+        assert!(judgment.is_valid());
+        assert_eq!(submission.gate, GateId::Judgment);
+        assert_eq!(submission.evidence, Evidence::JudgmentRecord);
+        assert!(submission.passed);
+    }
+
+    #[test]
+    fn policy_feedback_entry_roundtrips_and_fingerprints() {
+        let (_state, tlog) = run_until_done(State::ready(), RuntimeConfig::default()).unwrap();
+        let promotion = PolicyPromotion::from_tlog(&tlog, 1).unwrap();
+        assert!(promotion.is_valid());
+        assert_eq!(promotion.eval_seq, promotion.source_seq);
+        assert!(promotion.judgment_seq < promotion.eval_seq);
+        assert!(promotion.completion_seq >= promotion.eval_seq);
+        assert_ne!(promotion.promoted_policy_hash, 0);
+
+        let path = std::env::temp_dir().join(format!(
+            "ai-policy-feedback-{}-{}.ndjson",
+            std::process::id(),
+            promotion.promoted_policy_hash
+        ));
+        std::fs::remove_file(&path).ok();
+
+        let mut store = PolicyStore::default();
+        let empty_fingerprint = store.fingerprint();
+        let entry = store
+            .promote_feedback_durable(&path, promotion.clone())
+            .unwrap()
+            .clone();
+        let loaded = PolicyStore::load_ndjson(&path).unwrap();
+        std::fs::remove_file(&path).ok();
+
+        assert_eq!(entry.key, POLICY_FEEDBACK_HASH);
+        assert_eq!(entry.value, promotion.promoted_policy_hash);
+        assert_eq!(store.feedback_hash(), promotion.promoted_policy_hash);
+        assert_ne!(store.fingerprint(), empty_fingerprint);
+        assert_eq!(loaded.entries(), &[entry]);
+        assert_eq!(loaded.feedback_hash(), promotion.promoted_policy_hash);
+    }
+
+    #[test]
+    fn policy_feedback_changes_llm_prompt_and_judgment() {
+        let packet = Packet::empty();
+        let mut memory = MemoryIndex::default();
+        assert!(memory.insert(MemoryFact::new(packet.objective_id, 0xfeed, 7, 1)));
+        let lookup = memory.lookup(packet.objective_id, 8);
+        let context = ContextRecord::from_packet_memory(packet, 0xabc, &lookup);
+
+        let base_policy = PolicyStore::default();
+        let base_llm = LlmStructuredAdapter::record_from_context(&context, &base_policy, 11);
+
+        let (_state, tlog) = run_until_done(State::ready(), RuntimeConfig::default()).unwrap();
+        let promotion = PolicyPromotion::from_tlog(&tlog, 1).unwrap();
+        let mut feedback_policy = PolicyStore::default();
+        feedback_policy.promote_feedback(promotion).unwrap();
+        let feedback_llm = LlmStructuredAdapter::record_from_context(&context, &feedback_policy, 11);
+
+        assert_eq!(base_llm.prompt.policy_version, feedback_llm.prompt.policy_version);
+        assert_ne!(base_llm.prompt.policy_hash, feedback_llm.prompt.policy_hash);
+        assert_ne!(base_llm.prompt.prompt_hash, feedback_llm.prompt.prompt_hash);
+        assert_ne!(base_llm.response.response_hash, feedback_llm.response.response_hash);
+        assert_ne!(base_llm.judgment_record(), feedback_llm.judgment_record());
+    }
+
+    #[test]
+    fn learning_policy_llm_feedback_loop_drives_judgment() {
+        let (_learned_state, learned_tlog) =
+            run_until_done(State::ready(), RuntimeConfig::default()).unwrap();
+        let promotion = PolicyPromotion::from_tlog(&learned_tlog, 1).unwrap();
+        let mut policy = PolicyStore::default();
+        policy.promote_feedback(promotion).unwrap();
+
+        let mut state = State::default();
+        state.phase = Phase::Judgment;
+        state.gates.invariant = Gate::pass(Evidence::InvariantProof);
+        state.gates.analysis = Gate::pass(Evidence::AnalysisReport);
+
+        let mut memory = MemoryIndex::default();
+        assert!(memory.insert(MemoryFact::new(state.packet.objective_id, 0xfeed, 7, 1)));
+        let lookup = memory.lookup(state.packet.objective_id, 8);
+        let context = ContextRecord::from_packet_memory(state.packet, 0xabc, &lookup);
+        let llm = LlmStructuredAdapter::record_from_context(&context, &policy, 11);
+
+        assert_eq!(llm.prompt.policy_hash, policy.fingerprint());
+        assert_eq!(llm.prompt.policy_version, policy.latest_version());
+
+        let mut tlog = Vec::new();
+        let response = crate::api::routes::handle_command(
+            &mut state,
+            &mut tlog,
+            RuntimeConfig::default(),
+            crate::api::protocol::Command::SubmitEvidence(llm.submission()),
+        )
+        .unwrap();
+
+        assert_eq!(response.event.from, Phase::Judgment);
+        assert_eq!(response.event.to, Phase::Plan);
+        assert_eq!(response.event.evidence, Evidence::JudgmentRecord);
+        assert_eq!(state.gates.judgment.status, GateStatus::Pass);
+        verify_tlog(&tlog).unwrap();
+    }
+
+    #[test]
+    fn llm_record_submission_drives_judgment_gate_through_api() {
+        let mut state = State::default();
+        state.phase = Phase::Judgment;
+        state.gates.invariant = Gate::pass(Evidence::InvariantProof);
+        state.gates.analysis = Gate::pass(Evidence::AnalysisReport);
+
+        let mut memory = MemoryIndex::default();
+        assert!(memory.insert(MemoryFact::new(state.packet.objective_id, 0xfeed, 7, 1)));
+        let lookup = memory.lookup(state.packet.objective_id, 8);
+        let context = ContextRecord::from_packet_memory(state.packet, 0xabc, &lookup);
+        let policy = PolicyStore::default();
+        let llm = LlmStructuredAdapter::record_from_context(&context, &policy, 11);
+
+        let mut tlog = Vec::new();
+        let response = crate::api::routes::handle_command(
+            &mut state,
+            &mut tlog,
+            RuntimeConfig::default(),
+            crate::api::protocol::Command::SubmitEvidence(llm.submission()),
+        )
+        .unwrap();
+
+        assert_eq!(response.event.from, Phase::Judgment);
+        assert_eq!(response.event.to, Phase::Plan);
+        assert_eq!(response.event.evidence, Evidence::JudgmentRecord);
+        assert_eq!(state.gates.judgment.status, GateStatus::Pass);
+        verify_tlog(&tlog).unwrap();
+    }
+
+    #[test]
+    fn invalid_llm_record_fails_without_advancing_judgment() {
+        let mut state = State::default();
+        state.phase = Phase::Judgment;
+        state.gates.invariant = Gate::pass(Evidence::InvariantProof);
+        state.gates.analysis = Gate::pass(Evidence::AnalysisReport);
+
+        let lookup = MemoryIndex::default().lookup(state.packet.objective_id, 8);
+        let context = ContextRecord::from_packet_memory(state.packet, 0xabc, &lookup);
+        let policy = PolicyStore::default();
+        let llm = LlmStructuredAdapter::record_from_context(&context, &policy, 0);
+
+        let mut tlog = Vec::new();
+        let response = crate::api::routes::handle_command(
+            &mut state,
+            &mut tlog,
+            RuntimeConfig::default(),
+            crate::api::protocol::Command::SubmitEvidence(llm.submission()),
+        )
+        .unwrap();
+
+        assert_eq!(llm.decision(), LlmDecision::Refused);
+        assert_eq!(tlog[0].decision, Decision::Block);
+        assert_eq!(state.phase, Phase::Recovery);
+        assert_eq!(state.gates.judgment.status, GateStatus::Fail);
+        assert_eq!(response.event.failure, Some(FailureClass::JudgmentFailed));
+        verify_tlog(&tlog).unwrap();
+    }
+
+    #[test]
+    fn observation_context_llm_drive_start_to_plan() {
+        let mut state = State::default();
+        let cfg = RuntimeConfig::default();
+        let mut tlog = Vec::new();
+
+        tick(&mut state, &mut tlog, cfg).unwrap();
+        assert_eq!(state.phase, Phase::Invariant);
+
+        let observation = ObservationRecord::new(7, 1, 0xabc, 1);
+        crate::api::routes::handle_command(
+            &mut state,
+            &mut tlog,
+            cfg,
+            crate::api::protocol::Command::SubmitEvidence(observation.submission()),
+        )
+        .unwrap();
+        assert_eq!(state.phase, Phase::Analysis);
+
+        let mut memory = MemoryIndex::default();
+        assert!(memory.insert(MemoryFact::new(state.packet.objective_id, 0xfeed, 7, 1)));
+        let lookup = memory.lookup(state.packet.objective_id, 8);
+        let context = ContextRecord::from_packet_memory(state.packet, observation.observed_hash, &lookup);
+        crate::api::routes::handle_command(
+            &mut state,
+            &mut tlog,
+            cfg,
+            crate::api::protocol::Command::SubmitEvidence(context.submission()),
+        )
+        .unwrap();
+        assert_eq!(state.phase, Phase::Judgment);
+
+        let policy = PolicyStore::default();
+        let llm = LlmStructuredAdapter::record_from_context(&context, &policy, 11);
+        crate::api::routes::handle_command(
+            &mut state,
+            &mut tlog,
+            cfg,
+            crate::api::protocol::Command::SubmitEvidence(llm.submission()),
+        )
+        .unwrap();
+
+        assert_eq!(state.phase, Phase::Plan);
+        assert_eq!(state.gates.invariant.status, GateStatus::Pass);
+        assert_eq!(state.gates.analysis.status, GateStatus::Pass);
+        assert_eq!(state.gates.judgment.status, GateStatus::Pass);
+        verify_tlog(&tlog).unwrap();
+    }
+
+    #[test]
+    fn orchestration_record_orders_ready_submissions() {
+        let mut state = State::default();
+        state.phase = Phase::Invariant;
+
+        let record = OrchestrationRecord::from_state(state, 9);
+        assert_eq!(record.decision(), OrchestrationDecision::Routed);
+        assert!(record.is_valid());
+        assert_eq!(record.routes.len(), EXECUTION_GATE_ORDER.len());
+
+        let submissions = record.ordered_submissions();
+        assert_eq!(submissions.len(), EXECUTION_GATE_ORDER.len());
+        assert_eq!(submissions[0].gate, GateId::Invariant);
+        assert_eq!(submissions[1].gate, GateId::Analysis);
+        assert_eq!(submissions[2].gate, GateId::Judgment);
+        assert_eq!(submissions[3].gate, GateId::Plan);
+        assert_eq!(submissions[4].gate, GateId::Execution);
+        assert_eq!(submissions[5].gate, GateId::Verification);
+        assert_eq!(submissions[6].gate, GateId::Eval);
+    }
+
+    #[test]
+    fn orchestration_batch_drives_execution_path_to_persist() {
+        let mut state = State::default();
+        let mut tlog = Vec::new();
+        let cfg = RuntimeConfig::default();
+        tick(&mut state, &mut tlog, cfg).unwrap();
+        assert_eq!(state.phase, Phase::Invariant);
+
+        let record = OrchestrationRecord::from_state(state, 7);
+        let response = crate::api::routes::handle_command(
+            &mut state,
+            &mut tlog,
+            cfg,
+            crate::api::protocol::Command::SubmitEvidenceBatch(record.ordered_submissions()),
+        )
+        .unwrap();
+
+        assert_eq!(response.event.from, Phase::Eval);
+        assert_eq!(response.event.to, Phase::Persist);
+        assert_eq!(response.event.evidence, Evidence::EvalScore);
+        assert_eq!(state.phase, Phase::Persist);
+        assert!(state.gates.all_execution_passed());
+        assert!(state.packet.objective_complete());
+        assert!(state.packet.lineage_valid());
+        verify_tlog(&tlog).unwrap();
+    }
+
+    #[test]
+    fn orchestration_skips_already_passed_gates() {
+        let mut state = State::default();
+        state.phase = Phase::Plan;
+        state.gates.invariant = Gate::pass(Evidence::InvariantProof);
+        state.gates.analysis = Gate::pass(Evidence::AnalysisReport);
+        state.gates.judgment = Gate::pass(Evidence::JudgmentRecord);
+
+        let record = OrchestrationRecord::from_state(state, 3);
+        let submissions = record.ordered_submissions();
+
+        assert_eq!(submissions.len(), 4);
+        assert_eq!(submissions[0].gate, GateId::Plan);
+        assert_eq!(submissions[1].gate, GateId::Execution);
+        assert_eq!(submissions[2].gate, GateId::Verification);
+        assert_eq!(submissions[3].gate, GateId::Eval);
+    }
+
+    #[test]
+    fn empty_orchestration_batch_is_rejected() {
+        let mut state = State::default();
+        state.phase = Phase::Invariant;
+        let mut tlog = Vec::new();
+
+        let result = crate::api::routes::handle_command(
+            &mut state,
+            &mut tlog,
+            RuntimeConfig::default(),
+            crate::api::protocol::Command::SubmitEvidenceBatch(Vec::new()),
+        );
+
+        assert_eq!(result, Err(CanonError::InvalidReplay));
+    }
+
+    #[test]
+    fn planning_record_binds_ready_task_through_api() {
+        let mut state = State::default();
+        state.phase = Phase::Plan;
+        state.gates.invariant = Gate::pass(Evidence::InvariantProof);
+        state.gates.analysis = Gate::pass(Evidence::AnalysisReport);
+        state.gates.judgment = Gate::pass(Evidence::JudgmentRecord);
+
+        let mut tlog = Vec::new();
+        let record = PlanRecord::from_packet(state.packet);
+        let response = crate::api::routes::handle_command(
+            &mut state,
+            &mut tlog,
+            RuntimeConfig::default(),
+            crate::api::protocol::Command::SubmitEvidence(record.submission()),
+        )
+        .unwrap();
+
+        assert_eq!(response.event.from, Phase::Plan);
+        assert_eq!(response.event.to, Phase::Execute);
+        assert_eq!(response.event.evidence, Evidence::TaskReady);
+        assert_eq!(state.gates.plan.status, GateStatus::Pass);
+        assert!(state.packet.has_ready_task());
+        verify_tlog(&tlog).unwrap();
+    }
+
+    #[test]
+    fn tooling_record_materializes_artifact_through_api() {
+        let mut state = State::default();
+        state.phase = Phase::Execute;
+        state.packet.bind_ready_task();
+        state.gates.invariant = Gate::pass(Evidence::InvariantProof);
+        state.gates.analysis = Gate::pass(Evidence::AnalysisReport);
+        state.gates.judgment = Gate::pass(Evidence::JudgmentRecord);
+        state.gates.plan = Gate::pass(Evidence::TaskReady);
+
+        let mut tlog = Vec::new();
+        let record = ToolExecutionRecord::from_packet(state.packet);
+        let response = crate::api::routes::handle_command(
+            &mut state,
+            &mut tlog,
+            RuntimeConfig::default(),
+            crate::api::protocol::Command::SubmitEvidence(record.submission()),
+        )
+        .unwrap();
+
+        assert_eq!(response.event.from, Phase::Execute);
+        assert_eq!(response.event.to, Phase::Verify);
+        assert_eq!(response.event.evidence, Evidence::ArtifactReceipt);
+        assert_eq!(state.gates.execution.status, GateStatus::Pass);
+        assert!(state.packet.artifact_receipt_valid());
+        verify_tlog(&tlog).unwrap();
+    }
+
+    #[test]
+    fn verification_record_repairs_lineage_through_api() {
+        let mut state = State::default();
+        state.phase = Phase::Verify;
+        state.packet.bind_ready_task();
+        state.packet.materialize_artifact();
+        state.packet.artifact_lineage_hash = 0;
+        state.gates.invariant = Gate::pass(Evidence::InvariantProof);
+        state.gates.analysis = Gate::pass(Evidence::AnalysisReport);
+        state.gates.judgment = Gate::pass(Evidence::JudgmentRecord);
+        state.gates.plan = Gate::pass(Evidence::TaskReady);
+        state.gates.execution = Gate::pass(Evidence::ArtifactReceipt);
+
+        let mut tlog = Vec::new();
+        let record = VerificationRecord::from_packet(state.packet);
+        let response = crate::api::routes::handle_command(
+            &mut state,
+            &mut tlog,
+            RuntimeConfig::default(),
+            crate::api::protocol::Command::SubmitEvidence(record.submission()),
+        )
+        .unwrap();
+
+        assert_eq!(response.event.from, Phase::Verify);
+        assert_eq!(response.event.to, Phase::Eval);
+        assert_eq!(response.event.evidence, Evidence::LineageProof);
+        assert_eq!(state.gates.verification.status, GateStatus::Pass);
+        assert!(state.packet.lineage_valid());
+        verify_tlog(&tlog).unwrap();
+    }
+
+    #[test]
+    fn verification_profile_hashes_packet_semantics() {
+        let mut packet = Packet::empty();
+        packet.bind_ready_task();
+        packet.materialize_artifact();
+
+        let profile = ArtifactSemanticProfile::from_packet(packet);
+        let record = VerificationRecord::from_packet(packet);
+
+        assert!(profile.receipt_valid());
+        assert!(profile.lineage_valid());
+        assert!(record.is_valid());
+        assert!(record.lineage_already_valid());
+        assert_eq!(record.semantic_profile, profile);
+        assert_eq!(record.expected_receipt_hash, packet.expected_receipt_hash());
+        assert_eq!(record.expected_lineage_hash, packet.expected_lineage_hash());
+    }
+
+    #[test]
+    fn semantic_verification_rejects_receipt_mismatch() {
+        let mut packet = Packet::empty();
+        packet.bind_ready_task();
+        packet.materialize_artifact();
+        packet.artifact_bytes = packet.artifact_bytes.saturating_add(1);
+
+        let record = VerificationRecord::from_packet(packet);
+
+        assert_eq!(record.decision(), VerificationDecision::Rejected);
+        assert!(!record.is_valid());
+        assert!(!record.submission().passed);
+    }
+
+    #[test]
+    fn semantic_verification_rejects_tampered_profile_hash() {
+        let mut packet = Packet::empty();
+        packet.bind_ready_task();
+        packet.materialize_artifact();
+
+        let mut record = VerificationRecord::from_packet(packet);
+        record.semantic_profile_hash = record.semantic_profile_hash.saturating_add(1);
+
+        assert_eq!(record.decision(), VerificationDecision::Rejected);
+        assert!(!record.is_valid());
+        assert!(!record.submission().passed);
+    }
+
+    #[test]
+    fn invalid_semantic_verification_fails_without_repairing_lineage() {
+        let mut state = State::default();
+        state.phase = Phase::Verify;
+        state.packet.bind_ready_task();
+        state.packet.materialize_artifact();
+        state.packet.artifact_lineage_hash = 0;
+        state.packet.artifact_bytes = state.packet.artifact_bytes.saturating_add(1);
+        state.gates.invariant = Gate::pass(Evidence::InvariantProof);
+        state.gates.analysis = Gate::pass(Evidence::AnalysisReport);
+        state.gates.judgment = Gate::pass(Evidence::JudgmentRecord);
+        state.gates.plan = Gate::pass(Evidence::TaskReady);
+        state.gates.execution = Gate::pass(Evidence::ArtifactReceipt);
+
+        let mut tlog = Vec::new();
+        let record = VerificationRecord::from_packet(state.packet);
+        let response = crate::api::routes::handle_command(
+            &mut state,
+            &mut tlog,
+            RuntimeConfig::default(),
+            crate::api::protocol::Command::SubmitEvidence(record.submission()),
+        )
+        .unwrap();
+
+        assert_eq!(response.event.from, Phase::Verify);
+        assert_eq!(response.event.to, Phase::Recovery);
+        assert_eq!(response.event.failure, Some(FailureClass::VerificationFailed));
+        assert_eq!(state.gates.verification.status, GateStatus::Fail);
+        assert!(!state.packet.lineage_valid());
+        verify_tlog(&tlog).unwrap();
+    }
+
+    #[test]
+    fn capability_records_drive_objective_from_plan_to_persist() {
+        let mut state = State::default();
+        state.phase = Phase::Plan;
+        state.gates.invariant = Gate::pass(Evidence::InvariantProof);
+        state.gates.analysis = Gate::pass(Evidence::AnalysisReport);
+        state.gates.judgment = Gate::pass(Evidence::JudgmentRecord);
+
+        let mut tlog = Vec::new();
+        let cfg = RuntimeConfig::default();
+
+        let plan = PlanRecord::from_packet(state.packet);
+        crate::api::routes::handle_command(
+            &mut state,
+            &mut tlog,
+            cfg,
+            crate::api::protocol::Command::SubmitEvidence(plan.submission()),
+        )
+        .unwrap();
+
+        let tool = ToolExecutionRecord::from_packet(state.packet);
+        crate::api::routes::handle_command(
+            &mut state,
+            &mut tlog,
+            cfg,
+            crate::api::protocol::Command::SubmitEvidence(tool.submission()),
+        )
+        .unwrap();
+
+        let verification = VerificationRecord::from_packet(state.packet);
+        crate::api::routes::handle_command(
+            &mut state,
+            &mut tlog,
+            cfg,
+            crate::api::protocol::Command::SubmitEvidence(verification.submission()),
+        )
+        .unwrap();
+
+        let eval = EvalRecord {
+            score: 95,
+            threshold_used: 80,
+            dimensions: vec![EvalDimension {
+                id: "artifact_semantics",
+                score: 95,
+                threshold: 80,
+            }],
+        };
+        crate::api::routes::handle_command(
+            &mut state,
+            &mut tlog,
+            cfg,
+            crate::api::protocol::Command::SubmitEvidence(eval.submission()),
+        )
+        .unwrap();
+
+        assert_eq!(state.phase, Phase::Persist);
+        assert_eq!(state.gates.plan.status, GateStatus::Pass);
+        assert_eq!(state.gates.execution.status, GateStatus::Pass);
+        assert_eq!(state.gates.verification.status, GateStatus::Pass);
+        assert_eq!(state.gates.eval.status, GateStatus::Pass);
+        assert!(state.packet.objective_complete());
+        assert!(state.packet.lineage_valid());
+        verify_tlog(&tlog).unwrap();
     }
 
     #[test]

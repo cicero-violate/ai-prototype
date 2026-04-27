@@ -30,6 +30,9 @@ pub fn semantic_diff(a: State, b: State) -> SemanticDelta {
     if a.packet != b.packet {
         return SemanticDelta::PayloadChanged;
     }
+    if a.gates != b.gates {
+        return SemanticDelta::PayloadChanged;
+    }
     if a.phase != b.phase {
         return SemanticDelta::PhaseAdvanced;
     }

@@ -2,4 +2,4 @@
 
 pub mod promote;
 
-pub use self::promote::{PolicyPromotion, POLICY_PROMOTION_SOURCE_SEQ};
+pub use self::promote::{PolicyPromotion, POLICY_FEEDBACK_HASH, POLICY_PROMOTION_SOURCE_SEQ};

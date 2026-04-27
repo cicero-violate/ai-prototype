@@ -6,6 +6,7 @@ use crate::kernel::ControlEvent;
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Command {
     SubmitEvidence(EvidenceSubmission),
+    SubmitEvidenceBatch(Vec<EvidenceSubmission>),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

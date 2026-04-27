@@ -1,0 +1,378 @@
+*** Begin Patch
+*** Update File: src/capability/mod.rs
+@@
+ pub mod memory;
+ pub mod observation;
++pub mod orchestration;
+ pub mod planning;
+ pub mod policy;
+ pub mod tooling;
+ pub mod verification;
+*** Update File: src/api/protocol.rs
+@@
+ #[derive(Clone, Debug, PartialEq, Eq)]
+ pub enum Command {
+     SubmitEvidence(EvidenceSubmission),
++    SubmitEvidenceBatch(Vec<EvidenceSubmission>),
+ }
+*** Update File: src/api/routes.rs
+@@
+     match command {
+         Command::SubmitEvidence(submission) => {
+             append_submission_event(state, tlog, cfg, submission)?;
+             tick(state, tlog, cfg)?;
+
+             Ok(ControlEventResponse {
+                 event: *tlog.last().ok_or(CanonError::InvalidReplay)?,
+             })
+         }
++        Command::SubmitEvidenceBatch(submissions) => {
++            if submissions.is_empty() {
++                return Err(CanonError::InvalidReplay);
++            }
++
++            for submission in submissions {
++                append_submission_event(state, tlog, cfg, submission)?;
++                tick(state, tlog, cfg)?;
++            }
++
++            Ok(ControlEventResponse {
++                event: *tlog.last().ok_or(CanonError::InvalidReplay)?,
++            })
++        }
+     }
+ }
+*** Add File: src/capability/orchestration/mod.rs
++//! Orchestration capability.
++//!
++//! Orchestration is not a new kernel gate. It deterministically orders existing
++//! capability submissions so the API can drive a run through the already typed
++//! evidence path.
++
++pub mod record;
++
++pub use self::record::{CapabilityRoute, OrchestrationDecision, OrchestrationRecord};
+*** Add File: src/capability/orchestration/record.rs
++//! Deterministic routing records owned by the orchestration capability.
++
++use crate::capability::{EvidenceSubmission, PacketEffect};
++use crate::kernel::{Evidence, GateId, GateStatus, State, EXECUTION_GATE_ORDER};
++
++const ORCHESTRATION_ROUTE_VERSION: u64 = 1;
++
++#[derive(Clone, Copy, Debug, PartialEq, Eq)]
++pub enum OrchestrationDecision {
++    Routed,
++    Empty,
++}
++
++#[derive(Clone, Copy, Debug, PartialEq, Eq)]
++pub struct CapabilityRoute {
++    pub ordinal: u8,
++    pub priority: u8,
++    pub gate: GateId,
++    pub evidence: Evidence,
++    pub ready: bool,
++    pub effect: PacketEffect,
++}
++
++impl CapabilityRoute {
++    pub fn submission(self) -> EvidenceSubmission {
++        EvidenceSubmission::with_effect(self.gate, self.evidence, self.ready, self.effect)
++    }
++
++    pub fn is_valid(self) -> bool {
++        self.ordinal != 0
++            && self.priority != 0
++            && expected_evidence(self.gate) == self.evidence
++            && expected_effect(self.gate) == self.effect
++    }
++}
++
++#[derive(Clone, Debug, PartialEq, Eq)]
++pub struct OrchestrationRecord {
++    pub objective_id: u64,
++    pub route_version: u64,
++    pub priority: u8,
++    pub route_hash: u64,
++    pub routes: Vec<CapabilityRoute>,
++}
++
++impl OrchestrationRecord {
++    pub fn from_state(state: State, priority: u8) -> Self {
++        let priority = priority.max(1);
++        let mut scratch = state;
++        let mut routes = Vec::new();
++
++        for gate in EXECUTION_GATE_ORDER {
++            if scratch.gates.get(gate).status == GateStatus::Pass {
++                continue;
++            }
++
++            let evidence = expected_evidence(gate);
++            let effect = expected_effect(gate);
++            let ready = route_ready(scratch, gate);
++            let route = CapabilityRoute {
++                ordinal: routes.len().saturating_add(1).min(u8::MAX as usize) as u8,
++                priority,
++                gate,
++                evidence,
++                ready,
++                effect,
++            };
++
++            if ready {
++                effect.apply_to(&mut scratch);
++                scratch.apply_evidence(gate, evidence, true);
++            }
++
++            routes.push(route);
++        }
++
++        let route_hash = route_hash(
++            state.packet.objective_id,
++            ORCHESTRATION_ROUTE_VERSION,
++            priority,
++            &routes,
++        );
++
++        Self {
++            objective_id: state.packet.objective_id,
++            route_version: ORCHESTRATION_ROUTE_VERSION,
++            priority,
++            route_hash,
++            routes,
++        }
++    }
++
++    pub fn decision(&self) -> OrchestrationDecision {
++        if self.is_valid() && self.routes.iter().any(|route| route.ready) {
++            OrchestrationDecision::Routed
++        } else {
++            OrchestrationDecision::Empty
++        }
++    }
++
++    pub fn is_valid(&self) -> bool {
++        self.objective_id != 0
++            && self.route_version == ORCHESTRATION_ROUTE_VERSION
++            && self.priority != 0
++            && !self.routes.is_empty()
++            && self
++                .routes
++                .iter()
++                .copied()
++                .all(CapabilityRoute::is_valid)
++            && self
++                .routes
++                .windows(2)
++                .all(|pair| pair[0].ordinal < pair[1].ordinal)
++            && self.route_hash
++                == route_hash(
++                    self.objective_id,
++                    self.route_version,
++                    self.priority,
++                    &self.routes,
++                )
++    }
++
++    pub fn ordered_submissions(&self) -> Vec<EvidenceSubmission> {
++        if self.decision() != OrchestrationDecision::Routed {
++            return Vec::new();
++        }
++
++        let mut routes = self.routes.clone();
++        routes.sort_by(|a, b| {
++            b.priority
++                .cmp(&a.priority)
++                .then_with(|| a.ordinal.cmp(&b.ordinal))
++                .then_with(|| (a.gate as u8).cmp(&(b.gate as u8)))
++        });
++        routes
++            .into_iter()
++            .filter(|route| route.ready)
++            .map(CapabilityRoute::submission)
++            .collect()
++    }
++}
++
++fn route_ready(state: State, gate: GateId) -> bool {
++    match gate {
++        GateId::Invariant | GateId::Analysis | GateId::Judgment => true,
++        GateId::Plan => state.packet.objective_id != 0 && state.packet.objective_required_tasks != 0,
++        GateId::Execution => state.packet.has_ready_task(),
++        GateId::Verification => state.packet.artifact_receipt_valid(),
++        GateId::Eval => state.packet.lineage_valid(),
++        GateId::Learning => false,
++    }
++}
++
++fn expected_evidence(gate: GateId) -> Evidence {
++    match gate {
++        GateId::Invariant => Evidence::InvariantProof,
++        GateId::Analysis => Evidence::AnalysisReport,
++        GateId::Judgment => Evidence::JudgmentRecord,
++        GateId::Plan => Evidence::TaskReady,
++        GateId::Execution => Evidence::ArtifactReceipt,
++        GateId::Verification => Evidence::LineageProof,
++        GateId::Eval => Evidence::EvalScore,
++        GateId::Learning => Evidence::PolicyPromotion,
++    }
++}
++
++fn expected_effect(gate: GateId) -> PacketEffect {
++    match gate {
++        GateId::Plan => PacketEffect::BindReadyTask,
++        GateId::Execution => PacketEffect::MaterializeArtifact,
++        GateId::Verification => PacketEffect::RepairLineage,
++        GateId::Eval => PacketEffect::CompleteObjective,
++        GateId::Invariant | GateId::Analysis | GateId::Judgment | GateId::Learning => {
++            PacketEffect::None
++        }
++    }
++}
++
++fn route_hash(
++    objective_id: u64,
++    route_version: u64,
++    priority: u8,
++    routes: &[CapabilityRoute],
++) -> u64 {
++    let mut h = 0xbf58476d1ce4e5b9u64;
++    h = mix(h, objective_id);
++    h = mix(h, route_version);
++    h = mix(h, priority as u64);
++    for route in routes {
++        h = mix(h, route.ordinal as u64);
++        h = mix(h, route.priority as u64);
++        h = mix(h, route.gate as u64);
++        h = mix(h, route.evidence as u64);
++        h = mix(h, route.ready as u64);
++        h = mix(h, packet_effect_id(route.effect));
++    }
++    h.max(1)
++}
++
++fn packet_effect_id(effect: PacketEffect) -> u64 {
++    match effect {
++        PacketEffect::None => 0,
++        PacketEffect::BindReadyTask => 1,
++        PacketEffect::MaterializeArtifact => 2,
++        PacketEffect::RepairLineage => 3,
++        PacketEffect::CompleteObjective => 4,
++    }
++}
++
++fn mix(mut h: u64, x: u64) -> u64 {
++    h ^= x;
++    h = h.wrapping_mul(0x100000001b3);
++    h
++}
+*** Update File: src/lib.rs
+@@
+ pub use crate::capability::memory::{MemoryFact, MemoryIndex, MemoryLookupRecord};
+ pub use crate::capability::observation::{ObservationDecision, ObservationRecord};
++pub use crate::capability::orchestration::{
++    CapabilityRoute, OrchestrationDecision, OrchestrationRecord,
++};
+ pub use crate::capability::planning::{PlanDecision, PlanRecord};
+ pub use crate::capability::policy::{PolicyEntry, PolicyStore, PolicyStoreError};
+ pub use crate::capability::tooling::{ToolDecision, ToolExecutionRecord};
+@@
+ pub use crate::kernel::{
+     Cause, ControlEvent, Decision, EventKind, Evidence, FailureClass, Gate, GateId, GateSet,
+     GateStatus, Packet, Phase, RecoveryAction, RuntimeConfig, SemanticDelta, State, TLog,
+-    GATE_ORDER, PHASES,
++    EXECUTION_GATE_ORDER, GATE_ORDER, PHASES,
+ };
+@@
+         assert_eq!(state.gates.judgment.status, GateStatus::Pass);
+         verify_tlog(&tlog).unwrap();
+     }
+
++    #[test]
++    fn orchestration_record_orders_ready_submissions() {
++        let mut state = State::default();
++        state.phase = Phase::Invariant;
++
++        let record = OrchestrationRecord::from_state(state, 9);
++        assert_eq!(record.decision(), OrchestrationDecision::Routed);
++        assert!(record.is_valid());
++        assert_eq!(record.routes.len(), EXECUTION_GATE_ORDER.len());
++
++        let submissions = record.ordered_submissions();
++        assert_eq!(submissions.len(), EXECUTION_GATE_ORDER.len());
++        assert_eq!(submissions[0].gate, GateId::Invariant);
++        assert_eq!(submissions[1].gate, GateId::Analysis);
++        assert_eq!(submissions[2].gate, GateId::Judgment);
++        assert_eq!(submissions[3].gate, GateId::Plan);
++        assert_eq!(submissions[4].gate, GateId::Execution);
++        assert_eq!(submissions[5].gate, GateId::Verification);
++        assert_eq!(submissions[6].gate, GateId::Eval);
++    }
++
++    #[test]
++    fn orchestration_batch_drives_execution_path_to_persist() {
++        let mut state = State::default();
++        let mut tlog = Vec::new();
++        let cfg = RuntimeConfig::default();
++        tick(&mut state, &mut tlog, cfg).unwrap();
++        assert_eq!(state.phase, Phase::Invariant);
++
++        let record = OrchestrationRecord::from_state(state, 7);
++        let response = crate::api::routes::handle_command(
++            &mut state,
++            &mut tlog,
++            cfg,
++            crate::api::protocol::Command::SubmitEvidenceBatch(record.ordered_submissions()),
++        )
++        .unwrap();
++
++        assert_eq!(response.event.from, Phase::Eval);
++        assert_eq!(response.event.to, Phase::Persist);
++        assert_eq!(response.event.evidence, Evidence::EvalScore);
++        assert_eq!(state.phase, Phase::Persist);
++        assert!(state.gates.all_execution_passed());
++        assert!(state.packet.objective_complete());
++        assert!(state.packet.lineage_valid());
++        verify_tlog(&tlog).unwrap();
++    }
++
++    #[test]
++    fn orchestration_skips_already_passed_gates() {
++        let mut state = State::default();
++        state.phase = Phase::Plan;
++        state.gates.invariant = Gate::pass(Evidence::InvariantProof);
++        state.gates.analysis = Gate::pass(Evidence::AnalysisReport);
++        state.gates.judgment = Gate::pass(Evidence::JudgmentRecord);
++
++        let record = OrchestrationRecord::from_state(state, 3);
++        let submissions = record.ordered_submissions();
++
++        assert_eq!(submissions.len(), 4);
++        assert_eq!(submissions[0].gate, GateId::Plan);
++        assert_eq!(submissions[1].gate, GateId::Execution);
++        assert_eq!(submissions[2].gate, GateId::Verification);
++        assert_eq!(submissions[3].gate, GateId::Eval);
++    }
++
++    #[test]
++    fn empty_orchestration_batch_is_rejected() {
++        let mut state = State::default();
++        state.phase = Phase::Invariant;
++        let mut tlog = Vec::new();
++
++        let result = crate::api::routes::handle_command(
++            &mut state,
++            &mut tlog,
++            RuntimeConfig::default(),
++            crate::api::protocol::Command::SubmitEvidenceBatch(Vec::new()),
++        );
++
++        assert_eq!(result, Err(CanonError::InvalidReplay));
++    }
++
+     #[test]
+     fn planning_record_binds_ready_task_through_api() {
+         let mut state = State::default();
+*** End Patch

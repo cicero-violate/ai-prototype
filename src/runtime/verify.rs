@@ -5,11 +5,11 @@ use std::path::Path;
 use crate::codec::ndjson::load_tlog_ndjson;
 use crate::kernel::{
     mix, Cause, ControlEvent, Decision, EventKind, Evidence, FailureClass, GateId, GateSet,
-    Packet, Phase, RecoveryAction, RuntimeConfig, SemanticDelta, State, GATE_ORDER,
+    GateStatus, Packet, Phase, RecoveryAction, RuntimeConfig, SemanticDelta, State, GATE_ORDER,
 };
 
 use super::transition_table::TRANSITIONS;
-use super::{convergence_outcome, reduce, semantic_diff, CanonError, CanonicalWriter};
+use super::{convergence_outcome, reduce, semantic_diff, CanonError, CanonicalWriter, Outcome};
 
 #[derive(Clone, Copy)]
 pub(crate) struct EventView {
@@ -137,6 +137,67 @@ pub fn legal_transition(from: Phase, to: Phase, kind: EventKind, cause: Cause) -
     })
 }
 
+fn evidence_submission_outcome(before: State, event: &ControlEvent) -> Result<Outcome, CanonError> {
+    if event.from != event.to || event.failure.is_some() || event.recovery_action.is_some() {
+        return Err(CanonError::InvalidReplay);
+    }
+
+    let gate_id = event.affected_gate.ok_or(CanonError::MissingAffectedGate)?;
+    let gate_after = event.state_after.gates.get(gate_id);
+    let passed = match gate_after.status {
+        GateStatus::Pass => true,
+        GateStatus::Fail => false,
+        GateStatus::Unknown => return Err(CanonError::InvalidReplay),
+    };
+
+    if gate_after.evidence != event.evidence {
+        return Err(CanonError::InvalidReplay);
+    }
+
+    let mut expected = before;
+    if passed {
+        apply_expected_packet_effect(&mut expected, gate_id, event.evidence);
+    }
+    expected.apply_evidence(gate_id, event.evidence, passed);
+
+    if expected != event.state_after {
+        return Err(CanonError::InvalidReplay);
+    }
+
+    Ok(Outcome {
+        state: expected,
+        kind: EventKind::Persisted,
+        cause: Cause::EvidenceSubmitted,
+        evidence: event.evidence,
+        decision: if passed {
+            Decision::Continue
+        } else {
+            Decision::Block
+        },
+        failure: None,
+        recovery_action: None,
+        affected_gate: Some(gate_id),
+    })
+}
+
+fn apply_expected_packet_effect(state: &mut State, gate_id: GateId, evidence: Evidence) {
+    match (gate_id, evidence) {
+        (GateId::Plan, Evidence::TaskReady | Evidence::PlanRecord) => {
+            state.packet.bind_ready_task();
+        }
+        (GateId::Execution, Evidence::ArtifactReceipt | Evidence::ExecutionReceipt) => {
+            state.packet.materialize_artifact();
+        }
+        (GateId::Verification, Evidence::LineageProof | Evidence::VerificationReport) => {
+            state.packet.repair_lineage();
+        }
+        (GateId::Eval, Evidence::EvalScore) => {
+            state.packet.complete_objective();
+        }
+        _ => {}
+    }
+}
+
 pub fn replay_tlog_ndjson(
     initial: State,
     path: impl AsRef<Path>,
@@ -231,6 +292,8 @@ pub fn verify_tlog_from(initial: State, tlog: &[ControlEvent]) -> Result<State, 
 
         let expected_outcome = if event.cause == Cause::MaxSteps {
             convergence_outcome(state)
+        } else if event.cause == Cause::EvidenceSubmitted {
+            evidence_submission_outcome(state, event)?
         } else {
             reduce(state, event.runtime_config)
         };

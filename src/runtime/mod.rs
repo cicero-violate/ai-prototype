@@ -211,6 +211,7 @@ pub fn touch_all_surfaces() -> usize {
         Cause::MaxSteps,
         Cause::Persisted,
         Cause::PolicyPromoted,
+        Cause::EvidenceSubmitted,
     ];
     let decisions = [
         Decision::Continue,

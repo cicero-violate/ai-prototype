@@ -16,11 +16,7 @@ impl JudgmentRecord {
     }
 
     pub fn submission(&self) -> EvidenceSubmission {
-        EvidenceSubmission {
-            gate: GateId::Judgment,
-            evidence: Evidence::JudgmentRecord,
-            passed: self.is_valid(),
-        }
+        EvidenceSubmission::new(GateId::Judgment, Evidence::JudgmentRecord, self.is_valid())
     }
 }
 

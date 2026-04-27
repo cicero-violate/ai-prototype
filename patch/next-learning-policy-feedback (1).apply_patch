@@ -1,0 +1,437 @@
+*** Begin Patch
+*** Update File: src/capability/learning/mod.rs
+@@ -2,4 +2,4 @@
+ 
+ pub mod promote;
+ 
+-pub use self::promote::{PolicyPromotion, POLICY_PROMOTION_SOURCE_SEQ};
++pub use self::promote::{PolicyPromotion, POLICY_FEEDBACK_HASH, POLICY_PROMOTION_SOURCE_SEQ};
+*** Update File: src/capability/learning/promote.rs
+@@ -4,33 +4,63 @@
+ use crate::kernel::{ControlEvent, EventKind, Evidence, GateId, Phase};
+ 
+ pub const POLICY_PROMOTION_SOURCE_SEQ: &str = "learning.policy_promotion.source_seq";
++pub const POLICY_FEEDBACK_HASH: &str = "learning.policy_feedback.hash";
+ 
+ #[derive(Clone, Debug, PartialEq, Eq)]
+ pub struct PolicyPromotion {
+     pub source_seq: u64,
+     pub promoted_policy_version: u64,
++    pub judgment_seq: u64,
++    pub eval_seq: u64,
++    pub completion_seq: u64,
++    pub promoted_policy_hash: u64,
+     pub evidence: Evidence,
+ }
+ 
+ impl PolicyPromotion {
+     pub fn from_tlog(tlog: &[ControlEvent], promoted_policy_version: u64) -> Option<Self> {
+-        tlog.iter()
++        let eval_event = tlog.iter().rev().find(|event| {
++            event.kind == EventKind::Advanced
++                && event.to == Phase::Persist
++                && event.evidence == Evidence::EvalScore
++        })?;
++
++        let judgment_event = tlog.iter().rev().find(|event| {
++            event.seq < eval_event.seq
++                && event.kind == EventKind::Advanced
++                && event.evidence == Evidence::JudgmentRecord
++        })?;
++
++        let completion_event = tlog
++            .iter()
+             .rev()
+-            .find(|event| {
+-                event.kind == EventKind::Advanced
+-                    && event.to == Phase::Persist
+-                    && event.evidence == Evidence::EvalScore
+-            })
+-            .map(|event| Self {
+-                source_seq: event.seq,
+-                promoted_policy_version,
+-                evidence: Evidence::PolicyPromotion,
+-            })
++            .find(|event| event.kind == EventKind::Learned || event.kind == EventKind::Completed)?;
++
++        let promoted_policy_hash = promotion_hash(
++            promoted_policy_version,
++            judgment_event,
++            eval_event,
++            completion_event,
++        );
++
++        Some(Self {
++            source_seq: eval_event.seq,
++            promoted_policy_version,
++            judgment_seq: judgment_event.seq,
++            eval_seq: eval_event.seq,
++            completion_seq: completion_event.seq,
++            promoted_policy_hash,
++            evidence: Evidence::PolicyPromotion,
++        })
+     }
+ 
+     pub fn is_valid(&self) -> bool {
+         self.source_seq != 0
+             && self.promoted_policy_version != 0
++            && self.judgment_seq != 0
++            && self.eval_seq == self.source_seq
++            && self.completion_seq >= self.eval_seq
++            && self.promoted_policy_hash != 0
+             && self.evidence == Evidence::PolicyPromotion
+     }
+ 
+@@ -50,3 +80,26 @@
+         PolicyPromotion::submission(self)
+     }
+ }
++
++fn promotion_hash(
++    promoted_policy_version: u64,
++    judgment_event: &ControlEvent,
++    eval_event: &ControlEvent,
++    completion_event: &ControlEvent,
++) -> u64 {
++    let mut h = 0x732f_6a61_2d70_6f6cu64;
++    h = mix(h, promoted_policy_version);
++    h = mix(h, judgment_event.seq);
++    h = mix(h, judgment_event.self_hash);
++    h = mix(h, eval_event.seq);
++    h = mix(h, eval_event.self_hash);
++    h = mix(h, completion_event.seq);
++    h = mix(h, completion_event.self_hash);
++    h.max(1)
++}
++
++fn mix(mut h: u64, x: u64) -> u64 {
++    h ^= x;
++    h = h.wrapping_mul(0x100000001b3);
++    h
++}
+*** Update File: src/capability/llm/record.rs
+@@ -20,6 +20,7 @@
+     pub schema_version: u64,
+     pub context_hash: u64,
+     pub policy_version: u64,
++    pub policy_hash: u64,
+     pub prompt_hash: u64,
+ }
+ 
+@@ -28,6 +29,7 @@
+         self.schema_version == LLM_JUDGMENT_SCHEMA_VERSION
+             && self.context_hash != 0
+             && self.policy_version != 0
++            && self.policy_hash != 0
+             && self.prompt_hash != 0
+     }
+ }
+@@ -65,19 +67,21 @@
+         model_id: u64,
+     ) -> Self {
+         let policy_version = policy.latest_version().max(1);
++        let policy_hash = policy.fingerprint();
+         let prompt_hash = if context.is_valid() {
+-            prompt_hash(context, policy_version)
++            prompt_hash(context, policy_version, policy_hash)
+         } else {
+             0
+         };
+-        let response_hash = response_hash(context, model_id, prompt_hash);
+-        let rationale_hash = rationale_hash(context, response_hash, policy_version);
++        let response_hash = response_hash(context, model_id, prompt_hash, policy_hash);
++        let rationale_hash = rationale_hash(context, response_hash, policy_version, policy_hash);
+ 
+         Self {
+             prompt: LlmPromptRecord {
+                 schema_version: LLM_JUDGMENT_SCHEMA_VERSION,
+                 context_hash: context.context_hash,
+                 policy_version,
++                policy_hash,
+                 prompt_hash,
+             },
+             response: LlmResponseRecord {
+@@ -150,7 +154,7 @@
+     }
+ }
+ 
+-fn prompt_hash(context: &ContextRecord, policy_version: u64) -> u64 {
++fn prompt_hash(context: &ContextRecord, policy_version: u64, policy_hash: u64) -> u64 {
+     let mut h = 0x106689d45497fdb5u64;
+     h = mix(h, context.objective_id);
+     h = mix(h, context.observation_hash);
+@@ -158,26 +162,39 @@
+     h = mix(h, context.context_hash);
+     h = mix(h, context.prior_count as u64);
+     h = mix(h, policy_version);
++    h = mix(h, policy_hash);
+     h = mix(h, LLM_JUDGMENT_SCHEMA_VERSION);
+     h.max(1)
+ }
+ 
+-fn response_hash(context: &ContextRecord, model_id: u64, prompt_hash: u64) -> u64 {
++fn response_hash(
++    context: &ContextRecord,
++    model_id: u64,
++    prompt_hash: u64,
++    policy_hash: u64,
++) -> u64 {
+     let mut h = 0x6c62272e07bb0142u64;
+     h = mix(h, model_id);
+     h = mix(h, prompt_hash);
++    h = mix(h, policy_hash);
+     h = mix(h, context.context_hash);
+     h = mix(h, context.memory_aggregate_hash);
+     h = mix(h, LLM_JUDGMENT_SCHEMA_HASH);
+     h.max(1)
+ }
+ 
+-fn rationale_hash(context: &ContextRecord, response_hash: u64, policy_version: u64) -> u64 {
++fn rationale_hash(
++    context: &ContextRecord,
++    response_hash: u64,
++    policy_version: u64,
++    policy_hash: u64,
++) -> u64 {
+     let mut h = 0x80a3dc05d5f2d4f7u64;
+     h = mix(h, context.objective_id);
+     h = mix(h, context.context_hash);
+     h = mix(h, response_hash);
+     h = mix(h, policy_version);
++    h = mix(h, policy_hash);
+     h.max(1)
+ }
+ 
+*** Update File: src/capability/policy/store.rs
+@@ -4,11 +4,14 @@
+ use std::io::{BufRead, BufReader, Write};
+ use std::path::Path;
+ 
+-use crate::capability::learning::{PolicyPromotion, POLICY_PROMOTION_SOURCE_SEQ};
++use crate::capability::learning::{
++    PolicyPromotion, POLICY_FEEDBACK_HASH, POLICY_PROMOTION_SOURCE_SEQ,
++};
+ 
+ const POLICY_SCHEMA_VERSION: u64 = 1;
+ const POLICY_RECORD_ENTRY: u64 = 1;
+ const POLICY_KEY_PROMOTION_SOURCE_SEQ: u64 = 1;
++const POLICY_KEY_FEEDBACK_HASH: u64 = 2;
+ 
+ #[derive(Clone, Debug, PartialEq, Eq)]
+ pub struct PolicyEntry {
+@@ -77,6 +80,23 @@
+             version: promotion.promoted_policy_version,
+             key: POLICY_PROMOTION_SOURCE_SEQ,
+             value: promotion.source_seq,
++        })?;
++
++        self.entries.last().ok_or(PolicyStoreError::InvalidPromotion)
++    }
++
++    pub fn promote_feedback(
++        &mut self,
++        promotion: PolicyPromotion,
++    ) -> Result<&PolicyEntry, PolicyStoreError> {
++        if !promotion.is_valid() {
++            return Err(PolicyStoreError::InvalidPromotion);
++        }
++
++        self.try_append(PolicyEntry {
++            version: promotion.promoted_policy_version,
++            key: POLICY_FEEDBACK_HASH,
++            value: promotion.promoted_policy_hash,
+         })?;
+ 
+         self.entries.last().ok_or(PolicyStoreError::InvalidPromotion)
+@@ -101,6 +121,25 @@
+         )
+     }
+ 
++    pub fn promote_feedback_durable(
++        &mut self,
++        path: impl AsRef<Path>,
++        promotion: PolicyPromotion,
++    ) -> Result<&PolicyEntry, PolicyStoreError> {
++        if !promotion.is_valid() {
++            return Err(PolicyStoreError::InvalidPromotion);
++        }
++
++        self.append_durable(
++            path,
++            PolicyEntry {
++                version: promotion.promoted_policy_version,
++                key: POLICY_FEEDBACK_HASH,
++                value: promotion.promoted_policy_hash,
++            },
++        )
++    }
++
+     pub fn load_ndjson(path: impl AsRef<Path>) -> Result<Self, PolicyStoreError> {
+         let path = path.as_ref();
+         if !path.exists() {
+@@ -132,6 +171,27 @@
+             .map(|entry| entry.version)
+             .max()
+             .unwrap_or(0)
++    }
++
++    pub fn latest_value(&self, key: &str) -> Option<u64> {
++        self.latest(key).map(|entry| entry.value)
++    }
++
++    pub fn feedback_hash(&self) -> u64 {
++        self.latest_value(POLICY_FEEDBACK_HASH).unwrap_or(0)
++    }
++
++    pub fn fingerprint(&self) -> u64 {
++        let mut h = 0xcbf2_9ce4_8422_2325u64;
++
++        for entry in &self.entries {
++            let key_id = key_to_id(entry.key).expect("validated policy key");
++            h = mix(h, entry.version);
++            h = mix(h, key_id);
++            h = mix(h, entry.value);
++        }
++
++        h.max(1)
+     }
+ 
+     pub fn entries(&self) -> &[PolicyEntry] {
+@@ -193,6 +253,7 @@
+ fn key_to_id(key: &str) -> Result<u64, PolicyStoreError> {
+     match key {
+         POLICY_PROMOTION_SOURCE_SEQ => Ok(POLICY_KEY_PROMOTION_SOURCE_SEQ),
++        POLICY_FEEDBACK_HASH => Ok(POLICY_KEY_FEEDBACK_HASH),
+         _ => Err(PolicyStoreError::UnknownPolicyKey),
+     }
+ }
+@@ -200,6 +261,13 @@
+ fn key_from_id(id: u64) -> Result<&'static str, PolicyStoreError> {
+     match id {
+         POLICY_KEY_PROMOTION_SOURCE_SEQ => Ok(POLICY_PROMOTION_SOURCE_SEQ),
++        POLICY_KEY_FEEDBACK_HASH => Ok(POLICY_FEEDBACK_HASH),
+         _ => Err(PolicyStoreError::UnknownPolicyKey),
+     }
+ }
++
++fn mix(mut h: u64, x: u64) -> u64 {
++    h ^= x;
++    h = h.wrapping_mul(0x100000001b3);
++    h
++}
+*** Update File: src/lib.rs
+@@ -13,7 +13,9 @@
+ 
+ pub use crate::capability::context::{ContextDecision, ContextRecord};
+ pub use crate::capability::eval::{EvalDecision, EvalDimension, EvalRecord};
+-pub use crate::capability::learning::PolicyPromotion;
++pub use crate::capability::learning::{
++    PolicyPromotion, POLICY_FEEDBACK_HASH, POLICY_PROMOTION_SOURCE_SEQ,
++};
+ pub use crate::capability::llm::{
+     LlmDecision, LlmPromptRecord, LlmRecord, LlmResponseRecord, LlmStructuredAdapter,
+ };
+@@ -417,6 +419,102 @@
+         assert_eq!(submission.gate, GateId::Judgment);
+         assert_eq!(submission.evidence, Evidence::JudgmentRecord);
+         assert!(submission.passed);
++    }
++
++    #[test]
++    fn policy_feedback_entry_roundtrips_and_fingerprints() {
++        let (_state, tlog) = run_until_done(State::ready(), RuntimeConfig::default()).unwrap();
++        let promotion = PolicyPromotion::from_tlog(&tlog, 1).unwrap();
++        assert!(promotion.is_valid());
++        assert_eq!(promotion.eval_seq, promotion.source_seq);
++        assert!(promotion.judgment_seq < promotion.eval_seq);
++        assert!(promotion.completion_seq >= promotion.eval_seq);
++        assert_ne!(promotion.promoted_policy_hash, 0);
++
++        let path = std::env::temp_dir().join(format!(
++            "ai-policy-feedback-{}-{}.ndjson",
++            std::process::id(),
++            promotion.promoted_policy_hash
++        ));
++        std::fs::remove_file(&path).ok();
++
++        let mut store = PolicyStore::default();
++        let empty_fingerprint = store.fingerprint();
++        let entry = store
++            .promote_feedback_durable(&path, promotion.clone())
++            .unwrap()
++            .clone();
++        let loaded = PolicyStore::load_ndjson(&path).unwrap();
++        std::fs::remove_file(&path).ok();
++
++        assert_eq!(entry.key, POLICY_FEEDBACK_HASH);
++        assert_eq!(entry.value, promotion.promoted_policy_hash);
++        assert_eq!(store.feedback_hash(), promotion.promoted_policy_hash);
++        assert_ne!(store.fingerprint(), empty_fingerprint);
++        assert_eq!(loaded.entries(), &[entry]);
++        assert_eq!(loaded.feedback_hash(), promotion.promoted_policy_hash);
++    }
++
++    #[test]
++    fn policy_feedback_changes_llm_prompt_and_judgment() {
++        let packet = Packet::empty();
++        let mut memory = MemoryIndex::default();
++        assert!(memory.insert(MemoryFact::new(packet.objective_id, 0xfeed, 7, 1)));
++        let lookup = memory.lookup(packet.objective_id, 8);
++        let context = ContextRecord::from_packet_memory(packet, 0xabc, &lookup);
++
++        let base_policy = PolicyStore::default();
++        let base_llm = LlmStructuredAdapter::record_from_context(&context, &base_policy, 11);
++
++        let (_state, tlog) = run_until_done(State::ready(), RuntimeConfig::default()).unwrap();
++        let promotion = PolicyPromotion::from_tlog(&tlog, 1).unwrap();
++        let mut feedback_policy = PolicyStore::default();
++        feedback_policy.promote_feedback(promotion).unwrap();
++        let feedback_llm = LlmStructuredAdapter::record_from_context(&context, &feedback_policy, 11);
++
++        assert_eq!(base_llm.prompt.policy_version, feedback_llm.prompt.policy_version);
++        assert_ne!(base_llm.prompt.policy_hash, feedback_llm.prompt.policy_hash);
++        assert_ne!(base_llm.prompt.prompt_hash, feedback_llm.prompt.prompt_hash);
++        assert_ne!(base_llm.response.response_hash, feedback_llm.response.response_hash);
++        assert_ne!(base_llm.judgment_record(), feedback_llm.judgment_record());
++    }
++
++    #[test]
++    fn learning_policy_llm_feedback_loop_drives_judgment() {
++        let (_learned_state, learned_tlog) =
++            run_until_done(State::ready(), RuntimeConfig::default()).unwrap();
++        let promotion = PolicyPromotion::from_tlog(&learned_tlog, 1).unwrap();
++        let mut policy = PolicyStore::default();
++        policy.promote_feedback(promotion).unwrap();
++
++        let mut state = State::default();
++        state.phase = Phase::Judgment;
++        state.gates.invariant = Gate::pass(Evidence::InvariantProof);
++        state.gates.analysis = Gate::pass(Evidence::AnalysisReport);
++
++        let mut memory = MemoryIndex::default();
++        assert!(memory.insert(MemoryFact::new(state.packet.objective_id, 0xfeed, 7, 1)));
++        let lookup = memory.lookup(state.packet.objective_id, 8);
++        let context = ContextRecord::from_packet_memory(state.packet, 0xabc, &lookup);
++        let llm = LlmStructuredAdapter::record_from_context(&context, &policy, 11);
++
++        assert_eq!(llm.prompt.policy_hash, policy.fingerprint());
++        assert_eq!(llm.prompt.policy_version, policy.latest_version());
++
++        let mut tlog = Vec::new();
++        let response = crate::api::routes::handle_command(
++            &mut state,
++            &mut tlog,
++            RuntimeConfig::default(),
++            crate::api::protocol::Command::SubmitEvidence(llm.submission()),
++        )
++        .unwrap();
++
++        assert_eq!(response.event.from, Phase::Judgment);
++        assert_eq!(response.event.to, Phase::Plan);
++        assert_eq!(response.event.evidence, Evidence::JudgmentRecord);
++        assert_eq!(state.gates.judgment.status, GateStatus::Pass);
++        verify_tlog(&tlog).unwrap();
+     }
+ 
+     #[test]
+*** End Patch

@@ -1,6 +1,6 @@
 //! Durable eval payload owned by the eval capability.
 
-use crate::capability::{EvidenceProducer, EvidenceSubmission};
+use crate::capability::{EvidenceProducer, EvidenceSubmission, PacketEffect};
 use crate::kernel::{Evidence, GateId};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -39,11 +39,17 @@ impl EvalRecord {
     }
 
     pub fn submission(&self) -> EvidenceSubmission {
-        EvidenceSubmission {
-            gate: GateId::Eval,
-            evidence: Evidence::EvalScore,
-            passed: self.decision() == EvalDecision::Pass,
-        }
+        let passed = self.decision() == EvalDecision::Pass;
+        EvidenceSubmission::with_effect(
+            GateId::Eval,
+            Evidence::EvalScore,
+            passed,
+            if passed {
+                PacketEffect::CompleteObjective
+            } else {
+                PacketEffect::None
+            },
+        )
     }
 }
 
