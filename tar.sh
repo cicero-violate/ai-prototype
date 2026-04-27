@@ -22,5 +22,5 @@
 tar -czf canon-mini-agent.tar.gz -C /workspace/ai_sandbox/canon-mini-agent/prototype/ai \
 .git .gitignore .cargo \
 Cargo.toml Cargo.lock \
-tests plan \
+tests \
 src
