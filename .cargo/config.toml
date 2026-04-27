@@ -28,6 +28,6 @@ rustflags = [
 
 
 [env]
-CANON_RUSTC_V2_ARTIFACT_DIR = "/workspace/ai_sandbox/canon-mini-agent/state/rustc"
+# CANON_RUSTC_V2_ARTIFACT_DIR = "/workspace/ai_sandbox/canon-mini-agent/state/rustc"
 RUST_BACKTRACE = "full"
 
