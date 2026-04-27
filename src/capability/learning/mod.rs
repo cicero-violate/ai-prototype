@@ -2,4 +2,4 @@
 
 pub mod promote;
 
-pub use self::promote::PolicyPromotion;
+pub use self::promote::{PolicyPromotion, POLICY_PROMOTION_SOURCE_SEQ};

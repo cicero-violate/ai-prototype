@@ -8,7 +8,8 @@ use crate::kernel::{
     Packet, Phase, RecoveryAction, RuntimeConfig, SemanticDelta, State, GATE_ORDER,
 };
 
-use super::{convergence_outcome, reduce, semantic_diff, CanonError, CanonicalWriter, TRANSITIONS};
+use super::transition_table::TRANSITIONS;
+use super::{convergence_outcome, reduce, semantic_diff, CanonError, CanonicalWriter};
 
 #[derive(Clone, Copy)]
 pub(crate) struct EventView {

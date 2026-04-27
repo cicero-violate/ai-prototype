@@ -2,4 +2,4 @@
 
 pub mod store;
 
-pub use self::store::{PolicyEntry, PolicyStore};
+pub use self::store::{PolicyEntry, PolicyStore, PolicyStoreError};

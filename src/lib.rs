@@ -12,6 +12,8 @@ pub mod kernel;
 pub mod runtime;
 
 pub use crate::capability::eval::{EvalDecision, EvalDimension, EvalRecord};
+pub use crate::capability::learning::PolicyPromotion;
+pub use crate::capability::policy::{PolicyEntry, PolicyStore, PolicyStoreError};
 pub use crate::codec::ndjson::{append_tlog_ndjson, load_tlog_ndjson, write_tlog_ndjson};
 pub use crate::kernel::{
     Cause, ControlEvent, Decision, EventKind, Evidence, FailureClass, Gate, GateId, GateSet,
@@ -80,6 +82,66 @@ mod tests {
         assert_eq!(tlog.last().unwrap().kind, EventKind::Learned);
         assert_eq!(tlog.last().unwrap().affected_gate, Some(GateId::Learning));
         assert!(tlog.iter().any(|e| e.kind == EventKind::Persisted));
+        verify_tlog(&tlog).unwrap();
+    }
+
+    #[test]
+    fn recovery_policy_covers_every_failure_class() {
+        let failures = [
+            FailureClass::InvariantUnknown,
+            FailureClass::InvariantBlocked,
+            FailureClass::AnalysisMissing,
+            FailureClass::AnalysisFailed,
+            FailureClass::JudgmentMissing,
+            FailureClass::JudgmentFailed,
+            FailureClass::PlanMissing,
+            FailureClass::PlanFailed,
+            FailureClass::PlanReadyQueueEmpty,
+            FailureClass::ExecutionMissing,
+            FailureClass::ExecutionFailed,
+            FailureClass::TaskReceiptMissing,
+            FailureClass::VerificationUnknown,
+            FailureClass::VerificationFailed,
+            FailureClass::ArtifactLineageBroken,
+            FailureClass::EvalMissing,
+            FailureClass::EvalFailed,
+            FailureClass::RecoveryExhausted,
+            FailureClass::ConvergenceFailed,
+            FailureClass::LearningMissing,
+            FailureClass::LearningFailed,
+        ];
+
+        assert_eq!(
+            crate::runtime::recovery_policy::recovery_policy_coverage_count(),
+            failures.len()
+        );
+
+        for failure in failures {
+            let action = crate::runtime::recovery_policy::recovery_action_for(failure);
+            assert_eq!(
+                action == RecoveryAction::Escalate,
+                matches!(
+                    failure,
+                    FailureClass::RecoveryExhausted | FailureClass::ConvergenceFailed
+                )
+            );
+        }
+    }
+
+    #[test]
+    fn learning_materializes_policy_entry_from_tlog_history() {
+        let (_state, tlog) = run_until_done(State::ready(), RuntimeConfig::default()).unwrap();
+
+        let promotion = PolicyPromotion::from_tlog(&tlog, 1).unwrap();
+        assert!(promotion.is_valid());
+
+        let mut store = PolicyStore::default();
+        let entry = store.promote(promotion.clone()).unwrap().clone();
+
+        assert_eq!(entry.version, 1);
+        assert_eq!(entry.value, promotion.source_seq);
+        assert_eq!(store.latest_version(), 1);
+        assert_eq!(store.latest(entry.key), Some(&entry));
         verify_tlog(&tlog).unwrap();
     }
 
