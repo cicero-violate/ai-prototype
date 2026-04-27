@@ -8,7 +8,10 @@ Reviewed files:
 prototype/ai/src/lib.rs
 prototype/ai/src/main.rs
 prototype/ai/Cargo.toml
+prototype/ai/rubric/score.md
 ```
+
+This rubric is a critical rescore only. Earlier inflated scores are removed from the authoritative score file.
 
 ## Variables
 
@@ -19,7 +22,7 @@ J = judgment and gate ordering
 R = recovery determinism
 V = verification strength
 T = test coverage
-S = simplicity / library atomicity
+S = simplicity / sealed atomicity
 G = total goodness
 ```
 
@@ -29,180 +32,179 @@ G = total goodness
 G = (I · E · J · R · V · T · S)^(1/7)
 ```
 
-## Pre-Library Score
-
-The prior source was a strong canonical binary, but not reusable as a crate API:
+## Current Authoritative Score
 
 ```text
-I = 9.3 / 10
-E = 9.4 / 10
-J = 9.2 / 10
-R = 9.2 / 10
-V = 9.5 / 10
-T = 9.2 / 10
-S = 8.3 / 10
+I = 8.2 / 10
+E = 7.0 / 10
+J = 7.8 / 10
+R = 7.3 / 10
+V = 6.8 / 10
+T = 7.5 / 10
+S = 5.8 / 10
 
-G = 9.15 / 10
-max(I,E,J,R,V,T,S) = V = 9.5 / 10
+G = 7.16 / 10
+max(I,E,J,R,V,T,S) = I = 8.2 / 10
 ```
 
-## Critical Review
+## Judgment
 
-The core state machine was already good, but the packaging boundary was wrong:
+The architecture is good, but the previous `9.30 / 10` score was too generous.
 
 ```text
-binary_only(runtime) → low_reuse
-all_logic_in_main_rs → weak_import_surface
-panic_demo_only → weak_embedding_contract
-private_state_types → hard_external_verification
+good_core = deterministic_reduce + explicit_transition_table + typed_failures + hash_chained_events
+missing_guarantee = reducer_replay_verification + atomic_durable_write + schema_version + sealed_invariants
 ```
 
-Main weakness: the program could prove itself internally, but another crate could not cleanly import the runtime, drive it, inspect events, or treat failures as typed errors.
+The runtime has a coherent deterministic state machine, explicit phases, typed failures, recovery routing, disk-backed tlog persistence, and meaningful tests. It is not yet production-grade canonical infrastructure because its proof boundary is incomplete.
 
-## Improvement Applied
+## Major Findings
 
-This iteration converts the program into a library-first crate:
+### 1. Replay verification does not re-run the reducer
 
-- added `src/lib.rs` as the canonical runtime owner
-- reduced `src/main.rs` to a thin binary shell
-- added explicit `[lib]` and `[[bin]]` targets in `Cargo.toml`
-- made core runtime types public: phases, gates, evidence, state, tlog events, failures, recovery actions, config, and errors
-- exposed public execution/verification entry points: `tick`, `run_until_done`, `verify_tlog`, `verify_tlog_from`, `legal_transition`, and `semantic_diff`
-- added `RunReport` and `run_demo()` so callers receive typed output instead of relying on panics
-- implemented `Display` and `std::error::Error` for `CanonError`
+`verify_tlog_from(initial, tlog)` checks sequence numbers, previous hashes, state continuity, semantic deltas, event legality, and self-hashes.
 
-## Updated Score
+It does not recompute:
 
 ```text
-I = 9.3 / 10
-E = 9.4 / 10
-J = 9.2 / 10
-R = 9.2 / 10
-V = 9.5 / 10
-T = 9.2 / 10
-S = 8.5 / 10
-
-G = 9.18 / 10
-max(I,E,J,R,V,T,S) = V = 9.5 / 10
+expected_after = reduce(event.state_before, cfg).state
+expected_after == event.state_after
 ```
 
-## Why The Score Improved
+Therefore the tlog proves that the recorded event chain is internally consistent, but not that each event is the unique canonical output of the reducer.
+
+Impact:
 
 ```text
-G↑ = same_verified_core + reusable_crate_boundary + typed_report_api - monolithic_lib_rs_penalty
+V ↓ because replay_consistency != reducer_correctness
 ```
 
-The runtime is now importable and embeddable without sacrificing deterministic verification.
+### 2. Durable tick mutates memory before disk append succeeds
 
-## Remaining Weaknesses
+`tick_durable` appends the event to the in-memory tlog before `append_tlog_ndjson` succeeds. If disk append fails, memory has advanced but disk has not.
 
-- `src/lib.rs` is still monolithic; modules should split by `phase`, `gate`, `event`, `recovery`, `verify`, and `hash`.
-- Tlog serialization/deserialization is still absent.
-- Hashing is deterministic but non-cryptographic.
-- Transition table maintenance is still manual.
-- Payloads remain compact scalar fields instead of typed external artifact structs.
-- Public fields maximize usability but weaken invariant encapsulation.
-- Build/test execution was not available in this container because no `cargo` or `rustc` binary exists.
+```text
+T_mem = T_mem + event
+T_disk = append_failed
+state = old_state
+```
+
+The function returns an error before advancing state, but the caller-owned `tlog` has already changed. This creates a memory/disk divergence surface.
+
+Impact:
+
+```text
+E ↓ because durable_commit is not atomic across memory and disk
+```
+
+### 3. Hashing is deterministic but not cryptographic
+
+The event hash and lineage hash use a simple FNV-style `u64` mixer:
+
+```text
+h = (h XOR x) · 0x100000001b3
+```
+
+This is acceptable for accidental corruption detection and deterministic replay identity. It is not acceptable as adversarial tamper evidence.
+
+Impact:
+
+```text
+V ↓ if hash_chain is described as security-grade integrity
+```
+
+### 4. NDJSON encoding has no schema version
+
+The tlog record is a positional numeric array. There is no leading schema version or record type tag.
+
+```text
+[seq, from, to, kind, cause, delta, ...]
+```
+
+Adding fields or changing enum layouts risks silent incompatibility or broad decode failure.
+
+Impact:
+
+```text
+E ↓ because forward_compatibility is weak
+```
+
+### 5. Artifact lineage repair is circular
+
+`repair_lineage()` sets `artifact_lineage_hash = expected_lineage_hash()`. That repairs simulated state, but it does not independently verify artifact provenance.
+
+```text
+lineage_valid := stored_hash == expected_hash
+repair := stored_hash = expected_hash
+```
+
+This is useful as a toy repair path, but should be labeled as a simulation assumption rather than a true external artifact verification layer.
+
+Impact:
+
+```text
+R ↓ and V ↓ because repair_success is partially self-declared
+```
+
+### 6. Public mutable fields weaken invariant sealing
+
+`State`, `Packet`, `Gate`, and `GateSet` expose public fields. This makes external construction easy, but allows callers to create invalid states that bypass canonical constructors.
+
+Impact:
+
+```text
+S ↓ because public_shape > invariant_encapsulation
+```
+
+### 7. Runtime surface still contains test/coverage scaffolding
+
+`touch_all_surfaces()` is public and called by the demo path. This improves reachability coverage, but it is not canonical runtime logic.
+
+Impact:
+
+```text
+S ↓ because demo_coverage_surface leaks into runtime_surface
+```
+
+## What Still Scores Well
+
+- deterministic `reduce` pipeline
+- explicit phase and transition model
+- typed failure and recovery action taxonomy
+- recovery is modeled as a first-class phase
+- hash chain covers full before/after state
+- disk tlog replay exists
+- tests cover happy path, recovery path, tampering, continuity, and resume behavior
+
+## Required Improvements For `G ≥ 9.0`
+
+```text
+1. verify_tlog_from must recompute reduce(state_before, cfg) and compare state_after
+2. tick_durable must commit disk first or roll back memory on append failure
+3. tlog encoding must include schema_version and record_type
+4. integrity hash must be renamed non_adversarial_hash or upgraded to BLAKE3/SHA-256
+5. artifact lineage must verify against an independent artifact receipt/provenance record
+6. core state fields should be private or mutation should be constructor/gate-method only
+7. test/demo coverage helpers should move under cfg(test) or a non-runtime diagnostics module
+```
 
 ## Validation
 
 ```text
-static source transformation = pass
-apply_patch execution = pass
-git diff --check = pass
-standard patch dry-run = pass
-cargo build = not run; cargo unavailable
-cargo test = not run; cargo unavailable
+code edits = none
+rubric update = pass
+static source review = pass
+cargo build = not run; rubric-only change
+cargo test = not run; rubric-only change
 ```
 
 ## Final Judgment
 
 ```text
-G = 9.18 / 10
-```
-
-Jesus is Lord and Savior.
----
-
-# Disk TLog Durability Rescore
-
-## Variables
-
-```text
-T_mem = in-memory Vec<ControlEvent>
-T_disk = append-only tlog.ndjson
-R_replay = deterministic replay from disk
-D_durability = cross-run persisted event log
-C_correct = execution correctness
-G = total goodness
-```
-
-## Equation
-
-```text
-C_correct = T_mem ∨ T_disk
-D_durability = T_disk
-R_replay = verify_tlog_from(initial, load(T_disk))
-G = (I · E · J · R · V · T · S)^(1/7)
-```
-
-## Critical Review
-
-The previous library form was correct only inside a process. The hash-chained `Vec<ControlEvent>` verified execution, but state vanished after process exit. That made the design weaker than the canonical tlog-first target:
-
-```text
-old: T_log = T_mem
-new: T_log = T_mem + T_disk
-```
-
-## Improvement Applied
-
-- added append-only numeric JSON-lines event persistence via `tlog.ndjson`
-- added `append_tlog_ndjson`, `write_tlog_ndjson`, `load_tlog_ndjson`, and `replay_tlog_ndjson`
-- added durable execution entry points: `tick_durable` and `run_until_done_durable`
-- startup now loads disk tlog when present and reconstructs state by `verify_tlog_from(initial, tlog)`
-- disk-loaded events are reverified through the existing hash-chain, continuity, semantic-delta, and event legality gates
-- added disk roundtrip and durable resume tests
-
-## Updated Score
-
-```text
-I = 9.4 / 10
-E = 9.8 / 10
-J = 9.2 / 10
-R = 9.4 / 10
-V = 9.6 / 10
-T = 9.4 / 10
-S = 8.4 / 10
-
-G = 9.30 / 10
-max(I,E,J,R,V,T,S) = E = 9.8 / 10
-```
-
-## Remaining Weaknesses
-
-- manual numeric NDJSON encoding is deterministic but not ergonomic
-- disk writes do not call `sync_all`, so crash durability is append-persistent but not fsync-hardened
-- no checksum outside the existing event hash chain
-- library remains monolithic and should still split modules
-- no cargo validation was possible in this container because `cargo`/`rustc` are unavailable
-
-## Validation
-
-```text
-static source transformation = pass
-brace/string surface review = pass
-cargo build = not run; cargo unavailable
-cargo test = not run; cargo unavailable
-```
-
-## Final Judgment
-
-```text
-T_log = T_mem + T_disk
-R_replay = f(T_disk)
-G = 9.30 / 10
+G = 7.16 / 10
 max(intelligence, efficiency, correctness, alignment, robustness) = correctness
 ```
+
+The next improvement should target replay correctness and durable commit atomicity before adding more features.
 
 Jesus is Lord and Savior.
