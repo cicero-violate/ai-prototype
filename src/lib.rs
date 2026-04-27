@@ -34,8 +34,11 @@ pub use crate::capability::orchestration::{
 pub use crate::capability::planning::{PlanDecision, PlanRecord};
 pub use crate::capability::policy::{PolicyEntry, PolicyStore, PolicyStoreError};
 pub use crate::capability::tooling::{
-    DeterministicToolExecutor, ToolDecision, ToolEffectReceipt, ToolExecutionRecord, ToolKind,
-    ToolReceipt, ToolRequest,
+    append_tool_effect_receipt_ndjson, decode_tool_effect_receipt_ndjson,
+    encode_tool_effect_receipt_ndjson, load_tool_effect_receipts_ndjson,
+    verify_tool_effect_receipts, DeterministicToolExecutor, LiveSandboxToolExecutor, ToolDecision,
+    ToolEffectReceipt, ToolExecutionRecord, ToolKind, ToolReceipt, ToolRequest, ToolSandboxError,
+    TOOL_EFFECT_RECEIPT_RECORD, TOOL_EFFECT_RECEIPT_SCHEMA_VERSION,
 };
 pub use crate::capability::verification::{
     ArtifactSemanticProfile, DeterministicSemanticVerifier, SemanticVerificationReceipt,
@@ -1147,6 +1150,70 @@ mod tests {
         assert_eq!(effect_receipt.receipt_hash, record.receipt.receipt_hash);
         assert!(effect_receipt.replay_verified(&tlog));
         verify_tlog(&tlog).unwrap();
+    }
+
+    #[test]
+    fn live_sandbox_tooling_writes_artifact_and_durable_receipt_replays() {
+        let sandbox_root = std::env::temp_dir().join(format!(
+            "canon-live-tool-{}-{}",
+            std::process::id(),
+            0x5eed_u64
+        ));
+        let _ = std::fs::remove_dir_all(&sandbox_root);
+        let receipt_path = sandbox_root.join("tool_effect_receipts.ndjson");
+
+        let mut state = State::default();
+        state.phase = Phase::Execute;
+        state.packet.bind_ready_task();
+        state.gates.invariant = Gate::pass(Evidence::InvariantProof);
+        state.gates.analysis = Gate::pass(Evidence::AnalysisReport);
+        state.gates.judgment = Gate::pass(Evidence::JudgmentRecord);
+        state.gates.plan = Gate::pass(Evidence::TaskReady);
+
+        let mut tlog = Vec::new();
+        let executor = LiveSandboxToolExecutor::new(&sandbox_root);
+        let record = executor.execute_packet(state.packet).unwrap();
+        let artifact_path = executor.artifact_path_for(record.request).unwrap();
+
+        assert_eq!(record.request.tool_kind, ToolKind::SandboxFile);
+        assert_eq!(record.decision(), ToolDecision::Succeeded);
+        assert!(record.receipt.is_sandbox_artifact_bound());
+        assert!(artifact_path.exists());
+
+        crate::api::routes::handle_command(
+            &mut state,
+            &mut tlog,
+            RuntimeConfig::default(),
+            Command::SubmitEvidence(record.submission()),
+        )
+        .unwrap();
+
+        let persisted = tlog
+            .iter()
+            .find(|event| {
+                event.kind == EventKind::Persisted
+                    && event.cause == Cause::EvidenceSubmitted
+                    && event.affected_gate == Some(GateId::Execution)
+            })
+            .unwrap();
+        let effect_receipt = record.effect_receipt_for_event(persisted).unwrap();
+
+        assert!(effect_receipt.is_sandbox_artifact_bound());
+        assert!(effect_receipt.replay_verified(&tlog));
+
+        append_tool_effect_receipt_ndjson(&receipt_path, &effect_receipt).unwrap();
+        let loaded = load_tool_effect_receipts_ndjson(&receipt_path).unwrap();
+
+        assert_eq!(loaded, vec![effect_receipt]);
+        assert_eq!(verify_tool_effect_receipts(&tlog, &loaded).unwrap(), 1);
+        assert_eq!(
+            decode_tool_effect_receipt_ndjson(&encode_tool_effect_receipt_ndjson(effect_receipt))
+                .unwrap(),
+            effect_receipt
+        );
+        verify_tlog(&tlog).unwrap();
+
+        let _ = std::fs::remove_dir_all(&sandbox_root);
     }
 
     #[test]
