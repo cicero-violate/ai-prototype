@@ -1,0 +1,264 @@
+diff --git a/rubric/score.md b/rubric/score.md
+index f8513f1..82a844a 100644
+--- a/rubric/score.md
++++ b/rubric/score.md
+@@ -3,109 +3,202 @@
+ ## Variables
+ 
+ ```text
+-I = invariant coverage
+-E = event sourcing / durability
++I = invariant/kernel coverage
++E = event sourcing and durability
+ J = judgment and gate ordering
+ R = recovery determinism
+-V = verification strength
++V = verification and replay strength
+ T = test coverage
+-S = simplicity / sealed atomicity
+-G = total goodness
++S = simplicity and sealed atomicity
++C = capability maturity
++M = structural graph maintainability
++G = total system goodness
++K = kernel-only goodness
+ ```
+ 
+-## Equation
++## Equations
+ 
+ ```text
+-G = (I · E · J · R · V · T · S)^(1/7)
++G = (I · E · J · R · V · T · S · C · M)^(1/9)
++K = (I · E · J · R · V · T · S)^(1/7)
+ ```
+ 
++One-line explanation: the score is geometric because one weak axis must reduce the whole system.
++
+ ## Updated Authoritative Score
+ 
+ ```text
+-I = 8.7 / 10
+-E = 9.0 / 10
++I = 8.6 / 10
++E = 8.8 / 10
+ J = 8.5 / 10
+-R = 8.9 / 10
+-V = 8.7 / 10
+-T = 8.5 / 10
+-S = 7.0 / 10
++R = 8.6 / 10
++V = 8.9 / 10
++T = 8.1 / 10
++S = 6.6 / 10
++C = 5.3 / 10
++M = 6.5 / 10
++
++K = 8.26 / 10
++G = 7.66 / 10
++
++max(I,E,J,R,V,T,S,C,M) = V = 8.9 / 10 = good
++```
+ 
+-G = 8.45 / 10
+-max(I,E,J,R,V,T,S) = E = 9.0 / 10 = good
++## Static Review Inputs
++
++```text
++source_files = 20
++source_lines = 2946
++rust_functions = 142
++unit_tests = 19
++integration_tests = 0
++todo_markers = 6
++
++graph_nodes = 473
++graph_edges = 1109
++cfg_nodes = 1581
++cfg_edges = 2179
++bridge_edges = 413
++redundant_path_pairs = 407
++alpha_pathways = 1
+ ```
+ 
+ ## Critical Judgment
+ 
+-The previous form was directionally correct but over-trusted its own log. The largest defect was that replay verified hash-chain consistency, not reducer correctness. A forged event could be internally consistent if its hash was recomputed. That is not canonical execution; it is only canonical-looking storage.
++The previous score was too high for the full Canon Agent target. It mostly
++scored the kernel/runtime, not the agent described in `README.md`.
+ 
+-The latest defect was that `Learn` executed recovery repairs. That collapsed recovery, persistence, and learning into one phase, so the runtime could appear to learn before a repaired path was verified. The corrected form makes `Persist` first-class and moves repair application into persisted recovery, while final `Learn` only promotes a verified policy surface.
++The current code has a strong deterministic core: phase ordering is explicit,
++the TLog is hash-chained, replay re-runs reducer expectations, durable append
++happens before in-memory mutation, and recovery is bounded. That makes the
++kernel credible.
+ 
+-## Improvements Applied
++The full system is not yet a self-improving agent. Tooling, planning,
++observation, context, memory, LLM, semantic verification, durable policy, and
++orchestration are not implemented as active capabilities. Most capability
++modules are records/placeholders, not execution surfaces.
++
++## Score Rationale
+ 
+ ```text
+-replay_proof = hash_chain_valid ∧ schema_valid ∧ reducer(event_before, cfg) = event_after
+-atomic_durable_tick = disk_append(event) succeeds → memory_append(event) → state_advance
+-schema_record = [version, record_type, event_fields...]
+-artifact_lineage = receipt_valid ∧ lineage_hash(receipt, artifact, parent) matches
+-recovery_proof = failure → recovery_intent → persist(repair_applied) → target → verify/eval
+-learning_proof = eval_passed → persist(result) → learn(policy_promotion) → done
++I = 8.6
+ ```
+ 
+-1. `ControlEvent` now stores the `RuntimeConfig` that produced it, so replay can re-run the same reducer boundary even when recovery budgets differ from defaults.
+-2. `verify_tlog_from` now recomputes the canonical reducer output for each event and rejects hash-consistent but non-reducer events.
+-3. `tick_durable` now builds the event, writes disk first, then mutates the in-memory tlog and state only after the durable append succeeds.
+-4. NDJSON records now include `TLOG_SCHEMA_VERSION` and `TLOG_RECORD_EVENT` before event fields.
+-5. Artifact lineage now depends on an artifact receipt hash rather than only recomputing lineage directly from mutable artifact fields.
+-6. Tests were added for reducer replay forgery and durable-write failure atomicity.
+-7. A prior `DomainStep` abstraction was removed after metrics showed it added nodes, edges, redundant path pairs, and alpha pathways.
+-8. A derived transition-validation experiment was rejected after fresh graph evidence showed it increased nodes, edges, and redundant path pairs without improving alpha pathways.
+-9. `Persist` is now a first-class phase with enum value `11`; successful eval flows through `Eval → Persist → Learn → Done`.
+-10. Recovery now selects repair intent, then `Persist` applies and records the repair before returning to the repaired target phase.
+-11. `GateId::Learning` now exists as a verifiable policy-promotion surface, so learning is not hidden inside recovery.
++Invariant modeling is strong at the kernel level: phases, gates, evidence,
++failure classes, recovery actions, semantic deltas, and success criteria are
++typed. The remaining weakness is that `State`, `Packet`, `Gate`, and `GateSet`
++still expose public mutable fields, so invalid states can be constructed
++outside the reducer.
+ 
++```text
++E = 8.8
++```
+ 
+-## Eval Capability Boundary Update
++Event sourcing is strong. `ControlEvent` stores sequence, phase transition,
++semantic delta, evidence, decision, failure, recovery action, runtime config,
++before/after states, previous hash, and self hash. Durable ticks append to disk
++before mutating memory. Remaining weakness: the log is positional numeric
++NDJSON with no migration table, length prefix, external receipt, or adversarial
++tamper resistance.
+ 
+ ```text
+-EvalRecord = { score, dimensions, threshold_used }
+-EvalCapability(state, policy) -> EvalRecord -> EvidenceSubmission(GateId::Eval, Evidence::EvalScore, pass/fail)
+-KernelEvalSurface = GateId::Eval + Evidence::EvalScore
++J = 8.5
+ ```
+ 
+-Eval is now modeled as a capability boundary rather than a kernel expansion. The kernel remains limited to the eval gate and eval evidence token. Score shape, dimensions, threshold comparison, policy lookup, and future promotion logic live under `capability/eval`, `capability/policy`, and `capability/learning`.
++Gate ordering is coherent: Delta → Invariant → Analysis → Judgment → Plan →
++Execute → Verify → Eval → Persist → Learn → Done. The weakness is that judgment
++is currently a token/record boundary, not a real policy-aware capability.
+ 
+ ```text
+-S = 7.4 / 10  # improved structural separation, still not fully extracted into generated subfiles
+-G = 8.50 / 10
+-max(I,E,J,R,V,T,S) = E = 9.0 / 10 = good
++R = 8.6
+ ```
+ 
+-## Remaining Weaknesses
++Recovery is deterministic and bounded. Failures map to recovery actions, repair
++intent is selected before persistence, and persistence applies the repair before
++returning to the target phase. The weakness is that recovery policy is still a
++large hand-written match instead of a data-driven policy table with coverage
++proofs.
+ 
+ ```text
+-remaining_risk = public_mutable_state + non_cryptographic_hash + simulated_artifact_receipt + static_transition_table + in_memory_policy_promotion
++V = 8.9
+ ```
+ 
+-The runtime is still not production-grade canonical infrastructure. State fields remain public, the hash is deterministic FNV-style rather than cryptographic, artifact receipts are still simulated in-memory receipts rather than externally signed/provenanced records, and learning promotion is still a deterministic in-memory gate rather than a durable policy artifact with external replay.
++Verification is the strongest axis. Replay checks state continuity, packet
++continuity, semantic delta correctness, legal transition, hash chain, and
++canonical reducer output. This closes the prior forged-hash-chain hole. The
++remaining weakness is the non-cryptographic `u64` mixer.
++
++```text
++T = 8.1
++```
++
++Unit coverage is meaningful: convergence, recovery budget, illegal transitions,
++tampering, reducer-forgery rejection, durable write atomicity, affected-gate
++rules, and disk replay are tested. The weakness is that tests are unit-only:
++there are no integration, property, fuzz, migration, or adversarial codec tests.
++
++```text
++S = 6.6
++```
++
++The code is understandable but no longer atomic-simple. `runtime/mod.rs`,
++`kernel/mod.rs`, and `codec/ndjson.rs` are large. Manual enum codecs and the
++static transition table produce repetition. Public fields weaken the sealed
++state-machine boundary.
++
++```text
++C = 5.3
++```
++
++Capability maturity is the main drag. `eval`, `judgment`, `learning`, and
++`policy` exist structurally, but they are not yet active durable producers.
++Learning currently promotes the `Learning` gate; it does not materialize a
++durable policy artifact from Eval/TLog history.
++
++```text
++M = 6.5
++```
++
++The structural graph shows growth pressure: 473 semantic nodes, 1109 semantic
++edges, 1581 CFG nodes, 2179 CFG edges, 407 redundant path pairs, and only 1
++alpha pathway. This is not bad for a prototype, but it proves the code is
++accumulating redundant paths faster than canonical abstractions.
++
++## Required Improvements For `G >= 8.5`
++
++```text
++1. seal State, Packet, Gate, and GateSet behind constructors and reducer-only mutation
++2. split runtime/mod.rs into transition_table, reducer, recovery_policy, writer, and diff modules
++3. replace manual NDJSON enum codecs with generated or table-driven codecs
++4. add migration-aware TLog decoding with explicit schema compatibility tests
++5. rename or replace the u64 mixer as non_adversarial_hash, or use a real digest
++6. materialize PolicyPromotion as a durable append-only artifact
++7. make EvalRecord ingestion drive the Eval gate instead of only modeling the record
++8. add integration tests for disk replay, policy promotion, recovery replay, and corrupt tlog recovery
++9. add property/fuzz tests for codec roundtrip and illegal transition rejection
++10. turn recovery_action_for into a data table with total coverage assertions
++```
+ 
+-## Required Improvements For `G ≥ 9.0`
++## Required Improvements For `G >= 9.0`
+ 
+ ```text
+-1. seal State, Packet, Gate, and GateSet behind constructors/mutation methods
+-2. replace u64 mixer with a cryptographic digest or explicitly name it non_adversarial_hash
+-3. externalize artifact receipts into append-only receipt events
+-4. split demo/test coverage helpers away from runtime API
+-5. add migration decoding for old schema-v1 tlogs if compatibility matters
+-6. replace the hand-written transition table only with a generated table that reduces, not increases, graph redundancy
+-7. derive recovery policy from data specs instead of a large hand-written `FailureClass → RecoveryAction` match
+-8. materialize learned policies as durable artifacts instead of only setting `GateId::Learning`
++1. prove the kernel state transition surface is sealed
++2. make capability evidence submission the only way gates change outside reducer internals
++3. persist learned policies and replay them into future runs
++4. add real tooling/planning capability execution
++5. add semantic artifact verification beyond simulated lineage fields
++6. reduce redundant_path_pairs below 200 without increasing alpha_pathways risk
++7. introduce external signed receipts for artifacts, policy, and tool execution
++8. run cargo build, cargo test, cargo clippy, and property tests in CI
+ ```
+ 
+ ## Validation
+ 
+ ```text
+-static source review = pass
+-patch generated = pass
++static README review = pass
++static src review = pass
++graph.json review via python = pass
++score.md updated = pass
+ cargo build = not run; cargo/rustc unavailable in this sandbox
+ cargo test = not run; cargo/rustc unavailable in this sandbox
+ ```
