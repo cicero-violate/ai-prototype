@@ -1,0 +1,415 @@
+*** Begin Patch
+*** Update File: src/capability/mod.rs
+@@ -75,16 +75,27 @@
+     pub evidence: Evidence,
+     pub passed: bool,
+     pub effect: PacketEffect,
++    pub payload_hash: u64,
+ }
+ 
+ impl EvidenceSubmission {
+     pub const fn new(gate: GateId, evidence: Evidence, passed: bool) -> Self {
+-        Self {
++        Self::with_effect_payload(
+             gate,
+             evidence,
+             passed,
+-            effect: PacketEffect::None,
+-        }
++            PacketEffect::None,
++            structural_payload_hash(gate, evidence, passed, PacketEffect::None),
++        )
++    }
++
++    pub const fn with_payload(
++        gate: GateId,
++        evidence: Evidence,
++        passed: bool,
++        payload_hash: u64,
++    ) -> Self {
++        Self::with_effect_payload(gate, evidence, passed, PacketEffect::None, payload_hash)
+     }
+ 
+     pub const fn with_effect(
+@@ -93,16 +104,34 @@
+         passed: bool,
+         effect: PacketEffect,
+     ) -> Self {
++        Self::with_effect_payload(
++            gate,
++            evidence,
++            passed,
++            effect,
++            structural_payload_hash(gate, evidence, passed, effect),
++        )
++    }
++
++    pub const fn with_effect_payload(
++        gate: GateId,
++        evidence: Evidence,
++        passed: bool,
++        effect: PacketEffect,
++        payload_hash: u64,
++    ) -> Self {
+         Self {
+             gate,
+             evidence,
+             passed,
+             effect,
++            payload_hash,
+         }
+     }
+ 
+     pub fn is_contract_valid(self) -> bool {
+-        self.evidence == expected_evidence_for_gate(self.gate)
++        self.payload_hash != 0
++            && self.evidence == expected_evidence_for_gate(self.gate)
+             && if self.passed {
+                 self.effect == PacketEffect::expected_for_gate(self.gate)
+             } else {
+@@ -120,6 +149,8 @@
+         h = h.wrapping_mul(0x100000001b3);
+         h ^= self.effect as u64;
+         h = h.wrapping_mul(0x100000001b3);
++        h ^= self.payload_hash;
++        h = h.wrapping_mul(0x100000001b3);
+         h.max(1)
+     }
+ 
+@@ -132,6 +163,24 @@
+     }
+ }
+ 
++const fn structural_payload_hash(
++    gate: GateId,
++    evidence: Evidence,
++    passed: bool,
++    effect: PacketEffect,
++) -> u64 {
++    let mut h = 0x8422_2325_cbf2_9ce4u64;
++    h ^= gate as u64;
++    h = h.wrapping_mul(0x100000001b3);
++    h ^= evidence as u64;
++    h = h.wrapping_mul(0x100000001b3);
++    h ^= passed as u64;
++    h = h.wrapping_mul(0x100000001b3);
++    h ^= effect as u64;
++    h = h.wrapping_mul(0x100000001b3);
++    if h == 0 { 1 } else { h }
++}
++
+ pub trait EvidenceProducer {
+     type Record;
+ 
+*** Update File: src/api/protocol.rs
+@@
+-pub const API_PROTOCOL_SCHEMA_VERSION: u64 = 1;
++pub const API_PROTOCOL_SCHEMA_VERSION: u64 = 2;
+*** Update File: src/capability/context/record.rs
+@@ -52,10 +52,11 @@
+     }
+ 
+     pub fn submission(&self) -> EvidenceSubmission {
+-        EvidenceSubmission::new(
++        EvidenceSubmission::with_payload(
+             GateId::Analysis,
+             Evidence::AnalysisReport,
+             self.decision() == ContextDecision::Assembled,
++            self.context_hash,
+         )
+     }
+ }
+*** Update File: src/capability/judgment/record.rs
+@@ -16,7 +16,12 @@
+     }
+ 
+     pub fn submission(&self) -> EvidenceSubmission {
+-        EvidenceSubmission::new(GateId::Judgment, Evidence::JudgmentRecord, self.is_valid())
++        EvidenceSubmission::with_payload(
++            GateId::Judgment,
++            Evidence::JudgmentRecord,
++            self.is_valid(),
++            judgment_payload_hash(self),
++        )
+     }
+ }
+ 
+@@ -31,3 +36,17 @@
+         JudgmentRecord::submission(self)
+     }
+ }
++
++fn judgment_payload_hash(record: &JudgmentRecord) -> u64 {
++    let mut h = 0xaf63_dc4c_8601_ec8cu64;
++    h = mix(h, record.decision_id);
++    h = mix(h, record.policy_version);
++    h = mix(h, record.rationale_hash);
++    h.max(1)
++}
++
++fn mix(mut h: u64, x: u64) -> u64 {
++    h ^= x;
++    h = h.wrapping_mul(0x100000001b3);
++    h
++}
+*** Update File: src/capability/orchestration/record.rs
+@@ -22,8 +22,14 @@
+ }
+ 
+ impl CapabilityRoute {
+-    pub fn submission(self) -> EvidenceSubmission {
+-        EvidenceSubmission::with_effect(self.gate, self.evidence, self.ready, self.effect)
++    pub fn submission(self, route_hash: u64) -> EvidenceSubmission {
++        EvidenceSubmission::with_effect_payload(
++            self.gate,
++            self.evidence,
++            self.ready,
++            self.effect,
++            route_payload_hash(route_hash, self),
++        )
+     }
+ 
+     pub fn is_valid(self) -> bool {
+@@ -136,9 +142,21 @@
+         routes
+             .into_iter()
+             .filter(|route| route.ready)
+-            .map(CapabilityRoute::submission)
++            .map(|route| route.submission(self.route_hash))
+             .collect()
+     }
++}
++
++fn route_payload_hash(route_hash: u64, route: CapabilityRoute) -> u64 {
++    let mut h = 0x243f_6a88_85a3_08d3u64;
++    h = mix(h, route_hash);
++    h = mix(h, route.ordinal as u64);
++    h = mix(h, route.priority as u64);
++    h = mix(h, route.gate as u64);
++    h = mix(h, route.evidence as u64);
++    h = mix(h, route.ready as u64);
++    h = mix(h, packet_effect_id(route.effect));
++    h.max(1)
+ }
+ 
+ fn route_ready(state: State, gate: GateId) -> bool {
+*** Update File: src/capability/verification/record.rs
+@@ -161,7 +161,7 @@
+ 
+     pub fn submission(&self) -> EvidenceSubmission {
+         let passed = self.decision() == VerificationDecision::Accepted;
+-        EvidenceSubmission::with_effect(
++        EvidenceSubmission::with_effect_payload(
+             GateId::Verification,
+             Evidence::LineageProof,
+             passed,
+@@ -170,6 +170,7 @@
+             } else {
+                 PacketEffect::None
+             },
++            self.semantic_check_hash,
+         )
+     }
+ }
+*** Update File: src/capability/planning/record.rs
+@@ -44,7 +44,7 @@
+ 
+     pub fn submission(&self) -> EvidenceSubmission {
+         let passed = self.decision() == PlanDecision::Ready;
+-        EvidenceSubmission::with_effect(
++        EvidenceSubmission::with_effect_payload(
+             GateId::Plan,
+             Evidence::TaskReady,
+             passed,
+@@ -53,6 +53,7 @@
+             } else {
+                 PacketEffect::None
+             },
++            plan_payload_hash(self),
+         )
+     }
+ }
+@@ -69,6 +70,15 @@
+     }
+ }
+ 
++fn plan_payload_hash(record: &PlanRecord) -> u64 {
++    let mut h = 0x9e37_79b9_7f4a_7c15u64;
++    h = mix(h, record.objective_id);
++    h = mix(h, record.task_id);
++    h = mix(h, record.ready_tasks as u64);
++    h = mix(h, record.dependency_hash);
++    h.max(1)
++}
++
+ fn plan_dependency_hash(packet: Packet) -> u64 {
+     let mut h = 0x6a09e667f3bcc909u64;
+     h ^= packet.objective_id;
+*** Update File: src/capability/learning/promote.rs
+@@ -65,7 +65,12 @@
+     }
+ 
+     pub fn submission(&self) -> EvidenceSubmission {
+-        EvidenceSubmission::new(GateId::Learning, Evidence::PolicyPromotion, self.is_valid())
++        EvidenceSubmission::with_payload(
++            GateId::Learning,
++            Evidence::PolicyPromotion,
++            self.is_valid(),
++            self.promoted_policy_hash,
++        )
+     }
+ }
+ 
+*** Update File: src/capability/eval/record.rs
+@@ -40,7 +40,7 @@
+ 
+     pub fn submission(&self) -> EvidenceSubmission {
+         let passed = self.decision() == EvalDecision::Pass;
+-        EvidenceSubmission::with_effect(
++        EvidenceSubmission::with_effect_payload(
+             GateId::Eval,
+             Evidence::EvalScore,
+             passed,
+@@ -49,6 +49,7 @@
+             } else {
+                 PacketEffect::None
+             },
++            eval_payload_hash(self),
+         )
+     }
+ }
+@@ -64,3 +65,30 @@
+         EvalRecord::submission(self)
+     }
+ }
++
++fn eval_payload_hash(record: &EvalRecord) -> u64 {
++    let mut h = 0x510e_527f_ade6_82d1u64;
++    h = mix(h, record.score);
++    h = mix(h, record.threshold_used);
++    for dimension in &record.dimensions {
++        h = mix(h, dimension_id_hash(dimension.id));
++        h = mix(h, dimension.score);
++        h = mix(h, dimension.threshold);
++    }
++    h.max(1)
++}
++
++fn dimension_id_hash(id: &str) -> u64 {
++    let mut h = 0xcbf2_9ce4_8422_2325u64;
++    for byte in id.as_bytes() {
++        h ^= u64::from(*byte);
++        h = h.wrapping_mul(0x100000001b3);
++    }
++    h.max(1)
++}
++
++fn mix(mut h: u64, x: u64) -> u64 {
++    h ^= x;
++    h = h.wrapping_mul(0x100000001b3);
++    h
++}
+*** Update File: src/capability/observation/record.rs
+@@ -48,10 +48,11 @@
+     }
+ 
+     pub fn submission(&self) -> EvidenceSubmission {
+-        EvidenceSubmission::new(
++        EvidenceSubmission::with_payload(
+             GateId::Invariant,
+             Evidence::InvariantProof,
+             self.decision() == ObservationDecision::Accepted,
++            observation_payload_hash(self),
+         )
+     }
+ }
+@@ -66,4 +67,18 @@
+     fn submission(&self) -> EvidenceSubmission {
+         ObservationRecord::submission(self)
+     }
+-}
++}
++fn observation_payload_hash(record: &ObservationRecord) -> u64 {
++    let mut h = 0xcbf2_9ce4_8422_2325u64;
++    h = mix(h, record.source_id);
++    h = mix(h, record.sequence);
++    h = mix(h, record.observed_hash);
++    h = mix(h, record.received_at_tick);
++    h.max(1)
++}
++
++fn mix(mut h: u64, x: u64) -> u64 {
++    h ^= x;
++    h = h.wrapping_mul(0x100000001b3);
++    h
++}
+*** Update File: src/capability/tooling/record.rs
+@@ -41,7 +41,7 @@
+ 
+     pub fn submission(&self) -> EvidenceSubmission {
+         let passed = self.decision() == ToolDecision::Succeeded;
+-        EvidenceSubmission::with_effect(
++        EvidenceSubmission::with_effect_payload(
+             GateId::Execution,
+             Evidence::ArtifactReceipt,
+             passed,
+@@ -50,6 +50,7 @@
+             } else {
+                 PacketEffect::None
+             },
++            tooling_payload_hash(self),
+         )
+     }
+ }
+@@ -64,6 +65,15 @@
+     fn submission(&self) -> EvidenceSubmission {
+         ToolExecutionRecord::submission(self)
+     }
++}
++
++fn tooling_payload_hash(record: &ToolExecutionRecord) -> u64 {
++    let mut h = 0xa54f_f53a_5f1d_36f1u64;
++    h = mix(h, record.task_id);
++    h = mix(h, record.command_hash);
++    h = mix(h, record.exit_code as u64);
++    h = mix(h, record.output_hash);
++    h.max(1)
+ }
+ 
+ fn tool_command_hash(packet: Packet) -> u64 {
+*** Update File: src/capability/llm/record.rs
+@@ -121,10 +121,11 @@
+     }
+ 
+     pub fn submission(&self) -> EvidenceSubmission {
+-        EvidenceSubmission::new(
++        EvidenceSubmission::with_payload(
+             GateId::Judgment,
+             Evidence::JudgmentRecord,
+             self.decision() == LlmDecision::Structured,
++            llm_payload_hash(self),
+         )
+     }
+ }
+@@ -198,6 +199,20 @@
+     h.max(1)
+ }
+ 
++fn llm_payload_hash(record: &LlmRecord) -> u64 {
++    let mut h = 0xd6e8_feb8_6659_fd93u64;
++    h = mix(h, record.prompt.context_hash);
++    h = mix(h, record.prompt.policy_version);
++    h = mix(h, record.prompt.policy_hash);
++    h = mix(h, record.prompt.prompt_hash);
++    h = mix(h, record.response.model_id);
++    h = mix(h, record.response.response_hash);
++    h = mix(h, record.response.token_count as u64);
++    h = mix(h, record.judgment.decision_id);
++    h = mix(h, record.judgment.rationale_hash);
++    h.max(1)
++}
++
+ fn token_count(context: &ContextRecord) -> u32 {
+     u32::from(context.prior_count)
+         .saturating_add(4)
+*** End Patch

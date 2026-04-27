@@ -1,5 +1,7 @@
 //! Deterministic in-memory index for prior run facts.
 
+use crate::kernel::mix;
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct MemoryFact {
     pub key: u64,
@@ -114,10 +116,4 @@ fn aggregate_memory_hash(query_hash: u64, matches: &[MemoryFact]) -> u64 {
         h = mix(h, fact.source_seq);
     }
     h.max(1)
-}
-
-fn mix(mut h: u64, x: u64) -> u64 {
-    h ^= x;
-    h = h.wrapping_mul(0x100000001b3);
-    h
 }

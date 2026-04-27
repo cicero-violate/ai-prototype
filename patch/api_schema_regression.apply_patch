@@ -1,0 +1,47 @@
+*** Begin Patch
+*** Update File: src/lib.rs
+@@
+     fn command_envelope_accepts_valid_command() {
+         let mut state = State::default();
+         let mut tlog = Vec::new();
+         let cfg = RuntimeConfig::default();
+         tick(&mut state, &mut tlog, cfg).unwrap();
+@@
+         assert_eq!(state.phase, Phase::Analysis);
+         verify_tlog(&tlog).unwrap();
+     }
+
+     #[test]
++    fn api_protocol_schema_v2_binds_command_hash_to_payload() {
++        assert_eq!(API_PROTOCOL_SCHEMA_VERSION, 2);
++
++        let first_submission = ObservationRecord::new(1, 1, 0xabc, 1).submission();
++        let second_submission = ObservationRecord::new(2, 1, 0xabc, 1).submission();
++
++        assert_eq!(first_submission.gate, second_submission.gate);
++        assert_eq!(first_submission.evidence, second_submission.evidence);
++        assert_eq!(first_submission.passed, second_submission.passed);
++        assert_eq!(first_submission.effect, second_submission.effect);
++        assert_ne!(first_submission.payload_hash, second_submission.payload_hash);
++
++        let first_envelope = CommandEnvelope::new(11, Command::SubmitEvidence(first_submission));
++        let second_envelope = CommandEnvelope::new(11, Command::SubmitEvidence(second_submission));
++
++        assert_eq!(first_envelope.schema_version, API_PROTOCOL_SCHEMA_VERSION);
++        assert_ne!(first_envelope.command_hash, second_envelope.command_hash);
++
++        let mut forged_envelope = second_envelope.clone();
++        forged_envelope.command_hash = first_envelope.command_hash;
++        assert!(!forged_envelope.is_contract_valid());
++
++        let mut legacy_envelope = first_envelope;
++        legacy_envelope.schema_version = API_PROTOCOL_SCHEMA_VERSION - 1;
++        assert!(!legacy_envelope.is_contract_valid());
++    }
++
++    #[test]
+     fn command_ledger_replays_duplicate_envelope_without_new_event() {
+         let mut state = State::default();
+         let mut tlog = Vec::new();
+         let mut ledger = CommandLedger::default();
+*** End Patch

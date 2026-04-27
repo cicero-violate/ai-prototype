@@ -4,7 +4,7 @@ use crate::capability::context::ContextRecord;
 use crate::capability::judgment::JudgmentRecord;
 use crate::capability::policy::PolicyStore;
 use crate::capability::{EvidenceProducer, EvidenceSubmission};
-use crate::kernel::{Evidence, GateId};
+use crate::kernel::{mix, Evidence, GateId};
 
 const LLM_JUDGMENT_SCHEMA_VERSION: u64 = 1;
 const LLM_JUDGMENT_SCHEMA_HASH: u64 = 0x4f1bbcdd2f5d7a91;
@@ -121,10 +121,11 @@ impl LlmRecord {
     }
 
     pub fn submission(&self) -> EvidenceSubmission {
-        EvidenceSubmission::new(
+        EvidenceSubmission::with_payload(
             GateId::Judgment,
             Evidence::JudgmentRecord,
             self.decision() == LlmDecision::Structured,
+            llm_payload_hash(self),
         )
     }
 }
@@ -198,14 +199,23 @@ fn rationale_hash(
     h.max(1)
 }
 
+fn llm_payload_hash(record: &LlmRecord) -> u64 {
+    let mut h = 0xd6e8_feb8_6659_fd93u64;
+    h = mix(h, record.prompt.context_hash);
+    h = mix(h, record.prompt.policy_version);
+    h = mix(h, record.prompt.policy_hash);
+    h = mix(h, record.prompt.prompt_hash);
+    h = mix(h, record.response.model_id);
+    h = mix(h, record.response.response_hash);
+    h = mix(h, record.response.token_count as u64);
+    h = mix(h, record.judgment.decision_id);
+    h = mix(h, record.judgment.rationale_hash);
+    h.max(1)
+}
+
 fn token_count(context: &ContextRecord) -> u32 {
     u32::from(context.prior_count)
         .saturating_add(4)
         .saturating_add((context.context_hash.count_ones() % 32).max(1))
 }
 
-fn mix(mut h: u64, x: u64) -> u64 {
-    h ^= x;
-    h = h.wrapping_mul(0x100000001b3);
-    h
-}

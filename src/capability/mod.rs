@@ -75,16 +75,27 @@ pub struct EvidenceSubmission {
     pub evidence: Evidence,
     pub passed: bool,
     pub effect: PacketEffect,
+    pub payload_hash: u64,
 }
 
 impl EvidenceSubmission {
     pub const fn new(gate: GateId, evidence: Evidence, passed: bool) -> Self {
-        Self {
+        Self::with_effect_payload(
             gate,
             evidence,
             passed,
-            effect: PacketEffect::None,
-        }
+            PacketEffect::None,
+            structural_payload_hash(gate, evidence, passed, PacketEffect::None),
+        )
+    }
+
+    pub const fn with_payload(
+        gate: GateId,
+        evidence: Evidence,
+        passed: bool,
+        payload_hash: u64,
+    ) -> Self {
+        Self::with_effect_payload(gate, evidence, passed, PacketEffect::None, payload_hash)
     }
 
     pub const fn with_effect(
@@ -93,16 +104,34 @@ impl EvidenceSubmission {
         passed: bool,
         effect: PacketEffect,
     ) -> Self {
+        Self::with_effect_payload(
+            gate,
+            evidence,
+            passed,
+            effect,
+            structural_payload_hash(gate, evidence, passed, effect),
+        )
+    }
+
+    pub const fn with_effect_payload(
+        gate: GateId,
+        evidence: Evidence,
+        passed: bool,
+        effect: PacketEffect,
+        payload_hash: u64,
+    ) -> Self {
         Self {
             gate,
             evidence,
             passed,
             effect,
+            payload_hash,
         }
     }
 
     pub fn is_contract_valid(self) -> bool {
-        self.evidence == expected_evidence_for_gate(self.gate)
+        self.payload_hash != 0
+            && self.evidence == expected_evidence_for_gate(self.gate)
             && if self.passed {
                 self.effect == PacketEffect::expected_for_gate(self.gate)
             } else {
@@ -120,6 +149,8 @@ impl EvidenceSubmission {
         h = h.wrapping_mul(0x100000001b3);
         h ^= self.effect as u64;
         h = h.wrapping_mul(0x100000001b3);
+        h ^= self.payload_hash;
+        h = h.wrapping_mul(0x100000001b3);
         h.max(1)
     }
 
@@ -130,6 +161,24 @@ impl EvidenceSubmission {
 
         state.apply_evidence(self.gate, self.evidence, self.passed);
     }
+}
+
+const fn structural_payload_hash(
+    gate: GateId,
+    evidence: Evidence,
+    passed: bool,
+    effect: PacketEffect,
+) -> u64 {
+    let mut h = 0x8422_2325_cbf2_9ce4u64;
+    h ^= gate as u64;
+    h = h.wrapping_mul(0x100000001b3);
+    h ^= evidence as u64;
+    h = h.wrapping_mul(0x100000001b3);
+    h ^= passed as u64;
+    h = h.wrapping_mul(0x100000001b3);
+    h ^= effect as u64;
+    h = h.wrapping_mul(0x100000001b3);
+    if h == 0 { 1 } else { h }
 }
 
 pub trait EvidenceProducer {

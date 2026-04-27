@@ -654,6 +654,8 @@ pub struct ControlEvent {
     pub runtime_config: RuntimeConfig,
     pub state_before: State,
     pub state_after: State,
+    pub api_command_id: u64,
+    pub api_command_hash: u64,
     pub prev_hash: u64,
     pub self_hash: u64,
 }

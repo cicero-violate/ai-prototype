@@ -1,7 +1,7 @@
 //! Deterministic routing records owned by the orchestration capability.
 
 use crate::capability::{EvidenceSubmission, PacketEffect};
-use crate::kernel::{Evidence, GateId, GateStatus, State, EXECUTION_GATE_ORDER};
+use crate::kernel::{mix, Evidence, GateId, GateStatus, State, EXECUTION_GATE_ORDER};
 
 const ORCHESTRATION_ROUTE_VERSION: u64 = 1;
 
@@ -22,8 +22,14 @@ pub struct CapabilityRoute {
 }
 
 impl CapabilityRoute {
-    pub fn submission(self) -> EvidenceSubmission {
-        EvidenceSubmission::with_effect(self.gate, self.evidence, self.ready, self.effect)
+    pub fn submission(self, route_hash: u64) -> EvidenceSubmission {
+        EvidenceSubmission::with_effect_payload(
+            self.gate,
+            self.evidence,
+            self.ready,
+            self.effect,
+            route_payload_hash(route_hash, self),
+        )
     }
 
     pub fn is_valid(self) -> bool {
@@ -136,9 +142,21 @@ impl OrchestrationRecord {
         routes
             .into_iter()
             .filter(|route| route.ready)
-            .map(CapabilityRoute::submission)
+            .map(|route| route.submission(self.route_hash))
             .collect()
     }
+}
+
+fn route_payload_hash(route_hash: u64, route: CapabilityRoute) -> u64 {
+    let mut h = 0x243f_6a88_85a3_08d3u64;
+    h = mix(h, route_hash);
+    h = mix(h, route.ordinal as u64);
+    h = mix(h, route.priority as u64);
+    h = mix(h, route.gate as u64);
+    h = mix(h, route.evidence as u64);
+    h = mix(h, route.ready as u64);
+    h = mix(h, packet_effect_id(route.effect));
+    h.max(1)
 }
 
 fn route_ready(state: State, gate: GateId) -> bool {
@@ -206,10 +224,4 @@ fn packet_effect_id(effect: PacketEffect) -> u64 {
         PacketEffect::RepairLineage => 3,
         PacketEffect::CompleteObjective => 4,
     }
-}
-
-fn mix(mut h: u64, x: u64) -> u64 {
-    h ^= x;
-    h = h.wrapping_mul(0x100000001b3);
-    h
 }

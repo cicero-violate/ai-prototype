@@ -1,7 +1,7 @@
 //! Durable eval payload owned by the eval capability.
 
 use crate::capability::{EvidenceProducer, EvidenceSubmission, PacketEffect};
-use crate::kernel::{Evidence, GateId};
+use crate::kernel::{mix, Evidence, GateId};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct EvalDimension {
@@ -40,7 +40,7 @@ impl EvalRecord {
 
     pub fn submission(&self) -> EvidenceSubmission {
         let passed = self.decision() == EvalDecision::Pass;
-        EvidenceSubmission::with_effect(
+        EvidenceSubmission::with_effect_payload(
             GateId::Eval,
             Evidence::EvalScore,
             passed,
@@ -49,6 +49,7 @@ impl EvalRecord {
             } else {
                 PacketEffect::None
             },
+            eval_payload_hash(self),
         )
     }
 }
@@ -64,3 +65,25 @@ impl EvidenceProducer for EvalRecord {
         EvalRecord::submission(self)
     }
 }
+
+fn eval_payload_hash(record: &EvalRecord) -> u64 {
+    let mut h = 0x510e_527f_ade6_82d1u64;
+    h = mix(h, record.score);
+    h = mix(h, record.threshold_used);
+    for dimension in &record.dimensions {
+        h = mix(h, dimension_id_hash(dimension.id));
+        h = mix(h, dimension.score);
+        h = mix(h, dimension.threshold);
+    }
+    h.max(1)
+}
+
+fn dimension_id_hash(id: &str) -> u64 {
+    let mut h = 0xcbf2_9ce4_8422_2325u64;
+    for byte in id.as_bytes() {
+        h ^= u64::from(*byte);
+        h = h.wrapping_mul(0x100000001b3);
+    }
+    h.max(1)
+}
+

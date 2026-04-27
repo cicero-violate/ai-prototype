@@ -1,0 +1,13 @@
+*** Begin Patch
+*** Update File: src/lib.rs
+@@
+                     let is_mix_definition = trimmed.starts_with("fn mix(")
+                         || trimmed.starts_with("pub fn mix(")
++                        || trimmed.starts_with("pub(crate) fn mix(")
++                        || trimmed.starts_with("pub(super) fn mix(")
+                         || trimmed.starts_with("const fn mix(")
+-                        || trimmed.starts_with("pub const fn mix(");
++                        || trimmed.starts_with("pub const fn mix(")
++                        || trimmed.starts_with("pub(crate) const fn mix(")
++                        || trimmed.starts_with("pub(super) const fn mix(");
+*** End Patch

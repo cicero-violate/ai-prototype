@@ -1,7 +1,7 @@
 //! Durable observation payload owned outside the kernel.
 
 use crate::capability::{EvidenceProducer, EvidenceSubmission};
-use crate::kernel::{Evidence, GateId};
+use crate::kernel::{mix, Evidence, GateId};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ObservationDecision {
@@ -48,10 +48,11 @@ impl ObservationRecord {
     }
 
     pub fn submission(&self) -> EvidenceSubmission {
-        EvidenceSubmission::new(
+        EvidenceSubmission::with_payload(
             GateId::Invariant,
             Evidence::InvariantProof,
             self.decision() == ObservationDecision::Accepted,
+            observation_payload_hash(self),
         )
     }
 }
@@ -66,4 +67,12 @@ impl EvidenceProducer for ObservationRecord {
     fn submission(&self) -> EvidenceSubmission {
         ObservationRecord::submission(self)
     }
+}
+fn observation_payload_hash(record: &ObservationRecord) -> u64 {
+    let mut h = 0xcbf2_9ce4_8422_2325u64;
+    h = mix(h, record.source_id);
+    h = mix(h, record.sequence);
+    h = mix(h, record.observed_hash);
+    h = mix(h, record.received_at_tick);
+    h.max(1)
 }

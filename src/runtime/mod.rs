@@ -18,7 +18,10 @@ pub mod verify;
 pub(crate) mod writer;
 
 pub use self::diff::semantic_diff;
-pub use self::durable::{durable_replay_report, run_until_done_durable, tick_durable, tick_durable_checked};
+pub use self::durable::{
+    durable_replay_report, resume_durable_runtime, run_until_done_durable,
+    run_until_done_durable_with_ledger, tick_durable, tick_durable_checked, DurableRuntimeState,
+};
 pub use self::verify::{legal_transition, replay_report_from, replay_report_ndjson, replay_tlog_ndjson, verify_tlog, verify_tlog_from, ReplayReport};
 
 use self::recovery_policy::{evidence_for_gate, recovery_policy_coverage_count};
@@ -78,6 +81,31 @@ pub fn tick(state: &mut State, tlog: &mut TLog, cfg: RuntimeConfig) -> Result<()
     let before = *state;
     let outcome = reduce(before, cfg);
     let event = CanonicalWriter::append(tlog, before, outcome, cfg)?;
+    *state = event.state_after;
+    Ok(())
+}
+
+pub(crate) fn tick_with_api_command(
+    state: &mut State,
+    tlog: &mut TLog,
+    cfg: RuntimeConfig,
+    api_command_id: u64,
+    api_command_hash: u64,
+) -> Result<(), CanonError> {
+    if api_command_id == 0 || api_command_hash == 0 {
+        return Err(CanonError::InvalidApiCommand);
+    }
+
+    let before = *state;
+    let outcome = reduce(before, cfg);
+    let event = CanonicalWriter::append_with_command(
+        tlog,
+        before,
+        outcome,
+        cfg,
+        api_command_id,
+        api_command_hash,
+    )?;
     *state = event.state_after;
     Ok(())
 }

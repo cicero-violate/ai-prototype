@@ -1,0 +1,425 @@
+*** Begin Patch
+*** Update File: src/kernel/mod.rs
+@@
+     pub runtime_config: RuntimeConfig,
+     pub state_before: State,
+     pub state_after: State,
++    pub api_command_id: u64,
++    pub api_command_hash: u64,
+     pub prev_hash: u64,
+     pub self_hash: u64,
+ }
+*** Update File: src/runtime/writer.rs
+@@
+     pub(crate) fn build(
+         tlog: &[ControlEvent],
+         before: State,
+         outcome: Outcome,
+         cfg: RuntimeConfig,
+     ) -> Result<ControlEvent, CanonError> {
++        Self::build_with_command(tlog, before, outcome, cfg, 0, 0)
++    }
++
++    pub(crate) fn build_with_command(
++        tlog: &[ControlEvent],
++        before: State,
++        outcome: Outcome,
++        cfg: RuntimeConfig,
++        api_command_id: u64,
++        api_command_hash: u64,
++    ) -> Result<ControlEvent, CanonError> {
+         if !cfg.is_structurally_valid() {
+             return Err(CanonError::InvalidRuntimeConfig);
+         }
++
++        if (api_command_id == 0) != (api_command_hash == 0) {
++            return Err(CanonError::InvalidApiCommand);
++        }
+
+         if !before.is_structurally_valid() || !outcome.state.is_structurally_valid() {
+             return Err(CanonError::InvalidStateInvariant);
+@@
+             runtime_config: cfg,
+             state_before: before,
+             state_after: after,
++            api_command_id,
++            api_command_hash,
+         });
+
+         Ok(ControlEvent {
+@@
+             runtime_config: cfg,
+             state_before: before,
+             state_after: after,
++            api_command_id,
++            api_command_hash,
+             prev_hash,
+             self_hash,
+         })
+@@
+         let event = Self::build(tlog, before, outcome, cfg)?;
+         tlog.push(event);
+         Ok(event)
+     }
++
++    pub(crate) fn append_with_command(
++        tlog: &mut TLog,
++        before: State,
++        outcome: Outcome,
++        cfg: RuntimeConfig,
++        api_command_id: u64,
++        api_command_hash: u64,
++    ) -> Result<ControlEvent, CanonError> {
++        let event = Self::build_with_command(
++            tlog,
++            before,
++            outcome,
++            cfg,
++            api_command_id,
++            api_command_hash,
++        )?;
++        tlog.push(event);
++        Ok(event)
++    }
+
+     pub(crate) fn append_durable(
+         tlog: &mut TLog,
+*** Update File: src/runtime/mod.rs
+@@
+ pub fn tick(state: &mut State, tlog: &mut TLog, cfg: RuntimeConfig) -> Result<(), CanonError> {
+     let before = *state;
+     let outcome = reduce(before, cfg);
+     let event = CanonicalWriter::append(tlog, before, outcome, cfg)?;
+     *state = event.state_after;
+     Ok(())
+ }
++
++pub(crate) fn tick_with_api_command(
++    state: &mut State,
++    tlog: &mut TLog,
++    cfg: RuntimeConfig,
++    api_command_id: u64,
++    api_command_hash: u64,
++) -> Result<(), CanonError> {
++    if api_command_id == 0 || api_command_hash == 0 {
++        return Err(CanonError::InvalidApiCommand);
++    }
++
++    let before = *state;
++    let outcome = reduce(before, cfg);
++    let event = CanonicalWriter::append_with_command(
++        tlog,
++        before,
++        outcome,
++        cfg,
++        api_command_id,
++        api_command_hash,
++    )?;
++    *state = event.state_after;
++    Ok(())
++}
+
+ pub fn run_until_done(mut state: State, cfg: RuntimeConfig) -> Result<(State, TLog), CanonError> {
+*** Update File: src/runtime/verify.rs
+@@
+         if event.seq != i as u64 + 1 || event.prev_hash != prev_hash {
+             return Err(CanonError::InvalidHashChain);
+         }
++
++        if (event.api_command_id == 0) != (event.api_command_hash == 0) {
++            return Err(CanonError::InvalidApiCommand);
++        }
+
+         if event.from != state.phase || event.state_before.phase != state.phase {
+             return Err(CanonError::InvalidStateContinuity);
+@@
+             runtime_config: event.runtime_config,
+             state_before: event.state_before,
+             state_after: event.state_after,
++            api_command_id: event.api_command_id,
++            api_command_hash: event.api_command_hash,
+         });
+@@
+-        let expected_event =
+-            CanonicalWriter::build(&tlog[..i], state, expected_outcome, event.runtime_config)?;
++        let expected_event = CanonicalWriter::build_with_command(
++            &tlog[..i],
++            state,
++            expected_outcome,
++            event.runtime_config,
++            event.api_command_id,
++            event.api_command_hash,
++        )?;
+         if *event != expected_event {
+             return Err(CanonError::InvalidReplay);
+         }
+@@
+     pub(crate) runtime_config: RuntimeConfig,
+     pub(crate) state_before: State,
+     pub(crate) state_after: State,
++    pub(crate) api_command_id: u64,
++    pub(crate) api_command_hash: u64,
+ }
+@@
+     h = mix(h, input.runtime_config.max_recovery_attempts as u64);
+     h = mix(h, state_hash(input.state_before));
+     h = mix(h, state_hash(input.state_after));
++    h = mix(h, input.api_command_id);
++    h = mix(h, input.api_command_hash);
+     h
+ }
+*** Update File: src/codec/ndjson.rs
+@@
+-pub const TLOG_SCHEMA_VERSION: u64 = 3;
++pub const TLOG_SCHEMA_VERSION: u64 = 4;
+@@
+ pub fn encode_control_event_ndjson(event: &ControlEvent) -> String {
+-    let mut fields = Vec::with_capacity(90);
++    let mut fields = Vec::with_capacity(92);
+@@
+     push_state(out, event.state_before);
+     push_state(out, event.state_after);
+-    out.extend([event.prev_hash, event.self_hash]);
++    out.extend([
++        event.api_command_id,
++        event.api_command_hash,
++        event.prev_hash,
++        event.self_hash,
++    ]);
+ }
+@@
+     let state_before = pop_state(cursor)?;
+     let state_after = pop_state(cursor)?;
++    let api_command_id = cursor.take()?;
++    let api_command_hash = cursor.take()?;
+     let prev_hash = cursor.take()?;
+     let self_hash = cursor.take()?;
+@@
+         runtime_config,
+         state_before,
+         state_after,
++        api_command_id,
++        api_command_hash,
+         prev_hash,
+         self_hash,
+     })
+*** Update File: src/api/protocol.rs
+@@
+ use crate::capability::EvidenceSubmission;
+ use crate::kernel::{ControlEvent, TLog};
++use crate::runtime::CanonError;
+@@
+     pub fn receipts(&self) -> &[CommandReceipt] {
+         &self.receipts
+     }
++
++    pub fn reconstruct_from_tlog(tlog: &TLog) -> Result<Self, CanonError> {
++        let mut ledger = Self::default();
++
++        for event in tlog {
++            if event.api_command_id == 0 && event.api_command_hash == 0 {
++                continue;
++            }
++
++            if event.api_command_id == 0 || event.api_command_hash == 0 {
++                return Err(CanonError::InvalidApiCommand);
++            }
++
++            let receipt = CommandReceipt {
++                command_id: event.api_command_id,
++                command_hash: event.api_command_hash,
++                event_hash: event.self_hash,
++            };
++
++            if ledger.receipts.iter().any(|existing| {
++                existing.command_id == receipt.command_id
++                    && existing.command_hash != receipt.command_hash
++            }) {
++                return Err(CanonError::InvalidApiCommand);
++            }
++
++            if ledger.receipts.iter().any(|existing| {
++                existing.command_id == receipt.command_id
++                    && existing.command_hash == receipt.command_hash
++                    && existing.event_hash != receipt.event_hash
++            }) {
++                return Err(CanonError::InvalidReplay);
++            }
++
++            if !ledger.receipts.iter().any(|existing| *existing == receipt) {
++                ledger.receipts.push(receipt);
++            }
++        }
++
++        Ok(ledger)
++    }
+
+     pub fn receipt_for(&self, envelope: &CommandEnvelope) -> Option<CommandReceipt> {
+         self.receipts
+*** Update File: src/api/routes.rs
+@@
+ use crate::api::protocol::{Command, CommandEnvelope, CommandLedger, ControlEventResponse};
+ use crate::capability::EvidenceSubmission;
+ use crate::kernel::{Cause, Decision, EventKind, RuntimeConfig, State, TLog};
+-use crate::runtime::{tick, CanonError, CanonicalWriter, Outcome};
++use crate::runtime::{tick, tick_with_api_command, CanonError, CanonicalWriter, Outcome};
+@@
+ pub fn handle_command(
+     state: &mut State,
+     tlog: &mut TLog,
+     cfg: RuntimeConfig,
+     command: Command,
+ ) -> Result<ControlEventResponse, CanonError> {
++    handle_command_with_receipt(state, tlog, cfg, command, None)
++}
++
++fn handle_command_with_receipt(
++    state: &mut State,
++    tlog: &mut TLog,
++    cfg: RuntimeConfig,
++    command: Command,
++    receipt: Option<(u64, u64)>,
++) -> Result<ControlEventResponse, CanonError> {
+     if !command.is_contract_valid() {
+         return Err(CanonError::InvalidApiCommand);
+     }
+@@
+     match command {
+         Command::SubmitEvidence(submission) => {
+             append_submission_event(&mut candidate_state, &mut candidate_tlog, cfg, submission)?;
+-            tick(&mut candidate_state, &mut candidate_tlog, cfg)?;
++            tick_for_command_response(&mut candidate_state, &mut candidate_tlog, cfg, receipt)?;
+         }
+         Command::SubmitEvidenceBatch(submissions) => {
+-            for submission in submissions {
++            let submission_count = submissions.len();
++            for (idx, submission) in submissions.into_iter().enumerate() {
+                 append_submission_event(&mut candidate_state, &mut candidate_tlog, cfg, submission)?;
+-                tick(&mut candidate_state, &mut candidate_tlog, cfg)?;
++                let response_receipt = if idx + 1 == submission_count {
++                    receipt
++                } else {
++                    None
++                };
++                tick_for_command_response(
++                    &mut candidate_state,
++                    &mut candidate_tlog,
++                    cfg,
++                    response_receipt,
++                )?;
+             }
+         }
+     }
+@@
+     *tlog = candidate_tlog;
+     Ok(response)
+ }
++
++fn tick_for_command_response(
++    state: &mut State,
++    tlog: &mut TLog,
++    cfg: RuntimeConfig,
++    receipt: Option<(u64, u64)>,
++) -> Result<(), CanonError> {
++    match receipt {
++        Some((command_id, command_hash)) => {
++            tick_with_api_command(state, tlog, cfg, command_id, command_hash)
++        }
++        None => tick(state, tlog, cfg),
++    }
++}
+@@
+     if !envelope.is_contract_valid() {
+         return Err(CanonError::InvalidApiCommand);
+     }
+
+-    handle_command(state, tlog, cfg, envelope.into_command())
++    let command_id = envelope.command_id;
++    let command_hash = envelope.command_hash;
++    handle_command_with_receipt(
++        state,
++        tlog,
++        cfg,
++        envelope.into_command(),
++        Some((command_id, command_hash)),
++    )
+ }
+@@
+-    let response = handle_command(state, tlog, cfg, envelope.clone().into_command())?;
++    let response = handle_command_with_receipt(
++        state,
++        tlog,
++        cfg,
++        envelope.clone().into_command(),
++        Some((envelope.command_id, envelope.command_hash)),
++    )?;
+     ledger.push_response(&envelope, &response.event);
+     Ok(response)
+ }
+*** Update File: src/lib.rs
+@@
+         assert_eq!(ledger.len(), 1);
+         verify_tlog(&tlog).unwrap();
+     }
+
+     #[test]
++    fn command_ledger_reconstructs_from_tlog_after_restart() {
++        let mut state = State::default();
++        let mut tlog = Vec::new();
++        let mut ledger = CommandLedger::default();
++        let cfg = RuntimeConfig::default();
++        tick(&mut state, &mut tlog, cfg).unwrap();
++
++        let observation = ObservationRecord::new(1, 1, 0xabc, 1);
++        let envelope = CommandEnvelope::new(17, Command::SubmitEvidence(observation.submission()));
++        let first = crate::api::routes::handle_envelope_once(
++            &mut state,
++            &mut tlog,
++            cfg,
++            &mut ledger,
++            envelope.clone(),
++        )
++        .unwrap();
++
++        assert_eq!(first.event.api_command_id, envelope.command_id);
++        assert_eq!(first.event.api_command_hash, envelope.command_hash);
++
++        let encoded = encode_tlog_ndjson_string(&tlog);
++        let decoded = decode_tlog_ndjson_str(&encoded).unwrap();
++        assert_eq!(decoded, tlog);
++
++        let mut rebuilt_ledger = CommandLedger::reconstruct_from_tlog(&decoded).unwrap();
++        assert_eq!(rebuilt_ledger.receipts(), ledger.receipts());
++
++        let state_after_first = state;
++        let tlog_len_after_first = tlog.len();
++        let second = crate::api::routes::handle_envelope_once(
++            &mut state,
++            &mut tlog,
++            cfg,
++            &mut rebuilt_ledger,
++            envelope,
++        )
++        .unwrap();
++
++        assert_eq!(first, second);
++        assert_eq!(state, state_after_first);
++        assert_eq!(tlog.len(), tlog_len_after_first);
++        assert_eq!(rebuilt_ledger.len(), 1);
++        verify_tlog(&tlog).unwrap();
++    }
++
++    #[test]
+     fn command_ledger_rejects_command_id_reuse_with_different_hash() {
+         let mut state = State::default();
+         let mut tlog = Vec::new();
+@@
+             recovery_action: event.recovery_action,
+             affected_gate: event.affected_gate,
+             runtime_config: event.runtime_config,
+             state_before: event.state_before,
+             state_after: event.state_after,
++            api_command_id: event.api_command_id,
++            api_command_hash: event.api_command_hash,
+         });
+*** End Patch

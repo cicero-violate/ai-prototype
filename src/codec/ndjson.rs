@@ -11,7 +11,7 @@ use crate::kernel::{
 };
 use crate::runtime::CanonError;
 
-pub const TLOG_SCHEMA_VERSION: u64 = 3;
+pub const TLOG_SCHEMA_VERSION: u64 = 4;
 pub const TLOG_RECORD_EVENT: u64 = 1;
 
 pub fn append_tlog_ndjson(
@@ -91,7 +91,7 @@ pub fn load_tlog_ndjson(path: impl AsRef<Path>) -> Result<TLog, CanonError> {
 }
 
 pub fn encode_control_event_ndjson(event: &ControlEvent) -> String {
-    let mut fields = Vec::with_capacity(90);
+    let mut fields = Vec::with_capacity(92);
     fields.extend([TLOG_SCHEMA_VERSION, TLOG_RECORD_EVENT]);
     push_event(&mut fields, *event);
     let body = fields
@@ -176,7 +176,12 @@ fn push_event(out: &mut Vec<u64>, event: ControlEvent) {
     ]);
     push_state(out, event.state_before);
     push_state(out, event.state_after);
-    out.extend([event.prev_hash, event.self_hash]);
+    out.extend([
+        event.api_command_id,
+        event.api_command_hash,
+        event.prev_hash,
+        event.self_hash,
+    ]);
 }
 
 fn pop_event(cursor: &mut Cursor<'_>) -> Result<ControlEvent, CanonError> {
@@ -197,6 +202,8 @@ fn pop_event(cursor: &mut Cursor<'_>) -> Result<ControlEvent, CanonError> {
     };
     let state_before = pop_state(cursor)?;
     let state_after = pop_state(cursor)?;
+    let api_command_id = cursor.take()?;
+    let api_command_hash = cursor.take()?;
     let prev_hash = cursor.take()?;
     let self_hash = cursor.take()?;
 
@@ -215,6 +222,8 @@ fn pop_event(cursor: &mut Cursor<'_>) -> Result<ControlEvent, CanonError> {
         runtime_config,
         state_before,
         state_after,
+        api_command_id,
+        api_command_hash,
         prev_hash,
         self_hash,
     })

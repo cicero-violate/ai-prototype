@@ -161,7 +161,7 @@ impl VerificationRecord {
 
     pub fn submission(&self) -> EvidenceSubmission {
         let passed = self.decision() == VerificationDecision::Accepted;
-        EvidenceSubmission::with_effect(
+        EvidenceSubmission::with_effect_payload(
             GateId::Verification,
             Evidence::LineageProof,
             passed,
@@ -170,6 +170,7 @@ impl VerificationRecord {
             } else {
                 PacketEffect::None
             },
+            self.semantic_check_hash,
         )
     }
 }

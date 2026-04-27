@@ -1,0 +1,181 @@
+*** Begin Patch
+*** Update File: src/runtime/durable.rs
+@@
+ use std::path::Path;
+
++use crate::api::protocol::CommandLedger;
+ use crate::codec::ndjson::load_tlog_ndjson;
+ use crate::kernel::{Phase, RuntimeConfig, State, TLog};
+@@
+ use super::verify::{replay_report_from, replay_report_ndjson, verify_tlog_from, ReplayReport};
+ use super::{convergence_outcome, reduce, CanonError, CanonicalWriter};
+
++#[derive(Clone, Debug, PartialEq, Eq)]
++pub struct DurableRuntimeState {
++    pub state: State,
++    pub tlog: TLog,
++    pub command_ledger: CommandLedger,
++}
++
+ pub fn tick_durable(
+     state: &mut State,
+     tlog: &mut TLog,
+@@
+ pub fn durable_replay_report(
+     initial: State,
+     tlog_path: impl AsRef<Path>,
+ ) -> Result<ReplayReport, CanonError> {
+     replay_report_ndjson(initial, tlog_path)
+ }
+
++pub fn resume_durable_runtime(
++    initial: State,
++    tlog_path: impl AsRef<Path>,
++) -> Result<DurableRuntimeState, CanonError> {
++    let path = tlog_path.as_ref();
++    let tlog = load_tlog_ndjson(path)?;
++    let command_ledger = CommandLedger::reconstruct_from_tlog(&tlog)?;
++    let state = if tlog.is_empty() {
++        initial
++    } else {
++        verify_tlog_from(initial, &tlog)?
++    };
++
++    Ok(DurableRuntimeState {
++        state,
++        tlog,
++        command_ledger,
++    })
++}
++
+ pub fn run_until_done_durable(
+     initial: State,
+     cfg: RuntimeConfig,
+     tlog_path: impl AsRef<Path>,
+ ) -> Result<(State, TLog), CanonError> {
++    let runtime = run_until_done_durable_with_ledger(initial, cfg, tlog_path)?;
++    Ok((runtime.state, runtime.tlog))
++}
++
++pub fn run_until_done_durable_with_ledger(
++    initial: State,
++    cfg: RuntimeConfig,
++    tlog_path: impl AsRef<Path>,
++) -> Result<DurableRuntimeState, CanonError> {
+     let path = tlog_path.as_ref();
+-    let mut tlog = load_tlog_ndjson(path)?;
+-    let mut state = if tlog.is_empty() {
+-        initial
+-    } else {
+-        verify_tlog_from(initial, &tlog)?
+-    };
++    let mut runtime = resume_durable_runtime(initial, path)?;
+
+     for _ in 0..cfg.max_steps {
+-        if state.phase == Phase::Done {
+-            return Ok((state, tlog));
++        if runtime.state.phase == Phase::Done {
++            return Ok(runtime);
+         }
+
+-        tick_durable(&mut state, &mut tlog, path, cfg)?;
++        tick_durable(&mut runtime.state, &mut runtime.tlog, path, cfg)?;
+     }
+
+-    append_convergence_failure_durable(&mut state, &mut tlog, path, cfg)?;
+-    Ok((state, tlog))
++    append_convergence_failure_durable(&mut runtime.state, &mut runtime.tlog, path, cfg)?;
++    runtime.command_ledger = CommandLedger::reconstruct_from_tlog(&runtime.tlog)?;
++    Ok(runtime)
+ }
+
+ fn append_convergence_failure_durable(
+*** Update File: src/runtime/mod.rs
+@@
+-pub use self::durable::{durable_replay_report, run_until_done_durable, tick_durable, tick_durable_checked};
++pub use self::durable::{
++    durable_replay_report, resume_durable_runtime, run_until_done_durable,
++    run_until_done_durable_with_ledger, tick_durable, tick_durable_checked, DurableRuntimeState,
++};
+*** Update File: src/lib.rs
+@@
+ pub use crate::runtime::{
+-    durable_replay_report, legal_transition, replay_report_from, replay_report_ndjson,
+-    replay_tlog_ndjson, run_until_done, run_until_done_durable, semantic_diff, tick,
+-    tick_durable, tick_durable_checked, touch_all_surfaces, verify_tlog, verify_tlog_from,
+-    CanonError, ReplayReport,
++    durable_replay_report, legal_transition, replay_report_from, replay_report_ndjson,
++    replay_tlog_ndjson, resume_durable_runtime, run_until_done,
++    run_until_done_durable, run_until_done_durable_with_ledger, semantic_diff, tick,
++    tick_durable, tick_durable_checked, touch_all_surfaces, verify_tlog, verify_tlog_from,
++    CanonError, DurableRuntimeState, ReplayReport,
+ };
+@@
+     fn durable_runner_resumes_from_disk_tlog() {
+         let path = std::env::temp_dir().join(format!(
+             "ai-tlog-resume-{}.ndjson",
+@@
+         assert_eq!(replayed, resumed_state);
+     }
+
+     #[test]
++    fn durable_resume_reconstructs_command_ledger_from_tlog() {
++        let path = std::env::temp_dir().join(format!(
++            "ai-tlog-ledger-resume-{}.ndjson",
++            std::process::id()
++        ));
++        std::fs::remove_file(&path).ok();
++
++        let cfg = RuntimeConfig::default();
++        let mut state = State::default();
++        let mut tlog = Vec::new();
++        let mut ledger = CommandLedger::default();
++        tick(&mut state, &mut tlog, cfg).unwrap();
++
++        let observation = ObservationRecord::new(1, 1, 0xabc, 1);
++        let envelope = CommandEnvelope::new(71, Command::SubmitEvidence(observation.submission()));
++        let first = crate::api::routes::handle_envelope_once(
++            &mut state,
++            &mut tlog,
++            cfg,
++            &mut ledger,
++            envelope.clone(),
++        )
++        .unwrap();
++
++        write_tlog_ndjson(&path, &tlog).unwrap();
++        let resumed = resume_durable_runtime(State::default(), &path).unwrap();
++
++        assert_eq!(resumed.state, state);
++        assert_eq!(resumed.tlog, tlog);
++        assert_eq!(resumed.command_ledger.receipts(), ledger.receipts());
++
++        let completed =
++            run_until_done_durable_with_ledger(State::default(), cfg, &path).unwrap();
++        assert!(completed.state.is_success());
++        assert_eq!(completed.command_ledger.receipts(), ledger.receipts());
++
++        let mut resumed_state = resumed.state;
++        let mut resumed_tlog = resumed.tlog;
++        let mut resumed_ledger = resumed.command_ledger;
++        let resumed_tlog_len = resumed_tlog.len();
++        let second = crate::api::routes::handle_envelope_once(
++            &mut resumed_state,
++            &mut resumed_tlog,
++            cfg,
++            &mut resumed_ledger,
++            envelope,
++        )
++        .unwrap();
++        std::fs::remove_file(&path).ok();
++
++        assert_eq!(first, second);
++        assert_eq!(resumed_tlog.len(), resumed_tlog_len);
++        assert_eq!(resumed_ledger.receipts(), ledger.receipts());
++    }
++
++    #[test]
+     fn replay_report_exposes_final_hash_and_seq_bounds() {
+         let initial = State::ready();
+         let (state, tlog) = run_until_done(initial, RuntimeConfig::default()).unwrap();
+*** End Patch

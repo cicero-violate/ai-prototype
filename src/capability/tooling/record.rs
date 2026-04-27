@@ -1,7 +1,7 @@
 //! Durable tool execution payload owned by the tooling capability.
 
 use crate::capability::{EvidenceProducer, EvidenceSubmission, PacketEffect};
-use crate::kernel::{Evidence, GateId, Packet};
+use crate::kernel::{mix, Evidence, GateId, Packet};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ToolDecision {
@@ -41,7 +41,7 @@ impl ToolExecutionRecord {
 
     pub fn submission(&self) -> EvidenceSubmission {
         let passed = self.decision() == ToolDecision::Succeeded;
-        EvidenceSubmission::with_effect(
+        EvidenceSubmission::with_effect_payload(
             GateId::Execution,
             Evidence::ArtifactReceipt,
             passed,
@@ -50,6 +50,7 @@ impl ToolExecutionRecord {
             } else {
                 PacketEffect::None
             },
+            tooling_payload_hash(self),
         )
     }
 }
@@ -64,6 +65,15 @@ impl EvidenceProducer for ToolExecutionRecord {
     fn submission(&self) -> EvidenceSubmission {
         ToolExecutionRecord::submission(self)
     }
+}
+
+fn tooling_payload_hash(record: &ToolExecutionRecord) -> u64 {
+    let mut h = 0xa54f_f53a_5f1d_36f1u64;
+    h = mix(h, record.task_id);
+    h = mix(h, record.command_hash);
+    h = mix(h, record.exit_code as u64);
+    h = mix(h, record.output_hash);
+    h.max(1)
 }
 
 fn tool_command_hash(packet: Packet) -> u64 {

@@ -1,7 +1,7 @@
 //! Durable planning payload owned by the planning capability.
 
 use crate::capability::{EvidenceProducer, EvidenceSubmission, PacketEffect};
-use crate::kernel::{Evidence, GateId, Packet};
+use crate::kernel::{mix, Evidence, GateId, Packet};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PlanDecision {
@@ -44,7 +44,7 @@ impl PlanRecord {
 
     pub fn submission(&self) -> EvidenceSubmission {
         let passed = self.decision() == PlanDecision::Ready;
-        EvidenceSubmission::with_effect(
+        EvidenceSubmission::with_effect_payload(
             GateId::Plan,
             Evidence::TaskReady,
             passed,
@@ -53,6 +53,7 @@ impl PlanRecord {
             } else {
                 PacketEffect::None
             },
+            plan_payload_hash(self),
         )
     }
 }
@@ -67,6 +68,15 @@ impl EvidenceProducer for PlanRecord {
     fn submission(&self) -> EvidenceSubmission {
         PlanRecord::submission(self)
     }
+}
+
+fn plan_payload_hash(record: &PlanRecord) -> u64 {
+    let mut h = 0x9e37_79b9_7f4a_7c15u64;
+    h = mix(h, record.objective_id);
+    h = mix(h, record.task_id);
+    h = mix(h, record.ready_tasks as u64);
+    h = mix(h, record.dependency_hash);
+    h.max(1)
 }
 
 fn plan_dependency_hash(packet: Packet) -> u64 {

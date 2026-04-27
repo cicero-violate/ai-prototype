@@ -1,7 +1,7 @@
 //! Policy promotion payloads derived from TLog history.
 
 use crate::capability::{EvidenceProducer, EvidenceSubmission};
-use crate::kernel::{ControlEvent, EventKind, Evidence, GateId, Phase};
+use crate::kernel::{mix, ControlEvent, EventKind, Evidence, GateId, Phase};
 
 pub const POLICY_PROMOTION_SOURCE_SEQ: &str = "learning.policy_promotion.source_seq";
 pub const POLICY_FEEDBACK_HASH: &str = "learning.policy_feedback.hash";
@@ -65,7 +65,12 @@ impl PolicyPromotion {
     }
 
     pub fn submission(&self) -> EvidenceSubmission {
-        EvidenceSubmission::new(GateId::Learning, Evidence::PolicyPromotion, self.is_valid())
+        EvidenceSubmission::with_payload(
+            GateId::Learning,
+            Evidence::PolicyPromotion,
+            self.is_valid(),
+            self.promoted_policy_hash,
+        )
     }
 }
 
@@ -98,8 +103,3 @@ fn promotion_hash(
     h.max(1)
 }
 
-fn mix(mut h: u64, x: u64) -> u64 {
-    h ^= x;
-    h = h.wrapping_mul(0x100000001b3);
-    h
-}

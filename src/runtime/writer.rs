@@ -17,8 +17,23 @@ impl CanonicalWriter {
         outcome: Outcome,
         cfg: RuntimeConfig,
     ) -> Result<ControlEvent, CanonError> {
+        Self::build_with_command(tlog, before, outcome, cfg, 0, 0)
+    }
+
+    pub(crate) fn build_with_command(
+        tlog: &[ControlEvent],
+        before: State,
+        outcome: Outcome,
+        cfg: RuntimeConfig,
+        api_command_id: u64,
+        api_command_hash: u64,
+    ) -> Result<ControlEvent, CanonError> {
         if !cfg.is_structurally_valid() {
             return Err(CanonError::InvalidRuntimeConfig);
+        }
+
+        if (api_command_id == 0) != (api_command_hash == 0) {
+            return Err(CanonError::InvalidApiCommand);
         }
 
         if !before.is_structurally_valid() || !outcome.state.is_structurally_valid() {
@@ -61,6 +76,8 @@ impl CanonicalWriter {
             runtime_config: cfg,
             state_before: before,
             state_after: after,
+            api_command_id,
+            api_command_hash,
         });
 
         Ok(ControlEvent {
@@ -78,6 +95,8 @@ impl CanonicalWriter {
             runtime_config: cfg,
             state_before: before,
             state_after: after,
+            api_command_id,
+            api_command_hash,
             prev_hash,
             self_hash,
         })
@@ -90,6 +109,26 @@ impl CanonicalWriter {
         cfg: RuntimeConfig,
     ) -> Result<ControlEvent, CanonError> {
         let event = Self::build(tlog, before, outcome, cfg)?;
+        tlog.push(event);
+        Ok(event)
+    }
+
+    pub(crate) fn append_with_command(
+        tlog: &mut TLog,
+        before: State,
+        outcome: Outcome,
+        cfg: RuntimeConfig,
+        api_command_id: u64,
+        api_command_hash: u64,
+    ) -> Result<ControlEvent, CanonError> {
+        let event = Self::build_with_command(
+            tlog,
+            before,
+            outcome,
+            cfg,
+            api_command_id,
+            api_command_hash,
+        )?;
         tlog.push(event);
         Ok(event)
     }

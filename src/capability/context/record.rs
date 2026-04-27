@@ -2,7 +2,7 @@
 
 use crate::capability::memory::MemoryLookupRecord;
 use crate::capability::{EvidenceProducer, EvidenceSubmission};
-use crate::kernel::{Evidence, GateId, Packet};
+use crate::kernel::{mix, Evidence, GateId, Packet};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ContextDecision {
@@ -52,10 +52,11 @@ impl ContextRecord {
     }
 
     pub fn submission(&self) -> EvidenceSubmission {
-        EvidenceSubmission::new(
+        EvidenceSubmission::with_payload(
             GateId::Analysis,
             Evidence::AnalysisReport,
             self.decision() == ContextDecision::Assembled,
+            self.context_hash,
         )
     }
 }
@@ -86,10 +87,4 @@ fn context_hash(
     h = mix(h, memory_aggregate_hash);
     h = mix(h, prior_count as u64);
     h.max(1)
-}
-
-fn mix(mut h: u64, x: u64) -> u64 {
-    h ^= x;
-    h = h.wrapping_mul(0x100000001b3);
-    h
 }

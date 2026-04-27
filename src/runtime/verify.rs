@@ -267,6 +267,10 @@ pub fn verify_tlog_from(initial: State, tlog: &[ControlEvent]) -> Result<State, 
             return Err(CanonError::InvalidHashChain);
         }
 
+        if (event.api_command_id == 0) != (event.api_command_hash == 0) {
+            return Err(CanonError::InvalidApiCommand);
+        }
+
         if event.from != state.phase || event.state_before.phase != state.phase {
             return Err(CanonError::InvalidStateContinuity);
         }
@@ -314,6 +318,8 @@ pub fn verify_tlog_from(initial: State, tlog: &[ControlEvent]) -> Result<State, 
             runtime_config: event.runtime_config,
             state_before: event.state_before,
             state_after: event.state_after,
+            api_command_id: event.api_command_id,
+            api_command_hash: event.api_command_hash,
         });
 
         if expected != event.self_hash {
@@ -327,8 +333,14 @@ pub fn verify_tlog_from(initial: State, tlog: &[ControlEvent]) -> Result<State, 
         } else {
             reduce(state, event.runtime_config)
         };
-        let expected_event =
-            CanonicalWriter::build(&tlog[..i], state, expected_outcome, event.runtime_config)?;
+        let expected_event = CanonicalWriter::build_with_command(
+            &tlog[..i],
+            state,
+            expected_outcome,
+            event.runtime_config,
+            event.api_command_id,
+            event.api_command_hash,
+        )?;
         if *event != expected_event {
             return Err(CanonError::InvalidReplay);
         }
@@ -357,6 +369,8 @@ pub(crate) struct EventHashInput {
     pub(crate) runtime_config: RuntimeConfig,
     pub(crate) state_before: State,
     pub(crate) state_after: State,
+    pub(crate) api_command_id: u64,
+    pub(crate) api_command_hash: u64,
 }
 
 pub(crate) fn hash_event(input: EventHashInput) -> u64 {
@@ -377,6 +391,8 @@ pub(crate) fn hash_event(input: EventHashInput) -> u64 {
     h = mix(h, input.runtime_config.max_recovery_attempts as u64);
     h = mix(h, state_hash(input.state_before));
     h = mix(h, state_hash(input.state_after));
+    h = mix(h, input.api_command_id);
+    h = mix(h, input.api_command_hash);
     h
 }
 

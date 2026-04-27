@@ -7,6 +7,7 @@ use std::path::Path;
 use crate::capability::learning::{
     PolicyPromotion, POLICY_FEEDBACK_HASH, POLICY_PROMOTION_SOURCE_SEQ,
 };
+use crate::kernel::mix;
 
 const POLICY_SCHEMA_VERSION: u64 = 1;
 const POLICY_RECORD_ENTRY: u64 = 1;
@@ -266,8 +267,3 @@ fn key_from_id(id: u64) -> Result<&'static str, PolicyStoreError> {
     }
 }
 
-fn mix(mut h: u64, x: u64) -> u64 {
-    h ^= x;
-    h = h.wrapping_mul(0x100000001b3);
-    h
-}

@@ -4,11 +4,19 @@
 
 use std::path::Path;
 
+use crate::api::protocol::CommandLedger;
 use crate::codec::ndjson::load_tlog_ndjson;
 use crate::kernel::{Phase, RuntimeConfig, State, TLog};
 
 use super::verify::{replay_report_from, replay_report_ndjson, verify_tlog_from, ReplayReport};
 use super::{convergence_outcome, reduce, CanonError, CanonicalWriter};
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct DurableRuntimeState {
+    pub state: State,
+    pub tlog: TLog,
+    pub command_ledger: CommandLedger,
+}
 
 pub fn tick_durable(
     state: &mut State,
@@ -52,29 +60,54 @@ pub fn durable_replay_report(
     replay_report_ndjson(initial, tlog_path)
 }
 
-pub fn run_until_done_durable(
+pub fn resume_durable_runtime(
     initial: State,
-    cfg: RuntimeConfig,
     tlog_path: impl AsRef<Path>,
-) -> Result<(State, TLog), CanonError> {
+) -> Result<DurableRuntimeState, CanonError> {
     let path = tlog_path.as_ref();
-    let mut tlog = load_tlog_ndjson(path)?;
-    let mut state = if tlog.is_empty() {
+    let tlog = load_tlog_ndjson(path)?;
+    let command_ledger = CommandLedger::reconstruct_from_tlog(&tlog)?;
+    let state = if tlog.is_empty() {
         initial
     } else {
         verify_tlog_from(initial, &tlog)?
     };
 
+    Ok(DurableRuntimeState {
+        state,
+        tlog,
+        command_ledger,
+    })
+}
+
+pub fn run_until_done_durable(
+    initial: State,
+    cfg: RuntimeConfig,
+    tlog_path: impl AsRef<Path>,
+) -> Result<(State, TLog), CanonError> {
+    let runtime = run_until_done_durable_with_ledger(initial, cfg, tlog_path)?;
+    Ok((runtime.state, runtime.tlog))
+}
+
+pub fn run_until_done_durable_with_ledger(
+    initial: State,
+    cfg: RuntimeConfig,
+    tlog_path: impl AsRef<Path>,
+) -> Result<DurableRuntimeState, CanonError> {
+    let path = tlog_path.as_ref();
+    let mut runtime = resume_durable_runtime(initial, path)?;
+
     for _ in 0..cfg.max_steps {
-        if state.phase == Phase::Done {
-            return Ok((state, tlog));
+        if runtime.state.phase == Phase::Done {
+            return Ok(runtime);
         }
 
-        tick_durable(&mut state, &mut tlog, path, cfg)?;
+        tick_durable(&mut runtime.state, &mut runtime.tlog, path, cfg)?;
     }
 
-    append_convergence_failure_durable(&mut state, &mut tlog, path, cfg)?;
-    Ok((state, tlog))
+    append_convergence_failure_durable(&mut runtime.state, &mut runtime.tlog, path, cfg)?;
+    runtime.command_ledger = CommandLedger::reconstruct_from_tlog(&runtime.tlog)?;
+    Ok(runtime)
 }
 
 fn append_convergence_failure_durable(

@@ -1,0 +1,70 @@
+*** Begin Patch
+*** Update File: src/lib.rs
+@@ -1517,9 +1517,66 @@
+             max_recovery_attempts: 1,
+         };
+         let mut state = State::ready();
+         let mut tlog = Vec::new();
+ 
+         assert_eq!(tick(&mut state, &mut tlog, cfg), Err(CanonError::InvalidRuntimeConfig));
+         assert!(tlog.is_empty());
+     }
++
++    #[test]
++    fn kernel_mix_is_single_hash_primitive_source() {
++        fn collect_mix_definitions(path: &std::path::Path, out: &mut Vec<String>) {
++            let entries = std::fs::read_dir(path).expect("source directory must be readable");
++            for entry in entries {
++                let entry = entry.expect("source entry must be readable");
++                let path = entry.path();
++
++                if path.is_dir() {
++                    collect_mix_definitions(&path, out);
++                    continue;
++                }
++
++                if path.extension().and_then(|ext| ext.to_str()) != Some("rs") {
++                    continue;
++                }
++
++                let source = std::fs::read_to_string(&path).expect("rust source must be readable");
++                let relative = path
++                    .strip_prefix(env!("CARGO_MANIFEST_DIR"))
++                    .unwrap_or(&path)
++                    .display()
++                    .to_string()
++                    .replace('\\', "/");
++
++                for (line_index, line) in source.lines().enumerate() {
++                    let trimmed = line.trim_start();
++                    let is_mix_definition = trimmed.starts_with("fn mix(")
++                        || trimmed.starts_with("pub fn mix(")
++                        || trimmed.starts_with("const fn mix(")
++                        || trimmed.starts_with("pub const fn mix(");
++
++                    if is_mix_definition {
++                        out.push(format!("{}:{}", relative, line_index + 1));
++                    }
++                }
++            }
++        }
++
++        let mut definitions = Vec::new();
++        let src = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
++        collect_mix_definitions(&src, &mut definitions);
++
++        assert_eq!(
++            definitions.len(),
++            1,
++            "mix must have exactly one implementation source: {:?}",
++            definitions
++        );
++        assert!(
++            definitions[0].starts_with("src/kernel/mod.rs:"),
++            "mix implementation must live in the kernel: {:?}",
++            definitions
++        );
++    }
++
+ }
+*** End Patch

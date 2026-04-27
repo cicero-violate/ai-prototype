@@ -12,7 +12,8 @@ pub mod kernel;
 pub mod runtime;
 
 pub use crate::api::protocol::{
-    Command, CommandEnvelope, ControlEventResponse, API_PROTOCOL_SCHEMA_VERSION,
+    Command, CommandEnvelope, CommandLedger, CommandReceipt, ControlEventResponse,
+    API_PROTOCOL_SCHEMA_VERSION,
 };
 pub use crate::capability::context::{ContextDecision, ContextRecord};
 pub use crate::capability::eval::{EvalDecision, EvalDimension, EvalRecord};
@@ -48,9 +49,10 @@ pub use crate::kernel::{
 };
 pub use crate::runtime::{
     durable_replay_report, legal_transition, replay_report_from, replay_report_ndjson,
-    replay_tlog_ndjson, run_until_done, run_until_done_durable, semantic_diff, tick,
+    replay_tlog_ndjson, resume_durable_runtime, run_until_done,
+    run_until_done_durable, run_until_done_durable_with_ledger, semantic_diff, tick,
     tick_durable, tick_durable_checked, touch_all_surfaces, verify_tlog, verify_tlog_from,
-    CanonError, ReplayReport,
+    CanonError, DurableRuntimeState, ReplayReport,
 };
 
 #[cfg(test)]
@@ -813,6 +815,161 @@ mod tests {
     }
 
     #[test]
+    fn api_protocol_schema_v2_binds_command_hash_to_payload() {
+        assert_eq!(API_PROTOCOL_SCHEMA_VERSION, 2);
+
+        let first_submission = ObservationRecord::new(1, 1, 0xabc, 1).submission();
+        let second_submission = ObservationRecord::new(2, 1, 0xabc, 1).submission();
+
+        assert_eq!(first_submission.gate, second_submission.gate);
+        assert_eq!(first_submission.evidence, second_submission.evidence);
+        assert_eq!(first_submission.passed, second_submission.passed);
+        assert_eq!(first_submission.effect, second_submission.effect);
+        assert_ne!(first_submission.payload_hash, second_submission.payload_hash);
+
+        let first_envelope = CommandEnvelope::new(11, Command::SubmitEvidence(first_submission));
+        let second_envelope = CommandEnvelope::new(11, Command::SubmitEvidence(second_submission));
+
+        assert_eq!(first_envelope.schema_version, API_PROTOCOL_SCHEMA_VERSION);
+        assert_ne!(first_envelope.command_hash, second_envelope.command_hash);
+
+        let mut forged_envelope = second_envelope.clone();
+        forged_envelope.command_hash = first_envelope.command_hash;
+        assert!(!forged_envelope.is_contract_valid());
+
+        let mut legacy_envelope = first_envelope;
+        legacy_envelope.schema_version = API_PROTOCOL_SCHEMA_VERSION - 1;
+        assert!(!legacy_envelope.is_contract_valid());
+    }
+
+    #[test]
+    fn command_ledger_replays_duplicate_envelope_without_new_event() {
+        let mut state = State::default();
+        let mut tlog = Vec::new();
+        let mut ledger = CommandLedger::default();
+        let cfg = RuntimeConfig::default();
+        tick(&mut state, &mut tlog, cfg).unwrap();
+
+        let observation = ObservationRecord::new(1, 1, 0xabc, 1);
+        let envelope = CommandEnvelope::new(1, Command::SubmitEvidence(observation.submission()));
+        let first = crate::api::routes::handle_envelope_once(
+            &mut state,
+            &mut tlog,
+            cfg,
+            &mut ledger,
+            envelope.clone(),
+        )
+        .unwrap();
+        let state_after_first = state;
+        let tlog_len_after_first = tlog.len();
+
+        let second = crate::api::routes::handle_envelope_once(
+            &mut state,
+            &mut tlog,
+            cfg,
+            &mut ledger,
+            envelope,
+        )
+        .unwrap();
+
+        assert_eq!(first, second);
+        assert_eq!(state, state_after_first);
+        assert_eq!(tlog.len(), tlog_len_after_first);
+        assert_eq!(ledger.len(), 1);
+        verify_tlog(&tlog).unwrap();
+    }
+
+    #[test]
+    fn command_ledger_reconstructs_from_tlog_after_restart() {
+        let mut state = State::default();
+        let mut tlog = Vec::new();
+        let mut ledger = CommandLedger::default();
+        let cfg = RuntimeConfig::default();
+        tick(&mut state, &mut tlog, cfg).unwrap();
+
+        let observation = ObservationRecord::new(1, 1, 0xabc, 1);
+        let envelope = CommandEnvelope::new(17, Command::SubmitEvidence(observation.submission()));
+        let first = crate::api::routes::handle_envelope_once(
+            &mut state,
+            &mut tlog,
+            cfg,
+            &mut ledger,
+            envelope.clone(),
+        )
+        .unwrap();
+
+        assert_eq!(first.event.api_command_id, envelope.command_id);
+        assert_eq!(first.event.api_command_hash, envelope.command_hash);
+
+        let encoded = encode_tlog_ndjson_string(&tlog);
+        let decoded = decode_tlog_ndjson_str(&encoded).unwrap();
+        assert_eq!(decoded, tlog);
+
+        let mut rebuilt_ledger = CommandLedger::reconstruct_from_tlog(&decoded).unwrap();
+        assert_eq!(rebuilt_ledger.receipts(), ledger.receipts());
+
+        let state_after_first = state;
+        let tlog_len_after_first = tlog.len();
+        let second = crate::api::routes::handle_envelope_once(
+            &mut state,
+            &mut tlog,
+            cfg,
+            &mut rebuilt_ledger,
+            envelope,
+        )
+        .unwrap();
+
+        assert_eq!(first, second);
+        assert_eq!(state, state_after_first);
+        assert_eq!(tlog.len(), tlog_len_after_first);
+        assert_eq!(rebuilt_ledger.len(), 1);
+        verify_tlog(&tlog).unwrap();
+    }
+
+    #[test]
+    fn command_ledger_rejects_command_id_reuse_with_different_hash() {
+        let mut state = State::default();
+        let mut tlog = Vec::new();
+        let mut ledger = CommandLedger::default();
+        let cfg = RuntimeConfig::default();
+        tick(&mut state, &mut tlog, cfg).unwrap();
+
+        let first_observation = ObservationRecord::new(1, 1, 0xabc, 1);
+        let first_envelope =
+            CommandEnvelope::new(1, Command::SubmitEvidence(first_observation.submission()));
+        crate::api::routes::handle_envelope_once(
+            &mut state,
+            &mut tlog,
+            cfg,
+            &mut ledger,
+            first_envelope,
+        )
+        .unwrap();
+
+        let state_after_first = state;
+        let tlog_len_after_first = tlog.len();
+        let conflicting_observation = ObservationRecord::new(2, 1, 0xdef, 1);
+        let conflicting_envelope = CommandEnvelope::new(
+            1,
+            Command::SubmitEvidence(conflicting_observation.submission()),
+        );
+
+        let result = crate::api::routes::handle_envelope_once(
+            &mut state,
+            &mut tlog,
+            cfg,
+            &mut ledger,
+            conflicting_envelope,
+        );
+
+        assert_eq!(result, Err(CanonError::InvalidApiCommand));
+        assert_eq!(state, state_after_first);
+        assert_eq!(tlog.len(), tlog_len_after_first);
+        assert_eq!(ledger.len(), 1);
+        verify_tlog(&tlog).unwrap();
+    }
+
+    #[test]
     fn codec_public_event_roundtrip_preserves_event() {
         let (_, tlog) = run_until_done(State::ready(), RuntimeConfig::default()).unwrap();
         let encoded = encode_control_event_ndjson(&tlog[0]);
@@ -1214,6 +1371,62 @@ mod tests {
     }
 
     #[test]
+    fn durable_resume_reconstructs_command_ledger_from_tlog() {
+        let path = std::env::temp_dir().join(format!(
+            "ai-tlog-ledger-resume-{}.ndjson",
+            std::process::id()
+        ));
+        std::fs::remove_file(&path).ok();
+
+        let cfg = RuntimeConfig::default();
+        let mut state = State::default();
+        let mut tlog = Vec::new();
+        let mut ledger = CommandLedger::default();
+        tick(&mut state, &mut tlog, cfg).unwrap();
+
+        let observation = ObservationRecord::new(1, 1, 0xabc, 1);
+        let envelope = CommandEnvelope::new(71, Command::SubmitEvidence(observation.submission()));
+        let first = crate::api::routes::handle_envelope_once(
+            &mut state,
+            &mut tlog,
+            cfg,
+            &mut ledger,
+            envelope.clone(),
+        )
+        .unwrap();
+
+        write_tlog_ndjson(&path, &tlog).unwrap();
+        let resumed = resume_durable_runtime(State::default(), &path).unwrap();
+
+        assert_eq!(resumed.state, state);
+        assert_eq!(resumed.tlog, tlog);
+        assert_eq!(resumed.command_ledger.receipts(), ledger.receipts());
+
+        let completed =
+            run_until_done_durable_with_ledger(State::default(), cfg, &path).unwrap();
+        assert!(completed.state.is_success());
+        assert_eq!(completed.command_ledger.receipts(), ledger.receipts());
+
+        let mut resumed_state = resumed.state;
+        let mut resumed_tlog = resumed.tlog;
+        let mut resumed_ledger = resumed.command_ledger;
+        let resumed_tlog_len = resumed_tlog.len();
+        let second = crate::api::routes::handle_envelope_once(
+            &mut resumed_state,
+            &mut resumed_tlog,
+            cfg,
+            &mut resumed_ledger,
+            envelope,
+        )
+        .unwrap();
+        std::fs::remove_file(&path).ok();
+
+        assert_eq!(first, second);
+        assert_eq!(resumed_tlog.len(), resumed_tlog_len);
+        assert_eq!(resumed_ledger.receipts(), ledger.receipts());
+    }
+
+    #[test]
     fn replay_report_exposes_final_hash_and_seq_bounds() {
         let initial = State::ready();
         let (state, tlog) = run_until_done(initial, RuntimeConfig::default()).unwrap();
@@ -1458,6 +1671,8 @@ mod tests {
             runtime_config: event.runtime_config,
             state_before: event.state_before,
             state_after: event.state_after,
+            api_command_id: event.api_command_id,
+            api_command_hash: event.api_command_hash,
         });
 
         assert_eq!(verify_tlog_from(initial, &[event]), Err(CanonError::InvalidReplay));
@@ -1522,4 +1737,65 @@ mod tests {
         assert_eq!(tick(&mut state, &mut tlog, cfg), Err(CanonError::InvalidRuntimeConfig));
         assert!(tlog.is_empty());
     }
+
+    #[test]
+    fn kernel_mix_is_single_hash_primitive_source() {
+        fn collect_mix_definitions(path: &std::path::Path, out: &mut Vec<String>) {
+            let entries = std::fs::read_dir(path).expect("source directory must be readable");
+            for entry in entries {
+                let entry = entry.expect("source entry must be readable");
+                let path = entry.path();
+
+                if path.is_dir() {
+                    collect_mix_definitions(&path, out);
+                    continue;
+                }
+
+                if path.extension().and_then(|ext| ext.to_str()) != Some("rs") {
+                    continue;
+                }
+
+                let source = std::fs::read_to_string(&path).expect("rust source must be readable");
+                let relative = path
+                    .strip_prefix(env!("CARGO_MANIFEST_DIR"))
+                    .unwrap_or(&path)
+                    .display()
+                    .to_string()
+                    .replace('\\', "/");
+
+                for (line_index, line) in source.lines().enumerate() {
+                    let trimmed = line.trim_start();
+                    let is_mix_definition = trimmed.starts_with("fn mix(")
+                        || trimmed.starts_with("pub fn mix(")
+                        || trimmed.starts_with("pub(crate) fn mix(")
+                        || trimmed.starts_with("pub(super) fn mix(")
+                        || trimmed.starts_with("const fn mix(")
+                        || trimmed.starts_with("pub const fn mix(")
+                        || trimmed.starts_with("pub(crate) const fn mix(")
+                        || trimmed.starts_with("pub(super) const fn mix(");
+
+                    if is_mix_definition {
+                        out.push(format!("{}:{}", relative, line_index + 1));
+                    }
+                }
+            }
+        }
+
+        let mut definitions = Vec::new();
+        let src = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
+        collect_mix_definitions(&src, &mut definitions);
+
+        assert_eq!(
+            definitions.len(),
+            1,
+            "mix must have exactly one implementation source: {:?}",
+            definitions
+        );
+        assert!(
+            definitions[0].starts_with("src/kernel/mod.rs:"),
+            "mix implementation must live in the kernel: {:?}",
+            definitions
+        );
+    }
+
 }

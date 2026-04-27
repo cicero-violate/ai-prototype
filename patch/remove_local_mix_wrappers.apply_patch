@@ -1,0 +1,78 @@
+*** Begin Patch
+*** Update File: src/capability/context/record.rs
+@@
+-use crate::kernel::{Evidence, GateId, Packet};
++use crate::kernel::{mix, Evidence, GateId, Packet};
+@@
+-fn mix(h: u64, x: u64) -> u64 {
+-    crate::kernel::mix(h, x)
+-}
+*** Update File: src/capability/eval/record.rs
+@@
+-use crate::kernel::{Evidence, GateId};
++use crate::kernel::{mix, Evidence, GateId};
+@@
+-fn mix(h: u64, x: u64) -> u64 {
+-    crate::kernel::mix(h, x)
+-}
+*** Update File: src/capability/judgment/record.rs
+@@
+-use crate::kernel::{Evidence, GateId};
++use crate::kernel::{mix, Evidence, GateId};
+@@
+-fn mix(h: u64, x: u64) -> u64 {
+-    crate::kernel::mix(h, x)
+-}
+*** Update File: src/capability/learning/promote.rs
+@@
+-use crate::kernel::{ControlEvent, EventKind, Evidence, GateId, Phase};
++use crate::kernel::{mix, ControlEvent, EventKind, Evidence, GateId, Phase};
+@@
+-fn mix(h: u64, x: u64) -> u64 {
+-    crate::kernel::mix(h, x)
+-}
+*** Update File: src/capability/llm/record.rs
+@@
+-use crate::kernel::{Evidence, GateId};
++use crate::kernel::{mix, Evidence, GateId};
+@@
+-fn mix(h: u64, x: u64) -> u64 {
+-    crate::kernel::mix(h, x)
+-}
+*** Update File: src/capability/memory/store.rs
+@@
+ //! Deterministic in-memory index for prior run facts.
+
++use crate::kernel::mix;
++
+@@
+-fn mix(h: u64, x: u64) -> u64 {
+-    crate::kernel::mix(h, x)
+-}
+*** Update File: src/capability/observation/record.rs
+@@
+-use crate::kernel::{Evidence, GateId};
++use crate::kernel::{mix, Evidence, GateId};
+@@
+-fn mix(h: u64, x: u64) -> u64 {
+-    crate::kernel::mix(h, x)
+-}
+*** Update File: src/capability/orchestration/record.rs
+@@
+-use crate::kernel::{Evidence, GateId, GateStatus, State, EXECUTION_GATE_ORDER};
++use crate::kernel::{mix, Evidence, GateId, GateStatus, State, EXECUTION_GATE_ORDER};
+@@
+-fn mix(h: u64, x: u64) -> u64 {
+-    crate::kernel::mix(h, x)
+-}
+*** Update File: src/capability/policy/store.rs
+@@
+ use crate::capability::learning::{
+     PolicyPromotion, POLICY_FEEDBACK_HASH, POLICY_PROMOTION_SOURCE_SEQ,
+ };
++use crate::kernel::mix;
+@@
+-fn mix(h: u64, x: u64) -> u64 {
+-    crate::kernel::mix(h, x)
+-}
+*** End Patch

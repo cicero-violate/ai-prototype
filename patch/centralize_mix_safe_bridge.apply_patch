@@ -1,0 +1,83 @@
+*** Begin Patch
+*** Update File: src/capability/context/record.rs
+@@
+-fn mix(mut h: u64, x: u64) -> u64 {
+-    h ^= x;
+-    h = h.wrapping_mul(0x100000001b3);
+-    h
++fn mix(h: u64, x: u64) -> u64 {
++    crate::kernel::mix(h, x)
+ }
+*** Update File: src/capability/eval/record.rs
+@@
+-fn mix(mut h: u64, x: u64) -> u64 {
+-    h ^= x;
+-    h = h.wrapping_mul(0x100000001b3);
+-    h
++fn mix(h: u64, x: u64) -> u64 {
++    crate::kernel::mix(h, x)
+ }
+*** Update File: src/capability/judgment/record.rs
+@@
+-fn mix(mut h: u64, x: u64) -> u64 {
+-    h ^= x;
+-    h = h.wrapping_mul(0x100000001b3);
+-    h
++fn mix(h: u64, x: u64) -> u64 {
++    crate::kernel::mix(h, x)
+ }
+*** Update File: src/capability/learning/promote.rs
+@@
+-fn mix(mut h: u64, x: u64) -> u64 {
+-    h ^= x;
+-    h = h.wrapping_mul(0x100000001b3);
+-    h
++fn mix(h: u64, x: u64) -> u64 {
++    crate::kernel::mix(h, x)
+ }
+*** Update File: src/capability/llm/record.rs
+@@
+-fn mix(mut h: u64, x: u64) -> u64 {
+-    h ^= x;
+-    h = h.wrapping_mul(0x100000001b3);
+-    h
++fn mix(h: u64, x: u64) -> u64 {
++    crate::kernel::mix(h, x)
+ }
+*** Update File: src/capability/memory/store.rs
+@@
+-fn mix(mut h: u64, x: u64) -> u64 {
+-    h ^= x;
+-    h = h.wrapping_mul(0x100000001b3);
+-    h
++fn mix(h: u64, x: u64) -> u64 {
++    crate::kernel::mix(h, x)
+ }
+*** Update File: src/capability/observation/record.rs
+@@
+-fn mix(mut h: u64, x: u64) -> u64 {
+-    h ^= x;
+-    h = h.wrapping_mul(0x100000001b3);
+-    h
++fn mix(h: u64, x: u64) -> u64 {
++    crate::kernel::mix(h, x)
+ }
+*** Update File: src/capability/orchestration/record.rs
+@@
+-fn mix(mut h: u64, x: u64) -> u64 {
+-    h ^= x;
+-    h = h.wrapping_mul(0x100000001b3);
+-    h
++fn mix(h: u64, x: u64) -> u64 {
++    crate::kernel::mix(h, x)
+ }
+*** Update File: src/capability/policy/store.rs
+@@
+-fn mix(mut h: u64, x: u64) -> u64 {
+-    h ^= x;
+-    h = h.wrapping_mul(0x100000001b3);
+-    h
++fn mix(h: u64, x: u64) -> u64 {
++    crate::kernel::mix(h, x)
+ }
+*** End Patch

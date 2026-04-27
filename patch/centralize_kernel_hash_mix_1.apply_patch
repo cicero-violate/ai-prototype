@@ -1,0 +1,153 @@
+*** Begin Patch
+*** Update File: src/capability/context/record.rs
+@@
+ use crate::capability::memory::MemoryLookupRecord;
+ use crate::capability::{EvidenceProducer, EvidenceSubmission};
+-use crate::kernel::{Evidence, GateId, Packet};
++use crate::kernel::{mix, Evidence, GateId, Packet};
+@@
+     h = mix(h, memory_aggregate_hash);
+     h = mix(h, prior_count as u64);
+     h.max(1)
+ }
+-
+-fn mix(mut h: u64, x: u64) -> u64 {
+-    h ^= x;
+-    h = h.wrapping_mul(0x100000001b3);
+-    h
+-}
+*** Update File: src/capability/eval/record.rs
+@@
+ use crate::capability::{EvidenceProducer, EvidenceSubmission, PacketEffect};
+-use crate::kernel::{Evidence, GateId};
++use crate::kernel::{mix, Evidence, GateId};
+@@
+     }
+     h.max(1)
+ }
+-
+-fn mix(mut h: u64, x: u64) -> u64 {
+-    h ^= x;
+-    h = h.wrapping_mul(0x100000001b3);
+-    h
+-}
+*** Update File: src/capability/judgment/record.rs
+@@
+ use crate::capability::{EvidenceProducer, EvidenceSubmission};
+-use crate::kernel::{Evidence, GateId};
++use crate::kernel::{mix, Evidence, GateId};
+@@
+     h = mix(h, record.policy_version);
+     h = mix(h, record.rationale_hash);
+     h.max(1)
+ }
+-
+-fn mix(mut h: u64, x: u64) -> u64 {
+-    h ^= x;
+-    h = h.wrapping_mul(0x100000001b3);
+-    h
+-}
+*** Update File: src/capability/learning/promote.rs
+@@
+ use crate::capability::{EvidenceProducer, EvidenceSubmission};
+-use crate::kernel::{ControlEvent, EventKind, Evidence, GateId, Phase};
++use crate::kernel::{mix, ControlEvent, EventKind, Evidence, GateId, Phase};
+@@
+     h = mix(h, completion_event.seq);
+     h = mix(h, completion_event.self_hash);
+     h.max(1)
+ }
+-
+-fn mix(mut h: u64, x: u64) -> u64 {
+-    h ^= x;
+-    h = h.wrapping_mul(0x100000001b3);
+-    h
+-}
+
+ pub fn policy_feedback_hash(entry: &PolicyFeedbackEntry) -> u64 {
+*** Update File: src/capability/llm/record.rs
+@@
+ use crate::capability::policy::PolicyStore;
+ use crate::capability::{EvidenceProducer, EvidenceSubmission};
+-use crate::kernel::{Evidence, GateId};
++use crate::kernel::{mix, Evidence, GateId};
+@@
+ fn token_count(context: &ContextRecord) -> u32 {
+     u32::from(context.prior_count)
+         .saturating_add(4)
+         .saturating_add((context.context_hash.count_ones() % 32).max(1))
+ }
+-
+-fn mix(mut h: u64, x: u64) -> u64 {
+-    h ^= x;
+-    h = h.wrapping_mul(0x100000001b3);
+-    h
+-}
+*** Update File: src/capability/memory/store.rs
+@@
+ //! Deterministic in-memory index for prior run facts.
+
++use crate::kernel::mix;
++
+@@
+     }
+     h.max(1)
+ }
+-
+-fn mix(mut h: u64, x: u64) -> u64 {
+-    h ^= x;
+-    h = h.wrapping_mul(0x100000001b3);
+-    h
+-}
+*** Update File: src/capability/observation/record.rs
+@@
+ use crate::capability::{EvidenceProducer, EvidenceSubmission};
+-use crate::kernel::{Evidence, GateId};
++use crate::kernel::{mix, Evidence, GateId};
+@@
+     h = mix(h, record.observed_hash);
+     h = mix(h, record.received_at_tick);
+     h.max(1)
+ }
+-
+-fn mix(mut h: u64, x: u64) -> u64 {
+-    h ^= x;
+-    h = h.wrapping_mul(0x100000001b3);
+-    h
+-}
+*** Update File: src/capability/orchestration/record.rs
+@@
+ use crate::capability::{EvidenceSubmission, PacketEffect};
+-use crate::kernel::{Evidence, GateId, GateStatus, State, EXECUTION_GATE_ORDER};
++use crate::kernel::{mix, Evidence, GateId, GateStatus, State, EXECUTION_GATE_ORDER};
+@@
+         PacketEffect::CompleteObjective => 4,
+     }
+ }
+-
+-fn mix(mut h: u64, x: u64) -> u64 {
+-    h ^= x;
+-    h = h.wrapping_mul(0x100000001b3);
+-    h
+-}
+*** Update File: src/capability/policy/store.rs
+@@
+ use crate::capability::learning::{
+     PolicyPromotion, POLICY_FEEDBACK_HASH, POLICY_PROMOTION_SOURCE_SEQ,
+ };
++use crate::kernel::mix;
+@@
+ fn key_from_id(id: u64) -> Result<&'static str, PolicyStoreError> {
+     match id {
+         POLICY_KEY_PROMOTION_SOURCE_SEQ => Ok(POLICY_PROMOTION_SOURCE_SEQ),
+         POLICY_KEY_FEEDBACK_HASH => Ok(POLICY_FEEDBACK_HASH),
+         _ => Err(PolicyStoreError::UnknownPolicyKey),
+     }
+ }
+-
+-fn mix(mut h: u64, x: u64) -> u64 {
+-    h ^= x;
+-    h = h.wrapping_mul(0x100000001b3);
+-    h
+-}
+*** End Patch

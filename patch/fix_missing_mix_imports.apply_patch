@@ -1,0 +1,10 @@
+*** Begin Patch
+*** Update File: src/capability/planning/record.rs
+@@
+-use crate::kernel::{Evidence, GateId, Packet};
++use crate::kernel::{mix, Evidence, GateId, Packet};
+*** Update File: src/capability/tooling/record.rs
+@@
+-use crate::kernel::{Evidence, GateId, Packet};
++use crate::kernel::{mix, Evidence, GateId, Packet};
+*** End Patch

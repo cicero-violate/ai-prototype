@@ -1,0 +1,225 @@
+*** Begin Patch
+*** Update File: src/api/protocol.rs
+@@
+ use crate::capability::EvidenceSubmission;
+-use crate::kernel::ControlEvent;
++use crate::kernel::{ControlEvent, TLog};
+@@
+ impl CommandEnvelope {
+@@
+     pub fn into_command(self) -> Command {
+         self.command
+     }
+ }
+
++#[derive(Clone, Copy, Debug, PartialEq, Eq)]
++pub struct CommandReceipt {
++    pub command_id: u64,
++    pub command_hash: u64,
++    pub event_hash: u64,
++}
++
++#[derive(Clone, Debug, Default, PartialEq, Eq)]
++pub struct CommandLedger {
++    receipts: Vec<CommandReceipt>,
++}
++
++impl CommandLedger {
++    pub fn len(&self) -> usize {
++        self.receipts.len()
++    }
++
++    pub fn is_empty(&self) -> bool {
++        self.receipts.is_empty()
++    }
++
++    pub fn receipts(&self) -> &[CommandReceipt] {
++        &self.receipts
++    }
++
++    pub fn receipt_for(&self, envelope: &CommandEnvelope) -> Option<CommandReceipt> {
++        self.receipts
++            .iter()
++            .copied()
++            .find(|receipt| {
++                receipt.command_id == envelope.command_id
++                    && receipt.command_hash == envelope.command_hash
++            })
++    }
++
++    pub fn has_conflicting_command(&self, envelope: &CommandEnvelope) -> bool {
++        self.receipts.iter().any(|receipt| {
++            receipt.command_id == envelope.command_id
++                && receipt.command_hash != envelope.command_hash
++        })
++    }
++
++    pub fn replayed_event(&self, envelope: &CommandEnvelope, tlog: &TLog) -> Option<ControlEvent> {
++        let receipt = self.receipt_for(envelope)?;
++        tlog.iter()
++            .copied()
++            .find(|event| event.self_hash == receipt.event_hash)
++    }
++
++    pub fn push_response(
++        &mut self,
++        envelope: &CommandEnvelope,
++        event: &ControlEvent,
++    ) -> CommandReceipt {
++        let receipt = CommandReceipt {
++            command_id: envelope.command_id,
++            command_hash: envelope.command_hash,
++            event_hash: event.self_hash,
++        };
++        self.receipts.push(receipt);
++        receipt
++    }
++}
++
+ #[derive(Clone, Debug, PartialEq, Eq)]
+ pub struct ControlEventResponse {
+     pub event: ControlEvent,
+ }
+*** Update File: src/api/routes.rs
+@@
+-use crate::api::protocol::{Command, CommandEnvelope, ControlEventResponse};
++use crate::api::protocol::{Command, CommandEnvelope, CommandLedger, ControlEventResponse};
+@@
+ pub fn handle_envelope(
+     state: &mut State,
+     tlog: &mut TLog,
+     cfg: RuntimeConfig,
+@@
+
+     handle_command(state, tlog, cfg, envelope.into_command())
+ }
+
++pub fn handle_envelope_once(
++    state: &mut State,
++    tlog: &mut TLog,
++    cfg: RuntimeConfig,
++    ledger: &mut CommandLedger,
++    envelope: CommandEnvelope,
++) -> Result<ControlEventResponse, CanonError> {
++    if !envelope.is_contract_valid() || ledger.has_conflicting_command(&envelope) {
++        return Err(CanonError::InvalidApiCommand);
++    }
++
++    if let Some(event) = ledger.replayed_event(&envelope, tlog) {
++        return Ok(ControlEventResponse { event });
++    }
++
++    if ledger.receipt_for(&envelope).is_some() {
++        return Err(CanonError::InvalidReplay);
++    }
++
++    let response = handle_command(state, tlog, cfg, envelope.clone().into_command())?;
++    ledger.push_response(&envelope, &response.event);
++    Ok(response)
++}
++
+ fn append_submission_event(
+     state: &mut State,
+     tlog: &mut TLog,
+     cfg: RuntimeConfig,
+*** Update File: src/lib.rs
+@@
+ pub use crate::api::protocol::{
+-    Command, CommandEnvelope, ControlEventResponse, API_PROTOCOL_SCHEMA_VERSION,
++    Command, CommandEnvelope, CommandLedger, CommandReceipt, ControlEventResponse,
++    API_PROTOCOL_SCHEMA_VERSION,
+ };
+@@
+     fn command_envelope_accepts_valid_command() {
+         let mut state = State::default();
+         let mut tlog = Vec::new();
+         let cfg = RuntimeConfig::default();
+@@
+         assert_eq!(state.phase, Phase::Analysis);
+         verify_tlog(&tlog).unwrap();
+     }
+
++    #[test]
++    fn command_ledger_replays_duplicate_envelope_without_new_event() {
++        let mut state = State::default();
++        let mut tlog = Vec::new();
++        let mut ledger = CommandLedger::default();
++        let cfg = RuntimeConfig::default();
++        tick(&mut state, &mut tlog, cfg).unwrap();
++
++        let observation = ObservationRecord::new(1, 1, 0xabc, 1);
++        let envelope = CommandEnvelope::new(1, Command::SubmitEvidence(observation.submission()));
++        let first = crate::api::routes::handle_envelope_once(
++            &mut state,
++            &mut tlog,
++            cfg,
++            &mut ledger,
++            envelope.clone(),
++        )
++        .unwrap();
++        let state_after_first = state;
++        let tlog_len_after_first = tlog.len();
++
++        let second = crate::api::routes::handle_envelope_once(
++            &mut state,
++            &mut tlog,
++            cfg,
++            &mut ledger,
++            envelope,
++        )
++        .unwrap();
++
++        assert_eq!(first, second);
++        assert_eq!(state, state_after_first);
++        assert_eq!(tlog.len(), tlog_len_after_first);
++        assert_eq!(ledger.len(), 1);
++        verify_tlog(&tlog).unwrap();
++    }
++
++    #[test]
++    fn command_ledger_rejects_command_id_reuse_with_different_hash() {
++        let mut state = State::default();
++        let mut tlog = Vec::new();
++        let mut ledger = CommandLedger::default();
++        let cfg = RuntimeConfig::default();
++        tick(&mut state, &mut tlog, cfg).unwrap();
++
++        let first_observation = ObservationRecord::new(1, 1, 0xabc, 1);
++        let first_envelope =
++            CommandEnvelope::new(1, Command::SubmitEvidence(first_observation.submission()));
++        crate::api::routes::handle_envelope_once(
++            &mut state,
++            &mut tlog,
++            cfg,
++            &mut ledger,
++            first_envelope,
++        )
++        .unwrap();
++
++        let state_after_first = state;
++        let tlog_len_after_first = tlog.len();
++        let conflicting_observation = ObservationRecord::new(2, 1, 0xdef, 1);
++        let conflicting_envelope = CommandEnvelope::new(
++            1,
++            Command::SubmitEvidence(conflicting_observation.submission()),
++        );
++
++        let result = crate::api::routes::handle_envelope_once(
++            &mut state,
++            &mut tlog,
++            cfg,
++            &mut ledger,
++            conflicting_envelope,
++        );
++
++        assert_eq!(result, Err(CanonError::InvalidApiCommand));
++        assert_eq!(state, state_after_first);
++        assert_eq!(tlog.len(), tlog_len_after_first);
++        assert_eq!(ledger.len(), 1);
++        verify_tlog(&tlog).unwrap();
++    }
++
+     #[test]
+     fn codec_public_event_roundtrip_preserves_event() {
+         let (_, tlog) = run_until_done(State::ready(), RuntimeConfig::default()).unwrap();
+*** End Patch

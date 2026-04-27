@@ -1,7 +1,7 @@
 //! Judgment payload owned outside the kernel.
 
 use crate::capability::{EvidenceProducer, EvidenceSubmission};
-use crate::kernel::{Evidence, GateId};
+use crate::kernel::{mix, Evidence, GateId};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct JudgmentRecord {
@@ -16,7 +16,12 @@ impl JudgmentRecord {
     }
 
     pub fn submission(&self) -> EvidenceSubmission {
-        EvidenceSubmission::new(GateId::Judgment, Evidence::JudgmentRecord, self.is_valid())
+        EvidenceSubmission::with_payload(
+            GateId::Judgment,
+            Evidence::JudgmentRecord,
+            self.is_valid(),
+            judgment_payload_hash(self),
+        )
     }
 }
 
@@ -31,3 +36,12 @@ impl EvidenceProducer for JudgmentRecord {
         JudgmentRecord::submission(self)
     }
 }
+
+fn judgment_payload_hash(record: &JudgmentRecord) -> u64 {
+    let mut h = 0xaf63_dc4c_8601_ec8cu64;
+    h = mix(h, record.decision_id);
+    h = mix(h, record.policy_version);
+    h = mix(h, record.rationale_hash);
+    h.max(1)
+}
+
