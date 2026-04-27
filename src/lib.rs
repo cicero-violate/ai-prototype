@@ -30,9 +30,13 @@ pub use crate::capability::orchestration::{
 };
 pub use crate::capability::planning::{PlanDecision, PlanRecord};
 pub use crate::capability::policy::{PolicyEntry, PolicyStore, PolicyStoreError};
-pub use crate::capability::tooling::{ToolDecision, ToolExecutionRecord};
+pub use crate::capability::tooling::{
+    DeterministicToolExecutor, ToolDecision, ToolExecutionRecord, ToolKind, ToolReceipt,
+    ToolRequest,
+};
 pub use crate::capability::verification::{
-    ArtifactSemanticProfile, VerificationDecision, VerificationRecord,
+    ArtifactSemanticProfile, DeterministicSemanticVerifier, SemanticVerificationReceipt,
+    VerificationCheck, VerificationDecision, VerificationRecord, VerificationRequest,
 };
 pub use crate::capability::{
     expected_evidence_for_gate, EvidenceSubmission, PacketEffect,
@@ -1045,6 +1049,39 @@ mod tests {
     }
 
     #[test]
+    fn tooling_executor_denies_invalid_request_without_packet_effect() {
+        let request = ToolRequest {
+            tool_kind: ToolKind::Denied,
+            objective_id: 1,
+            task_id: 0,
+            command_hash: 1,
+            input_hash: 1,
+            requested_effect: PacketEffect::MaterializeArtifact,
+        };
+        let record = ToolExecutionRecord::from_request(request);
+        let submission = record.submission();
+
+        assert_eq!(record.decision(), ToolDecision::Failed);
+        assert!(submission.is_contract_valid());
+        assert!(!submission.passed);
+        assert_eq!(submission.effect, PacketEffect::None);
+    }
+
+    #[test]
+    fn tooling_executor_receipt_is_deterministic_for_same_request() {
+        let mut packet = Packet::empty();
+        packet.bind_ready_task();
+        let request = ToolRequest::from_packet(packet);
+        let executor = DeterministicToolExecutor::default();
+
+        let first = executor.execute(request);
+        let second = executor.execute(request);
+
+        assert_eq!(first, second);
+        assert!(first.is_success_for(request));
+    }
+
+    #[test]
     fn verification_record_repairs_lineage_through_api() {
         let mut state = State::default();
         state.phase = Phase::Verify;
@@ -1091,6 +1128,40 @@ mod tests {
         assert_eq!(record.semantic_profile, profile);
         assert_eq!(record.expected_receipt_hash, packet.expected_receipt_hash());
         assert_eq!(record.expected_lineage_hash, packet.expected_lineage_hash());
+    }
+
+    #[test]
+    fn semantic_verifier_receipt_is_deterministic_for_same_request() {
+        let mut packet = Packet::empty();
+        packet.bind_ready_task();
+        packet.materialize_artifact();
+
+        let request = VerificationRequest::from_packet(packet);
+        let verifier = DeterministicSemanticVerifier;
+
+        let first = verifier.verify(request);
+        let second = verifier.verify(request);
+
+        assert_eq!(request.check, VerificationCheck::ArtifactSemantics);
+        assert_eq!(first, second);
+        assert!(first.is_accepted_for(request));
+    }
+
+    #[test]
+    fn semantic_verifier_rejects_denied_request_without_repair_effect() {
+        let request = VerificationRequest {
+            check: VerificationCheck::Denied,
+            profile: ArtifactSemanticProfile::from_packet(Packet::empty()),
+            requested_effect: PacketEffect::RepairLineage,
+        };
+
+        let record = VerificationRecord::from_request(request);
+        let submission = record.submission();
+
+        assert_eq!(record.decision(), VerificationDecision::Rejected);
+        assert!(submission.is_contract_valid());
+        assert!(!submission.passed);
+        assert_eq!(submission.effect, PacketEffect::None);
     }
 
     #[test]

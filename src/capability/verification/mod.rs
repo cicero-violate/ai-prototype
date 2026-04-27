@@ -5,4 +5,7 @@
 
 pub mod record;
 
-pub use self::record::{ArtifactSemanticProfile, VerificationDecision, VerificationRecord};
+pub use self::record::{
+    ArtifactSemanticProfile, DeterministicSemanticVerifier, SemanticVerificationReceipt,
+    VerificationCheck, VerificationDecision, VerificationRecord, VerificationRequest,
+};

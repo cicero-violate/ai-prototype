@@ -5,4 +5,7 @@
 
 pub mod record;
 
-pub use self::record::{ToolDecision, ToolExecutionRecord};
+pub use self::record::{
+    DeterministicToolExecutor, ToolDecision, ToolExecutionRecord, ToolKind, ToolReceipt,
+    ToolRequest,
+};
