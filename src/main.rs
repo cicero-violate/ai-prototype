@@ -561,8 +561,11 @@ enum CanonError {
     InvalidCompletion,
     InvalidStateContinuity,
     InvalidPacketContinuity,
+    InvalidSemanticDelta,
     InvalidHashChain,
     InvalidReplay,
+    MissingAffectedGate,
+    UnexpectedAffectedGate,
 }
 
 #[derive(Clone, Copy)]
@@ -1185,7 +1188,7 @@ fn validate_event(event: EventView) -> Result<(), CanonError> {
 
     if matches!(
         event.kind,
-        EventKind::Blocked | EventKind::Failed | EventKind::Recovered
+        EventKind::Blocked | EventKind::Failed | EventKind::Recovered | EventKind::Learned
     ) && event.failure.is_none()
     {
         return Err(CanonError::MissingFailureClass);
@@ -1211,6 +1214,26 @@ fn validate_event(event: EventView) -> Result<(), CanonError> {
         return Err(CanonError::InvalidRepairTarget);
     }
 
+    if matches!(event.kind, EventKind::Blocked | EventKind::Failed) {
+        let Some(class) = event.failure else {
+            return Err(CanonError::MissingFailureClass);
+        };
+
+        if failure_requires_gate(class) && event.affected_gate.is_none() {
+            return Err(CanonError::MissingAffectedGate);
+        }
+
+        if !failure_requires_gate(class) && event.affected_gate.is_some() {
+            return Err(CanonError::UnexpectedAffectedGate);
+        }
+    }
+
+    if matches!(event.kind, EventKind::Advanced | EventKind::Completed | EventKind::Recovered)
+        && event.affected_gate.is_some()
+    {
+        return Err(CanonError::UnexpectedAffectedGate);
+    }
+
     if event.kind == EventKind::Learned {
         let Some(action) = event.recovery_action else {
             return Err(CanonError::MissingRecoveryAction);
@@ -1230,6 +1253,13 @@ fn validate_event(event: EventView) -> Result<(), CanonError> {
     }
 
     Ok(())
+}
+
+fn failure_requires_gate(class: FailureClass) -> bool {
+    !matches!(
+        class,
+        FailureClass::RecoveryExhausted | FailureClass::ConvergenceFailed
+    )
 }
 
 fn legal_transition(from: Phase, to: Phase, kind: EventKind, cause: Cause) -> bool {
@@ -1270,8 +1300,16 @@ fn verify_tlog_from(initial: State, tlog: &[ControlEvent]) -> Result<State, Cano
             return Err(CanonError::InvalidPacketContinuity);
         }
 
+        if event.state_after.phase != event.to {
+            return Err(CanonError::InvalidStateContinuity);
+        }
+
         if event.state_before != state {
             return Err(CanonError::InvalidReplay);
+        }
+
+        if event.delta != semantic_diff(event.state_before, event.state_after) {
+            return Err(CanonError::InvalidSemanticDelta);
         }
 
         validate_event(EventView {
@@ -1527,8 +1565,11 @@ fn touch_all_surfaces() -> usize {
         CanonError::InvalidCompletion,
         CanonError::InvalidStateContinuity,
         CanonError::InvalidPacketContinuity,
+        CanonError::InvalidSemanticDelta,
         CanonError::InvalidHashChain,
         CanonError::InvalidReplay,
+        CanonError::MissingAffectedGate,
+        CanonError::UnexpectedAffectedGate,
     ];
 
     let mut gates = GateSet::default();
@@ -1556,8 +1597,11 @@ fn touch_all_surfaces() -> usize {
             CanonError::InvalidCompletion => 7,
             CanonError::InvalidStateContinuity => 8,
             CanonError::InvalidPacketContinuity => 9,
-            CanonError::InvalidHashChain => 10,
-            CanonError::InvalidReplay => 11,
+            CanonError::InvalidSemanticDelta => 10,
+            CanonError::InvalidHashChain => 11,
+            CanonError::InvalidReplay => 12,
+            CanonError::MissingAffectedGate => 13,
+            CanonError::UnexpectedAffectedGate => 14,
         })
         .sum::<usize>();
 
@@ -1781,5 +1825,53 @@ mod tests {
             tlog[1].state_before.packet.revision.saturating_add(1);
 
         assert_eq!(verify_tlog(&tlog), Err(CanonError::InvalidPacketContinuity));
+    }
+
+    #[test]
+    fn tampered_semantic_delta_fails_verification() {
+        let (_, mut tlog) = run_until_done(State::ready(), RuntimeConfig::default()).unwrap();
+        tlog[0].delta = SemanticDelta::NoChange;
+
+        assert_eq!(verify_tlog(&tlog), Err(CanonError::InvalidSemanticDelta));
+    }
+
+    #[test]
+    fn broken_state_after_phase_fails_verification() {
+        let (_, mut tlog) = run_until_done(State::ready(), RuntimeConfig::default()).unwrap();
+        tlog[0].state_after.phase = Phase::Done;
+
+        assert_eq!(verify_tlog(&tlog), Err(CanonError::InvalidStateContinuity));
+    }
+
+    #[test]
+    fn failed_event_requires_affected_gate_when_failure_is_gate_scoped() {
+        let event = EventView {
+            from: Phase::Plan,
+            to: Phase::Recovery,
+            kind: EventKind::Failed,
+            cause: Cause::ReadyQueueEmpty,
+            decision: Decision::Fail,
+            failure: Some(FailureClass::PlanReadyQueueEmpty),
+            recovery_action: None,
+            affected_gate: None,
+        };
+
+        assert_eq!(validate_event(event), Err(CanonError::MissingAffectedGate));
+    }
+
+    #[test]
+    fn terminal_failure_rejects_affected_gate() {
+        let event = EventView {
+            from: Phase::Recovery,
+            to: Phase::Done,
+            kind: EventKind::Failed,
+            cause: Cause::RecoveryLimit,
+            decision: Decision::Halt,
+            failure: Some(FailureClass::RecoveryExhausted),
+            recovery_action: Some(RecoveryAction::Escalate),
+            affected_gate: Some(GateId::Eval),
+        };
+
+        assert_eq!(validate_event(event), Err(CanonError::UnexpectedAffectedGate));
     }
 }
