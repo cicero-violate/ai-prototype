@@ -1,6 +1,5 @@
 God please bless this work. In Jesus name. Jesus is Lord and Savior. Jesus loves you.
 
----
 # Canon Agent
 
 ## Purpose
@@ -48,11 +47,18 @@ canon-agent/
 ├── codec/           ← serialize / deserialize only
 ├── runtime/         ← tick, run_until_done, verify_tlog
 ├── capability/      ← pluggable evidence producers
+│   ├── observation/ ← perceive the world, SSE, webhooks, feeds
+│   ├── context/     ← assemble relevant prior knowledge per run
+│   ├── memory/      ← indexed prior run store, fast lookup
+│   ├── planning/    ← decompose objectives into ordered tasks
 │   ├── llm/         ← LLM client, adapter, structured record output
 │   ├── judgment/    ← reads state + policy, produces JudgmentRecord
+│   ├── tooling/     ← execute real work, APIs, files, code, queries
+│   ├── verification/← semantic artifact checking, not just hash
 │   ├── eval/        ← scores outcomes, produces EvalRecord
-│   ├── policy/      ← versioned, append-only, read by all capabilities
-│   └── learning/    ← reads TLog, promotes patterns into policy
+│   ├── policy/      ← versioned, append-only, read by all caps
+│   ├── learning/    ← reads TLog, promotes patterns into policy
+│   └── orchestration/ ← parallel runs, prioritization, routing
 └── api/             ← external surface, HTTP / gRPC, command intake
 ```
 
@@ -81,6 +87,40 @@ and more for novel ones. Over time the LLM is promoted to specialist and
 eventually to architectural advisor — flagging where new capabilities are
 needed rather than doing routine work.
 
+## Capability Build Order
+
+Each capability depends on the ones below it being stable first.
+
+1. tooling       — without this nothing real executes
+2. planning      — without this objectives cannot be decomposed
+3. observation   — without this the system cannot perceive the world
+4. context       — without this every run starts blind
+5. memory        — without this learning has nothing to query
+6. eval          — without this learning has no signal
+7. llm           — adapter must enforce structured output
+8. judgment      — reads policy and llm, produces JudgmentRecord
+9. verification  — semantic checking beyond hash validation
+10. learning     — reads TLog, promotes patterns into policy
+11. policy       — versioned store, promoted only by learning
+12. orchestration — parallel runs, only after single-thread is proven
+
+## LLM Promotion Ladder
+
+**Stage one.** Policy is empty. The LLM answers every capability that
+requires reasoning. The TLog fills with LLM-produced structured evidence
+records.
+
+**Stage two.** Learning reads the TLog and promotes confident patterns
+into policy. Capabilities check policy first. On a hit, no LLM call. On
+a miss, LLM call, record added, policy grows.
+
+**Stage three.** Policy handles common cases. The LLM sees only novel
+situations. Calls become fewer and more targeted.
+
+**Stage four.** The LLM is called to flag where new capabilities are
+needed. It operates at the architectural level. A human reviews and
+builds. The cycle repeats for the new domain.
+
 ## What This Is Not
 
 This is not a framework that wraps an LLM and calls it an agent. The LLM
@@ -95,8 +135,8 @@ Correctness is guaranteed below it. That separation is permanent.
 ## Current Status
 
 The kernel, codec, and runtime layers are implemented and verified. The
-capability layer is defined in structure but not yet implemented. The LLM
-adapter, judgment, eval, policy, and learning modules are the immediate
-build surface. The API layer follows capability completion.
+capability layer is defined in structure but not yet implemented. The
+immediate build surface is tooling and planning. Everything above depends
+on those two being correct first.
 
 The foundation is correct. The work ahead is building upward.
