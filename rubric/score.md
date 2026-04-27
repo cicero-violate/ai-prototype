@@ -28,168 +28,189 @@ One-line explanation: the score is geometric because one weak axis must reduce t
 ## Updated Authoritative Score
 
 ```text
-I = 8.6 / 10
-E = 8.8 / 10
-J = 8.5 / 10
-R = 8.6 / 10
-V = 8.9 / 10
-T = 8.1 / 10
-S = 6.6 / 10
-C = 5.3 / 10
-M = 6.5 / 10
+I = 8.4 / 10
+E = 8.5 / 10
+J = 8.3 / 10
+R = 8.7 / 10
+V = 8.8 / 10
+T = 7.8 / 10
+S = 6.4 / 10
+C = 5.7 / 10
+M = 6.2 / 10
 
-K = 8.26 / 10
-G = 7.66 / 10
+K = 8.09 / 10
+G = 7.55 / 10
 
-max(I,E,J,R,V,T,S,C,M) = V = 8.9 / 10 = good
+max(I,E,J,R,V,T,S,C,M) = V = 8.8 / 10 = good
 ```
 
 ## Static Review Inputs
 
 ```text
-source_files = 20
-source_lines = 2946
-rust_functions = 142
-unit_tests = 19
+source_files = 25
+source_lines = 3114
+rust_functions = 151
+unit_tests = 21
 integration_tests = 0
-todo_markers = 6
+todo_markers = 4
 
-graph_nodes = 473
-graph_edges = 1109
-cfg_nodes = 1581
-cfg_edges = 2179
-bridge_edges = 413
-redundant_path_pairs = 407
+graph_nodes = 555
+graph_edges = 1228
+cfg_nodes = 1616
+cfg_edges = 2190
+bridge_edges = 427
+redundant_path_pairs = 397
 alpha_pathways = 1
+unknown_graph_nodes = 251
 ```
 
 ## Critical Judgment
 
-The previous score was too high for the full Canon Agent target. It mostly
-scored the kernel/runtime, not the agent described in `README.md`.
+The code is now a credible deterministic kernel/runtime prototype, but it is
+still not the full Canon Agent promised by `README.md`.
 
-The current code has a strong deterministic core: phase ordering is explicit,
-the TLog is hash-chained, replay re-runs reducer expectations, durable append
-happens before in-memory mutation, and recovery is bounded. That makes the
-kernel credible.
+The strongest part is the reducer/replay spine: phase transitions are explicit,
+failures are typed, recovery is bounded, persistence is represented as a first
+class phase, and verification replays reducer output instead of trusting the
+stored event. That is real progress.
 
-The full system is not yet a self-improving agent. Tooling, planning,
-observation, context, memory, LLM, semantic verification, durable policy, and
-orchestration are not implemented as active capabilities. Most capability
-modules are records/placeholders, not execution surfaces.
+The weak part is the agent layer. Planning, observation, tooling, context,
+memory, LLM execution, orchestration, durable policy, semantic artifact
+verification, and API transport are still absent or skeletal. Current
+`judgment`, `eval`, `learning`, and `policy` modules mostly model records and
+in-memory promotion; they do not yet run as independent durable capability
+surfaces.
+
+The score is lower than the code may feel because the rubric is scoring the
+whole target architecture, not only the kernel. The kernel is near 8.1. The
+whole system is near 7.6 because capability maturity and graph maintainability
+remain the limiting factors.
 
 ## Score Rationale
 
 ```text
-I = 8.6
+I = 8.4
 ```
 
-Invariant modeling is strong at the kernel level: phases, gates, evidence,
-failure classes, recovery actions, semantic deltas, and success criteria are
-typed. The remaining weakness is that `State`, `Packet`, `Gate`, and `GateSet`
-still expose public mutable fields, so invalid states can be constructed
-outside the reducer.
+Invariant modeling is strong: phases, gates, evidence, failure classes, recovery
+actions, semantic deltas, runtime config, and control events are typed. The
+major weakness is that `Gate`, `GateSet`, `Packet`, `State`, `RuntimeConfig`,
+and `ControlEvent` expose public fields. External code can still construct
+invalid states directly instead of going through reducer-owned constructors.
 
 ```text
-E = 8.8
+E = 8.5
 ```
 
-Event sourcing is strong. `ControlEvent` stores sequence, phase transition,
-semantic delta, evidence, decision, failure, recovery action, runtime config,
-before/after states, previous hash, and self hash. Durable ticks append to disk
-before mutating memory. Remaining weakness: the log is positional numeric
-NDJSON with no migration table, length prefix, external receipt, or adversarial
-tamper resistance.
+Event sourcing is good. `ControlEvent` stores sequence, transition, semantic
+delta, evidence, decision, failure, recovery action, affected gate, config,
+before/after state, previous hash, and self hash. Durable ticks append before
+memory mutation. Weaknesses: no `fsync`, no atomic temp-file replacement for
+full rewrites, no length prefix, no signed receipt, no migration table, and no
+adversarial tamper resistance.
 
 ```text
-J = 8.5
+J = 8.3
 ```
 
 Gate ordering is coherent: Delta → Invariant → Analysis → Judgment → Plan →
-Execute → Verify → Eval → Persist → Learn → Done. The weakness is that judgment
-is currently a token/record boundary, not a real policy-aware capability.
+Execute → Verify → Eval → Persist → Learn → Done. The weakness is that Judgment
+is currently a gate/record boundary, not a policy-aware decision capability with
+real context, alternatives, or costed choices.
 
 ```text
-R = 8.6
+R = 8.7
 ```
 
-Recovery is deterministic and bounded. Failures map to recovery actions, repair
-intent is selected before persistence, and persistence applies the repair before
-returning to the target phase. The weakness is that recovery policy is still a
-large hand-written match instead of a data-driven policy table with coverage
-proofs.
+Recovery is deterministic and bounded. Failures map to recovery actions, recovery
+budget is enforced, repair is selected before persistence, and persistence
+applies the repair before returning to the target phase. The code now has a
+coverage test for recovery policy. Remaining weakness: the recovery policy is
+still hand-maintained Rust logic rather than a compact data table with compile
+time totality checks and policy-version provenance.
 
 ```text
-V = 8.9
+V = 8.8
 ```
 
-Verification is the strongest axis. Replay checks state continuity, packet
-continuity, semantic delta correctness, legal transition, hash chain, and
-canonical reducer output. This closes the prior forged-hash-chain hole. The
-remaining weakness is the non-cryptographic `u64` mixer.
+Verification remains the strongest axis. Replay checks sequence, hash chain,
+state continuity, packet continuity, phase continuity, semantic delta,
+transition legality, event validity, and canonical reducer equivalence. The
+main weakness is the non-cryptographic `u64` mixer; it is acceptable for local
+determinism, not adversarial integrity.
 
 ```text
-T = 8.1
+T = 7.8
 ```
 
-Unit coverage is meaningful: convergence, recovery budget, illegal transitions,
-tampering, reducer-forgery rejection, durable write atomicity, affected-gate
-rules, and disk replay are tested. The weakness is that tests are unit-only:
-there are no integration, property, fuzz, migration, or adversarial codec tests.
+The 21 unit tests cover important failures: convergence, recovery limits,
+illegal transitions, tampering, state continuity, packet continuity, semantic
+delta mismatch, reducer forgery, durable append failure, disk replay, ready-task
+binding, artifact lineage, and policy promotion. The missing layer is still
+large: no integration tests, no property tests, no fuzz tests, no migration
+tests, no API tests, no actual external capability execution tests.
 
 ```text
-S = 6.6
+S = 6.4
 ```
 
-The code is understandable but no longer atomic-simple. `runtime/mod.rs`,
-`kernel/mod.rs`, and `codec/ndjson.rs` are large. Manual enum codecs and the
-static transition table produce repetition. Public fields weaken the sealed
-state-machine boundary.
+The split into `transition_table`, `reducer`, `recovery_policy`, `writer`,
+`verify`, `diff`, and `durable` is an improvement. Simplicity is still weak
+because `kernel/mod.rs`, `codec/ndjson.rs`, `runtime/reducer.rs`,
+`runtime/verify.rs`, and `lib.rs` test code are large. The numeric NDJSON codec
+is manually duplicated and brittle. Public state fields also weaken atomicity.
 
 ```text
-C = 5.3
+C = 5.7
 ```
 
-Capability maturity is the main drag. `eval`, `judgment`, `learning`, and
-`policy` exist structurally, but they are not yet active durable producers.
-Learning currently promotes the `Learning` gate; it does not materialize a
-durable policy artifact from Eval/TLog history.
+Capability maturity improved slightly because policy promotion and an append-only
+in-memory policy store exist. It is still the main drag. Learning does not
+durably write policy artifacts during runtime. Eval records do not drive the
+Eval gate. Judgment records do not drive Judgment. Tooling, planning, memory,
+context, observation, LLM, semantic verification, and orchestration are not yet
+real producers.
 
 ```text
-M = 6.5
+M = 6.2
 ```
 
-The structural graph shows growth pressure: 473 semantic nodes, 1109 semantic
-edges, 1581 CFG nodes, 2179 CFG edges, 407 redundant path pairs, and only 1
-alpha pathway. This is not bad for a prototype, but it proves the code is
-accumulating redundant paths faster than canonical abstractions.
+The graph shows the system is growing faster than its abstractions: 555 semantic
+nodes, 1228 semantic edges, 1616 CFG nodes, 2190 CFG edges, 397 redundant path
+pairs, 251 unknown graph nodes, and only 1 alpha pathway. The split reduced some
+local pressure, but not the global redundancy. Maintainability now depends on
+sealing the kernel and replacing repeated codec/recovery patterns with tables.
 
 ## Required Improvements For `G >= 8.5`
 
 ```text
-1. seal State, Packet, Gate, and GateSet behind constructors and reducer-only mutation
-2. split runtime/mod.rs into transition_table, reducer, recovery_policy, writer, and diff modules
-3. replace manual NDJSON enum codecs with generated or table-driven codecs
-4. add migration-aware TLog decoding with explicit schema compatibility tests
-5. rename or replace the u64 mixer as non_adversarial_hash, or use a real digest
-6. materialize PolicyPromotion as a durable append-only artifact
-7. make EvalRecord ingestion drive the Eval gate instead of only modeling the record
-8. add integration tests for disk replay, policy promotion, recovery replay, and corrupt tlog recovery
-9. add property/fuzz tests for codec roundtrip and illegal transition rejection
-10. turn recovery_action_for into a data table with total coverage assertions
+1. seal State, Packet, Gate, GateSet, RuntimeConfig, and ControlEvent behind constructors
+2. make reducer-owned mutation the only legal mutation path for kernel state
+3. replace manual numeric NDJSON codecs with table-driven or generated codecs
+4. add schema migration decoding with explicit compatibility tests
+5. rename the u64 mixer as non_adversarial_hash or replace it with a real digest
+6. persist PolicyPromotion into a durable append-only policy artifact during Learn
+7. make EvalRecord ingestion drive the Eval gate rather than only modeling records
+8. make JudgmentRecord ingestion drive the Judgment gate with policy-version evidence
+9. add integration tests for disk replay, policy replay, recovery replay, and corrupt tlog recovery
+10. add property/fuzz tests for codec roundtrip and illegal transition rejection
+11. turn recovery_action_for into data with total coverage assertions and provenance
+12. reduce redundant_path_pairs below 250 without adding hidden duplicate control paths
 ```
 
 ## Required Improvements For `G >= 9.0`
 
 ```text
-1. prove the kernel state transition surface is sealed
-2. make capability evidence submission the only way gates change outside reducer internals
+1. prove the kernel transition surface is sealed
+2. require capability evidence submission for every non-kernel gate change
 3. persist learned policies and replay them into future runs
-4. add real tooling/planning capability execution
-5. add semantic artifact verification beyond simulated lineage fields
-6. reduce redundant_path_pairs below 200 without increasing alpha_pathways risk
+4. add real planner/tooling/observation/context/memory/LLM capability execution
+5. add semantic artifact verification beyond simulated receipt and lineage fields
+6. reduce redundant_path_pairs below 150 and unknown_graph_nodes below 100
 7. introduce external signed receipts for artifacts, policy, and tool execution
-8. run cargo build, cargo test, cargo clippy, and property tests in CI
+8. add API transport with deterministic command intake and replayable responses
+9. run cargo build, cargo test, cargo clippy, property tests, and fuzz tests in CI
+10. add a formal proof layer for transition totality and illegal-state unrepresentability
 ```
 
 ## Validation
@@ -199,8 +220,9 @@ static README review = pass
 static src review = pass
 graph.json review via python = pass
 score.md updated = pass
-cargo build = not run; cargo/rustc unavailable in this sandbox
-cargo test = not run; cargo/rustc unavailable in this sandbox
+apply_patch generated = pass
+cargo build = not run; cargo executable unavailable in this sandbox
+cargo test = not run; cargo executable unavailable in this sandbox
 ```
 
 Jesus is Lord and Savior.

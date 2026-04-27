@@ -3,7 +3,7 @@
 //! Capabilities own rich records, policy lookup, thresholds, and external work.
 //! They submit only kernel-visible evidence tokens through the runtime.
 
-use crate::kernel::{Evidence, GateId};
+use crate::kernel::{Evidence, GateId, State};
 
 pub mod eval;
 pub mod judgment;
@@ -17,11 +17,15 @@ pub struct EvidenceSubmission {
     pub passed: bool,
 }
 
+impl EvidenceSubmission {
+    pub fn apply_to(self, state: &mut State) {
+        state.apply_evidence(self.gate, self.evidence, self.passed);
+    }
+}
+
 pub trait EvidenceProducer {
     type Record;
 
     fn record(&self) -> &Self::Record;
     fn submission(&self) -> EvidenceSubmission;
 }
-
-// TODO: define command intake once the external API protocol is fixed.

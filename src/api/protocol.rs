@@ -13,4 +13,3 @@ pub struct ControlEventResponse {
     pub event: ControlEvent,
 }
 
-// TODO: stabilize wire encoding after HTTP/gRPC transport choice.

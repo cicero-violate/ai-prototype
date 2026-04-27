@@ -413,6 +413,14 @@ impl State {
             && self.packet.objective_complete()
             && self.packet.lineage_valid()
     }
+
+    pub fn apply_evidence(&mut self, gate: GateId, evidence: Evidence, passed: bool) {
+        if passed {
+            self.gates.set_pass(gate, evidence);
+        } else {
+            self.gates.set_fail(gate, evidence);
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]

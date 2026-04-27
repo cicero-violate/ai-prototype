@@ -134,6 +134,8 @@ mod tests {
 
         let promotion = PolicyPromotion::from_tlog(&tlog, 1).unwrap();
         assert!(promotion.is_valid());
+        assert_eq!(promotion.submission().gate, GateId::Learning);
+        assert!(promotion.submission().passed);
 
         let mut store = PolicyStore::default();
         let entry = store.promote(promotion.clone()).unwrap().clone();
@@ -143,6 +145,69 @@ mod tests {
         assert_eq!(store.latest_version(), 1);
         assert_eq!(store.latest(entry.key), Some(&entry));
         verify_tlog(&tlog).unwrap();
+    }
+
+    #[test]
+    fn eval_record_submission_drives_eval_gate_through_api() {
+        let mut state = State::ready();
+        state.phase = Phase::Eval;
+        state.gates.eval = Gate::unknown();
+
+        let mut tlog = Vec::new();
+        let record = EvalRecord {
+            score: 91,
+            threshold_used: 80,
+            dimensions: vec![EvalDimension {
+                id: "lineage",
+                score: 91,
+                threshold: 80,
+            }],
+        };
+
+        let response = crate::api::routes::handle_command(
+            &mut state,
+            &mut tlog,
+            RuntimeConfig::default(),
+            crate::api::protocol::Command::SubmitEvidence(record.submission()),
+        )
+        .unwrap();
+
+        assert_eq!(response.event.from, Phase::Eval);
+        assert_eq!(response.event.to, Phase::Persist);
+        assert_eq!(response.event.evidence, Evidence::EvalScore);
+        assert_eq!(state.phase, Phase::Persist);
+        assert_eq!(state.gates.eval.status, GateStatus::Pass);
+        assert_eq!(verify_tlog_from(response.event.state_before, &tlog).unwrap(), state);
+    }
+
+    #[test]
+    fn empty_eval_record_fails_submission() {
+        let record = EvalRecord {
+            score: 100,
+            threshold_used: 80,
+            dimensions: Vec::new(),
+        };
+
+        let submission = record.submission();
+
+        assert_eq!(record.decision(), EvalDecision::Fail);
+        assert_eq!(submission.gate, GateId::Eval);
+        assert!(!submission.passed);
+    }
+
+    #[test]
+    fn judgment_record_submission_applies_to_state() {
+        let mut state = State::default();
+        let judgment = crate::capability::judgment::JudgmentRecord {
+            decision_id: 1,
+            policy_version: 1,
+            rationale_hash: 42,
+        };
+
+        judgment.submission().apply_to(&mut state);
+
+        assert_eq!(state.gates.judgment.status, GateStatus::Pass);
+        assert_eq!(state.gates.judgment.evidence, Evidence::JudgmentRecord);
     }
 
     #[test]

@@ -1,6 +1,7 @@
 //! Policy promotion payloads derived from TLog history.
 
-use crate::kernel::{ControlEvent, EventKind, Evidence, Phase};
+use crate::capability::{EvidenceProducer, EvidenceSubmission};
+use crate::kernel::{ControlEvent, EventKind, Evidence, GateId, Phase};
 
 pub const POLICY_PROMOTION_SOURCE_SEQ: &str = "learning.policy_promotion.source_seq";
 
@@ -31,5 +32,25 @@ impl PolicyPromotion {
         self.source_seq != 0
             && self.promoted_policy_version != 0
             && self.evidence == Evidence::PolicyPromotion
+    }
+
+    pub fn submission(&self) -> EvidenceSubmission {
+        EvidenceSubmission {
+            gate: GateId::Learning,
+            evidence: Evidence::PolicyPromotion,
+            passed: self.is_valid(),
+        }
+    }
+}
+
+impl EvidenceProducer for PolicyPromotion {
+    type Record = PolicyPromotion;
+
+    fn record(&self) -> &Self::Record {
+        self
+    }
+
+    fn submission(&self) -> EvidenceSubmission {
+        PolicyPromotion::submission(self)
     }
 }

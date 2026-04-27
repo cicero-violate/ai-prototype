@@ -26,6 +26,7 @@ pub enum EvalDecision {
 impl EvalRecord {
     pub fn decision(&self) -> EvalDecision {
         if self.score >= self.threshold_used
+            && !self.dimensions.is_empty()
             && self
                 .dimensions
                 .iter()
