@@ -1,0 +1,200 @@
+*** Begin Patch
+*** Update File: src/main.rs
+@@
+ }
+ 
+ #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
++struct RepairReceipt {
++    action: RecoveryAction,
++    gate: Option<GateId>,
++    evidence: Evidence,
++}
++
++impl RepairReceipt {
++    fn for_action(action: RecoveryAction) -> Self {
++        Self {
++            action,
++            gate: action.repaired_gate(),
++            evidence: Evidence::RepairApplied,
++        }
++    }
++
++    fn verifies(self, gate: GateId) -> bool {
++        self.gate == Some(gate) && self.evidence == Evidence::RepairApplied
++    }
++}
++
++#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+ #[repr(u8)]
+ enum EventKind {
+     Advanced = 1,
+@@
+     gates: GateSet,
+     failure: Option<FailureClass>,
+     recovery_action: Option<RecoveryAction>,
++    pending_repair: Option<RepairReceipt>,
+     recovery_attempts: u8,
+ }
+@@
+             gates: GateSet::default(),
+             failure: None,
+             recovery_action: None,
++            pending_repair: None,
+             recovery_attempts: 0,
+         }
+     }
+@@
+             gates: GateSet::ready(),
+             failure: None,
+             recovery_action: None,
++            pending_repair: None,
+             recovery_attempts: 0,
+         }
+     }
+@@
+     fail_decision: Decision,
+ ) -> Outcome {
+     let mut s = input;
+-    let gate = input.gates.get(gate_id);
++    if input.gates.get(gate_id).status != GateStatus::Pass
++        && consume_verified_repair(&mut s, gate_id)
++    {
++        return advance(&mut s, next, pass_cause, evidence_for_gate(gate_id));
++    }
++
++    let gate = s.gates.get(gate_id);
+ 
+     match gate.status {
+         GateStatus::Pass => advance(&mut s, next, pass_cause, gate.evidence),
+@@
+ 
+ fn eval_step(input: State) -> Outcome {
+     let mut s = input;
+-    let gate = input.gates.eval;
++    if input.gates.eval.status != GateStatus::Pass && consume_verified_repair(&mut s, GateId::Eval)
++    {
++        return complete(&mut s, evidence_for_gate(GateId::Eval));
++    }
++
++    let gate = s.gates.eval;
+ 
+     match gate.status {
+         GateStatus::Pass => complete(&mut s, gate.evidence),
+@@
+ fn complete(s: &mut State, evidence: Evidence) -> Outcome {
+     s.phase = Phase::Done;
+     s.failure = None;
+     s.recovery_action = None;
++    s.pending_repair = None;
+ 
+     Outcome {
+         state: *s,
+@@
+ ) -> Outcome {
+     s.phase = Phase::Recovery;
+     s.failure = Some(class);
+     s.recovery_action = None;
++    s.pending_repair = None;
+ 
+     Outcome {
+         state: *s,
+@@
+     s.phase = Phase::Learn;
+     s.recovery_attempts = s.recovery_attempts.saturating_add(1);
+     s.recovery_action = Some(action);
++    s.pending_repair = Some(RepairReceipt::for_action(action));
+ 
+     Outcome {
+         state: s,
+@@
+         );
+     };
+ 
+-    if let Some(gate) = action.repaired_gate() {
+-        s.gates.set_pass(gate);
++    let Some(receipt) = input.pending_repair else {
++        return fail(
++            &mut s,
++            FailureClass::RecoveryExhausted,
++            EventKind::Failed,
++            Cause::EvidenceMissing,
++            Evidence::Missing,
++            Decision::Fail,
++        );
++    };
++
++    if receipt.action != action {
++        return fail(
++            &mut s,
++            FailureClass::RecoveryExhausted,
++            EventKind::Failed,
++            Cause::GateFailed,
++            Evidence::RecoveryPolicy,
++            Decision::Fail,
++        );
+     }
+ 
+     s.phase = action.target();
+@@
+     }
+ }
+ 
++fn consume_verified_repair(s: &mut State, gate_id: GateId) -> bool {
++    let Some(receipt) = s.pending_repair else {
++        return false;
++    };
++
++    if !receipt.verifies(gate_id) {
++        return false;
++    }
++
++    s.gates.set_pass(gate_id);
++    s.pending_repair = None;
++    true
++}
++
+ fn recovery_action_for(class: FailureClass) -> RecoveryAction {
+     match class {
+         FailureClass::InvariantUnknown | FailureClass::InvariantBlocked => {
+@@
+     state.phase = Phase::Done;
+     state.failure = Some(FailureClass::ConvergenceFailed);
+     state.recovery_action = Some(RecoveryAction::Escalate);
++    state.pending_repair = None;
+ 
+     let outcome = Outcome {
+         state,
+@@
+     }
+ 
+     #[test]
++    fn repair_is_verified_by_target_phase_before_gate_passes() {
++        let mut state = State::default();
++        state.phase = Phase::Recovery;
++        state.failure = Some(FailureClass::PlanMissing);
++
++        let recovered = recover(state, RuntimeConfig::default());
++        assert_eq!(recovered.state.phase, Phase::Learn);
++        assert_eq!(recovered.state.gates.plan.status, GateStatus::Unknown);
++        assert_eq!(
++            recovered.state.recovery_action,
++            Some(RecoveryAction::Replan)
++        );
++        assert!(recovered.state.pending_repair.is_some());
++
++        let learned = learn(recovered.state);
++        assert_eq!(learned.state.phase, Phase::Plan);
++        assert_eq!(learned.state.gates.plan.status, GateStatus::Unknown);
++        assert!(learned.state.pending_repair.is_some());
++
++        let verified = reduce(learned.state, RuntimeConfig::default());
++        assert_eq!(verified.state.phase, Phase::Execute);
++        assert_eq!(verified.state.gates.plan.status, GateStatus::Pass);
++        assert_eq!(verified.state.pending_repair, None);
++    }
++
++    #[test]
+     fn low_recovery_budget_halts() {
+         let cfg = RuntimeConfig {
+             max_steps: 96,
+*** End Patch
