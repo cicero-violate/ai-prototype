@@ -1,0 +1,10 @@
+*** Begin Patch
+*** Update File: src/lib.rs
+@@
+-    match gate.status {
+-        GateStatus::Pass if s.packet.artifact_present() => {
++    match gate.status {
++        GateStatus::Pass if s.packet.artifact_receipt_valid() => {
+             advance(&mut s, Phase::Verify, Cause::ExecutionFinished, gate.evidence)
+         }
+*** End Patch

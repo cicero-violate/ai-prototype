@@ -1,0 +1,142 @@
+*** Begin Patch
+*** Update File: src/lib.rs
+@@ -621,55 +621,6 @@
+     to: Phase,
+     kind: EventKind,
+     cause: Cause,
+-}
+-
+-#[derive(Clone, Copy)]
+-struct DomainStep {
+-    gate: GateId,
+-    next: Phase,
+-    pass_cause: Cause,
+-    failed_class: FailureClass,
+-    failed_cause: Cause,
+-    predicate: fn(Packet) -> bool,
+-}
+-
+-const PLAN_STEP: DomainStep = DomainStep {
+-    gate: GateId::Plan,
+-    next: Phase::Execute,
+-    pass_cause: Cause::PlanReady,
+-    failed_class: FailureClass::PlanReadyQueueEmpty,
+-    failed_cause: Cause::ReadyQueueEmpty,
+-    predicate: plan_ready,
+-};
+-
+-const EXECUTE_STEP: DomainStep = DomainStep {
+-    gate: GateId::Execution,
+-    next: Phase::Verify,
+-    pass_cause: Cause::ExecutionFinished,
+-    failed_class: FailureClass::TaskReceiptMissing,
+-    failed_cause: Cause::TaskReceiptMissing,
+-    predicate: execution_receipt_ready,
+-};
+-
+-const VERIFY_STEP: DomainStep = DomainStep {
+-    gate: GateId::Verification,
+-    next: Phase::Eval,
+-    pass_cause: Cause::VerificationPassed,
+-    failed_class: FailureClass::ArtifactLineageBroken,
+-    failed_cause: Cause::ArtifactLineageBroken,
+-    predicate: lineage_ready,
+-};
+-
+-fn plan_ready(packet: Packet) -> bool {
+-    packet.has_ready_task() || packet.objective_complete()
+-}
+-
+-fn execution_receipt_ready(packet: Packet) -> bool {
+-    packet.artifact_receipt_valid()
+-}
+-
+-fn lineage_ready(packet: Packet) -> bool {
+-    packet.lineage_valid()
+ }
+ 
+ const TRANSITIONS: [Transition; 36] = [
+@@ -840,33 +791,63 @@
+ }
+ 
+ fn plan_step(input: State) -> Outcome {
+-    domain_step(input, PLAN_STEP)
+-}
+-
+-fn execute_step(input: State) -> Outcome {
+-    domain_step(input, EXECUTE_STEP)
+-}
+-
+-fn verify_step(input: State) -> Outcome {
+-    domain_step(input, VERIFY_STEP)
+-}
+-
+-fn domain_step(input: State, spec: DomainStep) -> Outcome {
+     let mut s = input;
+-    let gate = s.gates.get(spec.gate);
++    let gate = s.gates.plan;
+ 
+     match gate.status {
+-        GateStatus::Pass if (spec.predicate)(s.packet) => {
+-            advance(&mut s, spec.next, spec.pass_cause, gate.evidence)
++        GateStatus::Pass if s.packet.has_ready_task() || s.packet.objective_complete() => {
++            advance(&mut s, Phase::Execute, Cause::PlanReady, gate.evidence)
+         }
+         GateStatus::Pass => raise_domain_failure(
+             &mut s,
+-            spec.failed_class,
+-            spec.failed_cause,
++            FailureClass::PlanReadyQueueEmpty,
++            Cause::ReadyQueueEmpty,
+             Evidence::Missing,
+-            spec.gate,
++            GateId::Plan,
+         ),
+-        GateStatus::Unknown | GateStatus::Fail => raise_gate_failure(&mut s, spec.gate, gate),
++        GateStatus::Unknown | GateStatus::Fail => raise_gate_failure(&mut s, GateId::Plan, gate),
++    }
++}
++
++fn execute_step(input: State) -> Outcome {
++    let mut s = input;
++    let gate = s.gates.execution;
++
++    match gate.status {
++        GateStatus::Pass if s.packet.artifact_receipt_valid() => {
++            advance(&mut s, Phase::Verify, Cause::ExecutionFinished, gate.evidence)
++        }
++        GateStatus::Pass => raise_domain_failure(
++            &mut s,
++            FailureClass::TaskReceiptMissing,
++            Cause::TaskReceiptMissing,
++            Evidence::Missing,
++            GateId::Execution,
++        ),
++        GateStatus::Unknown | GateStatus::Fail => {
++            raise_gate_failure(&mut s, GateId::Execution, gate)
++        }
++    }
++}
++
++fn verify_step(input: State) -> Outcome {
++    let mut s = input;
++    let gate = s.gates.verification;
++
++    match gate.status {
++        GateStatus::Pass if s.packet.lineage_valid() => {
++            advance(&mut s, Phase::Eval, Cause::VerificationPassed, gate.evidence)
++        }
++        GateStatus::Pass => raise_domain_failure(
++            &mut s,
++            FailureClass::ArtifactLineageBroken,
++            Cause::ArtifactLineageBroken,
++            Evidence::Missing,
++            GateId::Verification,
++        ),
++        GateStatus::Unknown | GateStatus::Fail => {
++            raise_gate_failure(&mut s, GateId::Verification, gate)
++        }
+     }
+ }
+ 
+*** End Patch

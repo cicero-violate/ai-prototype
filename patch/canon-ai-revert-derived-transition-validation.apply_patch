@@ -1,0 +1,240 @@
+*** Begin Patch
+*** Update File: src/lib.rs
+@@ -615,7 +615,52 @@
+ 
+ impl std::error::Error for CanonError {}
+ 
+-const TRANSITION_COUNT: usize = 36;
++#[derive(Clone, Copy)]
++struct Transition {
++    from: Phase,
++    to: Phase,
++    kind: EventKind,
++    cause: Cause,
++}
++
++const TRANSITIONS: [Transition; 36] = [
++    Transition { from: Phase::Delta, to: Phase::Invariant, kind: EventKind::Advanced, cause: Cause::Start },
++    Transition { from: Phase::Invariant, to: Phase::Analysis, kind: EventKind::Advanced, cause: Cause::GatePassed },
++    Transition { from: Phase::Invariant, to: Phase::Recovery, kind: EventKind::Blocked, cause: Cause::EvidenceMissing },
++    Transition { from: Phase::Invariant, to: Phase::Recovery, kind: EventKind::Blocked, cause: Cause::GateFailed },
++    Transition { from: Phase::Analysis, to: Phase::Judgment, kind: EventKind::Advanced, cause: Cause::GatePassed },
++    Transition { from: Phase::Analysis, to: Phase::Recovery, kind: EventKind::Failed, cause: Cause::EvidenceMissing },
++    Transition { from: Phase::Analysis, to: Phase::Recovery, kind: EventKind::Failed, cause: Cause::GateFailed },
++    Transition { from: Phase::Judgment, to: Phase::Plan, kind: EventKind::Advanced, cause: Cause::JudgmentMade },
++    Transition { from: Phase::Judgment, to: Phase::Recovery, kind: EventKind::Failed, cause: Cause::EvidenceMissing },
++    Transition { from: Phase::Judgment, to: Phase::Recovery, kind: EventKind::Failed, cause: Cause::GateFailed },
++    Transition { from: Phase::Plan, to: Phase::Execute, kind: EventKind::Advanced, cause: Cause::PlanReady },
++    Transition { from: Phase::Plan, to: Phase::Recovery, kind: EventKind::Failed, cause: Cause::EvidenceMissing },
++    Transition { from: Phase::Plan, to: Phase::Recovery, kind: EventKind::Failed, cause: Cause::GateFailed },
++    Transition { from: Phase::Plan, to: Phase::Recovery, kind: EventKind::Failed, cause: Cause::ReadyQueueEmpty },
++    Transition { from: Phase::Execute, to: Phase::Verify, kind: EventKind::Advanced, cause: Cause::ExecutionFinished },
++    Transition { from: Phase::Execute, to: Phase::Recovery, kind: EventKind::Failed, cause: Cause::EvidenceMissing },
++    Transition { from: Phase::Execute, to: Phase::Recovery, kind: EventKind::Failed, cause: Cause::GateFailed },
++    Transition { from: Phase::Execute, to: Phase::Recovery, kind: EventKind::Failed, cause: Cause::TaskReceiptMissing },
++    Transition { from: Phase::Verify, to: Phase::Eval, kind: EventKind::Advanced, cause: Cause::VerificationPassed },
++    Transition { from: Phase::Verify, to: Phase::Recovery, kind: EventKind::Failed, cause: Cause::EvidenceMissing },
++    Transition { from: Phase::Verify, to: Phase::Recovery, kind: EventKind::Failed, cause: Cause::GateFailed },
++    Transition { from: Phase::Verify, to: Phase::Recovery, kind: EventKind::Failed, cause: Cause::ArtifactLineageBroken },
++    Transition { from: Phase::Eval, to: Phase::Done, kind: EventKind::Completed, cause: Cause::EvalPassed },
++    Transition { from: Phase::Eval, to: Phase::Recovery, kind: EventKind::Failed, cause: Cause::EvidenceMissing },
++    Transition { from: Phase::Eval, to: Phase::Recovery, kind: EventKind::Failed, cause: Cause::GateFailed },
++    Transition { from: Phase::Eval, to: Phase::Recovery, kind: EventKind::Failed, cause: Cause::EvalFailed },
++    Transition { from: Phase::Recovery, to: Phase::Learn, kind: EventKind::Recovered, cause: Cause::RepairSelected },
++    Transition { from: Phase::Recovery, to: Phase::Done, kind: EventKind::Failed, cause: Cause::RecoveryLimit },
++    Transition { from: Phase::Learn, to: Phase::Invariant, kind: EventKind::Learned, cause: Cause::RepairApplied },
++    Transition { from: Phase::Learn, to: Phase::Analysis, kind: EventKind::Learned, cause: Cause::RepairApplied },
++    Transition { from: Phase::Learn, to: Phase::Judgment, kind: EventKind::Learned, cause: Cause::RepairApplied },
++    Transition { from: Phase::Learn, to: Phase::Plan, kind: EventKind::Learned, cause: Cause::RepairApplied },
++    Transition { from: Phase::Learn, to: Phase::Execute, kind: EventKind::Learned, cause: Cause::RepairApplied },
++    Transition { from: Phase::Learn, to: Phase::Verify, kind: EventKind::Learned, cause: Cause::RepairApplied },
++    Transition { from: Phase::Learn, to: Phase::Eval, kind: EventKind::Learned, cause: Cause::RepairApplied },
++    Transition { from: Phase::Done, to: Phase::Done, kind: EventKind::Completed, cause: Cause::EvalPassed },
++];
+ 
+ struct CanonicalWriter;
+ 
+@@ -1366,120 +1411,12 @@
+         return true;
+     }
+ 
+-    match from {
+-        Phase::Delta => {
+-            to == Phase::Invariant && kind == EventKind::Advanced && cause == Cause::Start
+-        }
+-        Phase::Invariant => legal_phase_gate(
+-            to,
+-            kind,
+-            cause,
+-            Phase::Analysis,
+-            EventKind::Blocked,
+-            Cause::GatePassed,
+-            None,
+-        ),
+-        Phase::Analysis => legal_phase_gate(
+-            to,
+-            kind,
+-            cause,
+-            Phase::Judgment,
+-            EventKind::Failed,
+-            Cause::GatePassed,
+-            None,
+-        ),
+-        Phase::Judgment => legal_phase_gate(
+-            to,
+-            kind,
+-            cause,
+-            Phase::Plan,
+-            EventKind::Failed,
+-            Cause::JudgmentMade,
+-            None,
+-        ),
+-        Phase::Plan => legal_phase_gate(
+-            to,
+-            kind,
+-            cause,
+-            Phase::Execute,
+-            EventKind::Failed,
+-            Cause::PlanReady,
+-            Some(Cause::ReadyQueueEmpty),
+-        ),
+-        Phase::Execute => legal_phase_gate(
+-            to,
+-            kind,
+-            cause,
+-            Phase::Verify,
+-            EventKind::Failed,
+-            Cause::ExecutionFinished,
+-            Some(Cause::TaskReceiptMissing),
+-        ),
+-        Phase::Verify => legal_phase_gate(
+-            to,
+-            kind,
+-            cause,
+-            Phase::Eval,
+-            EventKind::Failed,
+-            Cause::VerificationPassed,
+-            Some(Cause::ArtifactLineageBroken),
+-        ),
+-        Phase::Eval => {
+-            (to == Phase::Done && kind == EventKind::Completed && cause == Cause::EvalPassed)
+-                || legal_recovery_edge(to, kind, cause, EventKind::Failed, Some(Cause::EvalFailed))
+-        }
+-        Phase::Recovery => {
+-            (to == Phase::Learn && kind == EventKind::Recovered && cause == Cause::RepairSelected)
+-                || (to == Phase::Done && kind == EventKind::Failed && cause == Cause::RecoveryLimit)
+-        }
+-        Phase::Learn => {
+-            legal_learn_target(to) && kind == EventKind::Learned && cause == Cause::RepairApplied
+-        }
+-        Phase::Done => {
+-            to == Phase::Done && kind == EventKind::Completed && cause == Cause::EvalPassed
+-        }
+-    }
+-}
+-
+-fn legal_phase_gate(
+-    to: Phase,
+-    kind: EventKind,
+-    cause: Cause,
+-    next: Phase,
+-    fail_kind: EventKind,
+-    pass_cause: Cause,
+-    domain_cause: Option<Cause>,
+-) -> bool {
+-    (to == next && kind == EventKind::Advanced && cause == pass_cause)
+-        || legal_recovery_edge(to, kind, cause, fail_kind, domain_cause)
+-}
+-
+-fn legal_recovery_edge(
+-    to: Phase,
+-    kind: EventKind,
+-    cause: Cause,
+-    fail_kind: EventKind,
+-    domain_cause: Option<Cause>,
+-) -> bool {
+-    if to != Phase::Recovery || kind != fail_kind {
+-        return false;
+-    }
+-
+-    matches!(cause, Cause::EvidenceMissing | Cause::GateFailed)
+-        || domain_cause.map(|extra| cause == extra).unwrap_or(false)
+-}
+-
+-fn legal_learn_target(to: Phase) -> bool {
+-    matches!(
+-        to,
+-        Phase::Invariant
+-            | Phase::Analysis
+-            | Phase::Judgment
+-            | Phase::Plan
+-            | Phase::Execute
+-            | Phase::Verify
+-            | Phase::Eval
+-    )
++    TRANSITIONS.iter().any(|transition| {
++        transition.from == from
++            && transition.to == to
++            && transition.kind == kind
++            && transition.cause == cause
++    })
+ }
+ 
+ pub fn append_tlog_ndjson(
+@@ -2188,7 +2125,7 @@
+     PHASES.len()
+         + statuses.len()
+         + GATE_ORDER.len()
+-        + TRANSITION_COUNT
++        + TRANSITIONS.len()
+         + evidences.len()
+         + failures.len()
+         + actions.len()
+@@ -2442,7 +2379,7 @@
+     }
+ 
+     #[test]
+-    fn transition_rules_reject_illegal_pair() {
++    fn transition_table_rejects_illegal_pair() {
+         assert!(!legal_transition(
+             Phase::Plan,
+             Phase::Done,
+*** Update File: rubric/score.md
+@@ -28,9 +28,9 @@
+ R = 8.5 / 10
+ V = 8.6 / 10
+ T = 8.3 / 10
+-S = 7.4 / 10
++S = 7.2 / 10
+ 
+-G = 8.31 / 10
++G = 8.28 / 10
+ max(I,E,J,R,V,T,S) = E = 8.8 / 10 = good
+ ```
+ 
+@@ -54,12 +54,12 @@
+ 5. Artifact lineage now depends on an artifact receipt hash rather than only recomputing lineage directly from mutable artifact fields.
+ 6. Tests were added for reducer replay forgery and durable-write failure atomicity.
+ 7. A prior `DomainStep` abstraction was removed after metrics showed it added nodes, edges, redundant path pairs, and alpha pathways.
+-8. Legal transition validation is now derived from phase semantics instead of a parallel static `TRANSITIONS` table.
++8. A derived transition-validation experiment was rejected after fresh graph evidence showed it increased nodes, edges, and redundant path pairs without improving alpha pathways.
+ 
+ ## Remaining Weaknesses
+ 
+ ```text
+-remaining_risk = public_mutable_state + non_cryptographic_hash + simulated_artifact_receipt + in_memory_receipt_authority
++remaining_risk = public_mutable_state + non_cryptographic_hash + simulated_artifact_receipt + static_transition_table
+ ```
+ 
+ The runtime is still not production-grade canonical infrastructure. State fields remain public, the hash is deterministic FNV-style rather than cryptographic, and artifact receipts are still simulated in-memory receipts rather than externally signed/provenanced records.
+@@ -72,7 +72,8 @@
+ 3. externalize artifact receipts into append-only receipt events
+ 4. split demo/test coverage helpers away from runtime API
+ 5. add migration decoding for old schema-v1 tlogs if compatibility matters
+-6. derive recovery policy from data specs instead of a large hand-written `FailureClass → RecoveryAction` match
++6. replace the hand-written transition table only with a generated table that reduces, not increases, graph redundancy
++7. derive recovery policy from data specs instead of a large hand-written `FailureClass → RecoveryAction` match
+ ```
+ 
+ ## Validation
+*** End Patch

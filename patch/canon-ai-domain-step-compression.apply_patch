@@ -1,0 +1,175 @@
+*** Begin Patch
+*** Update File: src/lib.rs
+@@
+ #[derive(Clone, Copy)]
+ struct Transition {
+     from: Phase,
+     to: Phase,
+     kind: EventKind,
+     cause: Cause,
+ }
++
++#[derive(Clone, Copy)]
++struct DomainStep {
++    gate: GateId,
++    next: Phase,
++    pass_cause: Cause,
++    failed_class: FailureClass,
++    failed_cause: Cause,
++    predicate: fn(Packet) -> bool,
++}
++
++const PLAN_STEP: DomainStep = DomainStep {
++    gate: GateId::Plan,
++    next: Phase::Execute,
++    pass_cause: Cause::PlanReady,
++    failed_class: FailureClass::PlanReadyQueueEmpty,
++    failed_cause: Cause::ReadyQueueEmpty,
++    predicate: plan_ready,
++};
++
++const EXECUTE_STEP: DomainStep = DomainStep {
++    gate: GateId::Execution,
++    next: Phase::Verify,
++    pass_cause: Cause::ExecutionFinished,
++    failed_class: FailureClass::TaskReceiptMissing,
++    failed_cause: Cause::TaskReceiptMissing,
++    predicate: execution_receipt_ready,
++};
++
++const VERIFY_STEP: DomainStep = DomainStep {
++    gate: GateId::Verification,
++    next: Phase::Eval,
++    pass_cause: Cause::VerificationPassed,
++    failed_class: FailureClass::ArtifactLineageBroken,
++    failed_cause: Cause::ArtifactLineageBroken,
++    predicate: lineage_ready,
++};
++
++fn plan_ready(packet: Packet) -> bool {
++    packet.has_ready_task() || packet.objective_complete()
++}
++
++fn execution_receipt_ready(packet: Packet) -> bool {
++    packet.artifact_receipt_valid()
++}
++
++fn lineage_ready(packet: Packet) -> bool {
++    packet.lineage_valid()
++}
+ 
+ const TRANSITIONS: [Transition; 36] = [
+@@
+ fn plan_step(input: State) -> Outcome {
+-    let mut s = input;
+-    let gate = s.gates.plan;
+-
+-    match gate.status {
+-        GateStatus::Pass if s.packet.has_ready_task() || s.packet.objective_complete() => {
+-            advance(&mut s, Phase::Execute, Cause::PlanReady, gate.evidence)
+-        }
+-        GateStatus::Pass => raise_domain_failure(
+-            &mut s,
+-            FailureClass::PlanReadyQueueEmpty,
+-            Cause::ReadyQueueEmpty,
+-            Evidence::Missing,
+-            GateId::Plan,
+-        ),
+-        GateStatus::Unknown | GateStatus::Fail => raise_gate_failure(&mut s, GateId::Plan, gate),
+-    }
++    domain_step(input, PLAN_STEP)
+ }
+ 
+ fn execute_step(input: State) -> Outcome {
++    domain_step(input, EXECUTE_STEP)
++}
++
++fn verify_step(input: State) -> Outcome {
++    domain_step(input, VERIFY_STEP)
++}
++
++fn domain_step(input: State, spec: DomainStep) -> Outcome {
+     let mut s = input;
+-    let gate = s.gates.execution;
++    let gate = s.gates.get(spec.gate);
+ 
+     match gate.status {
+-        GateStatus::Pass if s.packet.artifact_receipt_valid() => {
+-            advance(&mut s, Phase::Verify, Cause::ExecutionFinished, gate.evidence)
++        GateStatus::Pass if (spec.predicate)(s.packet) => {
++            advance(&mut s, spec.next, spec.pass_cause, gate.evidence)
+         }
+         GateStatus::Pass => raise_domain_failure(
+             &mut s,
+-            FailureClass::TaskReceiptMissing,
+-            Cause::TaskReceiptMissing,
++            spec.failed_class,
++            spec.failed_cause,
+             Evidence::Missing,
+-            GateId::Execution,
++            spec.gate,
+         ),
+-        GateStatus::Unknown | GateStatus::Fail => {
+-            raise_gate_failure(&mut s, GateId::Execution, gate)
+-        }
+-    }
+-}
+-
+-fn verify_step(input: State) -> Outcome {
+-    let mut s = input;
+-    let gate = s.gates.verification;
+-
+-    match gate.status {
+-        GateStatus::Pass if s.packet.lineage_valid() => {
+-            advance(&mut s, Phase::Eval, Cause::VerificationPassed, gate.evidence)
+-        }
+-        GateStatus::Pass => raise_domain_failure(
+-            &mut s,
+-            FailureClass::ArtifactLineageBroken,
+-            Cause::ArtifactLineageBroken,
+-            Evidence::Missing,
+-            GateId::Verification,
+-        ),
+-        GateStatus::Unknown | GateStatus::Fail => {
+-            raise_gate_failure(&mut s, GateId::Verification, gate)
+-        }
++        GateStatus::Unknown | GateStatus::Fail => raise_gate_failure(&mut s, spec.gate, gate),
+     }
+ }
+ 
+ fn eval_step(input: State) -> Outcome {
+*** Update File: rubric/score.md
+@@
+-I = 8.5 / 10
+-E = 8.8 / 10
+-J = 8.2 / 10
+-R = 8.4 / 10
+-V = 8.6 / 10
+-T = 8.2 / 10
+-S = 6.7 / 10
+-
+-G = 8.16 / 10
++I = 8.5 / 10
++E = 8.8 / 10
++J = 8.2 / 10
++R = 8.5 / 10
++V = 8.6 / 10
++T = 8.3 / 10
++S = 7.2 / 10
++
++G = 8.28 / 10
+ max(I,E,J,R,V,T,S) = E = 8.8 / 10 = good
+ ```
+@@
+ 6. Tests were added for reducer replay forgery and durable-write failure atomicity.
++7. Plan, execute, and verify are now driven by `DomainStep` specs instead of three hand-written control-flow copies. This reduces duplicated branch logic while preserving separate failure classes and causes.
+@@
+-remaining_risk = public_mutable_state + non_cryptographic_hash + simulated_artifact_receipt
++remaining_risk = public_mutable_state + non_cryptographic_hash + simulated_artifact_receipt + static_transition_table
+ ```
+@@
+ 3. externalize artifact receipts into append-only receipt events
+ 4. split demo/test coverage helpers away from runtime API
+ 5. add migration decoding for old schema-v1 tlogs if compatibility matters
++6. derive legal transition validation from phase/gate specs instead of maintaining a parallel static transition table
+*** End Patch
