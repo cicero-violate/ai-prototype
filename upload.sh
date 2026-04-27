@@ -5,7 +5,7 @@ git push origin main
 python3 /workspace/ai_sandbox/canon-mini-agent/prototype/cdp-file-upload/upload_via_cdp.py \
   --build-tar \
   --tar-script /workspace/ai_sandbox/canon-mini-agent/prototype/ai/tar.sh \
-  --tar-output canon-mini-agent.tar.gz \
+  --tar-output ai.tar.gz \
   --open-target-if-missing \
   --target-url "https://chatgpt.com/g/g-p-69eedbc6bd38819180b138ab3c47abff-ai-prototype/project?tab=sources" \
   --target-wait-timeout-sec 45 \
