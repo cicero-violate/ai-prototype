@@ -34,11 +34,16 @@ pub use crate::capability::orchestration::{
 pub use crate::capability::planning::{PlanDecision, PlanRecord};
 pub use crate::capability::policy::{PolicyEntry, PolicyStore, PolicyStoreError};
 pub use crate::capability::tooling::{
-    append_tool_effect_receipt_ndjson, decode_tool_effect_receipt_ndjson,
-    encode_tool_effect_receipt_ndjson, load_tool_effect_receipts_ndjson,
-    verify_tool_effect_receipts, DeterministicToolExecutor, LiveSandboxToolExecutor, ToolDecision,
-    ToolEffectReceipt, ToolExecutionRecord, ToolKind, ToolReceipt, ToolRequest, ToolSandboxError,
-    TOOL_EFFECT_RECEIPT_RECORD, TOOL_EFFECT_RECEIPT_SCHEMA_VERSION,
+    append_sandbox_process_receipt_ndjson, append_tool_effect_receipt_ndjson,
+    decode_sandbox_process_receipt_ndjson, decode_tool_effect_receipt_ndjson,
+    encode_sandbox_process_receipt_ndjson, encode_tool_effect_receipt_ndjson,
+    load_sandbox_process_receipts_ndjson, load_tool_effect_receipts_ndjson,
+    verify_sandbox_process_receipts, verify_tool_effect_receipts, DeterministicToolExecutor, Effect,
+    LiveSandboxProcessExecutor, LiveSandboxToolExecutor, SandboxProcessReceipt,
+    SandboxProcessRequest, ToolDecision, ToolEffectKind, ToolEffectReceipt, ToolExecutionRecord,
+    ToolKind, ToolReceipt, ToolRequest, ToolSandboxError, SANDBOX_PROCESS_RECEIPT_RECORD,
+    SANDBOX_PROCESS_RECEIPT_SCHEMA_VERSION, TOOL_EFFECT_RECEIPT_RECORD,
+    TOOL_EFFECT_RECEIPT_SCHEMA_VERSION,
 };
 pub use crate::capability::verification::{
     ArtifactSemanticProfile, DeterministicSemanticVerifier, SemanticVerificationReceipt,
@@ -1177,6 +1182,8 @@ mod tests {
 
         assert_eq!(record.request.tool_kind, ToolKind::SandboxFile);
         assert_eq!(record.decision(), ToolDecision::Succeeded);
+        assert_eq!(record.receipt.effect.kind, ToolEffectKind::Artifact);
+        assert_eq!(record.receipt.effect.digest, record.receipt.output_hash);
         assert!(record.receipt.is_sandbox_artifact_bound());
         assert!(artifact_path.exists());
 
@@ -1212,6 +1219,79 @@ mod tests {
             effect_receipt
         );
         verify_tlog(&tlog).unwrap();
+
+        let _ = std::fs::remove_dir_all(&sandbox_root);
+    }
+
+
+    #[test]
+    fn live_sandbox_process_runner_records_and_replays_receipt() {
+        let sandbox_root = std::env::temp_dir().join(format!(
+            "canon-live-process-{}-{}",
+            std::process::id(),
+            0x71e5_u64
+        ));
+        let _ = std::fs::remove_dir_all(&sandbox_root);
+        let receipt_path = sandbox_root.join("process_receipts.ndjson");
+
+        let executor = LiveSandboxProcessExecutor::new(&sandbox_root)
+            .with_allowed_command("/usr/bin/printf")
+            .with_locked_env("CANON_SANDBOX", "1")
+            .with_timeout_ms(1000)
+            .with_max_output_bytes(4096);
+
+        let receipt = executor
+            .execute_process("/usr/bin/printf", &["canon-process"], "")
+            .unwrap();
+
+        assert_eq!(receipt.exit_status, 0);
+        assert!(!receipt.timed_out);
+        assert_eq!(receipt.effect.kind, ToolEffectKind::Process);
+        assert!(receipt.effect_is_normalized());
+        assert!(executor
+            .replay_receipt(&receipt, "/usr/bin/printf", &["canon-process"], "")
+            .unwrap());
+
+        append_sandbox_process_receipt_ndjson(&receipt_path, &receipt).unwrap();
+        let loaded = load_sandbox_process_receipts_ndjson(&receipt_path).unwrap();
+
+        assert_eq!(loaded, vec![receipt.clone()]);
+        assert_eq!(
+            verify_sandbox_process_receipts(
+                &executor,
+                &loaded,
+                "/usr/bin/printf",
+                &["canon-process"],
+                ""
+            )
+            .unwrap(),
+            1
+        );
+        assert_eq!(
+            decode_sandbox_process_receipt_ndjson(&encode_sandbox_process_receipt_ndjson(&receipt))
+                .unwrap(),
+            receipt
+        );
+
+        let _ = std::fs::remove_dir_all(&sandbox_root);
+    }
+
+    #[test]
+    fn live_sandbox_process_runner_denies_unlisted_command() {
+        let sandbox_root = std::env::temp_dir().join(format!(
+            "canon-live-process-deny-{}-{}",
+            std::process::id(),
+            0xdec1_u64
+        ));
+        let _ = std::fs::remove_dir_all(&sandbox_root);
+
+        let executor = LiveSandboxProcessExecutor::new(&sandbox_root)
+            .with_allowed_command("printf");
+
+        assert_eq!(
+            executor.execute_process("sh", &["-c", "echo no"], ""),
+            Err(ToolSandboxError::CommandDenied)
+        );
 
         let _ = std::fs::remove_dir_all(&sandbox_root);
     }
