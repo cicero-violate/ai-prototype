@@ -63,6 +63,23 @@ learning_proof = eval_passed → persist(result) → learn(policy_promotion) →
 10. Recovery now selects repair intent, then `Persist` applies and records the repair before returning to the repaired target phase.
 11. `GateId::Learning` now exists as a verifiable policy-promotion surface, so learning is not hidden inside recovery.
 
+
+## Eval Capability Boundary Update
+
+```text
+EvalRecord = { score, dimensions, threshold_used }
+EvalCapability(state, policy) -> EvalRecord -> EvidenceSubmission(GateId::Eval, Evidence::EvalScore, pass/fail)
+KernelEvalSurface = GateId::Eval + Evidence::EvalScore
+```
+
+Eval is now modeled as a capability boundary rather than a kernel expansion. The kernel remains limited to the eval gate and eval evidence token. Score shape, dimensions, threshold comparison, policy lookup, and future promotion logic live under `capability/eval`, `capability/policy`, and `capability/learning`.
+
+```text
+S = 7.4 / 10  # improved structural separation, still not fully extracted into generated subfiles
+G = 8.50 / 10
+max(I,E,J,R,V,T,S) = E = 9.0 / 10 = good
+```
+
 ## Remaining Weaknesses
 
 ```text

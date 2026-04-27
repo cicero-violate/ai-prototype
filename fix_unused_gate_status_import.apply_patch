@@ -1,0 +1,12 @@
+*** Begin Patch
+*** Update File: src/runtime/verify.rs
+@@
+-use crate::kernel::{
+-    mix, Cause, ControlEvent, Decision, EventKind, Evidence, FailureClass, GateId, GateSet,
+-    GateStatus, Packet, Phase, RecoveryAction, RuntimeConfig, SemanticDelta, State, GATE_ORDER,
+-};
++use crate::kernel::{
++    mix, Cause, ControlEvent, Decision, EventKind, Evidence, FailureClass, GateId, GateSet,
++    Packet, Phase, RecoveryAction, RuntimeConfig, SemanticDelta, State, GATE_ORDER,
++};
+*** End Patch
