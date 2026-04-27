@@ -20,7 +20,7 @@ PO = capability/policy score
 LE = capability/learning score
 OR = capability/orchestration score
 
-CORE = implemented foundation score
+CORE = deterministic foundation score
 CAP  = implemented capability-layer score
 IMPL = implemented-source score
 ARCH = declared architecture score
@@ -32,178 +32,184 @@ GOOD = strongest present module
 ```text
 CORE = (K · C · A · R)^(1/4)
 CAP  = (OB · CX · ME · PL · LL · JG · TO · VF · EV · PO · LE · OR)^(1/12)
-IMPL = (K · C · A · R · JG · EV · PO · LE)^(1/8)
+IMPL = (K · C · A · R · TO · VF · PO · LE)^(1/8)
 ARCH = (K · C · A · R · OB · CX · ME · PL · LL · JG · TO · VF · EV · PO · LE · OR)^(1/16)
 GOOD = max(K,C,A,R,OB,CX,ME,PL,LL,JG,TO,VF,EV,PO,LE,OR)
 ```
 
-One-line explanation: geometric scoring punishes missing execution surfaces; a strong deterministic kernel cannot hide weak live-world capability.
+One-line explanation: geometric scoring punishes hollow autonomy claims; real side effects raise the score only when they are authorized, receipted, replayable, and externally useful.
 
 ## Score Summary
 
 ```text
-K  = 8.3 / 10
-C  = 7.1 / 10
-A  = 6.2 / 10
-R  = 8.0 / 10
+K  = 8.4 / 10
+C  = 7.2 / 10
+A  = 6.3 / 10
+R  = 8.2 / 10
 
 OB = 4.0 / 10
 CX = 5.2 / 10
 ME = 5.6 / 10
-PL = 5.2 / 10
-LL = 4.7 / 10
-JG = 5.1 / 10
-TO = 5.3 / 10
-VF = 6.6 / 10
+PL = 5.3 / 10
+LL = 4.8 / 10
+JG = 5.2 / 10
+TO = 6.6 / 10
+VF = 6.9 / 10
 EV = 5.8 / 10
-PO = 7.3 / 10
-LE = 6.0 / 10
-OR = 6.2 / 10
+PO = 7.4 / 10
+LE = 6.1 / 10
+OR = 6.3 / 10
 
-CORE = 7.35 / 10
-CAP  = 5.52 / 10
-IMPL = 6.64 / 10
-ARCH = 5.93 / 10
+CORE = 7.48 / 10
+CAP  = 5.69 / 10
+IMPL = 7.10 / 10
+ARCH = 6.09 / 10
 
-max(K,C,A,R,OB,CX,ME,PL,LL,JG,TO,VF,EV,PO,LE,OR) = K = 8.3 / 10 = good
+max(K,C,A,R,OB,CX,ME,PL,LL,JG,TO,VF,EV,PO,LE,OR) = K = 8.4 / 10 = good
 ```
 
 ## Static Review Inputs
 
 ```text
 source_files = 43
-source_lines = 8352
-rust_functions_regex = 424
-unit_tests_declared = 82
+source_lines = 8843
+rust_functions_regex = 477
+rust_structs_regex = 55
+rust_enums_regex = 27
+rust_impls_regex = 86
+unit_tests_declared = 83
 integration_tests_detected = 0
-cargo_build_status = not_run_cargo_binary_missing_in_sandbox
-cargo_test_status = not_run_cargo_binary_missing_in_sandbox
+cargo_build_status = not_run_by_instruction
+cargo_test_status = not_run_by_instruction
 
-semantic_graph_nodes = 1235
-semantic_graph_edges = 3058
-cfg_nodes = 3647
-cfg_edges = 4640
-bridge_edges = 1158
-redundant_path_pairs = 488
+semantic_graph_nodes = 1310
+semantic_graph_edges = 3326
+cfg_nodes = 4122
+cfg_edges = 5344
+bridge_edges = 1231
+redundant_path_pairs = 499
 alpha_pathways = 13
 graph_schema_version = 9
-graph_captured_at_utc = 2026-04-27T18:27:13.119Z
+graph_captured_at_ms = 1777318140708
 
-index_json_top_level_crates = 1
-index_json_status = locator_only_not_architectural_source_of_truth
-
-kernel_files = 1
-codec_files = 2
-runtime_files = 8
-api_files = 3
-capability_files = 25
-neutral_error_files = 1
-
-upward_layer_dependency_violations = 0
-semantic_manifest_low_confidence_nodes = 1235 / 1235
+semantic_manifest_status = low_confidence_or_unknown_for_1310 / 1310
 largest_cfg_function_1 = codec::ndjson::pop_event, 127 blocks
 largest_cfg_function_2 = runtime::verify::validate_event, 99 blocks
-largest_cfg_function_3 = runtime::verify::verify_tlog_from, 82 blocks
-largest_redundant_path_owner = runtime::verify::validate_event, 136 redundant pairs
+largest_cfg_function_3 = capability::tooling::record::LiveSandboxToolExecutor::execute_packet, 95 blocks
+largest_cfg_function_4 = runtime::verify::verify_tlog_from, 82 blocks
+largest_redundant_path_owner = runtime::verify::validate_event, 272 directional redundant path entries
+
+tooling_live_sandbox_file_executor = present
+tooling_durable_effect_receipts = present
+tooling_registry_policy_hash_binding = present
+tooling_process_execution = absent
+tooling_api_execution = absent
+provider_backed_llm_client = absent
+real_observation_stream_parser = absent
+external_artifact_verification = partial_internal_file_receipt_only
 
 README_reviewed = yes
 src_reviewed = src/**/*.rs
-artifacts_reviewed = state/rustc/ai/graph.json + state/rustc/index.json + rubric/score.md
+artifacts_reviewed = state/rustc/ai/graph.json + rubric/score.md
 ```
 
 ## Critical Judgment
 
-The project has crossed from a toy state-machine sketch into a credible deterministic evidence-runtime prototype. The latest source shows better layer purity, a neutral error module, command-ledger reconstruction from TLog, durable replay checks, capability registry projection, registry policy hashes bound into execution receipts, and replay rejection for registry drift.
+The project improved again. The most important change is that tooling now has an actual live side-effect seam: `LiveSandboxToolExecutor` writes a sandbox artifact, binds artifact path/content/root hashes into a `ToolReceipt`, derives a `ToolEffectReceipt` from the persisted execution event, appends/loads receipt NDJSON, and verifies receipts against the TLog. This is no longer only simulated evidence routing.
 
-The important improvement is architectural: the previous runtime/API and codec/runtime impurity has been corrected in the current source structure. The foundation is cleaner now. That deserves a real score increase.
+That deserves a real score increase. The system now demonstrates the minimum useful pattern for external work:
 
-The hard criticism remains: this is still not an autonomous intelligent agent. The capability layer mostly produces typed deterministic records from packet-shaped internal state. It does not yet observe live inputs, plan non-trivial dependency graphs, call real tools, retrieve durable memory, use a provider-backed LLM, or verify external artifacts. The system is reliable as a replayable control kernel; it is not yet powerful as an execution engine.
+```text
+request -> registry authorization -> sandbox file effect -> receipt -> TLog event -> replay check
+```
+
+The hard criticism remains: this is still not a general autonomous execution engine. The live tooling path writes deterministic sandbox files. It does not yet run a process, call an API, stream stdout/stderr, enforce wall-clock/CPU/memory budgets, isolate environment variables, authenticate external providers, or verify real-world claims. It is a good first real effect, not yet a complete tool runtime.
 
 Current classification:
 
 ```text
-current_system = deterministic evidence-runtime with simulated capability surfaces
-not_yet = live autonomous agent
-main_strength = replayable state correctness
-main_weakness = no real external execution loop
+current_system = deterministic evidence-runtime with first live file-side-effect capability
+not_yet = general autonomous agent
+main_strength = replayable side effects under registry authority
+main_weakness = real-world capability breadth and verifier complexity
 ```
 
-The graph confirms growth and also exposes risk. There are 1235 semantic nodes and 3647 CFG nodes, but every semantic manifest is still low confidence. The graph is useful for structure, CFG concentration, and redundancy detection. It is not yet a trustworthy semantic reasoning oracle.
+The README is still architecturally ahead of the implementation. The source now supports the stated direction better than before, but the LLM, observation, memory, planning, and verification layers remain mostly typed deterministic scaffolds rather than live adaptive systems.
 
 ## Module Rating Table
 
-| Module                     | Status                              | Score | Reason                                                                                                                                                                                                 |
-|----------------------------|-------------------------------------|------:|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `kernel`                   | strong                              |   8.3 | Deterministic phase/gate/state core with packet semantics, recovery evidence, learning gate, capability registry projection, and stable hash primitives. Penalized for still encoding a toy packet domain. |
-| `codec`                    | cleaner but too manual              |   7.1 | NDJSON append/load/roundtrip paths are useful and no longer depend upward on runtime errors. Penalized for hand-written numeric decoding, large parser CFGs, and audit-hostile positional formats.       |
-| `api`                      | credible in-process protocol        |   6.2 | Command envelopes, schema hash binding, duplicate replay, conflicting command rejection, atomic batches, and receipts exist. Still lacks network service, auth, quotas, streaming, and external hardening. |
-| `runtime`                  | strong deterministic core           |   8.0 | Reducer, durable replay, disk/memory drift checks, command ledger reconstruction, TLog verification, and registry projection persistence are meaningful. Penalized for high verifier/reducer complexity. |
-| `capability/observation`   | typed evidence facade               |   4.0 | ObservationRecord and cursor ordering exist. It still does not parse real SSE/webhook/filesystem/browser streams or authenticate observation provenance.                                                |
-| `capability/context`       | deterministic assembler seed        |   5.2 | ContextRecord combines packet/memory signals into analysis evidence. It lacks real retrieval, token budgeting, policy-scoped context, document context, and prior-run synthesis.                       |
-| `capability/memory`        | deterministic lookup seed           |   5.6 | MemoryIndex gives stable ordered facts and weighted lookup. It lacks durable namespaces, embeddings, provenance, invalidation, decay, and cross-run retrieval.                                         |
-| `capability/planning`      | typed gate producer                 |   5.2 | PlanRecord binds ready tasks and drives the Plan gate. It is not yet a planner: no dependency solving, graph expansion, budget model, schedule repair, or alternative search.                           |
-| `capability/llm`           | structured adapter mock             |   4.7 | Prompt/response records, schema hash, token counts, policy feedback, and judgment conversion exist. No provider client, constrained decoder, retries, streaming parser, or cost ledger.                |
-| `capability/judgment`      | minimal typed record                |   5.1 | JudgmentRecord is typed and routed. It does not yet compare alternatives, resolve conflicting evidence, model uncertainty, or enforce irreversible-boundary reasoning.                                 |
-| `capability/tooling`       | improved deterministic receipt seam |   5.3 | Tool requests, deterministic executor, explicit registry authorization, policy hash binding, effect receipts, and replay drift rejection exist. Still no real process/API/file tool execution or sandbox. |
-| `capability/verification`  | strongest semantic capability       |   6.6 | Semantic profiles, request/receipt hashes, lineage repair checks, denial handling, and tamper rejection exist. Still validates internal packet artifacts rather than real files, tests, APIs, or claims. |
-| `capability/eval`          | solid record scorer                 |   5.8 | Eval dimensions, thresholds, and gate submission exist. It lacks calibrated benchmarks, objective-specific metrics, evaluator provenance, adversarial scoring, and threshold governance.                |
-| `capability/policy`        | strongest capability foundation     |   7.3 | Append-only entries, durable promotion, versioning, fingerprinting, policy feedback, and registry policy hashing are good. Needs conflicts, scope, expiry, rollback, signatures, and migration policy.  |
-| `capability/learning`      | real but narrow                     |   6.0 | PolicyPromotion reads TLog and emits policy facts. It is still promotion glue, not pattern mining, counterexample learning, causal attribution, or strategy synthesis.                                  |
-| `capability/orchestration` | meaningful ordering layer           |   6.2 | OrchestrationRecord orders capability submissions and skips passed gates. It lacks distributed workers, leases, queues, priorities, retries, parallel isolation, and backpressure.                       |
+| Module                     | Status                                      | Score | Reason                                                                                                                                                                                                 |
+|----------------------------|---------------------------------------------|------:|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `kernel`                   | strong                                      |   8.4 | Pure deterministic phase/gate/state core with learning gate, packet effects, capability registry projection, hash-stable control events, and clean kernel boundary. Penalized for toy packet domain.     |
+| `codec`                    | useful but too manual                       |   7.2 | NDJSON roundtrip now carries registry projection and TLog fields. Penalized for large hand-written parsers, numeric positional formats, and `pop_event` owning the largest CFG cluster.                |
+| `api`                      | credible in-process protocol                |   6.3 | Command envelopes, schema hash binding, duplicate/conflict rejection, atomic batches, and receipts exist. Still lacks network service, auth, quotas, streaming, and hostile-client hardening.           |
+| `runtime`                  | strong deterministic replay core            |   8.2 | Reducer, canonical writer, durable replay, drift checks, command-ledger reconstruction, registry projection validation, and TLog verification are meaningful. Penalized for verifier complexity.       |
+| `capability/observation`   | typed evidence facade                       |   4.0 | Observation records and cursor ordering exist. No live SSE/webhook/filesystem/browser input parser, provenance authentication, or replayable observation ingestion.                                  |
+| `capability/context`       | deterministic assembler seed                |   5.2 | Context records combine internal signals. Still lacks real retrieval, token budgeting, policy-scoped context, document grounding, and prior-run synthesis.                                             |
+| `capability/memory`        | deterministic lookup seed                   |   5.6 | Stable ordered facts and weighted lookup exist. Still lacks durable namespaces, embeddings, provenance, invalidation, decay, and cross-run memory queries.                                             |
+| `capability/planning`      | typed gate producer                         |   5.3 | Plan records can bind ready tasks and pass the Plan gate. It is not yet a planner: no dependency solving, graph expansion, scheduling, cost model, alternatives, or repair search.                    |
+| `capability/llm`           | structured adapter mock                     |   4.8 | Prompt/response records, schema hash, token counts, policy feedback, and judgment conversion exist. No provider client, retries, streaming parser, constrained decoder, or cost ledger.               |
+| `capability/judgment`      | minimal typed judgment record               |   5.2 | Judgment is represented as evidence, but it does not yet compare alternatives, model uncertainty, resolve conflicts, or enforce irreversible-boundary reasoning.                                      |
+| `capability/tooling`       | first real live side-effect capability      |   6.6 | Live sandbox file writes, explicit registry authorization, policy hash binding, artifact hashes, durable effect receipts, sidecar NDJSON, and replay checks exist. Still lacks process/API execution.   |
+| `capability/verification`  | strongest semantic capability after tooling |   6.9 | Semantic profiles, request/receipt hashes, lineage repair checks, tamper rejection, and tool-effect receipt replay exist. Still mostly verifies internal artifacts instead of external outputs.        |
+| `capability/eval`          | solid record scorer                         |   5.8 | Eval dimensions, thresholds, and gate submission exist. Still lacks calibrated benchmarks, adversarial scoring, evaluator provenance, and threshold governance.                                       |
+| `capability/policy`        | strongest capability foundation             |   7.4 | Append-only entries, durable promotion, versioning, fingerprinting, policy feedback, and registry policy hashing are good. Needs conflict resolution, expiry, rollback, signatures, and migrations.   |
+| `capability/learning`      | real but narrow                             |   6.1 | Policy promotion reads TLog and emits policy facts. Still not pattern mining, counterexample learning, causal attribution, strategy synthesis, or automatic capability generation.                    |
+| `capability/orchestration` | meaningful ordering layer                   |   6.3 | Orchestration records order capability submissions and skip passed gates. Still lacks distributed workers, leases, queues, priorities, retry policy, backpressure, and parallel isolation.             |
 
 ## Artifact Judgment
 
 ```text
 graph_json = useful_structural_source_of_truth
-index_json = locator_only
-README = architecturally clear but ahead of implementation
-src = broad deterministic implementation with cleaner layer boundaries
+README = correct_direction_but_ahead_of_source
+src = deterministic implementation with first live file-effect seam
 rubric_score = updated_to_match_current_static_state
 ```
 
-`graph.json` reports 1235 semantic nodes, 3058 semantic edges, 3647 CFG nodes, 4640 CFG edges, 1158 bridge edges, 488 redundant path pairs, and 13 alpha pathways. This is enough structure to guide refactoring.
+`graph.json` reports 1310 semantic nodes, 3326 semantic edges, 4122 CFG nodes, 5344 CFG edges, 1231 bridge edges, 499 redundant path pairs, and 13 alpha pathways. This is enough structure to guide refactoring, but not enough semantic confidence to delegate judgment to the graph.
 
-The danger remains concentrated complexity. `codec::ndjson::pop_event` has 127 CFG blocks. `runtime::verify::validate_event` has 99 CFG blocks and owns 136 redundant path pairs. `runtime::verify::verify_tlog_from` has 82 CFG blocks. These are correctness-critical functions and should become smaller typed validators before the project grows more surface area.
+The graph semantics layer is still weak. Every semantic manifest is effectively low-confidence or unknown. Treat the graph as structural evidence: useful for ownership, size, CFG concentration, and redundancy. Do not treat its intent labels as authority.
 
-The graph semantics layer is not yet reliable for judgment. All 1235 semantic manifests are low confidence. Treat graph structure as evidence; do not treat graph intent labels as authority.
+The critical complexity moved. `codec::ndjson::pop_event` remains the largest CFG function at 127 blocks. `runtime::verify::validate_event` remains a high-risk verifier cluster at 99 blocks and owns the largest redundant-path concentration. `LiveSandboxToolExecutor::execute_packet` is now a new correctness-sensitive CFG cluster at 95 blocks. That is expected after adding live effects, but it should be split before more tool kinds are added.
 
 ## Regression / Improvement Delta
 
 ```text
-previous_CORE = 6.96 / 10
-current_CORE  = 7.35 / 10
+previous_CORE = 7.35 / 10
+current_CORE  = 7.48 / 10
 
-previous_CAP = 5.23 / 10
-current_CAP  = 5.52 / 10
+previous_CAP = 5.52 / 10
+current_CAP  = 5.69 / 10
 
-previous_IMPL = 6.35 / 10
-current_IMPL  = 6.64 / 10
+previous_IMPL = 6.64 / 10
+current_IMPL  = 7.10 / 10
 
-previous_ARCH = 5.62 / 10
-current_ARCH  = 5.93 / 10
+previous_ARCH = 5.93 / 10
+current_ARCH  = 6.09 / 10
 ```
 
-The project improved. The gain comes from fixed layer purity, expanded test surface, durable command-ledger replay, registry projection persistence, deny-by-default capability routing, registry policy hash binding, and replay rejection under policy drift.
+The project improved. The gain comes from the first live sandbox file effect, artifact-content/root/path hashing, durable tool-effect receipt sidecar support, registry authorization at execution time, and replay verification for persisted tool effects.
 
-The score is still below 6 because the architecture claims self-improving autonomous capability, while the implementation remains mostly deterministic internal evidence routing. The runtime is strong; live capability is weak.
+The score is still only slightly above 6 because the implementation now has one real file-side-effect path, while the architecture claims a self-improving autonomous agent. The foundation is increasingly credible. The intelligence loop is still mostly absent.
 
 ## Highest Leverage Next Work
 
-1. **Make tooling real under the current registry model.** Add a sandboxed file/process/API tool runner with explicit allowed effects, no ambient permissions, durable request/decision/effect receipts, and replay verification.
-2. **Split correctness-critical CFG clusters.** Break `codec::ndjson::pop_event`, `runtime::verify::validate_event`, and `runtime::verify::verify_tlog_from` into smaller typed validators.
-3. **Move tests out of `src/lib.rs`.** The root module is 2202 lines and carries 82 unit tests. Move integration-style tests into `tests/` and module-specific test files.
-4. **Promote graph confidence from metadata to gate.** Fail or warn when semantic manifests are all low confidence. The graph should not silently imply more semantic knowledge than it has.
-5. **Upgrade verification targets.** Verify real artifacts: file digests, build/test outputs, command stdout/stderr, API responses, or signed receipts.
-6. **Add durable memory before smarter planning.** Planning without retrieval will remain toy planning. The next intelligence unlock is persisted memory with provenance and invalidation.
+1. **Promote tooling from file artifact writer to real sandbox runner.** Add process execution with explicit command allowlist, cwd lock, environment lock, timeout, stdout/stderr digests, exit status, max output bytes, and receipt replay.
+2. **Split `LiveSandboxToolExecutor::execute_packet`.** Separate request construction, authorization, artifact body construction, path validation, write/sync, and receipt construction into typed units.
+3. **Split verifier and codec CFG clusters.** Break `codec::ndjson::pop_event`, `runtime::verify::validate_event`, and `runtime::verify::verify_tlog_from` into smaller validators with table-driven enum decoding.
+4. **Move tests out of `src/lib.rs`.** The root module is 2268 lines and contains 83 unit tests. Move integration-style tests into `tests/` and module-specific test files.
+5. **Verify external artifacts, not only packet effects.** Add verification over command receipts, file digests, build/test outputs, API response digests, and signed provider receipts.
+6. **Add durable memory before smarter planning.** Planning will remain shallow until prior runs, artifacts, policies, and observations are queryable with provenance and invalidation.
+7. **Make graph confidence a gate.** Low-confidence semantic manifests should warn or fail before graph-derived conclusions are treated as design authority.
 
 ## Updated Verdict
 
 ```text
-objective_rating = ARCH = 5.93 / 10
-system_level = deterministic evidence-runtime prototype
-best_property = kernel/runtime replay discipline
-weakest_property = real-world autonomous execution
-next_score_unlock = live sandboxed tooling with durable effect receipts
+objective_rating = ARCH = 6.09 / 10
+system_level = deterministic evidence-runtime with first live sandboxed file capability
+best_property = kernel/runtime replay discipline plus receipted side effects
+weakest_property = missing process/API execution and adaptive intelligence loop
+next_score_unlock = process-backed sandbox tooling with stdout/stderr receipts and verifier replay
 ```
 
-The kernel is good. Runtime is nearly good. Policy is the strongest capability foundation. The current architecture is clean enough to continue upward. The next move should not be more abstract state-machine work; it should be one live external capability executed through the registry, TLog, receipt, and verifier path.
+The kernel is good. Runtime is strong. Policy is good. Tooling finally became real enough to matter. The next move should not be more abstract kernel work; it should be a process-backed sandbox tool executed through the same registry, receipt, TLog, and verifier path.
