@@ -9,7 +9,7 @@ use std::fs::{File, OpenOptions};
 use std::io::{BufRead, BufReader, Write};
 use std::path::Path;
 
-const TLOG_SCHEMA_VERSION: u64 = 2;
+const TLOG_SCHEMA_VERSION: u64 = 3;
 const TLOG_RECORD_EVENT: u64 = 1;
 
 pub mod kernel;
@@ -75,7 +75,7 @@ struct Transition {
     cause: Cause,
 }
 
-const TRANSITIONS: [Transition; 36] = [
+const TRANSITIONS: [Transition; 38] = [
     Transition { from: Phase::Delta, to: Phase::Invariant, kind: EventKind::Advanced, cause: Cause::Start },
     Transition { from: Phase::Invariant, to: Phase::Analysis, kind: EventKind::Advanced, cause: Cause::GatePassed },
     Transition { from: Phase::Invariant, to: Phase::Recovery, kind: EventKind::Blocked, cause: Cause::EvidenceMissing },
@@ -98,19 +98,21 @@ const TRANSITIONS: [Transition; 36] = [
     Transition { from: Phase::Verify, to: Phase::Recovery, kind: EventKind::Failed, cause: Cause::EvidenceMissing },
     Transition { from: Phase::Verify, to: Phase::Recovery, kind: EventKind::Failed, cause: Cause::GateFailed },
     Transition { from: Phase::Verify, to: Phase::Recovery, kind: EventKind::Failed, cause: Cause::ArtifactLineageBroken },
-    Transition { from: Phase::Eval, to: Phase::Done, kind: EventKind::Completed, cause: Cause::EvalPassed },
+    Transition { from: Phase::Eval, to: Phase::Persist, kind: EventKind::Advanced, cause: Cause::EvalPassed },
     Transition { from: Phase::Eval, to: Phase::Recovery, kind: EventKind::Failed, cause: Cause::EvidenceMissing },
     Transition { from: Phase::Eval, to: Phase::Recovery, kind: EventKind::Failed, cause: Cause::GateFailed },
     Transition { from: Phase::Eval, to: Phase::Recovery, kind: EventKind::Failed, cause: Cause::EvalFailed },
-    Transition { from: Phase::Recovery, to: Phase::Learn, kind: EventKind::Recovered, cause: Cause::RepairSelected },
+    Transition { from: Phase::Recovery, to: Phase::Persist, kind: EventKind::Recovered, cause: Cause::RepairSelected },
     Transition { from: Phase::Recovery, to: Phase::Done, kind: EventKind::Failed, cause: Cause::RecoveryLimit },
-    Transition { from: Phase::Learn, to: Phase::Invariant, kind: EventKind::Learned, cause: Cause::RepairApplied },
-    Transition { from: Phase::Learn, to: Phase::Analysis, kind: EventKind::Learned, cause: Cause::RepairApplied },
-    Transition { from: Phase::Learn, to: Phase::Judgment, kind: EventKind::Learned, cause: Cause::RepairApplied },
-    Transition { from: Phase::Learn, to: Phase::Plan, kind: EventKind::Learned, cause: Cause::RepairApplied },
-    Transition { from: Phase::Learn, to: Phase::Execute, kind: EventKind::Learned, cause: Cause::RepairApplied },
-    Transition { from: Phase::Learn, to: Phase::Verify, kind: EventKind::Learned, cause: Cause::RepairApplied },
-    Transition { from: Phase::Learn, to: Phase::Eval, kind: EventKind::Learned, cause: Cause::RepairApplied },
+    Transition { from: Phase::Persist, to: Phase::Invariant, kind: EventKind::Persisted, cause: Cause::RepairApplied },
+    Transition { from: Phase::Persist, to: Phase::Analysis, kind: EventKind::Persisted, cause: Cause::RepairApplied },
+    Transition { from: Phase::Persist, to: Phase::Judgment, kind: EventKind::Persisted, cause: Cause::RepairApplied },
+    Transition { from: Phase::Persist, to: Phase::Plan, kind: EventKind::Persisted, cause: Cause::RepairApplied },
+    Transition { from: Phase::Persist, to: Phase::Execute, kind: EventKind::Persisted, cause: Cause::RepairApplied },
+    Transition { from: Phase::Persist, to: Phase::Verify, kind: EventKind::Persisted, cause: Cause::RepairApplied },
+    Transition { from: Phase::Persist, to: Phase::Eval, kind: EventKind::Persisted, cause: Cause::RepairApplied },
+    Transition { from: Phase::Persist, to: Phase::Learn, kind: EventKind::Persisted, cause: Cause::Persisted },
+    Transition { from: Phase::Learn, to: Phase::Done, kind: EventKind::Learned, cause: Cause::PolicyPromoted },
     Transition { from: Phase::Done, to: Phase::Done, kind: EventKind::Completed, cause: Cause::EvalPassed },
 ];
 
@@ -137,7 +139,7 @@ impl CanonicalWriter {
             affected_gate: outcome.affected_gate,
         })?;
 
-        if outcome.kind == EventKind::Completed && !after.is_success() {
+        if after.phase == Phase::Done && after.failure.is_none() && !after.is_success() {
             return Err(CanonError::InvalidCompletion);
         }
 
@@ -224,6 +226,7 @@ fn reduce(input: State, cfg: RuntimeConfig) -> Outcome {
         Phase::Verify => verify_step(input),
         Phase::Eval => eval_step(input),
         Phase::Recovery => recover(input, cfg),
+        Phase::Persist => persist(input),
         Phase::Learn => learn(input),
         Phase::Done => {
             let mut s = input;
@@ -306,7 +309,7 @@ fn verify_step(input: State) -> Outcome {
 fn eval_step(input: State) -> Outcome {
     let mut s = input;
 
-    if let Some((gate_id, gate)) = s.gates.first_non_pass() {
+    if let Some((gate_id, gate)) = s.gates.first_execution_non_pass() {
         return raise_gate_failure(&mut s, gate_id, gate);
     }
 
@@ -320,7 +323,7 @@ fn eval_step(input: State) -> Outcome {
         );
     }
 
-    complete(&mut s)
+    advance(&mut s, Phase::Persist, Cause::EvalPassed, Evidence::EvalScore)
 }
 
 fn advance(s: &mut State, to: Phase, cause: Cause, evidence: Evidence) -> Outcome {
@@ -429,7 +432,7 @@ fn recover(input: State, cfg: RuntimeConfig) -> Outcome {
         return halt_recovery(&mut s, failure, Cause::RecoveryLimit);
     }
 
-    s.phase = Phase::Learn;
+    s.phase = Phase::Persist;
     s.recovery_attempts = s.recovery_attempts.saturating_add(1);
     s.recovery_action = Some(action);
 
@@ -462,20 +465,19 @@ fn halt_recovery(s: &mut State, class: FailureClass, cause: Cause) -> Outcome {
     }
 }
 
-fn learn(input: State) -> Outcome {
+fn persist(input: State) -> Outcome {
     let mut s = input;
 
     let Some(action) = input.recovery_action else {
-        s.phase = Phase::Recovery;
-        s.failure = Some(FailureClass::RecoveryExhausted);
+        s.phase = Phase::Learn;
 
         return Outcome {
             state: s,
-            kind: EventKind::Failed,
-            cause: Cause::EvidenceMissing,
-            evidence: Evidence::Missing,
-            decision: Decision::Fail,
-            failure: Some(FailureClass::RecoveryExhausted),
+            kind: EventKind::Persisted,
+            cause: Cause::Persisted,
+            evidence: Evidence::PersistedRecord,
+            decision: Decision::Continue,
+            failure: None,
             recovery_action: None,
             affected_gate: None,
         };
@@ -487,7 +489,7 @@ fn learn(input: State) -> Outcome {
 
         return Outcome {
             state: s,
-            kind: EventKind::Learned,
+            kind: EventKind::Persisted,
             cause: Cause::RepairApplied,
             evidence: Evidence::ConvergenceLimit,
             decision: Decision::Halt,
@@ -513,13 +515,33 @@ fn learn(input: State) -> Outcome {
 
     Outcome {
         state: s,
-        kind: EventKind::Learned,
+        kind: EventKind::Persisted,
         cause: Cause::RepairApplied,
         evidence,
         decision: Decision::Continue,
         failure: input.failure,
         recovery_action: Some(action),
         affected_gate: Some(gate),
+    }
+}
+
+fn learn(input: State) -> Outcome {
+    let mut s = input;
+
+    s.gates.set_pass(GateId::Learning, Evidence::PolicyPromotion);
+    s.phase = Phase::Done;
+    s.failure = None;
+    s.recovery_action = None;
+
+    Outcome {
+        state: s,
+        kind: EventKind::Learned,
+        cause: Cause::PolicyPromoted,
+        evidence: Evidence::PolicyPromotion,
+        decision: Decision::Complete,
+        failure: None,
+        recovery_action: None,
+        affected_gate: Some(GateId::Learning),
     }
 }
 
@@ -566,6 +588,7 @@ fn recovery_action_for(class: FailureClass) -> RecoveryAction {
         }
         FailureClass::ArtifactLineageBroken => RecoveryAction::RepairArtifactLineage,
         FailureClass::EvalMissing | FailureClass::EvalFailed => RecoveryAction::RecomputeEval,
+        FailureClass::LearningMissing | FailureClass::LearningFailed => RecoveryAction::RecomputeEval,
         FailureClass::RecoveryExhausted | FailureClass::ConvergenceFailed => {
             RecoveryAction::Escalate
         }
@@ -595,6 +618,9 @@ fn failure_for_gate(id: GateId, status: GateStatus) -> FailureClass {
         (GateId::Eval, GateStatus::Unknown) => FailureClass::EvalMissing,
         (GateId::Eval, GateStatus::Fail) => FailureClass::EvalFailed,
 
+        (GateId::Learning, GateStatus::Unknown) => FailureClass::LearningMissing,
+        (GateId::Learning, GateStatus::Fail) => FailureClass::LearningFailed,
+
         (_, GateStatus::Pass) => unreachable!("passing gate cannot produce failure"),
     }
 }
@@ -622,6 +648,7 @@ fn evidence_for_gate(id: GateId) -> Evidence {
         GateId::Execution => Evidence::ArtifactReceipt,
         GateId::Verification => Evidence::LineageProof,
         GateId::Eval => Evidence::EvalScore,
+        GateId::Learning => Evidence::PolicyPromotion,
     }
 }
 
@@ -737,17 +764,23 @@ pub fn semantic_diff(a: State, b: State) -> SemanticDelta {
     if a == b {
         return SemanticDelta::NoChange;
     }
+    if a.phase == Phase::Learn && b.phase == Phase::Done {
+        return SemanticDelta::LearningPromoted;
+    }
     if b.phase == Phase::Done && b.failure.is_none() {
         return SemanticDelta::Completed;
     }
     if b.phase == Phase::Done && b.failure.is_some() {
         return SemanticDelta::Halted;
     }
-    if a.phase == Phase::Recovery && b.phase == Phase::Learn {
+    if a.phase == Phase::Recovery && b.phase == Phase::Persist {
         return SemanticDelta::RepairSelected;
     }
-    if a.phase == Phase::Learn {
+    if a.phase == Phase::Persist && a.recovery_action.is_some() {
         return SemanticDelta::RepairApplied;
+    }
+    if a.phase == Phase::Persist && b.phase == Phase::Learn {
+        return SemanticDelta::Persisted;
     }
     if b.failure.is_some() && b.phase == Phase::Recovery {
         return SemanticDelta::FailureRaised;
@@ -782,25 +815,25 @@ fn validate_event(event: EventView) -> Result<(), CanonError> {
         });
     }
 
-    if matches!(
-        event.kind,
-        EventKind::Blocked | EventKind::Failed | EventKind::Recovered | EventKind::Learned
-    ) && event.failure.is_none()
+    if matches!(event.kind, EventKind::Blocked | EventKind::Failed | EventKind::Recovered)
+        && event.failure.is_none()
     {
         return Err(CanonError::MissingFailureClass);
     }
 
-    if matches!(event.kind, EventKind::Advanced | EventKind::Completed) && event.failure.is_some() {
+    if matches!(
+        event.kind,
+        EventKind::Advanced | EventKind::Completed | EventKind::Learned
+    ) && event.failure.is_some()
+    {
         return Err(CanonError::UnexpectedFailureClass);
     }
 
-    if matches!(event.kind, EventKind::Recovered | EventKind::Learned)
-        && event.recovery_action.is_none()
-    {
+    if event.kind == EventKind::Recovered && event.recovery_action.is_none() {
         return Err(CanonError::MissingRecoveryAction);
     }
 
-    if matches!(event.kind, EventKind::Advanced | EventKind::Completed)
+    if matches!(event.kind, EventKind::Advanced | EventKind::Completed | EventKind::Learned)
         && event.recovery_action.is_some()
     {
         return Err(CanonError::UnexpectedRecoveryAction);
@@ -830,7 +863,7 @@ fn validate_event(event: EventView) -> Result<(), CanonError> {
         return Err(CanonError::UnexpectedAffectedGate);
     }
 
-    if event.kind == EventKind::Learned {
+    if event.kind == EventKind::Persisted && event.cause == Cause::RepairApplied {
         let Some(action) = event.recovery_action else {
             return Err(CanonError::MissingRecoveryAction);
         };
@@ -841,6 +874,22 @@ fn validate_event(event: EventView) -> Result<(), CanonError> {
 
         if action.repaired_gate() != event.affected_gate {
             return Err(CanonError::InvalidRepairTarget);
+        }
+    }
+
+    if event.kind == EventKind::Persisted && event.cause == Cause::Persisted {
+        if event.to != Phase::Learn
+            || event.failure.is_some()
+            || event.recovery_action.is_some()
+            || event.affected_gate.is_some()
+        {
+            return Err(CanonError::InvalidLearnTarget);
+        }
+    }
+
+    if event.kind == EventKind::Learned {
+        if event.to != Phase::Done || event.affected_gate != Some(GateId::Learning) {
+            return Err(CanonError::InvalidLearnTarget);
         }
     }
 
@@ -1324,7 +1373,8 @@ fn phase_from_u64(value: u64) -> Result<Phase, CanonError> {
         1 => Ok(Phase::Delta), 2 => Ok(Phase::Invariant), 3 => Ok(Phase::Analysis),
         4 => Ok(Phase::Judgment), 5 => Ok(Phase::Plan), 6 => Ok(Phase::Execute),
         7 => Ok(Phase::Verify), 8 => Ok(Phase::Eval), 9 => Ok(Phase::Recovery),
-        10 => Ok(Phase::Learn), 11 => Ok(Phase::Done), _ => Err(CanonError::InvalidTlogRecord),
+        10 => Ok(Phase::Learn), 11 => Ok(Phase::Persist), 12 => Ok(Phase::Done),
+        _ => Err(CanonError::InvalidTlogRecord),
     }
 }
 
@@ -1336,7 +1386,7 @@ fn gate_id_from_u64(value: u64) -> Result<GateId, CanonError> {
     match value {
         1 => Ok(GateId::Invariant), 2 => Ok(GateId::Analysis), 3 => Ok(GateId::Judgment),
         4 => Ok(GateId::Plan), 5 => Ok(GateId::Execution), 6 => Ok(GateId::Verification),
-        7 => Ok(GateId::Eval), _ => Err(CanonError::InvalidTlogRecord),
+        7 => Ok(GateId::Eval), 8 => Ok(GateId::Learning), _ => Err(CanonError::InvalidTlogRecord),
     }
 }
 
@@ -1347,6 +1397,7 @@ fn evidence_from_u64(value: u64) -> Result<Evidence, CanonError> {
         7 => Ok(Evidence::TaskReady), 8 => Ok(Evidence::ExecutionReceipt), 9 => Ok(Evidence::ArtifactReceipt),
         10 => Ok(Evidence::VerificationReport), 11 => Ok(Evidence::LineageProof), 12 => Ok(Evidence::EvalScore),
         13 => Ok(Evidence::RecoveryPolicy), 14 => Ok(Evidence::CompletionProof), 15 => Ok(Evidence::ConvergenceLimit),
+        16 => Ok(Evidence::PersistedRecord), 17 => Ok(Evidence::LearningRecord), 18 => Ok(Evidence::PolicyPromotion),
         _ => Err(CanonError::InvalidTlogRecord),
     }
 }
@@ -1362,7 +1413,8 @@ fn failure_from_u64(value: u64) -> Result<FailureClass, CanonError> {
         13 => Ok(FailureClass::VerificationUnknown), 14 => Ok(FailureClass::VerificationFailed),
         15 => Ok(FailureClass::ArtifactLineageBroken), 16 => Ok(FailureClass::EvalMissing),
         17 => Ok(FailureClass::EvalFailed), 18 => Ok(FailureClass::RecoveryExhausted),
-        19 => Ok(FailureClass::ConvergenceFailed), _ => Err(CanonError::InvalidTlogRecord),
+        19 => Ok(FailureClass::ConvergenceFailed), 20 => Ok(FailureClass::LearningMissing),
+        21 => Ok(FailureClass::LearningFailed), _ => Err(CanonError::InvalidTlogRecord),
     }
 }
 
@@ -1381,6 +1433,7 @@ fn event_kind_from_u64(value: u64) -> Result<EventKind, CanonError> {
     match value {
         1 => Ok(EventKind::Advanced), 2 => Ok(EventKind::Blocked), 3 => Ok(EventKind::Failed),
         4 => Ok(EventKind::Recovered), 5 => Ok(EventKind::Learned), 6 => Ok(EventKind::Completed),
+        7 => Ok(EventKind::Persisted),
         _ => Err(CanonError::InvalidTlogRecord),
     }
 }
@@ -1393,6 +1446,7 @@ fn cause_from_u64(value: u64) -> Result<Cause, CanonError> {
         10 => Ok(Cause::VerificationPassed), 11 => Ok(Cause::ArtifactLineageBroken),
         12 => Ok(Cause::EvalPassed), 13 => Ok(Cause::EvalFailed), 14 => Ok(Cause::RepairSelected),
         15 => Ok(Cause::RepairApplied), 16 => Ok(Cause::RecoveryLimit), 17 => Ok(Cause::MaxSteps),
+        18 => Ok(Cause::Persisted), 19 => Ok(Cause::PolicyPromoted),
         _ => Err(CanonError::InvalidTlogRecord),
     }
 }
@@ -1411,6 +1465,7 @@ fn semantic_delta_from_u64(value: u64) -> Result<SemanticDelta, CanonError> {
         3 => Ok(SemanticDelta::FailureRaised), 4 => Ok(SemanticDelta::RepairSelected),
         5 => Ok(SemanticDelta::RepairApplied), 6 => Ok(SemanticDelta::PayloadChanged),
         7 => Ok(SemanticDelta::Completed), 8 => Ok(SemanticDelta::Halted),
+        9 => Ok(SemanticDelta::Persisted), 10 => Ok(SemanticDelta::LearningPromoted),
         _ => Err(CanonError::InvalidTlogRecord),
     }
 }
@@ -1433,6 +1488,9 @@ pub fn touch_all_surfaces() -> usize {
         Evidence::RecoveryPolicy,
         Evidence::CompletionProof,
         Evidence::ConvergenceLimit,
+        Evidence::PersistedRecord,
+        Evidence::LearningRecord,
+        Evidence::PolicyPromotion,
     ];
     let failures = [
         FailureClass::InvariantUnknown,
@@ -1454,6 +1512,8 @@ pub fn touch_all_surfaces() -> usize {
         FailureClass::EvalFailed,
         FailureClass::RecoveryExhausted,
         FailureClass::ConvergenceFailed,
+        FailureClass::LearningMissing,
+        FailureClass::LearningFailed,
     ];
     let actions = [
         RecoveryAction::RecheckInvariant,
@@ -1474,6 +1534,7 @@ pub fn touch_all_surfaces() -> usize {
         EventKind::Recovered,
         EventKind::Learned,
         EventKind::Completed,
+        EventKind::Persisted,
     ];
     let causes = [
         Cause::Start,
@@ -1493,6 +1554,8 @@ pub fn touch_all_surfaces() -> usize {
         Cause::RepairApplied,
         Cause::RecoveryLimit,
         Cause::MaxSteps,
+        Cause::Persisted,
+        Cause::PolicyPromoted,
     ];
     let decisions = [
         Decision::Continue,
@@ -1511,6 +1574,8 @@ pub fn touch_all_surfaces() -> usize {
         SemanticDelta::PayloadChanged,
         SemanticDelta::Completed,
         SemanticDelta::Halted,
+        SemanticDelta::Persisted,
+        SemanticDelta::LearningPromoted,
     ];
     let errors = [
         CanonError::IllegalEvent {
@@ -1636,7 +1701,9 @@ mod tests {
         let (state, tlog) = run_until_done(State::ready(), RuntimeConfig::default()).unwrap();
 
         assert!(state.is_success());
-        assert_eq!(tlog.last().unwrap().kind, EventKind::Completed);
+        assert_eq!(tlog.last().unwrap().kind, EventKind::Learned);
+        assert_eq!(tlog.last().unwrap().affected_gate, Some(GateId::Learning));
+        assert!(tlog.iter().any(|e| e.kind == EventKind::Persisted));
         verify_tlog(&tlog).unwrap();
     }
 
@@ -1654,6 +1721,16 @@ mod tests {
 
         assert!(tlog.iter().any(|e| e.kind == EventKind::Recovered));
         assert!(tlog.iter().any(|e| e.kind == EventKind::Learned));
+        assert!(tlog
+            .iter()
+            .filter(|e| e.kind == EventKind::Learned)
+            .all(|e| e.recovery_action.is_none() && e.affected_gate == Some(GateId::Learning)));
+        assert!(tlog.iter().any(|e| {
+            e.kind == EventKind::Persisted
+                && e.recovery_action == Some(RecoveryAction::BindReadyTask)
+                && e.affected_gate == Some(GateId::Plan)
+                && e.evidence == Evidence::TaskReady
+        }));
         assert!(tlog.iter().any(|e| {
             e.recovery_action == Some(RecoveryAction::BindReadyTask)
                 && e.affected_gate == Some(GateId::Plan)
@@ -1838,6 +1915,18 @@ mod tests {
             Phase::Recovery,
             EventKind::Failed,
             Cause::ReadyQueueEmpty
+        ));
+        assert!(legal_transition(
+            Phase::Recovery,
+            Phase::Persist,
+            EventKind::Recovered,
+            Cause::RepairSelected
+        ));
+        assert!(legal_transition(
+            Phase::Learn,
+            Phase::Done,
+            EventKind::Learned,
+            Cause::PolicyPromoted
         ));
     }
 

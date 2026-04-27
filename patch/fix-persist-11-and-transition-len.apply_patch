@@ -1,0 +1,29 @@
+*** Begin Patch
+*** Update File: src/kernel.rs
+@@
+     Verify = 7,
+     Eval = 8,
+     Recovery = 9,
+-    Persist = 10,
+-    Learn = 11,
++    Learn = 10,
++    Persist = 11,
+     Done = 12,
+ }
+@@
+     Phase::Verify,
+     Phase::Eval,
+     Phase::Recovery,
+-    Phase::Persist,
+     Phase::Learn,
++    Phase::Persist,
+     Phase::Done,
+ ];
+*** Update File: src/lib.rs
+@@
+-const TRANSITIONS: [Transition; 39] = [
++const TRANSITIONS: [Transition; 38] = [
+@@
+-        10 => Ok(Phase::Persist), 11 => Ok(Phase::Learn), 12 => Ok(Phase::Done),
++        10 => Ok(Phase::Learn), 11 => Ok(Phase::Persist), 12 => Ok(Phase::Done),
+*** End Patch

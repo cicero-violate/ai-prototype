@@ -17,10 +17,11 @@ pub enum Phase {
     Eval = 8,
     Recovery = 9,
     Learn = 10,
-    Done = 11,
+    Persist = 11,
+    Done = 12,
 }
 
-pub const PHASES: [Phase; 11] = [
+pub const PHASES: [Phase; 12] = [
     Phase::Delta,
     Phase::Invariant,
     Phase::Analysis,
@@ -31,6 +32,7 @@ pub const PHASES: [Phase; 11] = [
     Phase::Eval,
     Phase::Recovery,
     Phase::Learn,
+    Phase::Persist,
     Phase::Done,
 ];
 
@@ -52,9 +54,10 @@ pub enum GateId {
     Execution = 5,
     Verification = 6,
     Eval = 7,
+    Learning = 8,
 }
 
-pub const GATE_ORDER: [GateId; 7] = [
+pub const EXECUTION_GATE_ORDER: [GateId; 7] = [
     GateId::Invariant,
     GateId::Analysis,
     GateId::Judgment,
@@ -62,6 +65,17 @@ pub const GATE_ORDER: [GateId; 7] = [
     GateId::Execution,
     GateId::Verification,
     GateId::Eval,
+];
+
+pub const GATE_ORDER: [GateId; 8] = [
+    GateId::Invariant,
+    GateId::Analysis,
+    GateId::Judgment,
+    GateId::Plan,
+    GateId::Execution,
+    GateId::Verification,
+    GateId::Eval,
+    GateId::Learning,
 ];
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -82,6 +96,9 @@ pub enum Evidence {
     RecoveryPolicy = 13,
     CompletionProof = 14,
     ConvergenceLimit = 15,
+    PersistedRecord = 16,
+    LearningRecord = 17,
+    PolicyPromotion = 18,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -126,6 +143,7 @@ pub struct GateSet {
     pub execution: Gate,
     pub verification: Gate,
     pub eval: Gate,
+    pub learning: Gate,
 }
 
 impl Default for GateSet {
@@ -138,6 +156,7 @@ impl Default for GateSet {
             execution: Gate::unknown(),
             verification: Gate::unknown(),
             eval: Gate::unknown(),
+            learning: Gate::unknown(),
         }
     }
 }
@@ -152,6 +171,7 @@ impl GateSet {
             execution: Gate::pass(Evidence::ArtifactReceipt),
             verification: Gate::pass(Evidence::LineageProof),
             eval: Gate::pass(Evidence::EvalScore),
+            learning: Gate::pass(Evidence::PolicyPromotion),
         }
     }
 
@@ -164,6 +184,7 @@ impl GateSet {
             GateId::Execution => self.execution,
             GateId::Verification => self.verification,
             GateId::Eval => self.eval,
+            GateId::Learning => self.learning,
         }
     }
 
@@ -176,6 +197,7 @@ impl GateSet {
             GateId::Execution => &mut self.execution,
             GateId::Verification => &mut self.verification,
             GateId::Eval => &mut self.eval,
+            GateId::Learning => &mut self.learning,
         }
     }
 
@@ -203,8 +225,21 @@ impl GateSet {
             .all(|id| self.get(*id).status == GateStatus::Pass)
     }
 
+    pub fn all_execution_passed(self) -> bool {
+        EXECUTION_GATE_ORDER
+            .iter()
+            .all(|id| self.get(*id).status == GateStatus::Pass)
+    }
+
     pub fn first_non_pass(self) -> Option<(GateId, Gate)> {
         GATE_ORDER.iter().copied().find_map(|id| {
+            let gate = self.get(id);
+            (gate.status != GateStatus::Pass).then_some((id, gate))
+        })
+    }
+
+    pub fn first_execution_non_pass(self) -> Option<(GateId, Gate)> {
+        EXECUTION_GATE_ORDER.iter().copied().find_map(|id| {
             let gate = self.get(id);
             (gate.status != GateStatus::Pass).then_some((id, gate))
         })
@@ -402,6 +437,8 @@ pub enum FailureClass {
     EvalFailed = 17,
     RecoveryExhausted = 18,
     ConvergenceFailed = 19,
+    LearningMissing = 20,
+    LearningFailed = 21,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -473,6 +510,7 @@ pub enum EventKind {
     Recovered = 4,
     Learned = 5,
     Completed = 6,
+    Persisted = 7,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -495,6 +533,8 @@ pub enum Cause {
     RepairApplied = 15,
     RecoveryLimit = 16,
     MaxSteps = 17,
+    Persisted = 18,
+    PolicyPromoted = 19,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -519,6 +559,8 @@ pub enum SemanticDelta {
     PayloadChanged = 6,
     Completed = 7,
     Halted = 8,
+    Persisted = 9,
+    LearningPromoted = 10,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
