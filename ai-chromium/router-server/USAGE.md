@@ -77,7 +77,7 @@ curl -N http://127.0.0.1:8081/v1/chat/completions \
     "model": "chatgpt-browser",
     "messages": [{"role":"user","content":"Count to five."}],
     "stream": true
-  }'
+}'
 ```
 
 ## Group chat: create a new group thread
