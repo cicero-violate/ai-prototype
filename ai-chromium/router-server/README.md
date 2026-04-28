@@ -16,39 +16,59 @@ Its purpose is to let one API route work across:
 
 The project is not mainly a scraper. It is a provider-capability router.
 
+Its current architecture is evidence-driven. Its target architecture is data-driven.
+
 ```text
 request
   → provider selection
   → capability plan
   → browser action
   → evidence capture
-  → learning loop
+  → dataset registry
+  → feature extraction
+  → pattern mining
+  → policy decision
   → response extraction
-  → replay/privacy verification
+  → feedback + replay/privacy verification
+  → policy update
   → OpenAI-compatible response
 ```
 
 ## Core Equation
 
 ```text
-Good = max(provider_coverage, capability_correctness, learning_rate, replay_determinism, privacy_safety, test_coverage, operator_clarity)
+evidence_driven = evidence → verify(action)
+
+data_driven = data → mining → policy → action → feedback → update(policy)
+
+Good = max(evidence_integrity, data_discovery, policy_learning, replay_determinism, capability_adaptation, privacy_safety)
 ```
 
-One-line explanation: the project becomes good when each browser capability is proven by action receipts, learning records, replayable evidence, privacy gates, and tests.
+One-line explanation: the project becomes good when browser evidence becomes reusable data, mined patterns update policy, and policy changes improve future provider behavior.
+
+## Data Discovery
+
+Data discovery means the router turns browser evidence into reusable datasets and mines them for stable provider structure.
+
+```text
+discover = evidence → dataset → features → patterns → hypotheses
+```
+
+Discovery finds UI targets, stream shapes, upload states, group-chat authorship signals, terminality signals, and failure patterns.
+
+Discovery does not mine private prompt content, assistant content, credentials, cookies, or unrelated human messages.
 
 ## Learning
 
-Learning means the router converts successful browser turns into better future behavior.
+Learning means the router converts verified discovery into policy updates that change future behavior.
 
 ```text
-observe evidence → derive schemas → score actions → promote rules → generate extractors → replay verify
+learning = hypotheses → score → update policy → act → measure feedback
 ```
 
-Nothing is learned directly from private content. Only redacted evidence, schemas, action receipts, and replay-passing rules may be promoted.
+Nothing is learned directly from private content. Only redacted evidence, schemas, action receipts, discovery records, and replay-passing rules may be promoted.
 
 ## Scope
-
-The router should support these capability lanes:
 
 | Surface           | Required capability                                                    |
 |-------------------+------------------------------------------------------------------------|
@@ -65,14 +85,13 @@ The router must not harvest credentials, bypass login, bypass CAPTCHA, evade rat
 
 ## Documentation
 
-Detailed material was split out of this README:
-
 - [`docs/01-project-contract.md`](docs/01-project-contract.md)
 - [`docs/02-provider-capabilities.md`](docs/02-provider-capabilities.md)
 - [`docs/03-system-architecture.md`](docs/03-system-architecture.md)
 - [`docs/04-evidence-extraction-replay.md`](docs/04-evidence-extraction-replay.md)
-- [`docs/05-learning-loop.md`](docs/05-learning-loop.md)
-- [`docs/06-operations-roadmap.md`](docs/06-operations-roadmap.md)
+- [`docs/05-data-discovery.md`](docs/05-data-discovery.md)
+- [`docs/06-learning-loop.md`](docs/06-learning-loop.md)
+- [`docs/07-operations-roadmap.md`](docs/07-operations-roadmap.md)
 - [`SCORE.md`](SCORE.md)
 
 ## Current Status
