@@ -70,6 +70,13 @@ impl PacketEffect {
             }
         }
     }
+
+    pub const fn expected_for_gate_evidence(gate: GateId, evidence: Evidence) -> Self {
+        match (gate, evidence) {
+            (GateId::Execution, Evidence::ExecutionReceipt) => Self::None,
+            _ => Self::expected_for_gate(gate),
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -129,7 +136,7 @@ impl CapabilityEffectRoute {
     }
 }
 
-pub const CAPABILITY_EFFECT_ROUTES: [CapabilityEffectRoute; 14] = [
+pub const CAPABILITY_EFFECT_ROUTES: [CapabilityEffectRoute; 15] = [
     CapabilityEffectRoute::new(
         CapabilityId::Observation,
         GateId::Invariant,
@@ -171,6 +178,12 @@ pub const CAPABILITY_EFFECT_ROUTES: [CapabilityEffectRoute; 14] = [
         GateId::Execution,
         Evidence::ArtifactReceipt,
         PacketEffect::MaterializeArtifact,
+    ),
+    CapabilityEffectRoute::new(
+        CapabilityId::Tooling,
+        GateId::Execution,
+        Evidence::ExecutionReceipt,
+        PacketEffect::None,
     ),
     CapabilityEffectRoute::new(
         CapabilityId::Verification,
@@ -299,6 +312,21 @@ pub const fn expected_evidence_for_gate(gate: GateId) -> Evidence {
     }
 }
 
+pub const fn evidence_allowed_for_gate(gate: GateId, evidence: Evidence) -> bool {
+    match gate {
+        GateId::Invariant => matches!(evidence, Evidence::InvariantProof),
+        GateId::Analysis => matches!(evidence, Evidence::AnalysisReport),
+        GateId::Judgment => matches!(evidence, Evidence::JudgmentRecord),
+        GateId::Plan => matches!(evidence, Evidence::TaskReady),
+        GateId::Execution => {
+            matches!(evidence, Evidence::ArtifactReceipt | Evidence::ExecutionReceipt)
+        }
+        GateId::Verification => matches!(evidence, Evidence::LineageProof),
+        GateId::Eval => matches!(evidence, Evidence::EvalScore),
+        GateId::Learning => matches!(evidence, Evidence::PolicyPromotion),
+    }
+}
+
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct EvidenceSubmission {
@@ -362,9 +390,9 @@ impl EvidenceSubmission {
 
     pub fn is_contract_valid(self) -> bool {
         self.payload_hash != 0
-            && self.evidence == expected_evidence_for_gate(self.gate)
+            && evidence_allowed_for_gate(self.gate, self.evidence)
             && if self.passed {
-                self.effect == PacketEffect::expected_for_gate(self.gate)
+                self.effect == PacketEffect::expected_for_gate_evidence(self.gate, self.evidence)
             } else {
                 self.effect == PacketEffect::None
             }

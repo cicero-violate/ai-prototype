@@ -34,24 +34,27 @@ pub use crate::capability::orchestration::{
 pub use crate::capability::planning::{PlanDecision, PlanRecord};
 pub use crate::capability::policy::{PolicyEntry, PolicyStore, PolicyStoreError};
 pub use crate::capability::tooling::{
-    append_sandbox_process_receipt_ndjson, append_tool_effect_receipt_ndjson,
+    append_process_effect_receipt_ndjson, append_sandbox_process_receipt_ndjson,
+    append_tool_effect_receipt_ndjson, decode_process_effect_receipt_ndjson,
     decode_sandbox_process_receipt_ndjson, decode_tool_effect_receipt_ndjson,
-    encode_sandbox_process_receipt_ndjson, encode_tool_effect_receipt_ndjson,
+    encode_process_effect_receipt_ndjson, encode_sandbox_process_receipt_ndjson,
+    encode_tool_effect_receipt_ndjson, load_process_effect_receipts_ndjson,
     load_sandbox_process_receipts_ndjson, load_tool_effect_receipts_ndjson,
-    verify_sandbox_process_receipts, verify_tool_effect_receipts, DeterministicToolExecutor, Effect,
-    LiveSandboxProcessExecutor, LiveSandboxToolExecutor, SandboxProcessReceipt,
-    SandboxProcessRequest, ToolDecision, ToolEffectKind, ToolEffectReceipt, ToolExecutionRecord,
-    ToolKind, ToolReceipt, ToolRequest, ToolSandboxError, SANDBOX_PROCESS_RECEIPT_RECORD,
-    SANDBOX_PROCESS_RECEIPT_SCHEMA_VERSION, TOOL_EFFECT_RECEIPT_RECORD,
-    TOOL_EFFECT_RECEIPT_SCHEMA_VERSION,
+    verify_process_effect_receipts, verify_sandbox_process_receipts, verify_tool_effect_receipts,
+    DeterministicToolExecutor, Effect, LiveSandboxProcessExecutor, LiveSandboxToolExecutor,
+    ProcessEffectReceipt, SandboxProcessReceipt, SandboxProcessRequest, ToolDecision,
+    ToolEffectKind, ToolEffectReceipt, ToolExecutionRecord, ToolKind, ToolReceipt, ToolRequest,
+    ToolSandboxError, PROCESS_EFFECT_RECEIPT_RECORD, PROCESS_EFFECT_RECEIPT_SCHEMA_VERSION,
+    SANDBOX_PROCESS_RECEIPT_RECORD, SANDBOX_PROCESS_RECEIPT_SCHEMA_VERSION,
+    TOOL_EFFECT_RECEIPT_RECORD, TOOL_EFFECT_RECEIPT_SCHEMA_VERSION,
 };
 pub use crate::capability::verification::{
     ArtifactSemanticProfile, DeterministicSemanticVerifier, SemanticVerificationReceipt,
     VerificationCheck, VerificationDecision, VerificationRecord, VerificationRequest,
 };
 pub use crate::capability::{
-    expected_evidence_for_gate, CapabilityEffectRoute, CapabilityId, CapabilityRegistry,
-    EvidenceSubmission, PacketEffect, CAPABILITY_EFFECT_ROUTES,
+    evidence_allowed_for_gate, expected_evidence_for_gate, CapabilityEffectRoute, CapabilityId,
+    CapabilityRegistry, EvidenceSubmission, PacketEffect, CAPABILITY_EFFECT_ROUTES,
 };
 pub use crate::codec::ndjson::{
     append_tlog_ndjson, decode_control_event_ndjson, decode_tlog_ndjson_str,
@@ -881,8 +884,8 @@ mod tests {
     }
 
     #[test]
-    fn api_protocol_schema_v2_binds_command_hash_to_payload() {
-        assert_eq!(API_PROTOCOL_SCHEMA_VERSION, 2);
+    fn api_protocol_schema_v3_binds_command_hash_to_payload() {
+        assert_eq!(API_PROTOCOL_SCHEMA_VERSION, 3);
 
         let first_submission = ObservationRecord::new(1, 1, 0xabc, 1).submission();
         let second_submission = ObservationRecord::new(2, 1, 0xabc, 1).submission();
@@ -1276,6 +1279,79 @@ mod tests {
         let _ = std::fs::remove_dir_all(&sandbox_root);
     }
 
+
+    #[test]
+    fn process_receipt_enters_tlog_as_process_effect_without_artifact_leakage() {
+        let sandbox_root = std::env::temp_dir().join(format!(
+            "canon-live-process-effect-{}-{}",
+            std::process::id(),
+            0x9e11_u64
+        ));
+        let _ = std::fs::remove_dir_all(&sandbox_root);
+        let receipt_path = sandbox_root.join("process_effect_receipts.ndjson");
+
+        let executor = LiveSandboxProcessExecutor::new(&sandbox_root)
+            .with_allowed_command("/usr/bin/printf")
+            .with_locked_env("CANON_SANDBOX", "1")
+            .with_timeout_ms(1000)
+            .with_max_output_bytes(4096);
+
+        let receipt = executor
+            .execute_process("/usr/bin/printf", &["canon-process-effect"], "")
+            .unwrap();
+
+        let mut state = State::default();
+        state.phase = Phase::Execute;
+        state.packet.bind_ready_task();
+        state.gates.invariant = Gate::pass(Evidence::InvariantProof);
+        state.gates.analysis = Gate::pass(Evidence::AnalysisReport);
+        state.gates.judgment = Gate::pass(Evidence::JudgmentRecord);
+        state.gates.plan = Gate::pass(Evidence::TaskReady);
+
+        let mut tlog = Vec::new();
+        crate::api::routes::handle_command(
+            &mut state,
+            &mut tlog,
+            RuntimeConfig::default(),
+            Command::SubmitProcessReceipt(receipt.clone()),
+        )
+        .unwrap();
+
+        let persisted = tlog
+            .iter()
+            .find(|event| {
+                event.kind == EventKind::Persisted
+                    && event.cause == Cause::EvidenceSubmitted
+                    && event.evidence == Evidence::ExecutionReceipt
+                    && event.affected_gate == Some(GateId::Execution)
+            })
+            .unwrap();
+
+        assert_eq!(persisted.state_before.packet, persisted.state_after.packet);
+        assert_eq!(persisted.state_after.gates.execution.evidence, Evidence::ExecutionReceipt);
+        assert_eq!(receipt.submission().effect, PacketEffect::None);
+
+        let effect_receipt = ProcessEffectReceipt::from_persisted_event(&receipt, persisted).unwrap();
+        assert_eq!(effect_receipt.effect.kind, ToolEffectKind::Process);
+        assert!(effect_receipt.replay_verified(&tlog));
+
+        append_process_effect_receipt_ndjson(&receipt_path, &effect_receipt).unwrap();
+        let loaded = load_process_effect_receipts_ndjson(&receipt_path).unwrap();
+
+        assert_eq!(loaded, vec![effect_receipt]);
+        assert_eq!(verify_process_effect_receipts(&tlog, &loaded).unwrap(), 1);
+        assert_eq!(
+            decode_process_effect_receipt_ndjson(&encode_process_effect_receipt_ndjson(
+                effect_receipt
+            ))
+            .unwrap(),
+            effect_receipt
+        );
+        verify_tlog(&tlog).unwrap();
+
+        let _ = std::fs::remove_dir_all(&sandbox_root);
+    }
+
     #[test]
     fn live_sandbox_process_runner_denies_unlisted_command() {
         let sandbox_root = std::env::temp_dir().join(format!(
@@ -1387,6 +1463,12 @@ mod tests {
             GateId::Execution,
             Evidence::ArtifactReceipt,
             PacketEffect::MaterializeArtifact
+        ));
+        assert!(registry.permits_effect(
+            CapabilityId::Tooling,
+            GateId::Execution,
+            Evidence::ExecutionReceipt,
+            PacketEffect::None
         ));
         assert!(!registry.permits_effect(
             CapabilityId::Tooling,

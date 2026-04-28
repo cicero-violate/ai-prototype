@@ -186,9 +186,10 @@ fn apply_expected_packet_effect(state: &mut State, gate_id: GateId, evidence: Ev
         (GateId::Plan, Evidence::TaskReady | Evidence::PlanRecord) => {
             state.packet.bind_ready_task();
         }
-        (GateId::Execution, Evidence::ArtifactReceipt | Evidence::ExecutionReceipt) => {
+        (GateId::Execution, Evidence::ArtifactReceipt) => {
             state.packet.materialize_artifact();
         }
+        (GateId::Execution, Evidence::ExecutionReceipt) => {}
         (GateId::Verification, Evidence::LineageProof | Evidence::VerificationReport) => {
             state.packet.repair_lineage();
         }
