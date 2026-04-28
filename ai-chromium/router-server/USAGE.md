@@ -196,3 +196,16 @@ curl -sS http://127.0.0.1:8081/v1/chat/completions \
       "reset_chat": false
    }
 }'
+
+curl -sS http://127.0.0.1:8081/v1/chat/completions \
+  -H 'content-type: application/json' \
+  -d '{
+    "model":"chatgpt-group",
+    "messages":[{"role":"user","content":"Hello group chat"}],
+    "stream":false,
+    "browser":{
+      "provider":"chatgpt_group",
+      "create_group_chat":true,
+      "reset_chat":false
+   }
+}'
