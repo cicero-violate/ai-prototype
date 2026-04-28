@@ -133,7 +133,7 @@ curl -sS http://127.0.0.1:8081/v1/chat/completions \
       "create_group_chat": false,
       "reset_chat": false
     }
-  }'
+}'
 ```
 
 Turn 2 (same `target_url`):
