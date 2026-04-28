@@ -17,6 +17,8 @@ import http from "node:http";
 import path from "node:path";
 import { URL } from "node:url";
 import { CdpSocket } from "./cdp-router/cdp-socket.mjs";
+import { createUploadActionHandler } from "./actions/upload-action.mjs";
+import { createGroupChatActionHandler } from "./actions/group-chat-action.mjs";
 import {
   collectEmbeddedJsonCandidates,
   makeSchemaDumpWriter,
@@ -55,6 +57,9 @@ const SCHEMA_DUMP_MAX_DEPTH = Number(process.env.CDP_SCHEMA_DUMP_MAX_DEPTH ?? 8)
 
 const CHATGPT_URL = process.env.CHATGPT_URL ?? "https://chatgpt.com/";
 const GEMINI_URL = process.env.GEMINI_URL ?? "https://gemini.google.com/app";
+const CDP_UPLOAD_SCRIPT = process.env.CDP_UPLOAD_SCRIPT
+  ?? "/mnt/data/canon-mini-agent-extracted/canon-mini-agent/prototype/cdp-file-upload/upload_via_cdp.py";
+const DEFAULT_PROJECT_ID = process.env.CHATGPT_PROJECT_ID ?? "g-p-69eedbc6bd38819180b138ab3c47abff-ai-prototype";
 
 let nextCompletionId = 1;
 
@@ -646,6 +651,14 @@ function buildSubmitExpression(prompt, { model }) {
   };
   while (!findSend() && Date.now() < deadline) await sleep(100);
   const send = findSend();
+  const isGroupChat = String(location.pathname || '').startsWith('/gg/');
+  if (isGroupChat) {
+    const enterEvent = { key: 'Enter', code: 'Enter', which: 13, keyCode: 13, bubbles: true, cancelable: true };
+    editor.dispatchEvent(new KeyboardEvent('keydown', enterEvent));
+    editor.dispatchEvent(new KeyboardEvent('keypress', enterEvent));
+    editor.dispatchEvent(new KeyboardEvent('keyup', enterEvent));
+    return { ok: true, method: "enter_group_chat" };
+  }
   if (send && !send.disabled) {
     send.click();
     return { ok: true, method: "button" };
@@ -671,6 +684,84 @@ async function waitForPageReady(cdp, model) {
 `;
   const result = await cdp.send("Runtime.evaluate", { expression, awaitPromise: true, returnByValue: true });
   return Boolean(result?.result?.value);
+}
+
+async function prepareGroupChatIfNeeded(cdp) {
+  const expression = `
+(() => {
+  const norm = (s) => (s || '').replace(/\\s+/g, ' ').trim().toLowerCase();
+  const visible = (el) => {
+    const st = getComputedStyle(el);
+    const r = el.getBoundingClientRect();
+    return st.display !== 'none' && st.visibility !== 'hidden' && r.width > 0 && r.height > 0;
+  };
+  const clickish = (el) => {
+    try { el.scrollIntoView({ block: 'center', inline: 'center' }); } catch {}
+    const r = el.getBoundingClientRect();
+    const cx = r.left + r.width / 2;
+    const cy = r.top + r.height / 2;
+    const t = document.elementFromPoint(cx, cy) || el;
+    const fire = (node, type) => node.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, clientX: cx, clientY: cy }));
+    fire(t, 'mousedown');
+    fire(t, 'mouseup');
+    fire(t, 'click');
+    try { el.click(); } catch {}
+  };
+
+  const href = String(location.href || '');
+  const inGroupRoute = href.includes('/gg/');
+  if (!inGroupRoute) return { ok: true, skipped: true };
+
+  const editor = document.querySelector('div[contenteditable="true"]') || document.querySelector('textarea');
+  const sendBtn = document.querySelector('button[data-testid="send-button"]') ||
+    document.querySelector('button[aria-label="Send prompt"]') ||
+    document.querySelector('button[aria-label="Send message"]');
+  if (editor && sendBtn && !sendBtn.disabled) return { ok: true, ready: true };
+
+  const controls = Array.from(document.querySelectorAll('button,[role="button"],[role="menuitem"],a')).filter(visible);
+  const createBtn = controls.find((el) => {
+    const text = norm(el.innerText || el.textContent);
+    const aria = norm(el.getAttribute('aria-label') || '');
+    const all = (text + ' ' + aria).trim();
+    return all.includes('create group') || all.includes('start group') || all === 'create' || all === 'start';
+  });
+  if (createBtn && !createBtn.disabled) {
+    clickish(createBtn);
+    return { ok: true, clicked_create: true };
+  }
+
+  const inviteField = Array.from(document.querySelectorAll('input,textarea,[contenteditable="true"]')).find((el) => {
+    if (!visible(el)) return false;
+    const ph = norm(el.getAttribute?.('placeholder') || '');
+    const aria = norm(el.getAttribute?.('aria-label') || '');
+    const all = (ph + ' ' + aria).trim();
+    return all.includes('invite') || all.includes('add people') || all.includes('add members');
+  });
+  if (inviteField) {
+    return { ok: false, needs_manual_setup: true, reason: 'group_chat_requires_participants' };
+  }
+
+  return { ok: true, uncertain: true };
+})()
+`;
+  const first = await cdp.send("Runtime.evaluate", { expression, awaitPromise: true, returnByValue: true });
+  const value = first?.result?.value ?? { ok: true };
+  if (!value?.ok) return value;
+  if (value.clicked_create) {
+    await sleep(900);
+    const second = await cdp.send("Runtime.evaluate", {
+      expression: `(() => {
+        const editor = document.querySelector('div[contenteditable="true"]') || document.querySelector('textarea');
+        const sendBtn = document.querySelector('button[data-testid="send-button"]') ||
+          document.querySelector('button[aria-label="Send prompt"]') ||
+          document.querySelector('button[aria-label="Send message"]');
+        return { ok: Boolean(editor && sendBtn && !sendBtn.disabled), editor: Boolean(editor), send_enabled: Boolean(sendBtn && !sendBtn.disabled) };
+      })()`,
+      returnByValue: true,
+    });
+    return second?.result?.value ?? { ok: true };
+  }
+  return value;
 }
 
 async function runCdpTurn({ request, stream, res }) {
@@ -1017,6 +1108,10 @@ async function runCdpTurn({ request, stream, res }) {
 
     const ready = await waitForPageReady(cdp, model);
     if (!ready) throw new Error("page editor not found; ensure browser is logged in and target page is loaded");
+    const prep = await prepareGroupChatIfNeeded(cdp);
+    if (!prep?.ok) {
+      throw new Error(`group chat not ready for send: ${prep.reason ?? "manual setup required"}`);
+    }
 
     if (stream) {
       setupSse(res);
@@ -1130,6 +1225,26 @@ async function handleTabs(_req, res) {
     errorResponse(res, 502, err.message, { code: "cdp_unavailable" });
   }
 }
+const handleUploadAction = createUploadActionHandler({
+  parseJsonObject,
+  readBody,
+  errorResponse,
+  jsonResponse,
+  cdpHost: CDP_HOST,
+  cdpPort: CDP_PORT,
+  defaultProjectId: DEFAULT_PROJECT_ID,
+  uploadScript: CDP_UPLOAD_SCRIPT,
+});
+
+const handleCreateGroupChat = createGroupChatActionHandler({
+  parseJsonObject,
+  readBody,
+  errorResponse,
+  jsonResponse,
+  cdpNewTarget,
+  cdpActivateTarget,
+  CdpSocket,
+});
 
 const httpServer = http.createServer(async (req, res) => {
   const url = new URL(req.url ?? "/", `http://${HTTP_HOST}:${HTTP_PORT}`);
@@ -1162,6 +1277,8 @@ const httpServer = http.createServer(async (req, res) => {
   }
   if (req.method === "GET" && url.pathname === "/tabs") return handleTabs(req, res);
   if (req.method === "POST" && url.pathname === "/v1/chat/completions") return handleChatCompletions(req, res);
+  if (req.method === "POST" && url.pathname === "/actions/upload") return handleUploadAction(req, res);
+  if (req.method === "POST" && url.pathname === "/actions/group-chat") return handleCreateGroupChat(req, res);
   errorResponse(res, 404, `not found: ${req.method} ${url.pathname}`, { code: "not_found" });
 });
 
