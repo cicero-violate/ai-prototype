@@ -8,20 +8,6 @@ export function isSensitivePath(path) {
   return SENSITIVE_PATTERNS.some((re) => re.test(String(path ?? "")));
 }
 
-function contentLength(content) {
-  if (typeof content === "string") return content.length;
-  if (Array.isArray(content)) {
-    return content.reduce((sum, part) => {
-      if (typeof part === "string") return sum + part.length;
-      if (typeof part?.text === "string") return sum + part.text.length;
-      if (typeof part?.content === "string") return sum + part.content.length;
-      return sum;
-    }, 0);
-  }
-  if (content == null) return 0;
-  return String(content).length;
-}
-
 export function redactRequest(request) {
   const { model, stream } = request;
   const out = { model, stream };
@@ -29,10 +15,9 @@ export function redactRequest(request) {
   if (Array.isArray(request.messages)) {
     out.messages = request.messages.map((msg) => ({
       role: msg?.role ?? "user",
-      content_length: contentLength(msg?.content),
+      content_length: typeof msg?.content === "string" ? msg.content.length : null,
       content_redacted: true,
     }));
-    out.messages_redacted = out.messages.every((msg) => msg.content_redacted === true);
   }
 
   const b = request.browser;
@@ -46,9 +31,6 @@ export function redactRequest(request) {
         ? b.files.map((f) => ({ purpose: f?.purpose ?? null, path_redacted: true }))
         : null,
     };
-    out.browser.files_redacted = Array.isArray(out.browser.files)
-      ? out.browser.files.every((f) => f.path_redacted === true)
-      : true;
   }
 
   return out;

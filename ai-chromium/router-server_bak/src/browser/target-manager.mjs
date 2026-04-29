@@ -23,22 +23,6 @@ function httpJson(method, urlPath, { host, port }) {
 export function makeTargetManager({ cdpHost, cdpPort }) {
   const o = { host: cdpHost, port: cdpPort };
 
-  function normalizeUrl(url) {
-    const raw = String(url ?? "").trim();
-    if (!raw) return "";
-    try {
-      const u = new URL(raw);
-      u.hash = "";
-      return u.toString();
-    } catch {
-      return raw.replace(/#.*$/, "");
-    }
-  }
-
-  function sameTargetUrl(left, right) {
-    return normalizeUrl(left) === normalizeUrl(right);
-  }
-
   function matchesProviderSurface(url, provider) {
     const u = String(url ?? "");
     if (!u) return false;
@@ -79,22 +63,10 @@ export function makeTargetManager({ cdpHost, cdpPort }) {
     catch {}
   }
 
-  async function findOrCreate({ providerUrl, provider, reset, requestedUrl }) {
+  async function findOrCreate({ providerUrl, provider, reset }) {
     const targets = await listTargets();
-    const desiredUrl = String(requestedUrl ?? providerUrl ?? "").trim();
     let target = null;
     if (!reset) {
-      if (desiredUrl) {
-        target = targets.find((t) =>
-          t.type === "page" &&
-          t.webSocketDebuggerUrl &&
-          sameTargetUrl(t.url, desiredUrl)
-        ) ?? null;
-      }
-      if (target) {
-        if (target?.id) await activateTarget(target.id);
-        return target;
-      }
       const candidates = targets.filter((t) =>
         t.type === "page" &&
         t.webSocketDebuggerUrl &&
@@ -106,7 +78,7 @@ export function makeTargetManager({ cdpHost, cdpPort }) {
         target = candidates[0] ?? null;
       }
     }
-    if (!target) target = await newTarget(desiredUrl || providerUrl);
+    if (!target) target = await newTarget(providerUrl);
     if (target?.id) await activateTarget(target.id);
     return target;
   }

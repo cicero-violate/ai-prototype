@@ -36,11 +36,8 @@ reviewed =
   ∧ USAGE.md
   ∧ docs/*
   ∧ src/**/*.mjs
-  ∧ package.json
-  ∧ test/openai-contract.test.mjs
   ∧ artifacts/turns/* sampled with Python JSON parsing
-  ∧ node src/tools/check-syntax.mjs
-  ∧ node --test test/*.test.mjs
+  ∧ node --check src/**/*.mjs
 ```
 
 Static syntax result:
@@ -53,8 +50,8 @@ Important absence:
 
 ```text
 package_json = missing
-automated_test_suite = present_minimal
-formal_openai_schema_tests = present_minimal
+automated_test_suite = missing
+formal_openai_schema_tests = missing
 ```
 
 ## OpenAI-Like API Shape Verdict
@@ -106,23 +103,23 @@ This is **OpenAI-like**, but not strict OpenAI API parity.
 | Axis                                        | Score | Critical Note                                                                                                     |
 |---------------------------------------------+-------+-------------------------------------------------------------------------------------------------------------------|
 | `O` OpenAI endpoint/envelope compatibility  |   7.0 | Route and outer envelope are correct.                                                                             |
-| `Q` Request schema compatibility            |   6.4 | Validates request shape, rejects unsupported tool/function calling explicitly, and preserves system/developer intent in the prompt bridge. |
-| `A` Assistant response schema compatibility |   8.0 | Adds non-zero estimated `usage`, `system_fingerprint`, `message.refusal:null`, and `message.annotations:[]`.      |
-| `S` Streaming SSE compatibility             |   7.1 | Emits an initial assistant role delta and terminal chunk; streaming error semantics are still not strict.          |
-| `K` SDK/drop-in compatibility               |   5.6 | Basic SDK calls have a stronger envelope and usage fields; advanced tools/structured-output features are rejected. |
+| `Q` Request schema compatibility            |   5.2 | Accepts common fields but flattens messages and ignores most generation/tool parameters.                          |
+| `A` Assistant response schema compatibility |   7.1 | Basic `choices[0].message.content` path works. Missing usage and newer assistant fields.                          |
+| `S` Streaming SSE compatibility             |   6.4 | Basic delta streaming exists. Error semantics and initial role delta are incomplete.                              |
+| `K` SDK/drop-in compatibility               |   4.4 | Basic calls likely work; real OpenAI client parity is not guaranteed.                                             |
 | `P` Provider/capability architecture        |   7.2 | Good modular split: providers, capabilities, API, extraction, data, policy.                                       |
 | `E` Evidence/provenance quality             |   6.2 | Receipts and artifacts exist, but receipts are shallow and raw capture is risky.                                  |
-| `V` Replay/verification correctness         |   5.7 | Replay now re-extracts assistant text from in-memory raw capture and compares normalized output hashes.           |
-| `X` Privacy/redaction correctness           |   7.0 | Redactor/classifier schema mismatch is fixed; raw capture persistence is blocked by default unless explicitly enabled. |
+| `V` Replay/verification correctness         |   3.8 | Replay record currently asserts `replay_match: true`; it does not independently replay extraction.                |
+| `X` Privacy/redaction correctness           |   3.0 | Raw captures are persisted; sampled artifact has `redaction_pass:false`; classifier and redactor fields disagree. |
 | `D` Data discovery + schema derivation      |   6.6 | Real schema observation and guided extraction exist. Still too heuristic and not contract-tested.                 |
 | `L` Policy learning quality                 |   3.7 | Policy score updates exist, but they are driven by receipt success counts, not robust measured outcomes.          |
-| `T` Testability                             |   6.2 | Adds `package.json`, syntax check script, smoke contract script, and Node test coverage for API/redaction/replay. |
+| `T` Testability                             |   2.5 | No package manifest, no test runner, no schema conformance tests, and smoke test uses wrong port.                 |
 | `R` Operational realism                     |   5.8 | Handles CDP, tabs, group chat, and UI drift partially. Browser automation remains brittle.                        |
 | `M` Documentation accuracy                  |   5.5 | Architecture docs are strong, but they overstate implementation maturity.                                         |
 
 ```text
-current_score ≈ 6.2 / 10
-openai_shape_score ≈ 7.1 / 10
+current_score ≈ 5.1 / 10
+openai_shape_score ≈ 6.0 / 10
 ```
 
 ## Critical Findings
@@ -138,18 +135,10 @@ The router has `shape_compatibility`; it does not have full `semantic_compatibil
 
 ### 2. Message handling is the biggest API semantic gap
 
-Previous behavior:
-
-```text
-messages[] → "ROLE: content\n\nROLE: content" → browser editor
-```
-
 Current behavior:
 
 ```text
-system/developer → instruction block
-assistant/tool → explicit prior/context block
-user → direct browser prompt text
+messages[] → "ROLE: content\n\nROLE: content" → browser editor
 ```
 
 This works for browser prompting but it is not equivalent to Chat Completions semantics. A `system` message becomes literal user-visible text unless the target UI interprets it organically.
@@ -176,14 +165,12 @@ messages_redacted
 browser.files_redacted
 ```
 
-Previous sampled evaluations showed:
+Therefore sampled evaluations show:
 
 ```text
 redaction_pass = false
 quality = 0
 ```
-
-Current redaction gate now checks emitted `content_redacted` and `path_redacted` fields directly and carries aggregate compatibility flags.
 
 Required invariant:
 
@@ -193,9 +180,9 @@ redaction_pass = all_private_content_removed ∧ no_raw_secret_retention ∧ cla
 
 ### 4. Replay is not real replay yet
 
-Previous replay hashed output and returned `replay_match: true`.
+Current replay hashes output and returns `replay_match: true`.
 
-Current replay re-extracts assistant text from in-memory raw capture and compares normalized expected/replayed hashes. It is still a first replay verifier, not a full historical artifact replay engine.
+That is a placeholder, not verification.
 
 Required invariant:
 
@@ -261,20 +248,20 @@ gap = tests + replay + redaction + strict_api_parity + policy_promotion
    fixture_stream → SSE parser → assert_chunk_schema
    error_case → assert_error_schema
    ```
-2. DONE — Add `usage` with explicit null-safe token estimates:
+2. Add `usage` with explicit null-safe token estimates or zeros:
    ```text
    usage = { prompt_tokens, completion_tokens, total_tokens }
    ```
-3. DONE — Fix redaction gate field mismatch:
+3. Fix redaction gate field mismatch:
    ```text
    content_redacted/path_redacted → aggregate redaction_pass
    ```
-4. PARTIAL — Replace replay placeholder:
+4. Replace replay placeholder:
    ```text
-   in_memory_raw_capture → deterministic extracted_content → normalized hash compare
+   raw_capture + extraction_rules + policy_version → deterministic extracted_content
    ```
-5. DONE — Add `package.json` with `serve`, `check`, `test`, and `smoke` scripts.
-6. DONE — Add local smoke contract script that does not depend on an active browser/CDP session.
+5. Add `package.json` with `serve`, `check`, `test`, and `smoke` scripts.
+6. Fix `smoke-test.mjs` port from `8080` to documented default `8081`.
 7. Add formal request filtering:
    ```text
    unsupported_openai_param ⇒ explicit warning/error, not silent ignore

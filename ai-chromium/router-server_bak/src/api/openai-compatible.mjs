@@ -22,18 +22,34 @@ import { buildReplayRecord, buildEvaluationRecord } from "../replay/replay-turn.
 import { updateMasterSchema } from "../extraction/schema-master-store.mjs";
 import { scoreRulesByProvider } from "../mining/score-rules.mjs";
 import { updateRuleLifecycle } from "../policy/rule-lifecycle-store.mjs";
-import {
-  estimateUsage,
-  makeChatCompletionResponse,
-  makeOpenAiChunk,
-  messagesToPrompt,
-  validateChatCompletionRequest,
-} from "./openai-contract.mjs";
 
 let nextCompletionId = 1;
 
 function nowUnix() { return Math.floor(Date.now() / 1000); }
 function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
+
+function normalizeMessageContent(content) {
+  if (typeof content === "string") return content;
+  if (Array.isArray(content)) {
+    return content.map((p) => {
+      if (typeof p === "string") return p;
+      if (typeof p?.text === "string") return p.text;
+      if (typeof p?.content === "string") return p.content;
+      return "";
+    }).filter(Boolean).join("\n");
+  }
+  if (content == null) return "";
+  return String(content);
+}
+
+function messagesToPrompt(messages) {
+  if (!Array.isArray(messages)) return "";
+  return messages.map((msg) => {
+    const role = typeof msg?.role === "string" ? msg.role : "user";
+    const content = normalizeMessageContent(msg?.content);
+    return `${role.toUpperCase()}: ${content}`;
+  }).filter((line) => line.trim().length > 0).join("\n\n");
+}
 
 function makeTurnId() {
   const ts = Date.now().toString(36);
@@ -43,6 +59,16 @@ function makeTurnId() {
 
 function sseWrite(res, value) {
   res.write(`data: ${JSON.stringify(value)}\n\n`);
+}
+
+function makeOpenAiChunk({ id, model, content, finishReason = null }) {
+  return {
+    id,
+    object: "chat.completion.chunk",
+    created: nowUnix(),
+    model,
+    choices: [{ index: 0, delta: content == null ? {} : { content }, finish_reason: finishReason }],
+  };
 }
 
 function setupSse(res) {
@@ -72,7 +98,6 @@ export async function runTurn({ request, stream, res, targetManager, config }) {
   const firstCaptureMs = Number(request.browser?.first_capture_ms ?? request.first_capture_ms ?? config.firstCaptureMs);
   const maxMs = Number(request.browser?.max_ms ?? request.max_ms ?? config.maxMs);
   const reset = Boolean(request.browser?.reset_chat ?? request.reset_chat ?? false);
-  const requestedTargetUrl = String(request.browser?.target_url ?? request.target_url ?? "").trim() || null;
   const wsEnabled = config.wsEnabled;
   const redactedRequest = redactRequest(request);
 
@@ -81,10 +106,9 @@ export async function runTurn({ request, stream, res, targetManager, config }) {
   artifacts.writeCapabilityPlan(plan);
 
   const target = await targetManager.findOrCreate({
-    providerUrl: requestedTargetUrl ?? adapter.providerUrl,
+    providerUrl: adapter.providerUrl,
     provider: adapter.provider,
     reset,
-    requestedUrl: requestedTargetUrl,
   });
   if (!target?.webSocketDebuggerUrl) {
     throw new Error("CDP target has no webSocketDebuggerUrl");
@@ -141,7 +165,7 @@ export async function runTurn({ request, stream, res, targetManager, config }) {
     clearFirstCapture();
     clearTimeout(maxTimer);
     if (stream && !res.destroyed) {
-      sseWrite(res, makeOpenAiChunk({ id: completionId, model, finishReason: reason }));
+      sseWrite(res, makeOpenAiChunk({ id: completionId, model, content: null, finishReason: reason }));
       // Emit structured turn envelope for clients that consume it
       try {
         const turnMeta = processor.getTurnMeta();
@@ -210,14 +234,14 @@ export async function runTurn({ request, stream, res, targetManager, config }) {
     console.log(`[turn ${turnId}] context ready`);
 
     if (reset) {
-      await cdp.send("Page.navigate", { url: requestedTargetUrl ?? adapter.providerUrl });
+      await cdp.send("Page.navigate", { url: adapter.providerUrl });
       await sleep(1500);
       await waitForContext();
     }
 
     if (stream) {
       setupSse(res);
-      sseWrite(res, makeOpenAiChunk({ id: completionId, model, role: "assistant" }));
+      sseWrite(res, makeOpenAiChunk({ id: completionId, model, content: "" }));
     }
 
     maxTimer = setTimeout(() => complete("length"), maxMs);
@@ -289,8 +313,7 @@ export async function runTurn({ request, stream, res, targetManager, config }) {
       created_at: new Date().toISOString(),
     };
     artifacts.writeResponse(responseRecord);
-    const rawCapture = processor.getRawCapture();
-    artifacts.writeRawCapture(rawCapture);
+    artifacts.writeRawCapture(processor.getRawCapture());
     artifacts.writeActionReceipts(receipts.all());
     artifacts.writeSchemaArtifacts(schemaSnapshot);
     artifacts.writeRuleEvidence(ruleEvidence);
@@ -350,7 +373,7 @@ export async function runTurn({ request, stream, res, targetManager, config }) {
       measuredDelta: delta.measured_delta,
       regression: delta.regression,
     });
-    const replay = buildReplayRecord({ turnId, content, rawCapture });
+    const replay = buildReplayRecord({ turnId, content });
     const evaluation = buildEvaluationRecord({ replayRecord: replay, redactionPass });
     const ruleScores = scoreRulesByProvider({
       provider: adapter.provider,
@@ -385,17 +408,7 @@ export async function runTurn({ request, stream, res, targetManager, config }) {
     artifacts.writeRuleScores(ruleScores);
 
     const turnMeta = processor.getTurnMeta();
-    return {
-      id: completionId,
-      model,
-      content,
-      finish_reason: "stop",
-      target_id: target.id,
-      target_url: finalTargetUrl,
-      groupedByPhase,
-      turnMeta,
-      usage: estimateUsage({ prompt, completion: content }),
-    };
+    return { id: completionId, model, content, finish_reason: "stop", target_id: target.id, target_url: finalTargetUrl, groupedByPhase, turnMeta };
   } catch (err) {
     const schemaSnapshot = processor.getSchemaSnapshot?.() ?? {
       index: { schema: "ai_chromium.schema_index.v1", created_at: new Date().toISOString(), keys: [] },
@@ -435,22 +448,16 @@ export async function handleChatCompletions(req, res, ctx) {
   }
 
   const stream = Boolean(body.stream);
-  const validation = validateChatCompletionRequest(body);
-  if (!validation.ok) {
-    errorResponse(res, 400, validation.errors.join("; "), { code: "unsupported_or_invalid_request" });
-    return;
-  }
   try {
     const result = await runTurn({ request: body, stream, res, ...ctx });
     if (stream) return;
-    jsonResponse(res, 200, makeChatCompletionResponse({
+    jsonResponse(res, 200, {
       id: result.id,
+      object: "chat.completion",
       created: nowUnix(),
       model: result.model,
-      content: result.content,
-      finishReason: result.finish_reason ?? "stop",
-      usage: result.usage,
-      warnings: validation.warnings,
+      choices: [{ index: 0, message: { role: "assistant", content: result.content }, finish_reason: result.finish_reason ?? "stop" }],
+      usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
       browser: { backend: "cdp", target_id: result.target_id, target_url: result.target_url },
       turn: {
         conversation_id: result.turnMeta.conversation_id,
@@ -466,7 +473,7 @@ export async function handleChatCompletions(req, res, ctx) {
         limits_progress: result.turnMeta.limits_progress,
         default_model_slug: result.turnMeta.default_model_slug,
       },
-    }));
+    });
   } catch (err) {
     console.error(`[turn] failed:`, err.message);
     if (stream && !res.headersSent) {

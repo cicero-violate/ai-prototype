@@ -2,9 +2,6 @@ import fs from "node:fs";
 import path from "node:path";
 
 const BASE_DIR = process.env.ARTIFACTS_DIR ?? path.resolve(process.cwd(), "artifacts");
-const RAW_CAPTURE_ALLOWED =
-  process.env.ARTIFACT_RAW_CAPTURE === "1" ||
-  process.env.RAW_CAPTURE_MODE === "unsafe";
 
 function writeJson(filePath, value) {
   try {
@@ -45,29 +42,7 @@ export function makeArtifactWriter(turnId) {
     writeResponse(record) { writeJson(p("response.json"), record); },
     writeCapabilityPlan(plan) { writeJson(p("capability-plan.json"), plan); },
     writeActionReceipts(receipts) { appendNdjson(p("action-receipts.ndjson"), receipts); },
-    writeRawCapture(records) {
-      const recordCount = Array.isArray(records) ? records.length : 0;
-      if (RAW_CAPTURE_ALLOWED) {
-        appendNdjson(p("raw-capture.ndjson"), records);
-        writeJson(p("raw-capture.policy.json"), {
-          schema: "ai_chromium.raw_capture_policy.v1",
-          turn_id: turnId,
-          raw_capture_persisted: true,
-          mode: process.env.RAW_CAPTURE_MODE ?? "explicit",
-          record_count: recordCount,
-          created_at: new Date().toISOString(),
-        });
-        return;
-      }
-      writeJson(p("raw-capture.blocked.json"), {
-        schema: "ai_chromium.raw_capture_policy.v1",
-        turn_id: turnId,
-        raw_capture_persisted: false,
-        reason: "raw provider payload retention is disabled by default; set ARTIFACT_RAW_CAPTURE=1 or RAW_CAPTURE_MODE=unsafe to persist",
-        record_count: recordCount,
-        created_at: new Date().toISOString(),
-      });
-    },
+    writeRawCapture(records) { appendNdjson(p("raw-capture.ndjson"), records); },
     writeDiscoverySignals(records) { appendNdjson(p("discovery-signals.ndjson"), records); },
     writeDatasetRecords(records) { appendNdjson(p("dataset-records.ndjson"), records); },
     writeFeatureVectors(records) { appendNdjson(p("feature-vectors.ndjson"), records); },
