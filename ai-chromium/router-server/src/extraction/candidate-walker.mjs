@@ -27,6 +27,7 @@ function stringLooksLikeOperation(value) {
 function pathLooksTextBearing(pathName) {
   const lower = String(pathName ?? "").toLowerCase();
   if (/(token|authorization|cookie|secret|cursor|magic_link|avatar|url|id|uuid|digest|hash)/.test(lower)) return false;
+  if (/(input_message|user_editable_context|developer_content|context_scopes|scope_namespace|content_type|conversation_id|message_id)/.test(lower)) return false;
   const segments = lower.split(/[^a-z0-9_]+/).filter(Boolean);
   const leaf = segments.at(-1) ?? "";
   if (segments.some((s) => /^(metadata|thoughts|reasoning|inspector|citation|citations)$/.test(s))) return false;
@@ -39,6 +40,8 @@ function pathLooksTextBearing(pathName) {
 function valueLooksHumanText(value) {
   const text = String(value ?? "");
   if (!text.trim()) return false;
+  if (/^(global|text|user|assistant|system|developer)$/i.test(text.trim())) return false;
+  if (/^\d+\.\d+$/.test(text.trim())) return false;
   if (text.length > 256 && /^[A-Za-z0-9+/_=.-]+$/.test(text) && !/\s/.test(text)) return false;
   if (/^https?:\/\//i.test(text)) return false;
   return true;

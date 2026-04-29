@@ -66,7 +66,7 @@ Learning means the router converts verified discovery into policy updates that c
 learning = hypotheses → score → update policy → act → measure feedback
 ```
 
-Nothing is learned directly from private content. Only redacted evidence, schemas, action receipts, discovery records, and replay-passing rules may be promoted.
+Learning may use raw evidence in controlled discovery mode. Long-term promotion uses schemas, action receipts, discovery records, and replay-passing rules under retention policy.
 
 ## Scope
 

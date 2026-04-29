@@ -18,11 +18,16 @@ export function buildSubmitExpression(prompt, { isGemini, isGroupChat }) {
     ? `document.querySelector('div[contenteditable="true"]') || document.querySelector('rich-textarea div[contenteditable="true"]') || document.querySelector('textarea')`
     : `document.querySelector('div[contenteditable="true"]') || document.querySelector('textarea')`;
   const submitExpr = isGroupChat
-    ? `const enterEvent = { key: 'Enter', code: 'Enter', which: 13, keyCode: 13, bubbles: true, cancelable: true };
+    ? `const send = findSend();
+  if (send && !send.disabled) { send.click(); return { ok: true, method: "button_group_chat" }; }
+  const enterEvent = { key: 'Enter', code: 'Enter', which: 13, keyCode: 13, bubbles: true, cancelable: true };
   editor.dispatchEvent(new KeyboardEvent('keydown', enterEvent));
   editor.dispatchEvent(new KeyboardEvent('keypress', enterEvent));
   editor.dispatchEvent(new KeyboardEvent('keyup', enterEvent));
-  return { ok: true, method: "enter_group_chat" };`
+  const modEnter = { key: 'Enter', code: 'Enter', which: 13, keyCode: 13, bubbles: true, cancelable: true, ctrlKey: true, metaKey: true };
+  editor.dispatchEvent(new KeyboardEvent('keydown', modEnter));
+  editor.dispatchEvent(new KeyboardEvent('keyup', modEnter));
+  return { ok: true, method: "enter_group_chat_fallback" };`
     : `const send = findSend();
   if (send && !send.disabled) { send.click(); return { ok: true, method: "button" }; }
   editor.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', which: 13, keyCode: 13, bubbles: true, cancelable: true }));

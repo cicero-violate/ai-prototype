@@ -27,6 +27,10 @@ const config = {
   firstCaptureMs: Number(process.env.TURN_FIRST_CAPTURE_MS ?? 45000),
   maxMs: Number(process.env.TURN_MAX_MS ?? 120000),
   wsEnabled: String(process.env.CDP_WS_FALLBACK ?? "1") !== "0",
+  cdpHost: CDP_HOST,
+  cdpPort: CDP_PORT,
+  uploadScript: CDP_UPLOAD_SCRIPT,
+  defaultProjectId: DEFAULT_PROJECT_ID,
 };
 
 const targetManager = makeTargetManager({ cdpHost: CDP_HOST, cdpPort: CDP_PORT });

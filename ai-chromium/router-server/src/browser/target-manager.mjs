@@ -23,6 +23,27 @@ function httpJson(method, urlPath, { host, port }) {
 export function makeTargetManager({ cdpHost, cdpPort }) {
   const o = { host: cdpHost, port: cdpPort };
 
+  function matchesProviderSurface(url, provider) {
+    const u = String(url ?? "");
+    if (!u) return false;
+    if (provider === "chatgpt_group") {
+      if (!u.startsWith("https://chatgpt.com/")) return false;
+      if (u.startsWith("https://chatgpt.com/g/")) return false;
+      return true;
+    }
+    if (provider === "chatgpt_project") {
+      return u.startsWith("https://chatgpt.com/g/") || u.includes("/project");
+    }
+    if (provider === "chatgpt_private") {
+      if (!u.startsWith("https://chatgpt.com/")) return false;
+      if (u.startsWith("https://chatgpt.com/gg/")) return false;
+      if (u.startsWith("https://chatgpt.com/g/")) return false;
+      return true;
+    }
+    if (provider === "gemini_private") return u.startsWith("https://gemini.google.com/");
+    return false;
+  }
+
   async function listTargets() {
     return httpJson("GET", "/json/list", o);
   }
@@ -42,16 +63,20 @@ export function makeTargetManager({ cdpHost, cdpPort }) {
     catch {}
   }
 
-  async function findOrCreate({ providerUrl, reset }) {
-    const origin = new URL(providerUrl).origin;
+  async function findOrCreate({ providerUrl, provider, reset }) {
     const targets = await listTargets();
     let target = null;
     if (!reset) {
-      target = targets.find((t) =>
+      const candidates = targets.filter((t) =>
         t.type === "page" &&
         t.webSocketDebuggerUrl &&
-        String(t.url ?? "").startsWith(origin)
+        matchesProviderSurface(t.url, provider)
       );
+      if (provider === "chatgpt_group") {
+        target = candidates.find((t) => String(t.url ?? "").startsWith("https://chatgpt.com/gg/")) ?? candidates[0] ?? null;
+      } else {
+        target = candidates[0] ?? null;
+      }
     }
     if (!target) target = await newTarget(providerUrl);
     if (target?.id) await activateTarget(target.id);

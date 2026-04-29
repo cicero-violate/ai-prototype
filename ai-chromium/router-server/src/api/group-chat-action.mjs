@@ -43,25 +43,52 @@ export function createGroupChatActionHandler({ parseJsonObject, readBody, errorR
     fire(t, 'mousedown'); fire(t, 'mouseup'); fire(t, 'click');
     try { el.click(); } catch {}
   };
-  const start = document.querySelector('button[aria-label="Start a group chat"]');
+  const startHref = String(location.href || '');
+
+  const controls0 = Array.from(document.querySelectorAll('button,[role="button"],a')).filter(visible);
+  const start = document.querySelector('button[aria-label="Start a group chat"]') ||
+    controls0.find((el) => {
+      const text = norm(el.innerText || el.textContent);
+      const aria = norm(el.getAttribute('aria-label') || '');
+      const all = (text + ' ' + aria).trim();
+      return all.includes('start a group chat') || all.includes('start group chat') || all.includes('group chat');
+    });
   if (!start) return { ok: false, reason: "start_group_chat_button_missing", href: location.href };
   clickish(start);
   const deadline = Date.now() + 8000;
   let clickedStartGroup = false;
+  let finalHref = startHref;
   while (Date.now() < deadline) {
     await sleep(150);
     const controls = Array.from(document.querySelectorAll('button,[role="button"],a')).filter(visible);
     const startGroup = controls.find((el) => norm(el.innerText || el.textContent).includes('start group chat'));
     if (startGroup && !clickedStartGroup) { clickish(startGroup); clickedStartGroup = true; await sleep(250); }
-    const link = controls.find((el) => {
-      if (el.tagName !== 'A') return false;
-      const href = el.getAttribute('href') || '';
-      const aria = norm(el.getAttribute('aria-label') || '');
-      return href.startsWith('/gg/') && !aria.includes('options');
-    });
-    if (link) return { ok: true, href: location.href, clicked_start_group: clickedStartGroup, group_href: link.getAttribute('href') };
+    const hrefNow = String(location.href || '');
+    if (hrefNow && hrefNow !== startHref && hrefNow.startsWith('https://chatgpt.com/')) {
+      // Close post-create modal (e.g. "Copy link") so composer is usable.
+      const closeCandidates = Array.from(document.querySelectorAll('button,[role="button"],a')).filter(visible);
+      const closeBtn = closeCandidates.find((el) => {
+        const text = norm(el.innerText || el.textContent);
+        const aria = norm(el.getAttribute('aria-label') || '');
+        const all = (text + ' ' + aria).trim();
+        return all === 'close' || all.includes('close') || all.includes('dismiss') || all === 'x';
+      });
+      if (closeBtn) {
+        clickish(closeBtn);
+      } else {
+        document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', bubbles: true }));
+        document.dispatchEvent(new KeyboardEvent('keyup', { key: 'Escape', code: 'Escape', bubbles: true }));
+      }
+      return { ok: true, href: hrefNow, clicked_start_group: clickedStartGroup, created_new: true };
+    }
+    finalHref = hrefNow || finalHref;
   }
-  return { ok: true, href: location.href, clicked_start_group: clickedStartGroup, group_href: null };
+  return {
+    ok: false,
+    reason: clickedStartGroup ? "new_group_chat_not_detected" : "start_group_chat_not_clicked",
+    href: finalHref,
+    clicked_start_group: clickedStartGroup,
+  };
 })()`,
         awaitPromise: true,
         returnByValue: true,
@@ -71,11 +98,11 @@ export function createGroupChatActionHandler({ parseJsonObject, readBody, errorR
       const current = await cdp.send("Runtime.evaluate", { expression: "location.href", returnByValue: true });
       let groupUrl = String(current?.result?.value ?? "");
       const value = step?.result?.value ?? {};
-      if (!groupUrl.includes("/gg/") && typeof value.group_href === "string" && value.group_href.startsWith("/gg/")) {
-        groupUrl = `https://chatgpt.com${value.group_href}`;
+      if ((!groupUrl || groupUrl === "https://chatgpt.com/" || groupUrl === "https://chatgpt.com") && typeof value.href === "string") {
+        groupUrl = value.href;
       }
 
-      if (!groupUrl.includes("/gg/")) {
+      if (!value?.created_new || !groupUrl.startsWith("https://chatgpt.com/") || groupUrl === "https://chatgpt.com/" || groupUrl === "https://chatgpt.com") {
         errorResponse(res, 502, "group chat creation flow did not complete", { code: "group_chat_failed", details: value });
         return;
       }
