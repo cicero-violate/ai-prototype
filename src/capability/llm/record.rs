@@ -99,6 +99,50 @@ impl LlmRecord {
         }
     }
 
+    pub fn from_external_response(
+        context: &ContextRecord,
+        policy: &PolicyStore,
+        model_id: u64,
+        external_response_hash: u64,
+        token_count: u32,
+    ) -> Self {
+        let policy_version = policy.latest_version().max(1);
+        let policy_hash = policy.fingerprint();
+        let prompt_hash = if context.is_valid() && external_response_hash != 0 {
+            prompt_hash(context, policy_version, policy_hash)
+        } else {
+            0
+        };
+        let response_hash = if context.is_valid() && model_id != 0 && token_count != 0 {
+            external_response_hash
+        } else {
+            0
+        };
+        let rationale_hash = rationale_hash(context, response_hash, policy_version, policy_hash);
+
+        Self {
+            prompt: LlmPromptRecord {
+                schema_version: LLM_JUDGMENT_SCHEMA_VERSION,
+                context_hash: context.context_hash,
+                policy_version,
+                policy_hash,
+                prompt_hash,
+            },
+            response: LlmResponseRecord {
+                model_id,
+                prompt_hash,
+                response_hash,
+                token_count,
+                schema_hash: LLM_JUDGMENT_SCHEMA_HASH,
+            },
+            judgment: JudgmentRecord {
+                decision_id: response_hash,
+                policy_version,
+                rationale_hash,
+            },
+        }
+    }
+
     pub fn decision(&self) -> LlmDecision {
         if self.is_valid() {
             LlmDecision::Structured
@@ -152,6 +196,22 @@ impl LlmStructuredAdapter {
         model_id: u64,
     ) -> LlmRecord {
         LlmRecord::from_context_policy(context, policy, model_id)
+    }
+
+    pub fn record_from_external_response(
+        context: &ContextRecord,
+        policy: &PolicyStore,
+        model_id: u64,
+        external_response_hash: u64,
+        token_count: u32,
+    ) -> LlmRecord {
+        LlmRecord::from_external_response(
+            context,
+            policy,
+            model_id,
+            external_response_hash,
+            token_count,
+        )
     }
 }
 

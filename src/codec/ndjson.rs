@@ -84,6 +84,9 @@ pub fn load_tlog_ndjson(path: impl AsRef<Path>) -> Result<TLog, CanonError> {
         if line.trim().is_empty() {
             continue;
         }
+        if !is_control_event_record_line(&line)? {
+            continue;
+        }
         tlog.push(decode_control_event_ndjson(&line)?);
     }
 
@@ -140,9 +143,36 @@ pub fn decode_tlog_ndjson_str(input: &str) -> Result<TLog, CanonError> {
         if line.trim().is_empty() {
             continue;
         }
+        if !is_control_event_record_line(line)? {
+            continue;
+        }
         tlog.push(decode_control_event_ndjson(line)?);
     }
     Ok(tlog)
+}
+
+fn is_control_event_record_line(line: &str) -> Result<bool, CanonError> {
+    let trimmed = line.trim();
+    let body = trimmed
+        .strip_prefix('[')
+        .and_then(|v| v.strip_suffix(']'))
+        .ok_or(CanonError::InvalidTlogRecord)?;
+    let mut parts = body.split(',');
+    let Some(version) = parts.next() else {
+        return Err(CanonError::InvalidTlogRecord);
+    };
+    let Some(record) = parts.next() else {
+        return Err(CanonError::InvalidTlogRecord);
+    };
+    let version = version
+        .trim()
+        .parse::<u64>()
+        .map_err(|_| CanonError::InvalidTlogRecord)?;
+    let record = record
+        .trim()
+        .parse::<u64>()
+        .map_err(|_| CanonError::InvalidTlogRecord)?;
+    Ok(version == TLOG_SCHEMA_VERSION && record == TLOG_RECORD_EVENT)
 }
 
 struct Cursor<'a> {

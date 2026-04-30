@@ -1,0 +1,792 @@
+//! Live Ollama/OpenAI-compatible LLM adapter.
+//!
+//! This module is intentionally dependency-free. It calls Ollama's local
+//! OpenAI-compatible `/v1/chat/completions` endpoint through a minimal HTTP/1.1
+//! client, then converts the returned assistant text into the same
+//! `LlmRecord -> Evidence::JudgmentRecord` path used by deterministic tests.
+
+use std::env;
+use std::fs::{self, File, OpenOptions};
+use std::fmt;
+use std::io::{BufRead, BufReader, Read, Write};
+use std::net::TcpStream;
+use std::path::Path;
+use std::time::Duration;
+
+use crate::capability::context::ContextRecord;
+use crate::capability::llm::record::{LlmRecord, LlmStructuredAdapter};
+use crate::capability::policy::PolicyStore;
+use crate::capability::EvidenceSubmission;
+use crate::kernel::{
+    mix, Cause, ControlEvent, Decision, EventKind, Evidence, GateId, GateStatus, Phase, TLog,
+};
+
+pub const OLLAMA_PROVIDER: &str = "ollama";
+pub const OLLAMA_LLM_EFFECT_RECEIPT_SCHEMA_VERSION: u64 = 1;
+pub const OLLAMA_LLM_EFFECT_RECEIPT_RECORD: u64 = 51;
+
+const DEFAULT_BASE_URL: &str = "http://127.0.0.1:11434/v1";
+const DEFAULT_MODEL: &str = "qwen2.5-coder:7b";
+const DEFAULT_TIMEOUT_MS: u64 = 30_000;
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct OllamaConfig {
+    pub base_url: String,
+    pub model: String,
+    pub timeout_ms: u64,
+}
+
+impl Default for OllamaConfig {
+    fn default() -> Self {
+        Self {
+            base_url: DEFAULT_BASE_URL.to_string(),
+            model: DEFAULT_MODEL.to_string(),
+            timeout_ms: DEFAULT_TIMEOUT_MS,
+        }
+    }
+}
+
+impl OllamaConfig {
+    pub fn from_env() -> Result<Self, OllamaError> {
+        let timeout_ms = env::var("CANON_OLLAMA_TIMEOUT_MS")
+            .ok()
+            .and_then(|raw| raw.parse::<u64>().ok())
+            .unwrap_or(DEFAULT_TIMEOUT_MS);
+        let cfg = Self {
+            base_url: env::var("CANON_OLLAMA_BASE_URL")
+                .unwrap_or_else(|_| DEFAULT_BASE_URL.to_string()),
+            model: env::var("CANON_OLLAMA_MODEL").unwrap_or_else(|_| DEFAULT_MODEL.to_string()),
+            timeout_ms,
+        };
+        cfg.validate()?;
+        Ok(cfg)
+    }
+
+    pub fn validate(&self) -> Result<(), OllamaError> {
+        if self.model.trim().is_empty() {
+            return Err(OllamaError::InvalidConfig("empty model"));
+        }
+        if self.timeout_ms == 0 {
+            return Err(OllamaError::InvalidConfig("zero timeout"));
+        }
+        parse_local_endpoint(&self.base_url)?;
+        Ok(())
+    }
+
+    pub fn chat_completions_path(&self) -> Result<String, OllamaError> {
+        let endpoint = parse_local_endpoint(&self.base_url)?;
+        let prefix = endpoint.path_prefix.trim_end_matches('/');
+        if prefix.is_empty() {
+            Ok("/v1/chat/completions".to_string())
+        } else {
+            Ok(format!("{prefix}/chat/completions"))
+        }
+    }
+
+    pub fn model_id(&self) -> u64 {
+        hash_text(&self.model)
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct OllamaMessage {
+    pub role: String,
+    pub content: String,
+}
+
+impl OllamaMessage {
+    pub fn system(content: impl Into<String>) -> Self {
+        Self {
+            role: "system".to_string(),
+            content: content.into(),
+        }
+    }
+
+    pub fn user(content: impl Into<String>) -> Self {
+        Self {
+            role: "user".to_string(),
+            content: content.into(),
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct OllamaChatResponse {
+    pub content: String,
+    pub prompt_tokens: u32,
+    pub completion_tokens: u32,
+    pub total_tokens: u32,
+    pub response_hash: u64,
+    pub raw_hash: u64,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct OllamaLlmCall {
+    pub record: LlmRecord,
+    pub provider_hash: u64,
+    pub model_id: u64,
+    pub request_hash: u64,
+    pub response_hash: u64,
+    pub raw_response_hash: u64,
+    pub prompt_hash: u64,
+    pub token_count: u32,
+    pub payload_hash: u64,
+}
+
+impl OllamaLlmCall {
+    fn new(
+        record: LlmRecord,
+        model_id: u64,
+        request_hash: u64,
+        response: OllamaChatResponse,
+    ) -> Self {
+        let submission = record.submission();
+        Self {
+            prompt_hash: record.prompt.prompt_hash,
+            response_hash: record.response.response_hash,
+            token_count: record.response.token_count,
+            payload_hash: submission.payload_hash,
+            record,
+            provider_hash: ollama_provider_hash(),
+            model_id,
+            request_hash,
+            raw_response_hash: response.raw_hash,
+        }
+    }
+
+    pub fn is_valid(&self) -> bool {
+        self.record.is_valid()
+            && self.provider_hash == ollama_provider_hash()
+            && self.model_id != 0
+            && self.model_id == self.record.response.model_id
+            && self.request_hash != 0
+            && self.response_hash != 0
+            && self.response_hash == self.record.response.response_hash
+            && self.raw_response_hash != 0
+            && self.prompt_hash != 0
+            && self.prompt_hash == self.record.prompt.prompt_hash
+            && self.token_count != 0
+            && self.token_count == self.record.response.token_count
+            && self.payload_hash != 0
+            && self.payload_hash == self.record.submission().payload_hash
+    }
+
+    pub fn submission(&self) -> EvidenceSubmission {
+        self.record.submission()
+    }
+
+    pub fn receipt_for_event(
+        &self,
+        command_hash: u64,
+        event: &ControlEvent,
+    ) -> Option<OllamaLlmEffectReceipt> {
+        if !self.is_valid() || command_hash == 0 {
+            return None;
+        }
+
+        let mut receipt = OllamaLlmEffectReceipt {
+            provider_hash: self.provider_hash,
+            model_id: self.model_id,
+            request_hash: self.request_hash,
+            response_hash: self.response_hash,
+            raw_response_hash: self.raw_response_hash,
+            prompt_hash: self.prompt_hash,
+            token_count: self.token_count,
+            payload_hash: self.payload_hash,
+            command_hash,
+            event_seq: event.seq,
+            event_hash: event.self_hash,
+            receipt_hash: 0,
+        };
+        receipt.receipt_hash = receipt.expected_receipt_hash();
+        receipt.matches_event(event).then_some(receipt)
+    }
+
+    pub fn receipt_from_tlog(
+        &self,
+        command_hash: u64,
+        tlog: &TLog,
+    ) -> Option<OllamaLlmEffectReceipt> {
+        tlog.iter()
+            .find_map(|event| self.receipt_for_event(command_hash, event))
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct OllamaLlmEffectReceipt {
+    pub provider_hash: u64,
+    pub model_id: u64,
+    pub request_hash: u64,
+    pub response_hash: u64,
+    pub raw_response_hash: u64,
+    pub prompt_hash: u64,
+    pub token_count: u32,
+    pub payload_hash: u64,
+    pub command_hash: u64,
+    pub event_seq: u64,
+    pub event_hash: u64,
+    pub receipt_hash: u64,
+}
+
+impl OllamaLlmEffectReceipt {
+    pub fn is_valid(self) -> bool {
+        self.provider_hash == ollama_provider_hash()
+            && self.model_id != 0
+            && self.request_hash != 0
+            && self.response_hash != 0
+            && self.raw_response_hash != 0
+            && self.prompt_hash != 0
+            && self.token_count != 0
+            && self.payload_hash != 0
+            && self.command_hash != 0
+            && self.event_seq != 0
+            && self.event_hash != 0
+            && self.receipt_hash != 0
+            && self.receipt_hash == self.expected_receipt_hash()
+    }
+
+    pub fn expected_receipt_hash(self) -> u64 {
+        let mut h = 0x8e1f_9628_8f75_4b2du64;
+        h = mix(h, self.provider_hash);
+        h = mix(h, self.model_id);
+        h = mix(h, self.request_hash);
+        h = mix(h, self.response_hash);
+        h = mix(h, self.raw_response_hash);
+        h = mix(h, self.prompt_hash);
+        h = mix(h, self.token_count as u64);
+        h = mix(h, self.payload_hash);
+        h = mix(h, self.command_hash);
+        h = mix(h, self.event_seq);
+        h = mix(h, self.event_hash);
+        h.max(1)
+    }
+
+    pub fn matches_event(self, event: &ControlEvent) -> bool {
+        self.is_valid()
+            && event.seq == self.event_seq
+            && event.self_hash == self.event_hash
+            && event.api_command_hash == self.command_hash
+            && event.from == Phase::Judgment
+            && event.to == Phase::Judgment
+            && event.kind == EventKind::Persisted
+            && event.cause == Cause::EvidenceSubmitted
+            && event.evidence == Evidence::JudgmentRecord
+            && event.decision == Decision::Continue
+            && event.failure.is_none()
+            && event.recovery_action.is_none()
+            && event.affected_gate == Some(GateId::Judgment)
+            && event.state_after.gates.judgment.status == GateStatus::Pass
+            && event.state_after.gates.judgment.evidence == Evidence::JudgmentRecord
+    }
+
+    pub fn replay_verified(self, tlog: &TLog) -> bool {
+        self.is_valid() && tlog.iter().any(|event| self.matches_event(event))
+    }
+}
+
+#[derive(Debug)]
+pub enum OllamaError {
+    InvalidConfig(&'static str),
+    InvalidUrl,
+    HttpStatus(u16),
+    Io(std::io::Error),
+    InvalidResponse,
+    InvalidReceipt,
+    InvalidReceiptRecord,
+    InvalidReplay,
+}
+
+impl fmt::Display for OllamaError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::InvalidConfig(reason) => write!(f, "invalid ollama config: {reason}"),
+            Self::InvalidUrl => write!(f, "invalid local ollama url"),
+            Self::HttpStatus(status) => write!(f, "ollama returned HTTP {status}"),
+            Self::Io(err) => write!(f, "ollama io failed: {err}"),
+            Self::InvalidResponse => write!(f, "ollama response was not parseable"),
+            Self::InvalidReceipt => write!(f, "ollama effect receipt is invalid"),
+            Self::InvalidReceiptRecord => write!(f, "ollama effect receipt record is invalid"),
+            Self::InvalidReplay => write!(f, "ollama effect receipt failed replay verification"),
+        }
+    }
+}
+
+impl std::error::Error for OllamaError {}
+
+impl From<std::io::Error> for OllamaError {
+    fn from(value: std::io::Error) -> Self {
+        Self::Io(value)
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct OllamaClient {
+    config: OllamaConfig,
+}
+
+impl OllamaClient {
+    pub fn new(config: OllamaConfig) -> Result<Self, OllamaError> {
+        config.validate()?;
+        Ok(Self { config })
+    }
+
+    pub fn from_env() -> Result<Self, OllamaError> {
+        Self::new(OllamaConfig::from_env()?)
+    }
+
+    pub fn config(&self) -> &OllamaConfig {
+        &self.config
+    }
+
+    pub fn request_json(&self, messages: &[OllamaMessage]) -> Result<String, OllamaError> {
+        if messages.is_empty() {
+            return Err(OllamaError::InvalidConfig("empty message list"));
+        }
+
+        let mut json = String::new();
+        json.push_str("{\"model\":\"");
+        json.push_str(&json_escape(&self.config.model));
+        json.push_str("\",\"messages\":[");
+        for (idx, message) in messages.iter().enumerate() {
+            if idx != 0 {
+                json.push(',');
+            }
+            if message.role.trim().is_empty() || message.content.trim().is_empty() {
+                return Err(OllamaError::InvalidConfig("empty message"));
+            }
+            json.push_str("{\"role\":\"");
+            json.push_str(&json_escape(&message.role));
+            json.push_str("\",\"content\":\"");
+            json.push_str(&json_escape(&message.content));
+            json.push_str("\"}");
+        }
+        json.push_str("],\"stream\":false}");
+        Ok(json)
+    }
+
+    pub fn request_hash(&self, messages: &[OllamaMessage]) -> Result<u64, OllamaError> {
+        Ok(hash_text(&self.request_json(messages)?))
+    }
+
+    pub fn chat(&self, messages: &[OllamaMessage]) -> Result<OllamaChatResponse, OllamaError> {
+        let body = self.request_json(messages)?;
+        self.chat_body(&body)
+    }
+
+    fn chat_body(&self, body: &str) -> Result<OllamaChatResponse, OllamaError> {
+        let endpoint = parse_local_endpoint(&self.config.base_url)?;
+        let path = self.config.chat_completions_path()?;
+        let mut stream = TcpStream::connect((endpoint.host.as_str(), endpoint.port))?;
+        let timeout = Duration::from_millis(self.config.timeout_ms);
+        stream.set_read_timeout(Some(timeout))?;
+        stream.set_write_timeout(Some(timeout))?;
+
+        let request = format!(
+            "POST {path} HTTP/1.1\r\nHost: {host}:{port}\r\nContent-Type: application/json\r\nAccept: application/json\r\nConnection: close\r\nContent-Length: {len}\r\n\r\n{body}",
+            host = endpoint.host,
+            port = endpoint.port,
+            len = body.len(),
+        );
+        stream.write_all(request.as_bytes())?;
+        stream.flush()?;
+
+        let mut response = String::new();
+        stream.read_to_string(&mut response)?;
+        let (status, body) = split_http_response(&response)?;
+        if status != 200 {
+            return Err(OllamaError::HttpStatus(status));
+        }
+        parse_chat_response_body(body)
+    }
+
+    pub fn call_from_context(
+        &self,
+        context: &ContextRecord,
+        policy: &PolicyStore,
+    ) -> Result<OllamaLlmCall, OllamaError> {
+        let messages = messages_from_context(context, policy);
+        let request_hash = self.request_hash(&messages)?;
+        let response = self.chat(&messages)?;
+        self.call_from_response(context, policy, request_hash, response)
+    }
+
+    pub fn record_from_context(
+        &self,
+        context: &ContextRecord,
+        policy: &PolicyStore,
+    ) -> Result<LlmRecord, OllamaError> {
+        Ok(self.call_from_context(context, policy)?.record)
+    }
+
+    pub fn call_from_response_body(
+        &self,
+        context: &ContextRecord,
+        policy: &PolicyStore,
+        response_body: &str,
+    ) -> Result<OllamaLlmCall, OllamaError> {
+        let messages = messages_from_context(context, policy);
+        let request_hash = self.request_hash(&messages)?;
+        let response = parse_chat_response_body(response_body)?;
+        self.call_from_response(context, policy, request_hash, response)
+    }
+
+    pub fn record_from_response_body(
+        &self,
+        context: &ContextRecord,
+        policy: &PolicyStore,
+        response_body: &str,
+    ) -> Result<LlmRecord, OllamaError> {
+        Ok(self.call_from_response_body(context, policy, response_body)?.record)
+    }
+
+    fn call_from_response(
+        &self,
+        context: &ContextRecord,
+        policy: &PolicyStore,
+        request_hash: u64,
+        response: OllamaChatResponse,
+    ) -> Result<OllamaLlmCall, OllamaError> {
+        let record = LlmStructuredAdapter::record_from_external_response(
+            context,
+            policy,
+            self.config.model_id(),
+            response.response_hash,
+            response.total_tokens.max(1),
+        );
+        let call = OllamaLlmCall::new(record, self.config.model_id(), request_hash, response);
+        call.is_valid().then_some(call).ok_or(OllamaError::InvalidResponse)
+    }
+}
+
+pub fn messages_from_context(context: &ContextRecord, policy: &PolicyStore) -> Vec<OllamaMessage> {
+    vec![
+        OllamaMessage::system(
+            "You are the canon agent judgment capability. Return one concise judgment.",
+        ),
+        OllamaMessage::user(format!(
+            "objective_id={}; observation_hash={}; memory_hash={}; context_hash={}; prior_count={}; policy_version={}; policy_hash={}. Produce a safe next judgment.",
+            context.objective_id,
+            context.observation_hash,
+            context.memory_aggregate_hash,
+            context.context_hash,
+            context.prior_count,
+            policy.latest_version().max(1),
+            policy.fingerprint(),
+        )),
+    ]
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct LocalEndpoint {
+    host: String,
+    port: u16,
+    path_prefix: String,
+}
+
+fn parse_local_endpoint(base_url: &str) -> Result<LocalEndpoint, OllamaError> {
+    let without_scheme = base_url
+        .trim()
+        .strip_prefix("http://")
+        .ok_or(OllamaError::InvalidUrl)?;
+    let (host_port, path) = without_scheme
+        .split_once('/')
+        .map_or((without_scheme, ""), |(host_port, path)| (host_port, path));
+    let (host, port) = host_port
+        .rsplit_once(':')
+        .ok_or(OllamaError::InvalidUrl)?;
+    if host != "127.0.0.1" && host != "localhost" {
+        return Err(OllamaError::InvalidConfig("ollama base url must be local"));
+    }
+    let port = port.parse::<u16>().map_err(|_| OllamaError::InvalidUrl)?;
+    if port == 0 {
+        return Err(OllamaError::InvalidUrl);
+    }
+    let path_prefix = if path.trim().is_empty() {
+        String::new()
+    } else {
+        format!("/{}", path.trim_matches('/'))
+    };
+    Ok(LocalEndpoint {
+        host: host.to_string(),
+        port,
+        path_prefix,
+    })
+}
+
+fn split_http_response(response: &str) -> Result<(u16, &str), OllamaError> {
+    let (head, body) = response
+        .split_once("\r\n\r\n")
+        .ok_or(OllamaError::InvalidResponse)?;
+    let status_line = head.lines().next().ok_or(OllamaError::InvalidResponse)?;
+    let status = status_line
+        .split_whitespace()
+        .nth(1)
+        .and_then(|raw| raw.parse::<u16>().ok())
+        .ok_or(OllamaError::InvalidResponse)?;
+    Ok((status, body))
+}
+
+fn parse_chat_response_body(body: &str) -> Result<OllamaChatResponse, OllamaError> {
+    let message_start = body.find("\"message\"").unwrap_or(0);
+    let content = extract_json_string(body, "\"content\"", message_start)
+        .ok_or(OllamaError::InvalidResponse)?;
+    if content.trim().is_empty() {
+        return Err(OllamaError::InvalidResponse);
+    }
+    let prompt_tokens = extract_json_u32(body, "\"prompt_tokens\"").unwrap_or(1);
+    let completion_tokens = extract_json_u32(body, "\"completion_tokens\"").unwrap_or(1);
+    let total_tokens = extract_json_u32(body, "\"total_tokens\"")
+        .unwrap_or_else(|| prompt_tokens.saturating_add(completion_tokens).max(1));
+    Ok(OllamaChatResponse {
+        response_hash: hash_text(&content),
+        raw_hash: hash_text(body),
+        content,
+        prompt_tokens,
+        completion_tokens,
+        total_tokens,
+    })
+}
+
+pub fn append_ollama_llm_effect_receipt_ndjson(
+    path: impl AsRef<Path>,
+    receipt: &OllamaLlmEffectReceipt,
+) -> Result<(), OllamaError> {
+    if !receipt.is_valid() {
+        return Err(OllamaError::InvalidReceipt);
+    }
+
+    let path = path.as_ref();
+    if let Some(parent) = path.parent() {
+        if !parent.as_os_str().is_empty() {
+            fs::create_dir_all(parent)?;
+        }
+    }
+
+    {
+        let mut file = OpenOptions::new().create(true).append(true).open(path)?;
+        writeln!(file, "{}", encode_ollama_llm_effect_receipt_ndjson(*receipt))?;
+        file.sync_all()?;
+    }
+
+    sync_parent_dir(path)
+}
+
+pub fn load_ollama_llm_effect_receipts_ndjson(
+    path: impl AsRef<Path>,
+) -> Result<Vec<OllamaLlmEffectReceipt>, OllamaError> {
+    let path = path.as_ref();
+    if !path.exists() {
+        return Ok(Vec::new());
+    }
+
+    let file = File::open(path)?;
+    let reader = BufReader::new(file);
+    let mut receipts = Vec::new();
+    for line in reader.lines() {
+        let line = line?;
+        if line.trim().is_empty() {
+            continue;
+        }
+        let fields = parse_u64_fields(&line)?;
+        if fields.len() >= 2 && fields[1] == OLLAMA_LLM_EFFECT_RECEIPT_RECORD {
+            receipts.push(decode_ollama_llm_effect_receipt_fields(&fields)?);
+        }
+    }
+    Ok(receipts)
+}
+
+pub fn verify_ollama_llm_effect_receipts(
+    tlog: &TLog,
+    receipts: &[OllamaLlmEffectReceipt],
+) -> Result<usize, OllamaError> {
+    for receipt in receipts {
+        if !receipt.replay_verified(tlog) {
+            return Err(OllamaError::InvalidReplay);
+        }
+    }
+    Ok(receipts.len())
+}
+
+pub fn encode_ollama_llm_effect_receipt_ndjson(receipt: OllamaLlmEffectReceipt) -> String {
+    let fields = [
+        OLLAMA_LLM_EFFECT_RECEIPT_SCHEMA_VERSION,
+        OLLAMA_LLM_EFFECT_RECEIPT_RECORD,
+        receipt.provider_hash,
+        receipt.model_id,
+        receipt.request_hash,
+        receipt.response_hash,
+        receipt.raw_response_hash,
+        receipt.prompt_hash,
+        receipt.token_count as u64,
+        receipt.payload_hash,
+        receipt.command_hash,
+        receipt.event_seq,
+        receipt.event_hash,
+        receipt.receipt_hash,
+    ];
+    let body = fields
+        .iter()
+        .map(u64::to_string)
+        .collect::<Vec<_>>()
+        .join(",");
+    format!("[{body}]")
+}
+
+pub fn decode_ollama_llm_effect_receipt_ndjson(
+    line: &str,
+) -> Result<OllamaLlmEffectReceipt, OllamaError> {
+    decode_ollama_llm_effect_receipt_fields(&parse_u64_fields(line)?)
+}
+
+fn decode_ollama_llm_effect_receipt_fields(
+    fields: &[u64],
+) -> Result<OllamaLlmEffectReceipt, OllamaError> {
+    if fields.len() != 14
+        || fields[0] != OLLAMA_LLM_EFFECT_RECEIPT_SCHEMA_VERSION
+        || fields[1] != OLLAMA_LLM_EFFECT_RECEIPT_RECORD
+    {
+        return Err(OllamaError::InvalidReceiptRecord);
+    }
+
+    let token_count = u32::try_from(fields[8]).map_err(|_| OllamaError::InvalidReceiptRecord)?;
+    let receipt = OllamaLlmEffectReceipt {
+        provider_hash: fields[2],
+        model_id: fields[3],
+        request_hash: fields[4],
+        response_hash: fields[5],
+        raw_response_hash: fields[6],
+        prompt_hash: fields[7],
+        token_count,
+        payload_hash: fields[9],
+        command_hash: fields[10],
+        event_seq: fields[11],
+        event_hash: fields[12],
+        receipt_hash: fields[13],
+    };
+    receipt
+        .is_valid()
+        .then_some(receipt)
+        .ok_or(OllamaError::InvalidReceipt)
+}
+
+fn parse_u64_fields(line: &str) -> Result<Vec<u64>, OllamaError> {
+    let body = line
+        .trim()
+        .strip_prefix('[')
+        .and_then(|v| v.strip_suffix(']'))
+        .ok_or(OllamaError::InvalidReceiptRecord)?;
+    if body.trim().is_empty() {
+        return Ok(Vec::new());
+    }
+    body.split(',')
+        .map(|raw| {
+            raw.trim()
+                .parse::<u64>()
+                .map_err(|_| OllamaError::InvalidReceiptRecord)
+        })
+        .collect()
+}
+
+fn sync_parent_dir(path: &Path) -> Result<(), OllamaError> {
+    let Some(parent) = path.parent() else {
+        return Ok(());
+    };
+    if parent.as_os_str().is_empty() {
+        return Ok(());
+    }
+    let dir = File::open(parent)?;
+    dir.sync_all()?;
+    Ok(())
+}
+
+fn extract_json_u32(body: &str, key: &str) -> Option<u32> {
+    let idx = body.find(key)?;
+    let after_key = &body[idx + key.len()..];
+    let after_colon = after_key.split_once(':')?.1.trim_start();
+    let digits: String = after_colon
+        .chars()
+        .take_while(|ch| ch.is_ascii_digit())
+        .collect();
+    digits.parse::<u32>().ok()
+}
+
+fn extract_json_string(body: &str, key: &str, start_at: usize) -> Option<String> {
+    let start = body.get(start_at..)?.find(key)? + start_at + key.len();
+    let mut chars = body.get(start..)?.chars();
+    for ch in chars.by_ref() {
+        if ch == ':' {
+            break;
+        }
+    }
+    for ch in chars.by_ref() {
+        if ch == '"' {
+            break;
+        }
+        if !ch.is_whitespace() {
+            return None;
+        }
+    }
+
+    let mut out = String::new();
+    let mut escaped = false;
+    let mut unicode_remaining = 0u8;
+    for ch in chars {
+        if unicode_remaining != 0 {
+            unicode_remaining -= 1;
+            if unicode_remaining == 0 {
+                out.push('?');
+            }
+            continue;
+        }
+        if escaped {
+            match ch {
+                '"' => out.push('"'),
+                '\\' => out.push('\\'),
+                '/' => out.push('/'),
+                'b' => out.push('\u{0008}'),
+                'f' => out.push('\u{000c}'),
+                'n' => out.push('\n'),
+                'r' => out.push('\r'),
+                't' => out.push('\t'),
+                'u' => unicode_remaining = 4,
+                _ => return None,
+            }
+            escaped = false;
+        } else if ch == '\\' {
+            escaped = true;
+        } else if ch == '"' {
+            return Some(out);
+        } else {
+            out.push(ch);
+        }
+    }
+    None
+}
+
+fn json_escape(value: &str) -> String {
+    let mut out = String::new();
+    for ch in value.chars() {
+        match ch {
+            '"' => out.push_str("\\\""),
+            '\\' => out.push_str("\\\\"),
+            '\n' => out.push_str("\\n"),
+            '\r' => out.push_str("\\r"),
+            '\t' => out.push_str("\\t"),
+            ch if ch.is_control() => out.push(' '),
+            ch => out.push(ch),
+        }
+    }
+    out
+}
+
+pub(crate) fn hash_text(value: &str) -> u64 {
+    let mut h = 0x91f2_49bb_1f6d_7c35u64;
+    for byte in value.as_bytes() {
+        h = mix(h, u64::from(*byte));
+    }
+    h.max(1)
+}
+
+fn ollama_provider_hash() -> u64 {
+    hash_text(OLLAMA_PROVIDER)
+}
