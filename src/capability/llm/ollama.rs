@@ -17,13 +17,18 @@ use crate::capability::context::ContextRecord;
 use crate::capability::llm::record::{LlmRecord, LlmStructuredAdapter};
 use crate::capability::policy::PolicyStore;
 use crate::capability::EvidenceSubmission;
+use crate::codec::ndjson::{load_tlog_ndjson, TLOG_RECORD_EVENT};
 use crate::kernel::{
     mix, Cause, ControlEvent, Decision, EventKind, Evidence, GateId, GateStatus, Phase, TLog,
 };
 
 pub const OLLAMA_PROVIDER: &str = "ollama";
-pub const OLLAMA_LLM_EFFECT_RECEIPT_SCHEMA_VERSION: u64 = 1;
+pub const OLLAMA_LLM_EFFECT_RECEIPT_SCHEMA_VERSION: u64 = 4;
 pub const OLLAMA_LLM_EFFECT_RECEIPT_RECORD: u64 = 51;
+pub const OLLAMA_JUDGMENT_PROOF_SCHEMA_VERSION: u64 = 2;
+pub const OLLAMA_JUDGMENT_PROOF_RECORD: u64 = 52;
+pub const OLLAMA_JUDGMENT_PROOF_LINE: &str =
+    "receipt_verified+tamper_rejected+endpoint_verified+phase_plan";
 
 const DEFAULT_BASE_URL: &str = "http://127.0.0.1:11434/v1";
 const DEFAULT_MODEL: &str = "qwen2.5-coder:7b";
@@ -86,6 +91,10 @@ impl OllamaConfig {
     pub fn model_id(&self) -> u64 {
         hash_text(&self.model)
     }
+
+    pub fn base_url_id(&self) -> u64 {
+        hash_text(&self.base_url)
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -124,6 +133,7 @@ pub struct OllamaChatResponse {
 pub struct OllamaLlmCall {
     pub record: LlmRecord,
     pub provider_hash: u64,
+    pub base_url_hash: u64,
     pub model_id: u64,
     pub request_hash: u64,
     pub response_hash: u64,
@@ -137,6 +147,7 @@ impl OllamaLlmCall {
     fn new(
         record: LlmRecord,
         model_id: u64,
+        base_url_hash: u64,
         request_hash: u64,
         response: OllamaChatResponse,
     ) -> Self {
@@ -148,6 +159,7 @@ impl OllamaLlmCall {
             payload_hash: submission.payload_hash,
             record,
             provider_hash: ollama_provider_hash(),
+            base_url_hash,
             model_id,
             request_hash,
             raw_response_hash: response.raw_hash,
@@ -157,6 +169,7 @@ impl OllamaLlmCall {
     pub fn is_valid(&self) -> bool {
         self.record.is_valid()
             && self.provider_hash == ollama_provider_hash()
+            && self.base_url_hash != 0
             && self.model_id != 0
             && self.model_id == self.record.response.model_id
             && self.request_hash != 0
@@ -175,7 +188,26 @@ impl OllamaLlmCall {
         self.record.submission()
     }
 
-    pub fn receipt_for_event(
+    pub fn base_url_provenance_verified(&self, config: &OllamaConfig) -> bool {
+        config.validate().is_ok()
+            && self.is_valid()
+            && self.provider_hash == ollama_provider_hash()
+            && self.base_url_hash == config.base_url_id()
+            && self.model_id == config.model_id()
+    }
+
+    pub fn receipt_for_configured_event(
+        &self,
+        config: &OllamaConfig,
+        command_hash: u64,
+        event: &ControlEvent,
+    ) -> Option<OllamaLlmEffectReceipt> {
+        self.base_url_provenance_verified(config)
+            .then(|| self.receipt_for_event_unchecked(command_hash, event))
+            .flatten()
+    }
+
+    fn receipt_for_event_unchecked(
         &self,
         command_hash: u64,
         event: &ControlEvent,
@@ -186,6 +218,7 @@ impl OllamaLlmCall {
 
         let mut receipt = OllamaLlmEffectReceipt {
             provider_hash: self.provider_hash,
+            base_url_hash: self.base_url_hash,
             model_id: self.model_id,
             request_hash: self.request_hash,
             response_hash: self.response_hash,
@@ -196,6 +229,8 @@ impl OllamaLlmCall {
             command_hash,
             event_seq: event.seq,
             event_hash: event.self_hash,
+            proof_event_seq: 0,
+            proof_hash: 0,
             receipt_hash: 0,
         };
         receipt.receipt_hash = receipt.expected_receipt_hash();
@@ -204,17 +239,19 @@ impl OllamaLlmCall {
 
     pub fn receipt_from_tlog(
         &self,
+        config: &OllamaConfig,
         command_hash: u64,
         tlog: &TLog,
     ) -> Option<OllamaLlmEffectReceipt> {
         tlog.iter()
-            .find_map(|event| self.receipt_for_event(command_hash, event))
+            .find_map(|event| self.receipt_for_configured_event(config, command_hash, event))
     }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct OllamaLlmEffectReceipt {
     pub provider_hash: u64,
+    pub base_url_hash: u64,
     pub model_id: u64,
     pub request_hash: u64,
     pub response_hash: u64,
@@ -225,12 +262,15 @@ pub struct OllamaLlmEffectReceipt {
     pub command_hash: u64,
     pub event_seq: u64,
     pub event_hash: u64,
+    pub proof_event_seq: u64,
+    pub proof_hash: u64,
     pub receipt_hash: u64,
 }
 
 impl OllamaLlmEffectReceipt {
     pub fn is_valid(self) -> bool {
         self.provider_hash == ollama_provider_hash()
+            && self.base_url_hash != 0
             && self.model_id != 0
             && self.request_hash != 0
             && self.response_hash != 0
@@ -241,13 +281,24 @@ impl OllamaLlmEffectReceipt {
             && self.command_hash != 0
             && self.event_seq != 0
             && self.event_hash != 0
+            && ((self.proof_event_seq == 0 && self.proof_hash == 0)
+                || (self.proof_event_seq > self.event_seq && self.proof_hash != 0))
             && self.receipt_hash != 0
             && self.receipt_hash == self.expected_receipt_hash()
     }
 
-    pub fn expected_receipt_hash(self) -> u64 {
+    pub fn has_proof_binding(self) -> bool {
+        self.is_valid() && self.proof_event_seq != 0 && self.proof_hash != 0
+    }
+
+    pub fn next_proof_event_seq(self) -> Option<u64> {
+        self.event_seq.checked_add(1)
+    }
+
+    pub fn expected_receipt_core_hash(self) -> u64 {
         let mut h = 0x8e1f_9628_8f75_4b2du64;
         h = mix(h, self.provider_hash);
+        h = mix(h, self.base_url_hash);
         h = mix(h, self.model_id);
         h = mix(h, self.request_hash);
         h = mix(h, self.response_hash);
@@ -259,6 +310,31 @@ impl OllamaLlmEffectReceipt {
         h = mix(h, self.event_seq);
         h = mix(h, self.event_hash);
         h.max(1)
+    }
+
+    pub fn expected_receipt_hash(self) -> u64 {
+        let mut h = self.expected_receipt_core_hash();
+        h = mix(h, self.proof_event_seq);
+        h = mix(h, self.proof_hash);
+        h.max(1)
+    }
+
+    pub fn bind_proof_event(self, proof_event_seq: u64, proof_hash: u64) -> Option<Self> {
+        if !self.is_valid()
+            || proof_event_seq == 0
+            || proof_hash == 0
+            || proof_event_seq <= self.event_seq
+        {
+            return None;
+        }
+        let mut receipt = Self {
+            proof_event_seq,
+            proof_hash,
+            receipt_hash: 0,
+            ..self
+        };
+        receipt.receipt_hash = receipt.expected_receipt_hash();
+        receipt.is_valid().then_some(receipt)
     }
 
     pub fn matches_event(self, event: &ControlEvent) -> bool {
@@ -281,6 +357,184 @@ impl OllamaLlmEffectReceipt {
 
     pub fn replay_verified(self, tlog: &TLog) -> bool {
         self.is_valid() && tlog.iter().any(|event| self.matches_event(event))
+    }
+
+    pub fn base_url_provenance_verified(self, config: &OllamaConfig) -> bool {
+        config.validate().is_ok()
+            && self.is_valid()
+            && self.provider_hash == ollama_provider_hash()
+            && self.base_url_hash == config.base_url_id()
+            && self.model_id == config.model_id()
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct OllamaJudgmentProofEvent {
+    pub proof_line_hash: u64,
+    pub receipt_core_hash: u64,
+    pub receipt_hash: u64,
+    pub receipt_event_seq: u64,
+    pub proof_event_seq: u64,
+    pub receipt_event_hash: u64,
+    pub base_url_hash: u64,
+    pub model_id: u64,
+    pub receipt_verified: bool,
+    pub tamper_rejected: bool,
+    pub endpoint_verified: bool,
+    pub phase_plan: bool,
+    pub proof_hash: u64,
+}
+
+impl OllamaJudgmentProofEvent {
+    pub fn new(
+        receipt: OllamaLlmEffectReceipt,
+        receipt_verified: bool,
+        tamper_rejected: bool,
+        endpoint_verified: bool,
+        phase_plan: bool,
+    ) -> Option<Self> {
+        Self::finalize_receipt(
+            receipt,
+            receipt_verified,
+            tamper_rejected,
+            endpoint_verified,
+            phase_plan,
+        )
+        .map(|(_, event)| event)
+    }
+
+    pub fn finalize_receipt(
+        receipt: OllamaLlmEffectReceipt,
+        receipt_verified: bool,
+        tamper_rejected: bool,
+        endpoint_verified: bool,
+        phase_plan: bool,
+    ) -> Option<(OllamaLlmEffectReceipt, Self)> {
+        let proof_event_seq = receipt.next_proof_event_seq()?;
+        Self::finalize_receipt_at_seq(
+            receipt,
+            proof_event_seq,
+            receipt_verified,
+            tamper_rejected,
+            endpoint_verified,
+            phase_plan,
+        )
+    }
+
+    pub fn finalize_receipt_after_tlog(
+        receipt: OllamaLlmEffectReceipt,
+        tlog: &TLog,
+        receipt_verified: bool,
+        tamper_rejected: bool,
+        endpoint_verified: bool,
+        phase_plan: bool,
+    ) -> Option<(OllamaLlmEffectReceipt, Self)> {
+        if !receipt.replay_verified(tlog) {
+            return None;
+        }
+        let proof_event_seq = tlog
+            .last()
+            .map(|event| event.seq)
+            .unwrap_or(receipt.event_seq)
+            .checked_add(1)?;
+        Self::finalize_receipt_at_seq(
+            receipt,
+            proof_event_seq,
+            receipt_verified,
+            tamper_rejected,
+            endpoint_verified,
+            phase_plan,
+        )
+    }
+
+    fn finalize_receipt_at_seq(
+        receipt: OllamaLlmEffectReceipt,
+        proof_event_seq: u64,
+        receipt_verified: bool,
+        tamper_rejected: bool,
+        endpoint_verified: bool,
+        phase_plan: bool,
+    ) -> Option<(OllamaLlmEffectReceipt, Self)> {
+        if !receipt.is_valid()
+            || !receipt_verified
+            || !tamper_rejected
+            || !endpoint_verified
+            || !phase_plan
+            || proof_event_seq <= receipt.event_seq
+        {
+            return None;
+        }
+
+        let receipt_core_hash = receipt.expected_receipt_core_hash();
+        let mut event = Self {
+            proof_line_hash: hash_text(OLLAMA_JUDGMENT_PROOF_LINE),
+            receipt_core_hash,
+            receipt_hash: 0,
+            receipt_event_seq: receipt.event_seq,
+            proof_event_seq,
+            receipt_event_hash: receipt.event_hash,
+            base_url_hash: receipt.base_url_hash,
+            model_id: receipt.model_id,
+            receipt_verified,
+            tamper_rejected,
+            endpoint_verified,
+            phase_plan,
+            proof_hash: 0,
+        };
+        event.proof_hash = event.expected_proof_hash();
+        let finalized_receipt = receipt.bind_proof_event(event.proof_event_seq, event.proof_hash)?;
+        event.receipt_hash = finalized_receipt.receipt_hash;
+        event
+            .is_valid()
+            .then_some((finalized_receipt, event))
+    }
+
+    pub fn is_valid(self) -> bool {
+        self.proof_line_hash == hash_text(OLLAMA_JUDGMENT_PROOF_LINE)
+            && self.receipt_core_hash != 0
+            && self.receipt_hash != 0
+            && self.receipt_event_seq != 0
+            && self.proof_event_seq != 0
+            && self.proof_event_seq > self.receipt_event_seq
+            && self.receipt_event_hash != 0
+            && self.base_url_hash != 0
+            && self.model_id != 0
+            && self.receipt_verified
+            && self.tamper_rejected
+            && self.endpoint_verified
+            && self.phase_plan
+            && self.proof_hash != 0
+            && self.proof_hash == self.expected_proof_hash()
+    }
+
+    pub fn expected_proof_hash(self) -> u64 {
+        let mut h = 0x4f4c_4c41_4d41_5652u64;
+        h = mix(h, self.proof_line_hash);
+        h = mix(h, self.receipt_core_hash);
+        h = mix(h, self.receipt_event_seq);
+        h = mix(h, self.proof_event_seq);
+        h = mix(h, self.receipt_event_hash);
+        h = mix(h, self.base_url_hash);
+        h = mix(h, self.model_id);
+        h = mix(h, self.receipt_verified as u64);
+        h = mix(h, self.tamper_rejected as u64);
+        h = mix(h, self.endpoint_verified as u64);
+        h = mix(h, self.phase_plan as u64);
+        h.max(1)
+    }
+
+    pub fn matches_receipt(self, receipt: OllamaLlmEffectReceipt, tlog: &TLog) -> bool {
+        self.is_valid()
+            && receipt.replay_verified(tlog)
+            && receipt.has_proof_binding()
+            && self.proof_hash == receipt.proof_hash
+            && self.receipt_core_hash == receipt.expected_receipt_core_hash()
+            && self.receipt_hash == receipt.receipt_hash
+            && self.receipt_event_seq == receipt.event_seq
+            && self.proof_event_seq == receipt.proof_event_seq
+            && self.receipt_event_hash == receipt.event_hash
+            && self.base_url_hash == receipt.base_url_hash
+            && self.model_id == receipt.model_id
     }
 }
 
@@ -453,7 +707,13 @@ impl OllamaClient {
             response.response_hash,
             response.total_tokens.max(1),
         );
-        let call = OllamaLlmCall::new(record, self.config.model_id(), request_hash, response);
+        let call = OllamaLlmCall::new(
+            record,
+            self.config.model_id(),
+            self.config.base_url_id(),
+            request_hash,
+            response,
+        );
         call.is_valid().then_some(call).ok_or(OllamaError::InvalidResponse)
     }
 }
@@ -607,11 +867,164 @@ pub fn verify_ollama_llm_effect_receipts(
     Ok(receipts.len())
 }
 
+pub fn verify_ollama_judgment_tlog_ndjson(path: impl AsRef<Path>) -> Result<usize, OllamaError> {
+    let path = path.as_ref();
+    let tlog = load_tlog_ndjson(path).map_err(|_| OllamaError::InvalidReplay)?;
+    let receipts = load_ollama_llm_effect_receipts_ndjson_unchecked(path)?;
+    if receipts.is_empty() {
+        return Err(OllamaError::InvalidReplay);
+    }
+    verify_ollama_llm_effect_receipts(&tlog, &receipts)
+}
+
+pub fn append_ollama_judgment_proof_event_ndjson(
+    path: impl AsRef<Path>,
+    event: &OllamaJudgmentProofEvent,
+) -> Result<(), OllamaError> {
+    if !event.is_valid() {
+        return Err(OllamaError::InvalidReceipt);
+    }
+
+    let path = path.as_ref();
+    if let Some(parent) = path.parent() {
+        if !parent.as_os_str().is_empty() {
+            fs::create_dir_all(parent)?;
+        }
+    }
+
+    {
+        let mut file = OpenOptions::new().create(true).append(true).open(path)?;
+        writeln!(file, "{}", encode_ollama_judgment_proof_event_ndjson(*event))?;
+        file.sync_all()?;
+    }
+
+    sync_parent_dir(path)
+}
+
+pub fn load_ollama_judgment_proof_events_ndjson(
+    path: impl AsRef<Path>,
+) -> Result<Vec<OllamaJudgmentProofEvent>, OllamaError> {
+    let path = path.as_ref();
+    if !path.exists() {
+        return Ok(Vec::new());
+    }
+
+    let file = File::open(path)?;
+    let reader = BufReader::new(file);
+    let mut events = Vec::new();
+    for line in reader.lines() {
+        let line = line?;
+        if line.trim().is_empty() {
+            continue;
+        }
+        let fields = parse_u64_fields(&line)?;
+        if fields.len() >= 2 && fields[1] == OLLAMA_JUDGMENT_PROOF_RECORD {
+            events.push(decode_ollama_judgment_proof_event_fields(&fields)?);
+        }
+    }
+    Ok(events)
+}
+
+pub fn verify_ollama_judgment_proof_event_order_ndjson(
+    path: impl AsRef<Path>,
+) -> Result<usize, OllamaError> {
+    let path = path.as_ref();
+    if !path.exists() {
+        return Err(OllamaError::InvalidReplay);
+    }
+
+    let file = File::open(path)?;
+    let reader = BufReader::new(file);
+    let mut last_control_event_seq = 0u64;
+    let mut seen_receipt_hashes = Vec::new();
+    let mut verified = 0usize;
+
+    for line in reader.lines() {
+        let line = line?;
+        if line.trim().is_empty() {
+            continue;
+        }
+        let fields = parse_u64_fields(&line)?;
+        if fields.len() < 2 {
+            return Err(OllamaError::InvalidReplay);
+        }
+
+        match fields[1] {
+            TLOG_RECORD_EVENT => {
+                if fields.len() < 3 {
+                    return Err(OllamaError::InvalidReplay);
+                }
+                last_control_event_seq = fields[2];
+            }
+            OLLAMA_LLM_EFFECT_RECEIPT_RECORD => {
+                let receipt = decode_ollama_llm_effect_receipt_fields(&fields)?;
+                seen_receipt_hashes.push(receipt.receipt_hash);
+            }
+            OLLAMA_JUDGMENT_PROOF_RECORD => {
+                let event = decode_ollama_judgment_proof_event_fields(&fields)?;
+                let actual_proof_event_seq = last_control_event_seq
+                    .checked_add(1)
+                    .filter(|seq| *seq != 0)
+                    .ok_or(OllamaError::InvalidReplay)?;
+                if event.proof_event_seq != actual_proof_event_seq
+                    || !seen_receipt_hashes.contains(&event.receipt_hash)
+                {
+                    return Err(OllamaError::InvalidReplay);
+                }
+                verified += 1;
+            }
+            _ => {}
+        }
+    }
+
+    if verified == 0 {
+        return Err(OllamaError::InvalidReplay);
+    }
+    Ok(verified)
+}
+
+pub fn verify_ollama_judgment_proof_events(
+    tlog: &TLog,
+    receipts: &[OllamaLlmEffectReceipt],
+    events: &[OllamaJudgmentProofEvent],
+) -> Result<usize, OllamaError> {
+    if events.is_empty() {
+        return Err(OllamaError::InvalidReplay);
+    }
+
+    for event in events {
+        if !receipts
+            .iter()
+            .copied()
+            .any(|receipt| event.matches_receipt(receipt, tlog))
+        {
+            return Err(OllamaError::InvalidReplay);
+        }
+    }
+
+    Ok(events.len())
+}
+
+pub fn verify_ollama_judgment_proof_events_ndjson(
+    path: impl AsRef<Path>,
+) -> Result<usize, OllamaError> {
+    let path = path.as_ref();
+    let tlog = load_tlog_ndjson(path).map_err(|_| OllamaError::InvalidReplay)?;
+    let receipts = load_ollama_llm_effect_receipts_ndjson(path)?;
+    let events = load_ollama_judgment_proof_events_ndjson(path)?;
+    let verified = verify_ollama_judgment_proof_events(&tlog, &receipts, &events)?;
+    if verify_ollama_judgment_proof_event_order_ndjson(path)? != verified {
+        return Err(OllamaError::InvalidReplay);
+    }
+    Ok(verified)
+}
+
 pub fn encode_ollama_llm_effect_receipt_ndjson(receipt: OllamaLlmEffectReceipt) -> String {
     let fields = [
         OLLAMA_LLM_EFFECT_RECEIPT_SCHEMA_VERSION,
         OLLAMA_LLM_EFFECT_RECEIPT_RECORD,
         receipt.provider_hash,
+        receipt.base_url_hash,
         receipt.model_id,
         receipt.request_hash,
         receipt.response_hash,
@@ -622,7 +1035,35 @@ pub fn encode_ollama_llm_effect_receipt_ndjson(receipt: OllamaLlmEffectReceipt) 
         receipt.command_hash,
         receipt.event_seq,
         receipt.event_hash,
+        receipt.proof_event_seq,
+        receipt.proof_hash,
         receipt.receipt_hash,
+    ];
+    let body = fields
+        .iter()
+        .map(u64::to_string)
+        .collect::<Vec<_>>()
+        .join(",");
+    format!("[{body}]")
+}
+
+pub fn encode_ollama_judgment_proof_event_ndjson(event: OllamaJudgmentProofEvent) -> String {
+    let fields = [
+        OLLAMA_JUDGMENT_PROOF_SCHEMA_VERSION,
+        OLLAMA_JUDGMENT_PROOF_RECORD,
+        event.proof_line_hash,
+        event.receipt_core_hash,
+        event.receipt_hash,
+        event.receipt_event_seq,
+        event.proof_event_seq,
+        event.receipt_event_hash,
+        event.base_url_hash,
+        event.model_id,
+        event.receipt_verified as u64,
+        event.tamper_rejected as u64,
+        event.endpoint_verified as u64,
+        event.phase_plan as u64,
+        event.proof_hash,
     ];
     let body = fields
         .iter()
@@ -641,31 +1082,79 @@ pub fn decode_ollama_llm_effect_receipt_ndjson(
 fn decode_ollama_llm_effect_receipt_fields(
     fields: &[u64],
 ) -> Result<OllamaLlmEffectReceipt, OllamaError> {
-    if fields.len() != 14
+    let receipt = decode_ollama_llm_effect_receipt_fields_unchecked(fields)?;
+    receipt
+        .is_valid()
+        .then_some(receipt)
+        .ok_or(OllamaError::InvalidReceipt)
+}
+
+fn decode_ollama_llm_effect_receipt_fields_unchecked(
+    fields: &[u64],
+) -> Result<OllamaLlmEffectReceipt, OllamaError> {
+    if fields.len() != 17
         || fields[0] != OLLAMA_LLM_EFFECT_RECEIPT_SCHEMA_VERSION
         || fields[1] != OLLAMA_LLM_EFFECT_RECEIPT_RECORD
     {
         return Err(OllamaError::InvalidReceiptRecord);
     }
 
-    let token_count = u32::try_from(fields[8]).map_err(|_| OllamaError::InvalidReceiptRecord)?;
+    let token_count = u32::try_from(fields[9]).map_err(|_| OllamaError::InvalidReceiptRecord)?;
     let receipt = OllamaLlmEffectReceipt {
         provider_hash: fields[2],
-        model_id: fields[3],
-        request_hash: fields[4],
-        response_hash: fields[5],
-        raw_response_hash: fields[6],
-        prompt_hash: fields[7],
+        base_url_hash: fields[3],
+        model_id: fields[4],
+        request_hash: fields[5],
+        response_hash: fields[6],
+        raw_response_hash: fields[7],
+        prompt_hash: fields[8],
         token_count,
-        payload_hash: fields[9],
-        command_hash: fields[10],
-        event_seq: fields[11],
-        event_hash: fields[12],
-        receipt_hash: fields[13],
+        payload_hash: fields[10],
+        command_hash: fields[11],
+        event_seq: fields[12],
+        event_hash: fields[13],
+        proof_event_seq: fields[14],
+        proof_hash: fields[15],
+        receipt_hash: fields[16],
     };
-    receipt
+    Ok(receipt)
+}
+
+pub fn decode_ollama_judgment_proof_event_ndjson(
+    line: &str,
+) -> Result<OllamaJudgmentProofEvent, OllamaError> {
+    decode_ollama_judgment_proof_event_fields(&parse_u64_fields(line)?)
+}
+
+fn decode_ollama_judgment_proof_event_fields(
+    fields: &[u64],
+) -> Result<OllamaJudgmentProofEvent, OllamaError> {
+    if fields.len() != 15
+        || fields[0] != OLLAMA_JUDGMENT_PROOF_SCHEMA_VERSION
+        || fields[1] != OLLAMA_JUDGMENT_PROOF_RECORD
+    {
+        return Err(OllamaError::InvalidReceiptRecord);
+    }
+
+    let event = OllamaJudgmentProofEvent {
+        proof_line_hash: fields[2],
+        receipt_core_hash: fields[3],
+        receipt_hash: fields[4],
+        receipt_event_seq: fields[5],
+        proof_event_seq: fields[6],
+        receipt_event_hash: fields[7],
+        base_url_hash: fields[8],
+        model_id: fields[9],
+        receipt_verified: fields[10] == 1,
+        tamper_rejected: fields[11] == 1,
+        endpoint_verified: fields[12] == 1,
+        phase_plan: fields[13] == 1,
+        proof_hash: fields[14],
+    };
+
+    event
         .is_valid()
-        .then_some(receipt)
+        .then_some(event)
         .ok_or(OllamaError::InvalidReceipt)
 }
 
@@ -685,6 +1174,30 @@ fn parse_u64_fields(line: &str) -> Result<Vec<u64>, OllamaError> {
                 .map_err(|_| OllamaError::InvalidReceiptRecord)
         })
         .collect()
+}
+
+fn load_ollama_llm_effect_receipts_ndjson_unchecked(
+    path: impl AsRef<Path>,
+) -> Result<Vec<OllamaLlmEffectReceipt>, OllamaError> {
+    let path = path.as_ref();
+    if !path.exists() {
+        return Ok(Vec::new());
+    }
+
+    let file = File::open(path)?;
+    let reader = BufReader::new(file);
+    let mut receipts = Vec::new();
+    for line in reader.lines() {
+        let line = line?;
+        if line.trim().is_empty() {
+            continue;
+        }
+        let fields = parse_u64_fields(&line)?;
+        if fields.len() >= 2 && fields[1] == OLLAMA_LLM_EFFECT_RECEIPT_RECORD {
+            receipts.push(decode_ollama_llm_effect_receipt_fields_unchecked(&fields)?);
+        }
+    }
+    Ok(receipts)
 }
 
 fn sync_parent_dir(path: &Path) -> Result<(), OllamaError> {

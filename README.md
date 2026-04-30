@@ -142,11 +142,18 @@ cargo run --example ollama_judgment
 This path runs:
 
 ```text
-agent runtime → observation → context → Ollama /v1/chat/completions → LlmRecord → Judgment gate
+agent runtime → observation → context → Ollama /v1/chat/completions → LlmRecord → Judgment gate → TLog receipt
 ```
 
 The adapter rejects non-local base URLs by default and uses the same
 `Evidence::JudgmentRecord` transition as the rest of the kernel.
+
+The executable path now persists a mixed `tlog.ndjson`: normal control-event
+lines remain replayable by `load_tlog_ndjson`, while the Ollama receipt line
+binds `provider`, `model_id`, `request_hash`, `response_hash`,
+`raw_response_hash`, `token_count`, `command_hash`, `event_seq`, and
+`event_hash`. `verify_ollama_llm_effect_receipts` then replays the receipt
+against the loaded control events.
 
 This is not a system that trades correctness for capability. The kernel
 boundary is a constitutional commitment. Intelligence grows above it.

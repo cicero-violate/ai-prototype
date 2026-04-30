@@ -21,11 +21,17 @@ pub use crate::capability::learning::{
     PolicyPromotion, POLICY_FEEDBACK_HASH, POLICY_PROMOTION_SOURCE_SEQ,
 };
 pub use crate::capability::llm::{
-    append_ollama_llm_effect_receipt_ndjson, decode_ollama_llm_effect_receipt_ndjson,
-    encode_ollama_llm_effect_receipt_ndjson, load_ollama_llm_effect_receipts_ndjson,
+    append_ollama_judgment_proof_event_ndjson, append_ollama_llm_effect_receipt_ndjson,
+    decode_ollama_judgment_proof_event_ndjson, decode_ollama_llm_effect_receipt_ndjson,
+    encode_ollama_judgment_proof_event_ndjson, encode_ollama_llm_effect_receipt_ndjson,
+    load_ollama_judgment_proof_events_ndjson, load_ollama_llm_effect_receipts_ndjson,
+    verify_ollama_judgment_proof_event_order_ndjson, verify_ollama_judgment_proof_events,
+    verify_ollama_judgment_proof_events_ndjson, verify_ollama_judgment_tlog_ndjson,
     verify_ollama_llm_effect_receipts, LlmDecision, LlmPromptRecord, LlmRecord,
     LlmResponseRecord, LlmStructuredAdapter, OllamaChatResponse, OllamaClient, OllamaConfig,
-    OllamaError, OllamaLlmCall, OllamaLlmEffectReceipt, OllamaMessage,
+    OllamaError, OllamaJudgmentProofEvent, OllamaLlmCall,
+    OllamaLlmEffectReceipt, OllamaMessage, OLLAMA_JUDGMENT_PROOF_LINE,
+    OLLAMA_JUDGMENT_PROOF_RECORD, OLLAMA_JUDGMENT_PROOF_SCHEMA_VERSION,
     OLLAMA_LLM_EFFECT_RECEIPT_RECORD, OLLAMA_LLM_EFFECT_RECEIPT_SCHEMA_VERSION,
     OLLAMA_PROVIDER,
 };
@@ -129,6 +135,56 @@ pub fn run() {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn tamper_first_ollama_receipt_field(
+        source: &std::path::Path,
+        target: &std::path::Path,
+        field_index: usize,
+    ) {
+        let input = std::fs::read_to_string(source).unwrap();
+        let mut output = String::new();
+        let mut changed = false;
+
+        for line in input.lines() {
+            let trimmed = line.trim();
+            let maybe_body = trimmed
+                .strip_prefix('[')
+                .and_then(|value| value.strip_suffix(']'));
+            if !changed {
+                if let Some(body) = maybe_body {
+                    let parsed = body
+                        .split(',')
+                        .map(|raw| raw.trim().parse::<u64>())
+                        .collect::<Result<Vec<_>, _>>();
+                    if let Ok(mut fields) = parsed {
+                        if fields.len() == 17
+                            && fields[0] == OLLAMA_LLM_EFFECT_RECEIPT_SCHEMA_VERSION
+                            && fields[1] == OLLAMA_LLM_EFFECT_RECEIPT_RECORD
+                            && field_index < fields.len()
+                        {
+                            fields[field_index] ^= 1;
+                            output.push('[');
+                            output.push_str(
+                                &fields
+                                    .iter()
+                                    .map(u64::to_string)
+                                    .collect::<Vec<_>>()
+                                    .join(","),
+                            );
+                            output.push_str("]\n");
+                            changed = true;
+                            continue;
+                        }
+                    }
+                }
+            }
+            output.push_str(line);
+            output.push('\n');
+        }
+
+        assert!(changed);
+        std::fs::write(target, output).unwrap();
+    }
 
     #[test]
     fn ready_state_converges_to_done() {
@@ -619,12 +675,13 @@ mod tests {
             .copied()
             .unwrap();
         let receipt = call
-            .receipt_for_event(envelope.command_hash, &persisted_event)
+            .receipt_for_configured_event(client.config(), envelope.command_hash, &persisted_event)
             .unwrap();
 
         assert!(receipt.is_valid());
         assert!(receipt.replay_verified(&tlog));
         assert_eq!(receipt.provider_hash, crate::capability::llm::ollama::hash_text(OLLAMA_PROVIDER));
+        assert_eq!(receipt.base_url_hash, client.config().base_url_id());
         assert_eq!(receipt.model_id, client.config().model_id());
         assert_eq!(receipt.request_hash, call.request_hash);
         assert_eq!(receipt.response_hash, call.response_hash);
@@ -657,6 +714,582 @@ mod tests {
         tampered.response_hash ^= 1;
         assert!(!tampered.is_valid());
         assert!(!tampered.replay_verified(&loaded_tlog));
+    }
+
+
+    #[test]
+    fn ollama_judgment_final_proof_persists_as_verification_event() {
+        let mut state = State::default();
+        state.phase = Phase::Judgment;
+        state.gates.invariant = Gate::pass(Evidence::InvariantProof);
+        state.gates.analysis = Gate::pass(Evidence::AnalysisReport);
+
+        let mut memory = MemoryIndex::default();
+        assert!(memory.insert(MemoryFact::new(state.packet.objective_id, 0xfeed, 7, 1)));
+        let lookup = memory.lookup(state.packet.objective_id, 8);
+        let context = ContextRecord::from_packet_memory(state.packet, 0xabc, &lookup);
+        let policy = PolicyStore::default();
+        let client = OllamaClient::new(OllamaConfig::default()).unwrap();
+        let call = client
+            .call_from_response_body(
+                &context,
+                &policy,
+                "{\"id\":\"chatcmpl-1\",\"object\":\"chat.completion\",\"choices\":[{\"index\":0,\"message\":{\"role\":\"assistant\",\"content\":\"Durably persist the final proof line.\"},\"finish_reason\":\"stop\"}],\"usage\":{\"prompt_tokens\":30,\"completion_tokens\":8,\"total_tokens\":38}}",
+            )
+            .unwrap();
+        let envelope = CommandEnvelope::new(
+            call.request_hash,
+            crate::api::protocol::Command::SubmitEvidence(call.submission()),
+        );
+
+        let mut tlog = Vec::new();
+        crate::api::routes::handle_envelope(&mut state, &mut tlog, RuntimeConfig::default(), envelope.clone())
+            .unwrap();
+        let persisted_event = tlog
+            .iter()
+            .find(|event| {
+                event.kind == EventKind::Persisted
+                    && event.evidence == Evidence::JudgmentRecord
+                    && event.api_command_hash == envelope.command_hash
+            })
+            .copied()
+            .unwrap();
+        let base_receipt = call
+            .receipt_for_configured_event(client.config(), envelope.command_hash, &persisted_event)
+            .unwrap();
+
+        let (receipt, proof_event) = OllamaJudgmentProofEvent::finalize_receipt_after_tlog(
+            base_receipt,
+            &tlog,
+            true,
+            true,
+            base_receipt.base_url_provenance_verified(client.config()),
+            state.phase == Phase::Plan,
+        )
+        .unwrap();
+        assert!(receipt.has_proof_binding());
+        assert_eq!(receipt.proof_hash, proof_event.proof_hash);
+        assert_eq!(
+            proof_event.proof_line_hash,
+            crate::capability::llm::ollama::hash_text(OLLAMA_JUDGMENT_PROOF_LINE)
+        );
+        assert!(proof_event.matches_receipt(receipt, &tlog));
+
+        let encoded = encode_ollama_judgment_proof_event_ndjson(proof_event);
+        let decoded = decode_ollama_judgment_proof_event_ndjson(&encoded).unwrap();
+        assert_eq!(decoded, proof_event);
+
+        let path = std::env::temp_dir().join(format!(
+            "ai-ollama-proof-tlog-{}-{}.ndjson",
+            std::process::id(),
+            proof_event.proof_hash
+        ));
+        std::fs::remove_file(&path).ok();
+        write_tlog_ndjson(&path, &tlog).unwrap();
+        append_ollama_llm_effect_receipt_ndjson(&path, &receipt).unwrap();
+        append_ollama_judgment_proof_event_ndjson(&path, &proof_event).unwrap();
+
+        let loaded_tlog = load_tlog_ndjson(&path).unwrap();
+        let loaded_receipts = load_ollama_llm_effect_receipts_ndjson(&path).unwrap();
+        let loaded_proofs = load_ollama_judgment_proof_events_ndjson(&path).unwrap();
+        std::fs::remove_file(&path).ok();
+
+        assert_eq!(loaded_tlog, tlog);
+        assert_eq!(loaded_receipts, vec![receipt]);
+        assert_eq!(loaded_proofs, vec![proof_event]);
+        assert_eq!(
+            verify_ollama_judgment_proof_events(&loaded_tlog, &loaded_receipts, &loaded_proofs)
+                .unwrap(),
+            1
+        );
+    }
+
+    #[test]
+    fn ollama_receipt_and_proof_hash_are_bidirectionally_bound() {
+        let mut state = State::default();
+        state.phase = Phase::Judgment;
+        state.gates.invariant = Gate::pass(Evidence::InvariantProof);
+        state.gates.analysis = Gate::pass(Evidence::AnalysisReport);
+
+        let mut memory = MemoryIndex::default();
+        assert!(memory.insert(MemoryFact::new(state.packet.objective_id, 0xfeed, 7, 1)));
+        let lookup = memory.lookup(state.packet.objective_id, 8);
+        let context = ContextRecord::from_packet_memory(state.packet, 0xabc, &lookup);
+        let policy = PolicyStore::default();
+        let client = OllamaClient::new(OllamaConfig::default()).unwrap();
+        let call = client
+            .call_from_response_body(
+                &context,
+                &policy,
+                "{\"id\":\"chatcmpl-1\",\"object\":\"chat.completion\",\"choices\":[{\"index\":0,\"message\":{\"role\":\"assistant\",\"content\":\"Bind receipt and proof hashes both ways.\"},\"finish_reason\":\"stop\"}],\"usage\":{\"prompt_tokens\":30,\"completion_tokens\":8,\"total_tokens\":38}}",
+            )
+            .unwrap();
+        let envelope = CommandEnvelope::new(
+            call.request_hash,
+            crate::api::protocol::Command::SubmitEvidence(call.submission()),
+        );
+
+        let mut tlog = Vec::new();
+        crate::api::routes::handle_envelope(&mut state, &mut tlog, RuntimeConfig::default(), envelope.clone())
+            .unwrap();
+        let persisted_event = tlog
+            .iter()
+            .find(|event| {
+                event.kind == EventKind::Persisted
+                    && event.evidence == Evidence::JudgmentRecord
+                    && event.api_command_hash == envelope.command_hash
+            })
+            .copied()
+            .unwrap();
+        let base_receipt = call
+            .receipt_for_configured_event(client.config(), envelope.command_hash, &persisted_event)
+            .unwrap();
+
+        assert!(!base_receipt.has_proof_binding());
+        let (receipt, proof_event) = OllamaJudgmentProofEvent::finalize_receipt_after_tlog(
+            base_receipt,
+            &tlog,
+            true,
+            true,
+            base_receipt.base_url_provenance_verified(client.config()),
+            state.phase == Phase::Plan,
+        )
+        .unwrap();
+
+        assert!(receipt.has_proof_binding());
+        assert_eq!(receipt.proof_hash, proof_event.proof_hash);
+        assert_ne!(receipt.receipt_hash, base_receipt.receipt_hash);
+        assert!(proof_event.matches_receipt(receipt, &tlog));
+
+        let mut tampered_receipt = receipt;
+        tampered_receipt.proof_hash ^= 1;
+        assert!(!tampered_receipt.is_valid());
+        assert!(!proof_event.matches_receipt(tampered_receipt, &tlog));
+
+        let mut tampered_proof = proof_event;
+        tampered_proof.proof_hash ^= 1;
+        assert!(!tampered_proof.is_valid());
+
+        let mut mismatched_proof = proof_event;
+        mismatched_proof.receipt_hash ^= 1;
+        assert!(mismatched_proof.is_valid());
+        assert!(!mismatched_proof.matches_receipt(receipt, &tlog));
+    }
+
+
+    #[test]
+    fn ollama_receipt_hash_binds_proof_event_sequence_ordering() {
+        let mut state = State::default();
+        state.phase = Phase::Judgment;
+        state.gates.invariant = Gate::pass(Evidence::InvariantProof);
+        state.gates.analysis = Gate::pass(Evidence::AnalysisReport);
+
+        let mut memory = MemoryIndex::default();
+        assert!(memory.insert(MemoryFact::new(state.packet.objective_id, 0xfeed, 7, 1)));
+        let lookup = memory.lookup(state.packet.objective_id, 8);
+        let context = ContextRecord::from_packet_memory(state.packet, 0xabc, &lookup);
+        let policy = PolicyStore::default();
+        let client = OllamaClient::new(OllamaConfig::default()).unwrap();
+        let call = client
+            .call_from_response_body(
+                &context,
+                &policy,
+                "{\"id\":\"chatcmpl-1\",\"object\":\"chat.completion\",\"choices\":[{\"index\":0,\"message\":{\"role\":\"assistant\",\"content\":\"Bind proof event sequence into the receipt hash.\"},\"finish_reason\":\"stop\"}],\"usage\":{\"prompt_tokens\":30,\"completion_tokens\":8,\"total_tokens\":38}}",
+            )
+            .unwrap();
+        let envelope = CommandEnvelope::new(
+            call.request_hash,
+            crate::api::protocol::Command::SubmitEvidence(call.submission()),
+        );
+
+        let mut tlog = Vec::new();
+        crate::api::routes::handle_envelope(&mut state, &mut tlog, RuntimeConfig::default(), envelope.clone())
+            .unwrap();
+        let persisted_event = tlog
+            .iter()
+            .find(|event| {
+                event.kind == EventKind::Persisted
+                    && event.evidence == Evidence::JudgmentRecord
+                    && event.api_command_hash == envelope.command_hash
+            })
+            .copied()
+            .unwrap();
+        let base_receipt = call
+            .receipt_for_configured_event(client.config(), envelope.command_hash, &persisted_event)
+            .unwrap();
+
+        assert_eq!(base_receipt.proof_event_seq, 0);
+        let base_hash = base_receipt.receipt_hash;
+        let (receipt, proof_event) = OllamaJudgmentProofEvent::finalize_receipt_after_tlog(
+            base_receipt,
+            &tlog,
+            true,
+            true,
+            base_receipt.base_url_provenance_verified(client.config()),
+            state.phase == Phase::Plan,
+        )
+        .unwrap();
+
+        assert_eq!(receipt.proof_event_seq, proof_event.proof_event_seq);
+        assert_eq!(
+            receipt.proof_event_seq,
+            tlog.last().map(|event| event.seq + 1).unwrap()
+        );
+        assert!(receipt.proof_event_seq > receipt.event_seq);
+        assert_ne!(receipt.receipt_hash, base_hash);
+        assert!(proof_event.matches_receipt(receipt, &tlog));
+
+        let mut tampered_receipt = receipt;
+        tampered_receipt.proof_event_seq ^= 1;
+        assert!(!tampered_receipt.is_valid());
+        assert!(!proof_event.matches_receipt(tampered_receipt, &tlog));
+
+        let mut tampered_proof = proof_event;
+        tampered_proof.proof_event_seq ^= 1;
+        assert!(!tampered_proof.is_valid());
+
+        let mut mismatched_proof = proof_event;
+        mismatched_proof.proof_event_seq = mismatched_proof.proof_event_seq.saturating_add(1);
+        assert!(!mismatched_proof.is_valid());
+        assert!(!mismatched_proof.matches_receipt(receipt, &tlog));
+    }
+
+    #[test]
+    fn ollama_proof_replay_rejects_displaced_proof_event_sequence() {
+        let mut state = State::default();
+        state.phase = Phase::Judgment;
+        state.gates.invariant = Gate::pass(Evidence::InvariantProof);
+        state.gates.analysis = Gate::pass(Evidence::AnalysisReport);
+
+        let mut memory = MemoryIndex::default();
+        assert!(memory.insert(MemoryFact::new(state.packet.objective_id, 0xfeed, 7, 1)));
+        let lookup = memory.lookup(state.packet.objective_id, 8);
+        let context = ContextRecord::from_packet_memory(state.packet, 0xabc, &lookup);
+        let policy = PolicyStore::default();
+        let client = OllamaClient::new(OllamaConfig::default()).unwrap();
+        let call = client
+            .call_from_response_body(
+                &context,
+                &policy,
+                "{\"id\":\"chatcmpl-1\",\"object\":\"chat.completion\",\"choices\":[{\"index\":0,\"message\":{\"role\":\"assistant\",\"content\":\"Reject displaced proof ordering.\"},\"finish_reason\":\"stop\"}],\"usage\":{\"prompt_tokens\":30,\"completion_tokens\":8,\"total_tokens\":38}}",
+            )
+            .unwrap();
+        let envelope = CommandEnvelope::new(
+            call.request_hash,
+            crate::api::protocol::Command::SubmitEvidence(call.submission()),
+        );
+
+        let mut tlog = Vec::new();
+        crate::api::routes::handle_envelope(&mut state, &mut tlog, RuntimeConfig::default(), envelope.clone())
+            .unwrap();
+        let persisted_event = tlog
+            .iter()
+            .find(|event| {
+                event.kind == EventKind::Persisted
+                    && event.evidence == Evidence::JudgmentRecord
+                    && event.api_command_hash == envelope.command_hash
+            })
+            .copied()
+            .unwrap();
+        let base_receipt = call
+            .receipt_for_configured_event(client.config(), envelope.command_hash, &persisted_event)
+            .unwrap();
+        let (receipt, proof_event) = OllamaJudgmentProofEvent::finalize_receipt_after_tlog(
+            base_receipt,
+            &tlog,
+            true,
+            true,
+            base_receipt.base_url_provenance_verified(client.config()),
+            state.phase == Phase::Plan,
+        )
+        .unwrap();
+
+        let valid_path = std::env::temp_dir().join(format!(
+            "ai-ollama-proof-order-valid-{}-{}.ndjson",
+            std::process::id(),
+            proof_event.proof_hash
+        ));
+        let displaced_path = valid_path.with_file_name(format!(
+            "ai-ollama-proof-order-displaced-{}-{}.ndjson",
+            std::process::id(),
+            proof_event.proof_hash
+        ));
+        std::fs::remove_file(&valid_path).ok();
+        std::fs::remove_file(&displaced_path).ok();
+
+        write_tlog_ndjson(&valid_path, &tlog).unwrap();
+        append_ollama_llm_effect_receipt_ndjson(&valid_path, &receipt).unwrap();
+        append_ollama_judgment_proof_event_ndjson(&valid_path, &proof_event).unwrap();
+        assert_eq!(
+            verify_ollama_judgment_proof_events_ndjson(&valid_path).unwrap(),
+            1
+        );
+
+        write_tlog_ndjson(&displaced_path, &tlog).unwrap();
+        append_ollama_llm_effect_receipt_ndjson(&displaced_path, &receipt).unwrap();
+        {
+            use std::io::Write as _;
+
+            let mut displaced_event = persisted_event;
+            displaced_event.seq = receipt.proof_event_seq;
+            let mut file = std::fs::OpenOptions::new()
+                .append(true)
+                .open(&displaced_path)
+                .unwrap();
+            writeln!(
+                file,
+                "{}",
+                crate::codec::ndjson::encode_control_event_ndjson(&displaced_event)
+            )
+            .unwrap();
+            file.sync_all().unwrap();
+        }
+        append_ollama_judgment_proof_event_ndjson(&displaced_path, &proof_event).unwrap();
+
+        assert!(matches!(
+            verify_ollama_judgment_proof_events_ndjson(&displaced_path),
+            Err(OllamaError::InvalidReplay)
+        ));
+
+        std::fs::remove_file(&valid_path).ok();
+        std::fs::remove_file(&displaced_path).ok();
+    }
+
+    #[test]
+    fn ollama_receipt_proves_configured_local_endpoint_provenance() {
+        let mut state = State::default();
+        state.phase = Phase::Judgment;
+        state.gates.invariant = Gate::pass(Evidence::InvariantProof);
+        state.gates.analysis = Gate::pass(Evidence::AnalysisReport);
+
+        let mut memory = MemoryIndex::default();
+        assert!(memory.insert(MemoryFact::new(state.packet.objective_id, 0xfeed, 7, 1)));
+        let lookup = memory.lookup(state.packet.objective_id, 8);
+        let context = ContextRecord::from_packet_memory(state.packet, 0xabc, &lookup);
+        let policy = PolicyStore::default();
+        let client = OllamaClient::new(OllamaConfig::default()).unwrap();
+        let config = client.config().clone();
+        let call = client
+            .call_from_response_body(
+                &context,
+                &policy,
+                "{\"id\":\"chatcmpl-1\",\"object\":\"chat.completion\",\"choices\":[{\"index\":0,\"message\":{\"role\":\"assistant\",\"content\":\"Bind the endpoint provenance.\"},\"finish_reason\":\"stop\"}],\"usage\":{\"prompt_tokens\":30,\"completion_tokens\":8,\"total_tokens\":38}}",
+            )
+            .unwrap();
+        let envelope = CommandEnvelope::new(
+            call.request_hash,
+            crate::api::protocol::Command::SubmitEvidence(call.submission()),
+        );
+
+        let mut tlog = Vec::new();
+        crate::api::routes::handle_envelope(&mut state, &mut tlog, RuntimeConfig::default(), envelope.clone())
+            .unwrap();
+        let persisted_event = tlog
+            .iter()
+            .find(|event| {
+                event.kind == EventKind::Persisted
+                    && event.evidence == Evidence::JudgmentRecord
+                    && event.api_command_hash == envelope.command_hash
+            })
+            .copied()
+            .unwrap();
+        let receipt = call
+            .receipt_for_configured_event(&config, envelope.command_hash, &persisted_event)
+            .unwrap();
+
+        assert!(config.validate().is_ok());
+        assert!(call.base_url_provenance_verified(&config));
+        assert_eq!(call.base_url_hash, config.base_url_id());
+        assert_eq!(receipt.base_url_hash, config.base_url_id());
+        assert!(receipt.base_url_provenance_verified(&config));
+
+        let wrong_local_endpoint = OllamaConfig {
+            base_url: "http://127.0.0.1:11435/v1".to_string(),
+            model: config.model.clone(),
+            timeout_ms: config.timeout_ms,
+        };
+        assert!(wrong_local_endpoint.validate().is_ok());
+        assert!(!call.base_url_provenance_verified(&wrong_local_endpoint));
+        assert!(call
+            .receipt_for_configured_event(
+                &wrong_local_endpoint,
+                envelope.command_hash,
+                &persisted_event
+            )
+            .is_none());
+        assert_ne!(receipt.base_url_hash, wrong_local_endpoint.base_url_id());
+        assert!(!receipt.base_url_provenance_verified(&wrong_local_endpoint));
+
+        let wrong_model = OllamaConfig {
+            base_url: config.base_url.clone(),
+            model: "qwen2.5-coder:14b".to_string(),
+            timeout_ms: config.timeout_ms,
+        };
+        assert!(wrong_model.validate().is_ok());
+        assert!(!call.base_url_provenance_verified(&wrong_model));
+        assert!(call
+            .receipt_for_configured_event(&wrong_model, envelope.command_hash, &persisted_event)
+            .is_none());
+        assert_eq!(receipt.base_url_hash, wrong_model.base_url_id());
+        assert!(!receipt.base_url_provenance_verified(&wrong_model));
+
+        let non_local_endpoint = OllamaConfig {
+            base_url: "https://example.com/v1".to_string(),
+            model: config.model,
+            timeout_ms: config.timeout_ms,
+        };
+        assert!(non_local_endpoint.validate().is_err());
+        assert!(!call.base_url_provenance_verified(&non_local_endpoint));
+        assert!(call
+            .receipt_for_configured_event(
+                &non_local_endpoint,
+                envelope.command_hash,
+                &persisted_event
+            )
+            .is_none());
+        assert!(!receipt.base_url_provenance_verified(&non_local_endpoint));
+    }
+
+    #[test]
+    fn ollama_receipt_construction_rejects_non_local_endpoint_before_receipt() {
+        let mut state = State::default();
+        state.phase = Phase::Judgment;
+        state.gates.invariant = Gate::pass(Evidence::InvariantProof);
+        state.gates.analysis = Gate::pass(Evidence::AnalysisReport);
+
+        let mut memory = MemoryIndex::default();
+        assert!(memory.insert(MemoryFact::new(state.packet.objective_id, 0xfeed, 7, 1)));
+        let lookup = memory.lookup(state.packet.objective_id, 8);
+        let context = ContextRecord::from_packet_memory(state.packet, 0xabc, &lookup);
+        let policy = PolicyStore::default();
+        let client = OllamaClient::new(OllamaConfig::default()).unwrap();
+        let call = client
+            .call_from_response_body(
+                &context,
+                &policy,
+                "{\"id\":\"chatcmpl-1\",\"object\":\"chat.completion\",\"choices\":[{\"index\":0,\"message\":{\"role\":\"assistant\",\"content\":\"Reject non-local provenance before receipt.\"},\"finish_reason\":\"stop\"}],\"usage\":{\"prompt_tokens\":30,\"completion_tokens\":8,\"total_tokens\":38}}",
+            )
+            .unwrap();
+        let envelope = CommandEnvelope::new(
+            call.request_hash,
+            crate::api::protocol::Command::SubmitEvidence(call.submission()),
+        );
+
+        let mut tlog = Vec::new();
+        crate::api::routes::handle_envelope(&mut state, &mut tlog, RuntimeConfig::default(), envelope.clone())
+            .unwrap();
+        let persisted_event = tlog
+            .iter()
+            .find(|event| {
+                event.kind == EventKind::Persisted
+                    && event.evidence == Evidence::JudgmentRecord
+                    && event.api_command_hash == envelope.command_hash
+            })
+            .copied()
+            .unwrap();
+
+        let local_config = client.config().clone();
+        assert!(call
+            .receipt_for_configured_event(&local_config, envelope.command_hash, &persisted_event)
+            .is_some());
+
+        let non_local_endpoint = OllamaConfig {
+            base_url: "http://192.168.1.2:11434/v1".to_string(),
+            model: local_config.model,
+            timeout_ms: local_config.timeout_ms,
+        };
+        assert!(non_local_endpoint.validate().is_err());
+        assert!(!call.base_url_provenance_verified(&non_local_endpoint));
+        assert!(call
+            .receipt_for_configured_event(
+                &non_local_endpoint,
+                envelope.command_hash,
+                &persisted_event
+            )
+            .is_none());
+    }
+
+    #[test]
+    fn ollama_judgment_tlog_rejects_each_critical_receipt_field_tamper() {
+        let mut state = State::default();
+        state.phase = Phase::Judgment;
+        state.gates.invariant = Gate::pass(Evidence::InvariantProof);
+        state.gates.analysis = Gate::pass(Evidence::AnalysisReport);
+
+        let mut memory = MemoryIndex::default();
+        assert!(memory.insert(MemoryFact::new(state.packet.objective_id, 0xfeed, 7, 1)));
+        let lookup = memory.lookup(state.packet.objective_id, 8);
+        let context = ContextRecord::from_packet_memory(state.packet, 0xabc, &lookup);
+        let policy = PolicyStore::default();
+        let client = OllamaClient::new(OllamaConfig::default()).unwrap();
+        let call = client
+            .call_from_response_body(
+                &context,
+                &policy,
+                "{\"id\":\"chatcmpl-1\",\"object\":\"chat.completion\",\"choices\":[{\"index\":0,\"message\":{\"role\":\"assistant\",\"content\":\"Persist this external llm receipt.\"},\"finish_reason\":\"stop\"}],\"usage\":{\"prompt_tokens\":30,\"completion_tokens\":8,\"total_tokens\":38}}",
+            )
+            .unwrap();
+        let envelope = CommandEnvelope::new(
+            call.request_hash,
+            crate::api::protocol::Command::SubmitEvidence(call.submission()),
+        );
+
+        let mut tlog = Vec::new();
+        crate::api::routes::handle_envelope(&mut state, &mut tlog, RuntimeConfig::default(), envelope.clone())
+            .unwrap();
+        let persisted_event = tlog
+            .iter()
+            .find(|event| {
+                event.kind == EventKind::Persisted
+                    && event.evidence == Evidence::JudgmentRecord
+                    && event.api_command_hash == envelope.command_hash
+            })
+            .copied()
+            .unwrap();
+        let receipt = call
+            .receipt_for_configured_event(client.config(), envelope.command_hash, &persisted_event)
+            .unwrap();
+
+        let path = std::env::temp_dir().join(format!(
+            "ollama_judgment-{}-{}.tlog.ndjson",
+            std::process::id(),
+            receipt.receipt_hash
+        ));
+        std::fs::remove_file(&path).ok();
+
+        write_tlog_ndjson(&path, &tlog).unwrap();
+        append_ollama_llm_effect_receipt_ndjson(&path, &receipt).unwrap();
+        assert_eq!(verify_ollama_judgment_tlog_ndjson(&path).unwrap(), 1);
+
+        for (field_name, field_index) in [
+            ("provider", 2usize),
+            ("base_url", 3usize),
+            ("model", 4usize),
+            ("request_hash", 5usize),
+            ("response_hash", 6usize),
+            ("raw_response_hash", 7usize),
+            ("proof_event_seq", 14usize),
+            ("proof_hash", 15usize),
+            ("receipt_hash", 16usize),
+        ] {
+            let tampered_path = path.with_file_name(format!(
+                "ollama_judgment-{}-{}-{field_name}.tampered.tlog.ndjson",
+                std::process::id(),
+                receipt.receipt_hash
+            ));
+            std::fs::remove_file(&tampered_path).ok();
+            tamper_first_ollama_receipt_field(&path, &tampered_path, field_index);
+            assert!(
+                matches!(
+                    verify_ollama_judgment_tlog_ndjson(&tampered_path),
+                    Err(OllamaError::InvalidReplay)
+                ),
+                "field {field_name} tamper should be rejected"
+            );
+            std::fs::remove_file(&tampered_path).ok();
+        }
+
+        std::fs::remove_file(&path).ok();
     }
 
     #[test]
