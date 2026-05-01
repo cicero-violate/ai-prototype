@@ -149,6 +149,8 @@ generic_llm_verification_proof_projection = validated_by_cargo_test
 generic_verification_proof_binding_checker = validated_by_cargo_test
 generic_artifact_effect_verification_proof_projection = validated_by_cargo_test
 generic_process_effect_verification_proof_projection = validated_by_cargo_test
+generic_verification_proof_subject_adapter = pending_local_validation
+generic_policy_effect_verification_proof_projection = pending_local_validation
 generic_verification_proof_replay_enforcement = validated_by_cargo_test
 generic_verification_proof_order_ndjson = validated_by_cargo_test
 generic_verification_proof_replay_ndjson = validated_by_cargo_test
@@ -280,13 +282,13 @@ Validated proof replay delta: `verify_verification_proof_record_replay`, `verify
 
 Validated semantic-debt delta: `codec::ndjson` enum decoders now use canonical tag tables plus one `enum_from_u64` lookup helper instead of repeated match forests. `capability::llm::ollama` now also shares mixed-record NDJSON append/load helpers and splits JSON escaping into character and sequence helpers. These moves reduced duplicate branch signatures in the rustc graph capture while preserving every existing numeric tag, record schema, request JSON byte behavior, and failure path.
 
-Pending semantic-debt delta: `runtime::verify::verify_tlog_from` is split into replay-shape, hash-link, API-command, registry-projection, continuity, semantic-delta, self-hash, writer-identity, and expected-outcome helpers. This should lower replay-loop branch density while preserving hash-chain, semantic-delta, reducer, evidence-submission, and writer identity behavior. This patch is not yet counted in the score until local cargo validation confirms behavior and graph movement.
+Pending semantic-debt delta: the generic proof spine now has a first-class `GenericVerificationProofSubject` adapter. Artifact, process, and Ollama proof projection route through the shared subject shape before `VerificationProofRecord` construction, and policy promotion now has a `PolicyProofReceipt` surface that projects `ProofSubjectKind::PolicyEffect` into the same binding/replay checker. This patch is not yet counted in the score until local cargo validation confirms behavior and graph movement.
 
 ## Highest Leverage Next Work
 
 1. **Validate the tooling receipt NDJSON parser collapse.** Run the local cargo/build/example loop and compare `ρ=328` against the next graph capture.
 2. **Add an eval-backed semantic debt gate.** Fail or warn when `ρ_next > ρ_prev` without an explicit justification record, because the validated replay-loop split proved that readability splits can increase graph debt.
-3. **Canonicalize one execution normal form.** Collapse artifact, process, LLM, observation, and proof outputs into one universal path: `request → authorize → execute → Effect { kind, digest, metadata } → receipt → proof → TLog → replay`.
+3. **Validate the generic proof-subject adapter.** Confirm artifact, process, Ollama, and policy proof projections all pass through `GenericVerificationProofSubject -> VerificationProofRecord -> mixed NDJSON replay`.
 4. **Extend generic proof records into semantic verification and observation ingress.** Apply the same `VerificationProofRecord` replay checker to semantic verifier receipts, observation ingress batches, and future providers.
 5. **Add provider response streaming validation.** The current path validates the completed local response body, but streaming chunks are not yet typed, bounded, hashed, or replayed.
 6. **Do not expand the kernel.** Preserve the frozen kernel; put live intelligence, external semantics, and learning pressure in capabilities and policy.
@@ -298,15 +300,15 @@ objective_rating = ARCH = 6.95 / 10
 system_level = deterministic evidence runtime with bounded local sandbox execution, validated durable local Ollama retry-budget proofs, validated bounded file observation ingress, validated observation API routing, validated tool/process proof projection, validated generic proof replay enforcement, validated reduced-coupling runtime event verification, validated semantic-diff split, validated table-driven NDJSON decoding, validated Ollama mixed-record helper collapse, validated Ollama JSON escaping split, and validated runtime replay-loop split
 best_property = kernel/runtime replay discipline plus split, receipted file/process/LLM effects, validated Ollama receipt/proof binding, generic proof replay hardening, and measurable graph-debt reduction from 621 to 328
 weakest_property = observation remains file-backed and not connected to live external streams; graph debt is lower than peak but still nontrivial at 328 redundant path pairs, and the latest validated split increased graph redundancy by two
-next_score_unlock = validate tooling receipt NDJSON parser collapse + add semantic debt eval gate + reduce redundant paths below 300 + semantic/observation proof records + universal execution normal form
+next_score_unlock = validate generic proof-subject adapter + add semantic debt eval gate + reduce redundant paths below 300 + semantic/observation proof records + universal execution normal form
 ```
 
-## Pending Patch: Tooling Receipt NDJSON Parser Collapse
+## Pending Patch: Generic Proof-Subject Adapter
 
 ```text
-target = capability::tooling::record::{receipt,process}
-change = duplicated `[u64,...]` parser/header branches → shared parse_u64_ndjson_fields + validate_u64_ndjson_header helpers
-expected_effect = lower tooling receipt decoder branch duplication without changing schema versions, record tags, numeric fields, or invalid-record behavior
+target = capability::verification::proof + capability::{tooling,llm,policy}
+change = provider-local proof constructors → GenericVerificationProofSubject adapter before VerificationProofRecord construction
+expected_effect = artifact/process/LLM/policy proof surfaces share one proof-subject normal form without changing existing record tags or replay rules
 validation_status = pending cargo build/test/example
 ```
 

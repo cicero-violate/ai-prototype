@@ -239,6 +239,15 @@ proof-record NDJSON/replay machinery, while preserving the same public
 `capability::verification::*` exports and compatibility re-exports under
 `capability::verification::record::*`.
 
+Current pending proof-spine patch: `GenericVerificationProofSubject` now
+canonicalizes the reusable proof subject shape before
+`VerificationProofRecord` construction. Artifact, process, and Ollama proof
+projection now pass through that shared subject adapter, and policy promotion
+can be represented as `ProofSubjectKind::PolicyEffect` through
+`PolicyProofReceipt`. The added policy test projects a promoted policy entry
+into the same mixed-NDJSON replay checker. This patch still requires local cargo
+validation before it should be counted as a validated README status claim.
+
 The validated semantic-debt reduction passes decomposed
 `runtime::verify::validate_event`, `runtime::diff::semantic_diff`, and
 `codec::ndjson` enum decoding into smaller single-purpose surfaces. This

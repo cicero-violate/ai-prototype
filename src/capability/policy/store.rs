@@ -7,6 +7,10 @@ use std::path::Path;
 use crate::capability::learning::{
     PolicyPromotion, POLICY_FEEDBACK_HASH, POLICY_PROMOTION_SOURCE_SEQ,
 };
+use crate::capability::verification::{
+    GenericVerificationProofSubject, ProofSubjectKind, VerificationProofBinding,
+    VerificationProofRecord, PROOF_FLAGS_REQUIRED,
+};
 use crate::kernel::mix;
 
 const POLICY_SCHEMA_VERSION: u64 = 1;
@@ -14,11 +18,20 @@ const POLICY_RECORD_ENTRY: u64 = 1;
 const POLICY_KEY_PROMOTION_SOURCE_SEQ: u64 = 1;
 const POLICY_KEY_FEEDBACK_HASH: u64 = 2;
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct PolicyEntry {
     pub version: u64,
     pub key: &'static str,
     pub value: u64,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct PolicyProofReceipt {
+    pub entry: PolicyEntry,
+    pub policy_store_hash: u64,
+    pub receipt_event_seq: u64,
+    pub receipt_event_hash: u64,
+    pub receipt_hash: u64,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -197,6 +210,125 @@ impl PolicyStore {
 
     pub fn entries(&self) -> &[PolicyEntry] {
         &self.entries
+    }
+}
+
+impl PolicyProofReceipt {
+    pub fn new(
+        entry: PolicyEntry,
+        policy_store_hash: u64,
+        receipt_event_seq: u64,
+        receipt_event_hash: u64,
+    ) -> Option<Self> {
+        let mut receipt = Self {
+            entry,
+            policy_store_hash,
+            receipt_event_seq,
+            receipt_event_hash,
+            receipt_hash: 0,
+        };
+        receipt.receipt_hash = receipt.expected_receipt_hash()?;
+        receipt.is_valid().then_some(receipt)
+    }
+
+    pub fn is_valid(self) -> bool {
+        self.entry_hash().is_some()
+            && self.policy_store_hash != 0
+            && self.receipt_event_seq != 0
+            && self.receipt_event_hash != 0
+            && self.receipt_hash != 0
+            && self.receipt_hash == self.expected_receipt_hash().unwrap_or(0)
+    }
+
+    pub fn entry_hash(self) -> Option<u64> {
+        let mut h = 0x504f_4c49_4359_454eu64;
+        h = mix(h, self.entry.version);
+        h = mix(h, key_to_id(self.entry.key).ok()?);
+        h = mix(h, self.entry.value);
+        Some(h.max(1))
+    }
+
+    pub fn receipt_core_hash(self) -> Option<u64> {
+        let mut h = 0x504f_4c49_4359_434fu64;
+        h = mix(h, self.entry_hash()?);
+        h = mix(h, self.policy_store_hash);
+        h = mix(h, self.receipt_event_seq);
+        h = mix(h, self.receipt_event_hash);
+        Some(h.max(1))
+    }
+
+    pub fn expected_receipt_hash(self) -> Option<u64> {
+        let mut h = 0x504f_4c49_4359_5243u64;
+        h = mix(h, self.receipt_core_hash()?);
+        h = mix(h, self.entry_hash()?);
+        h = mix(h, self.policy_store_hash);
+        Some(h.max(1))
+    }
+
+    pub fn verifier_context_hash(self) -> Option<u64> {
+        let mut h = 0x504f_4c49_4359_4354u64;
+        h = mix(h, ProofSubjectKind::PolicyEffect as u64);
+        h = mix(h, self.entry_hash()?);
+        h = mix(h, self.policy_store_hash);
+        Some(h.max(1))
+    }
+
+    pub fn provider_proof_hash(self, proof_event_seq: u64) -> Option<u64> {
+        if !self.is_valid() || proof_event_seq <= self.receipt_event_seq {
+            return None;
+        }
+
+        let mut h = 0x504f_4c49_4359_5052u64;
+        h = mix(h, self.receipt_core_hash()?);
+        h = mix(h, self.receipt_hash);
+        h = mix(h, self.receipt_event_hash);
+        h = mix(h, proof_event_seq);
+        h = mix(h, self.entry_hash()?);
+        Some(h.max(1))
+    }
+
+    pub fn proof_line_hash(self, proof_event_seq: u64) -> Option<u64> {
+        let mut h = 0x504f_4c49_4359_4c4eu64;
+        h = mix(h, self.receipt_core_hash()?);
+        h = mix(h, self.receipt_hash);
+        h = mix(h, self.receipt_event_seq);
+        h = mix(h, proof_event_seq);
+        h = mix(h, self.provider_proof_hash(proof_event_seq)?);
+        Some(h.max(1))
+    }
+
+    pub fn verification_proof_binding(
+        self,
+        proof_event_seq: u64,
+    ) -> Option<VerificationProofBinding> {
+        VerificationProofBinding::new(
+            ProofSubjectKind::PolicyEffect,
+            self.receipt_core_hash()?,
+            self.receipt_hash,
+            self.receipt_event_seq,
+            self.receipt_event_hash,
+            self.provider_proof_hash(proof_event_seq)?,
+        )
+    }
+
+    pub fn verification_proof_subject(
+        self,
+        proof_event_seq: u64,
+    ) -> Option<GenericVerificationProofSubject> {
+        GenericVerificationProofSubject::from_binding(
+            self.verification_proof_binding(proof_event_seq)?,
+            self.proof_line_hash(proof_event_seq)?,
+            proof_event_seq,
+            self.verifier_context_hash()?,
+            PROOF_FLAGS_REQUIRED,
+        )
+    }
+
+    pub fn to_verification_proof_record(
+        self,
+        proof_event_seq: u64,
+    ) -> Option<VerificationProofRecord> {
+        VerificationProofRecord::from_subject(self.verification_proof_subject(proof_event_seq)?)
     }
 }
 

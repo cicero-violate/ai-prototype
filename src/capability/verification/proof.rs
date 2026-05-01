@@ -37,6 +37,7 @@ pub enum ProofSubjectKind {
     ProcessEffect = 2,
     LlmEffect = 3,
     SemanticVerification = 4,
+    PolicyEffect = 5,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -62,6 +63,32 @@ pub struct VerificationProofBinding {
     pub receipt_event_seq: u64,
     pub receipt_event_hash: u64,
     pub provider_proof_hash: u64,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct GenericVerificationProofSubject {
+    pub subject: ProofSubjectKind,
+    pub proof_line_hash: u64,
+    pub receipt_core_hash: u64,
+    pub receipt_hash: u64,
+    pub receipt_event_seq: u64,
+    pub proof_event_seq: u64,
+    pub receipt_event_hash: u64,
+    pub verifier_context_hash: u64,
+    pub proof_flags: u64,
+    pub provider_proof_hash: u64,
+}
+
+pub trait VerificationProofSubject: Copy {
+    fn verification_proof_subject(self) -> Option<GenericVerificationProofSubject>;
+
+    fn verification_proof_binding(self) -> Option<VerificationProofBinding> {
+        self.verification_proof_subject()?.binding()
+    }
+
+    fn to_verification_proof_record(self) -> Option<VerificationProofRecord> {
+        VerificationProofRecord::from_subject(self)
+    }
 }
 
 impl VerificationProofBinding {
@@ -90,6 +117,90 @@ impl VerificationProofBinding {
             && self.receipt_event_seq != 0
             && self.receipt_event_hash != 0
             && self.provider_proof_hash != 0
+    }
+}
+
+impl GenericVerificationProofSubject {
+    pub fn new(
+        subject: ProofSubjectKind,
+        proof_line_hash: u64,
+        receipt_core_hash: u64,
+        receipt_hash: u64,
+        receipt_event_seq: u64,
+        proof_event_seq: u64,
+        receipt_event_hash: u64,
+        verifier_context_hash: u64,
+        proof_flags: u64,
+        provider_proof_hash: u64,
+    ) -> Option<Self> {
+        let subject = Self {
+            subject,
+            proof_line_hash,
+            receipt_core_hash,
+            receipt_hash,
+            receipt_event_seq,
+            proof_event_seq,
+            receipt_event_hash,
+            verifier_context_hash,
+            proof_flags,
+            provider_proof_hash,
+        };
+        subject.is_valid().then_some(subject)
+    }
+
+    pub fn from_binding(
+        binding: VerificationProofBinding,
+        proof_line_hash: u64,
+        proof_event_seq: u64,
+        verifier_context_hash: u64,
+        proof_flags: u64,
+    ) -> Option<Self> {
+        if !binding.is_valid() || proof_event_seq <= binding.receipt_event_seq {
+            return None;
+        }
+
+        Self::new(
+            binding.subject,
+            proof_line_hash,
+            binding.receipt_core_hash,
+            binding.receipt_hash,
+            binding.receipt_event_seq,
+            proof_event_seq,
+            binding.receipt_event_hash,
+            verifier_context_hash,
+            proof_flags,
+            binding.provider_proof_hash,
+        )
+    }
+
+    pub fn is_valid(self) -> bool {
+        self.proof_line_hash != 0
+            && self.receipt_core_hash != 0
+            && self.receipt_hash != 0
+            && self.receipt_event_seq != 0
+            && self.proof_event_seq != 0
+            && self.proof_event_seq > self.receipt_event_seq
+            && self.receipt_event_hash != 0
+            && self.verifier_context_hash != 0
+            && (self.proof_flags & PROOF_FLAGS_REQUIRED) == PROOF_FLAGS_REQUIRED
+            && self.provider_proof_hash != 0
+    }
+
+    pub fn binding(self) -> Option<VerificationProofBinding> {
+        VerificationProofBinding::new(
+            self.subject,
+            self.receipt_core_hash,
+            self.receipt_hash,
+            self.receipt_event_seq,
+            self.receipt_event_hash,
+            self.provider_proof_hash,
+        )
+    }
+}
+
+impl VerificationProofSubject for GenericVerificationProofSubject {
+    fn verification_proof_subject(self) -> Option<GenericVerificationProofSubject> {
+        self.is_valid().then_some(self)
     }
 }
 
@@ -145,6 +256,24 @@ impl VerificationProofRecord {
             verifier_context_hash,
             proof_flags,
             binding.provider_proof_hash,
+        )
+    }
+
+    pub fn from_subject(
+        subject: impl VerificationProofSubject,
+    ) -> Option<VerificationProofRecord> {
+        let subject = subject.verification_proof_subject()?;
+        Self::new(
+            subject.subject,
+            subject.proof_line_hash,
+            subject.receipt_core_hash,
+            subject.receipt_hash,
+            subject.receipt_event_seq,
+            subject.proof_event_seq,
+            subject.receipt_event_hash,
+            subject.verifier_context_hash,
+            subject.proof_flags,
+            subject.provider_proof_hash,
         )
     }
 
@@ -511,6 +640,7 @@ fn proof_subject_kind_from_u64(value: u64) -> Result<ProofSubjectKind, Verificat
         2 => Ok(ProofSubjectKind::ProcessEffect),
         3 => Ok(ProofSubjectKind::LlmEffect),
         4 => Ok(ProofSubjectKind::SemanticVerification),
+        5 => Ok(ProofSubjectKind::PolicyEffect),
         _ => Err(VerificationProofError::InvalidRecord),
     }
 }

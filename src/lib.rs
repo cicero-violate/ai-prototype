@@ -50,7 +50,7 @@ pub use crate::capability::orchestration::{
     CapabilityRoute, OrchestrationDecision, OrchestrationRecord,
 };
 pub use crate::capability::planning::{PlanDecision, PlanRecord};
-pub use crate::capability::policy::{PolicyEntry, PolicyStore, PolicyStoreError};
+pub use crate::capability::policy::{PolicyEntry, PolicyProofReceipt, PolicyStore, PolicyStoreError};
 pub use crate::capability::tooling::{
     append_process_effect_receipt_ndjson, append_sandbox_process_receipt_ndjson,
     append_tool_effect_receipt_ndjson, decode_process_effect_receipt_ndjson,
@@ -70,8 +70,9 @@ pub use crate::capability::verification::{
     ArtifactSemanticProfile, DeterministicSemanticVerifier, SemanticVerificationReceipt,
     verify_verification_proof_record_bindings, verify_verification_proof_record_order_ndjson,
     verify_verification_proof_record_replay, verify_verification_proof_record_replay_ndjson,
-    ProofSubjectKind, VerificationCheck, VerificationDecision, VerificationProofBinding,
-    VerificationProofRecord, VerificationRecord, VerificationRequest,
+    GenericVerificationProofSubject, ProofSubjectKind, VerificationCheck, VerificationDecision,
+    VerificationProofBinding, VerificationProofRecord, VerificationProofSubject,
+    VerificationRecord, VerificationRequest,
 };
 pub use crate::capability::{
     evidence_allowed_for_gate, expected_evidence_for_gate, CapabilityEffectRoute, CapabilityId,
@@ -286,6 +287,67 @@ mod tests {
 
         assert_eq!(loaded.entries(), &[entry]);
         assert_eq!(loaded.latest_version(), 1);
+    }
+
+    #[test]
+    fn policy_effect_projects_into_generic_verification_spine() {
+        let (_state, tlog) = run_until_done(State::ready(), RuntimeConfig::default()).unwrap();
+        let promotion = PolicyPromotion::from_tlog(&tlog, 1).unwrap();
+
+        let mut store = PolicyStore::default();
+        let entry = *store.promote(promotion).unwrap();
+        let receipt_event = tlog
+            .iter()
+            .find(|event| {
+                event.cause == Cause::PolicyPromoted
+                    && event.evidence == Evidence::PolicyPromotion
+            })
+            .unwrap();
+        let receipt = PolicyProofReceipt::new(
+            entry,
+            store.fingerprint(),
+            receipt_event.seq,
+            receipt_event.self_hash,
+        )
+        .unwrap();
+        let proof_event_seq = tlog.last().unwrap().seq + 1;
+        let proof_subject = receipt
+            .verification_proof_subject(proof_event_seq)
+            .unwrap();
+        let proof_record = receipt
+            .to_verification_proof_record(proof_event_seq)
+            .unwrap();
+        let binding = proof_subject.binding().unwrap();
+
+        assert_eq!(proof_subject.subject, ProofSubjectKind::PolicyEffect);
+        assert_eq!(proof_record.subject, ProofSubjectKind::PolicyEffect);
+        assert_eq!(
+            receipt.verification_proof_binding(proof_event_seq).unwrap(),
+            binding
+        );
+        assert!(proof_record.matches_binding(binding));
+        assert_eq!(
+            verify_verification_proof_record_replay(&tlog, &[proof_record], &[binding]).unwrap(),
+            1
+        );
+
+        let path = std::env::temp_dir().join(format!(
+            "ai-policy-proof-spine-{}-{}.ndjson",
+            std::process::id(),
+            proof_record.record_hash
+        ));
+        std::fs::remove_file(&path).ok();
+        write_tlog_ndjson(&path, &tlog).unwrap();
+        crate::capability::verification::append_verification_proof_record_ndjson(
+            &path,
+            &proof_record,
+        )
+        .unwrap();
+        assert_eq!(
+            verify_verification_proof_record_replay_ndjson(&path, &[binding]).unwrap(),
+            1
+        );
+        std::fs::remove_file(&path).ok();
     }
 
     #[test]

@@ -17,9 +17,10 @@ use crate::capability::context::ContextRecord;
 use crate::capability::llm::record::{LlmRecord, LlmStructuredAdapter};
 use crate::capability::policy::PolicyStore;
 use crate::capability::verification::{
-    verify_verification_proof_record_bindings, ProofSubjectKind, VerificationProofBinding,
-    VerificationProofRecord, PROOF_FLAG_PHASE_VERIFIED, PROOF_FLAG_PROVENANCE_VERIFIED,
-    PROOF_FLAG_RECEIPT_VERIFIED, PROOF_FLAG_TAMPER_REJECTED,
+    verify_verification_proof_record_bindings, GenericVerificationProofSubject,
+    ProofSubjectKind, VerificationProofBinding, VerificationProofRecord,
+    PROOF_FLAG_PHASE_VERIFIED, PROOF_FLAG_PROVENANCE_VERIFIED, PROOF_FLAG_RECEIPT_VERIFIED,
+    PROOF_FLAG_TAMPER_REJECTED,
 };
 use crate::capability::EvidenceSubmission;
 use crate::codec::ndjson::{load_tlog_ndjson, TLOG_RECORD_EVENT};
@@ -908,12 +909,12 @@ impl OllamaJudgmentProofEvent {
         h.max(1)
     }
 
-    pub fn to_verification_proof_record(self) -> Option<VerificationProofRecord> {
+    pub fn verification_proof_subject(self) -> Option<GenericVerificationProofSubject> {
         if !self.is_valid() {
             return None;
         }
 
-        VerificationProofRecord::new(
+        GenericVerificationProofSubject::new(
             ProofSubjectKind::LlmEffect,
             self.proof_line_hash,
             self.receipt_core_hash,
@@ -925,6 +926,10 @@ impl OllamaJudgmentProofEvent {
             self.proof_flags(),
             self.proof_hash,
         )
+    }
+
+    pub fn to_verification_proof_record(self) -> Option<VerificationProofRecord> {
+        VerificationProofRecord::from_subject(self.verification_proof_subject()?)
     }
 
     pub fn matches_receipt(self, receipt: OllamaLlmEffectReceipt, tlog: &TLog) -> bool {

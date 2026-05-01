@@ -4,7 +4,8 @@ use std::path::Path;
 
 use crate::capability::{CapabilityId, CapabilityRegistry, EvidenceProducer, EvidenceSubmission};
 use crate::capability::verification::{
-    ProofSubjectKind, VerificationProofBinding, VerificationProofRecord, PROOF_FLAGS_REQUIRED,
+    GenericVerificationProofSubject, ProofSubjectKind, VerificationProofBinding,
+    VerificationProofRecord, PROOF_FLAGS_REQUIRED,
 };
 use crate::kernel::{
     mix, Cause, ControlEvent, Decision, EventKind, Evidence, GateId, GateStatus, Phase, TLog,
@@ -174,17 +175,24 @@ impl ToolEffectReceipt {
         )
     }
 
-    pub fn to_verification_proof_record(
+    pub fn verification_proof_subject(
         self,
         proof_event_seq: u64,
-    ) -> Option<VerificationProofRecord> {
-        VerificationProofRecord::from_binding(
+    ) -> Option<GenericVerificationProofSubject> {
+        GenericVerificationProofSubject::from_binding(
             self.verification_proof_binding(proof_event_seq)?,
             self.proof_line_hash(proof_event_seq)?,
             proof_event_seq,
             self.verifier_context_hash(),
             PROOF_FLAGS_REQUIRED,
         )
+    }
+
+    pub fn to_verification_proof_record(
+        self,
+        proof_event_seq: u64,
+    ) -> Option<VerificationProofRecord> {
+        VerificationProofRecord::from_subject(self.verification_proof_subject(proof_event_seq)?)
     }
 
     pub fn replay_verified(self, tlog: &TLog) -> bool {
@@ -495,17 +503,24 @@ impl ProcessEffectReceipt {
         )
     }
 
-    pub fn to_verification_proof_record(
+    pub fn verification_proof_subject(
         self,
         proof_event_seq: u64,
-    ) -> Option<VerificationProofRecord> {
-        VerificationProofRecord::from_binding(
+    ) -> Option<GenericVerificationProofSubject> {
+        GenericVerificationProofSubject::from_binding(
             self.verification_proof_binding(proof_event_seq)?,
             self.proof_line_hash(proof_event_seq)?,
             proof_event_seq,
             self.verifier_context_hash(),
             PROOF_FLAGS_REQUIRED,
         )
+    }
+
+    pub fn to_verification_proof_record(
+        self,
+        proof_event_seq: u64,
+    ) -> Option<VerificationProofRecord> {
+        VerificationProofRecord::from_subject(self.verification_proof_subject(proof_event_seq)?)
     }
 }
 
