@@ -12,7 +12,8 @@ use crate::kernel::{mix, Evidence, GateId};
 
 use super::hash::{
     argv_hash, bounded_file_bytes, bytes_hash, ensure_process_token, ensure_relative_process_path,
-    ensure_under, locked_env_hash, path_hash, string_hash, sync_dir, tool_effect_kind_from_u64,
+    ensure_under, locked_env_hash, parse_u64_ndjson_fields, path_hash, string_hash, sync_dir,
+    tool_effect_kind_from_u64, validate_u64_ndjson_header,
 };
 use super::request::SandboxProcessRequest;
 use super::types::{
@@ -534,29 +535,13 @@ pub fn encode_sandbox_process_receipt_ndjson(receipt: &SandboxProcessReceipt) ->
 pub fn decode_sandbox_process_receipt_ndjson(
     line: &str,
 ) -> Result<SandboxProcessReceipt, ToolSandboxError> {
-    let trimmed = line.trim();
-    let body = trimmed
-        .strip_prefix('[')
-        .and_then(|v| v.strip_suffix(']'))
-        .ok_or(ToolSandboxError::InvalidToolReceiptRecord)?;
-    let fields = if body.trim().is_empty() {
-        Vec::new()
-    } else {
-        body.split(',')
-            .map(|raw| {
-                raw.trim()
-                    .parse::<u64>()
-                    .map_err(|_| ToolSandboxError::InvalidToolReceiptRecord)
-            })
-            .collect::<Result<Vec<_>, _>>()?
-    };
-
-    if fields.len() != 20
-        || fields[0] != SANDBOX_PROCESS_RECEIPT_SCHEMA_VERSION
-        || fields[1] != SANDBOX_PROCESS_RECEIPT_RECORD
-    {
-        return Err(ToolSandboxError::InvalidToolReceiptRecord);
-    }
+    let fields = parse_u64_ndjson_fields(line)?;
+    validate_u64_ndjson_header(
+        &fields,
+        20,
+        SANDBOX_PROCESS_RECEIPT_SCHEMA_VERSION,
+        SANDBOX_PROCESS_RECEIPT_RECORD,
+    )?;
 
     let effect = Effect {
         kind: tool_effect_kind_from_u64(fields[10])?,

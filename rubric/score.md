@@ -23,7 +23,7 @@ OR = capability/orchestration score
 CORE = deterministic foundation score
 CAP  = implemented capability-layer score
 IMPL = implemented-source score
-ARCH = README-goal alignment score
+ARCH = declared README goal alignment score
 GOOD = strongest present module
 ```
 
@@ -37,72 +37,68 @@ ARCH = (K · C · A · R · OB · CX · ME · PL · LL · JG · TO · VF · EV �
 GOOD = max(K,C,A,R,OB,CX,ME,PL,LL,JG,TO,VF,EV,PO,LE,OR)
 ```
 
-One-line explanation: the system is scored by implemented, replayable evidence paths; claims that are architectural but not yet live, routed, or externally verified are discounted.
+One-line explanation: the README goal is correct-by-construction autonomy through a frozen kernel, replayable TLog, growing policy, and capability-layer intelligence; the score rewards implemented evidence paths and penalizes every place where the system still cannot perform live autonomous work.
 
 ## Score Summary
 
 ```text
 K  = 8.5 / 10
-C  = 7.6 / 10
-A  = 7.0 / 10
-R  = 8.5 / 10
+C  = 7.9 / 10
+A  = 7.3 / 10
+R  = 8.7 / 10
 
-OB = 5.8 / 10
+OB = 6.3 / 10
 CX = 5.3 / 10
 ME = 5.7 / 10
 PL = 5.5 / 10
-LL = 7.9 / 10
+LL = 8.0 / 10
 JG = 5.6 / 10
-TO = 8.1 / 10
-VF = 8.3 / 10
+TO = 8.4 / 10
+VF = 8.8 / 10
 EV = 6.1 / 10
 PO = 7.7 / 10
 LE = 6.4 / 10
 OR = 6.6 / 10
 
-CORE = 7.87 / 10
-CAP  = 6.50 / 10
-IMPL = 7.73 / 10
-ARCH = 6.82 / 10
+CORE = 8.08 / 10
+CAP  = 6.60 / 10
+IMPL = 7.92 / 10
+ARCH = 6.95 / 10
 
-max(K,C,A,R,OB,CX,ME,PL,LL,JG,TO,VF,EV,PO,LE,OR) = K = 8.5 / 10 = good
+max(K,C,A,R,OB,CX,ME,PL,LL,JG,TO,VF,EV,PO,LE,OR) = VF = 8.8 / 10 = good
 ```
 
 ## Static Review Inputs
 
 ```text
-review_date = 2026-04-30_static
 source_review_scope = README.md + Cargo.toml + src/**/*.rs + state/rustc/ai/graph.json + rubric/score.md
-cargo_build_status = not_run_in_this_review
-cargo_test_status = not_run_in_this_review
-cargo_example_status = not_run_in_this_review
-last_known_user_validated_status = cargo_test_99_99_plus_ollama_example_passed_before_current_static_review
+cargo_build_status = passed_user_validated_2026_04_30
+cargo_test_status = passed_user_validated_102_102_after_ollama_json_escape_split
+cargo_example_status = passed_user_validated_ollama_judgment_after_ollama_json_escape_split
 unsafe_policy = forbid_unsafe_code
 
 readme_goal = reduce_cost_of_autonomous_reasoning_while_increasing_quality_and_trustworthiness
 readme_core_claim = frozen_kernel_plus_capability_intelligence_plus_tlog_policy_learning
-readme_status_accuracy = mostly_current_for_local_tooling_ollama_observation_and_generic_llm_proof_spine
+readme_status_accuracy = current_for_validated_local_tooling_ollama_generic_llm_proof_observation_api_route_tool_process_proof_projection_generic_proof_replay_enforcement_runtime_event_validation_split_semantic_diff_split_ndjson_decoder_table_split_ollama_mixed_record_helper_collapse_ollama_json_escape_split_and_runtime_replay_loop_split
 
-source_files_reviewed = 51 rust files
-source_loc_reviewed = 14020
-test_count_in_src_lib = 100
+source_files_reviewed = 52 rust files
+test_count_in_src_lib = 102
 cargo_dependencies = none
 
 graph_schema_version = 9
-graph_node_count = 2085
-graph_edge_count = 5693
-graph_cfg_node_count = 7820
-graph_cfg_edge_count = 10650
-graph_bridge_edge_count = 1904
-graph_redundant_path_pair_count = 606
+graph_node_count = 2202
+graph_edge_count = 6080
+graph_cfg_node_count = not_reported_in_latest_user_validation
+graph_cfg_edge_count = not_reported_in_latest_user_validation
+graph_bridge_edge_count = not_reported_in_latest_user_validation
+graph_redundant_path_pair_count = 328
+graph_redundant_path_pair_delta = 621 -> 497 -> 464 -> 349 -> 346 -> 326 -> 328
 graph_alpha_pathway_count = 15
-graph_intent_class_coverage = 584/584fn
-graph_unknown_low_confidence_functions = 429
-```
+graph_intent_class_coverage = 633/633fn
+graph_unknown_low_confidence_functions = unknown_after_latest_user_validation
+pending_patch = tooling_receipt_ndjson_field_parser_collapse
+pending_patch_validation = not_yet_user_validated
 
-## Implemented Evidence Surfaces
-
-```text
 kernel_phase_count = 12
 execution_gate_count = 7
 total_gate_count = 8
@@ -123,11 +119,6 @@ tooling_max_output_bytes = present
 tooling_receipt_replay = present
 tooling_api_process_receipt_route = present
 
-bounded_file_observation_ingress = present
-observation_cursor_persistence = present
-observation_backpressure = present
-live_sse_webhook_browser_observation = absent
-
 provider_backed_llm_client = local_ollama_openai_compatible_request_adapter_present
 provider_response_parser = present_for_openai_compatible_ollama_chat_completion_subset
 ollama_effect_receipt_replay = present
@@ -138,94 +129,185 @@ ollama_durable_judgment_proof_event = present
 ollama_bidirectional_receipt_proof_hash_binding = present
 ollama_proof_event_seq_receipt_hash_binding = present
 ollama_proof_event_order_replay = present
-ollama_timeout_retry_idempotency_receipt_binding = present_in_source
-
-generic_llm_verification_proof_projection = present
-generic_verification_proof_binding_checker = present
-generic_proof_spine_for_tooling_process_semantic_verification = absent
-provider_signed_receipts = absent
-streaming_llm_receipt_validation = absent
-external_api_action_tools = absent
+llm_retry_budget_ledger = validated_by_cargo_test_and_example
+ollama_timeout_retry_idempotency_receipt_binding = validated_by_cargo_test_and_example
+ollama_tampered_fields_rejected = 17/17
+ollama_durable_proof_verified = true
+ollama_receipt_proof_matches = true
+ollama_timeout_ms = 30000
+ollama_retry_count = 0
+ollama_max_retries = 0
+ollama_attempt_budget = 1
+ollama_budget_exhausted = true
+ollama_duplicate_request = false
+bounded_line_observation_ingress = validated_by_cargo_test
+observation_cursor_persistence = validated_by_cargo_test
+observation_backpressure = validated_by_cargo_test
+observation_ingress_api_command_route = validated_by_cargo_test
+api_protocol_schema_version = 4
+generic_llm_verification_proof_projection = validated_by_cargo_test
+generic_verification_proof_binding_checker = validated_by_cargo_test
+generic_artifact_effect_verification_proof_projection = validated_by_cargo_test
+generic_process_effect_verification_proof_projection = validated_by_cargo_test
+generic_verification_proof_replay_enforcement = validated_by_cargo_test
+generic_verification_proof_order_ndjson = validated_by_cargo_test
+generic_verification_proof_replay_ndjson = validated_by_cargo_test
+verification_proof_spine_split = validated_by_cargo_test
+runtime_validate_event_split = validated_by_cargo_test_and_graph_delta
+runtime_validate_event_redundant_path_reduction = 124
+semantic_diff_split = validated_by_cargo_test_and_graph_delta
+codec_ndjson_enum_decoder_table_split = validated_by_cargo_test_and_graph_delta
+ollama_mixed_ndjson_record_helper_collapse = validated_by_cargo_test_and_graph_delta
+ollama_json_escape_split = validated_by_cargo_test_and_graph_delta
+runtime_verify_tlog_from_split = pending_local_validation
+generic_verification_proof_missing_duplicate_displaced_rejection = validated_by_cargo_test
+real_observation_stream_parser = absent
+external_api_tool_runner = absent
+external_artifact_verification = absent
 distributed_orchestration = absent
 ```
 
-## Module Scores
+## Critical Judgment
 
-| Module                     | State                      | Score | Judgment                                                                                                                                                                                                                                                                 |
-|----------------------------+----------------------------+-------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `kernel`                   | frozen deterministic core  |   8.5 | Strongest module. Pure state transition, typed gates, phase discipline, and stable hash semantics remain the system anchor. Do not expand it.                                                                                                                            |
-| `codec`                    | durable codec base         |   7.6 | NDJSON and receipt codecs are real. Weakness is schema migration and manual field evolution across several receipt families.                                                                                                                                             |
-| `api`                      | credible command surface   |   7.0 | Commands expose evidence and process receipts. Still not a hardened network service with auth scopes, hostile-client boundaries, and streaming ingress.                                                                                                                  |
-| `runtime`                  | strong replay engine       |   8.5 | Tick, durable run, transition legality, writer, command ledger, proof-event order checks, and replay verification are coherent.                                                                                                                                          |
-| `capability/observation`   | bounded file ingress seed  |   5.8 | Append-only line source, cursor, batch limit, and backpressure exist. It is still not live autonomous observation because SSE/webhook/browser/API sources are absent.                                                                                                    |
-| `capability/context`       | deterministic context seed |   5.3 | Context evidence exists. Missing retrieval, grounding, conflict handling, source ranking, and token-budget control.                                                                                                                                                      |
-| `capability/memory`        | durable lookup seed        |   5.7 | Memory store/index surfaces exist. Missing namespaces, embeddings, decay, invalidation, provenance, and cross-run query planning.                                                                                                                                        |
-| `capability/planning`      | typed plan evidence        |   5.5 | Plan records can drive gates. Missing dependency solving, alternatives, cost/risk search, and repair planning.                                                                                                                                                           |
-| `capability/llm`           | local Ollama proof path    |   7.9 | Best intelligence-facing path. Local OpenAI-compatible adapter, receipt binding, endpoint provenance, retry/budget/idempotency fields, and generic proof projection exist. Missing streaming validation, constrained decoding, provider signatures, and provider policy. |
-| `capability/judgment`      | minimal judgment evidence  |   5.6 | Judgment can be represented and driven by the Ollama path. Missing comparative deliberation, irreversible-boundary checks, and policy-backed judgment.                                                                                                                   |
-| `capability/tooling`       | strongest live capability  |   8.1 | File/process execution is split, bounded, authorized, receipted, API-visible, and replay-checkable. Missing external API tools and universal effect routing.                                                                                                             |
-| `capability/verification`  | strong internal verifier   |   8.3 | Verification has durable proof records and generic LLM proof binding. Still mostly verifies internal receipts rather than external semantic truth.                                                                                                                       |
-| `capability/eval`          | record scorer              |   6.1 | Eval records exist. Missing calibrated benchmarks, adversarial scoring, evaluator provenance, and threshold governance.                                                                                                                                                  |
-| `capability/policy`        | strong policy foundation   |   7.7 | Durable policy store, hashing, promotion, feedback, and registry binding exist. Missing conflict resolution, expiry, rollback, signatures, and migrations.                                                                                                               |
-| `capability/learning`      | narrow promotion path      |   6.4 | Learning can promote from TLog into policy. Missing causal attribution, pattern mining, strategy synthesis, and automatic capability generation.                                                                                                                         |
-| `capability/orchestration` | ordering layer             |   6.6 | Routing/submission order exists. Missing queues, leases, priorities, retry policy, worker isolation, and distributed scheduling.                                                                                                                                         |
+The README states the real goal clearly: preserve a frozen correctness kernel while intelligence accumulates in capabilities and policy. That goal is still the right target. The current source now partially serves that goal instead of merely describing it.
+
+The main improvement since the last score is that observation ingress API routing is now user-validated. `Command::SubmitObservationIngress(ObservationIngressBatch)` has a schema-v4 command hash, batch contract validation, aggregate ingress submission, and an API route that drives `Evidence::InvariantProof` through the runtime path. This keeps world-facing bytes outside kernel state while allowing source batches to enter the same command/TLog route as other evidence.
+
+The newest user-validated deltas mostly reduce semantic graph debt, with one
+validated readability split that slightly increased graph redundancy. `runtime::verify::validate_event`,
+`runtime::diff::semantic_diff`, `codec::ndjson` enum decoding, and
+`capability::llm::ollama` helper surfaces are decomposed into ordered
+single-purpose validators/classifiers, table-driven decode helpers, shared
+mixed-record IO helpers, and split JSON escaping helpers while preserving event
+semantics, numeric TLog tags, mixed NDJSON record schemas, and request JSON
+bytes. The runtime replay-loop split is validated for behavior, but the rustc
+graph moved from `326` to `328` redundant path pairs. The score therefore
+credits correctness/readability but does not count that split as a debt
+reduction.
+
+The hard criticism is that the system is still local-effect capable, not autonomous in the README sense. It can authorize, execute, receipt, encode, and replay local file/process effects, run a local Ollama/OpenAI-compatible request adapter for `qwen2.5-coder`, validate the generic LLM proof spine, parse a cargo-validated bounded file-backed observation source, and route accepted observation batches through the API. It still does not observe live SSE/webhook/browser streams, authenticate external APIs, verify semantic truth outside its receipt/proof envelope, or synthesize broad learned strategy from empirical history.
+
+Current classification:
+
+```text
+current_system = deterministic evidence runtime with bounded local sandbox tooling, local Ollama request wiring, validated file observation ingress, validated observation API route, validated tool/process proof projection, validated generic proof replay enforcement, validated reduced-coupling runtime event verification, validated semantic-diff classification split, validated table-driven NDJSON enum decoding, validated Ollama mixed-record helpers, and validated Ollama JSON escaping helpers
+not_yet = autonomous self-improving agent with validated external observation/action loops
+main_strength = frozen kernel boundary + replayable TLog + bounded receipted file/process effects
+main_weakness = capability intelligence is mostly typed records rather than live adaptive behavior
+```
+
+## Module Rating Table
+
+| Module                     | Status                              | Score | Reason                                                                                                                                                                                                  |
+|----------------------------|-------------------------------------|-------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `kernel`                   | strong deterministic core           |   8.5 | Clean phase/gate/state/evidence model, compact packet boundary, recovery classes, registry projection, and deterministic hashing. Penalized for prototype packet semantics and narrow effect vocabulary. |
+| `codec`                    | stronger durable codec              |   7.9 | NDJSON TLog, registry projection, receipt encoding, and table-driven enum tag decoding are real and user-validated. Penalized for manual schema evolution, integer-field brittleness, and limited migration scaffolding. |
+| `api`                      | credible in-process command surface |   7.3 | Command protocol supports evidence submissions, process receipts, and user-validated observation-ingress batch routing with schema-v4 command hashes. Still lacks network service, authentication, authorization scopes, hostile-client hardening, and streaming ingress. |
+| `runtime`                  | strong replay engine                |   8.7 | Tick, durable run, transition legality, convergence, writer, command ledger, proof-event order checks, generic proof replay verification, decomposed event validators, and split semantic-diff classifiers are coherent. The debt passes reduced redundant paths without breaking tests. Penalized because live capability semantics are still not uniformly native. |
+| `capability/observation`   | routed bounded file ingress seed    |   6.3 | Observation records, cursors, bounded line-file ingress, cursor persistence, backlog backpressure, batch contract validation, and API routing into the Invariant gate are user-validated. Still lacks real SSE/webhook/browser stream adapters. |
+| `capability/context`       | deterministic context seed          |   5.3 | Context records can submit evidence. Still lacks retrieval, grounding, conflict handling, token budgeting, and source selection.                                                                         |
+| `capability/memory`        | deterministic lookup seed           |   5.7 | Memory facts/indexing exist. Still lacks durable namespaces, embeddings, decay, invalidation, provenance, and cross-run query planning.                                                                  |
+| `capability/planning`      | typed plan evidence                 |   5.5 | Planning records can drive gates. Still not a planner with dependency solving, risk/cost tradeoffs, repair search, or alternatives.                                                                      |
+| `capability/llm`           | validated local Ollama proof path   |   8.0 | LLM records exist and local Ollama/OpenAI-compatible request construction is wired to `qwen2.5-coder`; receipts now validatedly bind endpoint provenance, tamper matrix, durable proof hash, proof-event sequence ordering, replay-level proof event position, timeout, retry count, maximum retries, attempt budget, duplicate request identity, retry budget hash, budget exhaustion, receipt/proof matching, generic proof projection, shared mixed-record IO helpers, and split JSON escaping helpers. Still lacks streaming, constrained decoding, provider-signed receipts, and model policy. |
+| `capability/judgment`      | minimal judgment evidence           |   5.6 | Judgment is represented as typed evidence and the local Ollama example reaches a validated judgment proof path. Still lacks comparison of alternatives, irreversible-boundary checks, and policy-backed deliberation. |
+| `capability/tooling`       | strongest live capability           |   8.4 | File and process effects are split, bounded, authorized, receipted, API-visible, replay-checkable, and now user-validated as generic proof-binding subjects. Still lacks external API tools and signed provider receipts. |
+| `capability/verification`  | strong internal verifier base       |   8.8 | Receipt/profile verification is meaningful across tooling and the validated Ollama proof path, including receipt/proof ordering, tamper rejection, generic LLM proof checking, validated artifact/process proof binding, and cargo-validated generic proof replay enforcement for missing/duplicate/displaced proof records. Still mostly verifies internal artifacts and local/provider-adapter receipts, not external semantic truth. |
+| `capability/eval`          | solid record scorer                 |   6.1 | Eval records and gate-driving evidence exist. Still lacks calibrated benchmarks, adversarial scoring, evaluator provenance, and threshold governance.                                                    |
+| `capability/policy`        | strong policy foundation            |   7.7 | Durable policy store, hashing, promotion, feedback, and registry binding exist. Still needs conflict resolution, expiry, rollback, signatures, and migrations.                                           |
+| `capability/learning`      | real but narrow                     |   6.4 | Learning can promote from TLog into policy. Still lacks causal attribution, pattern mining, strategy synthesis, and automatic capability generation.                                                     |
+| `capability/orchestration` | meaningful ordering layer           |   6.6 | Capability routing/submission order is represented. Still lacks distributed workers, leases, queues, priorities, retry policy, and backpressure.                                                         |
 
 ## Artifact Judgment
 
 ```text
-README = architecturally correct and now updated to distinguish implemented source from validation status
-score_md_before_update = stale_graph_counts_and_overconfident_validation_language
-src = substantial deterministic prototype with local effects, local Ollama, bounded observation, policy, learning, verification, and replay
-graph = useful but noisy; 606 redundant path pairs and 15 alpha pathways show structural debt
-kernel = strongest module
-tooling = strongest live capability module
-verification = second strongest capability module
-weakest_live_gap = observation_is_file_backed_not_external
+README = architecturally right and current status updated for validated generic LLM/tool/process proof spine, validated observation API routing, validated generic proof replay enforcement, validated runtime event-validation split, validated semantic-diff split, validated NDJSON decoder table split, validated Ollama mixed-record helpers, and validated Ollama JSON escaping split
+score_md_before_update = current_after_validated_ollama_json_escape_split
+src = substantially implemented deterministic prototype with local live effects, Ollama proof binding, validated observation routing, validated tool/process generic proof projection, validated generic proof replay enforcement, validated reduced-coupling runtime event verification, validated semantic-diff classification, validated table-driven NDJSON enum decoding, validated Ollama mixed-record helpers, validated Ollama JSON escaping helpers, validated runtime replay-loop split, and pending tooling receipt NDJSON parser collapse
+graph = useful_latest_user_validated_capture; 328 redundant paths and 15 alpha pathways show structural debt is still present and the latest replay-loop split improved readability but not graph debt
+kernel = still the strongest module
+tooling = strongest capability module
 ```
 
-The codebase is no longer a sketch. It has enough typed evidence, receipt, replay, policy, learning, tooling, observation, and LLM surfaces to be scored as a real deterministic agent-runtime prototype.
+The graph confirms that most debt-reduction moves worked and also exposes the
+latest tradeoff. The latest user-validated capture reports 2202 semantic nodes,
+6080 semantic edges, 328 redundant path pairs, 15 alpha pathways, and full
+function intent coverage at 633/633fn. Redundant paths are still far below the
+pre-reduction peak of 621, but the replay-loop split moved `326 -> 328`.
+The validated semantic-debt passes split the generic proof spine out of the
+semantic verification record module, decomposed `runtime::verify::validate_event`,
+split `runtime::diff::semantic_diff`, collapsed repeated `codec::ndjson` enum
+decoder match forests into canonical tag tables plus one lookup helper,
+collapsed Ollama mixed-record IO duplication, split Ollama JSON escaping, and
+split `verify_tlog_from` into replay-specific validators.
 
-The hard criticism: the system still does not satisfy the README autonomy target. It can execute and prove local effects, but it cannot yet observe the world through live external sources, act through authenticated external APIs, validate provider-signed evidence, or convert TLog history into broad strategic policy updates. The proof envelope is strong; the external substrate is still thin.
-
-The graph confirms both progress and debt. The latest graph contains 2085 semantic nodes, 5693 semantic edges, 7820 CFG nodes, 10650 CFG edges, 1904 bridge edges, 606 redundant path pairs, and 15 alpha pathways. Function intent coverage is complete at 584/584fn, but 429 functions remain `unknown_low_confidence`, so the semantic manifest layer is wide but shallow.
+The biggest architectural risk is no longer the tooling split. That split exists. The risk is now semantic fragmentation: artifact receipts, process receipts, API commands, runtime events, verification, and policy binding are close to one execution normal form, but the code still names and routes them as adjacent concepts instead of one universal `Effect { kind, digest, metadata }` contract.
 
 ## Regression / Improvement Delta
 
 ```text
-previous_CORE = 7.87 / 10
-current_CORE  = 7.87 / 10
+previous_CORE = 8.06 / 10
+current_CORE  = 8.08 / 10
 
-previous_CAP = 6.48 / 10
-current_CAP  = 6.50 / 10
+previous_CAP = 6.60 / 10
+current_CAP  = 6.60 / 10
 
-previous_IMPL = 7.72 / 10
-current_IMPL  = 7.73 / 10
+previous_IMPL = 7.91 / 10
+current_IMPL  = 7.92 / 10
 
-previous_ARCH = 6.82 / 10
-current_ARCH  = 6.82 / 10
+previous_ARCH = 6.95 / 10
+current_ARCH  = 6.95 / 10
 ```
 
-The score only moves slightly. Generic LLM verification proof binding is a real source-level improvement, so `LL` and `VF` improve marginally. `ARCH` does not move because the large autonomy gaps are unchanged: live observation routing, external tools, streaming validation, signed provider receipts, and universal effect normal form are still incomplete.
+The score improves because most semantic-debt reduction is now repeatedly
+validated by the rustc graph instead of only asserted by source structure, while
+the latest replay-loop split is treated critically because it increased
+redundant paths by two. The Ollama path remains the latest fully validated live
+effect path: it has a live external LLM effect receipt, replay verification,
+seventeen-field tamper rejection, local endpoint provenance, pre-receipt
+non-local rejection, a durable final proof event in the mixed tlog,
+bidirectional receipt/proof hashing, proof-event sequence binding, replay-level
+proof event position checks, validated retry/budget/idempotency binding,
+validated projection into `VerificationProofRecord`, validated generic proof
+replay rejection for missing, duplicate, and displaced proof records, validated
+mixed-record IO helper collapse, and validated JSON escaping helper split. The
+latest user-validated run passed `cargo build`, `cargo test` with 102/102 tests,
+and `cargo run --example ollama_judgment`; the graph reported
+`621 -> 497 -> 464 -> 349 -> 346 -> 326 -> 328` redundant path pairs and the
+example emitted `durable_proof_verified=true`, `receipt_proof_matches=true`, and
+`tampered_fields_rejected=17/17`.
+
+Validated proof replay delta: `verify_verification_proof_record_replay`, `verify_verification_proof_record_order_ndjson`, and `verify_verification_proof_record_replay_ndjson` require proof records to match receipt bindings, require the receipt event to exist in the control TLog, and reject missing, duplicate, or displaced generic proof records in mixed NDJSON replay. The accepted path plus all three rejection classes are covered by the 102nd passing test. The proof-spine split moves those proof types and replay functions into `capability::verification::proof`, reducing coupling without changing the public verification exports. The runtime verifier split and semantic-diff split now keep the same behavior while breaking branch-dense logic into smaller validation/classification gates, and the graph confirms the intended redundant-path reduction.
+
+Validated semantic-debt delta: `codec::ndjson` enum decoders now use canonical tag tables plus one `enum_from_u64` lookup helper instead of repeated match forests. `capability::llm::ollama` now also shares mixed-record NDJSON append/load helpers and splits JSON escaping into character and sequence helpers. These moves reduced duplicate branch signatures in the rustc graph capture while preserving every existing numeric tag, record schema, request JSON byte behavior, and failure path.
+
+Pending semantic-debt delta: `runtime::verify::verify_tlog_from` is split into replay-shape, hash-link, API-command, registry-projection, continuity, semantic-delta, self-hash, writer-identity, and expected-outcome helpers. This should lower replay-loop branch density while preserving hash-chain, semantic-delta, reducer, evidence-submission, and writer identity behavior. This patch is not yet counted in the score until local cargo validation confirms behavior and graph movement.
 
 ## Highest Leverage Next Work
 
-1. **Validate the 100-test source state.** Run the full suite and the Ollama example locally; do not raise scores again until validation is current.
-2. **Route observation ingress through API/runtime.** The file-backed source must become a real live observation path into the Invariant gate.
-3. **Canonicalize one execution normal form.** Collapse artifact, process, LLM, observation, and proof outputs into: `request → authorize → execute → Effect { kind, digest, metadata } → receipt → proof → TLog → replay`.
-4. **Extend generic proof records beyond LLM.** Apply `VerificationProofRecord` to tooling, process, semantic verification, observation, and future providers.
-5. **Add streaming LLM validation.** Hash, bound, type, and replay response chunks, not only completed response bodies.
-6. **Add provider-signed receipts.** Current receipts prove local adapter behavior, not provider-origin authenticity.
-7. **Reduce graph debt surgically.** Target the 15 alpha pathways and the highest-frequency redundant path owners. Do not blindly optimize all 606 redundant paths.
-8. **Do not expand the kernel.** Keep intelligence, external semantics, and learning pressure above the frozen kernel.
+1. **Validate the tooling receipt NDJSON parser collapse.** Run the local cargo/build/example loop and compare `ρ=328` against the next graph capture.
+2. **Add an eval-backed semantic debt gate.** Fail or warn when `ρ_next > ρ_prev` without an explicit justification record, because the validated replay-loop split proved that readability splits can increase graph debt.
+3. **Canonicalize one execution normal form.** Collapse artifact, process, LLM, observation, and proof outputs into one universal path: `request → authorize → execute → Effect { kind, digest, metadata } → receipt → proof → TLog → replay`.
+4. **Extend generic proof records into semantic verification and observation ingress.** Apply the same `VerificationProofRecord` replay checker to semantic verifier receipts, observation ingress batches, and future providers.
+5. **Add provider response streaming validation.** The current path validates the completed local response body, but streaming chunks are not yet typed, bounded, hashed, or replayed.
+6. **Do not expand the kernel.** Preserve the frozen kernel; put live intelligence, external semantics, and learning pressure in capabilities and policy.
 
 ## Updated Verdict
 
 ```text
-objective_rating = ARCH = 6.82 / 10
-system_level = deterministic evidence runtime with bounded local sandbox execution, local Ollama proof receipts, bounded file observation ingress, policy promotion, and a first generic LLM proof spine
-best_property = frozen kernel plus replay discipline plus receipted local file/process/LLM effects
-weakest_property = live autonomy remains mostly absent because observation and action are still local/file-backed or adapter-level
-next_score_unlock = validated 100-test state + routed observation ingress + universal effect normal form
+objective_rating = ARCH = 6.95 / 10
+system_level = deterministic evidence runtime with bounded local sandbox execution, validated durable local Ollama retry-budget proofs, validated bounded file observation ingress, validated observation API routing, validated tool/process proof projection, validated generic proof replay enforcement, validated reduced-coupling runtime event verification, validated semantic-diff split, validated table-driven NDJSON decoding, validated Ollama mixed-record helper collapse, validated Ollama JSON escaping split, and validated runtime replay-loop split
+best_property = kernel/runtime replay discipline plus split, receipted file/process/LLM effects, validated Ollama receipt/proof binding, generic proof replay hardening, and measurable graph-debt reduction from 621 to 328
+weakest_property = observation remains file-backed and not connected to live external streams; graph debt is lower than peak but still nontrivial at 328 redundant path pairs, and the latest validated split increased graph redundancy by two
+next_score_unlock = validate tooling receipt NDJSON parser collapse + add semantic debt eval gate + reduce redundant paths below 300 + semantic/observation proof records + universal execution normal form
 ```
 
-The project is moving correctly. The next unlock is not more abstraction. The next unlock is routing live inputs and outputs through the same receipt/proof/replay spine that already works locally.
+## Pending Patch: Tooling Receipt NDJSON Parser Collapse
+
+```text
+target = capability::tooling::record::{receipt,process}
+change = duplicated `[u64,...]` parser/header branches → shared parse_u64_ndjson_fields + validate_u64_ndjson_header helpers
+expected_effect = lower tooling receipt decoder branch duplication without changing schema versions, record tags, numeric fields, or invalid-record behavior
+validation_status = pending cargo build/test/example
+```
+
+The project is moving in the right direction. It now has enough implemented machinery to be judged as a real deterministic runtime prototype, not just a kernel sketch. It is still below autonomous-agent level because the observation loop is only file-backed, the generic proof spine is not yet extended to semantic verification and observation ingress, and the capability layer still needs external action tools.

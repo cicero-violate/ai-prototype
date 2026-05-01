@@ -1306,45 +1306,17 @@ pub fn append_ollama_llm_effect_receipt_ndjson(
     if !receipt.is_valid() {
         return Err(OllamaError::InvalidReceipt);
     }
-
-    let path = path.as_ref();
-    if let Some(parent) = path.parent() {
-        if !parent.as_os_str().is_empty() {
-            fs::create_dir_all(parent)?;
-        }
-    }
-
-    {
-        let mut file = OpenOptions::new().create(true).append(true).open(path)?;
-        writeln!(file, "{}", encode_ollama_llm_effect_receipt_ndjson(*receipt))?;
-        file.sync_all()?;
-    }
-
-    sync_parent_dir(path)
+    append_ollama_ndjson_record(path, encode_ollama_llm_effect_receipt_ndjson(*receipt))
 }
 
 pub fn load_ollama_llm_effect_receipts_ndjson(
     path: impl AsRef<Path>,
 ) -> Result<Vec<OllamaLlmEffectReceipt>, OllamaError> {
-    let path = path.as_ref();
-    if !path.exists() {
-        return Ok(Vec::new());
-    }
-
-    let file = File::open(path)?;
-    let reader = BufReader::new(file);
-    let mut receipts = Vec::new();
-    for line in reader.lines() {
-        let line = line?;
-        if line.trim().is_empty() {
-            continue;
-        }
-        let fields = parse_u64_fields(&line)?;
-        if fields.len() >= 2 && fields[1] == OLLAMA_LLM_EFFECT_RECEIPT_RECORD {
-            receipts.push(decode_ollama_llm_effect_receipt_fields(&fields)?);
-        }
-    }
-    Ok(receipts)
+    load_ollama_ndjson_records(
+        path,
+        OLLAMA_LLM_EFFECT_RECEIPT_RECORD,
+        decode_ollama_llm_effect_receipt_fields,
+    )
 }
 
 pub fn verify_ollama_llm_effect_receipts(
@@ -1376,45 +1348,17 @@ pub fn append_ollama_judgment_proof_event_ndjson(
     if !event.is_valid() {
         return Err(OllamaError::InvalidReceipt);
     }
-
-    let path = path.as_ref();
-    if let Some(parent) = path.parent() {
-        if !parent.as_os_str().is_empty() {
-            fs::create_dir_all(parent)?;
-        }
-    }
-
-    {
-        let mut file = OpenOptions::new().create(true).append(true).open(path)?;
-        writeln!(file, "{}", encode_ollama_judgment_proof_event_ndjson(*event))?;
-        file.sync_all()?;
-    }
-
-    sync_parent_dir(path)
+    append_ollama_ndjson_record(path, encode_ollama_judgment_proof_event_ndjson(*event))
 }
 
 pub fn load_ollama_judgment_proof_events_ndjson(
     path: impl AsRef<Path>,
 ) -> Result<Vec<OllamaJudgmentProofEvent>, OllamaError> {
-    let path = path.as_ref();
-    if !path.exists() {
-        return Ok(Vec::new());
-    }
-
-    let file = File::open(path)?;
-    let reader = BufReader::new(file);
-    let mut events = Vec::new();
-    for line in reader.lines() {
-        let line = line?;
-        if line.trim().is_empty() {
-            continue;
-        }
-        let fields = parse_u64_fields(&line)?;
-        if fields.len() >= 2 && fields[1] == OLLAMA_JUDGMENT_PROOF_RECORD {
-            events.push(decode_ollama_judgment_proof_event_fields(&fields)?);
-        }
-    }
-    Ok(events)
+    load_ollama_ndjson_records(
+        path,
+        OLLAMA_JUDGMENT_PROOF_RECORD,
+        decode_ollama_judgment_proof_event_fields,
+    )
 }
 
 pub fn verify_ollama_judgment_proof_event_order_ndjson(
@@ -1715,6 +1659,37 @@ fn parse_u64_fields(line: &str) -> Result<Vec<u64>, OllamaError> {
 fn load_ollama_llm_effect_receipts_ndjson_unchecked(
     path: impl AsRef<Path>,
 ) -> Result<Vec<OllamaLlmEffectReceipt>, OllamaError> {
+    load_ollama_ndjson_records(
+        path,
+        OLLAMA_LLM_EFFECT_RECEIPT_RECORD,
+        decode_ollama_llm_effect_receipt_fields_unchecked,
+    )
+}
+
+fn append_ollama_ndjson_record(
+    path: impl AsRef<Path>,
+    encoded_record: String,
+) -> Result<(), OllamaError> {
+    let path = path.as_ref();
+    ensure_ollama_record_parent(path)?;
+
+    {
+        let mut file = OpenOptions::new().create(true).append(true).open(path)?;
+        writeln!(file, "{}", encoded_record)?;
+        file.sync_all()?;
+    }
+
+    sync_parent_dir(path)
+}
+
+fn load_ollama_ndjson_records<T, F>(
+    path: impl AsRef<Path>,
+    record_tag: u64,
+    decode: F,
+) -> Result<Vec<T>, OllamaError>
+where
+    F: Fn(&[u64]) -> Result<T, OllamaError>,
+{
     let path = path.as_ref();
     if !path.exists() {
         return Ok(Vec::new());
@@ -1722,18 +1697,27 @@ fn load_ollama_llm_effect_receipts_ndjson_unchecked(
 
     let file = File::open(path)?;
     let reader = BufReader::new(file);
-    let mut receipts = Vec::new();
+    let mut records = Vec::new();
     for line in reader.lines() {
         let line = line?;
         if line.trim().is_empty() {
             continue;
         }
         let fields = parse_u64_fields(&line)?;
-        if fields.len() >= 2 && fields[1] == OLLAMA_LLM_EFFECT_RECEIPT_RECORD {
-            receipts.push(decode_ollama_llm_effect_receipt_fields_unchecked(&fields)?);
+        if fields.len() >= 2 && fields[1] == record_tag {
+            records.push(decode(&fields)?);
         }
     }
-    Ok(receipts)
+    Ok(records)
+}
+
+fn ensure_ollama_record_parent(path: &Path) -> Result<(), OllamaError> {
+    if let Some(parent) = path.parent() {
+        if !parent.as_os_str().is_empty() {
+            fs::create_dir_all(parent)?;
+        }
+    }
+    Ok(())
 }
 
 fn sync_parent_dir(path: &Path) -> Result<(), OllamaError> {
@@ -1815,17 +1799,30 @@ fn extract_json_string(body: &str, key: &str, start_at: usize) -> Option<String>
 fn json_escape(value: &str) -> String {
     let mut out = String::new();
     for ch in value.chars() {
-        match ch {
-            '"' => out.push_str("\\\""),
-            '\\' => out.push_str("\\\\"),
-            '\n' => out.push_str("\\n"),
-            '\r' => out.push_str("\\r"),
-            '\t' => out.push_str("\\t"),
-            ch if ch.is_control() => out.push(' '),
-            ch => out.push(ch),
-        }
+        push_json_escaped_char(&mut out, ch);
     }
     out
+}
+
+fn push_json_escaped_char(out: &mut String, ch: char) {
+    if let Some(escaped) = json_escape_sequence(ch) {
+        out.push_str(escaped);
+    } else if ch.is_control() {
+        out.push(' ');
+    } else {
+        out.push(ch);
+    }
+}
+
+fn json_escape_sequence(ch: char) -> Option<&'static str> {
+    match ch {
+        '"' => Some("\\\""),
+        '\\' => Some("\\\\"),
+        '\n' => Some("\\n"),
+        '\r' => Some("\\r"),
+        '\t' => Some("\\t"),
+        _ => None,
+    }
 }
 
 pub(crate) fn hash_text(value: &str) -> u64 {

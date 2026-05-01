@@ -25,6 +25,18 @@ pub(crate) struct EventView {
 }
 
 pub(crate) fn validate_event(event: EventView) -> Result<(), CanonError> {
+    validate_event_transition(event)?;
+    validate_event_failure_class(event)?;
+    validate_event_recovery_action(event)?;
+    validate_event_affected_gate(event)?;
+    validate_persisted_event(event)?;
+    validate_learned_event(event)?;
+    validate_halt_decision(event)?;
+
+    Ok(())
+}
+
+fn validate_event_transition(event: EventView) -> Result<(), CanonError> {
     if !legal_transition(event.from, event.to, event.kind, event.cause) {
         return Err(CanonError::IllegalEvent {
             from: event.from,
@@ -33,6 +45,10 @@ pub(crate) fn validate_event(event: EventView) -> Result<(), CanonError> {
         });
     }
 
+    Ok(())
+}
+
+fn validate_event_failure_class(event: EventView) -> Result<(), CanonError> {
     if matches!(event.kind, EventKind::Blocked | EventKind::Failed | EventKind::Recovered)
         && event.failure.is_none()
     {
@@ -47,6 +63,10 @@ pub(crate) fn validate_event(event: EventView) -> Result<(), CanonError> {
         return Err(CanonError::UnexpectedFailureClass);
     }
 
+    Ok(())
+}
+
+fn validate_event_recovery_action(event: EventView) -> Result<(), CanonError> {
     if event.kind == EventKind::Recovered && event.recovery_action.is_none() {
         return Err(CanonError::MissingRecoveryAction);
     }
@@ -57,6 +77,10 @@ pub(crate) fn validate_event(event: EventView) -> Result<(), CanonError> {
         return Err(CanonError::UnexpectedRecoveryAction);
     }
 
+    Ok(())
+}
+
+fn validate_event_affected_gate(event: EventView) -> Result<(), CanonError> {
     if event.kind == EventKind::Recovered && event.affected_gate.is_some() {
         return Err(CanonError::InvalidRepairTarget);
     }
@@ -81,6 +105,10 @@ pub(crate) fn validate_event(event: EventView) -> Result<(), CanonError> {
         return Err(CanonError::UnexpectedAffectedGate);
     }
 
+    Ok(())
+}
+
+fn validate_persisted_event(event: EventView) -> Result<(), CanonError> {
     if event.kind == EventKind::Persisted && event.cause == Cause::RepairApplied {
         let Some(action) = event.recovery_action else {
             return Err(CanonError::MissingRecoveryAction);
@@ -105,13 +133,23 @@ pub(crate) fn validate_event(event: EventView) -> Result<(), CanonError> {
         }
     }
 
+    Ok(())
+}
+
+fn validate_learned_event(event: EventView) -> Result<(), CanonError> {
     if event.kind == EventKind::Learned {
         if event.to != Phase::Done || event.affected_gate != Some(GateId::Learning) {
             return Err(CanonError::InvalidLearnTarget);
         }
     }
 
-    if event.decision == Decision::Halt && event.recovery_action != Some(RecoveryAction::Escalate) {
+    Ok(())
+}
+
+fn validate_halt_decision(event: EventView) -> Result<(), CanonError> {
+    if event.decision == Decision::Halt
+        && event.recovery_action != Some(RecoveryAction::Escalate)
+    {
         return Err(CanonError::MissingRecoveryAction);
     }
 
@@ -247,122 +285,188 @@ pub fn verify_tlog(tlog: &[ControlEvent]) -> Result<(), CanonError> {
 }
 
 pub fn verify_tlog_from(initial: State, tlog: &[ControlEvent]) -> Result<State, CanonError> {
-    if !initial.is_structurally_valid() {
-        return Err(CanonError::InvalidStateInvariant);
-    }
+    validate_replay_initial_state(initial)?;
 
     let mut state = initial;
     let mut prev_hash = 0;
 
     for (i, event) in tlog.iter().enumerate() {
-        if !event.runtime_config.is_structurally_valid() {
-            return Err(CanonError::InvalidRuntimeConfig);
-        }
-
-        if !event.state_before.is_structurally_valid()
-            || !event.state_after.is_structurally_valid()
-        {
-            return Err(CanonError::InvalidStateInvariant);
-        }
-
-        if event.seq != i as u64 + 1 || event.prev_hash != prev_hash {
-            return Err(CanonError::InvalidHashChain);
-        }
-
-        if (event.api_command_id == 0) != (event.api_command_hash == 0) {
-            return Err(CanonError::InvalidApiCommand);
-        }
-
-        if !event.capability_registry_projection.is_valid()
-            || (event.cause == Cause::EvidenceSubmitted
-                && event.capability_registry_projection.is_empty())
-            || (event.cause != Cause::EvidenceSubmitted
-                && !event.capability_registry_projection.is_empty())
-        {
-            return Err(CanonError::InvalidReplay);
-        }
-
-        if event.from != state.phase || event.state_before.phase != state.phase {
-            return Err(CanonError::InvalidStateContinuity);
-        }
-
-        if event.state_before.packet != state.packet {
-            return Err(CanonError::InvalidPacketContinuity);
-        }
-
-        if event.state_after.phase != event.to {
-            return Err(CanonError::InvalidStateContinuity);
-        }
-
-        if event.state_before != state {
-            return Err(CanonError::InvalidReplay);
-        }
-
-        if event.delta != semantic_diff(event.state_before, event.state_after) {
-            return Err(CanonError::InvalidSemanticDelta);
-        }
-
-        validate_event(EventView {
-            from: event.from,
-            to: event.to,
-            kind: event.kind,
-            cause: event.cause,
-            decision: event.decision,
-            failure: event.failure,
-            recovery_action: event.recovery_action,
-            affected_gate: event.affected_gate,
-        })?;
-
-        let expected = hash_event(EventHashInput {
-            seq: event.seq,
-            prev_hash: event.prev_hash,
-            from: event.from,
-            to: event.to,
-            kind: event.kind,
-            cause: event.cause,
-            delta: event.delta,
-            evidence: event.evidence,
-            decision: event.decision,
-            failure: event.failure,
-            recovery_action: event.recovery_action,
-            affected_gate: event.affected_gate,
-            runtime_config: event.runtime_config,
-            state_before: event.state_before,
-            state_after: event.state_after,
-            capability_registry_projection: event.capability_registry_projection,
-            api_command_id: event.api_command_id,
-            api_command_hash: event.api_command_hash,
-        });
-
-        if expected != event.self_hash {
-            return Err(CanonError::InvalidHashChain);
-        }
-
-        let expected_outcome = if event.cause == Cause::MaxSteps {
-            convergence_outcome(state)
-        } else if event.cause == Cause::EvidenceSubmitted {
-            evidence_submission_outcome(state, event)?
-        } else {
-            reduce(state, event.runtime_config)
-        };
-        let expected_event = CanonicalWriter::build_with_command_and_registry_projection(
-            &tlog[..i],
-            state,
-            expected_outcome,
-            event.runtime_config,
-            event.api_command_id,
-            event.api_command_hash,
-            event.capability_registry_projection,
-        )?;
-        if *event != expected_event {
-            return Err(CanonError::InvalidReplay);
-        }
+        validate_replay_event_shape(event)?;
+        validate_replay_hash_link(event, i, prev_hash)?;
+        validate_replay_api_command(event)?;
+        validate_replay_registry_projection(event)?;
+        validate_replay_state_continuity(event, state)?;
+        validate_replay_semantic_delta(event)?;
+        validate_event(event_view(event))?;
+        validate_replay_self_hash(event)?;
+        validate_replay_writer_identity(tlog, i, state, event)?;
 
         state = event.state_after;
         prev_hash = event.self_hash;
     }
 
     Ok(state)
+}
+
+fn validate_replay_initial_state(initial: State) -> Result<(), CanonError> {
+    if !initial.is_structurally_valid() {
+        return Err(CanonError::InvalidStateInvariant);
+    }
+
+    Ok(())
+}
+
+fn validate_replay_event_shape(event: &ControlEvent) -> Result<(), CanonError> {
+    if !event.runtime_config.is_structurally_valid() {
+        return Err(CanonError::InvalidRuntimeConfig);
+    }
+
+    if !event.state_before.is_structurally_valid() || !event.state_after.is_structurally_valid() {
+        return Err(CanonError::InvalidStateInvariant);
+    }
+
+    Ok(())
+}
+
+fn validate_replay_hash_link(
+    event: &ControlEvent,
+    event_index: usize,
+    prev_hash: u64,
+) -> Result<(), CanonError> {
+    if event.seq != event_index as u64 + 1 || event.prev_hash != prev_hash {
+        return Err(CanonError::InvalidHashChain);
+    }
+
+    Ok(())
+}
+
+fn validate_replay_api_command(event: &ControlEvent) -> Result<(), CanonError> {
+    if (event.api_command_id == 0) != (event.api_command_hash == 0) {
+        return Err(CanonError::InvalidApiCommand);
+    }
+
+    Ok(())
+}
+
+fn validate_replay_registry_projection(event: &ControlEvent) -> Result<(), CanonError> {
+    let projection = event.capability_registry_projection;
+
+    if !projection.is_valid()
+        || (event.cause == Cause::EvidenceSubmitted && projection.is_empty())
+        || (event.cause != Cause::EvidenceSubmitted && !projection.is_empty())
+    {
+        return Err(CanonError::InvalidReplay);
+    }
+
+    Ok(())
+}
+
+fn validate_replay_state_continuity(
+    event: &ControlEvent,
+    state: State,
+) -> Result<(), CanonError> {
+    if event.from != state.phase || event.state_before.phase != state.phase {
+        return Err(CanonError::InvalidStateContinuity);
+    }
+
+    if event.state_before.packet != state.packet {
+        return Err(CanonError::InvalidPacketContinuity);
+    }
+
+    if event.state_after.phase != event.to {
+        return Err(CanonError::InvalidStateContinuity);
+    }
+
+    if event.state_before != state {
+        return Err(CanonError::InvalidReplay);
+    }
+
+    Ok(())
+}
+
+fn validate_replay_semantic_delta(event: &ControlEvent) -> Result<(), CanonError> {
+    if event.delta != semantic_diff(event.state_before, event.state_after) {
+        return Err(CanonError::InvalidSemanticDelta);
+    }
+
+    Ok(())
+}
+
+fn event_view(event: &ControlEvent) -> EventView {
+    EventView {
+        from: event.from,
+        to: event.to,
+        kind: event.kind,
+        cause: event.cause,
+        decision: event.decision,
+        failure: event.failure,
+        recovery_action: event.recovery_action,
+        affected_gate: event.affected_gate,
+    }
+}
+
+fn validate_replay_self_hash(event: &ControlEvent) -> Result<(), CanonError> {
+    if expected_event_hash(event) != event.self_hash {
+        return Err(CanonError::InvalidHashChain);
+    }
+
+    Ok(())
+}
+
+fn expected_event_hash(event: &ControlEvent) -> u64 {
+    hash_event(EventHashInput {
+        seq: event.seq,
+        prev_hash: event.prev_hash,
+        from: event.from,
+        to: event.to,
+        kind: event.kind,
+        cause: event.cause,
+        delta: event.delta,
+        evidence: event.evidence,
+        decision: event.decision,
+        failure: event.failure,
+        recovery_action: event.recovery_action,
+        affected_gate: event.affected_gate,
+        runtime_config: event.runtime_config,
+        state_before: event.state_before,
+        state_after: event.state_after,
+        capability_registry_projection: event.capability_registry_projection,
+        api_command_id: event.api_command_id,
+        api_command_hash: event.api_command_hash,
+    })
+}
+
+fn validate_replay_writer_identity(
+    tlog: &[ControlEvent],
+    event_index: usize,
+    state: State,
+    event: &ControlEvent,
+) -> Result<(), CanonError> {
+    let expected_event = CanonicalWriter::build_with_command_and_registry_projection(
+        &tlog[..event_index],
+        state,
+        expected_replay_outcome(state, event)?,
+        event.runtime_config,
+        event.api_command_id,
+        event.api_command_hash,
+        event.capability_registry_projection,
+    )?;
+
+    if *event != expected_event {
+        return Err(CanonError::InvalidReplay);
+    }
+
+    Ok(())
+}
+
+fn expected_replay_outcome(state: State, event: &ControlEvent) -> Result<Outcome, CanonError> {
+    if event.cause == Cause::MaxSteps {
+        Ok(convergence_outcome(state))
+    } else if event.cause == Cause::EvidenceSubmitted {
+        evidence_submission_outcome(state, event)
+    } else {
+        Ok(reduce(state, event.runtime_config))
+    }
 }
 
 #[derive(Clone, Copy)]

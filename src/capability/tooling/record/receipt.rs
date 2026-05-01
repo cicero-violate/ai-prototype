@@ -3,12 +3,18 @@ use std::io::{BufRead, BufReader, Write};
 use std::path::Path;
 
 use crate::capability::{CapabilityId, CapabilityRegistry, EvidenceProducer, EvidenceSubmission};
+use crate::capability::verification::{
+    ProofSubjectKind, VerificationProofBinding, VerificationProofRecord, PROOF_FLAGS_REQUIRED,
+};
 use crate::kernel::{
-    Cause, ControlEvent, Decision, EventKind, Evidence, GateId, GateStatus, Phase, TLog,
+    mix, Cause, ControlEvent, Decision, EventKind, Evidence, GateId, GateStatus, Phase, TLog,
 };
 
 use super::artifact::{persisted_execution_effect_is_valid, ToolExecutionRecord};
-use super::hash::{capability_from_u64, sync_dir, tool_effect_kind_from_u64, tool_effect_output_hash};
+use super::hash::{
+    capability_from_u64, parse_u64_ndjson_fields, sync_dir, tool_effect_kind_from_u64,
+    tool_effect_output_hash, validate_u64_ndjson_header,
+};
 use super::process::SandboxProcessReceipt;
 use super::types::{
     Effect, ToolEffectKind, ToolSandboxError, PROCESS_EFFECT_RECEIPT_RECORD,
@@ -98,6 +104,87 @@ impl ToolEffectReceipt {
             && self.artifact_content_hash != 0
             && self.artifact_bytes != 0
             && self.sandbox_root_hash != 0
+    }
+
+    pub fn receipt_core_hash(self) -> u64 {
+        let mut h = 0x7a7d_efc7_0019_04a1u64;
+        h = mix(h, self.capability as u64);
+        h = mix(h, self.registry_policy_hash);
+        h = mix(h, self.request_hash);
+        h = mix(h, self.effect_hash);
+        h = mix(h, self.effect.contract_hash());
+        h = mix(h, self.event_seq);
+        h = mix(h, self.event_hash);
+        h = mix(h, self.artifact_id);
+        h = mix(h, self.artifact_receipt_hash);
+        h = mix(h, self.artifact_path_hash);
+        h = mix(h, self.artifact_content_hash);
+        h = mix(h, self.artifact_bytes);
+        h = mix(h, self.sandbox_root_hash);
+        h.max(1)
+    }
+
+    pub fn verifier_context_hash(self) -> u64 {
+        let mut h = 0x3a15_b204_c097_994du64;
+        h = mix(h, ProofSubjectKind::ArtifactEffect as u64);
+        h = mix(h, self.registry_policy_hash);
+        h = mix(h, self.request_hash);
+        h = mix(h, self.effect.contract_hash());
+        h = mix(h, self.artifact_receipt_hash);
+        h.max(1)
+    }
+
+    pub fn provider_proof_hash(self, proof_event_seq: u64) -> Option<u64> {
+        if !self.is_valid() || proof_event_seq <= self.event_seq {
+            return None;
+        }
+
+        let mut h = 0x4d1b_105e_34b1_d9a7u64;
+        h = mix(h, self.receipt_core_hash());
+        h = mix(h, self.receipt_hash);
+        h = mix(h, self.event_hash);
+        h = mix(h, proof_event_seq);
+        h = mix(h, self.effect.contract_hash());
+        Some(h.max(1))
+    }
+
+    pub fn proof_line_hash(self, proof_event_seq: u64) -> Option<u64> {
+        let provider_proof_hash = self.provider_proof_hash(proof_event_seq)?;
+        let mut h = 0x5f0d_5d17_ac70_4e31u64;
+        h = mix(h, self.receipt_core_hash());
+        h = mix(h, self.receipt_hash);
+        h = mix(h, self.event_seq);
+        h = mix(h, proof_event_seq);
+        h = mix(h, self.event_hash);
+        h = mix(h, provider_proof_hash);
+        Some(h.max(1))
+    }
+
+    pub fn verification_proof_binding(
+        self,
+        proof_event_seq: u64,
+    ) -> Option<VerificationProofBinding> {
+        VerificationProofBinding::new(
+            ProofSubjectKind::ArtifactEffect,
+            self.receipt_core_hash(),
+            self.receipt_hash,
+            self.event_seq,
+            self.event_hash,
+            self.provider_proof_hash(proof_event_seq)?,
+        )
+    }
+
+    pub fn to_verification_proof_record(
+        self,
+        proof_event_seq: u64,
+    ) -> Option<VerificationProofRecord> {
+        VerificationProofRecord::from_binding(
+            self.verification_proof_binding(proof_event_seq)?,
+            self.proof_line_hash(proof_event_seq)?,
+            proof_event_seq,
+            self.verifier_context_hash(),
+            PROOF_FLAGS_REQUIRED,
+        )
     }
 
     pub fn replay_verified(self, tlog: &TLog) -> bool {
@@ -238,29 +325,13 @@ pub fn encode_tool_effect_receipt_ndjson(receipt: ToolEffectReceipt) -> String {
 pub fn decode_tool_effect_receipt_ndjson(
     line: &str,
 ) -> Result<ToolEffectReceipt, ToolSandboxError> {
-    let trimmed = line.trim();
-    let body = trimmed
-        .strip_prefix('[')
-        .and_then(|v| v.strip_suffix(']'))
-        .ok_or(ToolSandboxError::InvalidToolReceiptRecord)?;
-    let fields = if body.trim().is_empty() {
-        Vec::new()
-    } else {
-        body.split(',')
-            .map(|raw| {
-                raw.trim()
-                    .parse::<u64>()
-                    .map_err(|_| ToolSandboxError::InvalidToolReceiptRecord)
-            })
-            .collect::<Result<Vec<_>, _>>()?
-    };
-
-    if fields.len() != 18
-        || fields[0] != TOOL_EFFECT_RECEIPT_SCHEMA_VERSION
-        || fields[1] != TOOL_EFFECT_RECEIPT_RECORD
-    {
-        return Err(ToolSandboxError::InvalidToolReceiptRecord);
-    }
+    let fields = parse_u64_ndjson_fields(line)?;
+    validate_u64_ndjson_header(
+        &fields,
+        18,
+        TOOL_EFFECT_RECEIPT_SCHEMA_VERSION,
+        TOOL_EFFECT_RECEIPT_RECORD,
+    )?;
 
     let effect = Effect {
         kind: tool_effect_kind_from_u64(fields[7])?,
@@ -361,6 +432,80 @@ impl ProcessEffectReceipt {
             && event.affected_gate == Some(GateId::Execution)
             && self.effect.kind == ToolEffectKind::Process
             && self.effect_hash == self.effect.contract_hash()
+    }
+
+    pub fn receipt_core_hash(self) -> u64 {
+        let mut h = 0x61c0_7e28_fef2_9e5du64;
+        h = mix(h, self.capability as u64);
+        h = mix(h, self.registry_policy_hash);
+        h = mix(h, self.request_hash);
+        h = mix(h, self.effect_hash);
+        h = mix(h, self.effect.contract_hash());
+        h = mix(h, self.event_seq);
+        h = mix(h, self.event_hash);
+        h.max(1)
+    }
+
+    pub fn verifier_context_hash(self) -> u64 {
+        let mut h = 0x0700_35ee_fcf3_88d9u64;
+        h = mix(h, ProofSubjectKind::ProcessEffect as u64);
+        h = mix(h, self.registry_policy_hash);
+        h = mix(h, self.request_hash);
+        h = mix(h, self.effect.contract_hash());
+        h.max(1)
+    }
+
+    pub fn provider_proof_hash(self, proof_event_seq: u64) -> Option<u64> {
+        if !self.is_valid() || proof_event_seq <= self.event_seq {
+            return None;
+        }
+
+        let mut h = 0xb6ca_33cf_f013_2a11u64;
+        h = mix(h, self.receipt_core_hash());
+        h = mix(h, self.receipt_hash);
+        h = mix(h, self.event_hash);
+        h = mix(h, proof_event_seq);
+        h = mix(h, self.effect.contract_hash());
+        Some(h.max(1))
+    }
+
+    pub fn proof_line_hash(self, proof_event_seq: u64) -> Option<u64> {
+        let provider_proof_hash = self.provider_proof_hash(proof_event_seq)?;
+        let mut h = 0xe11e_97d4_0181_997du64;
+        h = mix(h, self.receipt_core_hash());
+        h = mix(h, self.receipt_hash);
+        h = mix(h, self.event_seq);
+        h = mix(h, proof_event_seq);
+        h = mix(h, self.event_hash);
+        h = mix(h, provider_proof_hash);
+        Some(h.max(1))
+    }
+
+    pub fn verification_proof_binding(
+        self,
+        proof_event_seq: u64,
+    ) -> Option<VerificationProofBinding> {
+        VerificationProofBinding::new(
+            ProofSubjectKind::ProcessEffect,
+            self.receipt_core_hash(),
+            self.receipt_hash,
+            self.event_seq,
+            self.event_hash,
+            self.provider_proof_hash(proof_event_seq)?,
+        )
+    }
+
+    pub fn to_verification_proof_record(
+        self,
+        proof_event_seq: u64,
+    ) -> Option<VerificationProofRecord> {
+        VerificationProofRecord::from_binding(
+            self.verification_proof_binding(proof_event_seq)?,
+            self.proof_line_hash(proof_event_seq)?,
+            proof_event_seq,
+            self.verifier_context_hash(),
+            PROOF_FLAGS_REQUIRED,
+        )
     }
 }
 
@@ -499,29 +644,13 @@ pub fn encode_process_effect_receipt_ndjson(receipt: ProcessEffectReceipt) -> St
 pub fn decode_process_effect_receipt_ndjson(
     line: &str,
 ) -> Result<ProcessEffectReceipt, ToolSandboxError> {
-    let trimmed = line.trim();
-    let body = trimmed
-        .strip_prefix('[')
-        .and_then(|v| v.strip_suffix(']'))
-        .ok_or(ToolSandboxError::InvalidToolReceiptRecord)?;
-    let fields = if body.trim().is_empty() {
-        Vec::new()
-    } else {
-        body.split(',')
-            .map(|raw| {
-                raw.trim()
-                    .parse::<u64>()
-                    .map_err(|_| ToolSandboxError::InvalidToolReceiptRecord)
-            })
-            .collect::<Result<Vec<_>, _>>()?
-    };
-
-    if fields.len() != 12
-        || fields[0] != PROCESS_EFFECT_RECEIPT_SCHEMA_VERSION
-        || fields[1] != PROCESS_EFFECT_RECEIPT_RECORD
-    {
-        return Err(ToolSandboxError::InvalidToolReceiptRecord);
-    }
+    let fields = parse_u64_ndjson_fields(line)?;
+    validate_u64_ndjson_header(
+        &fields,
+        12,
+        PROCESS_EFFECT_RECEIPT_SCHEMA_VERSION,
+        PROCESS_EFFECT_RECEIPT_RECORD,
+    )?;
 
     let effect = Effect {
         kind: tool_effect_kind_from_u64(fields[7])?,

@@ -164,18 +164,32 @@ Latest validated local run:
 
 ```text
 cargo build = passed
-cargo test = 99 passed / 0 failed
+cargo test = 102 passed / 0 failed
 cargo run --example ollama_judgment = passed
 ollama_tampered_fields_rejected = 17/17
 durable_proof_verified = true
 receipt_proof_matches = true
 bounded_line_observation_source_persists_cursor_and_applies_backpressure = passed
+observation_ingress_batch_routes_through_api_to_invariant_gate = passed
+ollama_proof_event_projects_into_generic_verification_spine = passed
+generic_verification_proof_replay_rejects_missing_duplicate_and_displaced_events = passed
+runtime_validate_event_split = passed_user_validated
+semantic_diff_split = passed_user_validated
+codec_ndjson_decoder_table_split = passed_user_validated
+ollama_mixed_ndjson_helper_collapse = passed_user_validated
+ollama_json_escape_split = passed_user_validated
+runtime_replay_loop_split = passed_user_validated
+tooling_receipt_ndjson_field_parser_collapse = pending_validation
+semantic_redundant_path_pairs = 621 -> 497 -> 464 -> 349 -> 346 -> 326 -> 328
+graph_intent_class_coverage = 633/633fn
 timeout_ms = 30000
 retry_count = 0
 max_retries = 0
 attempt_budget = 1
 budget_exhausted = true
 duplicate_request = false
+tool_process_generic_proof_bindings = passed_user_validated
+generic_proof_replay_enforcement = passed_user_validated
 ```
 
 This is not a system that trades correctness for capability. The kernel
@@ -189,27 +203,82 @@ effects, semantic verification, policy persistence, learning promotion, the
 local Ollama judgment path, and a bounded file-backed observation ingress are
 implemented as deterministic source surfaces. The observation ingress reads an
 append-only line source, applies a maximum batch size, applies explicit
-backpressure when unseen frames exceed the backlog cap, and persists only the
-cursor outside the kernel.
+backpressure when unseen frames exceed the backlog cap, persists only the cursor
+outside the kernel, and now has a source-batch API command path:
+`Command::SubmitObservationIngress(ObservationIngressBatch)`.
 
 The local Ollama path has validated replayable effect receipts, endpoint
 provenance, proof-event ordering, bidirectional receipt/proof binding,
 receipt/proof matching, and retry/budget/idempotency fields in the receipt/proof
 model. The most recent local validation passed `cargo build`, `cargo test`, and
-`cargo run --example ollama_judgment`, with all 99 tests passing, the bounded
-line observation ingress cursor/backpressure test passing, and the Ollama tamper
-matrix rejecting 17 of 17 receipt-field mutations.
+`cargo run --example ollama_judgment`, with all 102 tests passing, the bounded
+line observation ingress cursor/backpressure and API-route tests passing, the
+tool/process generic proof-binding tests passing, generic proof replay rejecting
+missing/duplicate/displaced proof records, and the Ollama tamper matrix
+rejecting 17 of 17 receipt-field mutations.
 
-The current source now also projects the Ollama proof event into the generic
+The user-validated source projects the Ollama proof event into the generic
 `VerificationProofRecord` spine. The provider-specific proof remains responsible
 for Ollama-only fields, but verification integrity now has a reusable binding
 shape: `ProofSubjectKind::LlmEffect + VerificationProofBinding +
 verify_verification_proof_record_bindings`. This is the first concrete bridge
 from provider-specific proof events to a generic verification proof contract.
+That same generic proof-binding surface is now cargo-validated for mixed-log
+replay enforcement. `verify_verification_proof_record_replay_ndjson` checks that
+the receipt event exists in the control TLog, checks each
+`VerificationProofRecord` against its receipt binding, checks proof-line
+ordering in the mixed NDJSON stream, and rejects missing, duplicate, and
+displaced generic proof events. This moves tooling closer to the universal
+`effect receipt -> proof binding -> VerificationProofRecord -> replay` normal
+form.
 
-Still pending: external autonomous observation beyond file-backed append-only
-sources, routing the observation ingress through a live API/runtime source,
-external API action tools, provider-signed receipts, streaming LLM response
-validation, distributed orchestration, and extending the generic verification
-spine beyond LLM proof records into tooling, process, semantic verification, and
-future provider effects.
+The first semantic-debt reduction pass now splits the generic proof spine out
+of `capability::verification::record` into `capability::verification::proof`.
+That keeps semantic artifact profile checking separate from the reusable
+proof-record NDJSON/replay machinery, while preserving the same public
+`capability::verification::*` exports and compatibility re-exports under
+`capability::verification::record::*`.
+
+The validated semantic-debt reduction passes decomposed
+`runtime::verify::validate_event`, `runtime::diff::semantic_diff`, and
+`codec::ndjson` enum decoding into smaller single-purpose surfaces. This
+preserves event-validation order, semantic-delta priority order, numeric TLog
+tags, and decode error behavior while reducing redundant-path count from `621`
+to `349` across the validated runtime/diff/codec passes.
+
+The latest validated LLM-adapter debt patches keep that same constraint
+discipline and target `capability::llm::ollama` mixed-record NDJSON helpers and
+JSON string escaping.
+Receipt/proof append and load paths now share one record writer and one typed
+record loader instead of duplicating parent-directory creation, append/sync,
+line parsing, record-tag filtering, and decode dispatch. JSON escaping is now
+split into `json_escape`, `push_json_escaped_char`, and
+`json_escape_sequence`, while preserving quote, backslash, newline, carriage
+return, tab, and control-character behavior. The local validation passed
+`cargo build`, `cargo test`, and `cargo run --example ollama_judgment` with all
+102 tests still passing, intent coverage at `621/621`, and redundant path pairs
+reduced from `349` to `346` to `326`.
+
+The runtime replay-loop split is now locally validated. `verify_tlog_from` is
+decomposed into replay-shape, hash-link, API-command, registry-projection,
+continuity, semantic-delta, self-hash, writer-identity, and expected-outcome
+helpers. The validation passed `cargo build`, `cargo test`, and
+`cargo run --example ollama_judgment` with all 102 tests passing, intent
+coverage at `633/633`, and redundant path pairs moving from `326` to `328`.
+That split improved replay readability but did not reduce graph debt.
+
+The next semantic-debt patch targets tooling receipt codecs instead of adding
+new behavior. Tooling artifact/process/process-effect receipt decoders now use
+one shared `parse_u64_ndjson_fields` helper and one shared
+`validate_u64_ndjson_header` helper, preserving schema versions, record tags,
+numeric fields, and invalid-record behavior while collapsing duplicated parser
+branches across `receipt.rs` and `process.rs`. Validation is pending until the
+next local `cargo build && cargo test && cargo run --example ollama_judgment`
+run.
+
+Still pending: further graph debt reduction beyond `328` redundant path pairs,
+external autonomous observation beyond file-backed append-only
+sources, external API action tools, provider-signed receipts, streaming LLM
+response validation, distributed orchestration, reducing graph semantic debt,
+and extending the generic verification spine into semantic verification,
+observation ingress, and future provider effects.

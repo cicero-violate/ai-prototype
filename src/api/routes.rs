@@ -62,6 +62,16 @@ fn handle_command_with_receipt(
                 )?;
             }
         }
+        Command::SubmitObservationIngress(batch) => {
+            append_submission_event(
+                &mut candidate_state,
+                &mut candidate_tlog,
+                cfg,
+                batch.submission(),
+                receipt,
+            )?;
+            tick_for_command_response(&mut candidate_state, &mut candidate_tlog, cfg, receipt)?;
+        }
         Command::SubmitProcessReceipt(receipt_record) => {
             append_submission_event(
                 &mut candidate_state,

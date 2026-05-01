@@ -202,6 +202,39 @@ pub(crate) fn bounded_file_bytes(path: &Path, max_bytes: u64) -> Result<Vec<u8>,
     Ok(bytes)
 }
 
+pub(crate) fn parse_u64_ndjson_fields(line: &str) -> Result<Vec<u64>, ToolSandboxError> {
+    let trimmed = line.trim();
+    let body = trimmed
+        .strip_prefix('[')
+        .and_then(|value| value.strip_suffix(']'))
+        .ok_or(ToolSandboxError::InvalidToolReceiptRecord)?;
+
+    if body.trim().is_empty() {
+        return Ok(Vec::new());
+    }
+
+    body.split(',')
+        .map(|raw| {
+            raw.trim()
+                .parse::<u64>()
+                .map_err(|_| ToolSandboxError::InvalidToolReceiptRecord)
+        })
+        .collect()
+}
+
+pub(crate) fn validate_u64_ndjson_header(
+    fields: &[u64],
+    expected_len: usize,
+    schema_version: u64,
+    record_kind: u64,
+) -> Result<(), ToolSandboxError> {
+    if fields.len() == expected_len && fields[0] == schema_version && fields[1] == record_kind {
+        Ok(())
+    } else {
+        Err(ToolSandboxError::InvalidToolReceiptRecord)
+    }
+}
+
 pub(crate) fn capability_from_u64(value: u64) -> Result<CapabilityId, ToolSandboxError> {
     match value {
         7 => Ok(CapabilityId::Tooling),

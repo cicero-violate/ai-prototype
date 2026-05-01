@@ -68,9 +68,10 @@ pub use crate::capability::tooling::{
 };
 pub use crate::capability::verification::{
     ArtifactSemanticProfile, DeterministicSemanticVerifier, SemanticVerificationReceipt,
-    verify_verification_proof_record_bindings, ProofSubjectKind, VerificationCheck,
-    VerificationDecision, VerificationProofBinding, VerificationProofRecord, VerificationRecord,
-    VerificationRequest,
+    verify_verification_proof_record_bindings, verify_verification_proof_record_order_ndjson,
+    verify_verification_proof_record_replay, verify_verification_proof_record_replay_ndjson,
+    ProofSubjectKind, VerificationCheck, VerificationDecision, VerificationProofBinding,
+    VerificationProofRecord, VerificationRecord, VerificationRequest,
 };
 pub use crate::capability::{
     evidence_allowed_for_gate, expected_evidence_for_gate, CapabilityEffectRoute, CapabilityId,
@@ -528,6 +529,62 @@ mod tests {
     }
 
     #[test]
+    fn observation_ingress_batch_routes_through_api_to_invariant_gate() {
+        let stem = std::env::temp_dir().join(format!(
+            "ai-observation-api-ingress-{}",
+            std::process::id()
+        ));
+        let source_path = stem.with_extension("log");
+        let cursor_path = stem.with_extension("cursor.ndjson");
+        std::fs::remove_file(&source_path).ok();
+        std::fs::remove_file(&cursor_path).ok();
+        std::fs::write(&source_path, b"external-alpha\nexternal-beta\n").unwrap();
+
+        let batch = BoundedLineObservationSource::new(
+            source_path.clone(),
+            cursor_path.clone(),
+            ObservationIngressConfig::new(31, 2, 4, 11),
+        )
+        .read_batch()
+        .unwrap();
+
+        assert!(batch.is_contract_valid());
+        assert_eq!(batch.submission().gate, GateId::Invariant);
+        assert_eq!(batch.submission().evidence, Evidence::InvariantProof);
+        assert!(batch.submission().passed);
+
+        let mut state = State::default();
+        let mut tlog = Vec::new();
+        let mut ledger = CommandLedger::default();
+        let cfg = RuntimeConfig::default();
+        tick(&mut state, &mut tlog, cfg).unwrap();
+        assert_eq!(state.phase, Phase::Invariant);
+
+        let envelope = CommandEnvelope::new(91, Command::SubmitObservationIngress(batch));
+        let command_hash = envelope.command_hash;
+        let response = crate::api::routes::handle_envelope_once(
+            &mut state,
+            &mut tlog,
+            cfg,
+            &mut ledger,
+            envelope,
+        )
+        .unwrap();
+
+        assert_eq!(response.event.from, Phase::Invariant);
+        assert_eq!(response.event.to, Phase::Analysis);
+        assert_eq!(response.event.api_command_id, 91);
+        assert_eq!(response.event.api_command_hash, command_hash);
+        assert_eq!(state.gates.invariant.status, GateStatus::Pass);
+        assert_eq!(state.gates.invariant.evidence, Evidence::InvariantProof);
+        assert_eq!(ledger.len(), 1);
+        verify_tlog(&tlog).unwrap();
+
+        std::fs::remove_file(&source_path).ok();
+        std::fs::remove_file(&cursor_path).ok();
+    }
+
+    #[test]
     fn memory_index_lookup_is_deterministic_and_weight_ordered() {
         let mut memory = MemoryIndex::default();
 
@@ -966,6 +1023,117 @@ mod tests {
         tampered.provider_proof_hash ^= 1;
         tampered.record_hash = tampered.expected_record_hash();
         assert!(verify_verification_proof_record_bindings(&[tampered], &[binding]).is_err());
+    }
+
+    #[test]
+    fn generic_verification_proof_replay_rejects_missing_duplicate_and_displaced_events() {
+        let initial = State::default();
+        let (_, tlog) = run_until_done(initial, RuntimeConfig::default()).unwrap();
+        let receipt_event = tlog.first().copied().unwrap();
+        let proof_event_seq = tlog.last().map(|event| event.seq + 1).unwrap();
+        let binding = VerificationProofBinding::new(
+            ProofSubjectKind::SemanticVerification,
+            0xabc1,
+            0xabc2,
+            receipt_event.seq,
+            receipt_event.self_hash,
+            0xabc3,
+        )
+        .unwrap();
+        let proof_record = VerificationProofRecord::from_binding(
+            binding,
+            0xabc4,
+            proof_event_seq,
+            0xabc5,
+            crate::capability::verification::PROOF_FLAGS_REQUIRED,
+        )
+        .unwrap();
+
+        let base = std::env::temp_dir().join(format!(
+            "ai-generic-proof-replay-{}-{}",
+            std::process::id(),
+            proof_record.record_hash
+        ));
+        let valid_path = base.with_extension("valid.ndjson");
+        let missing_path = base.with_extension("missing.ndjson");
+        let duplicate_path = base.with_extension("duplicate.ndjson");
+        let displaced_path = base.with_extension("displaced.ndjson");
+        for path in [&valid_path, &missing_path, &duplicate_path, &displaced_path] {
+            std::fs::remove_file(path).ok();
+        }
+
+        write_tlog_ndjson(&valid_path, &tlog).unwrap();
+        crate::capability::verification::append_verification_proof_record_ndjson(
+            &valid_path,
+            &proof_record,
+        )
+        .unwrap();
+        assert_eq!(
+            verify_verification_proof_record_replay_ndjson(&valid_path, &[binding]).unwrap(),
+            1
+        );
+        assert_eq!(
+            verify_verification_proof_record_order_ndjson(&valid_path).unwrap(),
+            1
+        );
+
+        write_tlog_ndjson(&missing_path, &tlog).unwrap();
+        assert!(verify_verification_proof_record_replay_ndjson(
+            &missing_path,
+            &[binding]
+        )
+        .is_err());
+
+        write_tlog_ndjson(&duplicate_path, &tlog).unwrap();
+        crate::capability::verification::append_verification_proof_record_ndjson(
+            &duplicate_path,
+            &proof_record,
+        )
+        .unwrap();
+        crate::capability::verification::append_verification_proof_record_ndjson(
+            &duplicate_path,
+            &proof_record,
+        )
+        .unwrap();
+        assert!(verify_verification_proof_record_replay_ndjson(
+            &duplicate_path,
+            &[binding]
+        )
+        .is_err());
+
+        write_tlog_ndjson(&displaced_path, &tlog).unwrap();
+        {
+            use std::io::Write as _;
+
+            let mut displaced_event = receipt_event;
+            displaced_event.seq = proof_event_seq;
+            let mut file = std::fs::OpenOptions::new()
+                .append(true)
+                .open(&displaced_path)
+                .unwrap();
+            writeln!(
+                file,
+                "{}",
+                crate::codec::ndjson::encode_control_event_ndjson(&displaced_event)
+            )
+            .unwrap();
+            file.sync_all().unwrap();
+        }
+        crate::capability::verification::append_verification_proof_record_ndjson(
+            &displaced_path,
+            &proof_record,
+        )
+        .unwrap();
+        assert!(verify_verification_proof_record_order_ndjson(&displaced_path).is_err());
+        assert!(verify_verification_proof_record_replay_ndjson(
+            &displaced_path,
+            &[binding]
+        )
+        .is_err());
+
+        for path in [&valid_path, &missing_path, &duplicate_path, &displaced_path] {
+            std::fs::remove_file(path).ok();
+        }
     }
 
     #[test]
@@ -1843,8 +2011,8 @@ mod tests {
     }
 
     #[test]
-    fn api_protocol_schema_v3_binds_command_hash_to_payload() {
-        assert_eq!(API_PROTOCOL_SCHEMA_VERSION, 3);
+    fn api_protocol_schema_v4_binds_command_hash_to_payload() {
+        assert_eq!(API_PROTOCOL_SCHEMA_VERSION, 4);
 
         let first_submission = ObservationRecord::new(1, 1, 0xabc, 1).submission();
         let second_submission = ObservationRecord::new(2, 1, 0xabc, 1).submission();
@@ -2116,6 +2284,23 @@ mod tests {
         let effect_receipt = record.effect_receipt_for_event(persisted).unwrap();
         assert_eq!(effect_receipt.receipt_hash, record.receipt.receipt_hash);
         assert!(effect_receipt.replay_verified(&tlog));
+
+        let proof_event_seq = effect_receipt.event_seq + 1;
+        let proof_record = effect_receipt
+            .to_verification_proof_record(proof_event_seq)
+            .unwrap();
+        let binding = effect_receipt
+            .verification_proof_binding(proof_event_seq)
+            .unwrap();
+        assert_eq!(proof_record.subject, ProofSubjectKind::ArtifactEffect);
+        assert!(proof_record.matches_binding(binding));
+        assert_eq!(
+            verify_verification_proof_record_bindings(&[proof_record], &[binding]).unwrap(),
+            1
+        );
+        let mut tampered = proof_record;
+        tampered.provider_proof_hash ^= 1;
+        assert!(verify_verification_proof_record_bindings(&[tampered], &[binding]).is_err());
         verify_tlog(&tlog).unwrap();
     }
 
@@ -2293,6 +2478,20 @@ mod tests {
         let effect_receipt = ProcessEffectReceipt::from_persisted_event(&receipt, persisted).unwrap();
         assert_eq!(effect_receipt.effect.kind, ToolEffectKind::Process);
         assert!(effect_receipt.replay_verified(&tlog));
+
+        let proof_event_seq = effect_receipt.event_seq + 1;
+        let proof_record = effect_receipt
+            .to_verification_proof_record(proof_event_seq)
+            .unwrap();
+        let binding = effect_receipt
+            .verification_proof_binding(proof_event_seq)
+            .unwrap();
+        assert_eq!(proof_record.subject, ProofSubjectKind::ProcessEffect);
+        assert!(proof_record.matches_binding(binding));
+        assert_eq!(
+            verify_verification_proof_record_bindings(&[proof_record], &[binding]).unwrap(),
+            1
+        );
 
         append_process_effect_receipt_ndjson(&receipt_path, &effect_receipt).unwrap();
         let loaded = load_process_effect_receipts_ndjson(&receipt_path).unwrap();

@@ -375,105 +375,194 @@ fn opt_gate_from_u64(value: u64) -> Result<Option<GateId>, CanonError> {
     if value == 0 { Ok(None) } else { gate_id_from_u64(value).map(Some) }
 }
 
+fn enum_from_u64<T: Copy>(value: u64, table: &[(u64, T)]) -> Result<T, CanonError> {
+    table
+        .iter()
+        .find_map(|(tag, item)| (*tag == value).then_some(*item))
+        .ok_or(CanonError::InvalidTlogRecord)
+}
+
+const PHASE_TAGS: &[(u64, Phase)] = &[
+    (1, Phase::Delta),
+    (2, Phase::Invariant),
+    (3, Phase::Analysis),
+    (4, Phase::Judgment),
+    (5, Phase::Plan),
+    (6, Phase::Execute),
+    (7, Phase::Verify),
+    (8, Phase::Eval),
+    (9, Phase::Recovery),
+    (10, Phase::Learn),
+    (11, Phase::Persist),
+    (12, Phase::Done),
+];
+
+const GATE_STATUS_TAGS: &[(u64, GateStatus)] = &[
+    (1, GateStatus::Unknown),
+    (2, GateStatus::Pass),
+    (3, GateStatus::Fail),
+];
+
+const GATE_ID_TAGS: &[(u64, GateId)] = &[
+    (1, GateId::Invariant),
+    (2, GateId::Analysis),
+    (3, GateId::Judgment),
+    (4, GateId::Plan),
+    (5, GateId::Execution),
+    (6, GateId::Verification),
+    (7, GateId::Eval),
+    (8, GateId::Learning),
+];
+
+const EVIDENCE_TAGS: &[(u64, Evidence)] = &[
+    (1, Evidence::Missing),
+    (2, Evidence::DeltaComputed),
+    (3, Evidence::InvariantProof),
+    (4, Evidence::AnalysisReport),
+    (5, Evidence::JudgmentRecord),
+    (6, Evidence::PlanRecord),
+    (7, Evidence::TaskReady),
+    (8, Evidence::ExecutionReceipt),
+    (9, Evidence::ArtifactReceipt),
+    (10, Evidence::VerificationReport),
+    (11, Evidence::LineageProof),
+    (12, Evidence::EvalScore),
+    (13, Evidence::RecoveryPolicy),
+    (14, Evidence::CompletionProof),
+    (15, Evidence::ConvergenceLimit),
+    (16, Evidence::PersistedRecord),
+    (17, Evidence::LearningRecord),
+    (18, Evidence::PolicyPromotion),
+];
+
+const FAILURE_TAGS: &[(u64, FailureClass)] = &[
+    (1, FailureClass::InvariantUnknown),
+    (2, FailureClass::InvariantBlocked),
+    (3, FailureClass::AnalysisMissing),
+    (4, FailureClass::AnalysisFailed),
+    (5, FailureClass::JudgmentMissing),
+    (6, FailureClass::JudgmentFailed),
+    (7, FailureClass::PlanMissing),
+    (8, FailureClass::PlanFailed),
+    (9, FailureClass::PlanReadyQueueEmpty),
+    (10, FailureClass::ExecutionMissing),
+    (11, FailureClass::ExecutionFailed),
+    (12, FailureClass::TaskReceiptMissing),
+    (13, FailureClass::VerificationUnknown),
+    (14, FailureClass::VerificationFailed),
+    (15, FailureClass::ArtifactLineageBroken),
+    (16, FailureClass::EvalMissing),
+    (17, FailureClass::EvalFailed),
+    (18, FailureClass::RecoveryExhausted),
+    (19, FailureClass::ConvergenceFailed),
+    (20, FailureClass::LearningMissing),
+    (21, FailureClass::LearningFailed),
+];
+
+const RECOVERY_TAGS: &[(u64, RecoveryAction)] = &[
+    (1, RecoveryAction::RecheckInvariant),
+    (2, RecoveryAction::RunAnalysis),
+    (3, RecoveryAction::Rejudge),
+    (4, RecoveryAction::Replan),
+    (5, RecoveryAction::BindReadyTask),
+    (6, RecoveryAction::Reexecute),
+    (7, RecoveryAction::Reverify),
+    (8, RecoveryAction::RepairArtifactLineage),
+    (9, RecoveryAction::RecomputeEval),
+    (10, RecoveryAction::Escalate),
+];
+
+const EVENT_KIND_TAGS: &[(u64, EventKind)] = &[
+    (1, EventKind::Advanced),
+    (2, EventKind::Blocked),
+    (3, EventKind::Failed),
+    (4, EventKind::Recovered),
+    (5, EventKind::Learned),
+    (6, EventKind::Completed),
+    (7, EventKind::Persisted),
+];
+
+const CAUSE_TAGS: &[(u64, Cause)] = &[
+    (1, Cause::Start),
+    (2, Cause::GatePassed),
+    (3, Cause::GateFailed),
+    (4, Cause::EvidenceMissing),
+    (5, Cause::JudgmentMade),
+    (6, Cause::PlanReady),
+    (7, Cause::ReadyQueueEmpty),
+    (8, Cause::ExecutionFinished),
+    (9, Cause::TaskReceiptMissing),
+    (10, Cause::VerificationPassed),
+    (11, Cause::ArtifactLineageBroken),
+    (12, Cause::EvalPassed),
+    (13, Cause::EvalFailed),
+    (14, Cause::RepairSelected),
+    (15, Cause::RepairApplied),
+    (16, Cause::RecoveryLimit),
+    (17, Cause::MaxSteps),
+    (18, Cause::Persisted),
+    (19, Cause::PolicyPromoted),
+    (20, Cause::EvidenceSubmitted),
+];
+
+const DECISION_TAGS: &[(u64, Decision)] = &[
+    (1, Decision::Continue),
+    (2, Decision::Complete),
+    (3, Decision::Block),
+    (4, Decision::Fail),
+    (5, Decision::Repair),
+    (6, Decision::Halt),
+];
+
+const SEMANTIC_DELTA_TAGS: &[(u64, SemanticDelta)] = &[
+    (1, SemanticDelta::NoChange),
+    (2, SemanticDelta::PhaseAdvanced),
+    (3, SemanticDelta::FailureRaised),
+    (4, SemanticDelta::RepairSelected),
+    (5, SemanticDelta::RepairApplied),
+    (6, SemanticDelta::PayloadChanged),
+    (7, SemanticDelta::Completed),
+    (8, SemanticDelta::Halted),
+    (9, SemanticDelta::Persisted),
+    (10, SemanticDelta::LearningPromoted),
+];
+
 fn phase_from_u64(value: u64) -> Result<Phase, CanonError> {
-    match value {
-        1 => Ok(Phase::Delta), 2 => Ok(Phase::Invariant), 3 => Ok(Phase::Analysis),
-        4 => Ok(Phase::Judgment), 5 => Ok(Phase::Plan), 6 => Ok(Phase::Execute),
-        7 => Ok(Phase::Verify), 8 => Ok(Phase::Eval), 9 => Ok(Phase::Recovery),
-        10 => Ok(Phase::Learn), 11 => Ok(Phase::Persist), 12 => Ok(Phase::Done),
-        _ => Err(CanonError::InvalidTlogRecord),
-    }
+    enum_from_u64(value, PHASE_TAGS)
 }
 
 fn gate_status_from_u64(value: u64) -> Result<GateStatus, CanonError> {
-    match value { 1 => Ok(GateStatus::Unknown), 2 => Ok(GateStatus::Pass), 3 => Ok(GateStatus::Fail), _ => Err(CanonError::InvalidTlogRecord) }
+    enum_from_u64(value, GATE_STATUS_TAGS)
 }
 
 fn gate_id_from_u64(value: u64) -> Result<GateId, CanonError> {
-    match value {
-        1 => Ok(GateId::Invariant), 2 => Ok(GateId::Analysis), 3 => Ok(GateId::Judgment),
-        4 => Ok(GateId::Plan), 5 => Ok(GateId::Execution), 6 => Ok(GateId::Verification),
-        7 => Ok(GateId::Eval), 8 => Ok(GateId::Learning), _ => Err(CanonError::InvalidTlogRecord),
-    }
+    enum_from_u64(value, GATE_ID_TAGS)
 }
 
 fn evidence_from_u64(value: u64) -> Result<Evidence, CanonError> {
-    match value {
-        1 => Ok(Evidence::Missing), 2 => Ok(Evidence::DeltaComputed), 3 => Ok(Evidence::InvariantProof),
-        4 => Ok(Evidence::AnalysisReport), 5 => Ok(Evidence::JudgmentRecord), 6 => Ok(Evidence::PlanRecord),
-        7 => Ok(Evidence::TaskReady), 8 => Ok(Evidence::ExecutionReceipt), 9 => Ok(Evidence::ArtifactReceipt),
-        10 => Ok(Evidence::VerificationReport), 11 => Ok(Evidence::LineageProof), 12 => Ok(Evidence::EvalScore),
-        13 => Ok(Evidence::RecoveryPolicy), 14 => Ok(Evidence::CompletionProof), 15 => Ok(Evidence::ConvergenceLimit),
-        16 => Ok(Evidence::PersistedRecord), 17 => Ok(Evidence::LearningRecord), 18 => Ok(Evidence::PolicyPromotion),
-        _ => Err(CanonError::InvalidTlogRecord),
-    }
+    enum_from_u64(value, EVIDENCE_TAGS)
 }
 
 fn failure_from_u64(value: u64) -> Result<FailureClass, CanonError> {
-    match value {
-        1 => Ok(FailureClass::InvariantUnknown), 2 => Ok(FailureClass::InvariantBlocked),
-        3 => Ok(FailureClass::AnalysisMissing), 4 => Ok(FailureClass::AnalysisFailed),
-        5 => Ok(FailureClass::JudgmentMissing), 6 => Ok(FailureClass::JudgmentFailed),
-        7 => Ok(FailureClass::PlanMissing), 8 => Ok(FailureClass::PlanFailed),
-        9 => Ok(FailureClass::PlanReadyQueueEmpty), 10 => Ok(FailureClass::ExecutionMissing),
-        11 => Ok(FailureClass::ExecutionFailed), 12 => Ok(FailureClass::TaskReceiptMissing),
-        13 => Ok(FailureClass::VerificationUnknown), 14 => Ok(FailureClass::VerificationFailed),
-        15 => Ok(FailureClass::ArtifactLineageBroken), 16 => Ok(FailureClass::EvalMissing),
-        17 => Ok(FailureClass::EvalFailed), 18 => Ok(FailureClass::RecoveryExhausted),
-        19 => Ok(FailureClass::ConvergenceFailed), 20 => Ok(FailureClass::LearningMissing),
-        21 => Ok(FailureClass::LearningFailed), _ => Err(CanonError::InvalidTlogRecord),
-    }
+    enum_from_u64(value, FAILURE_TAGS)
 }
 
 fn recovery_from_u64(value: u64) -> Result<RecoveryAction, CanonError> {
-    match value {
-        1 => Ok(RecoveryAction::RecheckInvariant), 2 => Ok(RecoveryAction::RunAnalysis),
-        3 => Ok(RecoveryAction::Rejudge), 4 => Ok(RecoveryAction::Replan),
-        5 => Ok(RecoveryAction::BindReadyTask), 6 => Ok(RecoveryAction::Reexecute),
-        7 => Ok(RecoveryAction::Reverify), 8 => Ok(RecoveryAction::RepairArtifactLineage),
-        9 => Ok(RecoveryAction::RecomputeEval), 10 => Ok(RecoveryAction::Escalate),
-        _ => Err(CanonError::InvalidTlogRecord),
-    }
+    enum_from_u64(value, RECOVERY_TAGS)
 }
 
 fn event_kind_from_u64(value: u64) -> Result<EventKind, CanonError> {
-    match value {
-        1 => Ok(EventKind::Advanced), 2 => Ok(EventKind::Blocked), 3 => Ok(EventKind::Failed),
-        4 => Ok(EventKind::Recovered), 5 => Ok(EventKind::Learned), 6 => Ok(EventKind::Completed),
-        7 => Ok(EventKind::Persisted),
-        _ => Err(CanonError::InvalidTlogRecord),
-    }
+    enum_from_u64(value, EVENT_KIND_TAGS)
 }
 
 fn cause_from_u64(value: u64) -> Result<Cause, CanonError> {
-    match value {
-        1 => Ok(Cause::Start), 2 => Ok(Cause::GatePassed), 3 => Ok(Cause::GateFailed),
-        4 => Ok(Cause::EvidenceMissing), 5 => Ok(Cause::JudgmentMade), 6 => Ok(Cause::PlanReady),
-        7 => Ok(Cause::ReadyQueueEmpty), 8 => Ok(Cause::ExecutionFinished), 9 => Ok(Cause::TaskReceiptMissing),
-        10 => Ok(Cause::VerificationPassed), 11 => Ok(Cause::ArtifactLineageBroken),
-        12 => Ok(Cause::EvalPassed), 13 => Ok(Cause::EvalFailed), 14 => Ok(Cause::RepairSelected),
-        15 => Ok(Cause::RepairApplied), 16 => Ok(Cause::RecoveryLimit), 17 => Ok(Cause::MaxSteps),
-        18 => Ok(Cause::Persisted), 19 => Ok(Cause::PolicyPromoted),
-        20 => Ok(Cause::EvidenceSubmitted),
-        _ => Err(CanonError::InvalidTlogRecord),
-    }
+    enum_from_u64(value, CAUSE_TAGS)
 }
 
 fn decision_from_u64(value: u64) -> Result<Decision, CanonError> {
-    match value {
-        1 => Ok(Decision::Continue), 2 => Ok(Decision::Complete), 3 => Ok(Decision::Block),
-        4 => Ok(Decision::Fail), 5 => Ok(Decision::Repair), 6 => Ok(Decision::Halt),
-        _ => Err(CanonError::InvalidTlogRecord),
-    }
+    enum_from_u64(value, DECISION_TAGS)
 }
 
 fn semantic_delta_from_u64(value: u64) -> Result<SemanticDelta, CanonError> {
-    match value {
-        1 => Ok(SemanticDelta::NoChange), 2 => Ok(SemanticDelta::PhaseAdvanced),
-        3 => Ok(SemanticDelta::FailureRaised), 4 => Ok(SemanticDelta::RepairSelected),
-        5 => Ok(SemanticDelta::RepairApplied), 6 => Ok(SemanticDelta::PayloadChanged),
-        7 => Ok(SemanticDelta::Completed), 8 => Ok(SemanticDelta::Halted),
-        9 => Ok(SemanticDelta::Persisted), 10 => Ok(SemanticDelta::LearningPromoted),
-        _ => Err(CanonError::InvalidTlogRecord),
-    }
+    enum_from_u64(value, SEMANTIC_DELTA_TAGS)
 }

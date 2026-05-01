@@ -6,35 +6,61 @@ pub fn semantic_diff(a: State, b: State) -> SemanticDelta {
     if a == b {
         return SemanticDelta::NoChange;
     }
+    terminal_delta(a, b)
+        .or_else(|| recovery_delta(a, b))
+        .or_else(|| raised_failure_delta(b))
+        .or_else(|| payload_delta(a, b))
+        .or_else(|| phase_delta(a, b))
+        .unwrap_or(SemanticDelta::NoChange)
+}
+
+fn terminal_delta(a: State, b: State) -> Option<SemanticDelta> {
     if a.phase == Phase::Learn && b.phase == Phase::Done {
-        return SemanticDelta::LearningPromoted;
+        return Some(SemanticDelta::LearningPromoted);
     }
-    if b.phase == Phase::Done && b.failure.is_none() {
-        return SemanticDelta::Completed;
+    if b.phase != Phase::Done {
+        return None;
     }
-    if b.phase == Phase::Done && b.failure.is_some() {
-        return SemanticDelta::Halted;
+    if b.failure.is_some() {
+        Some(SemanticDelta::Halted)
+    } else {
+        Some(SemanticDelta::Completed)
     }
+}
+
+fn recovery_delta(a: State, b: State) -> Option<SemanticDelta> {
     if a.phase == Phase::Recovery && b.phase == Phase::Persist {
-        return SemanticDelta::RepairSelected;
+        return Some(SemanticDelta::RepairSelected);
     }
     if a.phase == Phase::Persist && a.recovery_action.is_some() {
-        return SemanticDelta::RepairApplied;
+        return Some(SemanticDelta::RepairApplied);
     }
     if a.phase == Phase::Persist && b.phase == Phase::Learn {
-        return SemanticDelta::Persisted;
+        return Some(SemanticDelta::Persisted);
     }
+    None
+}
+
+fn raised_failure_delta(b: State) -> Option<SemanticDelta> {
     if b.failure.is_some() && b.phase == Phase::Recovery {
-        return SemanticDelta::FailureRaised;
+        Some(SemanticDelta::FailureRaised)
+    } else {
+        None
     }
-    if a.packet != b.packet {
-        return SemanticDelta::PayloadChanged;
+}
+
+fn payload_delta(a: State, b: State) -> Option<SemanticDelta> {
+    if a.packet != b.packet || a.gates != b.gates {
+        Some(SemanticDelta::PayloadChanged)
+    } else {
+        None
     }
-    if a.gates != b.gates {
-        return SemanticDelta::PayloadChanged;
-    }
+}
+
+fn phase_delta(a: State, b: State) -> Option<SemanticDelta> {
     if a.phase != b.phase {
-        return SemanticDelta::PhaseAdvanced;
+        Some(SemanticDelta::PhaseAdvanced)
+    } else {
+        None
     }
-    SemanticDelta::NoChange
 }

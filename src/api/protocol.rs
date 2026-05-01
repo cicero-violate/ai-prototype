@@ -1,16 +1,18 @@
 //! External command/evidence protocol.
 
+use crate::capability::observation::ObservationIngressBatch;
 use crate::capability::tooling::SandboxProcessReceipt;
 use crate::capability::{CapabilityRegistry, EvidenceSubmission};
 use crate::kernel::{ControlEvent, TLog};
 pub use crate::runtime::{CommandLedger, CommandReceipt};
 
-pub const API_PROTOCOL_SCHEMA_VERSION: u64 = 3;
+pub const API_PROTOCOL_SCHEMA_VERSION: u64 = 4;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Command {
     SubmitEvidence(EvidenceSubmission),
     SubmitEvidenceBatch(Vec<EvidenceSubmission>),
+    SubmitObservationIngress(ObservationIngressBatch),
     SubmitProcessReceipt(SandboxProcessReceipt),
 }
 
@@ -23,6 +25,9 @@ impl Command {
                     && submissions.iter().copied().all(EvidenceSubmission::is_contract_valid)
                     && gates_are_unique(submissions)
             }
+            Self::SubmitObservationIngress(batch) => {
+                batch.is_contract_valid() && batch.submission().is_contract_valid()
+            }
             Self::SubmitProcessReceipt(receipt) => {
                 receipt.is_contract_valid()
                     && receipt.registry_policy_hash == CapabilityRegistry::canonical().policy_hash()
@@ -34,6 +39,7 @@ impl Command {
         match self {
             Self::SubmitEvidence(_) => 1,
             Self::SubmitEvidenceBatch(submissions) => submissions.len(),
+            Self::SubmitObservationIngress(batch) => batch.records.len(),
             Self::SubmitProcessReceipt(_) => 1,
         }
     }
@@ -56,6 +62,15 @@ impl Command {
                     h = h.wrapping_mul(0x100000001b3);
                 }
                 h.max(1)
+            }
+            Self::SubmitObservationIngress(batch) => {
+                let mut h = 0x6eed_0e51_0b5e_0001u64;
+                h ^= self.submission_count() as u64;
+                h = h.wrapping_mul(0x100000001b3);
+                h ^= batch.contract_hash();
+                h = h.wrapping_mul(0x100000001b3);
+                h ^= batch.submission().contract_hash();
+                h.wrapping_mul(0x100000001b3).max(1)
             }
             Self::SubmitProcessReceipt(receipt) => {
                 let mut h = 0x0d6e_8feb_8665_9fd9u64;

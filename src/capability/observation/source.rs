@@ -10,7 +10,8 @@ use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 
-use crate::kernel::mix;
+use crate::capability::EvidenceSubmission;
+use crate::kernel::{mix, Evidence, GateId};
 
 use super::record::{
     ObservationCursor, ObservationFrame, ObservationFrameKind, ObservationRecord,
@@ -143,6 +144,63 @@ impl ObservationIngressBatch {
             && !self.records.is_empty()
             && self.cursor.last_sequence != 0
             && self.cursor.last_observed_hash != 0
+    }
+
+    pub fn is_contract_valid(&self) -> bool {
+        if !self.is_accepted()
+            || self.source_id == 0
+            || self.source_hash == 0
+            || self.cursor.source_id != self.source_id
+        {
+            return false;
+        }
+
+        let mut expected_previous_sequence = 0;
+        for record in &self.records {
+            if !record.is_valid()
+                || record.source_id != self.source_id
+                || record.sequence <= expected_previous_sequence
+            {
+                return false;
+            }
+            expected_previous_sequence = record.sequence;
+        }
+
+        self.records
+            .last()
+            .map(|last| {
+                self.cursor.last_sequence == last.sequence
+                    && self.cursor.last_observed_hash == last.observed_hash
+            })
+            .unwrap_or(false)
+    }
+
+    pub fn submission(&self) -> EvidenceSubmission {
+        EvidenceSubmission::with_payload(
+            GateId::Invariant,
+            Evidence::InvariantProof,
+            self.is_contract_valid(),
+            self.contract_hash(),
+        )
+    }
+
+    pub fn contract_hash(&self) -> u64 {
+        let mut h = 0x5f37_59df_6a09_e667u64;
+        h = mix(h, self.decision as u64);
+        h = mix(h, self.source_id);
+        h = mix(h, self.source_hash);
+        h = mix(h, self.cursor.source_id);
+        h = mix(h, self.cursor.last_sequence);
+        h = mix(h, self.cursor.last_observed_hash);
+        h = mix(h, self.backlog_len as u64);
+        h = mix(h, self.records.len() as u64);
+        for record in &self.records {
+            h = mix(h, record.source_id);
+            h = mix(h, record.sequence);
+            h = mix(h, record.observed_hash);
+            h = mix(h, record.received_at_tick);
+        }
+        h.max(1)
     }
 }
 
