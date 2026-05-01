@@ -60,14 +60,14 @@ Used in production by serious systems. The idea: **once something is known with 
 
 ### What Qualifies for Compilation to Code
 
-| tlog entry type | Compile to code? | Why |
-|---|---|---|
-| $r_t = 1.0$, same answer every time | ✅ Yes | deterministic fact |
-| Domain constant (price, ID, config) | ✅ Yes | never changes |
-| Business rule (if X then Y) | ✅ Yes | pure logic |
-| Multi-step reasoning | ⚠️ Maybe | extract as function |
-| Creative / generative response | ❌ No | needs LLM |
-| Context-dependent answer | ❌ No | not a fact |
+| tlog entry type                     | Compile to code? | Why                 |
+|-------------------------------------+------------------+---------------------|
+| $r_t = 1.0$, same answer every time | ✅ Yes           | deterministic fact  |
+| Domain constant (price, ID, config) | ✅ Yes           | never changes       |
+| Business rule (if X then Y)         | ✅ Yes           | pure logic          |
+| Multi-step reasoning                | ⚠️ Maybe          | extract as function |
+| Creative / generative response      | ❌ No            | needs LLM           |
+| Context-dependent answer            | ❌ No            | not a fact          |
 
 ---
 
