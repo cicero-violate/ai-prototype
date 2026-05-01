@@ -72,31 +72,32 @@ max(K,C,A,R,OB,CX,ME,PL,LL,JG,TO,VF,EV,PO,LE,OR) = VF = 8.8 / 10 = good
 
 ```text
 source_review_scope = README.md + Cargo.toml + src/**/*.rs + state/rustc/ai/graph.json + rubric/score.md
-cargo_build_status = passed_user_validated_2026_04_30
-cargo_test_status = passed_user_validated_102_102_after_ollama_json_escape_split
-cargo_example_status = passed_user_validated_ollama_judgment_after_ollama_json_escape_split
+cargo_build_status = passed_user_validated_2026_05_01_after_canonical_execution_normal_form
+cargo_test_status = passed_user_validated_103_103_after_canonical_execution_normal_form
+cargo_example_status = passed_user_validated_ollama_judgment_after_canonical_execution_normal_form
 unsafe_policy = forbid_unsafe_code
 
 readme_goal = reduce_cost_of_autonomous_reasoning_while_increasing_quality_and_trustworthiness
 readme_core_claim = frozen_kernel_plus_capability_intelligence_plus_tlog_policy_learning
-readme_status_accuracy = current_for_validated_local_tooling_ollama_generic_llm_proof_observation_api_route_tool_process_proof_projection_generic_proof_replay_enforcement_runtime_event_validation_split_semantic_diff_split_ndjson_decoder_table_split_ollama_mixed_record_helper_collapse_ollama_json_escape_split_and_runtime_replay_loop_split
+readme_status_accuracy = current_for_validated_canonical_execution_normal_form_with_pending_authority_collapse
 
 source_files_reviewed = 52 rust files
-test_count_in_src_lib = 102
+test_count_in_src_lib = 103
 cargo_dependencies = none
 
 graph_schema_version = 9
-graph_node_count = 2202
-graph_edge_count = 6080
+graph_node_count = 2321
+graph_edge_count = 6566
 graph_cfg_node_count = not_reported_in_latest_user_validation
 graph_cfg_edge_count = not_reported_in_latest_user_validation
 graph_bridge_edge_count = not_reported_in_latest_user_validation
-graph_redundant_path_pair_count = 328
-graph_redundant_path_pair_delta = 621 -> 497 -> 464 -> 349 -> 346 -> 326 -> 328
-graph_alpha_pathway_count = 15
-graph_intent_class_coverage = 633/633fn
+graph_redundant_path_pair_count = 334
+graph_redundant_path_pair_delta = 621 -> 497 -> 464 -> 349 -> 346 -> 326 -> 328 -> 323 -> 334
+graph_alpha_pathway_count = 16
+graph_alpha_pathway_delta = 16 -> 15 -> 16
+graph_intent_class_coverage = 704/704fn
 graph_unknown_low_confidence_functions = unknown_after_latest_user_validation
-pending_patch = tooling_receipt_ndjson_field_parser_collapse
+pending_patch = canonical_effect_route_authority_collapse
 pending_patch_validation = not_yet_user_validated
 
 kernel_phase_count = 12
@@ -149,8 +150,16 @@ generic_llm_verification_proof_projection = validated_by_cargo_test
 generic_verification_proof_binding_checker = validated_by_cargo_test
 generic_artifact_effect_verification_proof_projection = validated_by_cargo_test
 generic_process_effect_verification_proof_projection = validated_by_cargo_test
-generic_verification_proof_subject_adapter = pending_local_validation
-generic_policy_effect_verification_proof_projection = pending_local_validation
+generic_verification_proof_subject_adapter = validated_by_cargo_test
+generic_policy_effect_verification_proof_projection = validated_by_cargo_test
+canonical_effect_normal_form = validated_by_cargo_test_with_graph_regression
+canonical_effect_receipt = validated_by_cargo_test_with_graph_regression
+canonical_effect_proof = validated_by_cargo_test_with_graph_regression
+ollama_canonical_effect_projection = validated_by_cargo_test_with_graph_regression
+artifact_tooling_canonical_effect_projection = validated_by_cargo_test_with_graph_regression
+process_tooling_canonical_effect_projection = validated_by_cargo_test_with_graph_regression
+policy_canonical_effect_projection = validated_by_cargo_test_with_graph_regression
+canonical_effect_route_authority_collapse = pending_local_validation
 generic_verification_proof_replay_enforcement = validated_by_cargo_test
 generic_verification_proof_order_ndjson = validated_by_cargo_test
 generic_verification_proof_replay_ndjson = validated_by_cargo_test
@@ -175,24 +184,21 @@ The README states the real goal clearly: preserve a frozen correctness kernel wh
 
 The main improvement since the last score is that observation ingress API routing is now user-validated. `Command::SubmitObservationIngress(ObservationIngressBatch)` has a schema-v4 command hash, batch contract validation, aggregate ingress submission, and an API route that drives `Evidence::InvariantProof` through the runtime path. This keeps world-facing bytes outside kernel state while allowing source batches to enter the same command/TLog route as other evidence.
 
-The newest user-validated deltas mostly reduce semantic graph debt, with one
-validated readability split that slightly increased graph redundancy. `runtime::verify::validate_event`,
-`runtime::diff::semantic_diff`, `codec::ndjson` enum decoding, and
-`capability::llm::ollama` helper surfaces are decomposed into ordered
-single-purpose validators/classifiers, table-driven decode helpers, shared
-mixed-record IO helpers, and split JSON escaping helpers while preserving event
-semantics, numeric TLog tags, mixed NDJSON record schemas, and request JSON
-bytes. The runtime replay-loop split is validated for behavior, but the rustc
-graph moved from `326` to `328` redundant path pairs. The score therefore
-credits correctness/readability but does not count that split as a debt
-reduction.
+The newest user-validated delta proves the canonical execution normal form did
+not break behavior: local validation reports `103/103` tests and a passing
+Ollama judgment example. It also proves the implementation was additive rather
+than authoritative: graph health regressed to `334` redundant path pairs and
+`16` alpha pathways while intent stayed totalized at `704/704fn`. The current
+patch therefore removes direct proof-subject routing and direct provider proof
+record construction so `CanonicalEffectProof` becomes the only durable proof
+record construction route.
 
 The hard criticism is that the system is still local-effect capable, not autonomous in the README sense. It can authorize, execute, receipt, encode, and replay local file/process effects, run a local Ollama/OpenAI-compatible request adapter for `qwen2.5-coder`, validate the generic LLM proof spine, parse a cargo-validated bounded file-backed observation source, and route accepted observation batches through the API. It still does not observe live SSE/webhook/browser streams, authenticate external APIs, verify semantic truth outside its receipt/proof envelope, or synthesize broad learned strategy from empirical history.
 
 Current classification:
 
 ```text
-current_system = deterministic evidence runtime with bounded local sandbox tooling, local Ollama request wiring, validated file observation ingress, validated observation API route, validated tool/process proof projection, validated generic proof replay enforcement, validated reduced-coupling runtime event verification, validated semantic-diff classification split, validated table-driven NDJSON enum decoding, validated Ollama mixed-record helpers, and validated Ollama JSON escaping helpers
+current_system = deterministic evidence runtime with bounded local sandbox tooling, local Ollama request wiring, validated file observation ingress, validated observation API route, validated tool/process proof projection, validated generic proof replay enforcement, validated generic proof-subject collapse, validated canonical execution normal form with graph regression, validated reduced-coupling runtime event verification, validated semantic-diff classification split, validated table-driven NDJSON enum decoding, validated Ollama mixed-record helpers, pending canonical effect route authority collapse, and validated Ollama JSON escaping helpers
 not_yet = autonomous self-improving agent with validated external observation/action loops
 main_strength = frozen kernel boundary + replayable TLog + bounded receipted file/process effects
 main_weakness = capability intelligence is mostly typed records rather than live adaptive behavior
@@ -222,19 +228,21 @@ main_weakness = capability intelligence is mostly typed records rather than live
 ## Artifact Judgment
 
 ```text
-README = architecturally right and current status updated for validated generic LLM/tool/process proof spine, validated observation API routing, validated generic proof replay enforcement, validated runtime event-validation split, validated semantic-diff split, validated NDJSON decoder table split, validated Ollama mixed-record helpers, and validated Ollama JSON escaping split
-score_md_before_update = current_after_validated_ollama_json_escape_split
-src = substantially implemented deterministic prototype with local live effects, Ollama proof binding, validated observation routing, validated tool/process generic proof projection, validated generic proof replay enforcement, validated reduced-coupling runtime event verification, validated semantic-diff classification, validated table-driven NDJSON enum decoding, validated Ollama mixed-record helpers, validated Ollama JSON escaping helpers, validated runtime replay-loop split, and pending tooling receipt NDJSON parser collapse
-graph = useful_latest_user_validated_capture; 328 redundant paths and 15 alpha pathways show structural debt is still present and the latest replay-loop split improved readability but not graph debt
+README = architecturally right and current status updated for validated generic LLM/tool/process proof spine, validated proof-subject collapse, validated canonical execution normal form with graph regression, validated observation API routing, validated generic proof replay enforcement, validated runtime event-validation split, validated semantic-diff split, validated NDJSON decoder table split, validated Ollama mixed-record helpers, pending canonical effect route authority collapse, and validated Ollama JSON escaping split
+score_md_before_update = current_after_validated_canonical_execution_normal_form
+src = substantially implemented deterministic prototype with local live effects, Ollama proof binding, validated observation routing, validated tool/process generic proof projection, validated generic proof replay enforcement, validated proof-subject collapse, validated canonical execution normal form with graph regression, validated reduced-coupling runtime event verification, validated semantic-diff classification, validated table-driven NDJSON enum decoding, validated Ollama mixed-record helpers, validated Ollama JSON escaping helpers, validated runtime replay-loop split, and pending canonical effect route authority collapse
+graph = useful_latest_user_validated_capture; 334 redundant paths and 16 alpha pathways show the canonical execution normal form was additive and now needs authority collapse
 kernel = still the strongest module
 tooling = strongest capability module
 ```
 
 The graph confirms that most debt-reduction moves worked and also exposes the
-latest tradeoff. The latest user-validated capture reports 2202 semantic nodes,
-6080 semantic edges, 328 redundant path pairs, 15 alpha pathways, and full
-function intent coverage at 633/633fn. Redundant paths are still far below the
-pre-reduction peak of 621, but the replay-loop split moved `326 -> 328`.
+latest tradeoff. The latest user-validated capture reports 2321 semantic nodes,
+6566 semantic edges, 334 redundant path pairs, 16 alpha pathways, and full
+function intent coverage at 704/704fn. Tests stayed closed at `103/103`, but
+the proof route became additive again; this patch makes the canonical route the
+authority by removing direct proof-subject and direct provider proof-record
+construction.
 The validated semantic-debt passes split the generic proof spine out of the
 semantic verification record module, decomposed `runtime::verify::validate_event`,
 split `runtime::diff::semantic_diff`, collapsed repeated `codec::ndjson` enum
@@ -242,7 +250,7 @@ decoder match forests into canonical tag tables plus one lookup helper,
 collapsed Ollama mixed-record IO duplication, split Ollama JSON escaping, and
 split `verify_tlog_from` into replay-specific validators.
 
-The biggest architectural risk is no longer the tooling split. That split exists. The risk is now semantic fragmentation: artifact receipts, process receipts, API commands, runtime events, verification, and policy binding are close to one execution normal form, but the code still names and routes them as adjacent concepts instead of one universal `Effect { kind, digest, metadata }` contract.
+The biggest architectural risk is no longer the tooling split. That split exists. The risk is now whether the new `CanonicalEffect { kind, digest, metadata } -> CanonicalEffectReceipt -> CanonicalEffectProof -> VerificationProofRecord` route becomes the single route, or merely another adjacent proof path. The current patch removes the direct proof-subject trait path and removes direct Ollama proof-record construction, leaving provider-local proof fields as inputs to the canonical route rather than as an independent route.
 
 ## Regression / Improvement Delta
 
@@ -260,10 +268,11 @@ previous_ARCH = 6.95 / 10
 current_ARCH  = 6.95 / 10
 ```
 
-The score improves because most semantic-debt reduction is now repeatedly
-validated by the rustc graph instead of only asserted by source structure, while
-the latest replay-loop split is treated critically because it increased
-redundant paths by two. The Ollama path remains the latest fully validated live
+The score is held flat for this patch because the canonical effect route
+authority collapse is not locally cargo-validated. The prior canonical execution
+normal form is credited for preserving behavior but criticized for graph-health
+regression: alpha pathways moved `15 -> 16`, redundant path pairs moved
+`323 -> 334`, and tests remained `103/103`. The Ollama path remains the latest fully validated live
 effect path: it has a live external LLM effect receipt, replay verification,
 seventeen-field tamper rejection, local endpoint provenance, pre-receipt
 non-local rejection, a durable final proof event in the mixed tlog,
@@ -272,24 +281,24 @@ proof event position checks, validated retry/budget/idempotency binding,
 validated projection into `VerificationProofRecord`, validated generic proof
 replay rejection for missing, duplicate, and displaced proof records, validated
 mixed-record IO helper collapse, and validated JSON escaping helper split. The
-latest user-validated run passed `cargo build`, `cargo test` with 102/102 tests,
+latest user-validated run passed `cargo build`, `cargo test` with 103/103 tests,
 and `cargo run --example ollama_judgment`; the graph reported
-`621 -> 497 -> 464 -> 349 -> 346 -> 326 -> 328` redundant path pairs and the
+`621 -> 497 -> 464 -> 349 -> 346 -> 326 -> 328 -> 323 -> 334` redundant path pairs and the
 example emitted `durable_proof_verified=true`, `receipt_proof_matches=true`, and
 `tampered_fields_rejected=17/17`.
 
-Validated proof replay delta: `verify_verification_proof_record_replay`, `verify_verification_proof_record_order_ndjson`, and `verify_verification_proof_record_replay_ndjson` require proof records to match receipt bindings, require the receipt event to exist in the control TLog, and reject missing, duplicate, or displaced generic proof records in mixed NDJSON replay. The accepted path plus all three rejection classes are covered by the 102nd passing test. The proof-spine split moves those proof types and replay functions into `capability::verification::proof`, reducing coupling without changing the public verification exports. The runtime verifier split and semantic-diff split now keep the same behavior while breaking branch-dense logic into smaller validation/classification gates, and the graph confirms the intended redundant-path reduction.
+Validated proof replay delta: `verify_verification_proof_record_replay`, `verify_verification_proof_record_order_ndjson`, and `verify_verification_proof_record_replay_ndjson` require proof records to match receipt bindings, require the receipt event to exist in the control TLog, and reject missing, duplicate, or displaced generic proof records in mixed NDJSON replay. The accepted path plus all three rejection classes are covered by the passing test suite. The proof-spine split moves those proof types and replay functions into `capability::verification::proof`, reducing coupling without changing the public verification exports. The runtime verifier split and semantic-diff split now keep the same behavior while breaking branch-dense logic into smaller validation/classification gates, and the graph confirms the intended redundant-path reduction.
 
 Validated semantic-debt delta: `codec::ndjson` enum decoders now use canonical tag tables plus one `enum_from_u64` lookup helper instead of repeated match forests. `capability::llm::ollama` now also shares mixed-record NDJSON append/load helpers and splits JSON escaping into character and sequence helpers. These moves reduced duplicate branch signatures in the rustc graph capture while preserving every existing numeric tag, record schema, request JSON byte behavior, and failure path.
 
-Pending semantic-debt delta: the generic proof spine now has a first-class `GenericVerificationProofSubject` adapter. Artifact, process, and Ollama proof projection route through the shared subject shape before `VerificationProofRecord` construction, and policy promotion now has a `PolicyProofReceipt` surface that projects `ProofSubjectKind::PolicyEffect` into the same binding/replay checker. This patch is not yet counted in the score until local cargo validation confirms behavior and graph movement.
+Pending authority-collapse delta: the generic proof spine now treats `CanonicalEffectProof` as the only durable proof-record construction route. Ollama, artifact tooling, process tooling, and policy promotion can still preserve provider/local receipt and proof data, but direct proof-subject and direct provider proof-record construction are removed. This patch is not yet counted in the score until local cargo validation confirms behavior and graph movement.
 
 ## Highest Leverage Next Work
 
-1. **Validate the tooling receipt NDJSON parser collapse.** Run the local cargo/build/example loop and compare `ρ=328` against the next graph capture.
-2. **Add an eval-backed semantic debt gate.** Fail or warn when `ρ_next > ρ_prev` without an explicit justification record, because the validated replay-loop split proved that readability splits can increase graph debt.
-3. **Validate the generic proof-subject adapter.** Confirm artifact, process, Ollama, and policy proof projections all pass through `GenericVerificationProofSubject -> VerificationProofRecord -> mixed NDJSON replay`.
-4. **Extend generic proof records into semantic verification and observation ingress.** Apply the same `VerificationProofRecord` replay checker to semantic verifier receipts, observation ingress batches, and future providers.
+1. **Validate the canonical effect authority collapse.** Run the local cargo/build/example loop and compare `T`, `ρ`, `α`, and `I` against `T=103/103`, `ρ=334`, `α=16`, `I=704/704`.
+2. **Finish semantic verification and observation canonical effects.** Extend the same route beyond live LLM/tool/policy effects.
+3. **Remove remaining compatibility-only proof helpers after validation.** Once the canonical path is proven, collapse remaining provider-local proof helpers into wrappers or delete them.
+4. **Add an eval-backed semantic debt gate.** Fail or warn when graph health regresses without an explicit justification record.
 5. **Add provider response streaming validation.** The current path validates the completed local response body, but streaming chunks are not yet typed, bounded, hashed, or replayed.
 6. **Do not expand the kernel.** Preserve the frozen kernel; put live intelligence, external semantics, and learning pressure in capabilities and policy.
 
@@ -297,19 +306,19 @@ Pending semantic-debt delta: the generic proof spine now has a first-class `Gene
 
 ```text
 objective_rating = ARCH = 6.95 / 10
-system_level = deterministic evidence runtime with bounded local sandbox execution, validated durable local Ollama retry-budget proofs, validated bounded file observation ingress, validated observation API routing, validated tool/process proof projection, validated generic proof replay enforcement, validated reduced-coupling runtime event verification, validated semantic-diff split, validated table-driven NDJSON decoding, validated Ollama mixed-record helper collapse, validated Ollama JSON escaping split, and validated runtime replay-loop split
-best_property = kernel/runtime replay discipline plus split, receipted file/process/LLM effects, validated Ollama receipt/proof binding, generic proof replay hardening, and measurable graph-debt reduction from 621 to 328
-weakest_property = observation remains file-backed and not connected to live external streams; graph debt is lower than peak but still nontrivial at 328 redundant path pairs, and the latest validated split increased graph redundancy by two
-next_score_unlock = validate generic proof-subject adapter + add semantic debt eval gate + reduce redundant paths below 300 + semantic/observation proof records + universal execution normal form
+system_level = deterministic evidence runtime with bounded local sandbox execution, validated durable local Ollama retry-budget proofs, validated bounded file observation ingress, validated observation API routing, validated tool/process proof projection, validated generic proof replay enforcement, validated proof-subject collapse, validated canonical execution normal form with pending authority collapse, validated reduced-coupling runtime event verification, validated semantic-diff split, validated table-driven NDJSON decoding, validated Ollama mixed-record helper collapse, validated Ollama JSON escaping split, and validated runtime replay-loop split
+best_property = kernel/runtime replay discipline plus split, receipted file/process/LLM effects, validated Ollama receipt/proof binding, generic proof replay hardening, and measurable graph-debt reduction from 621 to 334 despite the latest additive-route regression
+weakest_property = observation remains file-backed and not connected to live external streams; graph debt is lower than peak but still nontrivial at 334 redundant path pairs, and canonical effect authority collapse needs validation plus semantic/observation migration
+next_score_unlock = validate canonical effect authority collapse + migrate semantic/observation effects + add semantic debt eval gate + reduce redundant paths below 300 + provider streaming receipts
 ```
 
-## Pending Patch: Generic Proof-Subject Adapter
+## Pending Patch: Canonical Effect Route Authority Collapse
 
 ```text
-target = capability::verification::proof + capability::{tooling,llm,policy}
-change = provider-local proof constructors → GenericVerificationProofSubject adapter before VerificationProofRecord construction
-expected_effect = artifact/process/LLM/policy proof surfaces share one proof-subject normal form without changing existing record tags or replay rules
+target = capability::verification::proof + capability::{llm,tooling,policy}
+change = remove direct proof-subject and provider proof-record routes; force durable proof records through CanonicalEffectReceipt -> CanonicalEffectProof -> VerificationProofRecord
+expected_effect = Ollama, artifact tooling, process tooling, and policy promotion keep local receipt fields but share one durable proof-record normal form without changing kernel state
 validation_status = pending cargo build/test/example
 ```
 
-The project is moving in the right direction. It now has enough implemented machinery to be judged as a real deterministic runtime prototype, not just a kernel sketch. It is still below autonomous-agent level because the observation loop is only file-backed, the generic proof spine is not yet extended to semantic verification and observation ingress, and the capability layer still needs external action tools.
+The project is moving in the right direction. It now has enough implemented machinery to be judged as a real deterministic runtime prototype, not just a kernel sketch. It is still below autonomous-agent level because the observation loop is only file-backed, canonical effect authority collapse still needs validation plus semantic/observation migration, and the capability layer still needs external action tools.

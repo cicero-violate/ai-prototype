@@ -1,9 +1,9 @@
 //! Generic verification proof records and replay checks.
 //!
-//! This module owns the provider/tool/process proof spine:
+//! This module owns the canonical effect proof spine:
 //!
 //! ```text
-//! receipt binding -> VerificationProofRecord -> mixed NDJSON replay check
+//! request -> authority -> effect -> receipt -> proof -> VerificationProofRecord -> replay
 //! ```
 //!
 //! Keeping this separate from semantic artifact verification reduces coupling:
@@ -38,6 +38,7 @@ pub enum ProofSubjectKind {
     LlmEffect = 3,
     SemanticVerification = 4,
     PolicyEffect = 5,
+    ObservationEffect = 6,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -66,28 +67,360 @@ pub struct VerificationProofBinding {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct GenericVerificationProofSubject {
+#[repr(u8)]
+pub enum CanonicalEffectKind {
+    Artifact = 1,
+    Process = 2,
+    Llm = 3,
+    SemanticVerification = 4,
+    Policy = 5,
+    Observation = 6,
+}
+
+impl CanonicalEffectKind {
+    pub const fn proof_subject(self) -> ProofSubjectKind {
+        match self {
+            Self::Artifact => ProofSubjectKind::ArtifactEffect,
+            Self::Process => ProofSubjectKind::ProcessEffect,
+            Self::Llm => ProofSubjectKind::LlmEffect,
+            Self::SemanticVerification => ProofSubjectKind::SemanticVerification,
+            Self::Policy => ProofSubjectKind::PolicyEffect,
+            Self::Observation => ProofSubjectKind::ObservationEffect,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct CanonicalEffect {
+    pub kind: CanonicalEffectKind,
+    pub digest: u64,
+    pub metadata: u64,
+}
+
+impl CanonicalEffect {
+    pub fn new(kind: CanonicalEffectKind, digest: u64, metadata: u64) -> Option<Self> {
+        let effect = Self {
+            kind,
+            digest,
+            metadata,
+        };
+        effect.is_valid().then_some(effect)
+    }
+
+    pub fn artifact(digest: u64, metadata: u64) -> Option<Self> {
+        Self::new(CanonicalEffectKind::Artifact, digest, metadata)
+    }
+
+    pub fn process(digest: u64, metadata: u64) -> Option<Self> {
+        Self::new(CanonicalEffectKind::Process, digest, metadata)
+    }
+
+    pub fn llm(
+        response_hash: u64,
+        raw_response_hash: u64,
+        prompt_hash: u64,
+        token_count: u64,
+        model_id: u64,
+    ) -> Option<Self> {
+        if raw_response_hash == 0 || prompt_hash == 0 || token_count == 0 || model_id == 0 {
+            return None;
+        }
+
+        let mut metadata = 0x4c4c_4d5f_4546_5841u64;
+        metadata = mix(metadata, raw_response_hash);
+        metadata = mix(metadata, prompt_hash);
+        metadata = mix(metadata, token_count);
+        metadata = mix(metadata, model_id);
+        Self::new(CanonicalEffectKind::Llm, response_hash, metadata.max(1))
+    }
+
+    pub fn semantic_verification(digest: u64, metadata: u64) -> Option<Self> {
+        Self::new(CanonicalEffectKind::SemanticVerification, digest, metadata)
+    }
+
+    pub fn policy(digest: u64, metadata: u64) -> Option<Self> {
+        Self::new(CanonicalEffectKind::Policy, digest, metadata)
+    }
+
+    pub fn observation(digest: u64, metadata: u64) -> Option<Self> {
+        Self::new(CanonicalEffectKind::Observation, digest, metadata)
+    }
+
+    pub fn is_valid(self) -> bool {
+        self.digest != 0 && self.metadata != 0
+    }
+
+    pub fn contract_hash(self) -> u64 {
+        let mut h = 0x4546_4645_4354_0001u64;
+        h = mix(h, self.kind as u64);
+        h = mix(h, self.digest);
+        h = mix(h, self.metadata);
+        h.max(1)
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct CanonicalEffectReceipt {
     pub subject: ProofSubjectKind,
-    pub proof_line_hash: u64,
-    pub receipt_core_hash: u64,
-    pub receipt_hash: u64,
-    pub receipt_event_seq: u64,
+    pub effect: CanonicalEffect,
+    pub effect_hash: u64,
+    pub authority_hash: u64,
+    pub request_hash: u64,
+    pub replay_seq: u64,
+    pub replay_hash: u64,
     pub proof_event_seq: u64,
-    pub receipt_event_hash: u64,
+    pub proof_hash: u64,
+    pub receipt_hash: u64,
+}
+
+impl CanonicalEffectReceipt {
+    pub fn new_unbound(
+        subject: ProofSubjectKind,
+        effect: CanonicalEffect,
+        authority_hash: u64,
+        request_hash: u64,
+        replay_seq: u64,
+        replay_hash: u64,
+    ) -> Option<Self> {
+        Self::new(
+            subject,
+            effect,
+            authority_hash,
+            request_hash,
+            replay_seq,
+            replay_hash,
+            0,
+            0,
+        )
+    }
+
+    pub fn new(
+        subject: ProofSubjectKind,
+        effect: CanonicalEffect,
+        authority_hash: u64,
+        request_hash: u64,
+        replay_seq: u64,
+        replay_hash: u64,
+        proof_event_seq: u64,
+        proof_hash: u64,
+    ) -> Option<Self> {
+        let mut receipt = Self {
+            subject,
+            effect,
+            effect_hash: effect.contract_hash(),
+            authority_hash,
+            request_hash,
+            replay_seq,
+            replay_hash,
+            proof_event_seq,
+            proof_hash,
+            receipt_hash: 0,
+        };
+        receipt.receipt_hash = receipt.expected_receipt_hash();
+        receipt.is_valid().then_some(receipt)
+    }
+
+    pub fn is_bound_to_proof(self) -> bool {
+        self.is_valid() && self.proof_event_seq != 0 && self.proof_hash != 0
+    }
+
+    pub fn is_valid(self) -> bool {
+        self.effect.is_valid()
+            && self.subject == self.effect.kind.proof_subject()
+            && self.effect_hash == self.effect.contract_hash()
+            && self.effect_hash != 0
+            && self.authority_hash != 0
+            && self.request_hash != 0
+            && self.replay_seq != 0
+            && self.replay_hash != 0
+            && ((self.proof_event_seq == 0 && self.proof_hash == 0)
+                || (self.proof_event_seq > self.replay_seq && self.proof_hash != 0))
+            && self.receipt_hash != 0
+            && self.receipt_hash == self.expected_receipt_hash()
+    }
+
+    pub fn receipt_core_hash(self) -> u64 {
+        let mut h = 0x4552_4543_4549_5054u64;
+        h = mix(h, self.subject as u64);
+        h = mix(h, self.effect_hash);
+        h = mix(h, self.effect.contract_hash());
+        h = mix(h, self.authority_hash);
+        h = mix(h, self.request_hash);
+        h = mix(h, self.replay_seq);
+        h = mix(h, self.replay_hash);
+        h.max(1)
+    }
+
+    pub fn expected_receipt_hash(self) -> u64 {
+        let mut h = self.receipt_core_hash();
+        h = mix(h, self.proof_event_seq);
+        h = mix(h, self.proof_hash);
+        h.max(1)
+    }
+
+    pub fn bind_proof(self, proof_event_seq: u64, proof_hash: u64) -> Option<Self> {
+        if !self.is_valid()
+            || self.is_bound_to_proof()
+            || proof_event_seq <= self.replay_seq
+            || proof_hash == 0
+        {
+            return None;
+        }
+        Self::new(
+            self.subject,
+            self.effect,
+            self.authority_hash,
+            self.request_hash,
+            self.replay_seq,
+            self.replay_hash,
+            proof_event_seq,
+            proof_hash,
+        )
+    }
+
+    pub fn verification_proof_binding(
+        self,
+        provider_proof_hash: u64,
+    ) -> Option<VerificationProofBinding> {
+        if !self.is_bound_to_proof() || provider_proof_hash == 0 {
+            return None;
+        }
+        VerificationProofBinding::new(
+            self.subject,
+            self.receipt_core_hash(),
+            self.receipt_hash,
+            self.replay_seq,
+            self.replay_hash,
+            provider_proof_hash,
+        )
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct CanonicalEffectProof {
+    pub receipt: CanonicalEffectReceipt,
+    pub proof_line_hash: u64,
     pub verifier_context_hash: u64,
     pub proof_flags: u64,
     pub provider_proof_hash: u64,
+    pub proof_hash: u64,
 }
 
-pub trait VerificationProofSubject: Copy {
-    fn verification_proof_subject(self) -> Option<GenericVerificationProofSubject>;
+impl CanonicalEffectProof {
+    pub fn finalize(
+        receipt: CanonicalEffectReceipt,
+        proof_event_seq: u64,
+        verifier_context_hash: u64,
+        proof_flags: u64,
+        provider_proof_hash: u64,
+    ) -> Option<(CanonicalEffectReceipt, Self)> {
+        if !receipt.is_valid()
+            || receipt.is_bound_to_proof()
+            || proof_event_seq <= receipt.replay_seq
+            || verifier_context_hash == 0
+            || (proof_flags & PROOF_FLAGS_REQUIRED) != PROOF_FLAGS_REQUIRED
+            || provider_proof_hash == 0
+        {
+            return None;
+        }
 
-    fn verification_proof_binding(self) -> Option<VerificationProofBinding> {
-        self.verification_proof_subject()?.binding()
+        let proof_line_hash =
+            Self::expected_proof_line_hash(receipt, proof_event_seq, provider_proof_hash);
+        let proof_hash = Self::expected_proof_hash_for(
+            receipt,
+            proof_line_hash,
+            proof_event_seq,
+            verifier_context_hash,
+            proof_flags,
+            provider_proof_hash,
+        );
+        let receipt = receipt.bind_proof(proof_event_seq, proof_hash)?;
+        let proof = Self {
+            receipt,
+            proof_line_hash,
+            verifier_context_hash,
+            proof_flags,
+            provider_proof_hash,
+            proof_hash,
+        };
+        proof.is_valid().then_some((receipt, proof))
     }
 
-    fn to_verification_proof_record(self) -> Option<VerificationProofRecord> {
-        VerificationProofRecord::from_subject(self)
+    pub fn is_valid(self) -> bool {
+        self.receipt.is_bound_to_proof()
+            && self.proof_line_hash != 0
+            && self.verifier_context_hash != 0
+            && (self.proof_flags & PROOF_FLAGS_REQUIRED) == PROOF_FLAGS_REQUIRED
+            && self.provider_proof_hash != 0
+            && self.proof_hash != 0
+            && self.proof_hash == self.expected_proof_hash()
+            && self.receipt.proof_hash == self.proof_hash
+    }
+
+    pub fn expected_proof_line_hash(
+        receipt: CanonicalEffectReceipt,
+        proof_event_seq: u64,
+        provider_proof_hash: u64,
+    ) -> u64 {
+        let mut h = 0x4550_524f_4f46_4c4eu64;
+        h = mix(h, receipt.subject as u64);
+        h = mix(h, receipt.effect_hash);
+        h = mix(h, receipt.authority_hash);
+        h = mix(h, receipt.request_hash);
+        h = mix(h, receipt.replay_seq);
+        h = mix(h, receipt.replay_hash);
+        h = mix(h, proof_event_seq);
+        h = mix(h, provider_proof_hash);
+        h.max(1)
+    }
+
+    fn expected_proof_hash_for(
+        receipt: CanonicalEffectReceipt,
+        proof_line_hash: u64,
+        proof_event_seq: u64,
+        verifier_context_hash: u64,
+        proof_flags: u64,
+        provider_proof_hash: u64,
+    ) -> u64 {
+        let mut h = 0x4550_524f_4f46_0001u64;
+        h = mix(h, proof_line_hash);
+        h = mix(h, receipt.receipt_core_hash());
+        h = mix(h, receipt.effect_hash);
+        h = mix(h, receipt.authority_hash);
+        h = mix(h, receipt.request_hash);
+        h = mix(h, receipt.replay_seq);
+        h = mix(h, receipt.replay_hash);
+        h = mix(h, proof_event_seq);
+        h = mix(h, verifier_context_hash);
+        h = mix(h, proof_flags);
+        h = mix(h, provider_proof_hash);
+        h.max(1)
+    }
+
+    pub fn expected_proof_hash(self) -> u64 {
+        Self::expected_proof_hash_for(
+            self.receipt,
+            self.proof_line_hash,
+            self.receipt.proof_event_seq,
+            self.verifier_context_hash,
+            self.proof_flags,
+            self.provider_proof_hash,
+        )
+    }
+
+    pub fn verification_proof_binding(self) -> Option<VerificationProofBinding> {
+        self.receipt
+            .verification_proof_binding(self.provider_proof_hash)
+    }
+
+    pub fn to_verification_proof_record(self) -> Option<VerificationProofRecord> {
+        VerificationProofRecord::from_binding(
+            self.verification_proof_binding()?,
+            self.proof_line_hash,
+            self.receipt.proof_event_seq,
+            self.verifier_context_hash,
+            self.proof_flags,
+        )
     }
 }
 
@@ -117,90 +450,6 @@ impl VerificationProofBinding {
             && self.receipt_event_seq != 0
             && self.receipt_event_hash != 0
             && self.provider_proof_hash != 0
-    }
-}
-
-impl GenericVerificationProofSubject {
-    pub fn new(
-        subject: ProofSubjectKind,
-        proof_line_hash: u64,
-        receipt_core_hash: u64,
-        receipt_hash: u64,
-        receipt_event_seq: u64,
-        proof_event_seq: u64,
-        receipt_event_hash: u64,
-        verifier_context_hash: u64,
-        proof_flags: u64,
-        provider_proof_hash: u64,
-    ) -> Option<Self> {
-        let subject = Self {
-            subject,
-            proof_line_hash,
-            receipt_core_hash,
-            receipt_hash,
-            receipt_event_seq,
-            proof_event_seq,
-            receipt_event_hash,
-            verifier_context_hash,
-            proof_flags,
-            provider_proof_hash,
-        };
-        subject.is_valid().then_some(subject)
-    }
-
-    pub fn from_binding(
-        binding: VerificationProofBinding,
-        proof_line_hash: u64,
-        proof_event_seq: u64,
-        verifier_context_hash: u64,
-        proof_flags: u64,
-    ) -> Option<Self> {
-        if !binding.is_valid() || proof_event_seq <= binding.receipt_event_seq {
-            return None;
-        }
-
-        Self::new(
-            binding.subject,
-            proof_line_hash,
-            binding.receipt_core_hash,
-            binding.receipt_hash,
-            binding.receipt_event_seq,
-            proof_event_seq,
-            binding.receipt_event_hash,
-            verifier_context_hash,
-            proof_flags,
-            binding.provider_proof_hash,
-        )
-    }
-
-    pub fn is_valid(self) -> bool {
-        self.proof_line_hash != 0
-            && self.receipt_core_hash != 0
-            && self.receipt_hash != 0
-            && self.receipt_event_seq != 0
-            && self.proof_event_seq != 0
-            && self.proof_event_seq > self.receipt_event_seq
-            && self.receipt_event_hash != 0
-            && self.verifier_context_hash != 0
-            && (self.proof_flags & PROOF_FLAGS_REQUIRED) == PROOF_FLAGS_REQUIRED
-            && self.provider_proof_hash != 0
-    }
-
-    pub fn binding(self) -> Option<VerificationProofBinding> {
-        VerificationProofBinding::new(
-            self.subject,
-            self.receipt_core_hash,
-            self.receipt_hash,
-            self.receipt_event_seq,
-            self.receipt_event_hash,
-            self.provider_proof_hash,
-        )
-    }
-}
-
-impl VerificationProofSubject for GenericVerificationProofSubject {
-    fn verification_proof_subject(self) -> Option<GenericVerificationProofSubject> {
-        self.is_valid().then_some(self)
     }
 }
 
@@ -256,24 +505,6 @@ impl VerificationProofRecord {
             verifier_context_hash,
             proof_flags,
             binding.provider_proof_hash,
-        )
-    }
-
-    pub fn from_subject(
-        subject: impl VerificationProofSubject,
-    ) -> Option<VerificationProofRecord> {
-        let subject = subject.verification_proof_subject()?;
-        Self::new(
-            subject.subject,
-            subject.proof_line_hash,
-            subject.receipt_core_hash,
-            subject.receipt_hash,
-            subject.receipt_event_seq,
-            subject.proof_event_seq,
-            subject.receipt_event_hash,
-            subject.verifier_context_hash,
-            subject.proof_flags,
-            subject.provider_proof_hash,
         )
     }
 
@@ -641,6 +872,7 @@ fn proof_subject_kind_from_u64(value: u64) -> Result<ProofSubjectKind, Verificat
         3 => Ok(ProofSubjectKind::LlmEffect),
         4 => Ok(ProofSubjectKind::SemanticVerification),
         5 => Ok(ProofSubjectKind::PolicyEffect),
+        6 => Ok(ProofSubjectKind::ObservationEffect),
         _ => Err(VerificationProofError::InvalidRecord),
     }
 }

@@ -4,8 +4,8 @@ use std::path::Path;
 
 use crate::capability::{CapabilityId, CapabilityRegistry, EvidenceProducer, EvidenceSubmission};
 use crate::capability::verification::{
-    GenericVerificationProofSubject, ProofSubjectKind, VerificationProofBinding,
-    VerificationProofRecord, PROOF_FLAGS_REQUIRED,
+    CanonicalEffect, CanonicalEffectProof, CanonicalEffectReceipt, ProofSubjectKind,
+    VerificationProofBinding, VerificationProofRecord, PROOF_FLAGS_REQUIRED,
 };
 use crate::kernel::{
     mix, Cause, ControlEvent, Decision, EventKind, Evidence, GateId, GateStatus, Phase, TLog,
@@ -149,50 +149,78 @@ impl ToolEffectReceipt {
         Some(h.max(1))
     }
 
-    pub fn proof_line_hash(self, proof_event_seq: u64) -> Option<u64> {
-        let provider_proof_hash = self.provider_proof_hash(proof_event_seq)?;
-        let mut h = 0x5f0d_5d17_ac70_4e31u64;
-        h = mix(h, self.receipt_core_hash());
-        h = mix(h, self.receipt_hash);
-        h = mix(h, self.event_seq);
-        h = mix(h, proof_event_seq);
-        h = mix(h, self.event_hash);
-        h = mix(h, provider_proof_hash);
+    pub fn canonical_authority_hash(self) -> Option<u64> {
+        if !self.is_valid() {
+            return None;
+        }
+        let mut h = 0x544f_4f4c_4155_5448u64;
+        h = mix(h, self.capability as u64);
+        h = mix(h, self.registry_policy_hash);
         Some(h.max(1))
+    }
+
+    pub fn canonical_request_hash(self) -> Option<u64> {
+        if !self.is_valid() {
+            return None;
+        }
+        let mut h = 0x544f_4f4c_5251_5354u64;
+        h = mix(h, self.request_hash);
+        h = mix(h, self.artifact_id);
+        h = mix(h, self.artifact_receipt_hash);
+        Some(h.max(1))
+    }
+
+    pub fn canonical_effect(self) -> Option<CanonicalEffect> {
+        if !self.is_valid() {
+            return None;
+        }
+        CanonicalEffect::artifact(self.effect_hash, self.effect.metadata)
+    }
+
+    pub fn canonical_effect_receipt(self) -> Option<CanonicalEffectReceipt> {
+        CanonicalEffectReceipt::new_unbound(
+            ProofSubjectKind::ArtifactEffect,
+            self.canonical_effect()?,
+            self.canonical_authority_hash()?,
+            self.canonical_request_hash()?,
+            self.event_seq,
+            self.event_hash,
+        )
+    }
+
+    pub fn to_canonical_effect_proof(
+        self,
+        proof_event_seq: u64,
+    ) -> Option<(CanonicalEffectReceipt, CanonicalEffectProof)> {
+        CanonicalEffectProof::finalize(
+            self.canonical_effect_receipt()?,
+            proof_event_seq,
+            self.verifier_context_hash(),
+            PROOF_FLAGS_REQUIRED,
+            self.provider_proof_hash(proof_event_seq)?,
+        )
+    }
+
+    pub fn proof_line_hash(self, proof_event_seq: u64) -> Option<u64> {
+        Some(self.to_canonical_effect_proof(proof_event_seq)?.1.proof_line_hash)
     }
 
     pub fn verification_proof_binding(
         self,
         proof_event_seq: u64,
     ) -> Option<VerificationProofBinding> {
-        VerificationProofBinding::new(
-            ProofSubjectKind::ArtifactEffect,
-            self.receipt_core_hash(),
-            self.receipt_hash,
-            self.event_seq,
-            self.event_hash,
-            self.provider_proof_hash(proof_event_seq)?,
-        )
-    }
-
-    pub fn verification_proof_subject(
-        self,
-        proof_event_seq: u64,
-    ) -> Option<GenericVerificationProofSubject> {
-        GenericVerificationProofSubject::from_binding(
-            self.verification_proof_binding(proof_event_seq)?,
-            self.proof_line_hash(proof_event_seq)?,
-            proof_event_seq,
-            self.verifier_context_hash(),
-            PROOF_FLAGS_REQUIRED,
-        )
+        self.to_canonical_effect_proof(proof_event_seq)?
+            .1
+            .verification_proof_binding()
     }
 
     pub fn to_verification_proof_record(
         self,
         proof_event_seq: u64,
     ) -> Option<VerificationProofRecord> {
-        VerificationProofRecord::from_subject(self.verification_proof_subject(proof_event_seq)?)
+        self.to_canonical_effect_proof(proof_event_seq)?
+            .1
+            .to_verification_proof_record()
     }
 
     pub fn replay_verified(self, tlog: &TLog) -> bool {
@@ -477,50 +505,76 @@ impl ProcessEffectReceipt {
         Some(h.max(1))
     }
 
-    pub fn proof_line_hash(self, proof_event_seq: u64) -> Option<u64> {
-        let provider_proof_hash = self.provider_proof_hash(proof_event_seq)?;
-        let mut h = 0xe11e_97d4_0181_997du64;
-        h = mix(h, self.receipt_core_hash());
-        h = mix(h, self.receipt_hash);
-        h = mix(h, self.event_seq);
-        h = mix(h, proof_event_seq);
-        h = mix(h, self.event_hash);
-        h = mix(h, provider_proof_hash);
+    pub fn canonical_authority_hash(self) -> Option<u64> {
+        if !self.is_valid() {
+            return None;
+        }
+        let mut h = 0x5052_4f43_4155_5448u64;
+        h = mix(h, self.capability as u64);
+        h = mix(h, self.registry_policy_hash);
         Some(h.max(1))
+    }
+
+    pub fn canonical_request_hash(self) -> Option<u64> {
+        if !self.is_valid() {
+            return None;
+        }
+        let mut h = 0x5052_4f43_5251_5354u64;
+        h = mix(h, self.request_hash);
+        Some(h.max(1))
+    }
+
+    pub fn canonical_effect(self) -> Option<CanonicalEffect> {
+        if !self.is_valid() {
+            return None;
+        }
+        CanonicalEffect::process(self.effect_hash, self.effect.metadata)
+    }
+
+    pub fn canonical_effect_receipt(self) -> Option<CanonicalEffectReceipt> {
+        CanonicalEffectReceipt::new_unbound(
+            ProofSubjectKind::ProcessEffect,
+            self.canonical_effect()?,
+            self.canonical_authority_hash()?,
+            self.canonical_request_hash()?,
+            self.event_seq,
+            self.event_hash,
+        )
+    }
+
+    pub fn to_canonical_effect_proof(
+        self,
+        proof_event_seq: u64,
+    ) -> Option<(CanonicalEffectReceipt, CanonicalEffectProof)> {
+        CanonicalEffectProof::finalize(
+            self.canonical_effect_receipt()?,
+            proof_event_seq,
+            self.verifier_context_hash(),
+            PROOF_FLAGS_REQUIRED,
+            self.provider_proof_hash(proof_event_seq)?,
+        )
+    }
+
+    pub fn proof_line_hash(self, proof_event_seq: u64) -> Option<u64> {
+        Some(self.to_canonical_effect_proof(proof_event_seq)?.1.proof_line_hash)
     }
 
     pub fn verification_proof_binding(
         self,
         proof_event_seq: u64,
     ) -> Option<VerificationProofBinding> {
-        VerificationProofBinding::new(
-            ProofSubjectKind::ProcessEffect,
-            self.receipt_core_hash(),
-            self.receipt_hash,
-            self.event_seq,
-            self.event_hash,
-            self.provider_proof_hash(proof_event_seq)?,
-        )
-    }
-
-    pub fn verification_proof_subject(
-        self,
-        proof_event_seq: u64,
-    ) -> Option<GenericVerificationProofSubject> {
-        GenericVerificationProofSubject::from_binding(
-            self.verification_proof_binding(proof_event_seq)?,
-            self.proof_line_hash(proof_event_seq)?,
-            proof_event_seq,
-            self.verifier_context_hash(),
-            PROOF_FLAGS_REQUIRED,
-        )
+        self.to_canonical_effect_proof(proof_event_seq)?
+            .1
+            .verification_proof_binding()
     }
 
     pub fn to_verification_proof_record(
         self,
         proof_event_seq: u64,
     ) -> Option<VerificationProofRecord> {
-        VerificationProofRecord::from_subject(self.verification_proof_subject(proof_event_seq)?)
+        self.to_canonical_effect_proof(proof_event_seq)?
+            .1
+            .to_verification_proof_record()
     }
 }
 

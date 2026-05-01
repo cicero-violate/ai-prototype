@@ -70,9 +70,9 @@ pub use crate::capability::verification::{
     ArtifactSemanticProfile, DeterministicSemanticVerifier, SemanticVerificationReceipt,
     verify_verification_proof_record_bindings, verify_verification_proof_record_order_ndjson,
     verify_verification_proof_record_replay, verify_verification_proof_record_replay_ndjson,
-    GenericVerificationProofSubject, ProofSubjectKind, VerificationCheck, VerificationDecision,
-    VerificationProofBinding, VerificationProofRecord, VerificationProofSubject,
-    VerificationRecord, VerificationRequest,
+    CanonicalEffect, CanonicalEffectKind, CanonicalEffectProof, CanonicalEffectReceipt,
+    ProofSubjectKind, VerificationCheck, VerificationDecision,
+    VerificationProofBinding, VerificationProofRecord, VerificationRecord, VerificationRequest,
 };
 pub use crate::capability::{
     evidence_allowed_for_gate, expected_evidence_for_gate, CapabilityEffectRoute, CapabilityId,
@@ -311,15 +311,16 @@ mod tests {
         )
         .unwrap();
         let proof_event_seq = tlog.last().unwrap().seq + 1;
-        let proof_subject = receipt
-            .verification_proof_subject(proof_event_seq)
+        let (canonical_receipt, effect_proof) = receipt
+            .to_canonical_effect_proof(proof_event_seq)
             .unwrap();
-        let proof_record = receipt
-            .to_verification_proof_record(proof_event_seq)
-            .unwrap();
-        let binding = proof_subject.binding().unwrap();
+        let proof_record = effect_proof.to_verification_proof_record().unwrap();
+        let binding = effect_proof.verification_proof_binding().unwrap();
 
-        assert_eq!(proof_subject.subject, ProofSubjectKind::PolicyEffect);
+        assert_eq!(canonical_receipt.subject, ProofSubjectKind::PolicyEffect);
+        assert_eq!(canonical_receipt.effect.kind, CanonicalEffectKind::Policy);
+        assert!(canonical_receipt.is_bound_to_proof());
+        assert!(effect_proof.is_valid());
         assert_eq!(proof_record.subject, ProofSubjectKind::PolicyEffect);
         assert_eq!(
             receipt.verification_proof_binding(proof_event_seq).unwrap(),
@@ -1068,8 +1069,12 @@ mod tests {
         )
         .unwrap();
 
-        let proof_record = proof_event.to_verification_proof_record().unwrap();
-        let binding = receipt.verification_proof_binding().unwrap();
+        let (canonical_receipt, proof_record) = proof_event
+            .to_canonical_verification_proof_record(receipt)
+            .unwrap();
+        let binding = canonical_receipt
+            .verification_proof_binding(proof_event.proof_hash)
+            .unwrap();
         assert_eq!(proof_record.subject, ProofSubjectKind::LlmEffect);
         assert!(proof_record.matches_binding(binding));
         assert_eq!(
@@ -1078,6 +1083,35 @@ mod tests {
         );
         assert_eq!(
             verify_ollama_judgment_proof_events(&tlog, &[receipt], &[proof_event]).unwrap(),
+            1
+        );
+
+        let (canonical_receipt, effect_proof) =
+            proof_event.to_canonical_effect_proof(receipt).unwrap();
+        assert_eq!(canonical_receipt.subject, ProofSubjectKind::LlmEffect);
+        assert_eq!(canonical_receipt.effect.kind, CanonicalEffectKind::Llm);
+        assert_eq!(canonical_receipt.effect.digest, receipt.response_hash);
+        assert_eq!(
+            canonical_receipt.authority_hash,
+            receipt.canonical_authority_hash().unwrap()
+        );
+        assert_eq!(
+            canonical_receipt.request_hash,
+            receipt.canonical_request_hash().unwrap()
+        );
+        assert_eq!(canonical_receipt.replay_seq, receipt.event_seq);
+        assert_eq!(canonical_receipt.replay_hash, receipt.event_hash);
+        assert_eq!(canonical_receipt.proof_event_seq, proof_event.proof_event_seq);
+        assert!(canonical_receipt.is_bound_to_proof());
+        assert!(effect_proof.is_valid());
+
+        let canonical_record = effect_proof.to_verification_proof_record().unwrap();
+        let canonical_binding = effect_proof.verification_proof_binding().unwrap();
+        assert_eq!(canonical_record.subject, ProofSubjectKind::LlmEffect);
+        assert!(canonical_record.matches_binding(canonical_binding));
+        assert_eq!(
+            verify_verification_proof_record_bindings(&[canonical_record], &[canonical_binding])
+                .unwrap(),
             1
         );
 

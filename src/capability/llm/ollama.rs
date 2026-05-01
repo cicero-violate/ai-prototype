@@ -17,8 +17,8 @@ use crate::capability::context::ContextRecord;
 use crate::capability::llm::record::{LlmRecord, LlmStructuredAdapter};
 use crate::capability::policy::PolicyStore;
 use crate::capability::verification::{
-    verify_verification_proof_record_bindings, GenericVerificationProofSubject,
-    ProofSubjectKind, VerificationProofBinding, VerificationProofRecord,
+    verify_verification_proof_record_bindings, CanonicalEffect, CanonicalEffectProof,
+    CanonicalEffectReceipt, ProofSubjectKind, VerificationProofBinding, VerificationProofRecord,
     PROOF_FLAG_PHASE_VERIFIED, PROOF_FLAG_PROVENANCE_VERIFIED, PROOF_FLAG_RECEIPT_VERIFIED,
     PROOF_FLAG_TAMPER_REJECTED,
 };
@@ -674,6 +674,59 @@ impl OllamaLlmEffectReceipt {
             && !self.duplicate_request
     }
 
+    pub fn canonical_authority_hash(self) -> Option<u64> {
+        if !self.is_valid() {
+            return None;
+        }
+        let mut h = 0x4f4c_4c41_4d41_4155u64;
+        h = mix(h, self.provider_hash);
+        h = mix(h, self.base_url_hash);
+        h = mix(h, self.model_id);
+        h = mix(h, self.timeout_ms);
+        h = mix(h, self.max_retries as u64);
+        h = mix(h, self.attempt_budget as u64);
+        h = mix(h, self.retry_budget_hash);
+        Some(h.max(1))
+    }
+
+    pub fn canonical_request_hash(self) -> Option<u64> {
+        if !self.is_valid() {
+            return None;
+        }
+        let mut h = 0x4f4c_4c41_4d41_5251u64;
+        h = mix(h, self.request_hash);
+        h = mix(h, self.command_hash);
+        h = mix(h, self.request_identity_hash);
+        Some(h.max(1))
+    }
+
+    pub fn canonical_effect(self) -> Option<CanonicalEffect> {
+        if !self.is_valid() {
+            return None;
+        }
+        CanonicalEffect::llm(
+            self.response_hash,
+            self.raw_response_hash,
+            self.prompt_hash,
+            self.token_count as u64,
+            self.model_id,
+        )
+    }
+
+    pub fn canonical_effect_receipt(self) -> Option<CanonicalEffectReceipt> {
+        if !self.is_valid() {
+            return None;
+        }
+        CanonicalEffectReceipt::new_unbound(
+            ProofSubjectKind::LlmEffect,
+            self.canonical_effect()?,
+            self.canonical_authority_hash()?,
+            self.canonical_request_hash()?,
+            self.event_seq,
+            self.event_hash,
+        )
+    }
+
     pub fn verification_proof_binding(self) -> Option<VerificationProofBinding> {
         if !self.has_proof_binding() {
             return None;
@@ -909,27 +962,36 @@ impl OllamaJudgmentProofEvent {
         h.max(1)
     }
 
-    pub fn verification_proof_subject(self) -> Option<GenericVerificationProofSubject> {
-        if !self.is_valid() {
+    pub fn to_canonical_effect_proof(
+        self,
+        receipt: OllamaLlmEffectReceipt,
+    ) -> Option<(CanonicalEffectReceipt, CanonicalEffectProof)> {
+        if !self.is_valid()
+            || !receipt.has_proof_binding()
+            || self.proof_hash != receipt.proof_hash
+            || self.receipt_hash != receipt.receipt_hash
+            || self.receipt_event_seq != receipt.event_seq
+            || self.proof_event_seq != receipt.proof_event_seq
+            || self.receipt_event_hash != receipt.event_hash
+        {
             return None;
         }
-
-        GenericVerificationProofSubject::new(
-            ProofSubjectKind::LlmEffect,
-            self.proof_line_hash,
-            self.receipt_core_hash,
-            self.receipt_hash,
-            self.receipt_event_seq,
+        let canonical_receipt = receipt.canonical_effect_receipt()?;
+        CanonicalEffectProof::finalize(
+            canonical_receipt,
             self.proof_event_seq,
-            self.receipt_event_hash,
             self.verifier_context_hash(),
             self.proof_flags(),
             self.proof_hash,
         )
     }
 
-    pub fn to_verification_proof_record(self) -> Option<VerificationProofRecord> {
-        VerificationProofRecord::from_subject(self.verification_proof_subject()?)
+    pub fn to_canonical_verification_proof_record(
+        self,
+        receipt: OllamaLlmEffectReceipt,
+    ) -> Option<(CanonicalEffectReceipt, VerificationProofRecord)> {
+        let (canonical_receipt, proof) = self.to_canonical_effect_proof(receipt)?;
+        Some((canonical_receipt, proof.to_verification_proof_record()?))
     }
 
     pub fn matches_receipt(self, receipt: OllamaLlmEffectReceipt, tlog: &TLog) -> bool {
@@ -1441,10 +1503,13 @@ pub fn verify_ollama_judgment_proof_events(
             .copied()
             .find(|receipt| event.matches_receipt(*receipt, tlog))
             .ok_or(OllamaError::InvalidReplay)?;
-        let proof_record = event
+        let (_, effect_proof) = event
+            .to_canonical_effect_proof(receipt)
+            .ok_or(OllamaError::InvalidReplay)?;
+        let proof_record = effect_proof
             .to_verification_proof_record()
             .ok_or(OllamaError::InvalidReplay)?;
-        let proof_binding = receipt
+        let proof_binding = effect_proof
             .verification_proof_binding()
             .ok_or(OllamaError::InvalidReplay)?;
         proof_records.push(proof_record);

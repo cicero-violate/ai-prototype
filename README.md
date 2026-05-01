@@ -164,7 +164,7 @@ Latest validated local run:
 
 ```text
 cargo build = passed
-cargo test = 102 passed / 0 failed
+cargo test = 103 passed / 0 failed
 cargo run --example ollama_judgment = passed
 ollama_tampered_fields_rejected = 17/17
 durable_proof_verified = true
@@ -179,9 +179,10 @@ codec_ndjson_decoder_table_split = passed_user_validated
 ollama_mixed_ndjson_helper_collapse = passed_user_validated
 ollama_json_escape_split = passed_user_validated
 runtime_replay_loop_split = passed_user_validated
-tooling_receipt_ndjson_field_parser_collapse = pending_validation
-semantic_redundant_path_pairs = 621 -> 497 -> 464 -> 349 -> 346 -> 326 -> 328
-graph_intent_class_coverage = 633/633fn
+generic_proof_subject_collapse = passed_user_validated
+semantic_redundant_path_pairs = 621 -> 497 -> 464 -> 349 -> 346 -> 326 -> 328 -> 323 -> 334
+semantic_alpha_pathways = 16 -> 15 -> 16
+graph_intent_class_coverage = 704/704fn
 timeout_ms = 30000
 retry_count = 0
 max_retries = 0
@@ -190,6 +191,8 @@ budget_exhausted = true
 duplicate_request = false
 tool_process_generic_proof_bindings = passed_user_validated
 generic_proof_replay_enforcement = passed_user_validated
+canonical_execution_normal_form = passed_user_validated_with_graph_regression
+canonical_effect_route_authority_collapse = pending_local_validation
 ```
 
 This is not a system that trades correctness for capability. The kernel
@@ -211,7 +214,7 @@ The local Ollama path has validated replayable effect receipts, endpoint
 provenance, proof-event ordering, bidirectional receipt/proof binding,
 receipt/proof matching, and retry/budget/idempotency fields in the receipt/proof
 model. The most recent local validation passed `cargo build`, `cargo test`, and
-`cargo run --example ollama_judgment`, with all 102 tests passing, the bounded
+`cargo run --example ollama_judgment`, with all 103 tests passing, the bounded
 line observation ingress cursor/backpressure and API-route tests passing, the
 tool/process generic proof-binding tests passing, generic proof replay rejecting
 missing/duplicate/displaced proof records, and the Ollama tamper matrix
@@ -239,14 +242,15 @@ proof-record NDJSON/replay machinery, while preserving the same public
 `capability::verification::*` exports and compatibility re-exports under
 `capability::verification::record::*`.
 
-Current pending proof-spine patch: `GenericVerificationProofSubject` now
-canonicalizes the reusable proof subject shape before
-`VerificationProofRecord` construction. Artifact, process, and Ollama proof
-projection now pass through that shared subject adapter, and policy promotion
-can be represented as `ProofSubjectKind::PolicyEffect` through
-`PolicyProofReceipt`. The added policy test projects a promoted policy entry
-into the same mixed-NDJSON replay checker. This patch still requires local cargo
-validation before it should be counted as a validated README status claim.
+The execution-normal-form patch is now user-validated for tests but not for
+graph health: `cargo test` stayed at `103/103`, while the rustc graph moved to
+`2321` nodes, `6566` edges, `334` redundant path pairs, `16` alpha pathways,
+and full intent coverage at `704/704fn`. The current patch therefore makes the
+normal form authoritative instead of additive: provider/tool/policy adapters may
+still compute local receipt fields, but durable proof-record construction is
+collapsed behind `CanonicalEffectReceipt -> CanonicalEffectProof ->
+VerificationProofRecord`. Direct proof-subject trait routing and direct Ollama
+proof-record construction are removed.
 
 The validated semantic-debt reduction passes decomposed
 `runtime::verify::validate_event`, `runtime::diff::semantic_diff`, and
@@ -276,18 +280,18 @@ helpers. The validation passed `cargo build`, `cargo test`, and
 coverage at `633/633`, and redundant path pairs moving from `326` to `328`.
 That split improved replay readability but did not reduce graph debt.
 
-The next semantic-debt patch targets tooling receipt codecs instead of adding
-new behavior. Tooling artifact/process/process-effect receipt decoders now use
-one shared `parse_u64_ndjson_fields` helper and one shared
-`validate_u64_ndjson_header` helper, preserving schema versions, record tags,
-numeric fields, and invalid-record behavior while collapsing duplicated parser
-branches across `receipt.rs` and `process.rs`. Validation is pending until the
-next local `cargo build && cargo test && cargo run --example ollama_judgment`
-run.
+The generic proof-subject collapse is now locally validated. The validation
+passed `cargo build`, `cargo test`, and `cargo run --example ollama_judgment`
+with all 103 tests passing, intent coverage at `654/654`, redundant path pairs
+moving from `328` to `323`, and alpha pathways moving from `16` to `15`.
 
-Still pending: further graph debt reduction beyond `328` redundant path pairs,
-external autonomous observation beyond file-backed append-only
-sources, external API action tools, provider-signed receipts, streaming LLM
-response validation, distributed orchestration, reducing graph semantic debt,
-and extending the generic verification spine into semantic verification,
-observation ingress, and future provider effects.
+The next unvalidated patch makes the canonical execution normal form
+authoritative instead of additive. Direct proof-subject trait routing is removed,
+and Ollama proof records now require the canonical effect route. Tool, process,
+and policy proof-record helpers already route through `CanonicalEffectProof`.
+
+Still pending: validation that alpha pathways return below `16`,
+external autonomous observation beyond file-backed append-only sources, external
+API action tools, provider-signed receipts, streaming LLM response validation,
+distributed orchestration, and migrating all effect-producing capabilities onto
+the canonical execution normal form.
