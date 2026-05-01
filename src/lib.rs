@@ -30,15 +30,21 @@ pub use crate::capability::llm::{
     verify_ollama_llm_effect_receipts, LlmDecision, LlmPromptRecord, LlmRecord,
     LlmResponseRecord, LlmStructuredAdapter, OllamaChatResponse, OllamaClient, OllamaConfig,
     OllamaError, OllamaJudgmentProofEvent, OllamaLlmCall,
-    OllamaLlmEffectReceipt, OllamaMessage, OLLAMA_JUDGMENT_PROOF_LINE,
+    OllamaLlmEffectReceipt, OllamaMessage, OllamaRetryBudgetDecision,
+    OllamaRetryBudgetLedger, OllamaRetryBudgetPolicy, OLLAMA_JUDGMENT_PROOF_LINE,
     OLLAMA_JUDGMENT_PROOF_RECORD, OLLAMA_JUDGMENT_PROOF_SCHEMA_VERSION,
     OLLAMA_LLM_EFFECT_RECEIPT_RECORD, OLLAMA_LLM_EFFECT_RECEIPT_SCHEMA_VERSION,
     OLLAMA_PROVIDER,
 };
 pub use crate::capability::memory::{MemoryFact, MemoryIndex, MemoryLookupRecord};
 pub use crate::capability::observation::{
+    decode_observation_cursor_ndjson, encode_observation_cursor_ndjson,
+    load_observation_cursor_ndjson, write_observation_cursor_ndjson,
+    BoundedLineObservationSource,
+    ObservationIngressBatch, ObservationIngressConfig, ObservationIngressDecision,
     ObservationCursor, ObservationDecision, ObservationFrame, ObservationFrameKind,
-    ObservationRecord, MAX_OBSERVATION_PAYLOAD_BYTES,
+    ObservationRecord, MAX_OBSERVATION_PAYLOAD_BYTES, OBSERVATION_CURSOR_RECORD,
+    OBSERVATION_CURSOR_SCHEMA_VERSION,
 };
 pub use crate::capability::orchestration::{
     CapabilityRoute, OrchestrationDecision, OrchestrationRecord,
@@ -62,7 +68,9 @@ pub use crate::capability::tooling::{
 };
 pub use crate::capability::verification::{
     ArtifactSemanticProfile, DeterministicSemanticVerifier, SemanticVerificationReceipt,
-    VerificationCheck, VerificationDecision, VerificationRecord, VerificationRequest,
+    verify_verification_proof_record_bindings, ProofSubjectKind, VerificationCheck,
+    VerificationDecision, VerificationProofBinding, VerificationProofRecord, VerificationRecord,
+    VerificationRequest,
 };
 pub use crate::capability::{
     evidence_allowed_for_gate, expected_evidence_for_gate, CapabilityEffectRoute, CapabilityId,
@@ -157,7 +165,7 @@ mod tests {
                         .map(|raw| raw.trim().parse::<u64>())
                         .collect::<Result<Vec<_>, _>>();
                     if let Ok(mut fields) = parsed {
-                        if fields.len() == 17
+                        if fields.len() >= 2
                             && fields[0] == OLLAMA_LLM_EFFECT_RECEIPT_SCHEMA_VERSION
                             && fields[1] == OLLAMA_LLM_EFFECT_RECEIPT_RECORD
                             && field_index < fields.len()
@@ -460,6 +468,66 @@ mod tests {
     }
 
     #[test]
+    fn bounded_line_observation_source_persists_cursor_and_applies_backpressure() {
+        let stem = std::env::temp_dir().join(format!(
+            "ai-observation-ingress-{}",
+            std::process::id()
+        ));
+        let source_path = stem.with_extension("log");
+        let cursor_path = stem.with_extension("cursor.ndjson");
+        std::fs::remove_file(&source_path).ok();
+        std::fs::remove_file(&cursor_path).ok();
+        std::fs::write(&source_path, b"alpha\nbeta\ngamma\n").unwrap();
+
+        let pressured = BoundedLineObservationSource::new(
+            source_path.clone(),
+            cursor_path.clone(),
+            ObservationIngressConfig::new(9, 1, 2, 5),
+        )
+        .read_batch()
+        .unwrap();
+
+        assert_eq!(pressured.decision, ObservationIngressDecision::Backpressure);
+        assert_eq!(pressured.backlog_len, 3);
+        assert!(pressured.records.is_empty());
+        assert!(load_observation_cursor_ndjson(&cursor_path).unwrap().is_none());
+
+        let source = BoundedLineObservationSource::new(
+            source_path.clone(),
+            cursor_path.clone(),
+            ObservationIngressConfig::new(9, 2, 4, 5),
+        );
+        let first = source.read_batch().unwrap();
+
+        assert_eq!(first.decision, ObservationIngressDecision::Accepted);
+        assert_eq!(first.records.len(), 2);
+        assert_eq!(first.records[0].sequence, 1);
+        assert_eq!(first.records[1].sequence, 2);
+        assert_eq!(first.backlog_len, 1);
+        assert!(first.is_accepted());
+
+        let persisted = load_observation_cursor_ndjson(&cursor_path)
+            .unwrap()
+            .unwrap();
+        assert_eq!(persisted.source_id, 9);
+        assert_eq!(persisted.last_sequence, 2);
+        assert_eq!(persisted.last_observed_hash, first.records[1].observed_hash);
+
+        let second = source.read_batch().unwrap();
+        assert_eq!(second.decision, ObservationIngressDecision::Accepted);
+        assert_eq!(second.records.len(), 1);
+        assert_eq!(second.records[0].sequence, 3);
+        assert_eq!(second.backlog_len, 0);
+
+        let finished = source.read_batch().unwrap();
+        assert_eq!(finished.decision, ObservationIngressDecision::Empty);
+        assert!(finished.records.is_empty());
+
+        std::fs::remove_file(&source_path).ok();
+        std::fs::remove_file(&cursor_path).ok();
+    }
+
+    #[test]
     fn memory_index_lookup_is_deterministic_and_weight_ordered() {
         let mut memory = MemoryIndex::default();
 
@@ -599,6 +667,25 @@ mod tests {
     }
 
     #[test]
+    fn ollama_retry_budget_ledger_rejects_duplicate_request_identity() {
+        let policy = OllamaRetryBudgetPolicy::new(30_000, 2, 3).unwrap();
+        let mut ledger = OllamaRetryBudgetLedger::new(policy);
+
+        let first = ledger.record_request(1, 2, 3, 4).unwrap();
+        assert!(first.allowed);
+        assert_eq!(first.retry_count, 0);
+        assert!(!first.budget_exhausted);
+        assert!(!first.duplicate_request);
+        assert_ne!(first.request_identity_hash, 0);
+        assert_eq!(first.retry_budget_hash, policy.policy_hash());
+
+        assert!(matches!(
+            ledger.record_request(1, 2, 3, 4),
+            Err(OllamaError::DuplicateRequest)
+        ));
+    }
+
+    #[test]
     fn ollama_response_body_drives_judgment_record_through_api() {
         let mut state = State::default();
         state.phase = Phase::Judgment;
@@ -684,6 +771,14 @@ mod tests {
         assert_eq!(receipt.base_url_hash, client.config().base_url_id());
         assert_eq!(receipt.model_id, client.config().model_id());
         assert_eq!(receipt.request_hash, call.request_hash);
+        assert_eq!(receipt.timeout_ms, client.config().timeout_ms);
+        assert_eq!(receipt.retry_count, 0);
+        assert_eq!(receipt.max_retries, 0);
+        assert_eq!(receipt.attempt_budget, 1);
+        assert_eq!(receipt.request_identity_hash, call.request_identity_hash);
+        assert_eq!(receipt.retry_budget_hash, call.retry_budget_hash);
+        assert!(receipt.budget_exhausted);
+        assert!(!receipt.duplicate_request);
         assert_eq!(receipt.response_hash, call.response_hash);
 
         let encoded = encode_ollama_llm_effect_receipt_ndjson(receipt);
@@ -802,6 +897,75 @@ mod tests {
                 .unwrap(),
             1
         );
+    }
+
+    #[test]
+    fn ollama_proof_event_projects_into_generic_verification_spine() {
+        let mut state = State::default();
+        state.phase = Phase::Judgment;
+        state.gates.invariant = Gate::pass(Evidence::InvariantProof);
+        state.gates.analysis = Gate::pass(Evidence::AnalysisReport);
+
+        let mut memory = MemoryIndex::default();
+        assert!(memory.insert(MemoryFact::new(state.packet.objective_id, 0xfeed, 7, 1)));
+        let lookup = memory.lookup(state.packet.objective_id, 8);
+        let context = ContextRecord::from_packet_memory(state.packet, 0xabc, &lookup);
+        let policy = PolicyStore::default();
+        let client = OllamaClient::new(OllamaConfig::default()).unwrap();
+        let call = client
+            .call_from_response_body(
+                &context,
+                &policy,
+                "{\"id\":\"chatcmpl-1\",\"object\":\"chat.completion\",\"choices\":[{\"index\":0,\"message\":{\"role\":\"assistant\",\"content\":\"Project proof into generic verification spine.\"},\"finish_reason\":\"stop\"}],\"usage\":{\"prompt_tokens\":30,\"completion_tokens\":8,\"total_tokens\":38}}",
+            )
+            .unwrap();
+        let envelope = CommandEnvelope::new(
+            call.request_hash,
+            crate::api::protocol::Command::SubmitEvidence(call.submission()),
+        );
+
+        let mut tlog = Vec::new();
+        crate::api::routes::handle_envelope(&mut state, &mut tlog, RuntimeConfig::default(), envelope.clone())
+            .unwrap();
+        let persisted_event = tlog
+            .iter()
+            .find(|event| {
+                event.kind == EventKind::Persisted
+                    && event.evidence == Evidence::JudgmentRecord
+                    && event.api_command_hash == envelope.command_hash
+            })
+            .copied()
+            .unwrap();
+        let base_receipt = call
+            .receipt_for_configured_event(client.config(), envelope.command_hash, &persisted_event)
+            .unwrap();
+        let (receipt, proof_event) = OllamaJudgmentProofEvent::finalize_receipt_after_tlog(
+            base_receipt,
+            &tlog,
+            true,
+            true,
+            base_receipt.base_url_provenance_verified(client.config()),
+            state.phase == Phase::Plan,
+        )
+        .unwrap();
+
+        let proof_record = proof_event.to_verification_proof_record().unwrap();
+        let binding = receipt.verification_proof_binding().unwrap();
+        assert_eq!(proof_record.subject, ProofSubjectKind::LlmEffect);
+        assert!(proof_record.matches_binding(binding));
+        assert_eq!(
+            verify_verification_proof_record_bindings(&[proof_record], &[binding]).unwrap(),
+            1
+        );
+        assert_eq!(
+            verify_ollama_judgment_proof_events(&tlog, &[receipt], &[proof_event]).unwrap(),
+            1
+        );
+
+        let mut tampered = proof_record;
+        tampered.provider_proof_hash ^= 1;
+        tampered.record_hash = tampered.expected_record_hash();
+        assert!(verify_verification_proof_record_bindings(&[tampered], &[binding]).is_err());
     }
 
     #[test]
@@ -1266,11 +1430,19 @@ mod tests {
             ("base_url", 3usize),
             ("model", 4usize),
             ("request_hash", 5usize),
-            ("response_hash", 6usize),
-            ("raw_response_hash", 7usize),
-            ("proof_event_seq", 14usize),
-            ("proof_hash", 15usize),
-            ("receipt_hash", 16usize),
+            ("timeout_ms", 6usize),
+            ("retry_count", 7usize),
+            ("max_retries", 8usize),
+            ("attempt_budget", 9usize),
+            ("request_identity_hash", 10usize),
+            ("retry_budget_hash", 11usize),
+            ("budget_exhausted", 12usize),
+            ("duplicate_request", 13usize),
+            ("response_hash", 14usize),
+            ("raw_response_hash", 15usize),
+            ("proof_event_seq", 22usize),
+            ("proof_hash", 23usize),
+            ("receipt_hash", 24usize),
         ] {
             let tampered_path = path.with_file_name(format!(
                 "ollama_judgment-{}-{}-{field_name}.tampered.tlog.ndjson",

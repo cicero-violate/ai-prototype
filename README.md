@@ -151,9 +151,32 @@ The adapter rejects non-local base URLs by default and uses the same
 The executable path now persists a mixed `tlog.ndjson`: normal control-event
 lines remain replayable by `load_tlog_ndjson`, while the Ollama receipt line
 binds `provider`, `model_id`, `request_hash`, `response_hash`,
-`raw_response_hash`, `token_count`, `command_hash`, `event_seq`, and
+`raw_response_hash`, `token_count`, `timeout_ms`, `retry_count`,
+`max_retries`, `attempt_budget`, `request_identity_hash`,
+`retry_budget_hash`, `budget_exhausted`, `command_hash`, `event_seq`, and
 `event_hash`. `verify_ollama_llm_effect_receipts` then replays the receipt
-against the loaded control events.
+against the loaded control events. The final proof event also binds the retry
+budget and idempotency fields, so timeout policy, duplicate-request identity,
+and budget exhaustion are checked with the receipt/proof pair rather than
+left as side-channel runtime behavior.
+
+Latest validated local run:
+
+```text
+cargo build = passed
+cargo test = 99 passed / 0 failed
+cargo run --example ollama_judgment = passed
+ollama_tampered_fields_rejected = 17/17
+durable_proof_verified = true
+receipt_proof_matches = true
+bounded_line_observation_source_persists_cursor_and_applies_backpressure = passed
+timeout_ms = 30000
+retry_count = 0
+max_retries = 0
+attempt_budget = 1
+budget_exhausted = true
+duplicate_request = false
+```
 
 This is not a system that trades correctness for capability. The kernel
 boundary is a constitutional commitment. Intelligence grows above it.
@@ -161,9 +184,32 @@ Correctness is guaranteed below it. That separation is permanent.
 
 ## Current Status
 
-The kernel, codec, and runtime layers are implemented and verified. The
-capability layer is defined in structure but not yet implemented. The
-immediate build surface is tooling and planning. Everything above depends
-on those two being correct first.
+The kernel remains frozen. Codec, runtime replay, local tooling/process
+effects, semantic verification, policy persistence, learning promotion, the
+local Ollama judgment path, and a bounded file-backed observation ingress are
+implemented as deterministic source surfaces. The observation ingress reads an
+append-only line source, applies a maximum batch size, applies explicit
+backpressure when unseen frames exceed the backlog cap, and persists only the
+cursor outside the kernel.
 
-The foundation is correct. The work ahead is building upward.
+The local Ollama path has validated replayable effect receipts, endpoint
+provenance, proof-event ordering, bidirectional receipt/proof binding,
+receipt/proof matching, and retry/budget/idempotency fields in the receipt/proof
+model. The most recent local validation passed `cargo build`, `cargo test`, and
+`cargo run --example ollama_judgment`, with all 99 tests passing, the bounded
+line observation ingress cursor/backpressure test passing, and the Ollama tamper
+matrix rejecting 17 of 17 receipt-field mutations.
+
+The current source now also projects the Ollama proof event into the generic
+`VerificationProofRecord` spine. The provider-specific proof remains responsible
+for Ollama-only fields, but verification integrity now has a reusable binding
+shape: `ProofSubjectKind::LlmEffect + VerificationProofBinding +
+verify_verification_proof_record_bindings`. This is the first concrete bridge
+from provider-specific proof events to a generic verification proof contract.
+
+Still pending: external autonomous observation beyond file-backed append-only
+sources, routing the observation ingress through a live API/runtime source,
+external API action tools, provider-signed receipts, streaming LLM response
+validation, distributed orchestration, and extending the generic verification
+spine beyond LLM proof records into tooling, process, semantic verification, and
+future provider effects.

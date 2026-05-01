@@ -16,6 +16,11 @@ use std::time::Duration;
 use crate::capability::context::ContextRecord;
 use crate::capability::llm::record::{LlmRecord, LlmStructuredAdapter};
 use crate::capability::policy::PolicyStore;
+use crate::capability::verification::{
+    verify_verification_proof_record_bindings, ProofSubjectKind, VerificationProofBinding,
+    VerificationProofRecord, PROOF_FLAG_PHASE_VERIFIED, PROOF_FLAG_PROVENANCE_VERIFIED,
+    PROOF_FLAG_RECEIPT_VERIFIED, PROOF_FLAG_TAMPER_REJECTED,
+};
 use crate::capability::EvidenceSubmission;
 use crate::codec::ndjson::{load_tlog_ndjson, TLOG_RECORD_EVENT};
 use crate::kernel::{
@@ -23,9 +28,9 @@ use crate::kernel::{
 };
 
 pub const OLLAMA_PROVIDER: &str = "ollama";
-pub const OLLAMA_LLM_EFFECT_RECEIPT_SCHEMA_VERSION: u64 = 4;
+pub const OLLAMA_LLM_EFFECT_RECEIPT_SCHEMA_VERSION: u64 = 5;
 pub const OLLAMA_LLM_EFFECT_RECEIPT_RECORD: u64 = 51;
-pub const OLLAMA_JUDGMENT_PROOF_SCHEMA_VERSION: u64 = 2;
+pub const OLLAMA_JUDGMENT_PROOF_SCHEMA_VERSION: u64 = 3;
 pub const OLLAMA_JUDGMENT_PROOF_RECORD: u64 = 52;
 pub const OLLAMA_JUDGMENT_PROOF_LINE: &str =
     "receipt_verified+tamper_rejected+endpoint_verified+phase_plan";
@@ -33,6 +38,8 @@ pub const OLLAMA_JUDGMENT_PROOF_LINE: &str =
 const DEFAULT_BASE_URL: &str = "http://127.0.0.1:11434/v1";
 const DEFAULT_MODEL: &str = "qwen2.5-coder:7b";
 const DEFAULT_TIMEOUT_MS: u64 = 30_000;
+const DEFAULT_MAX_RETRIES: u32 = 0;
+const DEFAULT_ATTEMPT_BUDGET: u32 = 1;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct OllamaConfig {
@@ -97,6 +104,199 @@ impl OllamaConfig {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct OllamaRetryBudgetPolicy {
+    pub timeout_ms: u64,
+    pub max_retries: u32,
+    pub attempt_budget: u32,
+}
+
+impl OllamaRetryBudgetPolicy {
+    pub fn new(timeout_ms: u64, max_retries: u32, attempt_budget: u32) -> Option<Self> {
+        if timeout_ms == 0 || attempt_budget == 0 {
+            return None;
+        }
+        let retry_ceiling = max_retries.saturating_add(1);
+        if attempt_budget > retry_ceiling {
+            return None;
+        }
+        Some(Self {
+            timeout_ms,
+            max_retries,
+            attempt_budget,
+        })
+    }
+
+    pub fn from_config(config: &OllamaConfig) -> Self {
+        Self {
+            timeout_ms: config.timeout_ms,
+            max_retries: DEFAULT_MAX_RETRIES,
+            attempt_budget: DEFAULT_ATTEMPT_BUDGET,
+        }
+    }
+
+    pub fn policy_hash(self) -> u64 {
+        let mut h = 0x5245_5452_5942_5544u64;
+        h = mix(h, self.timeout_ms);
+        h = mix(h, self.max_retries as u64);
+        h = mix(h, self.attempt_budget as u64);
+        h.max(1)
+    }
+
+    pub fn request_identity_hash(
+        self,
+        provider_hash: u64,
+        base_url_hash: u64,
+        model_id: u64,
+        request_hash: u64,
+    ) -> u64 {
+        let mut h = 0x4944_454d_504f_5445u64;
+        h = mix(h, provider_hash);
+        h = mix(h, base_url_hash);
+        h = mix(h, model_id);
+        h = mix(h, request_hash);
+        h.max(1)
+    }
+
+    pub fn decision_for_attempt(
+        self,
+        provider_hash: u64,
+        base_url_hash: u64,
+        model_id: u64,
+        request_hash: u64,
+        retry_count: u32,
+        duplicate_request: bool,
+    ) -> Option<OllamaRetryBudgetDecision> {
+        let request_identity_hash =
+            self.request_identity_hash(provider_hash, base_url_hash, model_id, request_hash);
+        let retry_allowed = retry_count <= self.max_retries;
+        let budget_allowed = retry_count < self.attempt_budget;
+        let allowed = request_identity_hash != 0 && retry_allowed && budget_allowed && !duplicate_request;
+        let budget_exhausted = !budget_allowed
+            || retry_count.saturating_add(1) >= self.attempt_budget
+            || retry_count >= self.max_retries;
+        let decision = OllamaRetryBudgetDecision {
+            timeout_ms: self.timeout_ms,
+            retry_count,
+            max_retries: self.max_retries,
+            attempt_budget: self.attempt_budget,
+            request_identity_hash,
+            retry_budget_hash: self.policy_hash(),
+            budget_exhausted,
+            duplicate_request,
+            allowed,
+        };
+        decision.is_valid_decision().then_some(decision)
+    }
+
+    pub fn first_attempt(
+        self,
+        provider_hash: u64,
+        base_url_hash: u64,
+        model_id: u64,
+        request_hash: u64,
+    ) -> Option<OllamaRetryBudgetDecision> {
+        self.decision_for_attempt(provider_hash, base_url_hash, model_id, request_hash, 0, false)
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct OllamaRetryBudgetDecision {
+    pub timeout_ms: u64,
+    pub retry_count: u32,
+    pub max_retries: u32,
+    pub attempt_budget: u32,
+    pub request_identity_hash: u64,
+    pub retry_budget_hash: u64,
+    pub budget_exhausted: bool,
+    pub duplicate_request: bool,
+    pub allowed: bool,
+}
+
+impl OllamaRetryBudgetDecision {
+    pub fn is_valid_decision(self) -> bool {
+        self.timeout_ms != 0
+            && self.attempt_budget != 0
+            && self.attempt_budget <= self.max_retries.saturating_add(1)
+            && self.request_identity_hash != 0
+            && self.retry_budget_hash != 0
+            && (!self.allowed
+                || (!self.duplicate_request
+                    && self.retry_count <= self.max_retries
+                    && self.retry_count < self.attempt_budget))
+    }
+
+    pub fn is_receiptable_success(self) -> bool {
+        self.is_valid_decision()
+            && self.allowed
+            && !self.duplicate_request
+            && self.retry_count <= self.max_retries
+            && self.retry_count < self.attempt_budget
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct OllamaRetryBudgetLedger {
+    policy: OllamaRetryBudgetPolicy,
+    seen_request_identity_hashes: Vec<u64>,
+    attempts_used: u32,
+}
+
+impl OllamaRetryBudgetLedger {
+    pub fn new(policy: OllamaRetryBudgetPolicy) -> Self {
+        Self {
+            policy,
+            seen_request_identity_hashes: Vec::new(),
+            attempts_used: 0,
+        }
+    }
+
+    pub fn policy(&self) -> OllamaRetryBudgetPolicy {
+        self.policy
+    }
+
+    pub fn record_request(
+        &mut self,
+        provider_hash: u64,
+        base_url_hash: u64,
+        model_id: u64,
+        request_hash: u64,
+    ) -> Result<OllamaRetryBudgetDecision, OllamaError> {
+        let request_identity_hash = self.policy.request_identity_hash(
+            provider_hash,
+            base_url_hash,
+            model_id,
+            request_hash,
+        );
+        let duplicate_request = self
+            .seen_request_identity_hashes
+            .contains(&request_identity_hash);
+        let decision = self
+            .policy
+            .decision_for_attempt(
+                provider_hash,
+                base_url_hash,
+                model_id,
+                request_hash,
+                self.attempts_used,
+                duplicate_request,
+            )
+            .ok_or(OllamaError::InvalidConfig("invalid retry budget decision"))?;
+
+        if duplicate_request {
+            return Err(OllamaError::DuplicateRequest);
+        }
+        if !decision.allowed {
+            return Err(OllamaError::BudgetExhausted);
+        }
+
+        self.seen_request_identity_hashes
+            .push(request_identity_hash);
+        self.attempts_used = self.attempts_used.saturating_add(1);
+        Ok(decision)
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct OllamaMessage {
     pub role: String,
@@ -136,6 +336,14 @@ pub struct OllamaLlmCall {
     pub base_url_hash: u64,
     pub model_id: u64,
     pub request_hash: u64,
+    pub timeout_ms: u64,
+    pub retry_count: u32,
+    pub max_retries: u32,
+    pub attempt_budget: u32,
+    pub request_identity_hash: u64,
+    pub retry_budget_hash: u64,
+    pub budget_exhausted: bool,
+    pub duplicate_request: bool,
     pub response_hash: u64,
     pub raw_response_hash: u64,
     pub prompt_hash: u64,
@@ -150,6 +358,7 @@ impl OllamaLlmCall {
         base_url_hash: u64,
         request_hash: u64,
         response: OllamaChatResponse,
+        retry_budget: OllamaRetryBudgetDecision,
     ) -> Self {
         let submission = record.submission();
         Self {
@@ -162,6 +371,14 @@ impl OllamaLlmCall {
             base_url_hash,
             model_id,
             request_hash,
+            timeout_ms: retry_budget.timeout_ms,
+            retry_count: retry_budget.retry_count,
+            max_retries: retry_budget.max_retries,
+            attempt_budget: retry_budget.attempt_budget,
+            request_identity_hash: retry_budget.request_identity_hash,
+            retry_budget_hash: retry_budget.retry_budget_hash,
+            budget_exhausted: retry_budget.budget_exhausted,
+            duplicate_request: retry_budget.duplicate_request,
             raw_response_hash: response.raw_hash,
         }
     }
@@ -173,6 +390,26 @@ impl OllamaLlmCall {
             && self.model_id != 0
             && self.model_id == self.record.response.model_id
             && self.request_hash != 0
+            && self.timeout_ms != 0
+            && self.retry_count <= self.max_retries
+            && self.attempt_budget != 0
+            && self.attempt_budget <= self.max_retries.saturating_add(1)
+            && self.retry_count < self.attempt_budget
+            && self.request_identity_hash != 0
+            && self.retry_budget_hash != 0
+            && retry_budget_binding_is_valid(
+                self.provider_hash,
+                self.base_url_hash,
+                self.model_id,
+                self.request_hash,
+                self.timeout_ms,
+                self.retry_count,
+                self.max_retries,
+                self.attempt_budget,
+                self.request_identity_hash,
+                self.retry_budget_hash,
+            )
+            && !self.duplicate_request
             && self.response_hash != 0
             && self.response_hash == self.record.response.response_hash
             && self.raw_response_hash != 0
@@ -194,6 +431,7 @@ impl OllamaLlmCall {
             && self.provider_hash == ollama_provider_hash()
             && self.base_url_hash == config.base_url_id()
             && self.model_id == config.model_id()
+            && self.timeout_ms == config.timeout_ms
     }
 
     pub fn receipt_for_configured_event(
@@ -205,6 +443,28 @@ impl OllamaLlmCall {
         self.base_url_provenance_verified(config)
             .then(|| self.receipt_for_event_unchecked(command_hash, event))
             .flatten()
+    }
+
+    pub fn receipt_for_configured_event_with_retry_budget(
+        &self,
+        config: &OllamaConfig,
+        retry_budget: OllamaRetryBudgetDecision,
+        command_hash: u64,
+        event: &ControlEvent,
+    ) -> Option<OllamaLlmEffectReceipt> {
+        if !retry_budget.is_receiptable_success()
+            || retry_budget.timeout_ms != config.timeout_ms
+            || retry_budget.retry_count != self.retry_count
+            || retry_budget.max_retries != self.max_retries
+            || retry_budget.attempt_budget != self.attempt_budget
+            || retry_budget.request_identity_hash != self.request_identity_hash
+            || retry_budget.retry_budget_hash != self.retry_budget_hash
+            || retry_budget.budget_exhausted != self.budget_exhausted
+            || retry_budget.duplicate_request != self.duplicate_request
+        {
+            return None;
+        }
+        self.receipt_for_configured_event(config, command_hash, event)
     }
 
     fn receipt_for_event_unchecked(
@@ -221,6 +481,14 @@ impl OllamaLlmCall {
             base_url_hash: self.base_url_hash,
             model_id: self.model_id,
             request_hash: self.request_hash,
+            timeout_ms: self.timeout_ms,
+            retry_count: self.retry_count,
+            max_retries: self.max_retries,
+            attempt_budget: self.attempt_budget,
+            request_identity_hash: self.request_identity_hash,
+            retry_budget_hash: self.retry_budget_hash,
+            budget_exhausted: self.budget_exhausted,
+            duplicate_request: self.duplicate_request,
             response_hash: self.response_hash,
             raw_response_hash: self.raw_response_hash,
             prompt_hash: self.prompt_hash,
@@ -254,6 +522,14 @@ pub struct OllamaLlmEffectReceipt {
     pub base_url_hash: u64,
     pub model_id: u64,
     pub request_hash: u64,
+    pub timeout_ms: u64,
+    pub retry_count: u32,
+    pub max_retries: u32,
+    pub attempt_budget: u32,
+    pub request_identity_hash: u64,
+    pub retry_budget_hash: u64,
+    pub budget_exhausted: bool,
+    pub duplicate_request: bool,
     pub response_hash: u64,
     pub raw_response_hash: u64,
     pub prompt_hash: u64,
@@ -273,6 +549,26 @@ impl OllamaLlmEffectReceipt {
             && self.base_url_hash != 0
             && self.model_id != 0
             && self.request_hash != 0
+            && self.timeout_ms != 0
+            && self.retry_count <= self.max_retries
+            && self.attempt_budget != 0
+            && self.attempt_budget <= self.max_retries.saturating_add(1)
+            && self.retry_count < self.attempt_budget
+            && self.request_identity_hash != 0
+            && self.retry_budget_hash != 0
+            && retry_budget_binding_is_valid(
+                self.provider_hash,
+                self.base_url_hash,
+                self.model_id,
+                self.request_hash,
+                self.timeout_ms,
+                self.retry_count,
+                self.max_retries,
+                self.attempt_budget,
+                self.request_identity_hash,
+                self.retry_budget_hash,
+            )
+            && !self.duplicate_request
             && self.response_hash != 0
             && self.raw_response_hash != 0
             && self.prompt_hash != 0
@@ -301,6 +597,14 @@ impl OllamaLlmEffectReceipt {
         h = mix(h, self.base_url_hash);
         h = mix(h, self.model_id);
         h = mix(h, self.request_hash);
+        h = mix(h, self.timeout_ms);
+        h = mix(h, self.retry_count as u64);
+        h = mix(h, self.max_retries as u64);
+        h = mix(h, self.attempt_budget as u64);
+        h = mix(h, self.request_identity_hash);
+        h = mix(h, self.retry_budget_hash);
+        h = mix(h, self.budget_exhausted as u64);
+        h = mix(h, self.duplicate_request as u64);
         h = mix(h, self.response_hash);
         h = mix(h, self.raw_response_hash);
         h = mix(h, self.prompt_hash);
@@ -365,6 +669,23 @@ impl OllamaLlmEffectReceipt {
             && self.provider_hash == ollama_provider_hash()
             && self.base_url_hash == config.base_url_id()
             && self.model_id == config.model_id()
+            && self.timeout_ms == config.timeout_ms
+            && !self.duplicate_request
+    }
+
+    pub fn verification_proof_binding(self) -> Option<VerificationProofBinding> {
+        if !self.has_proof_binding() {
+            return None;
+        }
+
+        VerificationProofBinding::new(
+            ProofSubjectKind::LlmEffect,
+            self.expected_receipt_core_hash(),
+            self.receipt_hash,
+            self.event_seq,
+            self.event_hash,
+            self.proof_hash,
+        )
     }
 }
 
@@ -378,6 +699,14 @@ pub struct OllamaJudgmentProofEvent {
     pub receipt_event_hash: u64,
     pub base_url_hash: u64,
     pub model_id: u64,
+    pub timeout_ms: u64,
+    pub retry_count: u32,
+    pub max_retries: u32,
+    pub attempt_budget: u32,
+    pub request_identity_hash: u64,
+    pub retry_budget_hash: u64,
+    pub budget_exhausted: bool,
+    pub duplicate_request: bool,
     pub receipt_verified: bool,
     pub tamper_rejected: bool,
     pub endpoint_verified: bool,
@@ -475,6 +804,14 @@ impl OllamaJudgmentProofEvent {
             receipt_event_hash: receipt.event_hash,
             base_url_hash: receipt.base_url_hash,
             model_id: receipt.model_id,
+            timeout_ms: receipt.timeout_ms,
+            retry_count: receipt.retry_count,
+            max_retries: receipt.max_retries,
+            attempt_budget: receipt.attempt_budget,
+            request_identity_hash: receipt.request_identity_hash,
+            retry_budget_hash: receipt.retry_budget_hash,
+            budget_exhausted: receipt.budget_exhausted,
+            duplicate_request: receipt.duplicate_request,
             receipt_verified,
             tamper_rejected,
             endpoint_verified,
@@ -499,6 +836,14 @@ impl OllamaJudgmentProofEvent {
             && self.receipt_event_hash != 0
             && self.base_url_hash != 0
             && self.model_id != 0
+            && self.timeout_ms != 0
+            && self.retry_count <= self.max_retries
+            && self.attempt_budget != 0
+            && self.attempt_budget <= self.max_retries.saturating_add(1)
+            && self.retry_count < self.attempt_budget
+            && self.request_identity_hash != 0
+            && self.retry_budget_hash != 0
+            && !self.duplicate_request
             && self.receipt_verified
             && self.tamper_rejected
             && self.endpoint_verified
@@ -516,11 +861,70 @@ impl OllamaJudgmentProofEvent {
         h = mix(h, self.receipt_event_hash);
         h = mix(h, self.base_url_hash);
         h = mix(h, self.model_id);
+        h = mix(h, self.timeout_ms);
+        h = mix(h, self.retry_count as u64);
+        h = mix(h, self.max_retries as u64);
+        h = mix(h, self.attempt_budget as u64);
+        h = mix(h, self.request_identity_hash);
+        h = mix(h, self.retry_budget_hash);
+        h = mix(h, self.budget_exhausted as u64);
+        h = mix(h, self.duplicate_request as u64);
         h = mix(h, self.receipt_verified as u64);
         h = mix(h, self.tamper_rejected as u64);
         h = mix(h, self.endpoint_verified as u64);
         h = mix(h, self.phase_plan as u64);
         h.max(1)
+    }
+
+    pub fn proof_flags(self) -> u64 {
+        let mut flags = 0;
+        if self.receipt_verified {
+            flags |= PROOF_FLAG_RECEIPT_VERIFIED;
+        }
+        if self.tamper_rejected {
+            flags |= PROOF_FLAG_TAMPER_REJECTED;
+        }
+        if self.endpoint_verified {
+            flags |= PROOF_FLAG_PROVENANCE_VERIFIED;
+        }
+        if self.phase_plan {
+            flags |= PROOF_FLAG_PHASE_VERIFIED;
+        }
+        flags
+    }
+
+    pub fn verifier_context_hash(self) -> u64 {
+        let mut h = 0x4f4c_4c41_4d41_4354u64;
+        h = mix(h, self.base_url_hash);
+        h = mix(h, self.model_id);
+        h = mix(h, self.timeout_ms);
+        h = mix(h, self.retry_count as u64);
+        h = mix(h, self.max_retries as u64);
+        h = mix(h, self.attempt_budget as u64);
+        h = mix(h, self.request_identity_hash);
+        h = mix(h, self.retry_budget_hash);
+        h = mix(h, self.budget_exhausted as u64);
+        h = mix(h, self.duplicate_request as u64);
+        h.max(1)
+    }
+
+    pub fn to_verification_proof_record(self) -> Option<VerificationProofRecord> {
+        if !self.is_valid() {
+            return None;
+        }
+
+        VerificationProofRecord::new(
+            ProofSubjectKind::LlmEffect,
+            self.proof_line_hash,
+            self.receipt_core_hash,
+            self.receipt_hash,
+            self.receipt_event_seq,
+            self.proof_event_seq,
+            self.receipt_event_hash,
+            self.verifier_context_hash(),
+            self.proof_flags(),
+            self.proof_hash,
+        )
     }
 
     pub fn matches_receipt(self, receipt: OllamaLlmEffectReceipt, tlog: &TLog) -> bool {
@@ -535,6 +939,14 @@ impl OllamaJudgmentProofEvent {
             && self.receipt_event_hash == receipt.event_hash
             && self.base_url_hash == receipt.base_url_hash
             && self.model_id == receipt.model_id
+            && self.timeout_ms == receipt.timeout_ms
+            && self.retry_count == receipt.retry_count
+            && self.max_retries == receipt.max_retries
+            && self.attempt_budget == receipt.attempt_budget
+            && self.request_identity_hash == receipt.request_identity_hash
+            && self.retry_budget_hash == receipt.retry_budget_hash
+            && self.budget_exhausted == receipt.budget_exhausted
+            && self.duplicate_request == receipt.duplicate_request
     }
 }
 
@@ -548,6 +960,8 @@ pub enum OllamaError {
     InvalidReceipt,
     InvalidReceiptRecord,
     InvalidReplay,
+    BudgetExhausted,
+    DuplicateRequest,
 }
 
 impl fmt::Display for OllamaError {
@@ -561,6 +975,8 @@ impl fmt::Display for OllamaError {
             Self::InvalidReceipt => write!(f, "ollama effect receipt is invalid"),
             Self::InvalidReceiptRecord => write!(f, "ollama effect receipt record is invalid"),
             Self::InvalidReplay => write!(f, "ollama effect receipt failed replay verification"),
+            Self::BudgetExhausted => write!(f, "ollama retry budget exhausted"),
+            Self::DuplicateRequest => write!(f, "ollama duplicate request identity rejected"),
         }
     }
 }
@@ -627,6 +1043,42 @@ impl OllamaClient {
         self.chat_body(&body)
     }
 
+    pub fn chat_with_retry_budget(
+        &self,
+        messages: &[OllamaMessage],
+        retry_policy: OllamaRetryBudgetPolicy,
+    ) -> Result<(OllamaChatResponse, OllamaRetryBudgetDecision), OllamaError> {
+        if retry_policy.timeout_ms != self.config.timeout_ms {
+            return Err(OllamaError::InvalidConfig("retry timeout must match config"));
+        }
+        let request_hash = self.request_hash(messages)?;
+        let mut last_error = None;
+        for retry_count in 0..retry_policy.attempt_budget {
+            let decision = retry_policy
+                .decision_for_attempt(
+                    ollama_provider_hash(),
+                    self.config.base_url_id(),
+                    self.config.model_id(),
+                    request_hash,
+                    retry_count,
+                    false,
+                )
+                .ok_or(OllamaError::InvalidConfig("invalid retry budget"))?;
+            if !decision.allowed {
+                return Err(OllamaError::BudgetExhausted);
+            }
+
+            match self.chat(messages) {
+                Ok(response) => return Ok((response, decision)),
+                Err(err) if !decision.budget_exhausted => {
+                    last_error = Some(err);
+                }
+                Err(err) => return Err(err),
+            }
+        }
+        Err(last_error.unwrap_or(OllamaError::BudgetExhausted))
+    }
+
     fn chat_body(&self, body: &str) -> Result<OllamaChatResponse, OllamaError> {
         let endpoint = parse_local_endpoint(&self.config.base_url)?;
         let path = self.config.chat_completions_path()?;
@@ -658,10 +1110,23 @@ impl OllamaClient {
         context: &ContextRecord,
         policy: &PolicyStore,
     ) -> Result<OllamaLlmCall, OllamaError> {
+        self.call_from_context_with_retry_policy(
+            context,
+            policy,
+            OllamaRetryBudgetPolicy::from_config(&self.config),
+        )
+    }
+
+    pub fn call_from_context_with_retry_policy(
+        &self,
+        context: &ContextRecord,
+        policy: &PolicyStore,
+        retry_policy: OllamaRetryBudgetPolicy,
+    ) -> Result<OllamaLlmCall, OllamaError> {
         let messages = messages_from_context(context, policy);
         let request_hash = self.request_hash(&messages)?;
-        let response = self.chat(&messages)?;
-        self.call_from_response(context, policy, request_hash, response)
+        let (response, retry_budget) = self.chat_with_retry_budget(&messages, retry_policy)?;
+        self.call_from_response_with_budget(context, policy, request_hash, response, retry_budget)
     }
 
     pub fn record_from_context(
@@ -681,7 +1146,15 @@ impl OllamaClient {
         let messages = messages_from_context(context, policy);
         let request_hash = self.request_hash(&messages)?;
         let response = parse_chat_response_body(response_body)?;
-        self.call_from_response(context, policy, request_hash, response)
+        let retry_budget = OllamaRetryBudgetPolicy::from_config(&self.config)
+            .first_attempt(
+                ollama_provider_hash(),
+                self.config.base_url_id(),
+                self.config.model_id(),
+                request_hash,
+            )
+            .ok_or(OllamaError::InvalidConfig("invalid retry budget"))?;
+        self.call_from_response_with_budget(context, policy, request_hash, response, retry_budget)
     }
 
     pub fn record_from_response_body(
@@ -693,13 +1166,31 @@ impl OllamaClient {
         Ok(self.call_from_response_body(context, policy, response_body)?.record)
     }
 
-    fn call_from_response(
+    fn call_from_response_with_budget(
         &self,
         context: &ContextRecord,
         policy: &PolicyStore,
         request_hash: u64,
         response: OllamaChatResponse,
+        retry_budget: OllamaRetryBudgetDecision,
     ) -> Result<OllamaLlmCall, OllamaError> {
+        if !retry_budget.is_receiptable_success()
+            || retry_budget.timeout_ms != self.config.timeout_ms
+            || retry_budget.request_identity_hash
+                != (OllamaRetryBudgetPolicy {
+                    timeout_ms: retry_budget.timeout_ms,
+                    max_retries: retry_budget.max_retries,
+                    attempt_budget: retry_budget.attempt_budget,
+                })
+                .request_identity_hash(
+                    ollama_provider_hash(),
+                    self.config.base_url_id(),
+                    self.config.model_id(),
+                    request_hash,
+                )
+        {
+            return Err(OllamaError::BudgetExhausted);
+        }
         let record = LlmStructuredAdapter::record_from_external_response(
             context,
             policy,
@@ -713,6 +1204,7 @@ impl OllamaClient {
             self.config.base_url_id(),
             request_hash,
             response,
+            retry_budget,
         );
         call.is_valid().then_some(call).ok_or(OllamaError::InvalidResponse)
     }
@@ -992,17 +1484,26 @@ pub fn verify_ollama_judgment_proof_events(
         return Err(OllamaError::InvalidReplay);
     }
 
+    let mut proof_records = Vec::new();
+    let mut proof_bindings = Vec::new();
     for event in events {
-        if !receipts
+        let receipt = receipts
             .iter()
             .copied()
-            .any(|receipt| event.matches_receipt(receipt, tlog))
-        {
-            return Err(OllamaError::InvalidReplay);
-        }
+            .find(|receipt| event.matches_receipt(*receipt, tlog))
+            .ok_or(OllamaError::InvalidReplay)?;
+        let proof_record = event
+            .to_verification_proof_record()
+            .ok_or(OllamaError::InvalidReplay)?;
+        let proof_binding = receipt
+            .verification_proof_binding()
+            .ok_or(OllamaError::InvalidReplay)?;
+        proof_records.push(proof_record);
+        proof_bindings.push(proof_binding);
     }
 
-    Ok(events.len())
+    verify_verification_proof_record_bindings(&proof_records, &proof_bindings)
+        .map_err(|_| OllamaError::InvalidReplay)
 }
 
 pub fn verify_ollama_judgment_proof_events_ndjson(
@@ -1027,6 +1528,14 @@ pub fn encode_ollama_llm_effect_receipt_ndjson(receipt: OllamaLlmEffectReceipt) 
         receipt.base_url_hash,
         receipt.model_id,
         receipt.request_hash,
+        receipt.timeout_ms,
+        receipt.retry_count as u64,
+        receipt.max_retries as u64,
+        receipt.attempt_budget as u64,
+        receipt.request_identity_hash,
+        receipt.retry_budget_hash,
+        receipt.budget_exhausted as u64,
+        receipt.duplicate_request as u64,
         receipt.response_hash,
         receipt.raw_response_hash,
         receipt.prompt_hash,
@@ -1059,6 +1568,14 @@ pub fn encode_ollama_judgment_proof_event_ndjson(event: OllamaJudgmentProofEvent
         event.receipt_event_hash,
         event.base_url_hash,
         event.model_id,
+        event.timeout_ms,
+        event.retry_count as u64,
+        event.max_retries as u64,
+        event.attempt_budget as u64,
+        event.request_identity_hash,
+        event.retry_budget_hash,
+        event.budget_exhausted as u64,
+        event.duplicate_request as u64,
         event.receipt_verified as u64,
         event.tamper_rejected as u64,
         event.endpoint_verified as u64,
@@ -1092,30 +1609,41 @@ fn decode_ollama_llm_effect_receipt_fields(
 fn decode_ollama_llm_effect_receipt_fields_unchecked(
     fields: &[u64],
 ) -> Result<OllamaLlmEffectReceipt, OllamaError> {
-    if fields.len() != 17
+    if fields.len() != 25
         || fields[0] != OLLAMA_LLM_EFFECT_RECEIPT_SCHEMA_VERSION
         || fields[1] != OLLAMA_LLM_EFFECT_RECEIPT_RECORD
     {
         return Err(OllamaError::InvalidReceiptRecord);
     }
 
-    let token_count = u32::try_from(fields[9]).map_err(|_| OllamaError::InvalidReceiptRecord)?;
+    let retry_count = u32::try_from(fields[7]).map_err(|_| OllamaError::InvalidReceiptRecord)?;
+    let max_retries = u32::try_from(fields[8]).map_err(|_| OllamaError::InvalidReceiptRecord)?;
+    let attempt_budget = u32::try_from(fields[9]).map_err(|_| OllamaError::InvalidReceiptRecord)?;
+    let token_count = u32::try_from(fields[17]).map_err(|_| OllamaError::InvalidReceiptRecord)?;
     let receipt = OllamaLlmEffectReceipt {
         provider_hash: fields[2],
         base_url_hash: fields[3],
         model_id: fields[4],
         request_hash: fields[5],
-        response_hash: fields[6],
-        raw_response_hash: fields[7],
-        prompt_hash: fields[8],
+        timeout_ms: fields[6],
+        retry_count,
+        max_retries,
+        attempt_budget,
+        request_identity_hash: fields[10],
+        retry_budget_hash: fields[11],
+        budget_exhausted: fields[12] == 1,
+        duplicate_request: fields[13] == 1,
+        response_hash: fields[14],
+        raw_response_hash: fields[15],
+        prompt_hash: fields[16],
         token_count,
-        payload_hash: fields[10],
-        command_hash: fields[11],
-        event_seq: fields[12],
-        event_hash: fields[13],
-        proof_event_seq: fields[14],
-        proof_hash: fields[15],
-        receipt_hash: fields[16],
+        payload_hash: fields[18],
+        command_hash: fields[19],
+        event_seq: fields[20],
+        event_hash: fields[21],
+        proof_event_seq: fields[22],
+        proof_hash: fields[23],
+        receipt_hash: fields[24],
     };
     Ok(receipt)
 }
@@ -1129,7 +1657,7 @@ pub fn decode_ollama_judgment_proof_event_ndjson(
 fn decode_ollama_judgment_proof_event_fields(
     fields: &[u64],
 ) -> Result<OllamaJudgmentProofEvent, OllamaError> {
-    if fields.len() != 15
+    if fields.len() != 23
         || fields[0] != OLLAMA_JUDGMENT_PROOF_SCHEMA_VERSION
         || fields[1] != OLLAMA_JUDGMENT_PROOF_RECORD
     {
@@ -1145,11 +1673,19 @@ fn decode_ollama_judgment_proof_event_fields(
         receipt_event_hash: fields[7],
         base_url_hash: fields[8],
         model_id: fields[9],
-        receipt_verified: fields[10] == 1,
-        tamper_rejected: fields[11] == 1,
-        endpoint_verified: fields[12] == 1,
-        phase_plan: fields[13] == 1,
-        proof_hash: fields[14],
+        timeout_ms: fields[10],
+        retry_count: u32::try_from(fields[11]).map_err(|_| OllamaError::InvalidReceiptRecord)?,
+        max_retries: u32::try_from(fields[12]).map_err(|_| OllamaError::InvalidReceiptRecord)?,
+        attempt_budget: u32::try_from(fields[13]).map_err(|_| OllamaError::InvalidReceiptRecord)?,
+        request_identity_hash: fields[14],
+        retry_budget_hash: fields[15],
+        budget_exhausted: fields[16] == 1,
+        duplicate_request: fields[17] == 1,
+        receipt_verified: fields[18] == 1,
+        tamper_rejected: fields[19] == 1,
+        endpoint_verified: fields[20] == 1,
+        phase_plan: fields[21] == 1,
+        proof_hash: fields[22],
     };
 
     event
@@ -1302,4 +1838,26 @@ pub(crate) fn hash_text(value: &str) -> u64 {
 
 fn ollama_provider_hash() -> u64 {
     hash_text(OLLAMA_PROVIDER)
+}
+
+fn retry_budget_binding_is_valid(
+    provider_hash: u64,
+    base_url_hash: u64,
+    model_id: u64,
+    request_hash: u64,
+    timeout_ms: u64,
+    retry_count: u32,
+    max_retries: u32,
+    attempt_budget: u32,
+    request_identity_hash: u64,
+    retry_budget_hash: u64,
+) -> bool {
+    let Some(policy) = OllamaRetryBudgetPolicy::new(timeout_ms, max_retries, attempt_budget) else {
+        return false;
+    };
+    retry_count <= max_retries
+        && retry_count < attempt_budget
+        && retry_budget_hash == policy.policy_hash()
+        && request_identity_hash
+            == policy.request_identity_hash(provider_hash, base_url_hash, model_id, request_hash)
 }

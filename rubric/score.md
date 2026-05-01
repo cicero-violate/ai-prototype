@@ -73,7 +73,7 @@ max(K,C,A,R,OB,CX,ME,PL,LL,JG,TO,VF,EV,PO,LE,OR) = K = 8.5 / 10 = good
 ```text
 source_review_scope = README.md + Cargo.toml + src/**/*.rs + state/rustc/ai/graph.json + rubric/score.md
 cargo_build_status = passed_user_validated_2026_04_30
-cargo_test_status = passed_user_validated_2026_04_30_99_99_after_observation_ingress_patch
+cargo_test_status = passed_user_validated_2026_04_30_99_99_after_observation_ingress_patch; current_source_adds_one_pending_generic_proof_spine_test
 cargo_example_status = passed_user_validated_ollama_judgment_after_observation_ingress_patch
 unsafe_policy = forbid_unsafe_code
 
@@ -82,7 +82,7 @@ readme_core_claim = frozen_kernel_plus_capability_intelligence_plus_tlog_policy_
 readme_status_accuracy = current_for_validated_local_tooling_and_ollama_but_external_autonomy_pending
 
 source_files_reviewed = 51 rust files
-test_count_in_src_lib = 99
+test_count_in_src_lib = 100
 cargo_dependencies = none
 
 graph_schema_version = 9
@@ -139,6 +139,8 @@ ollama_duplicate_request = false
 bounded_line_observation_ingress = validated_by_cargo_test
 observation_cursor_persistence = validated_by_cargo_test
 observation_backpressure = validated_by_cargo_test
+generic_llm_verification_proof_projection = implemented_pending_cargo_validation
+generic_verification_proof_binding_checker = implemented_pending_cargo_validation
 real_observation_stream_parser = absent
 external_api_tool_runner = absent
 external_artifact_verification = absent
@@ -214,14 +216,16 @@ previous_ARCH = 6.75 / 10
 current_ARCH  = 6.82 / 10
 ```
 
-The score improves because the first bounded observation ingress surface is now cargo-validated: an append-only line-file source with cursor persistence and explicit backlog backpressure. The Ollama path remains the latest fully validated live effect path: it has a live external LLM effect receipt, replay verification, seventeen-field tamper rejection, local endpoint provenance, pre-receipt non-local rejection, a durable final proof event in the mixed tlog, bidirectional receipt/proof hashing, proof-event sequence binding, replay-level proof event position checks, and validated retry/budget/idempotency binding. The latest user-validated run passed `cargo build`, `cargo test` with 99/99 tests, and `cargo run --example ollama_judgment`; the example emitted `durable_proof_verified=true`, `receipt_proof_matches=true`, and `tampered_fields_rejected=17/17`. The increase is capped because observation is still file-backed, not routed from live SSE/webhook/browser/API streams, and external API action, provider-signed receipts, streaming validation, and a generic proof spine remain absent.
+The score improves because the first bounded observation ingress surface is now cargo-validated: an append-only line-file source with cursor persistence and explicit backlog backpressure. The Ollama path remains the latest fully validated live effect path: it has a live external LLM effect receipt, replay verification, seventeen-field tamper rejection, local endpoint provenance, pre-receipt non-local rejection, a durable final proof event in the mixed tlog, bidirectional receipt/proof hashing, proof-event sequence binding, replay-level proof event position checks, and validated retry/budget/idempotency binding. The latest user-validated run passed `cargo build`, `cargo test` with 99/99 tests, and `cargo run --example ollama_judgment`; the example emitted `durable_proof_verified=true`, `receipt_proof_matches=true`, and `tampered_fields_rejected=17/17`.
+
+Current unvalidated source delta: the Ollama proof event now projects into a generic `VerificationProofRecord`, and `verify_ollama_judgment_proof_events` routes through `verify_verification_proof_record_bindings`. This is a first concrete generic verification spine for LLM proof records, but it is intentionally not scored as cargo-validated until the next local run passes the new 100th test.
 
 ## Highest Leverage Next Work
 
-1. **Route observation ingress.** Expose the validated bounded line-file observation source through the API/runtime path so external observations can enter the Invariant gate without hand-built tests.
-2. **Canonicalize one execution normal form.** Collapse artifact, process, LLM, observation, and proof outputs into one universal path: `request → authorize → execute → Effect { kind, digest, metadata } → receipt → proof → TLog → replay`.
-3. **Unify receipt/proof verification.** Remove parallel artifact/process/LLM proof concepts where possible and verify by effect kind under one receipt contract.
-4. **Promote bidirectional receipt/proof binding into a generic verification-proof record.** The Ollama path now has validated receipt↔proof integrity; the next step is to make the same record shape reusable for tooling, semantic verification, and future providers.
+1. **Validate generic LLM proof spine.** Run the new 100-test suite and the Ollama example to confirm `OllamaJudgmentProofEvent -> VerificationProofRecord -> VerificationProofBinding` remains replay-safe.
+2. **Route observation ingress.** Expose the validated bounded line-file observation source through the API/runtime path so external observations can enter the Invariant gate without hand-built tests.
+3. **Canonicalize one execution normal form.** Collapse artifact, process, LLM, observation, and proof outputs into one universal path: `request → authorize → execute → Effect { kind, digest, metadata } → receipt → proof → TLog → replay`.
+4. **Extend generic proof records beyond LLM.** Apply the same `VerificationProofRecord` binding checker to tooling, process, semantic verification, and future providers.
 5. **Add provider response streaming validation.** The current path validates the completed local response body, but streaming chunks are not yet typed, bounded, hashed, or replayed.
 6. **Reduce graph debt surgically.** Target the 15 alpha pathways and highest-frequency redundant path owners first. Do not optimize all 604 redundant paths blindly.
 7. **Do not expand the kernel.** Preserve the frozen kernel; put live intelligence, external semantics, and learning pressure in capabilities and policy.
@@ -232,8 +236,8 @@ The score improves because the first bounded observation ingress surface is now 
 objective_rating = ARCH = 6.82 / 10
 system_level = deterministic evidence runtime with bounded local sandbox execution, validated durable local Ollama retry-budget proofs, and validated bounded file observation ingress
 best_property = kernel/runtime replay discipline plus split, receipted file/process/LLM effects and validated Ollama receipt/proof binding
-weakest_property = observation ingress is file-backed and not routed from live external streams; no external API action loop and no generic proof spine yet
-next_score_unlock = route observation ingress + universal execution normal form + generic proof records
+weakest_property = observation ingress is file-backed and not routed from live external streams; generic proof spine is only implemented for LLM and pending validation
+next_score_unlock = validate generic LLM proof spine + route observation ingress + universal execution normal form
 ```
 
-The project is moving in the right direction. It now has enough implemented machinery to be judged as a real deterministic runtime prototype, not just a kernel sketch. It is still below autonomous-agent level because the observation loop is only file-backed, proof records are not yet generic, and the capability layer still needs external action tools.
+The project is moving in the right direction. It now has enough implemented machinery to be judged as a real deterministic runtime prototype, not just a kernel sketch. It is still below autonomous-agent level because the observation loop is only file-backed, the generic proof spine is not yet extended to every effect kind, and the capability layer still needs external action tools.
