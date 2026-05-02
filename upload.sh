@@ -15,4 +15,5 @@ python3 /workspace/ai_sandbox/canon-mini-agent/prototype/cdp-file-upload/upload_
   --force-upload \
   --confirm-loaded \
   --confirm-timeout-sec 120 \
-  --confirm-settle-sec 3
+  --confirm-settle-sec 3 \
+  "$@"
