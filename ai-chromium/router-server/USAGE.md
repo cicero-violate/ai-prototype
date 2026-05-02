@@ -65,7 +65,7 @@ curl -sS http://127.0.0.1:8081/v1/chat/completions \
     "model": "chatgpt-browser",
     "messages": [{"role":"user","content":"Say hello in one sentence."}],
     "stream": false
-  }'
+}'
 ```
 
 ## Streaming request
