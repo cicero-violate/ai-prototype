@@ -1,6 +1,7 @@
 git add .
 git commit -m "uploading to chatgpt projects"
 git push origin main
+git rev-parse HEAD
 
 python3 /workspace/ai_sandbox/canon-mini-agent/prototype/cdp-file-upload/upload_via_cdp.py \
   --build-tar \
