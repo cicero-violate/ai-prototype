@@ -53,14 +53,14 @@ LL = 7.6 / 10
 JG = 5.4 / 10
 TO = 8.0 / 10
 VF = 8.4 / 10
-EV = 5.9 / 10
+EV = 6.4 / 10
 PO = 7.3 / 10
 LE = 6.1 / 10
 OR = 6.2 / 10
 
 CORE = 7.85 / 10
-CAP  = 6.30 / 10
-ARCH = 6.66 / 10
+CAP  = 6.35 / 10
+ARCH = 6.69 / 10
 GOOD = VF = 8.4 / 10
 max(K,C,A,R,OB,CX,ME,PL,LL,JG,TO,VF,EV,PO,LE,OR) = VF = 8.4 / 10 = good
 ```
@@ -87,11 +87,16 @@ panic_todo_unimplemented_count = 0
 unwrap_call_count = 316
 
 local_rust_toolchain = unavailable_in_this_container
-cargo_fmt_check = not_run_cargo_missing
-cargo_test_all_targets = not_run_cargo_missing
+observe_validation_script = scripts/observe_validation.sh
+observe_validation_report = target/observe/validation-report.ndjson
+observe_validation_ndjson_lines = 10
+cargo_fmt_check = unavailable_cargo_missing_recorded_by_harness
+cargo_test_all_targets = unavailable_cargo_missing_recorded_by_harness
+cargo_clippy_all_targets = unavailable_cargo_missing_recorded_by_harness
+ollama_judgment_example = skipped_env_missing_recorded_by_harness
 cargo_wrapper_config = points_to_/workspace/ai_sandbox/canon-rustc-v2/target/debug/canon-rustc-v2
 wrapper_path_in_this_container = unavailable
-validation_executed_here = git_fsck_strict_passed + git_bundle_verify_passed + static_repository_evidence_scan
+validation_executed_here = observe_validation_harness_passed_ndjson_parse + git_diff_check_passed + cargo_fmt_check_unavailable + cargo_test_unavailable
 ```
 
 ## Runtime Archive Evidence
@@ -122,7 +127,7 @@ The `GOAL.md` target is coherent: a frozen deterministic kernel, replayable TLog
 
 The strongest implemented surface is still verification/runtime discipline. The repo contains a replay-oriented runtime, command ledger, durable writer, transition table, semantic diff, verification proof module, NDJSON codec, policy store, local tooling records, observation records, and an Ollama/OpenAI-compatible LLM path. The 103 checked-in test markers show serious local validation intent.
 
-The hard limitation is validation freshness. In this container, `rustc` and `cargo` are absent, so the current OBSERVE pass cannot prove `cargo fmt`, `cargo test`, the Ollama example, graph regeneration, or wrapper-backed rustc telemetry. Prior claims in `GOAL.md` and the previous `score.md` may be true in the original workstation, but they are not reproduced here.
+The hard limitation is validation freshness. The new `scripts/observe_validation.sh` harness now makes that gap machine-readable, but in this container `rustc` and `cargo` are absent, so the current EXECUTE pass still cannot prove `cargo fmt`, `cargo test`, the Ollama example, graph regeneration, or wrapper-backed rustc telemetry. Prior claims in `GOAL.md` and the previous `score.md` may be true in the original workstation, but they are not reproduced here.
 
 The second limitation is artifact evidence. No `README.md` exists even though older scoring text referenced one. No `state/rustc/ai/graph.json` exists in this restored bundle, so graph-node, graph-edge, redundant-path, alpha-pathway, and intent-coverage claims cannot be independently verified from the restored repository.
 
@@ -144,7 +149,7 @@ The third limitation is autonomous behavior. Observation remains represented as 
 | `capability/judgment` | 5.4 | Judgment record module exists and is wired by exported APIs. | Judgment appears record-based, not a validated comparative decision process. |
 | `capability/tooling` | 8.0 | Tooling record module and proof/receipt concepts are present in source and GOAL. | External API action tools and hostile execution validation are not observed. |
 | `capability/verification` | 8.4 | Verification proof module exists and is heavily represented in exports/tests. | Semantic truth outside receipt/proof structure is still not proven. |
-| `capability/eval` | 5.9 | Eval record module exists. | No calibrated benchmark suite, threshold governance, or adversarial eval evidence. |
+| `capability/eval` | 6.4 | Eval record module exists, and `scripts/observe_validation.sh` now emits a deterministic NDJSON evidence report with build/test/toolchain/graph/runtime/missing-signal records. | No calibrated benchmark suite, threshold governance, adversarial eval evidence, or successful Rust validation run in this container. |
 | `capability/policy` | 7.3 | Policy store module exists; GOAL emphasizes append-only policy. | Promotion governance is not validated by runtime archive evidence. |
 | `capability/learning` | 6.1 | Learning promotion module exists. | No empirical learning loop or policy compounding trace in runtime archive. |
 | `capability/orchestration` | 6.2 | Orchestration record module exists. | Distributed/parallel orchestration under load is not evidenced. |
@@ -169,12 +174,12 @@ missing_policy_learning_replay_trace = true
 
 ## Highest-Leverage Next Work
 
-1. Re-run `cargo fmt --check`, `cargo test --all-targets`, and `cargo run --example ollama_judgment` in an environment with Rust and the configured wrapper available.
-2. Regenerate and commit or archive `state/rustc/ai/graph.json` so graph-health claims are inspectable from the delta artifacts.
-3. Add an OBSERVE-stage validation script that emits one machine-readable report containing build status, test count, graph metrics, runtime archive metrics, and missing-signal flags.
-4. Replace stale README references with `GOAL.md` references unless a README is intentionally added.
-5. Reduce reliance on `unwrap()` in non-test logic, or classify each unwrap as test-only, validated invariant, or technical debt.
-6. Add one live external observation fixture and one external action fixture behind deterministic receipts.
+1. Re-run `bash scripts/observe_validation.sh` in an environment with Rust, cargo, and the configured wrapper available; require `cargo fmt --check`, `cargo test --all-targets`, and `cargo clippy --all-targets -- -D warnings` to produce pass/fail evidence.
+2. Run `cargo run --example ollama_judgment` with `CANON_OLLAMA_BASE_URL` and `CANON_OLLAMA_MODEL` set to a local Ollama endpoint, then preserve the resulting receipt/proof trace.
+3. Regenerate and commit or archive `state/rustc/ai/graph.json` so graph-health claims are inspectable from the delta artifacts and captured by the harness.
+4. Add one live external observation fixture and one external action fixture behind deterministic receipts.
+5. Add semantic artifact verification fixtures that prove more than hash lineage.
+6. Reduce reliance on `unwrap()` in non-test logic, or classify each unwrap as test-only, validated invariant, or technical debt.
 
 ## Verdict
 

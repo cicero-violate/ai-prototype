@@ -202,3 +202,22 @@ plan_file_changed = IMPLEMENTATION_PLAN.md
 implementation_target = scripts/observe_validation.sh
 validation_scope = documentation_plan_only
 ```
+
+## Execute-Stage Result
+
+```text
+implemented = scripts/observe_validation.sh
+generated_report = target/observe/validation-report.ndjson
+generated_report_committed = false
+validation_report_ndjson_lines = 10
+cargo_available = false
+rustc_available = false
+runtime_archive_present = true
+runtime_archive_log_total = 2
+runtime_archive_download_total = 0
+state_graph_present = false
+missing_signal_count = 13
+source_runtime_behavior_changed = false
+```
+
+One-line explanation: the implementation creates the promised evidence harness and records the remaining validation gaps without mutating the kernel or capability runtime behavior.
