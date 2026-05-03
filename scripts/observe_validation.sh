@@ -15,6 +15,7 @@ python3 - "$@" <<'PY'
 from __future__ import annotations
 
 import json
+import hashlib
 import os
 import re
 import shutil
@@ -29,6 +30,8 @@ from typing import Any
 REPO = Path.cwd()
 REPORT = Path(os.environ.get("CANON_OBSERVE_REPORT", "target/observe/validation-report.ndjson"))
 REPORT.parent.mkdir(parents=True, exist_ok=True)
+COMMAND_OUTPUT_DIR = REPORT.parent / "command-output"
+COMMAND_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 records: list[dict[str, Any]] = []
 
@@ -44,6 +47,24 @@ def clean_text(value: str, limit: int = 4000) -> str:
     return value
 
 
+def command_output_paths(cmd: list[str]) -> dict[str, str]:
+    safe_name = re.sub(r"[^A-Za-z0-9_.-]+", "_", "_".join(cmd))[:80] or "command"
+    digest = hashlib.sha256(json.dumps(cmd, separators=(",", ":")).encode("utf-8")).hexdigest()[:12]
+    stem = f"{safe_name}.{digest}"
+    return {
+        "stdout_path": str(COMMAND_OUTPUT_DIR / f"{stem}.stdout.txt"),
+        "stderr_path": str(COMMAND_OUTPUT_DIR / f"{stem}.stderr.txt"),
+    }
+
+
+def persist_command_output(result: dict[str, Any]) -> dict[str, Any]:
+    paths = command_output_paths([str(part) for part in result["cmd"]])
+    Path(paths["stdout_path"]).write_text(str(result.get("stdout", "")), encoding="utf-8")
+    Path(paths["stderr_path"]).write_text(str(result.get("stderr", "")), encoding="utf-8")
+    result["output_path"] = paths
+    return result
+
+
 def emit(record: dict[str, Any]) -> None:
     full_record = {"ts_ms": now_ms(), **record}
     records.append(full_record)
@@ -56,7 +77,7 @@ def emit(record: dict[str, Any]) -> None:
 def run(cmd: list[str], timeout_s: int = 120) -> dict[str, Any]:
     started = time.monotonic()
     if shutil.which(cmd[0]) is None:
-        return {
+        return persist_command_output({
             "cmd": cmd,
             "available": False,
             "status": "unavailable",
@@ -64,7 +85,7 @@ def run(cmd: list[str], timeout_s: int = 120) -> dict[str, Any]:
             "duration_ms": 0,
             "stdout": "",
             "stderr": f"{cmd[0]} not found in PATH",
-        }
+        })
     try:
         completed = subprocess.run(
             cmd,
@@ -75,7 +96,7 @@ def run(cmd: list[str], timeout_s: int = 120) -> dict[str, Any]:
             timeout=timeout_s,
             check=False,
         )
-        return {
+        return persist_command_output({
             "cmd": cmd,
             "available": True,
             "status": "pass" if completed.returncode == 0 else "fail",
@@ -83,9 +104,9 @@ def run(cmd: list[str], timeout_s: int = 120) -> dict[str, Any]:
             "duration_ms": int((time.monotonic() - started) * 1000),
             "stdout": clean_text(completed.stdout),
             "stderr": clean_text(completed.stderr),
-        }
+        })
     except subprocess.TimeoutExpired as exc:
-        return {
+        return persist_command_output({
             "cmd": cmd,
             "available": True,
             "status": "timeout",
@@ -93,7 +114,7 @@ def run(cmd: list[str], timeout_s: int = 120) -> dict[str, Any]:
             "duration_ms": int((time.monotonic() - started) * 1000),
             "stdout": clean_text(exc.stdout or ""),
             "stderr": clean_text(exc.stderr or f"timeout after {timeout_s}s"),
-        }
+        })
 
 
 def git_scalar(args: list[str]) -> str | None:
