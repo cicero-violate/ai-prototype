@@ -68,18 +68,18 @@ max(K,C,A,R,OB,CX,ME,PL,LL,JG,TO,VF,EV,PO,LE,OR) = VF = 8.4 / 10 = good
 ## Observed Evidence
 
 ```text
-base_commit = dc1f3f8227ed7f67f6adbf728315160cdd71c920
-restored_head = dc1f3f8227ed7f67f6adbf728315160cdd71c920
+base_commit = ca0537f311aa35d538addc0236fb696acf5b8629
+restored_head = ca0537f311aa35d538addc0236fb696acf5b8629
 bundle_verify = passed_inside_restored_repo
 bundle_history = complete_history_sha1_bundle
-recent_history = dc1f3f8 ready_for_agent_run; 919fd87 auto; 7cd4798 auto; b80bf42/eeb6d95/446f965/698f0eb uploading_to_chatgpt_projects
+recent_history = ca0537f ready_for_agent_run; 4c9025d auto; 82f7eb5 add_observe_validation_harness; ba70600 add_implementation_plan_for_validation_harness; 2d0cf30 update_evidence_backed_observe_scorecard
 
 goal_md_present = yes
 readme_present = no
 cargo_toml_present = yes
 cargo_edition = 2024
 cargo_dependencies = 0
-src_rust_files = 52
+src_rust_files = 53
 rust_files_reviewed = 53
 inline_test_markers = 103
 state_graph_present = no
@@ -103,7 +103,7 @@ validation_executed_here = observe_validation_harness_passed_ndjson_parse + git_
 
 ```text
 ai_runtime_archive = present
-ai_runtime_base_commit = dc1f3f8227ed7f67f6adbf728315160cdd71c920
+ai_runtime_base_commit = ca0537f311aa35d538addc0236fb696acf5b8629
 ai_runtime_included_files = .repo-agent-runtime/audit.ndjson + log/chatgpt_project_agent.ndjson
 ai_runtime_audit_lines = 1
 ai_runtime_process_log_lines = 1
