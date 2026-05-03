@@ -90,7 +90,10 @@ export async function runTurn({ request, stream, res, targetManager, config }) {
     throw new Error("CDP target has no webSocketDebuggerUrl");
   }
 
-  const cdp = new CdpSocket(target.webSocketDebuggerUrl);
+  const makeCdpSocket = typeof config.cdpSocketFactory === "function"
+    ? config.cdpSocketFactory
+    : (wsUrl) => new CdpSocket(wsUrl);
+  const cdp = makeCdpSocket(target.webSocketDebuggerUrl, { target, request, turnId, adapter });
   await cdp.connect();
 
   // Wait until the page has a JS execution context (new tabs start navigating)
