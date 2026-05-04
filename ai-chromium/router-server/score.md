@@ -31,7 +31,7 @@ One-line explanation: `score` measures weakest-link reliability; `Good` identifi
 ## Evidence Reviewed
 
 ```text
-base_commit = 050b9997b04e83f9ac8d86d8c83e41c7daa035b3
+base_commit = 01ec13fce5482e2d53d4097ec7a65d74fe19c11f
 repository = router-server bundle restored from /mnt/data/router-server.bundle
 runtime_archive = /mnt/data/router-server-runtime.tar.gz
 goal_file = GOAL.md present
@@ -84,9 +84,190 @@ npm run test:live = fail_environment; CDP health check returned 502 because 127.
 
 The live failure is still a project risk because the most important behavior is browser-mediated and cannot be validated without an authenticated CDP browser target.
 
+## EVAL Pass — Current Bundle Evidence at `01ec13f`
+
+This pass restored the uploaded `router-server` bundle at base commit `01ec13fce5482e2d53d4097ec7a65d74fe19c11f`, read `GOAL.md`, inspected the sanitized runtime archive, parsed committed JSON/NDJSON artifacts with Python, and re-ran available validation without source-code changes.
+
+Current git state observed:
+
+```text
+HEAD = 01ec13fce5482e2d53d4097ec7a65d74fe19c11f
+recent_history = 01ec13f Merge repo-delta-0001.bundle; 5fcc14c Add mocked CDP integration validation; 689087f Plan mocked CDP integration harness; a0db577 Observe router-server evidence scorecard; 955dd51 Evaluate router-server scorecard
+working_tree_before_score_update = clean
+```
+
+Runtime archive evidence:
+
+```text
+runtime_manifest_schema_version = 1
+runtime_manifest_mode = runtime-artifacts
+runtime_manifest_base_commit = 01ec13fce5482e2d53d4097ec7a65d74fe19c11f
+runtime_included_files = 2
+runtime_included_payloads = RUNTIME_MANIFEST.json, log/chatgpt_project_agent.ndjson, .repo-agent-runtime/audit.ndjson
+runtime_download_history = []
+runtime_download_history_by_classification = {}
+runtime_leak_scan_finding_count = 0
+runtime_integrity_scan_finding_count = 0
+runtime_schema_scan_finding_count = 0
+runtime_excluded_generated_bundle = true
+runtime_excluded_generated_runtime_archive = true
+runtime_audit_head_before_archive = 3466db45bcf32b5b39cf599be57cd6c320c3b31f34c72d552971d9215c5887a2
+```
+
+Committed artifact corpus observed with Python JSON/NDJSON parsing:
+
+```text
+turn_artifact_dirs = 88
+request_redacted_json_files = 88
+response_json_files = 80
+response_json_openai_chat_completion_shape = 0
+response_json_internal_turn_record_shape = 80
+manifest_json_files = 86
+raw_capture_ndjson_files = 26
+raw_capture_blocked_json_files = 43
+replay_json_files = 80
+evaluation_json_files = 80
+evaluation(replay_match=false, redaction_pass=true,  quality=0) = 40
+evaluation(replay_match=true,  redaction_pass=false, quality=0) = 37
+evaluation(replay_match=true,  redaction_pass=true,  quality=1) = 2
+evaluation(replay_match=false, redaction_pass=false, quality=0) = 1
+```
+
+Validation re-run in this environment:
+
+```text
+node --version = v22.16.0
+npm --version = 10.9.2
+npm run check = pass; syntax_ok files=47
+npm run test:unit = pass; 7/7 node:test cases passed
+npm run test:mock = pass; 3/3 node:test cases passed
+npm run smoke = pass; openai_contract_smoke_ok
+npm run test:live = fail_environment; router healthz status=502; code=cdp_unavailable; connect ECONNREFUSED 127.0.0.1:9221
+```
+
+Updated evidence equation:
+
+```text
+validated_offline = syntax_pass ∧ unit_pass ∧ mock_cdp_pass ∧ smoke_pass
+not_validated_live = ¬reachable_CDP_9221
+production_confidence = validated_offline ∧ live_CDP_pass ∧ artifact_quality_gate ∧ durable_replay_gate
+```
+
+One-line explanation: the restored base has strong offline/mock evidence, but production confidence is still blocked by unavailable live CDP validation and weak historical artifact quality.
+
 ## OBSERVE Pass — Repository, Runtime, and Validation Evidence
 
 This pass inspected the restored repository without source-code changes. The only intended mutation is this evidence-backed scorecard update.
+
+## OBSERVE Pass — Post-EVAL Repository and Runtime Evidence at `f7b82ac`
+
+This pass re-inspected the restored repository, current git history, package/test metadata, committed evidence artifacts, and uploaded runtime archive. No source files were changed; this scorecard update is the only intended repository mutation for this stage.
+
+Current git state observed:
+
+```text
+base_commit = 01ec13fce5482e2d53d4097ec7a65d74fe19c11f
+current_HEAD_before_observe_update = f7b82ac6699d17d05eb9fe7fc2328e10172d27e8
+recent_history = f7b82ac Evaluate router-server current bundle evidence; 01ec13f Merge repo-delta-0001.bundle; 5fcc14c Add mocked CDP integration validation; 689087f Plan mocked CDP integration harness; a0db577 Observe router-server evidence scorecard; 955dd51 Evaluate router-server scorecard
+working_tree_before_observe_update = clean
+```
+
+Repository and build metadata observed:
+
+```text
+package_name = ai-chromium-router
+package_type = module
+node_engine = >=20
+declared_scripts = serve, check, test, test:unit, test:mock, test:live, smoke
+source_mjs_files_under_src = 44
+test_mjs_files = 3
+syntax_checked_mjs_files_total = 47
+```
+
+Uploaded runtime archive evidence from `/mnt/data/router-server-runtime.tar.gz`:
+
+```text
+runtime_archive_files = .repo-agent-runtime/audit.ndjson, log/chatgpt_project_agent.ndjson, RUNTIME_MANIFEST.json
+runtime_manifest_schema_version = 1
+runtime_manifest_mode = runtime-artifacts
+runtime_manifest_base_commit = 01ec13fce5482e2d53d4097ec7a65d74fe19c11f
+runtime_log_events = 1
+runtime_audit_events = 1
+runtime_download_history = []
+runtime_download_history_by_classification = {}
+runtime_included_files = 2
+runtime_excluded_generated_bundle = true
+runtime_excluded_generated_runtime_archive = true
+runtime_leak_scan_finding_count = 0
+runtime_integrity_scan_finding_count = 0
+runtime_schema_scan_finding_count = 0
+```
+
+Committed artifact corpus observed with Python JSON/NDJSON parsing:
+
+```text
+turn_artifact_dirs = 88
+request_redacted_json_files = 88
+response_json_files = 80
+manifest_json_files = 86
+replay_json_files = 80
+evaluation_json_files = 80
+raw_capture_ndjson_files = 26
+evaluation(replay_match=true,  redaction_pass=false, quality_score=null) = 37
+evaluation(replay_match=false, redaction_pass=true,  quality_score=null) = 40
+evaluation(replay_match=true,  redaction_pass=true,  quality_score=null) = 2
+evaluation(replay_match=false, redaction_pass=false, quality_score=null) = 1
+```
+
+Validation re-run in this environment:
+
+```text
+node --version = v22.16.0
+npm --version = 10.9.2
+npm run check = pass; syntax_ok files=47
+npm run test:unit = pass; 7/7 node:test cases passed
+npm run test:mock = pass; 3/3 node:test cases passed
+npm run smoke = pass; openai_contract_smoke_ok
+npm run test:live = fail_environment; router healthz status=502; code=cdp_unavailable; connect ECONNREFUSED 127.0.0.1:9221
+```
+
+Risk and missing-signal equation:
+
+```text
+offline_validated = syntax_pass ∧ unit_pass ∧ mock_CDP_pass ∧ smoke_pass
+live_unvalidated = CDP_9221_unreachable
+artifact_quality_gap = replay_redaction_joint_pass_count / evaluation_files = 2 / 80
+release_confidence = offline_validated ∧ ¬live_unvalidated ∧ artifact_quality_gate ∧ receipt_tamper_gate ∧ policy_promotion_regression_gate
+```
+
+One-line explanation: the repository has strong offline validation and useful instrumentation, but the observed live-browser and historical artifact-quality signals are still insufficient for production confidence.
+
+Concrete risks and constraints:
+
+```text
+authenticated_browser_required = true
+operator_owned_CDP_session_required = true
+local_CDP_port_required = 9221
+browser_UI_or_network_drift_risk = high
+strict_OpenAI_semantic_parity = unproven
+historical_replay_plus_redaction_quality = weak
+policy_learning_improvement = unproven
+receipt_tamper_rejection = unproven
+```
+
+Missing validation signals remain:
+
+```text
+missing_live_CDP_pass = true
+missing_artifact_quality_threshold_test = true
+missing_SDK_client_smoke_test = true
+missing_auth_boundary_test = true
+missing_tool_calling_contract_test = true
+missing_response_format_contract_test = true
+missing_streaming_error_contract_test = true
+missing_receipt_tamper_rejection_test = true
+missing_policy_promotion_regression_test = true
+```
 
 Recent git history observed:
 
@@ -119,7 +300,7 @@ archive = /mnt/data/router-server-runtime.tar.gz
 included_files = RUNTIME_MANIFEST.json, log/chatgpt_project_agent.ndjson, .repo-agent-runtime/audit.ndjson
 runtime_manifest_schema_version = 1
 runtime_manifest_mode = runtime-artifacts
-runtime_manifest_base_commit = 050b9997b04e83f9ac8d86d8c83e41c7daa035b3
+runtime_manifest_base_commit = 01ec13fce5482e2d53d4097ec7a65d74fe19c11f
 runtime_download_history = []
 runtime_download_history_by_classification = {}
 runtime_log_events = 1
@@ -516,3 +697,86 @@ The critical truth is that the system should not yet be described as a strict Op
 ```text
 "OpenAI-like /v1/chat/completions envelope for local browser-backed text turns, with emerging evidence/replay/privacy infrastructure."
 ```
+## EXECUTE Pass — Artifact Quality Gate Implemented
+
+This stage implemented the planned deterministic artifact-quality validator and wired it into offline test validation. The change targets the `V`, `X`, `E`, and `T` axes by making completed-turn evidence fail closed when replay or redaction proof is absent, false, or malformed.
+
+Implemented files:
+
+```text
+src/tools/validate-turn-artifacts.mjs
+test/artifact-quality.test.mjs
+test/fixtures/artifacts/valid/turn_pass/*
+test/fixtures/artifacts/missing-manifest/turn_missing_manifest/*
+test/fixtures/artifacts/replay-mismatch/turn_replay_mismatch/*
+test/fixtures/artifacts/redaction-fail/turn_redaction_fail/*
+test/fixtures/artifacts/malformed-evidence/turn_malformed/*
+package.json
+score.md
+```
+
+Validation results after implementation:
+
+```text
+node --version = v22.16.0
+npm --version = 10.9.2
+npm run check = pass; syntax_ok files=49
+npm run test:unit = pass; 7/7 node:test cases passed
+npm run test:mock = pass; 3/3 node:test cases passed
+npm run smoke = pass; openai_contract_smoke_ok
+node --test test/artifact-quality.test.mjs = pass; 5/5 node:test cases passed
+npm test = pass; unit + mock + artifact-quality tests passed
+npm run test:live = fail_environment; healthz status=502; connect ECONNREFUSED 127.0.0.1:9221
+```
+
+New artifact validator behavior:
+
+```text
+A1 missing manifest = rejected
+A2 replay_match=false = rejected
+A3 redaction_pass=false = rejected
+A4 malformed JSON/NDJSON = rejected
+A5 minimal valid completed turn fixture = accepted
+A6 npm test now includes test:artifacts
+```
+
+Historical corpus validation remains intentionally failing and is now measurable rather than silent:
+
+```text
+node src/tools/validate-turn-artifacts.mjs artifacts/turns = fail_expected
+turn_count = 88
+pass_count = 2
+fail_count = 86
+pass = false
+primary_failure_modes = redaction_pass=false ∨ replay_match=false ∨ missing required completed-turn evidence
+```
+
+Updated scoring judgment:
+
+```text
+V: replay gate improved from observational only to executable fail-closed test evidence
+X: redaction gate improved from reported field to enforced explicit pass requirement
+E: artifact evidence quality improved by CLI validator and machine-readable failure report
+T: deterministic offline coverage improved; npm test now includes artifact-quality tests
+R: unchanged for live behavior; authenticated CDP remains unavailable in this environment
+K/S/Q: unchanged except indirect confidence from preserving existing passing contract/mock tests
+```
+
+Remaining critical risks:
+
+```text
+live_CDP_validation = still unproven; npm run test:live fails in this environment because CDP 9221 is unreachable
+legacy_artifact_corpus = still mostly fails quality gate; only 2/88 pass
+strict OpenAI SDK semantic parity = still not fully proven beyond current contract/unit/smoke cases
+provider policy learning = still mostly architecture/documentation, not demonstrated production adaptation
+```
+
+Updated equation:
+
+```text
+production_confidence = offline_contract_pass ∧ mock_route_pass ∧ artifact_quality_gate_pass ∧ live_CDP_pass
+current_confidence = offline_contract_pass ∧ mock_route_pass ∧ artifact_quality_gate_pass ∧ ¬live_CDP_pass
+Good = max(T, V, X, E) for this stage
+```
+
+One-line explanation: the router now has an executable quality gate for completed-turn artifacts, but production confidence remains bounded by unavailable live browser validation and failing historical artifacts.

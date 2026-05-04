@@ -3,169 +3,191 @@
 ## Variables
 
 ```text
-B = 050b9997b04e83f9ac8d86d8c83e41c7daa035b3
-H = committed HEAD after this planning stage
-P = provider/capability architecture score
-T = testability score
-R = operational realism score
-V = replay/verification score
-L = policy learning score
-Q = request schema compatibility score
-S = streaming compatibility score
-G = score.md weakest-link geometric mean
+B = 01ec13fce5482e2d53d4097ec7a65d74fe19c11f
+H = committed HEAD after this PLAN stage
+O = OpenAI endpoint/envelope compatibility
+Q = request schema compatibility
+S = streaming SSE compatibility
+K = SDK/drop-in compatibility
+E = evidence/provenance quality
+V = replay/verification correctness
+X = privacy/redaction correctness
+T = testability
+R = operational realism
+L = policy learning quality
+G = geometric_mean(O, Q, S, K, E, V, X, T, R, L)
 ```
 
 ## Equation
 
 ```text
-next_fix = argmax(score_gain × implementation_feasibility × validation_power ÷ source_risk)
-Good = max(P, T, R, V, L, Q, S)
+next_fix = argmax(score_gain × validation_power × implementation_feasibility ÷ source_risk)
+Good = max(O, Q, S, K, E, V, X, T, R, L)
 ```
 
-One-line explanation: choose the smallest source change that increases confidence in the browser-backed route without requiring an authenticated live browser.
+One-line explanation: choose the smallest executable change that raises the weakest proven production signal without expanding the browser-control trust boundary.
 
-## Source Evidence
+## Evidence Source
 
-Evidence used for this plan:
+This plan is derived from `GOAL.md` and the current `score.md` evidence at observed HEAD `346128db7569637c95c378d93158c9987ee300c8`.
 
 ```text
-GOAL.md status = architecture_defined ∧ implementation_unproven
-score.md current_score ≈ 6.2 / 10
-score.md Good = A, with strongest response-envelope builder and weakest proven policy learning
-score.md live_CDP_pass = missing because 127.0.0.1:9221 refused connection
-score.md highest_leverage_next_fix[1] = no-browser integration harness that mocks CDP/network capture while exercising handleChatCompletions end-to-end
-package scripts = check, test:unit, smoke, test:live
-unit evidence = 7/7 node:test cases pass for OpenAI contract helpers
-smoke evidence = openai_contract_smoke_ok
-live evidence = fail_environment; cdp_unavailable; healthz 502
-runtime archive = sanitized, 2 included files, no download history, no leak/integrity/schema findings
-artifact corpus = 88 turn dirs, replay/redaction pass quality still weak
+GOAL.md target = provider-capability router over authenticated browser sessions
+GOAL.md current_status = architecture_defined ∧ implementation_unproven
+score.md offline_validated = syntax_pass ∧ unit_pass ∧ mock_CDP_pass ∧ smoke_pass
+score.md live_unvalidated = CDP_9221_unreachable
+score.md artifact_quality_gap = replay_redaction_joint_pass_count / evaluation_files = 2 / 80
+score.md weakest_axes = L, K, V, M/R class signals
+score.md strongest_current_gain = mocked route/artifact pipeline now passes offline
 ```
 
-## Target Highest-Impact Score Improvement
-
-Target:
+Concrete validation evidence already available:
 
 ```text
-target = mocked_CDP_integration_tests
-primary_axes = T, R, Q, S, V
-secondary_axes = O, K, E
+npm run check = pass; syntax_ok files=47
+npm run test:unit = pass; 7/7 node:test cases passed
+npm run test:mock = pass; 3/3 node:test cases passed
+npm run smoke = pass; openai_contract_smoke_ok
+npm test = pass; unit + mock integration
+npm run test:live = fail_environment; CDP unavailable at 127.0.0.1:9221
 ```
 
-Why this is the highest-impact next move:
+## Highest-Impact EXECUTE Target
+
+Target the artifact-quality and replay/redaction gate, not another broad architecture rewrite.
 
 ```text
-live_CDP_required = true
-current_environment_CDP_available = false
-unit_tests_cover_helpers_only = true
-smoke_test_covers_contract_shape_only = true
-mocked_CDP_integration_test_can_cover_router_to_browser_pipeline_without_auth_browser = true
+target = artifact_quality_gate_for_completed_turns
+primary_axes = V, X, E, T
+secondary_axes = R, K, Q, S
+blocked_axis = live_CDP_behavior; cannot be proven without authenticated CDP endpoint
 ```
 
-The next implementation should add an offline integration harness around the live route path instead of depending on an authenticated browser. That gives deterministic validation for the `/v1/chat/completions` path, request-to-prompt bridging, SSE response behavior, receipt/artifact writes, redaction gates, and CDP failure handling while preserving the separate opt-in live test.
+Reasoning:
+
+```text
+mocked_CDP_route_now_exists = true
+live_CDP_unavailable_in_current_environment = true
+historical_artifact_joint_pass = 2 / 80
+current_gap = completed turns can exist without a hard replay∧redaction quality threshold
+highest_feasible_gain = make offline completed-turn artifacts fail validation when replay/redaction evidence is missing or false
+```
+
+The next source change should add a deterministic artifact-quality validation tool and test fixture. This directly addresses the weakest evidence gap in `score.md`: historical artifacts show poor replay/redaction joint quality, while current mocked turns prove the route can generate better evidence. The project now needs a gate that prevents low-quality completed-turn artifacts from being silently accepted.
 
 ## Planned Source Changes for EXECUTE Stage
 
-Do not implement these in this PLAN stage. The next EXECUTE stage should make source/test changes only within this scope:
+Do not modify source code in this PLAN stage. The next EXECUTE stage should stay within this scope:
 
-1. Add a deterministic no-browser CDP/network fixture harness.
-   - Prefer `node:test` fixtures under `test/`.
-   - Mock only the browser/CDP boundary, not the OpenAI contract helpers.
-   - Exercise the actual router handler/server path as much as possible.
+1. Add an artifact-quality validator.
+   - Validate completed turn directories under `artifacts/turns/` or a supplied fixture directory.
+   - Require manifest presence for completed turns.
+   - Require replay evidence with `replay_match=true`.
+   - Require redaction evidence with `redaction_pass=true` or equivalent explicit pass signal.
+   - Fail closed on malformed JSON/NDJSON.
 
-2. Add end-to-end tests for non-streaming `/v1/chat/completions`.
-   - Valid user message returns assistant envelope.
-   - System/developer/user role bridge is represented in the submitted browser prompt.
-   - Unsupported tools fail before browser mutation.
-   - Redacted request artifacts do not retain prompt body or file paths.
+2. Add a focused test fixture for the validator.
+   - Include one passing completed turn fixture.
+   - Include failing fixtures for missing manifest, replay mismatch, redaction failure, and malformed evidence.
+   - Keep fixtures minimal; do not depend on live browser/CDP.
 
-3. Add end-to-end tests for streaming `/v1/chat/completions`.
-   - First SSE chunk includes assistant role.
-   - Content deltas are emitted in order.
-   - Final finish chunk and `[DONE]` are emitted.
-   - Error behavior is explicit and client-parseable.
+3. Wire validation into offline commands.
+   - Add a dedicated script such as `npm run test:artifacts` or include it in `npm test` only if deterministic and fast.
+   - Avoid making historical committed artifacts a required all-pass gate until legacy failures are either quarantined or documented as historical.
 
-4. Add artifact-quality fixture assertions.
-   - Manifest exists for completed mocked turn.
-   - Replay record compares extracted content against emitted content.
-   - Redaction pass is asserted before persisted artifacts are accepted.
-   - Raw capture persistence remains blocked unless explicit unsafe/discovery mode is enabled.
+4. Preserve the live-browser boundary.
+   - Keep `npm run test:live` manual/environment-gated.
+   - Do not claim live ChatGPT/Gemini behavior is validated unless a reachable authenticated CDP browser passes the live test.
 
-5. Keep live CDP tests opt-in/manual.
-   - Do not make `npm run test:live` a required offline validation gate.
-   - Document that live validation still requires an authenticated Chrome CDP endpoint on `127.0.0.1:9221`.
+5. Update `score.md` after EXECUTE validation.
+   - Record exact commands and pass/fail results.
+   - Raise only axes supported by new evidence.
+   - Continue listing live CDP and strict OpenAI semantic parity as unproven if not validated.
 
-## Files Expected to Change in EXECUTE Stage
-
-Likely files:
+## Expected Files to Change in EXECUTE Stage
 
 ```text
-test/mock-cdp-integration.test.mjs
-src/browser/* or src/provider/* only if dependency injection seams are missing
-src/server.mjs only if route handler export/seam is required
-package.json if a dedicated offline integration script is added
-score.md after validation evidence changes
+src/tools/validate-turn-artifacts.mjs
+test/artifact-quality.test.mjs
+test/fixtures/artifacts/*
+package.json
+score.md
 ```
 
-Avoid broad rewrites. If a seam is needed, expose the minimum testable boundary rather than replacing provider architecture.
+Acceptable alternative:
+
+```text
+src/artifacts/* validator module + test wrapper
+```
+
+Avoid changes to provider adapters, CDP target management, or OpenAI envelope helpers unless the validator needs exported metadata constants.
 
 ## Validation Commands
 
-Required offline validation for EXECUTE stage:
+Required validation for the EXECUTE stage:
 
 ```bash
 node --version
 npm --version
 npm run check
 npm run test:unit
+npm run test:mock
 npm run smoke
-node --test test/mock-cdp-integration.test.mjs
+node --test test/artifact-quality.test.mjs
 ```
 
-Optional live validation, only when an authenticated CDP browser is available:
+If the artifact validator is added to `npm test`, also run:
+
+```bash
+npm test
+```
+
+Optional live validation when an authenticated browser is running on CDP port 9221:
 
 ```bash
 npm run test:live
 ```
 
-Artifact validation after commit:
+Delta validation after commit:
 
 ```bash
 git status --short
 git log --oneline -n 5
-git bundle create /mnt/data/repo-delta-0001.bundle 050b9997b04e83f9ac8d86d8c83e41c7daa035b3..HEAD
+git bundle create /mnt/data/repo-delta-0001.bundle 01ec13fce5482e2d53d4097ec7a65d74fe19c11f..HEAD
 git bundle verify /mnt/data/repo-delta-0001.bundle
 ```
 
-Receiver apply validation:
+Receiver apply commands:
 
 ```bash
 git fetch ./repo-delta-0001.bundle HEAD && git merge --ff-only FETCH_HEAD
 npm run check
 npm run test:unit
+npm run test:mock
 npm run smoke
 ```
 
 ## Acceptance Criteria
 
 ```text
-A1: offline integration test proves one non-streaming chat completion through the browser boundary mock
-A2: offline integration test proves streaming SSE chunk order and terminal [DONE]
-A3: unsupported capabilities fail before mocked browser mutation
-A4: completed mocked turn writes/validates manifest + redaction + replay evidence
-A5: live CDP test remains available but is documented as environment-gated
-A6: score.md is updated with concrete before/after validation evidence
-A7: source delta stays minimal and test-driven
+A1: validator rejects completed turns without manifest evidence
+A2: validator rejects replay_match=false or missing replay result
+A3: validator rejects redaction_pass=false or missing redaction result
+A4: validator rejects malformed JSON/NDJSON deterministically
+A5: validator accepts a minimal valid completed-turn fixture
+A6: validator is covered by node:test and included in documented validation commands
+A7: score.md update is evidence-backed and does not overclaim live CDP validation
+A8: delta artifacts are created from B..H and verify successfully
 ```
 
 ## Risk Controls
 
 ```text
-risk_browser_mock_overfit ⇒ fixture should assert boundary calls and final OpenAI envelope, not private implementation details
-risk_live_claim_overstatement ⇒ score.md must continue to mark live CDP as unverified unless npm run test:live passes
-risk_privacy_regression ⇒ artifact assertions must fail if prompt bodies, file paths, cookies, tokens, or auth headers persist
-risk_streaming_false_positive ⇒ SSE parser test must parse actual emitted event stream, not only helper objects
-risk_source_churn ⇒ prefer one new test file and smallest dependency injection seam
+risk_legacy_artifacts_fail_gate ⇒ test fixture path first; document historical corpus separately
+risk_false_privacy_confidence ⇒ require explicit redaction pass signal, not absence-only heuristics
+risk_replay_overfit ⇒ compare declared expected/extracted content fields, not filenames alone
+risk_source_churn ⇒ keep validator standalone and CLI-friendly
+risk_live_overclaim ⇒ preserve test:live as separate environment-gated signal
 ```
 
 ## Stage Boundary
