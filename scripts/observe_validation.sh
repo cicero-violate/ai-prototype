@@ -159,6 +159,7 @@ def runtime() -> dict[str, Any]:
                                "runtime_archive_conversation_snapshots": 0, "runtime_archive_cache_files": 0,
                                "runtime_candidate_error_count": 0, "runtime_duplicate_artifact_aliases": 0}
     aliases: dict[str, int] = {}
+    accepted_aliases: dict[str, str] = {}
     try:
         with tarfile.open(archive, "r:gz") as tf:
             for member in (m for m in tf.getmembers() if m.isfile()):
@@ -172,6 +173,13 @@ def runtime() -> dict[str, Any]:
                     manifest = json.load(tf.extractfile(member) or open(os.devnull))
                     metrics["runtime_manifest_base_commit"] = manifest.get("baseCommit")
                     metrics["runtime_download_history_by_classification"] = manifest.get("downloadHistoryByClassification", {})
+                    metrics["runtime_download_history_record_count"] = len(manifest.get("downloadHistory", []))
+                    for item in manifest.get("downloadHistory", []):
+                        if item.get("classification") == "stale_advisory":
+                            continue
+                        alias = item.get("fileName") or item.get("savedAs")
+                        if alias:
+                            accepted_aliases[str(alias)] = str(item.get("sha256") or item.get("candidateHash") or "")
                     metrics["runtime_stale_advisory_count"] = int(
                         metrics["runtime_download_history_by_classification"].get("stale_advisory", 0) or 0
                     )
@@ -195,6 +203,8 @@ def runtime() -> dict[str, Any]:
                     metrics["runtime_archive_download_files" if is_download else "runtime_archive_log_files"] += 1
                     metrics["runtime_archive_download_total" if is_download else "runtime_archive_log_total"] += count
         metrics["runtime_duplicate_artifact_aliases"] = sum(1 for value in aliases.values() if value > 1)
+        metrics["runtime_unique_download_alias_count"] = len(accepted_aliases)
+        metrics["runtime_unique_download_aliases"] = sorted(accepted_aliases)
         metrics["runtime_archive_parse_status"] = "pass"
     except Exception as exc:
         metrics.update({"runtime_archive_parse_status": "fail", "runtime_archive_parse_error": str(exc)})
@@ -337,6 +347,9 @@ emit(event="validation_summary", validation_status=status, git_head=head,
      graph_edge_count_when_present=g.get("graph_edge_count"), graph_intent_coverage_when_present=g.get("graph_intent_coverage"),
      runtime_archive_present=r.get("runtime_archive_present", False), runtime_archive_log_total=log_total,
      runtime_archive_download_total=download_total,
+     runtime_download_history_record_count=r.get("runtime_download_history_record_count", 0),
+     runtime_unique_download_alias_count=r.get("runtime_unique_download_alias_count", 0),
+     runtime_unique_download_aliases=r.get("runtime_unique_download_aliases", []),
      runtime_archive_conversation_snapshots=r.get("runtime_archive_conversation_snapshots", 0),
      runtime_archive_sha256=r.get("runtime_archive_sha256"),
      runtime_manifest_base_commit=r.get("runtime_manifest_base_commit"),
