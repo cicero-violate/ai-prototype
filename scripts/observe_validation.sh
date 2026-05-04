@@ -293,6 +293,12 @@ def runtime() -> dict[str, Any]:
         metrics["runtime_archive_parse_status"] = "pass"
     except Exception as exc:
         metrics.update({"runtime_archive_parse_status": "fail", "runtime_archive_parse_error": str(exc)})
+    delta_base = os.environ.get("CANON_DELTA_BASE", "").strip()
+    manifest_base = metrics.get("runtime_manifest_base_commit")
+    metrics["runtime_manifest_base_expected"] = delta_base or None
+    metrics["runtime_manifest_base_matches_delta_base"] = (
+        bool(delta_base) and bool(manifest_base) and manifest_base == delta_base
+    )
     return metrics
 
 
@@ -476,8 +482,12 @@ missing = {
     "missing_generated_graph_json": not bool(g.get("state_graph_present")),
     "missing_rustc_wrapper_telemetry": next(c for c in commands if c["name"] == "wrapper_graph_validation")["status"] != "pass" or not bool(g.get("state_graph_present")),
     "missing_runtime_download_history": download_total == 0,
+    "missing_runtime_manifest_base_match": bool(r.get("runtime_archive_present"))
+    and bool(r.get("runtime_manifest_base_expected"))
+    and not bool(r.get("runtime_manifest_base_matches_delta_base")),
     "missing_runtime_performance_signal": not bool(r.get("runtime_performance_signal_present")),
     "missing_panic_surface_validation": next(c for c in commands if c["name"] == "panic_surface_validation")["status"] != "pass",
+    "missing_router_offline_tests": router_test["status"] != "pass",
     "missing_conversation_snapshot": int(r.get("runtime_archive_conversation_snapshots", 0) or 0) == 0,
     "missing_artifact_apply_worktree": not (ROOT / ".repo-agent-runtime" / "apply-worktrees").exists(),
     "missing_external_observation_stream_test": True,
@@ -485,8 +495,10 @@ missing = {
     "missing_semantic_artifact_verification_test": True,
     "missing_policy_learning_replay_trace": True,
 }
-required = {"git_diff_check", "git_delta_diff_check", "python_unit_tests", "router_offline_tests"}
+required = {"git_diff_check", "git_delta_diff_check", "python_unit_tests"}
 required.add("panic_surface_validation")
+if router_test.get("available"):
+    required.add("router_offline_tests")
 failed_required = [c["name"] for c in commands if c["name"] in required and c["status"] != "pass"]
 performance_budget_status = r.get("runtime_performance_budget_status", "missing")
 status = "fail" if failed_required or performance_budget_status == "fail" else ("partial" if any(missing.values()) else "pass")
@@ -548,6 +560,8 @@ emit(event="validation_summary", validation_status=status, git_head=head,
      runtime_archive_conversation_snapshots=r.get("runtime_archive_conversation_snapshots", 0),
      runtime_archive_sha256=r.get("runtime_archive_sha256"),
      runtime_manifest_base_commit=r.get("runtime_manifest_base_commit"),
+     runtime_manifest_base_expected=r.get("runtime_manifest_base_expected"),
+     runtime_manifest_base_matches_delta_base=r.get("runtime_manifest_base_matches_delta_base"),
      runtime_stale_advisory_count=r.get("runtime_stale_advisory_count", 0),
      runtime_candidate_error_count=r.get("runtime_candidate_error_count", 0),
      runtime_duplicate_artifact_aliases=r.get("runtime_duplicate_artifact_aliases", 0),

@@ -72,6 +72,19 @@ class ObserveValidationContractTest(unittest.TestCase):
         ):
             self.assertIn(name, self.script)
 
+    def test_runtime_archive_base_match_contract_is_emitted(self) -> None:
+        for token in (
+            "runtime_manifest_base_expected",
+            "runtime_manifest_base_matches_delta_base",
+            "missing_runtime_manifest_base_match",
+        ):
+            self.assertIn(token, self.script)
+
+    def test_router_tests_are_not_required_when_unavailable(self) -> None:
+        self.assertIn('missing_router_offline_tests', self.script)
+        self.assertIn('if router_test.get("available"):', self.script)
+        self.assertIn('required.add("router_offline_tests")', self.script)
+
 
 if __name__ == "__main__":
     unittest.main()

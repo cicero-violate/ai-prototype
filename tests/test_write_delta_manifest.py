@@ -7,10 +7,13 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from types import SimpleNamespace
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "scripts" / "write_delta_manifest.py"
+sys.path.insert(0, str(SCRIPT.parent))
+import write_delta_manifest  # noqa: E402
 
 
 class DeltaManifestTest(unittest.TestCase):
@@ -53,7 +56,8 @@ class DeltaManifestTest(unittest.TestCase):
 
     def write_report(self, *, head: str | None = None, commands: list[dict] | None = None,
                      command_count: int | None = None, test_count: int = 1,
-                     zero_test_reason: str | None = None) -> None:
+                     zero_test_reason: str | None = None,
+                     extra: dict | None = None) -> None:
         commands = commands if commands is not None else [
             {"name": "unit", "cmd": ["python3", "-m", "unittest"], "status": "pass"}
         ]
@@ -67,22 +71,30 @@ class DeltaManifestTest(unittest.TestCase):
         }
         if zero_test_reason:
             summary["zero_test_reason"] = zero_test_reason
+        if extra:
+            summary.update(extra)
         self.report.write_text(json.dumps(summary) + "\n", encoding="utf-8")
 
     def run_script(self, *extra: str) -> subprocess.CompletedProcess[str]:
-        cmd = [
-            sys.executable, str(SCRIPT),
-            "--base", self.base,
-            "--head", self.head,
-            "--report", str(self.report),
-            "--bundle", str(self.bundle),
-            "--out", str(self.out),
-            "--receipt-out", str(self.receipt),
-            *extra,
-        ]
-        env = os.environ.copy()
-        return subprocess.run(cmd, cwd=self.repo, text=True, stdout=subprocess.PIPE,
-                              stderr=subprocess.PIPE, env=env, check=False)
+        bundle = str(self.bundle)
+        if extra:
+            self.assertEqual(extra[0], "--bundle")
+            bundle = extra[1]
+        args = SimpleNamespace(base=self.base, head=self.head, report=str(self.report),
+                               bundle=bundle, out=str(self.out), receipt_out=str(self.receipt),
+                               zero_test_reason=None)
+        cwd = Path.cwd()
+        os.chdir(self.repo)
+        try:
+            receipt = write_delta_manifest.receipt(args)
+            self.receipt.write_text(json.dumps(receipt, indent=2, sort_keys=True) + "\n",
+                                    encoding="utf-8")
+            write_delta_manifest.write_manifest(self.out, receipt)
+            return SimpleNamespace(returncode=0, stdout="", stderr="")
+        except SystemExit as exc:
+            return SimpleNamespace(returncode=1, stdout="", stderr=str(exc))
+        finally:
+            os.chdir(cwd)
 
     def test_pass_with_commands_and_tests(self) -> None:
         self.write_report(test_count=2)
@@ -129,6 +141,19 @@ class DeltaManifestTest(unittest.TestCase):
         receipt = json.loads(self.receipt.read_text(encoding="utf-8"))
         self.assertEqual(receipt["validation_test_count"], 0)
         self.assertEqual(receipt["zero_test_reason"], "environment has no test runner")
+
+    def test_preserves_runtime_archive_base_match_evidence(self) -> None:
+        self.write_report(extra={
+            "runtime_manifest_base_expected": self.base,
+            "runtime_manifest_base_matches_delta_base": True,
+        })
+        done = self.run_script()
+        self.assertEqual(done.returncode, 0, done.stderr)
+        receipt = json.loads(self.receipt.read_text(encoding="utf-8"))
+        manifest = self.out.read_text(encoding="utf-8")
+        self.assertEqual(receipt["runtime_manifest_base_expected"], self.base)
+        self.assertTrue(receipt["runtime_manifest_base_matches_delta_base"])
+        self.assertIn("runtime_manifest_base_matches_delta_base: True", manifest)
 
 
 if __name__ == "__main__":
