@@ -109,17 +109,36 @@ def changed_files(base: str, head: str) -> list[str]:
     return files
 
 
-def verify_bundle(bundle: str, head: str) -> tuple[str, list[str]]:
+def bundle_required_refs(verify_output: str) -> list[str]:
+    refs: list[str] = []
+    capture = False
+    for line in verify_output.splitlines():
+        if line.startswith("The bundle requires this ref:"):
+            capture = True
+            continue
+        if line.startswith("The bundle "):
+            capture = False
+        if capture:
+            token = line.strip().split(maxsplit=1)[0] if line.strip() else ""
+            if token:
+                refs.append(token)
+    return refs
+
+
+def verify_bundle(bundle: str, base: str, head: str) -> tuple[str, list[str], list[str]]:
     if not bundle:
-        return "not_provided", []
+        return "not_provided", [], []
     path = Path(bundle)
     if not path.exists():
         raise SystemExit(f"bundle does not exist: {bundle}")
-    git_bundle("verify", bundle)
+    verify_output = git_bundle("verify", bundle)
     heads = git_bundle("list-heads", bundle).splitlines()
     if not any(line.startswith(head) for line in heads):
         raise SystemExit(f"bundle does not expose expected head: {head}")
-    return "pass", heads
+    required = bundle_required_refs(verify_output)
+    if base not in required:
+        raise SystemExit(f"bundle does not require base commit {base}")
+    return "pass", heads, required
 
 
 def receipt(args: argparse.Namespace) -> dict[str, Any]:
@@ -129,7 +148,7 @@ def receipt(args: argparse.Namespace) -> dict[str, Any]:
         fail("validation report has no validation_summary event")
     commands, zero_test_reason = validation_closure(summary, rows, args.head, args.zero_test_reason)
     report_head = summary.get("git_head")
-    bundle_verify, bundle_heads = verify_bundle(args.bundle, args.head)
+    bundle_verify, bundle_heads, bundle_required = verify_bundle(args.bundle, args.base, args.head)
     r = {
         "schema_version": 2,
         "base_commit": args.base,
@@ -152,6 +171,8 @@ def receipt(args: argparse.Namespace) -> dict[str, Any]:
         "bundle_sha256": sha256(args.bundle),
         "bundle_verify": bundle_verify,
         "bundle_heads": bundle_heads,
+        "bundle_required_refs": bundle_required,
+        "bundle_requires_base_commit": args.base in bundle_required,
         "receiver_apply_command": APPLY_COMMAND.format(Path(args.bundle or "repo-delta.bundle").name),
         "validation_report_git_head": report_head,
     }
@@ -242,6 +263,8 @@ def write_manifest(path: Path, r: dict[str, Any]) -> None:
         f"- bundle_sha256: {r['bundle_sha256']}",
         f"- bundle_verify: {r['bundle_verify']}",
         f"- bundle_heads: {json.dumps(r['bundle_heads'], sort_keys=True)}",
+        f"- bundle_required_refs: {json.dumps(r['bundle_required_refs'], sort_keys=True)}",
+        f"- bundle_requires_base_commit: {r['bundle_requires_base_commit']}",
         f"- validation_report_git_head: {r['validation_report_git_head']}",
         f"- changed_file_count: {r['changed_file_count']}",
         f"- cargo_available: {r['cargo_available']}",

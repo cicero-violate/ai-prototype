@@ -33,203 +33,167 @@ One-line explanation: Goodness is the geometric mean of all 15 dimensions; one w
 ## Score Summary
 
 ```text
-I  = 6.5 / 10
-E  = 6.5 / 10
-C  = 5.5 / 10
+I  = 6.6 / 10
+E  = 6.6 / 10
+C  = 5.8 / 10
 A  = 8.0 / 10
-R  = 5.9 / 10
+R  = 6.1 / 10
 P  = 5.8 / 10
-S  = 5.8 / 10
-D  = 7.5 / 10
-T  = 7.3 / 10
-Co = 7.2 / 10
-Em = 6.8 / 10
-B  = 6.5 / 10
+S  = 5.9 / 10
+D  = 7.7 / 10
+T  = 7.5 / 10
+Co = 7.3 / 10
+Em = 6.9 / 10
+B  = 6.6 / 10
 L  = 5.4 / 10
-Si = 5.7 / 10
-F  = 6.9 / 10
+Si = 5.8 / 10
+F  = 7.0 / 10
 
-G = 6.44 / 10
+G = 6.56 / 10
 max(G) = good
 ```
 
-Judgment: this is a strong deterministic-runtime prototype with serious evidence discipline, but it is not yet a reproducibly validated autonomous agent runtime in this restored sandbox. Phase 2 closes the default absolute-wrapper portability blocker, but Rust validation, graph telemetry, and current-head LLM proof remain missing here.
+Judgment: this is a disciplined deterministic-runtime prototype with strong audit goals and improving handoff safety. It is still not a reproducibly validated Rust runtime in this sandbox because `cargo`, `rustc`, graph telemetry, and current-head Ollama proof are absent. This phase improves the repository loop itself by making stale or full-history bundles fail manifest verification.
 
 ## Scope
 
 ```text
-stage = PHASE_2_EXECUTE
+stage = PHASE_2_EXECUTE_TURN_002
 source_changes_allowed = true
 source_changes_made = true
+rust_source_files_changed = false
 scorecard_updated = true
 restored_bundle = /mnt/data/ai.bundle
-restored_repo_path = /mnt/data/ai-phase1/repo
+restored_repo_path = /mnt/data/ai-phase2-work/ai
 observed_branch = main
-observed_head = a4f94113d15ee6e01b35fd87edf78c9f654ca305
+base_commit = bbcaa3947d447396ee3599b63a9af8125b95b2a2
 runtime_archive = /mnt/data/ai-runtime.tar.gz
 existing_goal_md = true
-existing_score_md_before_eval = false
+existing_score_md_before_phase = true
 ```
 
-## Phase 2 Delta
-
-```text
-base_commit = a4f94113d15ee6e01b35fd87edf78c9f654ca305
-plan_created = plan.md
-default_absolute_rustc_wrapper_removed = true
-graph_capture_policy = explicit_CANON_RUSTC_WRAPPER_only
-regression_test_hardened = true
-rust_source_files_changed = false
-```
+## Phase 2 Turn 002 Delta
 
 Implemented closure:
 
-- `.cargo/config.toml` no longer installs a machine-local absolute
-  `rustc-wrapper` by default.
-- Graph telemetry remains available only when the operator explicitly provides
-  `CANON_RUSTC_WRAPPER`.
-- `tests/test_observe_validation_contract.py` now uses a real multiline search
-  to reject any future default `rustc-wrapper = ...` config entry.
-- `README.md` now uses `CANON_RUSTC_V3_ARTIFACT_DIR` consistently for graph
-  capture instructions.
+- `scripts/write_delta_manifest.py` now parses `git bundle verify` output for required refs.
+- A bundle that exposes `H` but does not require the requested base commit `B` is rejected.
+- Delta receipts and manifests now include `bundle_required_refs` and `bundle_requires_base_commit`.
+- `tests/test_write_delta_manifest.py` now covers complete-history bundle rejection.
+- The delta manifest tests now share one temporary git fixture, reducing test runtime while preserving coverage.
+- `plan.md` now targets artifact handoff correctness rather than the already-closed default wrapper portability issue.
 
 Remaining critical limits:
 
-- `cargo`, `rustc`, `cargo fmt`, `cargo test`, and `cargo clippy` are still
-  unavailable in this sandbox.
-- `state/rustc/*/graph.json` is still absent.
-- The current HEAD has not reproduced `examples/ollama_judgment.rs`.
-- The panic-surface scan still reports 319 total panic-like calls, all inside
-  test-classified Rust regions.
+- `cargo` and `rustc` are unavailable in this sandbox, so Rust fmt/test/clippy remain unexecuted here.
+- `state/rustc/*/graph.json` is absent, so semantic graph telemetry remains missing.
+- `examples/ollama_judgment.rs` was not re-run at current HEAD because no local Ollama environment is configured.
+- Runtime archive evidence is useful but historical; it cannot replace current-head validation.
+- Existing TODO/FIXME markers remain only in an archived patch file, not active source.
 
 ## Existing File Contents Observed
 
-`GOAL.md` exists and defines Canon Agent as a deterministic, self-improving agent runtime with a frozen state-machine kernel, append-only replayable TLog, capability-layer intelligence, policy learning, and an LLM promotion ladder. It explicitly states that the kernel should never change, policy should encode learned patterns, LLM calls should become rarer and more targeted, and every decision/recovery/outcome should be replayable and auditable.
+`GOAL.md` exists and defines Canon Agent as a deterministic, self-improving agent runtime with a frozen state-machine kernel, append-only replayable TLog, capability-layer intelligence, policy learning, and an LLM promotion ladder. It explicitly requires replayable and auditable decisions, recoveries, and outcomes.
 
-`score.md` did not exist before this Phase 1 evaluation.
+`score.md` existed before this phase and already recorded the Phase 2 portability fix: the default absolute `rustc-wrapper` had been removed, graph capture became explicit through `CANON_RUSTC_WRAPPER`, and Python validation had passed while Rust validation remained unavailable.
 
 ## Repository Evidence
 
 ```text
-tracked_files = 118
-rust_files = 53
+tracked_files = 120
+rust_files_src_examples = 53
 python_files = 4
 shell_files = 4
-rust_loc_src_examples = 15834
-rust_test_attrs = 103
-rust_cfg_test_modules = 2
-unwrap_calls_src_examples = 316
-expect_calls_src_examples = 3
-panic_calls_src_examples = 0
-unsafe_mentions_src_examples = 0
-todo_fixme_mentions_in_source = 0
 third_party_rust_dependencies = 0
+rust_test_attrs = 103
+active_source_todo_fixme_mentions = 0
+archived_patch_todo_mentions = 4
+panic_surface_production_total = 0
+panic_surface_test_total = 319
 ```
 
 Positive evidence:
 
 - `src/lib.rs` and `src/main.rs` use `#![forbid(unsafe_code)]`.
 - `Cargo.toml` declares no third-party Rust dependencies.
-- The tree matches the intended layered architecture: `kernel`, `codec`, `runtime`, `capability`, and `api`.
-- Capability modules exist for observation, context, memory, planning, LLM, judgment, tooling, verification, eval, policy, learning, and orchestration.
-- Runtime code exposes TLog replay, durable runtime resume, semantic delta logic, command ledger receipts, and transition verification surfaces.
-- There are 103 Rust `#[test]` declarations across source/examples.
+- The tree matches the intended architecture: `kernel`, `codec`, `runtime`, `capability`, and `api`.
+- Runtime and capability modules expose TLog replay, durable runtime resume, semantic delta logic, command ledger receipts, transition verification, policy, learning, and eval surfaces.
+- Python validation covers observe-validation contracts, panic-surface validation requirements, runtime performance contract fields, and delta manifest integrity.
 
 Critical evidence:
 
-- Root Rust validation could not be reproduced because `cargo` and `rustc` are unavailable in this sandbox.
-- The restored `.cargo/config.toml` originally configured an absolute missing
-  `rustc-wrapper`; Phase 2 removed that default so root validation no longer
-  depends on the local graph-capture wrapper.
-- No `state/rustc/*/graph.json` was present, so semantic graph telemetry, node counts, edge counts, and intent coverage are absent.
-- The codebase still contains 316 `unwrap()` calls and 3 `expect()` calls in `src`/`examples`; these are not classified by production/test boundary in this scorecard.
-- Runtime archive evidence is historical. It supports process discipline but does not replace current-head build/test proof.
+- Root Rust validation still cannot be reproduced here because no Rust toolchain is installed in `/mnt/data` or `PATH`.
+- No generated semantic graph is present under `state/rustc`.
+- Runtime archive `RUNTIME_MANIFEST.json` is anchored to base commit `bbcaa3947d447396ee3599b63a9af8125b95b2a2`, but historical download history includes stale-advisory evidence, so strict current-base artifact checks are required.
+- The codebase has many panic-like calls in test-classified Rust regions. Production panic surface is clean according to the Python classifier, but this remains a classifier result rather than a Rust compiler proof.
 
 ## Validation Evidence
 
-Commands attempted during this evaluation:
+Commands run during this phase before commit:
 
 ```text
-python3 -m pytest -q                                  => pass, 12 tests
-rustc --version                                      => unavailable
-cargo --version                                      => unavailable
-RUSTC_WRAPPER='' RUSTC_WORKSPACE_WRAPPER='' cargo fmt --check                 => unavailable
-RUSTC_WRAPPER='' RUSTC_WORKSPACE_WRAPPER='' cargo test --all-targets          => unavailable
-RUSTC_WRAPPER='' RUSTC_WORKSPACE_WRAPPER='' cargo clippy --all-targets -- -D warnings => unavailable
+python3 -m unittest discover -s tests -p 'test_*.py' -v
+  => pass, 13 tests
+
+python3 scripts/validate_rust_panic_surface.py --root . --fail-production-unwrap --report target/observe/panic-surface.json
+  => pass, production_total=0, test_total=319, example_total=0
+```
+
+Expected unavailable commands in this sandbox:
+
+```text
+cargo fmt --check                 => unavailable
+cargo test --all-targets          => unavailable
+cargo clippy --all-targets        => unavailable
+cargo run --example ollama_judgment => skipped without Ollama env and cargo
 ```
 
 Runtime archive evidence from `/mnt/data/ai-runtime.tar.gz`:
 
 ```text
-runtime_manifest_base_commit = a4f94113d15ee6e01b35fd87edf78c9f654ca305
+runtime_manifest_base_commit = bbcaa3947d447396ee3599b63a9af8125b95b2a2
 runtime_archive_parse_status = pass
-runtime_archive_member_count = 28
-runtime_archive_log_total = 8545
-runtime_archive_download_total = 78
-runtime_archive_conversation_snapshots = 0
-runtime_download_history_record_count = 66
-runtime_download_history_by_classification = {delta_applied:19, download_event:28, live_evidence:18, stale_advisory:1}
+runtime_archive_log_total > 0
+runtime_archive_download_total > 0
 runtime_performance_signal_present = true
-runtime_performance_budget_status = pass
-project_agent_elapsed_ms_count = 1050
-project_agent_elapsed_ms_median = 189027.187
-project_agent_elapsed_ms_p95 = 1297595.353
-project_agent_elapsed_ms_max = 1778293.765
+runtime_stale_advisory_present = true
 ```
-
-Historical live Ollama evidence exists in the runtime archive:
-
-```text
-provider = ollama
-model = qwen2.5-coder:7b
-receipt_verified = true
-tamper_rejected = true
-tampered_fields_rejected = 17/17
-endpoint_verified = true
-proof_order_verified = true
-durable_proof_verified = true
-judgment_passed = true
-```
-
-This is useful supporting evidence, but it was not re-executed at current restored HEAD in this sandbox.
 
 ## Axis Detail
 
 | Axis | Score | Critical basis |
 |---|---:|---|
-| I | 6.5 | Strong typed architecture and capability decomposition; intelligence is mostly scaffolded and not proven as closed-loop autonomy. |
-| E | 6.5 | Zero Rust dependencies and deterministic surfaces help efficiency; Phase 2 removes default wrapper friction, but long historical project-agent turn times and many artifact/log surfaces remain. |
-| C | 5.5 | Python tests pass and config validation is stronger; root Rust fmt/test/clippy are still unavailable, so correctness cannot be claimed without toolchain reproduction. |
-| A | 8.0 | Repository structure closely matches `GOAL.md`; score capped because implemented proof trails do not yet demonstrate the full stated end state. |
-| R | 5.9 | No unsafe code and recovery concepts exist; the default missing-wrapper failure is closed, but missing graph, unavailable Rust tests, and many test unwraps still reduce robustness. |
-| P | 5.8 | Deterministic runtime should be cheap once built; actual historical automation p95 is about 21.6 minutes and local performance was not reproduced. |
-| S | 5.8 | Modules for orchestration and capability routing exist; no evidence of high-concurrency or multi-objective scaling was reproduced. |
-| D | 7.5 | Kernel phases, gates, transition verification, hash-linked events, and replay surfaces are strong; formal proof and graph telemetry are absent. |
-| T | 7.3 | GOAL, README, runtime archive metrics, validation scripts, and manifests are transparent; Phase 2 adds plan.md, but conversation snapshots are absent. |
-| Co | 7.2 | Operational docs and delta discipline are useful; Phase 2 removes the default local wrapper path, but the Rust toolchain itself is still not portable here. |
-| Em | 6.8 | The repo gives a clear skeleton for deterministic agents and cleaner validation setup; unavailable root Rust validation still limits operator trust. |
-| B | 6.5 | Potential benefit is high for auditable automation; current proof supports prototype benefit more than deployed agent benefit. |
-| L | 5.4 | Learning and policy modules exist; current-head policy promotion/replay trace was not reproduced. |
-| Si | 5.7 | Zero third-party Rust deps and crisp layers help simplicity; removing the default wrapper path simplifies bootstrap, but 15.8k Rust LOC, broad re-exports, and 316 unwraps increase cognitive load. |
-| F | 6.9 | Append-only logs, receipts, policy store, and capability separation are future-friendly; Phase 2 improves portability, while missing formal verification still caps confidence. |
+| I | 6.6 | Strong typed architecture and now stronger artifact verifier logic; closed-loop autonomous intelligence is still mostly scaffolded. |
+| E | 6.6 | Delta-manifest tests are faster and the verifier catches invalid artifacts earlier; Rust validation still cannot run. |
+| C | 5.8 | Python tests and bundle-base rejection improve correctness; score remains capped by unavailable Rust fmt/test/clippy. |
+| A | 8.0 | Work directly supports GOAL.md auditability and replayability. |
+| R | 6.1 | Stale/full-history bundle handoffs are now rejected; graph and Rust validation remain missing. |
+| P | 5.8 | Test fixture sharing improves local Python test cost; runtime performance evidence remains historical. |
+| S | 5.9 | Safer handoff validation scales the repo loop; no concurrency or multi-agent scaling proof was added. |
+| D | 7.7 | Bundle verification now proves required base ancestry for delta artifacts. |
+| T | 7.5 | Manifest and receipt expose required bundle refs and base-commit proof. |
+| Co | 7.3 | Receiver handoff is less ambiguous because invalid complete-history bundles fail locally. |
+| Em | 6.9 | Operators get stronger apply-time evidence and clearer failure modes. |
+| B | 6.6 | Benefit increases for safe repo-loop automation, but deployed agent benefit is still unproven. |
+| L | 5.4 | Learning/policy modules remain present but no new learning replay trace was executed. |
+| Si | 5.8 | Test fixture reuse simplifies repeated validation; broad Rust surface remains cognitively large. |
+| F | 7.0 | Delta contract hardening improves future iteration safety. |
 
 ## Risk Register
 
 | Risk | Severity | Evidence | Closure requirement |
 |---|---:|---|---|
 | Root Rust validation unavailable | High | `cargo`/`rustc` not found | Provide toolchain and rerun fmt/test/clippy. |
-| Non-portable wrapper config | Closed in Phase 2 | `.cargo/config.toml` no longer points to absent wrapper path | Keep regression test enforcing explicit wrapper opt-in. |
 | Missing graph telemetry | High | no `state/rustc/*/graph.json` | Regenerate graph and publish node/edge/intent metrics. |
-| Production panic surface unclassified | Medium | 316 unwraps, 3 expects | Classify test-only vs runtime paths; reduce hot-path panics. |
-| Learning proof not closed | High | no reproduced policy learning replay trace | Add observation→eval→learning integration proof. |
-| Semantic artifact proof not closed | High | no reproduced current-head semantic artifact verification | Bind artifact receipts to proof replay and test it. |
-| Historical evidence can go stale | Medium | runtime archive contains one stale advisory | Enforce base/head checks before consuming downloaded artifacts. |
-| Runtime snapshots absent | Medium | conversation snapshot count is 0 | Include redacted snapshots or document why excluded. |
+| Current-head LLM proof absent | High | Ollama example not run here | Re-run with local Ollama and record proof replay. |
+| Historical artifact staleness | Medium | runtime archive contains stale-advisory history | Keep strict base/head and bundle-required-ref checks. |
+| Classifier-only panic proof | Medium | panic-surface result is Python source scan | Reconfirm with Rust validation once toolchain exists. |
+| Learning proof not closed | High | no observation→eval→learning replay trace | Add and validate a current-head policy promotion trace. |
 
 ## Next Closure Targets
 
-1. Restore a Rust toolchain and rerun `cargo fmt --check`, `cargo test --all-targets`, and `cargo clippy --all-targets -- -D warnings` with wrapper overrides cleared.
-2. Provide `CANON_RUSTC_WRAPPER` explicitly and regenerate `state/rustc/*/graph.json`.
-3. Re-run `examples/ollama_judgment.rs` at current HEAD and attach receipt/proof replay output.
-4. Add one current-head integration trace for observation → judgment → eval → learning → policy promotion.
-5. Classify and reduce `unwrap()` / `expect()` surfaces in runtime and capability code.
+1. Install or expose a Rust toolchain and rerun `cargo fmt --check`, `cargo test --all-targets`, and `cargo clippy --all-targets -- -D warnings`.
+2. Run graph capture explicitly with `CANON_RUSTC_WRAPPER` and regenerate `state/rustc/*/graph.json`.
+3. Re-run `examples/ollama_judgment.rs` at current HEAD with local Ollama and attach receipt/proof replay evidence.
+4. Add a current-head observation → judgment → eval → learning → policy promotion integration trace.
+5. Keep delta manifest verification strict: every bundle must expose `H`, require `B`, and pass receiver fetch/fast-forward proof.

@@ -32,45 +32,37 @@ One-line explanation: Goodness is the geometric mean of all 15 dimensions; one w
 
 ## Target
 
-Improve the highest-impact blocker from `score.md`: root validation portability.
+Improve the highest-impact current blocker from `GOAL.md` and `score.md`: safe delta artifact correctness.
 
 ## Evidence From GOAL.md
 
-The goal requires a frozen deterministic kernel, replayable logs, append-only
-policy learning, and trustworthy validation. That depends on a repository that a
-new operator can validate without local machine paths.
+The goal requires every decision, recovery, and outcome to be replayable and auditable. Delta artifacts are the handoff boundary for this repository loop, so a manifest must prove not only that a bundle exposes `H`, but also that the bundle is the requested `B..H` delta anchored to the receiver's base commit.
 
 ## Evidence From score.md
 
-`score.md` identified these critical blockers:
-
-- missing Rust toolchain in the sandbox
-- `.cargo/config.toml` points to an absent absolute wrapper path
-- missing generated graph telemetry
-- root Rust validation not reproducible here
+`score.md` keeps correctness capped because validation and artifact evidence were not fully reproducible at current HEAD. The runtime archive also contains stale-advisory history, so the next useful closure is to harden the local artifact verifier against stale, full-history, or wrong-base bundles.
 
 ## Work
 
-1. Remove the default absolute `rustc-wrapper` from `.cargo/config.toml`.
-2. Keep graph capture explicit through `CANON_RUSTC_WRAPPER`.
-3. Harden the Python regression test so it actually rejects any multiline
-   `rustc-wrapper = ...` default config entry.
-4. Update README validation commands to use the current wrapper artifact
-   variable name consistently.
-5. Update `score.md` with the Phase 2 delta and recomputed `G`.
+1. Harden `scripts/write_delta_manifest.py` so bundle verification extracts required refs from `git bundle verify` output.
+2. Reject any provided bundle that exposes `H` but does not require the requested base commit `B`.
+3. Record `bundle_required_refs` and `bundle_requires_base_commit` in the delta receipt and manifest.
+4. Add regression coverage for complete-history bundles, which must fail because they are not the requested `B..H` delta.
+5. Speed up delta-manifest tests by sharing one temporary git fixture across test cases instead of rebuilding it for every assertion.
+6. Update `score.md` with the new evidence and recomputed geometric mean.
 
 ## Validation Commands
 
 ```bash
-python3 -m unittest discover -s tests -p 'test_*.py'
+python3 -m unittest discover -s tests -p 'test_*.py' -v
 python3 scripts/validate_rust_panic_surface.py --root . --fail-production-unwrap --report target/observe/panic-surface.json
-CANON_DELTA_BASE=<base> CANON_RUNTIME_ARCHIVE=/mnt/data/ai-runtime.tar.gz CANON_OBSERVE_REPORT=target/observe/validation-report-phase2.ndjson bash scripts/observe_validation.sh
 git diff --check
-git bundle verify /mnt/data/repo-delta-001.bundle
+CANON_DELTA_BASE=bbcaa3947d447396ee3599b63a9af8125b95b2a2 CANON_RUNTIME_ARCHIVE=/mnt/data/ai-runtime.tar.gz CANON_OBSERVE_REPORT=target/observe/validation-report-phase2.ndjson bash scripts/observe_validation.sh
+git bundle create /mnt/data/repo-delta-002.bundle bbcaa3947d447396ee3599b63a9af8125b95b2a2..HEAD
+git bundle verify /mnt/data/repo-delta-002.bundle
+python3 scripts/write_delta_manifest.py --base bbcaa3947d447396ee3599b63a9af8125b95b2a2 --head <H> --report target/observe/validation-report-phase2.ndjson --bundle /mnt/data/repo-delta-002.bundle --out /mnt/data/DELTA_MANIFEST.md --receipt-out target/observe/delta-receipt-phase2.json
 ```
 
 ## Boundary
 
-No Rust source changes in this pass because the sandbox still lacks `cargo` and
-`rustc`; changing kernel/runtime code without Rust validation would reduce
-correctness.
+No Rust source changes in this pass because this sandbox has no `cargo` or `rustc`. The source change is limited to the Python delta verifier and its tests, which are executable here.
