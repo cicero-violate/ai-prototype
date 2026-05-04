@@ -1579,3 +1579,195 @@ policy_learning_unproven = true; policy deltas are not backed by before/after re
 ```
 
 One-line explanation: generated current-turn artifacts are now gated in default tests, while legacy evidence remains visible and production confidence remains capped by live CDP and policy-learning gaps.
+
+## EVAL Pass — Restored Uploaded Bundle at `ca3414f`
+
+This pass restored `/mnt/data/router-server.bundle`, read `GOAL.md`, inspected the uploaded runtime archive, parsed JSON and NDJSON evidence with Python, and re-ran available validation without source-code changes. This scorecard update is the only intended repository mutation for the EVAL stage.
+
+Restored repository evidence:
+
+```text
+bundle_verify = pass; complete history; sha1; refs include main and worktree heads
+HEAD = ca3414f2cb61e4d634b5f42d3d0dbcd58632d35b
+branch = main
+recent_history = ca3414f Gate current generated artifacts; bc2f444 Plan current artifact corpus gate; aa0e022 Observe router-server runtime history evidence; a1900d1 Evaluate router-server restored bundle; 84aa6a3 Add SDK contract matrix gate
+GOAL.md = present
+package_name = ai-chromium-router
+package_type = module
+node_engine = >=20
+declared_scripts = serve, check, test, test:unit, test:mock, test:sdk, test:live, smoke, test:artifacts, test:artifacts:legacy
+src_mjs_files = 45
+test_mjs_files = 6
+source_and_test_lines = 5031
+artifact_json_ndjson_lines = 354026
+```
+
+Runtime archive evidence from `/mnt/data/router-server-runtime.tar.gz`:
+
+```text
+runtime_base_commit = ca3414f2cb61e4d634b5f42d3d0dbcd58632d35b
+runtime_manifest_schema_version = 1
+runtime_download_history = 1
+runtime_download_history_by_classification = {stale_advisory: 1}
+runtime_included_count = 20
+runtime_excluded_count = 9214
+runtime_leak_scan_finding_count = 0
+runtime_integrity_scan_finding_count = 0
+runtime_schema_scan_finding_count = 0
+runtime_audit_events = 36
+runtime_process_log_events = 157
+runtime_audit_event_modes = candidate_ledger_written=15, loop_iteration_observed_audit_linked=9, runtime_archive_created=4, delta_pair_verified=3, delta_applied=3, live_cdp_evidence_summary=2
+```
+
+Committed artifact corpus evidence parsed from `artifacts/turns`:
+
+```text
+turn_artifact_dirs = 88
+request_redacted_json_files = 88
+response_json_files = 80
+manifest_json_files = 86
+replay_json_files = 80
+evaluation_json_files = 80
+evaluation(replay_match=true,  redaction_pass=false, quality=0) = 37
+evaluation(replay_match=false, redaction_pass=true,  quality=0) = 40
+evaluation(replay_match=true,  redaction_pass=true,  quality=1) = 2
+evaluation(replay_match=false, redaction_pass=false, quality=0) = 1
+legacy_validator = fail_expected; turn_count=88, pass_count=2, fail_count=86
+```
+
+Validation results in this environment:
+
+```text
+node --version = v22.16.0
+npm --version = 10.9.2
+npm run check = pass; syntax_ok files=51
+npm run test:unit = pass; 7/7 node:test cases passed
+npm run test:mock = pass; 3/3 node:test cases passed
+npm run test:sdk = pass; 4/4 node:test cases passed
+npm run test:artifacts = pass; 6/6 node:test cases passed
+npm run smoke = pass; openai_contract_smoke_ok
+npm test = pass; unit + mock + sdk + current/fixture artifact tests
+npm run test:live = fail_environment; healthz status=502; connect ECONNREFUSED 127.0.0.1:9221
+```
+
+Goal alignment equation:
+
+```text
+goal = browser_control_router ∧ OpenAI_like_API ∧ evidence_capture ∧ data_discovery ∧ policy_learning ∧ replay_privacy_verification
+observed = OpenAI_like_API_offline ∧ mocked_browser_CDP ∧ current_artifact_gate ∧ runtime_audit_log ∧ ¬live_authenticated_CDP ∧ ¬proven_policy_learning_delta
+```
+
+One-line explanation: the restored bundle is now substantially stronger as an offline OpenAI-like CDP router, but it is still not production-proven because live authenticated browser validation and measured policy learning remain missing.
+
+Critical current scores:
+
+| Axis | Score | Evidence-backed note |
+|------|------:|----------------------|
+| O — OpenAI endpoint/envelope compatibility | 7.3 | `/v1/models`, `/v1/chat/completions`, non-streaming envelopes, error envelopes, and warnings are tested offline; exact OpenAI parity remains unproven. |
+| Q — Request schema compatibility | 7.2 | Messages, warnings, and unsupported parameter rejection are covered; tools/functions/multi-choice semantics are intentionally rejected rather than supported. |
+| A — Assistant response schema compatibility | 7.9 | Strongest axis: unit, mock, SDK, and smoke tests verify assistant role/content envelopes and parseable responses. |
+| S — Streaming SSE compatibility | 7.6 | Mock and SDK tests verify ordered SSE chunks and `[DONE]`; live streaming against a real browser remains unvalidated. |
+| K — SDK/drop-in compatibility | 7.1 | SDK matrix improved confidence, but strict drop-in behavior is capped by unsupported advanced client features. |
+| P — Provider/capability architecture | 7.4 | Provider adapters, registry, capability planning, receipts, and action routes exist; provider breadth exceeds proven live behavior. |
+| E — Evidence/provenance quality | 6.9 | Artifact writer, runtime audit events, and validator summaries exist; stale advisory download history and large legacy failures weaken confidence. |
+| V — Replay/verification correctness | 6.6 | Current/generated artifact gate passes; historical corpus still has only 2/88 validator-passing turns. |
+| X — Privacy/redaction correctness | 7.2 | Runtime scan reports zero leak findings and redaction tests pass; historical redaction failures remain committed evidence. |
+| D — Data discovery/schema derivation | 6.6 | Dataset, feature, schema, mining, and policy modules exist; discovery quality is still mostly heuristic evidence. |
+| L — Policy learning quality | 3.8 | Learning records and policy stores exist, but no before/after replay-backed improvement proves adaptive learning. |
+| T — Testability | 7.9 | `npm test`, smoke, syntax, SDK, mock, and current artifact gates pass in this environment. |
+| R — Operational realism | 6.2 | Runtime logs and live test harness exist, but live CDP failed because no authenticated browser was reachable. |
+| M — Documentation accuracy | 6.0 | GOAL and docs describe the intended architecture well, but claims must stay bounded to offline/mock/live-unproven evidence. |
+| C — Simplicity / cognitive load | 5.9 | Default validator output was simplified, but 354026 artifact lines and broad policy/mining/replay surface still dominate complexity. |
+
+Updated equation:
+
+```text
+current_score ≈ 6.8 / 10
+Good = max(A=7.9, T=7.9, S=7.6, P=7.4, O=7.3, Q=7.2, X=7.2, K=7.1, E=6.9, D=6.6, V=6.6, R=6.2, M=6.0, C=5.9, L=3.8) = A = T
+```
+
+Critical findings:
+
+```text
+F1 offline_contract_strength_high = npm test pass ∧ smoke pass ∧ SDK matrix pass
+F2 live_browser_confidence_blocked = npm run test:live fails_environment on CDP 9221
+F3 legacy_artifact_quality_low = 2/88 committed turns pass current validator
+F4 runtime_provenance_mixed = zero scan findings ∧ stale_advisory download present
+F5 policy_learning_unproven = no replay-backed before/after policy improvement metric
+F6 cognitive_load_high = artifact lines 354026 >> source/test lines 5031
+```
+
+Correct next build order:
+
+```text
+1. Add a CI profile that separates required offline gates from optional authenticated live-CDP gates.
+2. Run `npm run test:live` against a real authenticated Chrome target on 127.0.0.1:9221 and store the result as evidence.
+3. Migrate or quarantine legacy artifact turns so the committed corpus has an explicit old/new quality boundary.
+4. Bind receipts to evidence_hash, replay_hash, policy_version, extraction_rule_ids, and validation_command_hash.
+5. Prove one policy-learning delta with before/after replay and measured success improvement.
+```
+
+Final EVAL verdict:
+
+```text
+rating = 6.8 / 10
+status = architecture_defined ∧ offline_validated ∧ current_artifact_gate_present ∧ live_unproven ∧ policy_learning_unproven
+```
+
+One-line explanation: the repository is credible as an offline-tested browser-CDP OpenAI-like router prototype, but not yet credible as a production adaptive provider router until live CDP and policy-learning evidence pass.
+
+## EXECUTE Turn 1 — Validation Profile Gate
+
+This turn implemented the planned validation profile boundary without changing provider behavior. It makes required offline validation, advisory legacy debt, and optional live-CDP validation machine-visible.
+
+Implemented changes:
+
+```text
+src/tools/report-validation.mjs = new profile runner and evidence reporter
+test/validation-profile.test.mjs = classifier regression test
+package.json = added test:validation and validate:* scripts
+run_tests.sh = includes validation-profile regression test
+IMPLEMENTATION_PLAN.md = records EXECUTE result and safe delta commands
+score.md = records this evidence-backed update
+```
+
+Validation profile equation:
+
+```text
+validate:offline = check(required) ∧ test(required) ∧ smoke(required)
+validate:legacy = legacy_artifact_validator(advisory)
+validate:live = CDP_9221_preflight(optional) → live_test_if_reachable
+validate:release = offline_required ∧ legacy_advisory ∧ live_optional
+```
+
+Validation results:
+
+```text
+npm run check = pass; syntax_ok files=53
+npm test = pass; 7 unit + 3 mock + 4 sdk + 6 artifact + 1 validation tests
+npm run smoke = pass; openai_contract_smoke_ok
+npm run validate:offline = pass; required_pass=true
+npm run validate:legacy = pass_advisory; advisory_failures=1; underlying legacy validator still reports failures
+npm run validate:release = pass; required_pass=true; advisory_failures=1; optional_skips=1
+npm run validate:live = fail_environment; GET http://127.0.0.1:9221/json/version unreachable
+```
+
+Risk movement:
+
+```text
+T: 7.9 → 8.1   # one explicit offline validation profile now gates check+test+smoke
+E: 6.9 → 7.1   # validation evidence is structured by required/advisory/optional class
+M: 6.0 → 6.4   # docs now distinguish offline pass, legacy debt, and live environment block
+R: 6.2 unchanged; no authenticated live CDP browser was reachable
+L: 3.8 unchanged; policy-learning improvement is still unproven
+C: 5.9 → 6.1   # validation entrypoints are simpler despite one small new tool
+```
+
+Updated rating:
+
+```text
+current_score ≈ 7.0 / 10
+Good = max(T=8.1, A=7.9, S=7.6, P=7.4, O=7.3, Q=7.2, X=7.2, E=7.1, K=7.1, D=6.6, V=6.6, M=6.4, R=6.2, C=6.1, L=3.8) = T
+```
+
+One-line explanation: validation discipline improved, but production confidence remains capped until live authenticated CDP and policy-learning deltas are proven.

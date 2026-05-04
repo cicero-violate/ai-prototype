@@ -3,126 +3,129 @@
 ## Variables
 
 ```text
-B = 84aa6a369a32eec9674c9aef34c3826944c9f49f  # restored uploaded bundle head / origin/main
+B = ca3414f2cb61e4d634b5f42d3d0dbcd58632d35b  # restored uploaded bundle head / origin/main
+P = IMPLEMENTATION_PLAN.md
+S = score.md
+G = GOAL.md
 H = committed HEAD after EXECUTE
-A = OpenAI-like assistant response shape
-K = SDK/drop-in client compatibility
-S = streaming SSE compatibility
-T = offline test strength
+O = OpenAI endpoint/envelope compatibility
+Q = request schema compatibility
+A = assistant response schema compatibility
+K = SDK/drop-in compatibility
 E = evidence/provenance quality
-V = replay/artifact verification correctness
+V = replay/verification correctness
+T = deterministic testability
 R = live operational realism
-L = policy-learning proof
-C = complexity / artifact-corpus maintainability
-G = aggregate project goodness
+M = documentation accuracy
+C = complexity / cognitive load
+L = policy learning quality
 ```
 
 ## Equation
 
 ```text
 next_fix = argmax(score_gain × validation_power × feasibility ÷ source_risk)
-Good = max(A=7.9, T=7.8, S=7.6, P=7.4, O=7.3, Q=7.2, X=7.2, K=7.1, E=6.7, D=6.6, V=6.3, R=6.2, M=6.0, C=5.8, L=3.8) = A
+Good = max(A=7.9, T=7.9, S_stream=7.6, P_arch=7.4, O=7.3, Q=7.2, K=7.1, E=6.9, V=6.6, R=6.2, M=6.0, C=5.9, L=3.8) = A = T
 ```
 
-One-line explanation: after the SDK gate landed, the best implementable improvement is to make replay/artifact verification separate current generated evidence from legacy failing evidence.
+One-line explanation: the strongest current axes are assistant contract shape and offline testability; the best immediate improvement is to make required/offline, advisory/legacy, and optional/live validation boundaries explicit and machine-checkable.
 
 ## Evidence Basis
 
-This PLAN is derived from `GOAL.md` and the latest `score.md` OBSERVE section.
+This PLAN is derived from `GOAL.md`, current `score.md`, recent git history, `package.json`, `run_tests.sh`, tests, and validation re-run in this environment.
 
 ```text
 GOAL.md purpose = local browser-control server exposing an OpenAI-compatible API over authenticated browser sessions
 GOAL.md target = evidence → dataset registry → feature extraction → pattern mining → policy decision → response extraction → feedback + replay/privacy verification
-GOAL.md status = architecture_defined ∧ implementation_unproven
-GOAL.md next target = minimal provider registry plus chatgpt_private send/read loop
-GOAL.md boundary = do not harvest credentials, bypass login/CAPTCHA, evade rate limits, or persist cookies/tokens/auth headers
-score.md current_score ≈ 6.6/10
-score.md strongest_axis = A=7.9; response envelope evidence is strongest
-score.md offline_tests = strong; npm test passes unit + mock + sdk + artifact fixture gates
-score.md live_CDP = unproven; npm run test:live failed with ECONNREFUSED 127.0.0.1:9221 / healthz 502
-score.md artifact_gap = 86/88 committed historical turns fail the current quality gate
-score.md runtime_receipt_gap = validation_commands=[] and test_count=0 in runtime delta receipts
-score.md policy_learning_gap = L=3.8; no replay-backed before/after improvement proof
+GOAL.md boundary = operator-owned authenticated browser only; no credential harvesting, CAPTCHA bypass, rate-limit evasion, or cookie/token persistence
+score.md current_rating = 6.8/10
+score.md strongest_axes = A=7.9 and T=7.9
+score.md key_blockers = live_CDP_unproven ∧ legacy_artifact_quality_low ∧ policy_learning_unproven
+score.md legacy_artifact_quality = 2/88 committed turns pass current validator; 86/88 fail expected legacy gate
+score.md runtime_risk = stale_advisory download present; runtime receipts/history exist but live browser evidence is incomplete
+package_scripts = check, test, test:unit, test:mock, test:sdk, test:artifacts, test:artifacts:legacy, test:live, smoke
+run_tests.sh = already treats live CDP as opt-in via RUN_LIVE_TESTS=1 or LIVE_ROUTER_URL
 ```
 
-Validation already observed for this PLAN pass:
+Validation observed during this PLAN stage:
 
 ```text
-npm test = pass; unit 7/7, mock 3/3, sdk 4/4, artifact fixtures 5/5
+npm run check = pass; syntax_ok files=51
+npm test = pass; unit 7/7, mock 3/3, SDK 4/4, artifact tests 6/6
 npm run smoke = pass; openai_contract_smoke_ok
+npm run test:live = fail_environment; healthz 502; connect ECONNREFUSED 127.0.0.1:9221
 ```
 
 ## Highest-Impact EXECUTE Target
 
-Target `V = replay/artifact verification correctness` by adding a current-corpus artifact gate that does not confuse legacy committed evidence with newly generated evidence.
+Target `T + E + R + M` by adding a deterministic validation profile and release-evidence contract.
 
 ```text
-target = current_artifact_corpus_gate
-primary_axes = V, E, C
-secondary_axes = T, R, M
-blocked_axis = live authenticated CDP behavior
-large_deferred_axis = L until policy deltas are replay-backed
+target = validation_profile_and_release_evidence_contract
+primary_axes = T, E, R, M
+secondary_axes = C, V
+blocked_axis = live authenticated CDP pass
+large_deferred_axis = L until replay-backed policy before/after improvement exists
 ```
 
 Reasoning:
 
 ```text
-SDK_contract_matrix = already implemented and passing
-artifact_fixture_gate = already implemented and passing
-full_committed_artifact_corpus_gate = currently fails 86/88 historical turns
-legacy_failures_are_real = preserve as risk evidence, not default CI blocker
-current_generated_artifacts_need_gate = true
-best_score_gain_now = verify newly generated turn artifacts while keeping legacy debt explicit
+live_CDP_validation = highest realism gap but unavailable in this environment
+policy_learning = lowest score but requires replay-backed feedback design beyond one safe step
+current_artifact_gate = already implemented by prior commit ca3414f
+best_feasible_step_now = separate required offline gates, advisory legacy gates, and optional live gates with explicit evidence output
 ```
 
-This improves the highest practical confidence gap without requiring authenticated browser access, changing provider behavior, or deleting historical evidence.
+This should prevent false production claims while improving release discipline: offline CI can pass deterministically, legacy debt remains visible, and live browser proof becomes an explicit opt-in requirement instead of an implicit failed default.
 
-## Planned Source Changes for EXECUTE Stage
+## Planned Changes for EXECUTE Stage
 
 Do not modify source code in this PLAN stage. The next EXECUTE stage should stay within this scope:
 
-1. Add a corpus-mode validator option.
-   - Keep `validateTurnArtifacts(rootPath)` strict by default.
-   - Add an explicit mode for current/generated artifacts, not a silent legacy bypass.
-   - Report `scope`, `turn_count`, `pass_count`, `fail_count`, and failure summaries.
-   - Do not weaken `replay_match` or `redaction_pass` checks.
+1. Add explicit validation profiles.
+   - `test:offline` or `validate:offline`: required deterministic gate.
+   - `validate:legacy`: advisory committed artifact corpus report; expected to expose legacy failures.
+   - `validate:live`: optional authenticated CDP gate; never required without operator-owned browser.
+   - `validate:release`: ordered profile that runs offline gates, smoke, legacy advisory, and records status.
 
-2. Add a current-corpus test path.
-   - Use the mocked CDP integration or a temporary generated artifact directory.
-   - Validate only artifacts generated during the current test run or a deliberately curated fixture corpus.
-   - Assert that generated turns include `manifest.json`, `replay.json`, `evaluation.json`, valid NDJSON, matching `turn_id`, `replay_match=true`, and `redaction_pass=true`.
+2. Emit command-backed validation evidence.
+   - Record command names, exit codes, and pass/fail classes.
+   - Distinguish `pass`, `fail`, and `fail_environment`.
+   - Capture live CDP failure as environment evidence, not source failure.
+   - Do not persist secrets, cookies, tokens, prompts, or assistant content.
 
-3. Preserve legacy corpus visibility.
-   - Keep a command that reports the committed `artifacts/turns` failure count.
-   - Do not make historical legacy failures pass by ignoring them globally.
-   - Record legacy corpus status in `score.md` as debt, not resolved evidence.
+3. Keep legacy artifact debt explicit.
+   - Preserve `npm run test:artifacts:legacy` as advisory unless legacy corpus migration is implemented.
+   - Report `turn_count`, `pass_count`, and `fail_count`.
+   - Do not delete, rewrite, or silently ignore historical evidence.
 
-4. Add explicit npm scripts.
-   - Keep `npm test` deterministic and no-browser by default.
-   - Add a required current/generated artifact gate to default tests.
-   - Add a separate advisory legacy-corpus report command that is expected to fail until historical turns are migrated or quarantined.
+4. Preserve safe git delta output.
+   - Do not create final `/mnt/data/repo-delta-XXX.bundle` in PLAN or intermediate stages.
+   - In final EXECUTE stage, create the cumulative bundle from original base `B..HEAD`.
+   - Verify the bundle before returning links.
+   - Write a manifest containing base commit, head commit, changed files, validation commands, and receiver apply commands.
 
-5. Update evidence after EXECUTE.
-   - Update `score.md` only with command-backed facts.
-   - Raise `V`, `E`, or `C` only for the newly gated current/generated corpus.
-   - Keep `R` and live CDP capped unless `npm run test:live` passes against a reachable authenticated browser.
-   - Keep `L` capped unless a replay-backed before/after policy improvement is implemented and validated.
+5. Update `score.md` only with command-backed facts.
+   - Raise `T`, `E`, or `M` only if the validation profile and evidence contract pass.
+   - Keep `R` capped unless `npm run test:live` passes against reachable authenticated CDP.
+   - Keep `L` capped unless a replay-backed policy-learning delta is implemented and validated.
 
 ## Expected Files to Change in EXECUTE Stage
 
 ```text
-src/tools/validate-turn-artifacts.mjs
-test/artifact-quality.test.mjs
 package.json
+run_tests.sh
+IMPLEMENTATION_PLAN.md
 score.md
 ```
 
-Acceptable if a cleaner split is needed:
+Acceptable if needed:
 
 ```text
-test/current-artifact-corpus.test.mjs
-test/fixtures/artifacts/current-valid/...
 docs/07-operations-roadmap.md
+test/validation-profile.test.mjs
+src/tools/report-validation.mjs
 ```
 
 Avoid:
@@ -130,15 +133,15 @@ Avoid:
 ```text
 provider adapter rewrites
 browser target-management rewrites
-large artifact deletions
-legacy evidence erasure
-policy-learning rewrites
-live-CDP behavior claims without live validation
+legacy artifact deletion
+credential/cookie/token persistence
+live-CDP success claims without live validation
+policy-learning score increases without replay-backed before/after proof
 ```
 
 ## Validation Commands
 
-Required validation for the EXECUTE stage:
+Required no-browser validation:
 
 ```bash
 node --version
@@ -152,28 +155,32 @@ npm run smoke
 npm test
 ```
 
-Required artifact-specific validation:
+Required profile validation after EXECUTE adds the scripts:
 
 ```bash
-node src/tools/validate-turn-artifacts.mjs test/fixtures/artifacts/valid
-node src/tools/validate-turn-artifacts.mjs artifacts/turns || true
+npm run validate:offline
+npm run validate:release
 ```
 
-The second command must remain advisory unless the EXECUTE stage explicitly migrates or quarantines legacy artifacts.
-
-Optional live validation when an authenticated browser is reachable on CDP port `9221`:
+Required legacy advisory signal:
 
 ```bash
-npm run test:live
+npm run test:artifacts:legacy || true
 ```
 
-Safe delta validation after the EXECUTE commit:
+Optional live validation when an authenticated browser is reachable:
+
+```bash
+RUN_LIVE_TESTS=1 npm run test:live
+```
+
+Safe delta validation for final stage only:
 
 ```bash
 git status --short
 git log --oneline -n 10
 rm -f /mnt/data/repo-delta-XXX.bundle /mnt/data/DELTA_MANIFEST.md
-git bundle create /mnt/data/repo-delta-XXX.bundle 84aa6a369a32eec9674c9aef34c3826944c9f49f..HEAD
+git bundle create /mnt/data/repo-delta-XXX.bundle B..HEAD
 git bundle verify /mnt/data/repo-delta-XXX.bundle
 ```
 
@@ -182,43 +189,81 @@ Receiver apply commands:
 ```bash
 git fetch ./repo-delta-XXX.bundle HEAD
 git merge --ff-only FETCH_HEAD
-npm run check
-npm test
+npm run validate:offline
 npm run smoke
 ```
 
 ## Acceptance Criteria
 
 ```text
-A1: default artifact tests validate current/generated artifacts, not only static fixtures
-A2: generated current-turn artifacts prove manifest/replay/evaluation presence
-A3: generated current-turn artifacts prove turn_id consistency
-A4: generated current-turn artifacts prove replay_match=true and redaction_pass=true
-A5: all NDJSON files in generated current-turn artifacts are parse-checked
-A6: legacy committed corpus remains visible with measured fail_count, not hidden
-A7: npm test remains deterministic and no-browser by default
-A8: npm run test:live remains optional and does not support offline overclaims
-A9: score.md records exact validation commands and distinguishes current evidence from legacy debt
-A10: final delta bundle is cumulative from B..H and verifies successfully
+A1: offline validation has one explicit command and passes without browser access
+A2: release validation records required gates and advisory legacy/live classes separately
+A3: live CDP failure is classified as fail_environment when CDP 9221 is unreachable
+A4: legacy artifact corpus remains visible with measured pass/fail counts
+A5: default tests remain deterministic and no-browser
+A6: no secrets, cookies, tokens, prompts, or assistant content are persisted by validation evidence
+A7: score.md records exact commands and does not overclaim live or policy-learning status
+A8: final delta bundle is cumulative from B..HEAD and verifies successfully
 ```
 
 ## Risk Controls
 
 ```text
-risk_masking_legacy_failures ⇒ keep legacy corpus report explicit and advisory, not silently skipped
-risk_false_replay_confidence ⇒ do not relax replay_match/redaction_pass predicates
-risk_artifact_bloat ⇒ generate temp artifacts in tests unless committed fixtures are minimal
-risk_live_overclaim ⇒ keep live CDP optional and score-capped unless test:live passes
-risk_policy_learning_overclaim ⇒ do not raise L without replay-backed before/after deltas
-risk_delta_corruption ⇒ create bundle from 84aa6a3..HEAD and verify before returning final links
+risk_false_production_confidence ⇒ keep live CDP optional and explicitly environment-gated
+risk_hiding_legacy_debt ⇒ keep legacy corpus report advisory but visible
+risk_validation_noise ⇒ classify environment failure separately from source failure
+risk_secret_retention ⇒ store command metadata and digests only, not browser/session content
+risk_delta_corruption ⇒ create final bundle from B..HEAD and verify before returning links
+risk_scope_creep ⇒ do not alter provider behavior during this validation-profile step
 ```
 
 ## Stage Boundary
 
-This PLAN stage intentionally changes only:
+PLAN stage intentionally changed only:
 
 ```text
 IMPLEMENTATION_PLAN.md
 ```
 
-No source code is modified in this stage.
+EXECUTE stage may change source, tests, package scripts, and score evidence to implement the selected validation-profile gate.
+
+## EXECUTE Turn 1 Result
+
+```text
+implemented = validation_profile_runner ∧ validation_classifier_test ∧ package_scripts ∧ run_tests_update ∧ score_evidence_update
+validation_profiles = offline(required), legacy(advisory), live(optional), release(required+advisory+optional)
+release_gate = required_offline_pass ∧ legacy_visible ∧ live_skipped_without_operator_browser
+```
+
+Validation commands for this turn:
+
+```bash
+npm run check
+npm test
+npm run smoke
+npm run validate:offline
+npm run validate:legacy
+npm run validate:release
+npm run validate:live || true
+```
+
+Observed results:
+
+```text
+npm run check = pass; syntax_ok files=53
+npm test = pass; unit + mock + sdk + artifact + validation-profile tests
+npm run smoke = pass; openai_contract_smoke_ok
+npm run validate:offline = pass; required_pass=true
+npm run validate:legacy = pass_advisory; advisory_failures=1; legacy corpus still fails internally
+npm run validate:release = pass; required_pass=true; advisory_failures=1; optional_skips=1
+npm run validate:live = fail_environment; GET http://127.0.0.1:9221/json/version unreachable
+```
+
+Safe delta output remains:
+
+```bash
+git bundle create /mnt/data/repo-delta-004.bundle ca3414f2cb61e4d634b5f42d3d0dbcd58632d35b..HEAD
+git bundle verify /mnt/data/repo-delta-004.bundle
+git fetch ./repo-delta-004.bundle HEAD
+git merge --ff-only FETCH_HEAD
+```
