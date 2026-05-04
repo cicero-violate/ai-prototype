@@ -3,67 +3,105 @@
 ## Variables
 
 ```text
-B  = ca0537f311aa35d538addc0236fb696acf5b8629
-H0 = current observed HEAD before this plan commit
+B  = b9830281da5618db55c12371ec1f17b3abdd0b00
+H0 = eae2039591b3df4a8bf525eac37782a4f072d373
+G  = GOAL.md authority
 S  = score.md evidence state
-G  = GOAL.md target architecture
+F  = failing reproducible gate count
 M  = missing validation signal count
-V  = validation freshness
-E  = executable evidence coverage
-R  = runtime/replay confidence
-Q  = score improvement per implementation risk
+Q  = score lift per implementation risk
 ```
 
 ## Equation
 
 ```text
-next_work = argmax(Q) = argmax((ΔV + ΔE + ΔR - ΔM) / implementation_risk)
-GOOD = max(K,C,A,R,OB,CX,ME,PL,LL,JG,TO,VF,EV,PO,LE,OR)
+next_work = argmax(Q) = argmax((Δreproducible_validation + Δevidence - Δrisk) / changed_surface)
+GOOD = max(K,C,V,P,B,E,N,D)
 ```
 
-One-line explanation: the highest-impact next change is to convert the existing observe harness from passive evidence collection into a Rust-validation evidence gate that produces reproducible pass/fail records without touching kernel behavior.
+One-line explanation: the best immediate score improvement is to make the already-committed router artifact-quality gate reproducible by adding the missing deterministic fixtures, not by changing runtime behavior.
 
 ## Source Authority
 
-`GOAL.md` defines the repository as a deterministic, self-improving agent runtime whose value depends on replayable evidence, bounded recovery, append-only learning, and trustworthy outcomes. The current status claims kernel, codec, runtime replay, local tooling/process effects, semantic verification, policy persistence, learning promotion, local Ollama judgment, and bounded observation ingress are implemented.
+`GOAL.md` defines the repository as a deterministic, self-improving agent runtime whose value depends on a frozen kernel, replayable state, durable receipts, verification, eval, recovery, and learning. It also records prior workstation claims such as `cargo build = passed`, `cargo test = 103 passed / 0 failed`, and graph intent coverage.
 
-`score.md` remains critical: the observe harness exists, but this environment still lacks reproduced Rust validation. The scorecard records `cargo_fmt_check`, `cargo_test_all_targets`, and `cargo_clippy_all_targets` as unavailable because `cargo`/`rustc` were missing here. It also keeps graph generation, rustc-wrapper telemetry, external observation/API tests, semantic artifact verification, and policy-learning replay trace as missing signals.
+`score.md` is the current controlling evidence. It classifies the repository as a serious deterministic runtime prototype, but identifies these unresolved blockers:
+
+```text
+root_rust_validation = unavailable here
+rustc_wrapper_path_exists = false
+state_rustc_graph_json_present = false
+runtime_archive_evidence = shallow preflight metadata only
+router_artifact_quality = fail, 0/5, missing fixtures
+```
+
+The root Rust/toolchain blockers are higher severity, but not implementable in this environment without adding or changing toolchains. The router artifact-quality failure is implementable now because Node is available, the validator exists, and the failure is fixture absence rather than a behavioral ambiguity.
 
 ## Highest-Impact Target For EXECUTE
 
-Strengthen the validation surface, not the core runtime.
+Close the reproducible router artifact-quality gate.
 
-Target file:
-
-```text
-scripts/observe_validation.sh
-```
-
-Target generated evidence:
+Target files to add only:
 
 ```text
-target/observe/validation-report.ndjson
+ai-chromium/router-server/test/fixtures/artifacts/valid/turn-001/manifest.json
+ai-chromium/router-server/test/fixtures/artifacts/valid/turn-001/replay.json
+ai-chromium/router-server/test/fixtures/artifacts/valid/turn-001/evaluation.json
+ai-chromium/router-server/test/fixtures/artifacts/valid/turn-001/evidence.ndjson
+ai-chromium/router-server/test/fixtures/artifacts/missing-manifest/turn-001/replay.json
+ai-chromium/router-server/test/fixtures/artifacts/missing-manifest/turn-001/evaluation.json
+ai-chromium/router-server/test/fixtures/artifacts/replay-mismatch/turn-001/manifest.json
+ai-chromium/router-server/test/fixtures/artifacts/replay-mismatch/turn-001/replay.json
+ai-chromium/router-server/test/fixtures/artifacts/replay-mismatch/turn-001/evaluation.json
+ai-chromium/router-server/test/fixtures/artifacts/redaction-fail/turn-001/manifest.json
+ai-chromium/router-server/test/fixtures/artifacts/redaction-fail/turn-001/replay.json
+ai-chromium/router-server/test/fixtures/artifacts/redaction-fail/turn-001/evaluation.json
+ai-chromium/router-server/test/fixtures/artifacts/malformed-evidence/turn-001/manifest.json
+ai-chromium/router-server/test/fixtures/artifacts/malformed-evidence/turn-001/replay.json
+ai-chromium/router-server/test/fixtures/artifacts/malformed-evidence/turn-001/evaluation.json
+ai-chromium/router-server/test/fixtures/artifacts/malformed-evidence/turn-001/evidence.ndjson
 ```
 
-Required EXECUTE-stage behavior:
+No router source change is planned. The validator already checks required JSON files, replay match, evaluation replay match, redaction pass, turn ID consistency, and parseable NDJSON.
 
-1. Keep the script portable and deterministic.
-2. Add explicit Rust validation records for:
-   - `cargo fmt --check`
-   - `cargo test --all-targets`
-   - `cargo clippy --all-targets -- -D warnings`
-3. Capture command availability, exit code, elapsed milliseconds, and output path for each validation command.
-4. Preserve graceful degradation when `cargo`, `rustc`, clippy, Ollama, graph artifacts, or runtime archives are unavailable.
-5. Emit NDJSON only; every non-empty line must parse as JSON.
-6. Do not mutate kernel, runtime, capability, API, or application source behavior.
-7. Do not claim any validation passed unless the command actually ran and exited successfully.
+## Required Fixture Semantics
+
+```text
+valid:
+  one turn directory
+  manifest.turn_id = replay.turn_id = evaluation.turn_id
+  replay.replay_match = true
+  evaluation.replay_match = true
+  evaluation.redaction_pass = true
+  evidence.ndjson = parseable JSON lines
+
+missing-manifest:
+  one turn directory without manifest.json
+  expected error includes "missing manifest.json"
+
+replay-mismatch:
+  replay.replay_match = false
+  expected error includes "replay.replay_match must be true"
+
+redaction-fail:
+  evaluation.redaction_pass = false
+  expected error includes "evaluation.redaction_pass must be true"
+
+malformed-evidence:
+  evidence.ndjson contains one malformed JSON line
+  expected error includes "malformed JSON"
+```
 
 ## Validation Commands
 
-Run these during EXECUTE after implementation:
+Run after the EXECUTE-stage fixture additions:
 
 ```bash
 git status --short
+node --check ai-chromium/router-server/src/server.mjs
+cd ai-chromium/router-server && node --test test/openai-contract.test.mjs
+cd ai-chromium/router-server && node --test test/mock-cdp-integration.test.mjs
+cd ai-chromium/router-server && node --test test/artifact-quality.test.mjs
 bash scripts/observe_validation.sh
 test -s target/observe/validation-report.ndjson
 python3 - <<'PY'
@@ -77,56 +115,53 @@ for line in path.read_text().splitlines():
         count += 1
 print(f'valid_ndjson_lines={count}')
 PY
-cargo fmt --check
-cargo test --all-targets
-cargo clippy --all-targets -- -D warnings
 git diff --check
 ```
 
-If Rust tooling is unavailable, the standalone commands may fail, but the harness must still record that absence explicitly. In a Rust-capable environment, the three cargo commands become required pass/fail score evidence.
-
-Optional local validation when Ollama is installed and running:
+Rust validation remains required when a Rust toolchain and the configured wrapper are available:
 
 ```bash
-CANON_OLLAMA_BASE_URL=http://127.0.0.1:11434/v1 \
-CANON_OLLAMA_MODEL=qwen2.5-coder:7b \
-cargo run --example ollama_judgment
+RUSTC_WORKSPACE_WRAPPER="" cargo fmt --check
+RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets
+RUSTC_WORKSPACE_WRAPPER="" cargo clippy --all-targets -- -D warnings
 ```
+
+The `RUSTC_WORKSPACE_WRAPPER=""` override is validation-only. It avoids the currently absent `/workspace/ai_sandbox/canon-rustc-v2/target/debug/canon-rustc-v2` wrapper without changing `.cargo/config.toml`.
 
 ## Expected Score Movement
 
 ```text
-EV: improves if validation report becomes command-level reproducible evidence
-R:  improves if runtime/replay tests are captured as command records
-VF: improves if semantic/proof validation commands are recorded with exits
-M:  decreases only when commands actually pass or artifacts are present
+N: router evidence improves from 5.6 if artifact-quality moves 0/5 fail -> 5/5 pass
+E: evidence quality improves because a committed negative/positive fixture set becomes executable
+M: missing_router_artifact_quality_fixtures becomes false
+K/C/R: unchanged; root Rust and graph blockers remain open
 ```
 
-This plan does not raise scores by assertion. It creates the next execution target needed to replace stale workstation claims with fresh local evidence.
+This plan does not claim root runtime validation. It only targets one concrete, reproducible failure that can be closed now.
 
 ## Risks And Constraints
 
 ```text
-risk_source_mutation = low, if limited to scripts/observe_validation.sh
-risk_false_positive = medium, mitigated by explicit exit-code records
-risk_environment_dependency = medium, mitigated by unavailable-tool records
-risk_kernel_regression = low, because kernel/runtime source behavior is not targeted
+risk_source_mutation = low, fixtures only
+risk_false_positive = low, test asserts both accept and reject paths
+risk_scope_creep = medium, mitigated by forbidding router source edits
+risk_root_score_overclaim = medium, mitigated by leaving Rust/toolchain blockers explicit
 ```
 
 Constraints:
 
-- Preserve the frozen-kernel boundary.
-- Preserve runtime/capability behavior.
+- Do not modify kernel, runtime, capability, API, or router implementation source in this stage.
+- Do not alter `score.md` unless the EXECUTE-stage validation result changes evidence.
+- Do not hide root Rust/toolchain, graph, runtime archive, or live CDP gaps.
 - Keep generated validation output outside committed source unless explicitly requested.
-- Preserve safe delta output from `B..H`.
 
 ## Safe Git Delta Procedure
 
-After this PLAN-stage commit and any later EXECUTE-stage commit:
+Use the uploaded bundle base preserved by `origin/main`:
 
 ```bash
 git status --short
-git bundle create /mnt/data/repo-delta-0001.bundle ca0537f311aa35d538addc0236fb696acf5b8629..HEAD
+git bundle create /mnt/data/repo-delta-0001.bundle b9830281da5618db55c12371ec1f17b3abdd0b00..HEAD
 git bundle verify /mnt/data/repo-delta-0001.bundle
 ```
 
@@ -141,7 +176,7 @@ git fetch ./repo-delta-0001.bundle HEAD && git merge --ff-only FETCH_HEAD
 ```text
 source_code_changed = false
 plan_file_changed = IMPLEMENTATION_PLAN.md
-implementation_target = scripts/observe_validation.sh
+implementation_target = router artifact-quality fixtures
 validation_scope = documentation_plan_only
-delta_base = ca0537f311aa35d538addc0236fb696acf5b8629
+delta_base = b9830281da5618db55c12371ec1f17b3abdd0b00
 ```
