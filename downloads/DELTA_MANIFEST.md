@@ -1,34 +1,28 @@
-base_commit: 8ffd5555a409a11d23b884879071f4659e6ef7b1
-head_commit: 370be5f7e5ea128066ba78dc6f5cb013721d9774
+base_commit: 181519a9fd945532cc6de825c71d197dd01e65ec
+head_commit: 64e1cac2e0d4146c9dc810612eed5d2f48f9ebd2
 
 # Delta Manifest
 
 ## Changed Files
-- .gitignore
-- .repo-agent-runtime/upload-bundles/ai.bundle
 - IMPLEMENTATION_PLAN.md
 - README.md
-- downloads/DELTA_MANIFEST.md
-- downloads/ai-observe-validation-output.txt
-- downloads/ai-router-tests-run.txt
-- downloads/repo-delta-004.bundle
 - score.md
 - scripts/observe_validation.sh
 - scripts/write_delta_manifest.py
 
 ## Validation Results
 - validation_status: partial
-- validation_command_count: 8
+- validation_command_count: 7
 - validation_test_count: 45
 - router_test_count: 45
 - cargo_test_count_when_available: None
 - failed_required_commands: []
 - missing_signal_count: 12
-- report_sha256: 24d000a4ba32cfd8bca8362ad43db8d2e2704e65e267daa3067b75bae60e363a
-- bundle_sha256: 3f01faa296d82be4d9755b0642a0010522563022af50a8bdf3228ce434a3893f
+- report_sha256: 1e6ea9c10470aadda64cce25610a757415b4e8a7450da62a9a84d7c3aa0f3b9a
+- bundle_sha256: 784b153e50458cf01ae052e0386546ca93a953472a42b119194228f7c391ff08
 - bundle_verify: pass
-- validation_report_git_head: 370be5f7e5ea128066ba78dc6f5cb013721d9774
-- changed_file_count: 11
+- validation_report_git_head: 64e1cac2e0d4146c9dc810612eed5d2f48f9ebd2
+- changed_file_count: 5
 - cargo_available: False
 - rustc_available: False
 - toolchain_path_added: False
@@ -39,19 +33,17 @@ head_commit: 370be5f7e5ea128066ba78dc6f5cb013721d9774
 - rustc_wrapper_path_exists: False
 - git_delta_diff_check_result: pass
 - state_graph_present: False
-- runtime_archive_sha256: 74fc89b95d610ee0f0e5bc51ce5a704b0b34f9a37d624db00084ad0e7d8edc74
-- runtime_manifest_base_commit: 8ffd5555a409a11d23b884879071f4659e6ef7b1
-- runtime_archive_log_total: 7883
-- runtime_archive_download_total: 128
+- runtime_archive_sha256: 2ccdf19e623a6be95924aac7ad0b2d696923ef96f42a895917ec73693f5c868a
+- runtime_manifest_base_commit: 181519a9fd945532cc6de825c71d197dd01e65ec
+- runtime_archive_log_total: 8416
+- runtime_archive_download_total: 133
 - runtime_archive_conversation_snapshots: 0
 - runtime_stale_advisory_count: 1
 - runtime_candidate_error_count: 0
 - runtime_duplicate_artifact_aliases: 6
 - delta_base_is_ancestor: True
-- delta_changed_file_count: 11
-- tracked_file_count: 184
-- tracked_generated_artifact_count: 0
-- tracked_generated_artifacts: []
+- delta_changed_file_count: 5
+- tracked_file_count: 189
 - rust_file_count_src_examples: 53
 - rust_test_attr_count: 103
 - rust_cfg_test_count: 2
@@ -60,8 +52,7 @@ head_commit: 370be5f7e5ea128066ba78dc6f5cb013721d9774
 
 ## Validation Commands
 - git_diff_check: pass :: git diff --check
-- git_delta_diff_check: pass :: git diff --check 8ffd5555a409a11d23b884879071f4659e6ef7b1..HEAD
-- tracked_generated_artifact_gate: pass :: local tracked_generated_artifact_gate
+- git_delta_diff_check: pass :: git diff --check 181519a9fd945532cc6de825c71d197dd01e65ec..HEAD
 - router_offline_tests: pass :: bash run_tests.sh
 - cargo_fmt_check: unavailable :: cargo fmt --check
 - cargo_test_all_targets: unavailable :: cargo test --all-targets
@@ -83,7 +74,6 @@ head_commit: 370be5f7e5ea128066ba78dc6f5cb013721d9774
 - missing_runtime_download_history: False
 - missing_rustc_wrapper_telemetry: True
 - missing_semantic_artifact_verification_test: True
-- missing_tracked_generated_artifact_hygiene: False
 
 ## Receiver Apply Commands
 ```bash
