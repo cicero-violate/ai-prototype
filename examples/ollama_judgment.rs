@@ -9,10 +9,10 @@ use ai::{
     load_tlog_ndjson, verify_ollama_judgment_proof_event_order_ndjson,
     verify_ollama_judgment_proof_events, verify_ollama_judgment_proof_events_ndjson,
     verify_ollama_judgment_tlog_ndjson, verify_ollama_llm_effect_receipts, verify_tlog,
-    write_tlog_ndjson, Command, CommandEnvelope, ContextRecord, EventKind, Evidence, Gate,
-    GateId, GateStatus, MemoryFact, MemoryIndex, OllamaClient, OllamaError, OllamaJudgmentProofEvent,
-    OllamaLlmEffectReceipt, OLLAMA_JUDGMENT_PROOF_LINE, OLLAMA_LLM_EFFECT_RECEIPT_RECORD,
-    OLLAMA_LLM_EFFECT_RECEIPT_SCHEMA_VERSION, Phase, PolicyStore, RuntimeConfig, State,
+    write_tlog_ndjson, Command, CommandEnvelope, ContextRecord, EventKind, Evidence, Gate, GateId,
+    GateStatus, MemoryFact, MemoryIndex, OllamaClient, OllamaError, OllamaJudgmentProofEvent,
+    OllamaLlmEffectReceipt, Phase, PolicyStore, RuntimeConfig, State, OLLAMA_JUDGMENT_PROOF_LINE,
+    OLLAMA_LLM_EFFECT_RECEIPT_RECORD, OLLAMA_LLM_EFFECT_RECEIPT_SCHEMA_VERSION,
 };
 
 fn critical_ollama_receipt_tamper_fields() -> [(&'static str, usize); 17] {
@@ -91,7 +91,10 @@ fn tamper_first_ollama_receipt_field(
     Ok(())
 }
 
-fn tamper_rejected_count(path: &Path, receipt: OllamaLlmEffectReceipt) -> Result<usize, Box<dyn Error>> {
+fn tamper_rejected_count(
+    path: &Path,
+    receipt: OllamaLlmEffectReceipt,
+) -> Result<usize, Box<dyn Error>> {
     let mut rejected = 0usize;
     for (field_name, field_index) in critical_ollama_receipt_tamper_fields() {
         let tampered_path = path.with_file_name(format!(
@@ -131,7 +134,12 @@ fn main() -> Result<(), Box<dyn Error>> {
     );
 
     let mut tlog = Vec::new();
-    handle_envelope(&mut state, &mut tlog, RuntimeConfig::default(), envelope.clone())?;
+    handle_envelope(
+        &mut state,
+        &mut tlog,
+        RuntimeConfig::default(),
+        envelope.clone(),
+    )?;
     verify_tlog(&tlog)?;
 
     let persisted_event = tlog
@@ -187,60 +195,75 @@ fn main() -> Result<(), Box<dyn Error>> {
     let tampered_total = critical_ollama_receipt_tamper_fields().len();
     let tampered_rejected = tamper_rejected_count(tlog_path, receipt)?;
 
-    println!("provider=ollama");
-    println!("base_url={}", client.config().base_url);
-    println!("model={}", client.config().model);
-    println!("prompt_hash={}", call.prompt_hash);
-    println!("request_hash={}", call.request_hash);
-    println!("response_hash={}", call.response_hash);
-    println!("raw_response_hash={}", call.raw_response_hash);
-    println!("base_url_hash={}", receipt.base_url_hash);
-    println!("base_url_expected_hash={}", client.config().base_url_id());
-    println!(
-        "base_url_provenance_verified={}",
-        receipt.base_url_provenance_verified(client.config())
-    );
-    println!("timeout_ms={}", receipt.timeout_ms);
-    println!("retry_count={}", receipt.retry_count);
-    println!("max_retries={}", receipt.max_retries);
-    println!("attempt_budget={}", receipt.attempt_budget);
-    println!("request_identity_hash={}", receipt.request_identity_hash);
-    println!("retry_budget_hash={}", receipt.retry_budget_hash);
-    println!("budget_exhausted={}", receipt.budget_exhausted);
-    println!("duplicate_request={}", receipt.duplicate_request);
-    println!("token_count={}", receipt.token_count);
-    println!("receipt_proof_event_seq={}", receipt.proof_event_seq);
-    println!("receipt_proof_hash={}", receipt.proof_hash);
-    println!("receipt_hash={}", receipt.receipt_hash);
-    println!("receipt_event_seq={}", receipt.event_seq);
-    println!("receipt_verified={}", receipt_verified && receipt_replay_count == 1);
-    println!("tlog_path={}", tlog_path.display());
-    println!("tampered_tlog_path={}", tampered_tlog_path.display());
-    println!("tamper_rejected={}", tamper_rejected);
-    println!("tampered_fields_rejected={tampered_rejected}/{tampered_total}");
-    println!("judgment_passed={}", state.gates.judgment.status == GateStatus::Pass);
-    println!("event_from={:?}", persisted_event.from);
-    println!("event_to={:?}", persisted_event.to);
-    println!("phase_is_plan={}", state.phase == Phase::Plan);
-    println!("proof_event_seq={}", proof_event.proof_event_seq);
-    println!("proof_line_hash={}", proof_event.proof_line_hash);
-    println!("proof_hash={}", proof_event.proof_hash);
-    println!(
-        "proof_order_verified={}",
-        proof_order_count == proof_replay_count && proof_order_count == 1
-    );
-    println!(
-        "durable_proof_verified={}",
-        durable_proof_count == 1 && durable_receipt_count == 1
-    );
-    println!(
-        "receipt_proof_matches={}",
-        proof_event.matches_receipt(receipt, &loaded_tlog)
-    );
-    println!(
-        "ollama_judgment_proof={}",
-        OLLAMA_JUDGMENT_PROOF_LINE
-    );
+    let result_lines = [
+        "provider=ollama".to_string(),
+        format!("base_url={}", client.config().base_url),
+        format!("model={}", client.config().model),
+        format!("prompt_hash={}", call.prompt_hash),
+        format!("request_hash={}", call.request_hash),
+        format!("response_hash={}", call.response_hash),
+        format!("raw_response_hash={}", call.raw_response_hash),
+        format!("base_url_hash={}", receipt.base_url_hash),
+        format!("base_url_expected_hash={}", client.config().base_url_id()),
+        format!(
+            "base_url_provenance_verified={}",
+            receipt.base_url_provenance_verified(client.config())
+        ),
+        format!("timeout_ms={}", receipt.timeout_ms),
+        format!("retry_count={}", receipt.retry_count),
+        format!("max_retries={}", receipt.max_retries),
+        format!("attempt_budget={}", receipt.attempt_budget),
+        format!("request_identity_hash={}", receipt.request_identity_hash),
+        format!("retry_budget_hash={}", receipt.retry_budget_hash),
+        format!("budget_exhausted={}", receipt.budget_exhausted),
+        format!("duplicate_request={}", receipt.duplicate_request),
+        format!("token_count={}", receipt.token_count),
+        format!("receipt_proof_event_seq={}", receipt.proof_event_seq),
+        format!("receipt_proof_hash={}", receipt.proof_hash),
+        format!("receipt_hash={}", receipt.receipt_hash),
+        format!("receipt_event_seq={}", receipt.event_seq),
+        format!(
+            "receipt_verified={}",
+            receipt_verified && receipt_replay_count == 1
+        ),
+        format!("tlog_path={}", tlog_path.display()),
+        format!("tampered_tlog_path={}", tampered_tlog_path.display()),
+        format!("tamper_rejected={}", tamper_rejected),
+        format!("tampered_fields_rejected={tampered_rejected}/{tampered_total}"),
+        format!(
+            "judgment_passed={}",
+            state.gates.judgment.status == GateStatus::Pass
+        ),
+        format!("event_from={:?}", persisted_event.from),
+        format!("event_to={:?}", persisted_event.to),
+        format!("phase_is_plan={}", state.phase == Phase::Plan),
+        format!("proof_event_seq={}", proof_event.proof_event_seq),
+        format!("proof_line_hash={}", proof_event.proof_line_hash),
+        format!("proof_hash={}", proof_event.proof_hash),
+        format!(
+            "proof_order_verified={}",
+            proof_order_count == proof_replay_count && proof_order_count == 1
+        ),
+        format!(
+            "durable_proof_verified={}",
+            durable_proof_count == 1 && durable_receipt_count == 1
+        ),
+        format!(
+            "receipt_proof_matches={}",
+            proof_event.matches_receipt(receipt, &loaded_tlog)
+        ),
+        format!("ollama_judgment_proof={}", OLLAMA_JUDGMENT_PROOF_LINE),
+    ];
+
+    let log_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("log");
+    std::fs::create_dir_all(&log_dir)?;
+    let results_path = log_dir.join("ollama_judgment.results.txt");
+    std::fs::write(&results_path, result_lines.join("\n") + "\n")?;
+
+    for line in &result_lines {
+        println!("{line}");
+    }
+    println!("results_path={}", results_path.display());
 
     std::fs::remove_file(tampered_tlog_path).ok();
     Ok(())
