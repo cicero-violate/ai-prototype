@@ -17,13 +17,14 @@ L = policy learning quality
 T = testability
 R = operational realism
 M = documentation accuracy
+C = implementation simplicity / cognitive load
 ```
 
 ## Equations
 
 ```text
-score = geometric_mean(O, Q, A, S, K, P, E, V, X, D, L, T, R, M)
-Good = max(O, Q, A, S, K, P, E, V, X, D, L, T, R, M)
+score = geometric_mean(O, Q, A, S, K, P, E, V, X, D, L, T, R, M, C)
+Good = max(O, Q, A, S, K, P, E, V, X, D, L, T, R, M, C)
 ```
 
 One-line explanation: `score` measures weakest-link reliability; `Good` identifies the strongest current leverage axis.
@@ -500,29 +501,30 @@ The router may satisfy basic SDK calls pointed at `baseURL`, but it does not pre
 
 ## Current Score
 
-| Axis | Score | Evidence-backed note |
-|---|---:|---|
-| `O` OpenAI endpoint/envelope compatibility | 7.3 | `/v1/chat/completions` and `/v1/models` exist; response helper adds `usage`, `system_fingerprint`, `refusal:null`, and `annotations:[]`; mocked route test now proves the handler emits the envelope end-to-end. |
-| `Q` Request schema compatibility | 6.8 | `messages[]`/`prompt` are validated; mocked integration proves `system`/`developer`/`user` bridging and pre-browser `tools` rejection; many generation controls remain accepted-but-not-enforced. |
-| `A` Assistant response schema compatibility | 7.8 | Contract helper produces a plausible chat completion envelope, but committed historical `response.json` turn records are internal turn records, not final OpenAI response envelopes. |
-| `S` Streaming SSE compatibility | 7.3 | Mocked integration parses emitted SSE and verifies assistant role chunk, ordered content deltas, terminal finish chunk, and `[DONE]`; streaming error semantics still use SSE data payloads rather than strict HTTP failure behavior. |
-| `K` SDK/drop-in compatibility | 5.7 | Basic clients likely work for simple non-tool text turns; advanced SDK surfaces fail, warn, or silently defer to browser provider behavior. |
-| `P` Provider/capability architecture | 7.4 | Provider adapters, registry, capability contracts, upload/read/send/select capabilities, and target manager are separated cleanly. |
-| `E` Evidence/provenance quality | 6.4 | Receipts, manifests, datasets, feedback, schema artifacts, runtime audit logs, and mocked artifact assertions exist; receipts remain shallow and not cryptographically bound to browser evidence. |
-| `V` Replay/verification correctness | 6.0 | Mocked integration proves replay_match=true for extracted assistant content, but this is not yet full deterministic replay from retained, safe artifacts. |
-| `X` Privacy/redaction correctness | 7.0 | Mocked integration asserts prompt/file-path absence in redacted request and raw capture blocked by default; committed history still contains 26 `raw-capture.ndjson` files. |
-| `D` Data discovery + schema derivation | 6.6 | Schema observer, schema-guided extraction, master schema store, samples, feature vectors, and rule evidence exist; extraction contracts are still heuristic. |
-| `L` Policy learning quality | 3.8 | Feedback and policy snapshots exist, but policy updates are driven by simple receipt/capability scores, not proven extraction improvement over replay history. |
-| `T` Testability | 7.2 | Syntax, unit, smoke, and offline mocked CDP integration tests pass; live CDP test remains present but failed here due unavailable browser/CDP endpoint. |
-| `R` Operational realism | 6.3 | Local browser/CDP model is now testable without a browser and still realistic for operator-owned sessions; actual live behavior remains brittle under tab/UI drift and unavailable CDP state. |
-| `M` Documentation accuracy | 6.0 | GOAL/docs explain the intended architecture well; wording still risks overstating strict OpenAI compatibility and data-driven learning maturity. |
+| Axis                                        | Score | Evidence-backed note                                                                                                                                                                                                                  |
+|---------------------------------------------+-------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `O` OpenAI endpoint/envelope compatibility  |   7.3 | `/v1/chat/completions` and `/v1/models` exist; response helper adds `usage`, `system_fingerprint`, `refusal:null`, and `annotations:[]`; mocked route test now proves the handler emits the envelope end-to-end.                      |
+| `Q` Request schema compatibility            |   6.8 | `messages[]`/`prompt` are validated; mocked integration proves `system`/`developer`/`user` bridging and pre-browser `tools` rejection; many generation controls remain accepted-but-not-enforced.                                     |
+| `A` Assistant response schema compatibility |   7.8 | Contract helper produces a plausible chat completion envelope, but committed historical `response.json` turn records are internal turn records, not final OpenAI response envelopes.                                                  |
+| `S` Streaming SSE compatibility             |   7.3 | Mocked integration parses emitted SSE and verifies assistant role chunk, ordered content deltas, terminal finish chunk, and `[DONE]`; streaming error semantics still use SSE data payloads rather than strict HTTP failure behavior. |
+| `K` SDK/drop-in compatibility               |   5.7 | Basic clients likely work for simple non-tool text turns; advanced SDK surfaces fail, warn, or silently defer to browser provider behavior.                                                                                           |
+| `P` Provider/capability architecture        |   7.4 | Provider adapters, registry, capability contracts, upload/read/send/select capabilities, and target manager are separated cleanly.                                                                                                    |
+| `E` Evidence/provenance quality             |   6.4 | Receipts, manifests, datasets, feedback, schema artifacts, runtime audit logs, and mocked artifact assertions exist; receipts remain shallow and not cryptographically bound to browser evidence.                                     |
+| `V` Replay/verification correctness         |   6.0 | Mocked integration proves replay_match=true for extracted assistant content, but this is not yet full deterministic replay from retained, safe artifacts.                                                                             |
+| `X` Privacy/redaction correctness           |   7.0 | Mocked integration asserts prompt/file-path absence in redacted request and raw capture blocked by default; committed history still contains 26 `raw-capture.ndjson` files.                                                           |
+| `D` Data discovery + schema derivation      |   6.6 | Schema observer, schema-guided extraction, master schema store, samples, feature vectors, and rule evidence exist; extraction contracts are still heuristic.                                                                          |
+| `L` Policy learning quality                 |   3.8 | Feedback and policy snapshots exist, but policy updates are driven by simple receipt/capability scores, not proven extraction improvement over replay history.                                                                        |
+| `T` Testability                             |   7.2 | Syntax, unit, smoke, and offline mocked CDP integration tests pass; live CDP test remains present but failed here due unavailable browser/CDP endpoint.                                                                               |
+| `R` Operational realism                     |   6.3 | Local browser/CDP model is now testable without a browser and still realistic for operator-owned sessions; actual live behavior remains brittle under tab/UI drift and unavailable CDP state.                                         |
+| `M` Documentation accuracy                  |   6.0 | GOAL/docs explain the intended architecture well; wording still risks overstating strict OpenAI compatibility and data-driven learning maturity.                                                                                      |
+| `C` Implementation simplicity / cognitive load | 5.6 | The project has reasonably separated providers, routes, tools, and tests, but the browser-control, artifact, replay, schema, privacy, and policy-learning loops create a large mental model for a small local router.                 |
 
 ```text
-current_score ≈ 6.5 / 10
-Good = max(P=7.4, A=7.8, O=7.3, S=7.3, T=7.2, X=7.0, Q=6.8) = A
+current_score ≈ 6.4 / 10
+Good = max(P=7.4, A=7.8, O=7.3, S=7.3, T=7.2, X=7.0, Q=6.8, C=5.6) = A
 ```
 
-One-line explanation: the strongest current surface remains the response-envelope builder, while the weakest strategic surface is still proven policy learning.
+One-line explanation: the strongest current surface remains the response-envelope builder, while the weakest strategic surface is still proven policy learning; simplicity is a moderate drag because the architecture is broader than the validated behavior.
 
 ## Artifact Evidence
 
