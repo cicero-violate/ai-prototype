@@ -201,11 +201,11 @@ $$
 \boxed{\text{tlog} \to \text{LoRA} \to \text{source code} = \text{knowledge solidification pipeline}}
 $$
 
-| Stage | Medium | Certainty | Speed |
-|---|---|---|---|
-| Raw tlog | JSONL | low | slow |
-| RAG retrieval | vector index | medium | medium |
-| LoRA adapter | weights | high | fast |
+| Stage           | Medium       | Certainty   | Speed       |
+|-----------------+--------------+-------------+-------------|
+| Raw tlog        | JSONL        | low         | slow        |
+| RAG retrieval   | vector index | medium      | medium      |
+| LoRA adapter    | weights      | high        | fast        |
 | **Source code** | **compiled** | **certain** | **instant** |
 
 **This is the most underrated idea in AI systems design.** Every fact that graduates to source code is a fact that can never be hallucinated again. Your Canon harness naturally creates the pipeline for this — tlog is already tracking reward and frequency. You just need a threshold trigger:
