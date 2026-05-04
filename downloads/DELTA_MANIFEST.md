@@ -1,25 +1,23 @@
-base_commit: 44945bf71389366f1566abf48f70a81b924fab96
-head_commit: 29e3b4645207693859de2352cf1885304012dc85
+base_commit: 0037761cacb4b573af603bf28c7d5f3ca6f3637d
+head_commit: 60364d4ca23ce92d345ca18a6a5bd436c309996d
 
 # Delta Manifest
 
 ## Changed Files
-- IMPLEMENTATION_PLAN.md
-- ai-chromium/router-server/run_tests.sh
+- ai-chromium/router-server_bak/run_tests.sh
 - score.md
 - scripts/observe_validation.sh
-- scripts/write_delta_manifest.py
 
 ## Validation Results
 - validation_status: partial
 - validation_command_count: 6
-- validation_test_count: 20
-- router_test_count: 20
+- validation_test_count: 41
+- router_test_count: 41
 - cargo_test_count_when_available: None
 - failed_required_commands: []
 - missing_signal_count: 12
-- report_sha256: eee456d39701b868d1bb258d01aae22fb0d84ed1ae94db8828f1c2a7d13a5f01
-- bundle_sha256: 7a084ba83a26e1e1d078f0631f4fe29bc01c8b2e97073de97a68426b4776ae5b
+- report_sha256: d572053ac6a6dbed395a194dc5ef87b56a042d61950866b23677f48846cd77a6
+- bundle_sha256: db88708c6ba1310b3a4c76557dc338e7c6bd9efb7eb949a812c8e2079570ec5d
 - bundle_verify: pass
 - cargo_available: False
 - rustc_available: False
@@ -30,8 +28,8 @@ head_commit: 29e3b4645207693859de2352cf1885304012dc85
 - wrapper_override_env: ["RUSTC_WORKSPACE_WRAPPER", "RUSTC_WRAPPER"]
 - rustc_wrapper_path_exists: False
 - state_graph_present: False
-- runtime_archive_log_total: 3342
-- runtime_archive_download_total: 30
+- runtime_archive_log_total: 4018
+- runtime_archive_download_total: 34
 - runtime_archive_conversation_snapshots: 0
 
 ## Validation Commands
