@@ -26,13 +26,21 @@ counts, graph presence, Ollama status, and missing-signal flags.
 
 ## Rust Checks
 
-Run when a Rust toolchain exists. Wrapper variables are cleared because the
-configured wrapper path may not exist after bundle restore.
+Run when a Rust toolchain exists. Wrapper variables are cleared so root checks
+never depend on local graph-capture tooling.
 
 ```bash
 RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo fmt --check
 RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets
 RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo clippy --all-targets -- -D warnings
+```
+
+Capture graph telemetry only when the wrapper is explicitly available:
+
+```bash
+CANON_RUSTC_WRAPPER=/path/to/canon-rustc-v3 \
+CANON_RUSTC_V2_ARTIFACT_DIR=state/rustc \
+cargo test --all-targets
 ```
 
 Run the live local LLM path only with an explicit local endpoint:

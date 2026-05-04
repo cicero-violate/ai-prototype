@@ -1,12 +1,4 @@
 [build]
-# Use the vendored canon-rustc-v3 wrapper so it runs after each successful
-# crate compilation and emits HIR/MIR artifacts to:
-#   state/rustc/<crate>/
-#
-# To override the artifact output directory set CANON_RUSTC_V2_ARTIFACT_DIR.
-# To disable wrapper for a single invocation: RUSTC_WORKSPACE_WRAPPER="" cargo build
-rustc-wrapper = "/mnt/data/canon-mini-agent-extracted/canon-mini-agent/prototype/canon-rustc-v3/target/debug/canon-rustc-v3"
-
 rustflags = [
 "-Dwarnings",
 "-Dunused",
@@ -18,15 +10,9 @@ rustflags = [
 "-Dclippy::allow_attributes_without_reason"
 ]
 
-[target.'cfg(all())']
-rustflags = [
-  "-Dwarnings",
-  "-Ddead-code",
-  "-Dclippy::allow_attributes",
-  "-Dclippy::allow_attributes_without_reason"
-]
-
-
 [env]
-# CANON_RUSTC_V2_ARTIFACT_DIR = "/workspace/ai_sandbox/canon-mini-agent/state/rustc"
+# Root validation must not depend on a local rustc wrapper. To capture graph
+# telemetry explicitly, run with:
+#   CANON_RUSTC_WRAPPER=/path/to/canon-rustc-v3 \
+#   CANON_RUSTC_V2_ARTIFACT_DIR=state/rustc cargo test --all-targets
 RUST_BACKTRACE = "full"

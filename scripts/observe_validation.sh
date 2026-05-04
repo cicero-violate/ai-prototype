@@ -118,11 +118,17 @@ def wrapper() -> dict[str, Any]:
     cfg = ROOT / ".cargo" / "config.toml"
     text = cfg.read_text(encoding="utf-8") if cfg.exists() else ""
     match = re.search(r'^\s*rustc-wrapper\s*=\s*"([^"]+)"', text, re.MULTILINE)
-    path = match.group(1) if match else None
+    cfg_path = match.group(1) if match else None
+    env_path = os.environ.get("CANON_RUSTC_WRAPPER", "").strip() or None
+    path = env_path or cfg_path
     exists = bool(path and Path(path).exists())
     return {"config_present": cfg.exists(), "rustc_wrapper_configured": bool(path),
-            "rustc_wrapper_path": path, "rustc_wrapper_path_exists": exists,
-            "wrapper_override_required": bool(path and not exists)}
+            "rustc_wrapper_config_path": cfg_path, "rustc_wrapper_env_path": env_path,
+            "rustc_wrapper_requested": bool(env_path), "rustc_wrapper_path": path,
+            "rustc_wrapper_path_exists": exists,
+            "wrapper_override_required": bool(cfg_path and not Path(cfg_path).exists()),
+            "wrapper_graph_validation_requested": bool(env_path),
+            "wrapper_graph_validation_available": bool(env_path and exists)}
 
 
 def graph() -> dict[str, Any]:
@@ -270,10 +276,35 @@ def unittest_tests(result: dict[str, Any]) -> int:
     return max(counts) if counts else 0
 
 
+def synthetic(name: str, cmd: list[str], status: str, stderr: str,
+              env: dict[str, str] | None = None) -> dict[str, Any]:
+    result = {"name": name, "cmd": cmd, "env_overrides": sorted((env or {}).keys()),
+              "status": status, "available": False, "returncode": None,
+              "duration_ms": 0, "stdout": "", "stderr": stderr}
+    result["output_path"] = save(cmd, "", stderr)
+    emit(event="validation_command", result=result)
+    return result
+
+
+def wrapper_graph_command(w: dict[str, Any], toolchain: dict[str, Any]) -> dict[str, Any]:
+    cmd = ["cargo", "test", "--all-targets"]
+    if not w["wrapper_graph_validation_requested"]:
+        return synthetic("wrapper_graph_validation", cmd, "skipped_env_missing",
+                         "missing CANON_RUSTC_WRAPPER")
+    if not w["rustc_wrapper_path_exists"]:
+        return synthetic("wrapper_graph_validation", cmd, "unavailable",
+                         f"CANON_RUSTC_WRAPPER not found: {w['rustc_wrapper_env_path']}")
+    env = {"RUSTC_WRAPPER": str(w["rustc_wrapper_path"]), "RUSTC_WORKSPACE_WRAPPER": "",
+           "CANON_RUSTC_V2_ARTIFACT_DIR": os.environ.get("CANON_RUSTC_V2_ARTIFACT_DIR", "state/rustc")}
+    if not toolchain["cargo_available"]:
+        return synthetic("wrapper_graph_validation", cmd, "unavailable", "cargo not found in PATH", env)
+    return run("wrapper_graph_validation", cmd, timeout=600, env=env)
+
+
 toolchain = configure_toolchain()
-w, g, r, repo, delta = wrapper(), graph(), runtime(), repo_metrics(), delta_metrics()
-cargo_env = {"RUSTC_WRAPPER": "", "RUSTC_WORKSPACE_WRAPPER": ""} if w["wrapper_override_required"] else {}
-wrapper_override_used = bool(cargo_env and toolchain["cargo_available"])
+w, g0, r, repo, delta = wrapper(), graph(), runtime(), repo_metrics(), delta_metrics()
+root_rust_env = {"RUSTC_WRAPPER": "", "RUSTC_WORKSPACE_WRAPPER": ""}
+wrapper_override_used = bool(w["wrapper_override_required"] and toolchain["cargo_available"])
 
 head = scalar(["git", "rev-parse", "HEAD"])
 git_status = subprocess.run(["git", "status", "--short"], cwd=ROOT, text=True,
@@ -283,28 +314,32 @@ emit(event="validation_start", schema_version=3, repo=str(ROOT), report_path=str
 emit(event="git_state", git_head=head, git_status_clean=git_status.returncode == 0 and not git_status.stdout.strip(),
      git_status_short=git_status.stdout.splitlines())
 emit(event="toolchain", python3_available=shutil.which("python3") is not None, **toolchain, **w,
-     wrapper_override_used=wrapper_override_used, wrapper_override_env=sorted(cargo_env.keys()))
+     root_rust_env_overrides=sorted(root_rust_env.keys()), wrapper_override_used=wrapper_override_used,
+     wrapper_override_env=sorted(root_rust_env.keys()) if wrapper_override_used else [])
 emit(event="repo_metrics", **repo)
-emit(event="graph_metrics", **g)
+emit(event="graph_metrics_before_validation", **g0)
 emit(event="runtime_archive_metrics", **r)
 emit(event="delta_metrics", **delta)
 
 commands = [
     run("git_diff_check", ["git", "diff", "--check"], timeout=30),
     run("git_delta_diff_check", delta_diff_command(), timeout=30),
-    run("delta_manifest_unit_tests", ["python3", "-m", "unittest", "tests/test_write_delta_manifest.py"], timeout=90),
+    run("python_unit_tests", ["python3", "-m", "unittest", "discover", "-s", "tests", "-p", "test_*.py"], timeout=90),
     run("router_offline_tests", ["bash", "run_tests.sh"], cwd=router_dir(), timeout=180),
-    run("cargo_fmt_check", ["cargo", "fmt", "--check"], timeout=180, env=cargo_env),
-    run("cargo_test_all_targets", ["cargo", "test", "--all-targets"], timeout=600, env=cargo_env),
-    run("cargo_clippy_all_targets", ["cargo", "clippy", "--all-targets", "--", "-D", "warnings"], timeout=600, env=cargo_env),
+    run("cargo_fmt_check", ["cargo", "fmt", "--check"], timeout=180, env=root_rust_env),
+    run("cargo_test_all_targets", ["cargo", "test", "--all-targets"], timeout=600, env=root_rust_env),
+    run("cargo_clippy_all_targets", ["cargo", "clippy", "--all-targets", "--", "-D", "warnings"], timeout=600, env=root_rust_env),
+    wrapper_graph_command(w, toolchain),
 ]
+g = graph()
+emit(event="graph_metrics", **g)
 
 ollama_env = os.environ.get("CANON_OLLAMA_BASE_URL") and os.environ.get("CANON_OLLAMA_MODEL")
 if ollama_env:
-    commands.append(run("ollama_judgment_example", ["cargo", "run", "--example", "ollama_judgment"], timeout=600, env=cargo_env))
+    commands.append(run("ollama_judgment_example", ["cargo", "run", "--example", "ollama_judgment"], timeout=600, env=root_rust_env))
 else:
     skipped = {"name": "ollama_judgment_example", "cmd": ["cargo", "run", "--example", "ollama_judgment"],
-               "env_overrides": sorted(cargo_env.keys()), "status": "skipped_env_missing",
+               "env_overrides": sorted(root_rust_env.keys()), "status": "skipped_env_missing",
                "available": toolchain["cargo_available"], "returncode": None, "duration_ms": 0,
                "stdout": "", "stderr": "missing CANON_OLLAMA_BASE_URL or CANON_OLLAMA_MODEL"}
     skipped["output_path"] = save(skipped["cmd"], "", skipped["stderr"])
@@ -321,8 +356,9 @@ missing = {
     "missing_cargo_test": cargo_test["status"] != "pass",
     "missing_cargo_run_ollama_judgment": next(c for c in commands if c["name"] == "ollama_judgment_example")["status"] != "pass",
     "missing_clippy": next(c for c in commands if c["name"] == "cargo_clippy_all_targets")["status"] != "pass",
+    "missing_wrapper_graph_validation": next(c for c in commands if c["name"] == "wrapper_graph_validation")["status"] != "pass",
     "missing_generated_graph_json": not bool(g.get("state_graph_present")),
-    "missing_rustc_wrapper_telemetry": not (w["rustc_wrapper_configured"] and w["rustc_wrapper_path_exists"] and g.get("state_graph_present")),
+    "missing_rustc_wrapper_telemetry": next(c for c in commands if c["name"] == "wrapper_graph_validation")["status"] != "pass" or not bool(g.get("state_graph_present")),
     "missing_runtime_download_history": download_total == 0,
     "missing_conversation_snapshot": int(r.get("runtime_archive_conversation_snapshots", 0) or 0) == 0,
     "missing_artifact_apply_worktree": not (ROOT / ".repo-agent-runtime" / "apply-worktrees").exists(),
@@ -331,10 +367,10 @@ missing = {
     "missing_semantic_artifact_verification_test": True,
     "missing_policy_learning_replay_trace": True,
 }
-required = {"git_diff_check", "git_delta_diff_check", "delta_manifest_unit_tests", "router_offline_tests"}
+required = {"git_diff_check", "git_delta_diff_check", "python_unit_tests", "router_offline_tests"}
 failed_required = [c["name"] for c in commands if c["name"] in required and c["status"] != "pass"]
 status = "fail" if failed_required else ("partial" if any(missing.values()) else "pass")
-python_test = next(c for c in commands if c["name"] == "delta_manifest_unit_tests")
+python_test = next(c for c in commands if c["name"] == "python_unit_tests")
 emit(event="validation_summary", validation_status=status, git_head=head,
      git_status_clean=git_status.returncode == 0 and not git_status.stdout.strip(),
      validation_command_count=len(commands),
@@ -345,8 +381,12 @@ emit(event="validation_summary", validation_status=status, git_head=head,
      cargo_test_count_when_available=cargo_tests(cargo_test),
      failed_required_commands=failed_required, cargo_available=toolchain["cargo_available"],
      rustc_available=toolchain["rustc_available"], toolchain_path_added=toolchain["toolchain_path_added"],
-     rust_toolchain_source=toolchain["rust_toolchain_source"], wrapper_override_required=w["wrapper_override_required"],
-     wrapper_override_used=wrapper_override_used, wrapper_override_env=sorted(cargo_env.keys()),
+     rust_toolchain_source=toolchain["rust_toolchain_source"], root_rust_env_overrides=sorted(root_rust_env.keys()),
+     wrapper_graph_validation_result=next(c for c in commands if c["name"] == "wrapper_graph_validation")["status"],
+     wrapper_graph_validation_requested=w["wrapper_graph_validation_requested"],
+     wrapper_graph_validation_available=w["wrapper_graph_validation_available"],
+     wrapper_override_required=w["wrapper_override_required"],
+     wrapper_override_used=wrapper_override_used, wrapper_override_env=sorted(root_rust_env.keys()) if wrapper_override_used else [],
      rustc_wrapper_configured=w["rustc_wrapper_configured"], rustc_wrapper_path_exists=w["rustc_wrapper_path_exists"],
      git_delta_diff_check_result=next(c for c in commands if c["name"] == "git_delta_diff_check")["status"],
      cargo_fmt_check_result=next(c for c in commands if c["name"] == "cargo_fmt_check")["status"],
