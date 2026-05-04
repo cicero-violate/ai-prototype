@@ -33,10 +33,10 @@ V = 8.2 / 10
 P = 6.1 / 10
 B = 3.0 / 10
 E = 4.1 / 10
-N = 5.6 / 10
+N = 6.6 / 10
 D = 6.8 / 10
 
-S = 5.92 / 10
+S = 6.05 / 10
 GOOD = max(K,C,V,P,B,E,N,D) = K = 8.4 / 10 = good
 ```
 
@@ -46,7 +46,7 @@ GOOD = max(K,C,V,P,B,E,N,D) = K = 8.4 / 10 = good
 uploaded_bundle = /mnt/data/ai.bundle
 repo_path = /mnt/data/ai-repo
 bundle_main_head = b9830281da5618db55c12371ec1f17b3abdd0b00
-current_head_after_eval = 8f635e9de6dfca3b7cc072e2b8482e06879ccbd8
+current_head_before_execute = e9015182e76a2b9d51a2e9cedf236dc99410848d
 branch = main
 goal_md_present = true
 readme_present = false
@@ -65,14 +65,12 @@ state_rustc_graph_json_present = false
 Recent history inspected:
 
 ```text
+e901518 Plan router artifact fixture gate
+eae2039 Observe ai repository evidence
 8f635e9 Evaluate ai repository scorecard
 b983028 ready for agent run
 b16db0a Add observe command output evidence paths
 653bb6f Plan validation evidence gate
-ef2c405 Evaluate ai repository scorecard
-ca0537f ready for agent run
-4c9025d auto
-82f7eb5 Add observe validation harness
 ```
 
 Bundle heads inspected:
@@ -163,7 +161,7 @@ Static evidence:
 ```text
 router_mjs_files = 49
 package_json_present = false
-test_fixture_artifact_dirs_present = false
+test_fixture_artifact_dirs_present = true
 ```
 
 Commands run:
@@ -172,16 +170,20 @@ Commands run:
 node src/tools/check-syntax.mjs                  = pass, syntax_ok files=49
 node --test test/openai-contract.test.mjs        = pass, 7/7
 node --test test/mock-cdp-integration.test.mjs   = pass, 3/3
-node --test test/artifact-quality.test.mjs       = fail, 0/5
+node --test test/artifact-quality.test.mjs       = pass, 5/5
 ```
 
-Failure cause:
+Fixture coverage:
 
 ```text
-artifact_quality_failure = ENOENT on test/fixtures/artifacts/{valid,missing-manifest,replay-mismatch,redaction-fail,malformed-evidence}
+valid = accepted with manifest, replay, evaluation, parseable evidence.ndjson
+missing-manifest = rejected with missing manifest.json
+replay-mismatch = rejected with replay.replay_match must be true
+redaction-fail = rejected with evaluation.redaction_pass must be true
+malformed-evidence = rejected with malformed JSON
 ```
 
-Judgment: the nested router has real offline validation for syntax, OpenAI envelope behavior, and mocked CDP behavior. The newest artifact-quality gate is not reproducible because the committed tests refer to missing fixtures.
+Judgment: the nested router now has reproducible offline validation for syntax, OpenAI envelope behavior, mocked CDP behavior, and positive/negative artifact-quality evidence. This still does not prove live CDP reliability.
 
 ## Critical Judgment
 
@@ -209,7 +211,7 @@ This repository should be classified as a serious deterministic runtime prototyp
 | Configured rustc wrapper missing | High | wrapper path points to `/workspace/.../canon-rustc-v2`, absent here | Make wrapper optional or include/repoint it for validation |
 | No generated graph evidence | High | no `state/rustc/*/graph.json` found | Regenerate graph and include telemetry |
 | Runtime archive too thin | High | only 3 members, 2 NDJSON lines, no snapshots/downloads | Preserve sanitized conversation, download, and apply-worktree evidence |
-| Router artifact-quality test broken | Medium | 0/5 fixture tests fail with ENOENT | Commit fixtures or remove the invalid gate |
+| Live CDP not reproduced | Medium | only mocked CDP validation ran here | Run live browser/CDP validation with captured sanitized artifacts |
 | No README | Medium | `README.md` absent | Add operator-facing restore/build/test instructions |
 | Heavy unwrap use | Medium | 316 `.unwrap()` calls | Separate test-only unwraps from production-path unwraps |
 | External loop not proven | High | no observation→action→verification→learning replay trace | Add one durable integration trace |
@@ -224,7 +226,7 @@ This repository should be classified as a serious deterministic runtime prototyp
 | Capability layer | 6.1 | all planned capability directories present | maturity is mostly static without external loop evidence |
 | Build/test reproducibility | 3.0 | observe harness reports missing surfaces | no root Rust validation reproduced |
 | Runtime evidence | 4.1 | sanitized archive, zero scan findings | no conversation/download/apply evidence |
-| Nested router-server | 5.6 | 49-file syntax pass, OpenAI contract pass, mock CDP pass | artifact-quality fixture failure; no live CDP run |
+| Nested router-server | 6.6 | 49-file syntax pass, OpenAI contract pass, mock CDP pass, artifact-quality pass | no live CDP run |
 | Documentation alignment | 6.8 | detailed `GOAL.md`, scorecard, implementation plan | no README and several claims remain unproven locally |
 
 ## Missing Validation Signals
@@ -243,7 +245,7 @@ missing_external_observation_stream_test = true
 missing_external_api_action_test = true
 missing_policy_learning_replay_trace = true
 missing_semantic_artifact_verification_test = true
-missing_router_artifact_quality_fixtures = true
+missing_router_artifact_quality_fixtures = false
 missing_live_cdp_validation = true
 ```
 
@@ -252,14 +254,14 @@ missing_live_cdp_validation = true
 1. Restore a Rust toolchain and either provide the configured wrapper or disable it intentionally for container validation.
 2. Run `cargo fmt --check`, `cargo test --all-targets`, and `cargo clippy --all-targets -- -D warnings`.
 3. Regenerate `state/rustc/ai/graph.json` and capture wrapper telemetry.
-4. Fix router artifact-quality fixtures so the committed gate is reproducible.
-5. Capture one sanitized end-to-end trace: observation ingress → command → effect receipt → semantic verification → eval → learning/policy promotion.
+4. Capture one sanitized end-to-end trace: observation ingress → command → effect receipt → semantic verification → eval → learning/policy promotion.
+5. Run live CDP validation and retain sanitized artifact-quality outputs.
 
 ## Verdict
 
 ```text
 classification = serious_deterministic_runtime_prototype
 not_yet = reproducibly_validated_autonomous_agent
-main_blocker = missing_root_rust_validation + absent_graph_telemetry + thin_runtime_archive + broken_router_fixture_gate
+main_blocker = missing_root_rust_validation + absent_graph_telemetry + thin_runtime_archive + missing_live_cdp_validation
 score_confidence = medium_static_low_runtime
 ```

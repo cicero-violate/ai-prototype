@@ -146,6 +146,7 @@ test_projects/*
 
 agent_state/
 *.ndjson
+!ai-chromium/router-server/test/fixtures/**
 
 rust_chatgpt_sandbox/
 chrome-dev-profile/

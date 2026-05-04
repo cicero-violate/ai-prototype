@@ -4,6 +4,7 @@ import path from 'node:path';
 import process from 'node:process';
 
 const REQUIRED_JSON = ['manifest.json', 'replay.json', 'evaluation.json'];
+const TURN_MARKERS = new Set([...REQUIRED_JSON, 'response.json', 'request.redacted.json']);
 
 function readJson(filePath) {
   try {
@@ -14,22 +15,19 @@ function readJson(filePath) {
 }
 
 function validateNdjson(filePath) {
-  const text = fs.readFileSync(filePath, 'utf8');
-  const lines = text.split(/\r?\n/).filter((line) => line.trim().length > 0);
-  for (const [index, line] of lines.entries()) {
+  for (const [index, line] of fs.readFileSync(filePath, 'utf8').split(/\r?\n/).entries()) {
+    if (!line.trim()) continue;
     try {
       JSON.parse(line);
     } catch (error) {
-      throw new Error(`${filePath}:${index + 1}: malformed NDJSON: ${error.message}`);
+      throw new Error(`${filePath}:${index + 1}: malformed JSON: ${error.message}`);
     }
   }
 }
 
 function looksLikeTurnDirectory(dirPath) {
   if (!fs.statSync(dirPath).isDirectory()) return false;
-  return fs.readdirSync(dirPath).some((name) => {
-    return REQUIRED_JSON.includes(name) || name === 'response.json' || name === 'request.redacted.json';
-  });
+  return fs.readdirSync(dirPath).some((name) => TURN_MARKERS.has(name));
 }
 
 function resolveTurnRoot(inputPath) {
@@ -49,36 +47,30 @@ function findTurnDirectories(rootPath) {
 
 export function validateTurnDirectory(turnDir) {
   const errors = [];
-
   for (const fileName of REQUIRED_JSON) {
     const filePath = path.join(turnDir, fileName);
     if (!fs.existsSync(filePath)) errors.push(`${turnDir}: missing ${fileName}`);
   }
 
-  let manifest;
-  let replay;
-  let evaluation;
-
+  const docs = {};
   for (const fileName of REQUIRED_JSON) {
     const filePath = path.join(turnDir, fileName);
     if (!fs.existsSync(filePath)) continue;
     try {
-      const parsed = readJson(filePath);
-      if (fileName === 'manifest.json') manifest = parsed;
-      if (fileName === 'replay.json') replay = parsed;
-      if (fileName === 'evaluation.json') evaluation = parsed;
+      docs[fileName] = readJson(filePath);
     } catch (error) {
       errors.push(error.message);
     }
   }
 
-  for (const fileName of fs.readdirSync(turnDir).filter((name) => name.endsWith('.ndjson'))) {
-    try {
-      validateNdjson(path.join(turnDir, fileName));
-    } catch (error) {
-      errors.push(error.message);
-    }
+  for (const fileName of fs.readdirSync(turnDir)) {
+    if (!fileName.endsWith('.ndjson')) continue;
+    try { validateNdjson(path.join(turnDir, fileName)); } catch (error) { errors.push(error.message); }
   }
+
+  const manifest = docs['manifest.json'];
+  const replay = docs['replay.json'];
+  const evaluation = docs['evaluation.json'];
 
   if (manifest && typeof manifest.turn_id !== 'string') {
     errors.push(`${turnDir}: manifest.turn_id must be a string`);

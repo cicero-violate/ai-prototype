@@ -62,7 +62,7 @@ ai-chromium/router-server/test/fixtures/artifacts/malformed-evidence/turn-001/ev
 ai-chromium/router-server/test/fixtures/artifacts/malformed-evidence/turn-001/evidence.ndjson
 ```
 
-No router source change is planned. The validator already checks required JSON files, replay match, evaluation replay match, redaction pass, turn ID consistency, and parseable NDJSON.
+Router source change should stay limited to simplifying the artifact validator/test harness. The validator already checks required JSON files, replay match, evaluation replay match, redaction pass, turn ID consistency, and parseable NDJSON.
 
 ## Required Fixture Semantics
 
@@ -150,7 +150,7 @@ risk_root_score_overclaim = medium, mitigated by leaving Rust/toolchain blockers
 
 Constraints:
 
-- Do not modify kernel, runtime, capability, API, or router implementation source in this stage.
+- Do not modify kernel, runtime, capability, API, or browser/provider source in this stage.
 - Do not alter `score.md` unless the EXECUTE-stage validation result changes evidence.
 - Do not hide root Rust/toolchain, graph, runtime archive, or live CDP gaps.
 - Keep generated validation output outside committed source unless explicitly requested.
@@ -179,4 +179,13 @@ plan_file_changed = IMPLEMENTATION_PLAN.md
 implementation_target = router artifact-quality fixtures
 validation_scope = documentation_plan_only
 delta_base = b9830281da5618db55c12371ec1f17b3abdd0b00
+```
+
+## Execute-Stage Result
+
+```text
+artifact_quality_before = fail, 0/5, missing fixture roots
+artifact_quality_after = pass, 5/5
+source_simplification = table-driven artifact-quality tests + shorter validator path
+root_rust_validation = still unavailable here because cargo/rustc are absent
 ```

@@ -7,33 +7,20 @@ import { validateTurnArtifacts } from '../src/tools/validate-turn-artifacts.mjs'
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const fixtureRoot = path.join(__dirname, 'fixtures', 'artifacts');
 
-test('accepts a completed turn with manifest, replay, redaction, and parseable NDJSON evidence', () => {
-  const result = validateTurnArtifacts(path.join(fixtureRoot, 'valid'));
-  assert.equal(result.pass, true);
-  assert.equal(result.turn_count, 1);
-  assert.equal(result.fail_count, 0);
-});
+const cases = [
+  ['valid', true, null],
+  ['missing-manifest', false, /missing manifest\.json/],
+  ['replay-mismatch', false, /replay\.replay_match must be true/],
+  ['redaction-fail', false, /evaluation\.redaction_pass must be true/],
+  ['malformed-evidence', false, /malformed JSON/],
+];
 
-test('rejects a completed turn missing manifest evidence', () => {
-  const result = validateTurnArtifacts(path.join(fixtureRoot, 'missing-manifest'));
-  assert.equal(result.pass, false);
-  assert.match(result.failures[0].errors.join('\n'), /missing manifest\.json/);
-});
-
-test('rejects replay mismatch evidence', () => {
-  const result = validateTurnArtifacts(path.join(fixtureRoot, 'replay-mismatch'));
-  assert.equal(result.pass, false);
-  assert.match(result.failures[0].errors.join('\n'), /replay\.replay_match must be true/);
-});
-
-test('rejects redaction failure evidence', () => {
-  const result = validateTurnArtifacts(path.join(fixtureRoot, 'redaction-fail'));
-  assert.equal(result.pass, false);
-  assert.match(result.failures[0].errors.join('\n'), /evaluation\.redaction_pass must be true/);
-});
-
-test('rejects malformed JSON evidence deterministically', () => {
-  const result = validateTurnArtifacts(path.join(fixtureRoot, 'malformed-evidence'));
-  assert.equal(result.pass, false);
-  assert.match(result.failures[0].errors.join('\n'), /malformed JSON/);
-});
+for (const [name, pass, pattern] of cases) {
+  test(`artifact fixture: ${name}`, () => {
+    const result = validateTurnArtifacts(path.join(fixtureRoot, name));
+    assert.equal(result.pass, pass);
+    assert.equal(result.turn_count, 1);
+    if (pattern) assert.match(result.failures[0].errors.join('\n'), pattern);
+    else assert.equal(result.fail_count, 0);
+  });
+}
