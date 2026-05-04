@@ -358,6 +358,46 @@ def repo_metrics() -> dict[str, Any]:
     }
 
 
+def source_evidence() -> dict[str, Any]:
+    tracked = scalar(["git", "ls-files"]) or ""
+    texts: dict[str, str] = {}
+    for line in tracked.splitlines():
+        if not line.endswith((".rs", ".py", ".sh")):
+            continue
+        path = ROOT / line
+        if path.exists():
+            texts[line] = path.read_text(encoding="utf-8", errors="replace")
+    joined = "\n".join(texts.values())
+
+    external_observation_tokens = (
+        "BoundedLineObservationSource",
+        "ObservationCursor",
+        "SubmitObservationIngress",
+        "handle_envelope_once",
+    )
+    external_api_tokens = (
+        "CommandEnvelope::new",
+        "handle_envelope_once",
+        "CommandLedger::reconstruct_from_tlog",
+        "InvalidApiCommand",
+    )
+    semantic_verification_tokens = (
+        "DeterministicSemanticVerifier",
+        "SemanticVerificationReceipt",
+        "semantic_verification_rejects_receipt_mismatch",
+        "verify_verification_proof_record_replay",
+    )
+
+    def has_all(tokens: tuple[str, ...]) -> bool:
+        return all(token in joined for token in tokens)
+
+    return {
+        "external_observation_stream_test_present": has_all(external_observation_tokens),
+        "external_api_action_test_present": has_all(external_api_tokens),
+        "semantic_artifact_verification_test_present": has_all(semantic_verification_tokens),
+    }
+
+
 def panic_surface_metrics() -> dict[str, Any]:
     if not PANIC_SURFACE_REPORT.exists():
         return {"panic_surface_report_present": False}
@@ -471,7 +511,7 @@ def wrapper_graph_command(w: dict[str, Any], toolchain: dict[str, Any]) -> dict[
 
 
 toolchain = configure_toolchain()
-w, g0, r, repo, delta = wrapper(), graph(), runtime(), repo_metrics(), delta_metrics()
+w, g0, r, repo, delta, evidence = wrapper(), graph(), runtime(), repo_metrics(), delta_metrics(), source_evidence()
 root_rust_env = {"RUSTC_WRAPPER": "", "RUSTC_WORKSPACE_WRAPPER": ""}
 wrapper_override_used = bool(w["wrapper_override_required"] and toolchain["cargo_available"])
 
@@ -486,6 +526,7 @@ emit(event="toolchain", python3_available=shutil.which("python3") is not None, *
      root_rust_env_overrides=sorted(root_rust_env.keys()), wrapper_override_used=wrapper_override_used,
      wrapper_override_env=sorted(root_rust_env.keys()) if wrapper_override_used else [])
 emit(event="repo_metrics", **repo)
+emit(event="source_evidence", **evidence)
 emit(event="graph_metrics_before_validation", **g0)
 emit(event="runtime_archive_metrics", **r)
 emit(event="delta_metrics", **delta)
@@ -555,9 +596,9 @@ missing = {
     "missing_router_offline_tests": router_test["status"] != "pass",
     "missing_conversation_snapshot": int(r.get("runtime_archive_conversation_snapshots", 0) or 0) == 0,
     "missing_artifact_apply_worktree": not (ROOT / ".repo-agent-runtime" / "apply-worktrees").exists(),
-    "missing_external_observation_stream_test": True,
-    "missing_external_api_action_test": True,
-    "missing_semantic_artifact_verification_test": True,
+    "missing_external_observation_stream_test": not evidence["external_observation_stream_test_present"],
+    "missing_external_api_action_test": not evidence["external_api_action_test_present"],
+    "missing_semantic_artifact_verification_test": not evidence["semantic_artifact_verification_test_present"],
     "missing_policy_learning_replay_trace": next(c for c in commands if c["name"] == "policy_learning_trace_validation")["status"] != "pass",
 }
 required = {"git_diff_check", "git_delta_diff_check", "python_unit_tests"}
@@ -653,6 +694,9 @@ emit(event="validation_summary", validation_status=status, git_head=head,
      panic_surface_production_unwrap_count=p.get("panic_surface_production_unwrap_count"),
      panic_surface_production_expect_count=p.get("panic_surface_production_expect_count"),
      panic_surface_production_panic_count=p.get("panic_surface_production_panic_count"),
+     external_observation_stream_test_present=evidence["external_observation_stream_test_present"],
+     external_api_action_test_present=evidence["external_api_action_test_present"],
+     semantic_artifact_verification_test_present=evidence["semantic_artifact_verification_test_present"],
      panic_surface_test_total=p.get("panic_surface_test_total"),
      panic_surface_example_total=p.get("panic_surface_example_total"),
      missing_signal_flags=missing, missing_signal_count=sum(1 for v in missing.values() if v))

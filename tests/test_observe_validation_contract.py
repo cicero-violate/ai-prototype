@@ -58,6 +58,18 @@ class ObserveValidationContractTest(unittest.TestCase):
         ):
             self.assertIn(token, self.script)
 
+    def test_external_surface_evidence_is_source_derived(self) -> None:
+        for token in (
+            "def source_evidence()",
+            "external_observation_stream_test_present",
+            "external_api_action_test_present",
+            "semantic_artifact_verification_test_present",
+            '"missing_external_observation_stream_test": not evidence["external_observation_stream_test_present"]',
+            '"missing_external_api_action_test": not evidence["external_api_action_test_present"]',
+            '"missing_semantic_artifact_verification_test": not evidence["semantic_artifact_verification_test_present"]',
+        ):
+            self.assertIn(token, self.script)
+
     def test_runtime_performance_contract_is_emitted_and_budgeted(self) -> None:
         for token in (
             "runtime_performance_metrics",
