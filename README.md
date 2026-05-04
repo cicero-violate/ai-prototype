@@ -19,7 +19,11 @@ B="$(git rev-parse HEAD)"
 ## Validate What Is Available
 
 ```bash
-CANON_RUNTIME_ARCHIVE=/mnt/data/ai-runtime.tar.gz bash scripts/observe_validation.sh
+B=<base-commit>
+CANON_DELTA_BASE="$B" \
+CANON_RUNTIME_ARCHIVE=/mnt/data/ai-runtime.tar.gz \
+CANON_OBSERVE_REPORT=target/observe/validation-report.ndjson \
+bash scripts/observe_validation.sh
 ```
 
 The observe report is written to:
@@ -28,19 +32,18 @@ The observe report is written to:
 target/observe/validation-report.ndjson
 ```
 
-This sandbox can validate Git cleanliness, router syntax checks, four offline
-router behavior contracts, and runtime archive evidence. Root Rust validation
-remains unavailable when `cargo`, `rustc`, or the configured wrapper path are
-missing.
+This emits one NDJSON receipt stream for Git hygiene, base-to-head diff
+hygiene, router tests, Rust checks when available, wrapper override evidence,
+runtime archive/download history, graph presence, and missing validation flags.
 
 ## Root Rust Validation
 
 Run these when the Rust toolchain is present:
 
 ```bash
-RUSTC_WORKSPACE_WRAPPER="" cargo fmt --check
-RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets
-RUSTC_WORKSPACE_WRAPPER="" cargo clippy --all-targets -- -D warnings
+RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo fmt --check
+RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets
+RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo clippy --all-targets -- -D warnings
 ```
 
 Run the local LLM path only with an explicit local endpoint:

@@ -51,6 +51,9 @@ def changed_files(base: str, head: str) -> list[str]:
 def receipt(args: argparse.Namespace) -> dict[str, Any]:
     rows = report_rows(Path(args.report))
     summary = last_event(rows, "validation_summary")
+    report_head = summary.get("git_head")
+    if report_head and report_head != args.head:
+        raise SystemExit(f"stale validation report: report head {report_head} != manifest head {args.head}")
     commands = summary.get("validation_commands") or [
         {"name": c.get("name"), "cmd": c.get("cmd"), "status": c.get("status")}
         for c in command_rows(rows)
@@ -75,6 +78,7 @@ def receipt(args: argparse.Namespace) -> dict[str, Any]:
         "bundle_sha256": sha256(args.bundle),
         "bundle_verify": args.bundle_verify,
         "receiver_apply_command": APPLY_COMMAND.format(Path(args.bundle or "repo-delta.bundle").name),
+        "validation_report_git_head": report_head,
     }
     r["changed_file_count"] = len(r["changed_files"])
     for key in [
@@ -87,11 +91,17 @@ def receipt(args: argparse.Namespace) -> dict[str, Any]:
         "wrapper_override_env",
         "rustc_wrapper_configured",
         "rustc_wrapper_path_exists",
+        "git_delta_diff_check_result",
         "state_graph_present",
         "runtime_archive_present",
+        "runtime_archive_sha256",
+        "runtime_manifest_base_commit",
         "runtime_archive_log_total",
         "runtime_archive_download_total",
         "runtime_archive_conversation_snapshots",
+        "runtime_stale_advisory_count",
+        "runtime_candidate_error_count",
+        "runtime_duplicate_artifact_aliases",
         "delta_base_is_ancestor",
         "delta_changed_file_count",
         "tracked_file_count",
@@ -126,6 +136,7 @@ def write_manifest(path: Path, r: dict[str, Any]) -> None:
         f"- report_sha256: {r['report_sha256']}",
         f"- bundle_sha256: {r['bundle_sha256']}",
         f"- bundle_verify: {r['bundle_verify']}",
+        f"- validation_report_git_head: {r['validation_report_git_head']}",
         f"- changed_file_count: {r['changed_file_count']}",
         f"- cargo_available: {r['cargo_available']}",
         f"- rustc_available: {r['rustc_available']}",
@@ -135,10 +146,16 @@ def write_manifest(path: Path, r: dict[str, Any]) -> None:
         f"- wrapper_override_used: {r['wrapper_override_used']}",
         f"- wrapper_override_env: {json.dumps(r['wrapper_override_env'], sort_keys=True)}",
         f"- rustc_wrapper_path_exists: {r['rustc_wrapper_path_exists']}",
+        f"- git_delta_diff_check_result: {r['git_delta_diff_check_result']}",
         f"- state_graph_present: {r['state_graph_present']}",
+        f"- runtime_archive_sha256: {r['runtime_archive_sha256']}",
+        f"- runtime_manifest_base_commit: {r['runtime_manifest_base_commit']}",
         f"- runtime_archive_log_total: {r['runtime_archive_log_total']}",
         f"- runtime_archive_download_total: {r['runtime_archive_download_total']}",
         f"- runtime_archive_conversation_snapshots: {r['runtime_archive_conversation_snapshots']}",
+        f"- runtime_stale_advisory_count: {r['runtime_stale_advisory_count']}",
+        f"- runtime_candidate_error_count: {r['runtime_candidate_error_count']}",
+        f"- runtime_duplicate_artifact_aliases: {r['runtime_duplicate_artifact_aliases']}",
         f"- delta_base_is_ancestor: {r['delta_base_is_ancestor']}",
         f"- delta_changed_file_count: {r['delta_changed_file_count']}",
         f"- tracked_file_count: {r['tracked_file_count']}",

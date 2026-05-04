@@ -55,6 +55,14 @@ def save(cmd: list[str], out: str, err: str) -> dict[str, str]:
     return {"stdout_path": stdout, "stderr_path": stderr}
 
 
+def sha256(path: Path) -> str:
+    h = hashlib.sha256()
+    with path.open("rb") as fh:
+        for chunk in iter(lambda: fh.read(1024 * 1024), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
 def run(name: str, cmd: list[str], *, cwd: Path = ROOT, timeout: int = 120,
         env: dict[str, str] | None = None) -> dict[str, Any]:
     full_env = {**os.environ, **(env or {})}
@@ -144,9 +152,12 @@ def runtime() -> dict[str, Any]:
     if not archive:
         return {"runtime_archive_present": False, "runtime_archive_candidates": [str(p) for p in candidates]}
     metrics: dict[str, Any] = {"runtime_archive_present": True, "runtime_archive_path": str(archive),
+                               "runtime_archive_sha256": sha256(archive),
                                "runtime_archive_member_count": 0, "runtime_archive_log_counts": {},
                                "runtime_archive_download_counts": {}, "runtime_archive_conversation_snapshots": 0,
-                               "runtime_archive_cache_files": 0}
+                               "runtime_archive_cache_files": 0, "runtime_candidate_error_count": 0,
+                               "runtime_duplicate_artifact_aliases": 0}
+    aliases: dict[str, int] = {}
     try:
         with tarfile.open(archive, "r:gz") as tf:
             for member in (m for m in tf.getmembers() if m.isfile()):
@@ -154,15 +165,32 @@ def runtime() -> dict[str, Any]:
                 metrics["runtime_archive_member_count"] += 1
                 metrics["runtime_archive_cache_files"] += int("cache" in name.lower())
                 metrics["runtime_archive_conversation_snapshots"] += int(name.endswith(".conversation.json"))
-                if name == "RUNTIME_MANIFEST.json":
+                if name.endswith("RUNTIME_MANIFEST.json"):
                     manifest = json.load(tf.extractfile(member) or open(os.devnull))
                     metrics["runtime_manifest_base_commit"] = manifest.get("baseCommit")
                     metrics["runtime_download_history_by_classification"] = manifest.get("downloadHistoryByClassification", {})
+                    metrics["runtime_stale_advisory_count"] = int(
+                        metrics["runtime_download_history_by_classification"].get("stale_advisory", 0) or 0
+                    )
                 if name.endswith((".ndjson", ".jsonl")):
                     fh = tf.extractfile(member)
-                    count = sum(1 for line in fh or [] if line.strip())
+                    count = 0
+                    for raw in fh or []:
+                        if not raw.strip():
+                            continue
+                        count += 1
+                        if "candidate-ledger" in name:
+                            try:
+                                row = json.loads(raw)
+                                alias = str(row.get("artifactAlias") or "")
+                                if alias:
+                                    aliases[alias] = aliases.get(alias, 0) + 1
+                                metrics["runtime_candidate_error_count"] += int(bool(row.get("error")))
+                            except Exception:
+                                metrics["runtime_candidate_error_count"] += 1
                     key = "runtime_archive_download_counts" if "download" in name.lower() else "runtime_archive_log_counts"
                     metrics[key][name] = count
+        metrics["runtime_duplicate_artifact_aliases"] = sum(1 for value in aliases.values() if value > 1)
         metrics["runtime_archive_parse_status"] = "pass"
     except Exception as exc:
         metrics.update({"runtime_archive_parse_status": "fail", "runtime_archive_parse_error": str(exc)})
@@ -203,6 +231,13 @@ def delta_metrics() -> dict[str, Any]:
     }
 
 
+def delta_diff_command() -> list[str]:
+    base = os.environ.get("CANON_DELTA_BASE", "").strip()
+    if base:
+        return ["git", "diff", "--check", f"{base}..HEAD"]
+    return ["git", "diff", "--check"]
+
+
 def cargo_tests(result: dict[str, Any]) -> int | None:
     text = f"{result.get('stdout', '')}\n{result.get('stderr', '')}"
     counts = [int(x) for x in re.findall(r"running\s+(\d+)\s+tests?", text)]
@@ -236,6 +271,7 @@ emit(event="delta_metrics", **delta)
 
 commands = [
     run("git_diff_check", ["git", "diff", "--check"], timeout=30),
+    run("git_delta_diff_check", delta_diff_command(), timeout=30),
     run("router_offline_tests", ["bash", "run_tests.sh"], cwd=router_dir(), timeout=180),
     run("cargo_fmt_check", ["cargo", "fmt", "--check"], timeout=180, env=cargo_env),
     run("cargo_test_all_targets", ["cargo", "test", "--all-targets"], timeout=600, env=cargo_env),
@@ -274,7 +310,7 @@ missing = {
     "missing_semantic_artifact_verification_test": True,
     "missing_policy_learning_replay_trace": True,
 }
-required = {"git_diff_check", "router_offline_tests"}
+required = {"git_diff_check", "git_delta_diff_check", "router_offline_tests"}
 failed_required = [c["name"] for c in commands if c["name"] in required and c["status"] != "pass"]
 status = "fail" if failed_required else ("partial" if any(missing.values()) else "pass")
 emit(event="validation_summary", validation_status=status, git_head=head,
@@ -289,6 +325,7 @@ emit(event="validation_summary", validation_status=status, git_head=head,
      rust_toolchain_source=toolchain["rust_toolchain_source"], wrapper_override_required=w["wrapper_override_required"],
      wrapper_override_used=wrapper_override_used, wrapper_override_env=sorted(cargo_env.keys()),
      rustc_wrapper_configured=w["rustc_wrapper_configured"], rustc_wrapper_path_exists=w["rustc_wrapper_path_exists"],
+     git_delta_diff_check_result=next(c for c in commands if c["name"] == "git_delta_diff_check")["status"],
      cargo_fmt_check_result=next(c for c in commands if c["name"] == "cargo_fmt_check")["status"],
      cargo_test_result=cargo_test["status"], clippy_result_when_available=next(c for c in commands if c["name"] == "cargo_clippy_all_targets")["status"],
      ollama_example_result_when_available=next(c for c in commands if c["name"] == "ollama_judgment_example")["status"],
@@ -297,6 +334,11 @@ emit(event="validation_summary", validation_status=status, git_head=head,
      runtime_archive_present=r.get("runtime_archive_present", False), runtime_archive_log_total=log_total,
      runtime_archive_download_total=download_total,
      runtime_archive_conversation_snapshots=r.get("runtime_archive_conversation_snapshots", 0),
+     runtime_archive_sha256=r.get("runtime_archive_sha256"),
+     runtime_manifest_base_commit=r.get("runtime_manifest_base_commit"),
+     runtime_stale_advisory_count=r.get("runtime_stale_advisory_count", 0),
+     runtime_candidate_error_count=r.get("runtime_candidate_error_count", 0),
+     runtime_duplicate_artifact_aliases=r.get("runtime_duplicate_artifact_aliases", 0),
      delta_base_commit=delta.get("delta_base_commit"), delta_base_is_ancestor=delta.get("delta_base_is_ancestor"),
      delta_changed_file_count=len(delta.get("delta_changed_files", [])),
      tracked_file_count=repo["tracked_file_count"], rust_file_count_src_examples=repo["rust_file_count_src_examples"],
