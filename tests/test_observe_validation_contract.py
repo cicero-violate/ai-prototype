@@ -48,6 +48,16 @@ class ObserveValidationContractTest(unittest.TestCase):
         self.assertIn("missing_panic_surface_validation", self.script)
         self.assertIn("panic_surface_production_unwrap_count", self.script)
 
+    def test_policy_learning_trace_validation_is_required(self) -> None:
+        for token in (
+            "validate_policy_learning_trace.py",
+            "policy_learning_trace_validation",
+            "missing_policy_learning_replay_trace",
+            "policy_learning_trace_status",
+            "required.add(\"policy_learning_trace_validation\")",
+        ):
+            self.assertIn(token, self.script)
+
     def test_runtime_performance_contract_is_emitted_and_budgeted(self) -> None:
         for token in (
             "runtime_performance_metrics",

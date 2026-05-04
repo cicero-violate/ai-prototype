@@ -34,26 +34,26 @@ One-line explanation: Goodness is the geometric mean of all 15 dimensions; one w
 
 ```text
 I  = 6.7 / 10
-E  = 6.9 / 10
-C  = 6.1 / 10
-A  = 8.1 / 10
-R  = 6.4 / 10
-P  = 6.2 / 10
-S  = 6.0 / 10
+E  = 6.6 / 10
+C  = 5.9 / 10
+A  = 8.2 / 10
+R  = 6.3 / 10
+P  = 5.9 / 10
+S  = 5.9 / 10
 D  = 7.8 / 10
-T  = 7.7 / 10
-Co = 7.5 / 10
-Em = 7.0 / 10
-B  = 6.7 / 10
-L  = 5.5 / 10
-Si = 6.1 / 10
-F  = 7.1 / 10
+T  = 8.0 / 10
+Co = 7.3 / 10
+Em = 6.9 / 10
+B  = 6.6 / 10
+L  = 5.9 / 10
+Si = 5.8 / 10
+F  = 7.0 / 10
 
-G = 6.75 / 10
+G = 6.68 / 10
 max(G) = good
 ```
 
-Judgment: this remains a disciplined deterministic-runtime prototype with strong audit goals and improving handoff safety. This phase improves evidence freshness by binding runtime archive manifest base evidence to the active delta base and by preventing a generic restored repository from failing required validation solely because an optional router subtree is absent. The score remains capped by unavailable Rust validation, missing graph telemetry, and missing current-head Ollama proof.
+Judgment: this phase improves the evidence spine by replacing a hardcoded missing learning signal with an executable source-level validator. The repository is still not production-ready: Rust compiler validation, graph telemetry, live Ollama execution, external observation/API tests, and semantic artifact verification remain missing in this sandbox.
 
 ## Scope
 
@@ -61,74 +61,100 @@ Judgment: this remains a disciplined deterministic-runtime prototype with strong
 stage = PHASE_2_EXECUTE_TURN_002
 source_changes_allowed = true
 source_changes_made = true
-rust_source_files_changed = false
-scorecard_updated = true
 restored_bundle = /mnt/data/ai.bundle
-restored_repo_path = /mnt/data/ai-phase2-work/repo
+restored_repo_path = /mnt/data/ai-phase2/repo
 observed_branch = main
-base_commit = b89bdd0766eb986d6de87887eeb991ce6f837ba5
+base_commit = 7a8823141bc0e95c4689a3dff7f5a67840d1d4de
 runtime_archive = /mnt/data/ai-runtime.tar.gz
 existing_goal_md = true
 existing_score_md_before_phase = true
 ```
 
-## Phase 2 Turn 002 Delta
+## Phase 2 Delta
 
 Implemented closure:
 
-- `plan.md` now targets runtime evidence freshness at the artifact boundary.
-- `scripts/observe_validation.sh` compares `RUNTIME_MANIFEST.json.baseCommit` with `CANON_DELTA_BASE`.
-- Validation summaries now emit `runtime_manifest_base_expected` and `runtime_manifest_base_matches_delta_base`.
-- `missing_runtime_manifest_base_match` is now a missing-signal flag when a runtime archive is present but anchored to the wrong base.
-- `router_offline_tests` stays visible as `missing_router_offline_tests`, but it is required only when the router test directory is actually available.
-- `scripts/write_delta_manifest.py` preserves runtime-base-match evidence in receipts and manifests.
-- `tests/test_observe_validation_contract.py` covers the new runtime-base and router-availability contracts.
-- `tests/test_write_delta_manifest.py` covers manifest preservation of runtime-base evidence and now runs manifest checks in-process, reducing Python test runtime from tens of seconds to about one second for the suite logic.
+- `plan.md` now targets the highest executable Phase 1 gap: `missing_policy_learning_replay_trace`.
+- Added `scripts/validate_policy_learning_trace.py`.
+- `scripts/observe_validation.sh` now runs the policy-learning trace validator as a required validation command.
+- Observe summaries now emit `policy_learning_trace_validation_result`, `policy_learning_trace_status`, `policy_learning_trace_function`, `policy_learning_trace_check_count`, and `policy_learning_trace_missing_count`.
+- `missing_policy_learning_replay_trace` is now computed from validation result instead of hardcoded to `true`.
+- Added `tests/test_policy_learning_trace_contract.py` for pass/fail trace contracts.
+- Extended `tests/test_observe_validation_contract.py` to lock the new required validation contract.
 
 Remaining critical limits:
 
-- `cargo` and `rustc` are unavailable in this sandbox, so Rust fmt/test/clippy remain unexecuted here.
-- `state/rustc/*/graph.json` is absent, so semantic graph telemetry remains missing.
-- `examples/ollama_judgment.rs` was not re-run at current HEAD because no local Ollama environment is configured.
-- Runtime archive evidence is useful and now base-matched, but it still cannot replace current-head Rust/compiler validation.
-- Existing TODO/FIXME markers remain only in an archived patch file, not active source.
+- `cargo` and `rustc` are unavailable in this sandbox, so Rust fmt/test/clippy still did not run.
+- No generated graph exists under `state/rustc`, so graph node/edge/intent telemetry is still absent.
+- `examples/ollama_judgment.rs` was not run here because local Ollama environment variables are missing and `cargo` is unavailable.
+- The policy-learning validator proves a source-level trace contract, not compiler execution of the Rust test.
+- Runtime archive evidence is base-matched to `7a8823141bc0e95c4689a3dff7f5a67840d1d4de`, but it remains historical supporting evidence.
 
 ## Existing File Contents Observed
 
-`GOAL.md` exists and defines Canon Agent as a deterministic, self-improving agent runtime with a frozen state-machine kernel, append-only replayable TLog, capability-layer intelligence, policy learning, and an LLM promotion ladder. It explicitly requires replayable and auditable decisions, recoveries, and outcomes.
+`GOAL.md` exists. It defines Canon Agent as a deterministic, self-improving agent runtime with a frozen state-machine kernel, append-only replayable TLog, capability-layer intelligence, policy learning, and an LLM promotion ladder. It requires completed run history to become policy and policy to reduce future reasoning cost while preserving auditability.
 
-`score.md` existed before this phase and recorded that artifact handoff safety had improved, while correctness remained capped by missing Rust validation, missing graph telemetry, and historical runtime evidence.
+The Phase 1 `score.md` was carried forward before execution. It scored the restored repository at `G = 6.54 / 10`, reported no active TODO/FIXME markers outside `score.md` and `patch/**`, and identified the learning loop as undemonstrated because `missing_policy_learning_replay_trace` was always true.
 
 ## Repository Evidence
 
 ```text
-tracked_files = 120
+tracked_files_before_commit = 120
+new_files_added = 2
 rust_files_src_examples = 53
-python_files = 4
+python_files_after_change = 5
 shell_files = 4
 third_party_rust_dependencies = 0
 rust_test_attrs = 103
+python_unittest_tests = 19
 active_source_todo_fixme_mentions = 0
-archived_patch_todo_mentions = 4
+archived_patch_todo_fixme_mentions = 4
 panic_surface_production_total = 0
 panic_surface_test_total = 319
+largest_file = src/lib.rs, 3686 lines
+state_graph_present = false
+cargo_available = false
+rustc_available = false
+policy_learning_trace_validation_result = pass
+policy_learning_trace_missing_count = 0
 ```
 
 Positive evidence:
 
 - `src/lib.rs` and `src/main.rs` use `#![forbid(unsafe_code)]`.
-- `Cargo.toml` declares no third-party Rust dependencies.
-- The tree matches the intended architecture: `kernel`, `codec`, `runtime`, `capability`, and `api`.
-- Runtime and capability modules expose TLog replay, durable runtime resume, semantic delta logic, command ledger receipts, transition verification, policy, learning, and eval surfaces.
-- Python validation covers observe-validation contracts, panic-surface validation requirements, runtime performance contract fields, delta manifest integrity, runtime archive base matching, and optional-router validation semantics.
+- `Cargo.toml` declares no third-party Rust dependencies, and `Cargo.lock` contains only the local `ai` package.
+- The tree follows the intended layers: `kernel`, `codec`, `runtime`, `capability`, and `api`.
+- Runtime code includes deterministic replay, TLog verification, command-ledger reconstruction, durable resume, bounded recovery policy, transition validation, and semantic delta checks.
+- Capability code includes typed records for observation, context, memory, planning, LLM, judgment, tooling, verification, eval, policy, learning, and orchestration.
+- `scripts/validate_policy_learning_trace.py` validates that `learning_policy_llm_feedback_loop_drives_judgment` connects run history, `PolicyPromotion::from_tlog`, `PolicyStore::promote_feedback`, policy hash/version injection into the LLM prompt, API evidence submission, judgment pass, transition to `Phase::Plan`, and `verify_tlog`.
+- Runtime archive evidence is present, base-matched, and contains performance signals within configured budgets.
 
 Critical evidence:
 
-- Root Rust validation still cannot be reproduced here because no Rust toolchain is installed in `/mnt/data` or `PATH`.
-- No generated semantic graph is present under `state/rustc`.
-- Runtime archive `RUNTIME_MANIFEST.json` is now observed at the active delta base when `CANON_DELTA_BASE=b89bdd0766eb986d6de87887eeb991ce6f837ba5`, but runtime archive data remains external historical evidence rather than compiler validation.
-- The codebase has many panic-like calls in test-classified Rust regions. Production panic surface is clean according to the Python classifier, but this remains a classifier result rather than a Rust compiler proof.
-- The router offline test path is absent in this restored repo; the validation system now records that absence without making it a required-command failure.
+- Rust validation is still absent. Python tests and source scans cannot replace `cargo fmt`, `cargo test`, or `cargo clippy`.
+- The new policy-learning validation is source-level. It prevents the repository from hiding an existing trace, but it is not a compiled Rust proof in this environment.
+- No generated semantic graph exists under `state/rustc`; graph telemetry and intent coverage remain missing.
+- The router test directory is absent in this generic restored repo, so router tests are visible as unavailable but not required.
+- `src/lib.rs` still centralizes all 103 Rust `#[test]` attributes and remains the largest file.
+- Production panic-surface scan is clean, but 319 test-bucket panic-like calls remain noisy.
+
+## TODO/FIXME Evidence
+
+```text
+active search command = rg -n --hidden --glob '!.git' --glob '!target' --glob '!patch/**' --glob '!score.md' 'TODO|FIXME' .
+active_result = no matches
+archived search command = rg -n --hidden --glob '!.git' --glob '!target' 'TODO|FIXME' .
+archived_result_count = 4 patch TODO markers plus score references
+```
+
+Archived TODO markers found:
+
+```text
+patch/improve_score_codebase.apply_patch:44  define command intake once the external API protocol is fixed
+patch/improve_score_codebase.apply_patch:69  grow this payload once judgment policy becomes versioned
+patch/improve_score_codebase.apply_patch:134 implement handlers after the protocol schema is frozen
+patch/improve_score_codebase.apply_patch:158 stabilize wire encoding after HTTP/gRPC transport choice
+```
 
 ## Validation Evidence
 
@@ -136,7 +162,10 @@ Commands run during this phase:
 
 ```text
 python3 -m unittest discover -s tests -p 'test_*.py' -v
-  => pass, 16 tests
+  => pass, 19 tests
+
+python3 scripts/validate_policy_learning_trace.py --root . --report target/observe/policy-learning-trace.json
+  => pass, checks=4, missing_count=0
 
 python3 scripts/validate_rust_panic_surface.py --root . --fail-production-unwrap --report target/observe/panic-surface.json
   => pass, production_total=0, test_total=319, example_total=0
@@ -144,69 +173,77 @@ python3 scripts/validate_rust_panic_surface.py --root . --fail-production-unwrap
 git diff --check
   => pass
 
-CANON_DELTA_BASE=b89bdd0766eb986d6de87887eeb991ce6f837ba5 CANON_RUNTIME_ARCHIVE=/mnt/data/ai-runtime.tar.gz CANON_OBSERVE_REPORT=target/observe/validation-report-phase2.ndjson bash scripts/observe_validation.sh
+CANON_DELTA_BASE=7a8823141bc0e95c4689a3dff7f5a67840d1d4de CANON_RUNTIME_ARCHIVE=/mnt/data/ai-runtime.tar.gz CANON_OBSERVE_REPORT=target/observe/validation-report-phase2.ndjson bash scripts/observe_validation.sh
   => partial, failed_required_commands=[]
 ```
 
-Expected unavailable or skipped commands in this sandbox:
+Observe-validation result summary:
+
+```text
+validation_status = partial
+validation_test_count = 19
+failed_required_commands = []
+policy_learning_trace_validation_result = pass
+policy_learning_trace_status = pass
+policy_learning_trace_missing_count = 0
+missing_policy_learning_replay_trace = false
+runtime_manifest_base_commit = 7a8823141bc0e95c4689a3dff7f5a67840d1d4de
+runtime_manifest_base_expected = 7a8823141bc0e95c4689a3dff7f5a67840d1d4de
+runtime_manifest_base_matches_delta_base = true
+runtime_archive_log_total = 10070
+runtime_archive_download_total = 95
+runtime_performance_signal_present = true
+runtime_performance_budget_status = pass
+missing_signal_count = 14
+```
+
+Unavailable or skipped validation:
 
 ```text
 cargo fmt --check                    => unavailable, cargo not found
 cargo test --all-targets             => unavailable, cargo not found
 cargo clippy --all-targets           => unavailable, cargo not found
-wrapper_graph_validation             => skipped, CANON_RUSTC_WRAPPER missing
-cargo run --example ollama_judgment  => skipped, Ollama env missing
+wrapper_graph_validation             => skipped_env_missing, CANON_RUSTC_WRAPPER missing
+cargo run --example ollama_judgment  => skipped_env_missing, Ollama env missing
 router_offline_tests                 => unavailable, router subtree missing
-```
-
-Runtime archive evidence from `/mnt/data/ai-runtime.tar.gz`:
-
-```text
-runtime_archive_parse_status = pass
-runtime_manifest_base_commit = b89bdd0766eb986d6de87887eeb991ce6f837ba5
-runtime_manifest_base_expected = b89bdd0766eb986d6de87887eeb991ce6f837ba5
-runtime_manifest_base_matches_delta_base = true
-runtime_archive_log_total = 9571
-runtime_archive_download_total = 88
-runtime_performance_signal_present = true
-runtime_performance_budget_status = pass
 ```
 
 ## Axis Detail
 
 | Axis | Score | Critical basis |
 |---|---:|---|
-| I | 6.7 | Strong typed architecture plus better runtime evidence classification; closed-loop autonomous intelligence is still mostly scaffolded. |
-| E | 6.9 | Manifest tests now run in-process and finish much faster; Rust validation still cannot run. |
-| C | 6.1 | Runtime archive base matching and optional-router required-command logic reduce false or stale validation states; compiler validation is absent. |
-| A | 8.1 | Work directly supports GOAL.md auditability and replayability. |
-| R | 6.4 | Wrong-base runtime archives are now visible; graph and Rust validation remain missing. |
-| P | 6.2 | Python test runtime improved materially, and runtime performance evidence is budgeted. |
-| S | 6.0 | Generic repo validation is less brittle because absent optional router tests no longer fail required validation. |
-| D | 7.8 | Delta and runtime evidence are now anchored to explicit base/head contracts. |
-| T | 7.7 | Manifest and receipt output now expose runtime base expectation and match status. |
-| Co | 7.5 | Receiver handoff is clearer because optional component absence and runtime-base mismatch are distinct signals. |
-| Em | 7.0 | Operators get stronger freshness evidence and fewer false validation failures. |
-| B | 6.7 | Benefit increases for safe repo-loop automation, but deployed agent benefit is still unproven. |
-| L | 5.5 | Learning/policy modules remain present but no new learning replay trace was executed. |
-| Si | 6.1 | Test path is simpler and faster; broad Rust surface remains cognitively large. |
-| F | 7.1 | Freshness checks improve future iteration safety. |
+| I | 6.7 | Source-level evidence now proves the intended learning/policy/judgment trace exists; closed-loop autonomous reduction of LLM work is still not measured. |
+| E | 6.6 | Python validation remains executable and now captures a previously hidden signal; missing Rust tooling still blocks full validation. |
+| C | 5.9 | Required trace and panic validators pass, but compiler validation remains absent. |
+| A | 8.2 | The change directly supports GOAL.md’s learning-from-run-history requirement. |
+| R | 6.3 | Validation no longer permanently reports a false learning-loop absence; major runtime/graph/Ollama gaps remain. |
+| P | 5.9 | Runtime archive performance stays within configured budgets; no current Rust benchmark exists. |
+| S | 5.9 | Validation is more modular, but external observation/API/orchestration scale remains unproven. |
+| D | 7.8 | Required validator makes the learning signal deterministic and machine-checkable. |
+| T | 8.0 | Observe summaries now expose policy-learning trace status and missing-token counts. |
+| Co | 7.3 | Contributors get explicit failure tokens for missing learning-trace structure. |
+| Em | 6.9 | Operators can distinguish “trace absent” from “Rust execution unavailable.” |
+| B | 6.6 | Benefit improves for repo-loop evaluation, but deployed user benefit is still unproven. |
+| L | 5.9 | Learning score improves because policy feedback is now validated as a required source-level trace. |
+| Si | 5.8 | Added script increases file count slightly, but simplifies a hardcoded missing signal into one deterministic check. |
+| F | 7.0 | Future iterations can fail fast if the learning/policy/judgment trace regresses. |
 
 ## Risk Register
 
 | Risk | Severity | Evidence | Closure requirement |
 |---|---:|---|---|
-| Root Rust validation unavailable | High | `cargo`/`rustc` not found | Provide toolchain and rerun fmt/test/clippy. |
-| Missing graph telemetry | High | no `state/rustc/*/graph.json` | Regenerate graph and publish node/edge/intent metrics. |
-| Current-head LLM proof absent | High | Ollama example not run here | Re-run with local Ollama and record proof replay. |
-| Runtime archive cannot replace compiler validation | Medium | archive is base-matched but external to current compiler run | Keep archive evidence as supporting signal only. |
-| Classifier-only panic proof | Medium | panic-surface result is Python source scan | Reconfirm with Rust validation once toolchain exists. |
-| Learning proof not closed | High | no observation→eval→learning replay trace | Add and validate a current-head policy promotion trace. |
+| Rust crate not compiler-validated here | High | `cargo` and `rustc` unavailable | Expose toolchain and rerun fmt/test/clippy. |
+| Policy-learning proof is source-level only | Medium | validator scans Rust source contract | Re-run compiled Rust tests once toolchain exists. |
+| Missing semantic graph telemetry | High | no `state/rustc/*/graph.json` | Run explicit graph capture with `CANON_RUSTC_WRAPPER`. |
+| Current-head local LLM proof absent | High | Ollama example skipped | Run `examples/ollama_judgment.rs` and verify receipt/proof replay. |
+| External API and observation tests absent | High | observe flags remain true | Add current-head API action and stream-ingress validation. |
+| Monolithic Rust test surface | Medium | 103 Rust tests in `src/lib.rs`; 3,686-line file | Move tests into focused modules or integration tests. |
+| Archived unresolved TODOs | Medium | four TODO markers in archived patch | Confirm obsolete patch TODOs or close protocol/API issues in active docs. |
 
 ## Next Closure Targets
 
-1. Install or expose a Rust toolchain and rerun `cargo fmt --check`, `cargo test --all-targets`, and `cargo clippy --all-targets -- -D warnings`.
-2. Run graph capture explicitly with `CANON_RUSTC_WRAPPER` and regenerate `state/rustc/*/graph.json`.
-3. Re-run `examples/ollama_judgment.rs` at current HEAD with local Ollama and attach receipt/proof replay evidence.
-4. Add a current-head observation → judgment → eval → learning → policy promotion integration trace.
-5. Keep artifact freshness strict: every bundle must expose `H`, require `B`, and report whether runtime archive evidence is anchored to the active delta base.
+1. Expose a Rust toolchain and rerun `cargo fmt --check`, `cargo test --all-targets`, and `cargo clippy --all-targets -- -D warnings`.
+2. Generate `state/rustc/*/graph.json` with `CANON_RUSTC_WRAPPER` and record node, edge, and intent-coverage metrics.
+3. Run `cargo run --example ollama_judgment` against local Ollama and record durable receipt/proof replay evidence.
+4. Convert the source-level policy-learning trace into a compiled validation receipt after Rust tooling is available.
+5. Add external observation stream and API action tests so the remaining always-missing external-surface flags become executable evidence.

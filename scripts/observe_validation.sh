@@ -20,6 +20,7 @@ ROOT = Path.cwd()
 REPORT = Path(os.environ.get("CANON_OBSERVE_REPORT", "target/observe/validation-report.ndjson"))
 OUT = REPORT.parent / "command-output"
 PANIC_SURFACE_REPORT = REPORT.parent / "panic-surface.json"
+POLICY_LEARNING_TRACE_REPORT = REPORT.parent / "policy-learning-trace.json"
 REPORT.parent.mkdir(parents=True, exist_ok=True)
 OUT.mkdir(parents=True, exist_ok=True)
 REPORT.write_text("", encoding="utf-8")
@@ -342,6 +343,22 @@ def panic_surface_metrics() -> dict[str, Any]:
     }
 
 
+def policy_learning_trace_metrics() -> dict[str, Any]:
+    if not POLICY_LEARNING_TRACE_REPORT.exists():
+        return {"policy_learning_trace_report_present": False}
+    try:
+        data = json.loads(POLICY_LEARNING_TRACE_REPORT.read_text(encoding="utf-8"))
+    except Exception as exc:
+        return {"policy_learning_trace_report_present": True,
+                "policy_learning_trace_status": "fail", "policy_learning_trace_error": str(exc)}
+    checks = data.get("checks", []) if isinstance(data, dict) else []
+    return {"policy_learning_trace_report_present": True,
+            "policy_learning_trace_status": data.get("status"),
+            "policy_learning_trace_function": data.get("trace_function"),
+            "policy_learning_trace_check_count": len(checks),
+            "policy_learning_trace_missing_count": int(data.get("missing_count") or 0)}
+
+
 def delta_metrics() -> dict[str, Any]:
     base = os.environ.get("CANON_DELTA_BASE", "").strip()
     if not base:
@@ -440,6 +457,7 @@ commands = [
     run("git_delta_diff_check", delta_diff_command(), timeout=30),
     run("python_unit_tests", ["python3", "-m", "unittest", "discover", "-s", "tests", "-p", "test_*.py"], timeout=90),
     run("panic_surface_validation", ["python3", "scripts/validate_rust_panic_surface.py", "--root", ".", "--fail-production-unwrap", "--report", str(PANIC_SURFACE_REPORT)], timeout=90),
+    run("policy_learning_trace_validation", ["python3", "scripts/validate_policy_learning_trace.py", "--root", ".", "--report", str(POLICY_LEARNING_TRACE_REPORT)], timeout=90),
     run("router_offline_tests", ["bash", "run_tests.sh"], cwd=router_dir(), timeout=180),
     run("cargo_fmt_check", ["cargo", "fmt", "--check"], timeout=180, env=root_rust_env),
     run("cargo_test_all_targets", ["cargo", "test", "--all-targets"], timeout=600, env=root_rust_env),
@@ -448,9 +466,11 @@ commands = [
 ]
 g = graph()
 p = panic_surface_metrics()
+policy_trace = policy_learning_trace_metrics()
 command_perf = command_duration_metrics(commands)
 emit(event="graph_metrics", **g)
 emit(event="panic_surface_metrics", **p)
+emit(event="policy_learning_trace_metrics", **policy_trace)
 runtime_perf = r.get("runtime_performance_metrics", {}) if isinstance(r.get("runtime_performance_metrics"), dict) else {}
 emit(event="runtime_performance_metrics", runtime_performance_signal_present=r.get("runtime_performance_signal_present", False),
      runtime_performance_budget_status=r.get("runtime_performance_budget_status", "missing"),
@@ -493,10 +513,11 @@ missing = {
     "missing_external_observation_stream_test": True,
     "missing_external_api_action_test": True,
     "missing_semantic_artifact_verification_test": True,
-    "missing_policy_learning_replay_trace": True,
+    "missing_policy_learning_replay_trace": next(c for c in commands if c["name"] == "policy_learning_trace_validation")["status"] != "pass",
 }
 required = {"git_diff_check", "git_delta_diff_check", "python_unit_tests"}
 required.add("panic_surface_validation")
+required.add("policy_learning_trace_validation")
 if router_test.get("available"):
     required.add("router_offline_tests")
 failed_required = [c["name"] for c in commands if c["name"] in required and c["status"] != "pass"]
@@ -529,6 +550,11 @@ emit(event="validation_summary", validation_status=status, git_head=head,
      cargo_fmt_check_result=next(c for c in commands if c["name"] == "cargo_fmt_check")["status"],
      cargo_test_result=cargo_test["status"], clippy_result_when_available=next(c for c in commands if c["name"] == "cargo_clippy_all_targets")["status"],
      ollama_example_result_when_available=next(c for c in commands if c["name"] == "ollama_judgment_example")["status"],
+     policy_learning_trace_validation_result=next(c for c in commands if c["name"] == "policy_learning_trace_validation")["status"],
+     policy_learning_trace_status=policy_trace.get("policy_learning_trace_status"),
+     policy_learning_trace_function=policy_trace.get("policy_learning_trace_function"),
+     policy_learning_trace_check_count=policy_trace.get("policy_learning_trace_check_count"),
+     policy_learning_trace_missing_count=policy_trace.get("policy_learning_trace_missing_count"),
      state_graph_present=g.get("state_graph_present", False), graph_node_count_when_present=g.get("graph_node_count"),
      graph_edge_count_when_present=g.get("graph_edge_count"), graph_intent_coverage_when_present=g.get("graph_intent_coverage"),
      runtime_archive_present=r.get("runtime_archive_present", False), runtime_archive_log_total=log_total,
