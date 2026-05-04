@@ -32,44 +32,40 @@ One-line explanation: Goodness is the geometric mean of all 15 dimensions; one w
 
 ## Current Truth
 
-`GOAL.md` requires an auditable, replayable runtime where completed runs become policy and validation evidence survives handoff. The current repository already validates policy-learning and panic-surface contracts, but `scripts/write_delta_manifest.py` did not preserve those two high-value evidence classes in the final `DELTA_MANIFEST.md`. That made the final receiver artifact less transparent than the validation report that produced it.
+`GOAL.md` requires deterministic execution, auditable evidence, replayable run history, and policy learning outside the frozen kernel. The Phase 1 `score.md` says the repository is coherent but still capped by missing Rust compiler proof, missing wrapper graph telemetry, missing live Ollama proof, and incomplete external observation/API evidence.
 
-The restored bundle head is `b7bbdbc0c30ce167e14e697ece4e928dafdcd3a0`. The runtime archive `/mnt/data/ai-runtime.tar.gz` includes `RUNTIME_MANIFEST.json` with the same base commit, plus conversation/download/runtime logs. That archive is useful supporting evidence, but the current turn still needs a fresh committed delta and fresh `/mnt/data/repo-delta-002.bundle` plus `/mnt/data/DELTA_MANIFEST.md`.
+The runtime archive `/mnt/data/ai-runtime.tar.gz` exists and aligns to base commit `9ea8f585fc7d043d13cee60452a572ff29d1e796`, but the artifact boundary still under-reports one required workflow class: runtime tarball inspection. Existing validation records aggregate logs and downloads, but the final manifest does not preserve distinct counts for download indexes, conversation ledgers, prior runtime state, audit files, delta-apply receipts, current-run summaries, and runtime manifest presence.
 
 ## Work
 
-1. Preserve policy-learning trace evidence in delta receipts and manifests:
-   - `policy_learning_trace_validation_result`
-   - `policy_learning_trace_status`
-   - `policy_learning_trace_function`
-   - `policy_learning_trace_check_count`
-   - `policy_learning_trace_missing_count`
-2. Preserve panic-surface evidence in delta receipts and manifests:
-   - production unwrap/expect/panic counts
-   - test panic-surface total
-   - example panic-surface total
-3. Add regression tests proving:
-   - manifest line 1 is `base_commit: <B>`
-   - manifest line 2 is `head_commit: <H>`
-   - policy-learning evidence survives into receipt and manifest
-   - panic-surface evidence survives into receipt and manifest
-   - repeated scalar metrics such as `router_test_count` are not duplicated
-4. Update `score.md` with the new evidence, remaining environmental limits, marker review, validation results, and recomputed `G`.
-5. Run validation, commit, and produce the cumulative bundle and manifest for `b7bbdbc0c30ce167e14e697ece4e928dafdcd3a0..HEAD`.
+1. Preserve runtime archive inspection evidence in `scripts/observe_validation.sh`:
+   - download index files
+   - conversation ledger files
+   - prior runtime state files
+   - delta receipt files
+   - audit files
+   - current run summary presence
+   - runtime manifest presence
+   - aggregate inspection status
+2. Preserve the same evidence in `scripts/write_delta_manifest.py` and `DELTA_MANIFEST.md` so the receiver can inspect `B..H` without reopening the tarball.
+3. Add Python regression tests proving the observe contract emits the new fields and the manifest writes each new runtime inspection metric exactly once.
+4. Update `score.md` with the actual Phase 2 evidence, marker review, validation results, and recomputed `G`.
+5. Run validation, commit, and create the cumulative delta artifacts for `9ea8f585fc7d043d13cee60452a572ff29d1e796..HEAD`.
 
 ## Validation Commands
 
 ```bash
+python3 -m py_compile scripts/write_delta_manifest.py
 python3 -m unittest discover -s tests -p 'test_*.py' -v
 python3 scripts/validate_policy_learning_trace.py --root . --report target/observe/policy-learning-trace.json
 python3 scripts/validate_rust_panic_surface.py --root . --fail-production-unwrap --report target/observe/panic-surface.json
 git diff --check
-CANON_DELTA_BASE=b7bbdbc0c30ce167e14e697ece4e928dafdcd3a0 CANON_RUNTIME_ARCHIVE=/mnt/data/ai-runtime.tar.gz CANON_OBSERVE_REPORT=target/observe/validation-report-phase2.ndjson bash scripts/observe_validation.sh
-git bundle create /mnt/data/repo-delta-002.bundle b7bbdbc0c30ce167e14e697ece4e928dafdcd3a0..HEAD
+CANON_DELTA_BASE=9ea8f585fc7d043d13cee60452a572ff29d1e796 CANON_RUNTIME_ARCHIVE=/mnt/data/ai-runtime.tar.gz CANON_OBSERVE_REPORT=target/observe/validation-report-phase2.ndjson bash scripts/observe_validation.sh
+git bundle create /mnt/data/repo-delta-002.bundle 9ea8f585fc7d043d13cee60452a572ff29d1e796..HEAD
 git bundle verify /mnt/data/repo-delta-002.bundle
-python3 scripts/write_delta_manifest.py --base b7bbdbc0c30ce167e14e697ece4e928dafdcd3a0 --head <H> --report target/observe/validation-report-phase2.ndjson --bundle /mnt/data/repo-delta-002.bundle --out /mnt/data/DELTA_MANIFEST.md --receipt-out target/observe/delta-receipt-phase2.json
+python3 scripts/write_delta_manifest.py --base 9ea8f585fc7d043d13cee60452a572ff29d1e796 --head <H> --report target/observe/validation-report-phase2.ndjson --bundle /mnt/data/repo-delta-002.bundle --out /mnt/data/DELTA_MANIFEST.md --receipt-out target/observe/delta-receipt-phase2.json
 ```
 
 ## Boundary
 
-Do not claim unavailable proof. `cargo`, `rustc`, wrapper graph telemetry, and live Ollama execution remain absent in this container unless the environment supplies them. This phase improves artifact evidence closure, not compiler-level runtime proof.
+Do not claim unavailable proof. The work closes evidence preservation around runtime archive inspection. It does not prove Rust compilation, wrapper graph generation, live Ollama execution, or external API/observation behavior unless those commands pass in the current environment.

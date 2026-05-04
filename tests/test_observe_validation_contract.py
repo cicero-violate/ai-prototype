@@ -90,6 +90,23 @@ class ObserveValidationContractTest(unittest.TestCase):
         ):
             self.assertIn(token, self.script)
 
+    def test_runtime_archive_inspection_contract_is_emitted(self) -> None:
+        for token in (
+            "runtime_archive_inspection_status",
+            "runtime_archive_download_index_files",
+            "runtime_archive_prior_state_files",
+            "runtime_archive_conversation_ledger_files",
+            "runtime_archive_delta_receipt_files",
+            "runtime_archive_audit_files",
+            "runtime_archive_current_run_summary_present",
+            "runtime_archive_runtime_manifest_present",
+            "missing_runtime_download_index",
+            "missing_runtime_prior_state",
+            "missing_runtime_conversation_ledger",
+            "missing_runtime_inspection_contract",
+        ):
+            self.assertIn(token, self.script)
+
     def test_router_tests_are_not_required_when_unavailable(self) -> None:
         self.assertIn('missing_router_offline_tests', self.script)
         self.assertIn('if router_test.get("available"):', self.script)

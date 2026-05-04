@@ -217,6 +217,13 @@ def runtime() -> dict[str, Any]:
                                "runtime_archive_download_total": 0, "runtime_archive_log_files": 0,
                                "runtime_archive_download_files": 0, "runtime_archive_sample_files": [],
                                "runtime_archive_conversation_snapshots": 0, "runtime_archive_cache_files": 0,
+                               "runtime_archive_conversation_ledger_files": 0,
+                               "runtime_archive_download_index_files": 0,
+                               "runtime_archive_prior_state_files": 0,
+                               "runtime_archive_delta_receipt_files": 0,
+                               "runtime_archive_audit_files": 0,
+                               "runtime_archive_current_run_summary_present": False,
+                               "runtime_archive_runtime_manifest_present": False,
                                "runtime_candidate_error_count": 0, "runtime_duplicate_artifact_aliases": 0}
     aliases: dict[str, int] = {}
     accepted_aliases: dict[str, str] = {}
@@ -225,11 +232,27 @@ def runtime() -> dict[str, Any]:
         with tarfile.open(archive, "r:gz") as tf:
             for member in (m for m in tf.getmembers() if m.isfile()):
                 name = member.name
+                lower_name = name.lower()
                 metrics["runtime_archive_member_count"] += 1
                 if len(metrics["runtime_archive_sample_files"]) < 12:
                     metrics["runtime_archive_sample_files"].append(name)
-                metrics["runtime_archive_cache_files"] += int("cache" in name.lower())
+                metrics["runtime_archive_cache_files"] += int("cache" in lower_name)
                 metrics["runtime_archive_conversation_snapshots"] += int(name.endswith(".conversation.json"))
+                metrics["runtime_archive_conversation_ledger_files"] += int(name.endswith(".messages.ndjson"))
+                metrics["runtime_archive_download_index_files"] += int(
+                    name.endswith(".downloads.ndjson")
+                    or name.endswith(".candidate-ledger.ndjson")
+                    or name.endswith(".resolved-urls.json")
+                    or name.endswith("RUNTIME_MANIFEST.json")
+                )
+                metrics["runtime_archive_delta_receipt_files"] += int(
+                    ".repo-agent-runtime/delta-apply-receipts/" in name and name.endswith(".json")
+                )
+                metrics["runtime_archive_audit_files"] += int(name.endswith("audit.ndjson"))
+                if name.endswith("current-run-summary.json"):
+                    metrics["runtime_archive_current_run_summary_present"] = True
+                if name.endswith("RUNTIME_MANIFEST.json"):
+                    metrics["runtime_archive_runtime_manifest_present"] = True
                 if name.endswith("RUNTIME_MANIFEST.json"):
                     manifest = json.load(tf.extractfile(member) or open(os.devnull))
                     metrics["runtime_manifest_base_commit"] = manifest.get("baseCommit")
@@ -286,14 +309,29 @@ def runtime() -> dict[str, Any]:
                     metrics["runtime_archive_download_files" if is_download else "runtime_archive_log_files"] += 1
                     metrics["runtime_archive_download_total" if is_download else "runtime_archive_log_total"] += count
         metrics["runtime_duplicate_artifact_aliases"] = sum(1 for value in aliases.values() if value > 1)
+        metrics["runtime_archive_prior_state_files"] = (
+            metrics["runtime_archive_delta_receipt_files"]
+            + metrics["runtime_archive_audit_files"]
+            + int(bool(metrics["runtime_archive_current_run_summary_present"]))
+        )
         metrics["runtime_unique_download_alias_count"] = len(accepted_aliases)
         metrics["runtime_unique_download_aliases"] = sorted(accepted_aliases)
         metrics["runtime_performance_metrics"] = {key: summary(value) for key, value in sorted(timings.items())}
         metrics["runtime_performance_signal_present"] = bool(timings)
         metrics["runtime_performance_budget_status"] = budget_status(metrics["runtime_performance_metrics"])
         metrics["runtime_archive_parse_status"] = "pass"
+        metrics["runtime_archive_inspection_status"] = "pass" if (
+            metrics["runtime_archive_log_files"] > 0
+            and metrics["runtime_archive_download_index_files"] > 0
+            and metrics["runtime_archive_prior_state_files"] > 0
+            and (
+                metrics["runtime_archive_conversation_snapshots"] > 0
+                or metrics["runtime_archive_conversation_ledger_files"] > 0
+            )
+        ) else "missing"
     except Exception as exc:
-        metrics.update({"runtime_archive_parse_status": "fail", "runtime_archive_parse_error": str(exc)})
+        metrics.update({"runtime_archive_parse_status": "fail", "runtime_archive_inspection_status": "fail",
+                        "runtime_archive_parse_error": str(exc)})
     delta_base = os.environ.get("CANON_DELTA_BASE", "").strip()
     manifest_base = metrics.get("runtime_manifest_base_commit")
     metrics["runtime_manifest_base_expected"] = delta_base or None
@@ -502,6 +540,13 @@ missing = {
     "missing_generated_graph_json": not bool(g.get("state_graph_present")),
     "missing_rustc_wrapper_telemetry": next(c for c in commands if c["name"] == "wrapper_graph_validation")["status"] != "pass" or not bool(g.get("state_graph_present")),
     "missing_runtime_download_history": download_total == 0,
+    "missing_runtime_download_index": int(r.get("runtime_archive_download_index_files", 0) or 0) == 0,
+    "missing_runtime_prior_state": int(r.get("runtime_archive_prior_state_files", 0) or 0) == 0,
+    "missing_runtime_conversation_ledger": (
+        int(r.get("runtime_archive_conversation_snapshots", 0) or 0) == 0
+        and int(r.get("runtime_archive_conversation_ledger_files", 0) or 0) == 0
+    ),
+    "missing_runtime_inspection_contract": r.get("runtime_archive_inspection_status") != "pass",
     "missing_runtime_manifest_base_match": bool(r.get("runtime_archive_present"))
     and bool(r.get("runtime_manifest_base_expected"))
     and not bool(r.get("runtime_manifest_base_matches_delta_base")),
@@ -559,6 +604,14 @@ emit(event="validation_summary", validation_status=status, git_head=head,
      graph_edge_count_when_present=g.get("graph_edge_count"), graph_intent_coverage_when_present=g.get("graph_intent_coverage"),
      runtime_archive_present=r.get("runtime_archive_present", False), runtime_archive_log_total=log_total,
      runtime_archive_download_total=download_total,
+     runtime_archive_inspection_status=r.get("runtime_archive_inspection_status"),
+     runtime_archive_download_index_files=r.get("runtime_archive_download_index_files", 0),
+     runtime_archive_prior_state_files=r.get("runtime_archive_prior_state_files", 0),
+     runtime_archive_conversation_ledger_files=r.get("runtime_archive_conversation_ledger_files", 0),
+     runtime_archive_delta_receipt_files=r.get("runtime_archive_delta_receipt_files", 0),
+     runtime_archive_audit_files=r.get("runtime_archive_audit_files", 0),
+     runtime_archive_current_run_summary_present=r.get("runtime_archive_current_run_summary_present", False),
+     runtime_archive_runtime_manifest_present=r.get("runtime_archive_runtime_manifest_present", False),
      runtime_performance_signal_present=r.get("runtime_performance_signal_present", False),
      runtime_performance_budget_status=performance_budget_status,
      runtime_performance_budget_failures=runtime_perf.get("runtime_performance_budget_failures", {}),

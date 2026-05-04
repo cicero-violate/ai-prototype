@@ -159,6 +159,38 @@ class DeltaManifestTest(unittest.TestCase):
         self.assertTrue(receipt["runtime_manifest_base_matches_delta_base"])
         self.assertIn("runtime_manifest_base_matches_delta_base: True", manifest)
 
+    def test_preserves_runtime_archive_inspection_evidence_once(self) -> None:
+        self.write_report(extra={
+            "runtime_archive_inspection_status": "pass",
+            "runtime_archive_download_index_files": 11,
+            "runtime_archive_prior_state_files": 7,
+            "runtime_archive_conversation_ledger_files": 5,
+            "runtime_archive_delta_receipt_files": 5,
+            "runtime_archive_audit_files": 1,
+            "runtime_archive_current_run_summary_present": True,
+            "runtime_archive_runtime_manifest_present": True,
+        })
+        done = self.run_script()
+        self.assertEqual(done.returncode, 0, done.stderr)
+        receipt = json.loads(self.receipt.read_text(encoding="utf-8"))
+        manifest = self.out.read_text(encoding="utf-8")
+        self.assertEqual(receipt["runtime_archive_inspection_status"], "pass")
+        self.assertEqual(receipt["runtime_archive_download_index_files"], 11)
+        self.assertEqual(receipt["runtime_archive_prior_state_files"], 7)
+        for token in (
+            "runtime_archive_inspection_status: pass",
+            "runtime_archive_download_index_files: 11",
+            "runtime_archive_prior_state_files: 7",
+            "runtime_archive_conversation_ledger_files: 5",
+            "runtime_archive_current_run_summary_present: True",
+            "runtime_archive_runtime_manifest_present: True",
+        ):
+            self.assertIn(token, manifest)
+        metric_names = [line[2:].split(":", 1)[0] for line in manifest.splitlines()
+                        if line.startswith("- ") and ":" in line]
+        self.assertEqual(Counter(metric_names)["runtime_archive_inspection_status"], 1)
+        self.assertEqual(Counter(metric_names)["runtime_archive_prior_state_files"], 1)
+
     def test_preserves_policy_learning_and_panic_surface_evidence_once(self) -> None:
         self.write_report(extra={
             "policy_learning_trace_validation_result": "pass",
