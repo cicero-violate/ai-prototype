@@ -1,0 +1,7 @@
+{
+  "schema": "ai_chromium.evaluation.v1",
+  "turn_id": "turn_pass",
+  "replay_match": true,
+  "redaction_pass": true,
+  "quality": 1
+}

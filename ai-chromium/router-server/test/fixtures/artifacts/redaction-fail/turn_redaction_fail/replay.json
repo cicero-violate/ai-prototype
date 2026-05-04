@@ -1,0 +1,5 @@
+{
+  "schema": "ai_chromium.replay_turn.v1",
+  "turn_id": "turn_redaction_fail",
+  "replay_match": true
+}

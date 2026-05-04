@@ -1,0 +1,6 @@
+{
+  "schema": "ai_chromium.evaluation.v1",
+  "turn_id": "turn_missing_manifest",
+  "replay_match": true,
+  "redaction_pass": true
+}
