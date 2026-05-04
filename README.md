@@ -28,9 +28,10 @@ The observe report is written to:
 target/observe/validation-report.ndjson
 ```
 
-This sandbox can validate Git cleanliness, the nested router offline tests, and
-runtime archive evidence. Root Rust validation remains unavailable when `cargo`,
-`rustc`, or the configured wrapper path are missing.
+This sandbox can validate Git cleanliness, router syntax checks, four offline
+router behavior contracts, and runtime archive evidence. Root Rust validation
+remains unavailable when `cargo`, `rustc`, or the configured wrapper path are
+missing.
 
 ## Root Rust Validation
 

@@ -112,6 +112,7 @@ test_projects/chatgpt_rustsandbox/
 **/target/
 *.tar.gz
 *.zip
+*.bundle
 *.bin
 *.log
 *.tmp
@@ -152,3 +153,5 @@ rust_chatgpt_sandbox/
 chrome-dev-profile/
 ai.tar.gz
 target/
+.repo-agent-runtime/
+downloads/
