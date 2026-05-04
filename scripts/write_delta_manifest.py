@@ -76,6 +76,7 @@ def receipt(args: argparse.Namespace) -> dict[str, Any]:
         "bundle_verify": args.bundle_verify,
         "receiver_apply_command": APPLY_COMMAND.format(Path(args.bundle or "repo-delta.bundle").name),
     }
+    r["changed_file_count"] = len(r["changed_files"])
     for key in [
         "cargo_available",
         "rustc_available",
@@ -91,6 +92,14 @@ def receipt(args: argparse.Namespace) -> dict[str, Any]:
         "runtime_archive_log_total",
         "runtime_archive_download_total",
         "runtime_archive_conversation_snapshots",
+        "delta_base_is_ancestor",
+        "delta_changed_file_count",
+        "tracked_file_count",
+        "rust_file_count_src_examples",
+        "rust_test_attr_count",
+        "rust_cfg_test_count",
+        "unwrap_call_count_src_examples",
+        "expect_call_count_src_examples",
     ]:
         r[key] = summary.get(key)
     return r
@@ -117,6 +126,7 @@ def write_manifest(path: Path, r: dict[str, Any]) -> None:
         f"- report_sha256: {r['report_sha256']}",
         f"- bundle_sha256: {r['bundle_sha256']}",
         f"- bundle_verify: {r['bundle_verify']}",
+        f"- changed_file_count: {r['changed_file_count']}",
         f"- cargo_available: {r['cargo_available']}",
         f"- rustc_available: {r['rustc_available']}",
         f"- toolchain_path_added: {r['toolchain_path_added']}",
@@ -129,6 +139,14 @@ def write_manifest(path: Path, r: dict[str, Any]) -> None:
         f"- runtime_archive_log_total: {r['runtime_archive_log_total']}",
         f"- runtime_archive_download_total: {r['runtime_archive_download_total']}",
         f"- runtime_archive_conversation_snapshots: {r['runtime_archive_conversation_snapshots']}",
+        f"- delta_base_is_ancestor: {r['delta_base_is_ancestor']}",
+        f"- delta_changed_file_count: {r['delta_changed_file_count']}",
+        f"- tracked_file_count: {r['tracked_file_count']}",
+        f"- rust_file_count_src_examples: {r['rust_file_count_src_examples']}",
+        f"- rust_test_attr_count: {r['rust_test_attr_count']}",
+        f"- rust_cfg_test_count: {r['rust_cfg_test_count']}",
+        f"- unwrap_call_count_src_examples: {r['unwrap_call_count_src_examples']}",
+        f"- expect_call_count_src_examples: {r['expect_call_count_src_examples']}",
         "",
         "## Validation Commands",
     ]

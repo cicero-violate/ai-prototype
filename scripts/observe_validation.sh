@@ -169,6 +169,40 @@ def runtime() -> dict[str, Any]:
     return metrics
 
 
+def repo_metrics() -> dict[str, Any]:
+    tracked = scalar(["git", "ls-files"]) or ""
+    files = [ROOT / line for line in tracked.splitlines() if line]
+    rust_files = [p for p in files if p.suffix == ".rs" and ("src" in p.parts or "examples" in p.parts)]
+    rust_text = "\n".join(p.read_text(encoding="utf-8", errors="replace") for p in rust_files if p.exists())
+    return {
+        "tracked_file_count": len(files),
+        "rust_file_count_src_examples": len(rust_files),
+        "rust_test_attr_count": len(re.findall(r"#\s*\[\s*test\s*\]", rust_text)),
+        "rust_cfg_test_count": len(re.findall(r"#\s*\[\s*cfg\s*\(\s*test\s*\)", rust_text)),
+        "unwrap_call_count_src_examples": len(re.findall(r"\.unwrap\s*\(", rust_text)),
+        "expect_call_count_src_examples": len(re.findall(r"\.expect\s*\(", rust_text)),
+        "panic_call_count_src_examples": len(re.findall(r"\bpanic!\s*\(", rust_text)),
+        "unsafe_token_count_src_examples": len(re.findall(r"\bunsafe\b", rust_text)),
+    }
+
+
+def delta_metrics() -> dict[str, Any]:
+    base = os.environ.get("CANON_DELTA_BASE", "").strip()
+    if not base:
+        return {"delta_base_commit": None, "delta_base_is_ancestor": None, "delta_changed_files": []}
+    head = scalar(["git", "rev-parse", "HEAD"])
+    base_exists = subprocess.run(["git", "cat-file", "-e", f"{base}^{{commit}}"], cwd=ROOT).returncode == 0
+    is_ancestor = base_exists and subprocess.run(["git", "merge-base", "--is-ancestor", base, head or "HEAD"], cwd=ROOT).returncode == 0
+    changed = scalar(["git", "diff", "--name-only", f"{base}..{head}"]) if is_ancestor and head else ""
+    return {
+        "delta_base_commit": base,
+        "delta_head_commit": head,
+        "delta_base_exists": base_exists,
+        "delta_base_is_ancestor": is_ancestor,
+        "delta_changed_files": changed.splitlines() if changed else [],
+    }
+
+
 def cargo_tests(result: dict[str, Any]) -> int | None:
     text = f"{result.get('stdout', '')}\n{result.get('stderr', '')}"
     counts = [int(x) for x in re.findall(r"running\s+(\d+)\s+tests?", text)]
@@ -182,7 +216,7 @@ def router_tests(result: dict[str, Any]) -> int:
 
 
 toolchain = configure_toolchain()
-w, g, r = wrapper(), graph(), runtime()
+w, g, r, repo, delta = wrapper(), graph(), runtime(), repo_metrics(), delta_metrics()
 cargo_env = {"RUSTC_WRAPPER": "", "RUSTC_WORKSPACE_WRAPPER": ""} if w["wrapper_override_required"] else {}
 wrapper_override_used = bool(cargo_env and toolchain["cargo_available"])
 
@@ -195,8 +229,10 @@ emit(event="git_state", git_head=head, git_status_clean=git_status.returncode ==
      git_status_short=git_status.stdout.splitlines())
 emit(event="toolchain", python3_available=shutil.which("python3") is not None, **toolchain, **w,
      wrapper_override_used=wrapper_override_used, wrapper_override_env=sorted(cargo_env.keys()))
+emit(event="repo_metrics", **repo)
 emit(event="graph_metrics", **g)
 emit(event="runtime_archive_metrics", **r)
+emit(event="delta_metrics", **delta)
 
 commands = [
     run("git_diff_check", ["git", "diff", "--check"], timeout=30),
@@ -261,5 +297,11 @@ emit(event="validation_summary", validation_status=status, git_head=head,
      runtime_archive_present=r.get("runtime_archive_present", False), runtime_archive_log_total=log_total,
      runtime_archive_download_total=download_total,
      runtime_archive_conversation_snapshots=r.get("runtime_archive_conversation_snapshots", 0),
+     delta_base_commit=delta.get("delta_base_commit"), delta_base_is_ancestor=delta.get("delta_base_is_ancestor"),
+     delta_changed_file_count=len(delta.get("delta_changed_files", [])),
+     tracked_file_count=repo["tracked_file_count"], rust_file_count_src_examples=repo["rust_file_count_src_examples"],
+     rust_test_attr_count=repo["rust_test_attr_count"], rust_cfg_test_count=repo["rust_cfg_test_count"],
+     unwrap_call_count_src_examples=repo["unwrap_call_count_src_examples"],
+     expect_call_count_src_examples=repo["expect_call_count_src_examples"],
      missing_signal_flags=missing, missing_signal_count=sum(1 for v in missing.values() if v))
 PY

@@ -3,188 +3,162 @@
 ## Variables
 
 ```text
-G = GOAL.md authority
-S = score.md evidence authority
-B = build / test reproducibility score
-V = replay / verification proof score
-E = runtime archive evidence score
-D = documentation / delta discipline score
-N = nested router-server evidence score
-Q = implementable score lift
+G = GOAL.md architectural authority
+S = score.md reproduced-evidence authority
+B = build, test, and toolchain reproducibility axis
+V = verification, receipt binding, and proof replay axis
+P = capability, policy, learning, and autonomy axis
+D = documentation, delta discipline, and operational clarity axis
+Q = expected score lift
 R = implementation risk
-BASE = 44945bf71389366f1566abf48f70a81b924fab96
-HEAD = created by EXECUTE turn 004
+BASE = c2f34ba6de533809414f6b11cccdd6592926d619
 ```
 
 ## Equations
 
 ```text
-next_work = argmax(Q) = argmax((ΔB + ΔV + ΔE + ΔD - R) / changed_surface)
-S = (K · C · V · P · B · E · N · D)^(1/8) = 6.84 / 10
+S = (K · C · V · P · B · E · N · D)^(1/8) = 6.64 / 10
 GOOD = max(K,C,V,P,B,E,N,D) = K = 8.4 / 10 = good
+next_work = argmax(Q - R) = close B first, then bind proof traces to V/P
 ```
 
-One-line explanation: the next change should turn the largest blocker, missing
-root validation, into a portable validation path without weakening the frozen
-kernel or claiming unavailable proof.
+One-line explanation: because `B = 3.0 / 10` is the geometric bottleneck,
+the next implementation must convert missing current-head validation into a
+portable, receipt-backed validation path without faking unavailable signals.
 
 ## Source Authority
 
-`GOAL.md` defines the target as a deterministic agent runtime with a frozen
-kernel, append-only TLog, typed capability layer, bounded recovery, semantic
-verification, policy learning, and replayable evidence for every decision,
-recovery, and outcome.
+`GOAL.md` defines the target system as a deterministic, self-improving agent
+runtime with a frozen kernel, append-only TLog, replayable typed evidence,
+semantic verification, policy learning, and monotonically cheaper reasoning.
 
-`score.md` is the current evidence authority:
+`score.md` records the current reproduced state:
 
 ```text
 K = 8.4 / 10
 C = 7.8 / 10
-V = 7.6 / 10
-P = 6.2 / 10
-B = 4.2 / 10 after EXECUTE recovery-surface implementation
-E = 7.5 / 10
-N = 7.4 / 10
-D = 7.1 / 10 after manifest receipt field expansion
-S = 6.90 / 10 after EXECUTE validation-tooling evidence
+V = 7.3 / 10
+P = 6.0 / 10
+B = 3.0 / 10
+E = 8.0 / 10
+N = 7.6 / 10
+D = 7.2 / 10
+S = 6.64 / 10
+missing_signal_count = 12
 ```
 
-Current critical blockers from `score.md`:
+Critical observed blockers:
 
 ```text
-cargo_available = false
-rustc_available = false
-rustc_wrapper_path_exists = false
-state_rustc_graph_json_present = false
-cargo_fmt_check = unavailable
-cargo_test_all_targets = unavailable
-cargo_clippy_all_targets = unavailable
-ollama_judgment_example = skipped_env_missing
-policy_learning_replay_trace = missing
-live_cdp_router_test_at_current_head = missing
-runtime_archive_conversation_snapshots = 0
+missing_root_rust_toolchain = true
+missing_cargo_fmt = true
+missing_cargo_test = true
+missing_clippy = true
+missing_cargo_run_ollama_judgment = true
+missing_generated_graph_json = true
+missing_rustc_wrapper_telemetry = true
+missing_external_observation_stream_test = true
+missing_external_api_action_test = true
+missing_semantic_artifact_verification_test = true
+missing_policy_learning_replay_trace = true
 ```
 
 ## Highest-Impact Implementable Target
 
-Implement a portable root-validation launcher and wrapper override path.
+Implement a **current-head validation closure** focused on build/test
+reproducibility first, with no kernel or capability semantics changed unless a
+failing reproduced test requires it.
 
 Target files for the EXECUTE stage:
 
 ```text
 scripts/observe_validation.sh
 scripts/write_delta_manifest.py
-ai-chromium/router-server/run_tests.sh
-IMPLEMENTATION_PLAN.md / score.md only if evidence changes
+IMPLEMENTATION_PLAN.md
+score.md
 ```
 
-Required behavior:
+Conditional target files only if validation exposes a concrete source defect:
 
 ```text
-1. Detect usable Rust tooling from PATH first.
-2. If PATH lacks cargo/rustc, detect /mnt/data/rust-sandbox/bin and prepend it.
-3. If .cargo/config.toml points to an absent rustc-wrapper, run root Rust checks
-   with wrapper override env and record wrapper_override_used.
-4. Run current-head root checks when cargo becomes available:
+src/**
+examples/**
+```
+
+Required implementation behavior:
+
+```text
+1. Detect cargo/rustc from PATH.
+2. If absent, detect /mnt/data/rust-sandbox/bin and prepend it.
+3. If .cargo/config.toml points to a missing rustc-wrapper, run root Rust
+   validation with RUSTC_WRAPPER="" and RUSTC_WORKSPACE_WRAPPER="".
+4. Record wrapper_override_required and wrapper_override_used explicitly.
+5. Run current-head root checks when cargo is available:
    - cargo fmt --check
    - cargo test --all-targets
    - cargo clippy --all-targets -- -D warnings
-5. Preserve strict missing-signal flags when checks remain unavailable.
-6. Keep graph telemetry separate:
-   - wrapper present + graph emitted = graph evidence
-   - wrapper absent + root tests pass = build evidence only
-7. Generate one current-head validation receipt from the observe report.
-8. Generate DELTA_MANIFEST.md from the same receipt fields.
-9. Do not commit generated target/observe reports, bundles, or /mnt/data artifacts.
+6. Keep graph telemetry separate from root Rust validation:
+   - root tests passing without wrapper improves B only
+   - graph score improves only with state/rustc/*/graph.json evidence
+7. Preserve every missing signal that remains unavailable.
+8. Generate a validation receipt and DELTA_MANIFEST.md from the same report.
+9. Never commit target/, generated bundles, runtime archives, token caches, or
+   signed URL caches.
 ```
 
-This is higher impact than another documentation or router-only change because
-`score.md` identifies build/test reproducibility as the lowest scored axis
-(`B = 4.2`) and names missing root Rust validation plus absent wrapper as the
-main blocker. The change is implementable now because it requires only validation
-script/tooling changes; it does not mutate kernel, codec, runtime, capability, or
-application logic.
+If Rust validation becomes available and passes, the next highest-impact source
+change is a pure offline integration proof that exercises:
 
-Router test runner scope is limited to deterministic process termination:
-`--test-force-exit` prevents completed offline Node tests from hanging on stray
-handles without changing test assertions or enabling live CDP tests.
+```text
+observation -> judgment -> eval -> learning -> policy promotion -> replay
+semantic artifact verification -> receipt/proof rejection on tamper
+```
+
+This second target directly closes `missing_policy_learning_replay_trace` and
+`missing_semantic_artifact_verification_test` while staying aligned with
+`GOAL.md`'s self-improvement and semantic-verification requirements.
 
 ## Explicit Non-Targets
 
 ```text
-no_kernel_change = true
-no_codec_change = true
-no_runtime_state_machine_change = true
-no_capability_logic_change = true
+no_kernel_rewrite = true
+no_state_machine_semantic_change_without_test_failure = true
 no_test_relaxation = true
-no_fake_graph_telemetry = true
-no_claim_of_live_ollama_without_env = true
-no_claim_of_live_cdp_without_cdp_run = true
+no_fake_graph_json = true
+no_fake_ollama_proof = true
+no_live_cdp_claim_without_live_cdp_run = true
 no_generated_artifacts_committed = true
+no_delta_bundle_without_manifest = true
 ```
-
-Root Rust tests without the wrapper may raise `B`, but they do not close graph
-telemetry. Graph scoring requires a valid wrapper and generated
-`state/rustc/*/graph.json` evidence.
 
 ## Validation Commands
 
-Plan-stage checks:
+Plan-stage validation:
 
 ```bash
 git status --short
-rg -n "S = 6.90|BASE = 44945bf|Highest-Impact Implementable Target|wrapper_override_used|RUSTC_WRAPPER" IMPLEMENTATION_PLAN.md
+rg -n "S = 6.64|B = 3.0|Highest-Impact Implementable Target|Safe Git Delta Procedure" IMPLEMENTATION_PLAN.md
 git diff --check
 ```
 
-Execute-stage checks after implementing the launcher:
+Execute-stage validation:
 
 ```bash
 git status --short
 CANON_RUNTIME_ARCHIVE=/mnt/data/ai-runtime.tar.gz \
-CANON_OBSERVE_REPORT=target/observe/validation-report-execute-turn.ndjson \
+CANON_OBSERVE_REPORT=target/observe/validation-report-execute.ndjson \
 bash scripts/observe_validation.sh
-(cd ai-chromium/router-server && ./run_tests.sh)
-python3 scripts/write_delta_manifest.py \
-  --base "$(git rev-parse origin/main)" \
-  --head "$(git rev-parse HEAD)" \
-  --report target/observe/validation-report-execute-turn.ndjson \
-  --out /mnt/data/DELTA_MANIFEST.md \
-  --receipt-out target/observe/delta-validation-receipt.json
-python3 - <<'PY'
-import json
-from pathlib import Path
-receipt = json.loads(Path('target/observe/delta-validation-receipt.json').read_text())
-required = [
-    'base_commit',
-    'head_commit',
-    'changed_files',
-    'validation_status',
-    'validation_commands',
-    'validation_command_count',
-    'validation_test_count',
-    'missing_signal_flags',
-    'wrapper_override_required',
-    'wrapper_override_used',
-]
-missing = [key for key in required if key not in receipt]
-assert not missing, missing
-assert receipt['validation_command_count'] >= 6
-assert receipt['validation_test_count'] >= 20
-print(json.dumps({key: receipt[key] for key in required if key != 'validation_commands'}, sort_keys=True))
-PY
-git diff --check
 ```
 
-Rust validation commands expected when toolchain detection succeeds:
+Run these explicitly when cargo is available:
 
 ```bash
-RUSTC_WORKSPACE_WRAPPER="" cargo fmt --check
-RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets
-RUSTC_WORKSPACE_WRAPPER="" cargo clippy --all-targets -- -D warnings
+RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo fmt --check
+RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets
+RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo clippy --all-targets -- -D warnings
 ```
 
-Graph validation commands expected only when the configured wrapper exists:
+Run graph checks only when the configured wrapper exists and emits graph data:
 
 ```bash
 cargo test --all-targets
@@ -200,39 +174,67 @@ for path in paths:
 PY
 ```
 
+Manifest validation:
+
+```bash
+python3 scripts/write_delta_manifest.py \
+  --base "$(git rev-parse origin/main)" \
+  --head "$(git rev-parse HEAD)" \
+  --report target/observe/validation-report-execute.ndjson \
+  --out /mnt/data/DELTA_MANIFEST.md \
+  --receipt-out target/observe/delta-validation-receipt.json
+python3 - <<'PY'
+import json
+from pathlib import Path
+receipt = json.loads(Path('target/observe/delta-validation-receipt.json').read_text())
+required = {
+    'base_commit', 'head_commit', 'changed_files', 'validation_status',
+    'validation_commands', 'validation_command_count', 'validation_test_count',
+    'missing_signal_flags', 'wrapper_override_required', 'wrapper_override_used',
+}
+missing = sorted(required - set(receipt))
+assert not missing, missing
+assert receipt['base_commit'] == receipt['base_commit'].strip()
+assert receipt['head_commit'] == receipt['head_commit'].strip()
+print(json.dumps({k: receipt[k] for k in sorted(required) if k != 'validation_commands'}, sort_keys=True))
+PY
+git diff --check
+```
+
 ## Expected Score Movement
 
 ```text
-B: 4.0 -> 4.2  if portable detection is added but Rust remains unavailable
-B: 4.2 -> 4.8  if root fmt/test/clippy run with wrapper override and pass
-D: 7.0 -> 7.2  if validation receipt and manifest remain current-head aligned
-E: 7.5 -> 7.6  runtime archive evidence binds to current validation receipt
-V: 7.6 -> 7.7  replay/verification claims gain cleaner validation gating
-S: 6.84 -> about 6.98
+B: 3.0 -> 4.0  implemented: deterministic toolchain absence/presence, wrapper override, repo metrics, and delta-base ancestry
+B: 3.0 -> 5.0  if fmt/test/clippy run at current head and pass
+V: 7.3 -> 7.7  if semantic artifact verification has an offline proof/tamper test
+P: 6.0 -> 6.6  if policy-learning replay trace is proven by an offline integration test
+D: 7.2 -> 7.4  implemented: manifest receipt can carry bundle hash, changed-file count, and validation metrics
+S: 6.64 -> 6.90 from B/D closure; above 7.10 only if V/P traces also close
 ```
 
-No increase should be assigned to graph telemetry, policy learning, live CDP, or
-live Ollama until those checks run successfully with concrete evidence.
+Do not raise graph telemetry, live Ollama, live CDP, or external API action
+scores without concrete current-head evidence.
 
 ## Risks And Constraints
 
-| Risk | Severity | Mitigation |
+| Risk | Severity | Required control |
 |---|---:|---|
-| False confidence from wrapper override | High | Record `wrapper_override_used`; do not count graph telemetry unless wrapper emits graph. |
-| Hidden dependency on `/mnt/data/rust-sandbox` | Medium | Prefer PATH first; record detected tool paths. |
-| Test relaxation by environment mutation | High | Keep strict rustflags; only disable absent wrapper. |
-| Generated artifact drift | Medium | Manifest and receipt derive from the same observe report. |
-| Stale delta base | Medium | Use `git rev-parse origin/main` at artifact generation time. |
-| Scope creep into runtime/kernel | High | EXECUTE changes limited to validation and manifest tooling. |
+| False confidence from wrapper override | High | Record override fields; do not count graph telemetry without graph output. |
+| Missing Rust toolchain | High | Preserve missing flags; do not mark root validation pass. |
+| Generated artifact drift | Medium | Build manifest from the same observe report used for scoring. |
+| Stale base/head artifact | Medium | Use `origin/main` as base and verify bundle before final links. |
+| Runtime archive overclaim | Medium | Treat archive evidence as historical unless current-head validation reproduces it. |
+| Scope creep into kernel | High | Keep source changes validation-only unless a reproduced failure requires code repair. |
 
 ## Safe Git Delta Procedure
 
-Use the uploaded restore base preserved by `origin/main`:
+For EXECUTE turn 004, use the explicit stage base and turn-scoped artifact name:
 
 ```bash
-B="$(git rev-parse origin/main)"
+B="c2f34ba6de533809414f6b11cccdd6592926d619"
 H="$(git rev-parse HEAD)"
 git status --short
+rm -f /mnt/data/repo-delta-004.bundle /mnt/data/DELTA_MANIFEST.md
 git bundle create /mnt/data/repo-delta-004.bundle "$B..$H"
 git bundle verify /mnt/data/repo-delta-004.bundle
 ```
@@ -243,31 +245,26 @@ Receiver apply command:
 git fetch ./repo-delta-004.bundle HEAD && git merge --ff-only FETCH_HEAD
 ```
 
-Required final manifest fields:
+Required final answer shape for an EXECUTE stage:
 
 ```text
-base_commit = <git rev-parse origin/main>
-head_commit = <git rev-parse HEAD>
-changed_files = cumulative files from base_commit..head_commit
-validation_commands = exact commands run
-validation_status = pass/fail/partial
-validation_command_count = nonzero
-validation_test_count = nonzero when router tests pass
-missing_signal_flags = preserved from observe report
-wrapper_override_required = true/false
-wrapper_override_used = true/false when Rust checks run
-bundle_verify = pass
-receiver_apply_command = git fetch ./repo-delta-004.bundle HEAD && git merge --ff-only FETCH_HEAD
+[repo-delta-004.bundle](sandbox:/mnt/data/repo-delta-004.bundle)
+[DELTA_MANIFEST.md](sandbox:/mnt/data/DELTA_MANIFEST.md)
 ```
 
-## Plan-Stage Result
+Required manifest fields:
 
 ```text
-stage = PLAN
-plan_schema = 2
-source_code_changed = false
-plan_file_changed = IMPLEMENTATION_PLAN.md
-implementation_target = portable root-validation launcher + wrapper override path
-safe_delta_base = origin/main = 44945bf71389366f1566abf48f70a81b924fab96
-current_observed_head = a813e4af63eade054a7033c5b8689dd4aab2698e
+base_commit
+head_commit
+changed_files
+validation_commands
+validation_status
+validation_command_count
+validation_test_count
+missing_signal_flags
+wrapper_override_required
+wrapper_override_used
+bundle_verify
+receiver_apply_command
 ```
