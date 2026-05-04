@@ -1,38 +1,28 @@
-base_commit: 3f23e0884e9d8d0189f91fde8ee76244bc25a82f
-head_commit: e870106ebbbe1700887f9bb6cb63344805f51c87
+base_commit: 4e8a41f7f6a4c31d275e986147d6193c1d1f3895
+head_commit: 80ace85a63fb69c4899bbca8e29fce1c7b17ee73
 
 # Delta Manifest
 
 ## Changed Files
 - .gitignore
-- .repo-agent-runtime/apply-worktrees/07ad58b4bf0e
-- .repo-agent-runtime/apply-worktrees/12f02b6a0f39
-- .repo-agent-runtime/apply-worktrees/b9830281da56
-- .repo-agent-runtime/apply-worktrees/d47aaa7d3487
-- .repo-agent-runtime/upload-bundles/ai.bundle
 - IMPLEMENTATION_PLAN.md
-- downloads/DELTA_MANIFEST.md
-- downloads/ai-observe-validation-output.txt
-- downloads/ai-router-tests-run.txt
-- downloads/repo-delta-004.bundle
+- README.md
+- ai-chromium/router-server_bak/run_tests.sh
+- ai-chromium/router-server_bak/test/offline-contract.test.mjs
 - score.md
-- scripts/observe_validation.sh
-- scripts/validate_delta_artifacts.py
-- scripts/write_delta_manifest.py
 
 ## Validation Results
 - validation_status: partial
 - validation_command_count: 6
-- validation_test_count: 41
-- router_test_count: 41
+- validation_test_count: 45
+- router_test_count: 45
 - cargo_test_count_when_available: None
 - failed_required_commands: []
 - missing_signal_count: 12
-- report_sha256: b40a87b8df33047aecabf283638144d597be3c9e1396ea7842e0cf6bee438d7b
-- bundle_size_bytes: 12025
-- bundle_sha256: 7ca2ef8d872097e5cfdd6ee29258421aa9b5eef0e0f12dea49ce2e52883fc502
+- report_sha256: e1d0a3aed0e6bacc7b16b9c73eb5d92ef672823b0552e4717c053bccd23bb110
+- bundle_sha256: 7d0b26b1c63d0629cc21a328b17f3f676b67571661c05a133fa45b4b6624fb60
 - bundle_verify: pass
-- changed_file_count: 15
+- changed_file_count: 6
 - cargo_available: False
 - rustc_available: False
 - toolchain_path_added: False
@@ -42,13 +32,12 @@ head_commit: e870106ebbbe1700887f9bb6cb63344805f51c87
 - wrapper_override_env: ["RUSTC_WORKSPACE_WRAPPER", "RUSTC_WRAPPER"]
 - rustc_wrapper_path_exists: False
 - state_graph_present: False
-- runtime_archive_log_total: 5139
-- runtime_archive_download_total: 53
+- runtime_archive_log_total: 5677
+- runtime_archive_download_total: 62
 - runtime_archive_conversation_snapshots: 0
 - delta_base_is_ancestor: True
-- delta_changed_file_count: 15
-- tracked_file_count: 180
-- tracked_generated_artifact_count: 0
+- delta_changed_file_count: 6
+- tracked_file_count: 189
 - rust_file_count_src_examples: 53
 - rust_test_attr_count: 103
 - rust_cfg_test_count: 2
@@ -78,10 +67,6 @@ head_commit: e870106ebbbe1700887f9bb6cb63344805f51c87
 - missing_runtime_download_history: False
 - missing_rustc_wrapper_telemetry: True
 - missing_semantic_artifact_verification_test: True
-- tracked_generated_artifacts: False
-
-## Tracked Generated Artifacts
-- none
 
 ## Receiver Apply Commands
 ```bash
