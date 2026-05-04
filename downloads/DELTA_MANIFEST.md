@@ -1,24 +1,38 @@
-base_commit: da1ebc2656e5d48631b07ef830c7dbec2033739b
-head_commit: 8b8fb6cb424d7d26f1ddd085c6bbdc30f219638d
+base_commit: 44945bf71389366f1566abf48f70a81b924fab96
+head_commit: 29e3b4645207693859de2352cf1885304012dc85
 
 # Delta Manifest
 
 ## Changed Files
-- README.md
+- IMPLEMENTATION_PLAN.md
+- ai-chromium/router-server/run_tests.sh
 - score.md
+- scripts/observe_validation.sh
 - scripts/write_delta_manifest.py
 
 ## Validation Results
 - validation_status: partial
 - validation_command_count: 6
-- validation_test_count: 15
-- router_test_count: 15
+- validation_test_count: 20
+- router_test_count: 20
 - cargo_test_count_when_available: None
 - failed_required_commands: []
-- missing_signal_count: 11
-- report_sha256: 9ec2782ba81de44bdebff25a71a1e519e8135fab87fda8260b5b26f7aff444f4
-- bundle_sha256: 7ca3d903fe7327130f169e4348467bcb613b23833f3ea4d55ffa623fd28b883b
+- missing_signal_count: 12
+- report_sha256: eee456d39701b868d1bb258d01aae22fb0d84ed1ae94db8828f1c2a7d13a5f01
+- bundle_sha256: 7a084ba83a26e1e1d078f0631f4fe29bc01c8b2e97073de97a68426b4776ae5b
 - bundle_verify: pass
+- cargo_available: False
+- rustc_available: False
+- toolchain_path_added: False
+- rust_toolchain_source: missing
+- wrapper_override_required: True
+- wrapper_override_used: False
+- wrapper_override_env: ["RUSTC_WORKSPACE_WRAPPER", "RUSTC_WRAPPER"]
+- rustc_wrapper_path_exists: False
+- state_graph_present: False
+- runtime_archive_log_total: 3342
+- runtime_archive_download_total: 30
+- runtime_archive_conversation_snapshots: 0
 
 ## Validation Commands
 - git_diff_check: pass :: git diff --check
@@ -39,6 +53,7 @@ head_commit: 8b8fb6cb424d7d26f1ddd085c6bbdc30f219638d
 - missing_external_observation_stream_test: True
 - missing_generated_graph_json: True
 - missing_policy_learning_replay_trace: True
+- missing_root_rust_toolchain: True
 - missing_runtime_download_history: False
 - missing_rustc_wrapper_telemetry: True
 - missing_semantic_artifact_verification_test: True
