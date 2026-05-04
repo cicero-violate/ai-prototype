@@ -202,35 +202,35 @@ router_offline_tests                 => unavailable, router subtree missing
 
 ## Axis Detail
 
-| Axis | Score | Critical basis |
-|---|---:|---|
-| I | 7.0 | Runtime archive inspection now distinguishes logs, ledgers, prior state, and receiver evidence; autonomous policy reduction is still not measured. |
-| E | 6.8 | Python validation remains dependency-light and adds evidence without runtime service cost. |
-| C | 6.4 | New regression tests close a concrete manifest evidence gap; Rust compile/test proof remains absent. |
-| A | 8.4 | Change directly supports `GOAL.md` auditability, replay, and evidence preservation. |
-| R | 6.8 | Handoff robustness improves because archive inspection is no longer implicit. |
-| P | 6.1 | Runtime performance evidence is captured from archive and budgeted, but no current Rust benchmark exists. |
-| S | 6.1 | Stronger manifests scale repo-loop handoff; orchestration/API scale remains unproven. |
-| D | 8.1 | Deterministic manifest fields and test-enforced first-line ordering reduce receiver ambiguity. |
-| T | 8.5 | Final manifest exposes runtime indexes, conversation ledgers, and prior state counts. |
-| Co | 7.4 | Contributors get clearer validation lineage and artifact-boundary evidence. |
-| Em | 7.2 | Operators can distinguish historical runtime evidence from missing current-head proof. |
-| B | 6.9 | Benefit improves for reliable delta handoff; deployed user value remains unvalidated. |
-| L | 6.3 | Policy-learning evidence persists and runtime history is better classified. |
-| Si | 5.9 | More fields increase surface area, but remove hidden inspection ambiguity. |
-| F | 7.3 | Future deltas are less likely to lose runtime inspection proof at the manifest boundary. |
+| Axis | Score | Critical basis                                                                                                                                     |
+|------+-------+----------------------------------------------------------------------------------------------------------------------------------------------------|
+| I    |   7.0 | Runtime archive inspection now distinguishes logs, ledgers, prior state, and receiver evidence; autonomous policy reduction is still not measured. |
+| E    |   6.8 | Python validation remains dependency-light and adds evidence without runtime service cost.                                                         |
+| C    |   6.4 | New regression tests close a concrete manifest evidence gap; Rust compile/test proof remains absent.                                               |
+| A    |   8.4 | Change directly supports `GOAL.md` auditability, replay, and evidence preservation.                                                                |
+| R    |   6.8 | Handoff robustness improves because archive inspection is no longer implicit.                                                                      |
+| P    |   6.1 | Runtime performance evidence is captured from archive and budgeted, but no current Rust benchmark exists.                                          |
+| S    |   6.1 | Stronger manifests scale repo-loop handoff; orchestration/API scale remains unproven.                                                              |
+| D    |   8.1 | Deterministic manifest fields and test-enforced first-line ordering reduce receiver ambiguity.                                                     |
+| T    |   8.5 | Final manifest exposes runtime indexes, conversation ledgers, and prior state counts.                                                              |
+| Co   |   7.4 | Contributors get clearer validation lineage and artifact-boundary evidence.                                                                        |
+| Em   |   7.2 | Operators can distinguish historical runtime evidence from missing current-head proof.                                                             |
+| B    |   6.9 | Benefit improves for reliable delta handoff; deployed user value remains unvalidated.                                                              |
+| L    |   6.3 | Policy-learning evidence persists and runtime history is better classified.                                                                        |
+| Si   |   5.9 | More fields increase surface area, but remove hidden inspection ambiguity.                                                                         |
+| F    |   7.3 | Future deltas are less likely to lose runtime inspection proof at the manifest boundary.                                                           |
 
 ## Risk Register
 
-| Risk | Severity | Evidence | Closure requirement |
-|---|---:|---|---|
-| Rust crate not compiler-validated here | High | cargo/rustc not proven available for current head | Run fmt/test/clippy with a valid toolchain. |
-| Graph telemetry absent | High | no generated `state/rustc/*/graph.json` | Run wrapper graph capture with `CANON_RUSTC_WRAPPER`. |
-| Live Ollama proof absent at current head | High | local cargo/Ollama path unavailable | Run `cargo run --example ollama_judgment` with configured Ollama. |
-| External API and observation tests absent | High | no router subtree and no external stream/action test | Add executable API and stream-ingress tests. |
-| Semantic artifact verification not fully closed | High | source exists but current integration proof is partial | Add artifact proof fixtures and enforce replay validation. |
-| Archived patch debt | Medium | four archived TODO markers | Confirm obsolete patch status or promote unresolved protocol work to active tracked plan. |
-| Test panic-surface volume | Medium | 319 test findings | Reduce unnecessary test unwrap/expect usage when Rust tooling is available. |
+| Risk                                            | Severity | Evidence                                               | Closure requirement                                                                       |
+|-------------------------------------------------+----------+--------------------------------------------------------+-------------------------------------------------------------------------------------------|
+| Rust crate not compiler-validated here          | High     | cargo/rustc not proven available for current head      | Run fmt/test/clippy with a valid toolchain.                                               |
+| Graph telemetry absent                          | High     | no generated `state/rustc/*/graph.json`                | Run wrapper graph capture with `CANON_RUSTC_WRAPPER`.                                     |
+| Live Ollama proof absent at current head        | High     | local cargo/Ollama path unavailable                    | Run `cargo run --example ollama_judgment` with configured Ollama.                         |
+| External API and observation tests absent       | High     | no router subtree and no external stream/action test   | Add executable API and stream-ingress tests.                                              |
+| Semantic artifact verification not fully closed | High     | source exists but current integration proof is partial | Add artifact proof fixtures and enforce replay validation.                                |
+| Archived patch debt                             | Medium   | four archived TODO markers                             | Confirm obsolete patch status or promote unresolved protocol work to active tracked plan. |
+| Test panic-surface volume                       | Medium   | 319 test findings                                      | Reduce unnecessary test unwrap/expect usage when Rust tooling is available.               |
 
 ## Next Closure Targets
 
