@@ -1,6 +1,6 @@
-# RUSTC_WRAPPER="$PWD/target/debug/canon-rustc-v3" cargo check
-
 [build]
+RUSTC_WRAPPER="/mnt/data/canon-mini-agent-extracted/canon-mini-agent/prototype/canon-rustc-v3/target/debug/canon-rustc-v3"
+
 rustflags = [
 "-Dwarnings",
 "-Dunused",
