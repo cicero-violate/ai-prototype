@@ -31,26 +31,26 @@ K = 8.4 / 10
 C = 7.8 / 10
 V = 7.7 / 10
 P = 6.1 / 10
-B = 3.0 / 10
+B = 3.3 / 10
 E = 6.4 / 10
-N = 6.6 / 10
-D = 6.9 / 10
+N = 6.9 / 10
+D = 7.0 / 10
 
-S = 6.36 / 10
+S = 6.49 / 10
 GOOD = max(K,C,V,P,B,E,N,D) = K = 8.4 / 10 = good
 ```
 
 ## Scope
 
 ```text
-stage = OBSERVE
-source_changes = none
-scorecard_change = score.md only
+stage = EXECUTE turn 1
+source_changes = ai-chromium/router-server/run_tests.sh
+scorecard_change = score.md execution evidence update
 restored_repo_path = /mnt/data/work-ai/repo
 uploaded_bundle = /mnt/data/ai.bundle
-current_head_observed = 2f261eb6f63fe4b9634f83bfb5915db4a568d468
+base_commit = 07ad58b4bf0e41e087a4584ecc97cd778a416a29
 branch = main
-working_tree_before_score_update = clean
+working_tree_before_execution = clean at d0041c2f17785076bbd5dc4190c901239bf95ceb
 ```
 
 Judgment: this remains a serious deterministic runtime prototype, but current sandbox evidence does not prove root Rust build/test/lint, graph emission, or live Ollama execution.
@@ -335,10 +335,51 @@ node src/tools/check-syntax.mjs = pass, syntax_ok files=49
 node --test test/openai-contract.test.mjs = pass, 7/7
 node --test test/mock-cdp-integration.test.mjs = pass, 3/3
 node --test test/artifact-quality.test.mjs = pass, 5/5
-./run_tests.sh = fail, npm ENOENT package.json missing
+./run_tests.sh before EXECUTE = fail, npm ENOENT package.json missing
+./run_tests.sh after EXECUTE = pass, 15/15 offline tests via dot reporter
 ```
 
-Judgment: direct offline Node validation is real and passes. The wrapper script is stale or structurally wrong because it assumes npm package metadata that is absent.
+Judgment: direct offline Node validation is now script-backed. The wrapper no longer depends on absent npm metadata; live CDP remains opt-in and unproven here.
+
+## EXECUTE Turn 1 Evidence
+
+Changed source file:
+
+```text
+ai-chromium/router-server/run_tests.sh
+```
+
+Implementation:
+
+```text
+removed = npm run test:live assumptions
+added = direct node syntax check + three offline node:test suites
+verbosity_reduction = node --test --test-reporter=dot
+live_gate = RUN_LIVE_TESTS=1 or LIVE_ROUTER_URL present
+```
+
+Validation commands and results:
+
+```text
+node --version = v22.16.0
+node --check ai-chromium/router-server/src/server.mjs = pass
+(cd ai-chromium/router-server && ./run_tests.sh) = pass, syntax_ok files=49, 15 dots
+bash scripts/observe_validation.sh = pass as evidence emitter, root Rust checks unavailable
+target/observe/validation-report.ndjson = pass JSON parse, 10 records
+git diff --check = pass
+```
+
+Remaining constraints:
+
+```text
+cargo_fmt_check = unavailable, cargo not found in PATH
+cargo_test_all_targets = unavailable, cargo not found in PATH
+cargo_clippy_all_targets = unavailable, cargo not found in PATH
+rustc_wrapper_path_exists = false
+state_graph_present = false
+live_cdp_test = not run
+ollama_judgment_example = skipped_env_missing
+```
 
 ## Risk Register
 
@@ -349,7 +390,7 @@ Judgment: direct offline Node validation is real and passes. The wrapper script 
 | No graph telemetry | High | no `state/rustc/*/graph.json` | Regenerate graph and record node/edge/intent metrics |
 | Zero-test AI validation receipts | High | AI receipts have `commands=[]`, `testCount=0` | Bind concrete validation commands and outputs to receipts |
 | Runtime manifest is stale advisory | Medium | base commit mismatch in archive download history | Tie archive manifest to current base/head |
-| Router test wrapper broken | Medium | `./run_tests.sh` fails with missing `package.json` | Replace npm assumptions or add package metadata |
+| Live router path unvalidated | Medium | offline `./run_tests.sh` passes; live CDP is opt-in and not run here | Run `RUN_LIVE_TESTS=1 ./run_tests.sh` against reachable CDP |
 | Live Ollama path unproven here | Medium | skipped env + missing cargo | Run and archive current-head receipt/proof output |
 | Learning loop not proven end-to-end | High | no durable observation→eval→learning trace observed | Add one replayable policy-promotion integration trace |
 | Production unwrap surface unclassified | Medium | 316 `.unwrap()` and 9 `.expect()` calls | Classify test-only vs production path |
@@ -363,10 +404,10 @@ Judgment: direct offline Node validation is real and passes. The wrapper script 
 | Codec / TLog | 7.8 | NDJSON codec, durable runtime, command ledger exports | root tests unavailable |
 | Replay / verification | 7.7 | replay, semantic diff, proof-record APIs, receipt checks | current-head execution not reproduced |
 | Capability layer | 6.1 | all named capability modules present | external objective loop not proven |
-| Build/test reproducibility | 3.0 | cargo/rustc/wrapper unavailable; graph absent | cannot validate root crate here |
+| Build/test reproducibility | 3.3 | router wrapper now runs offline checks; cargo/rustc/wrapper unavailable; graph absent | cannot validate root crate here |
 | Runtime evidence | 6.4 | 18-member AI archive, 1266 logs, 13 downloads, 2 delta receipts | stale advisory manifest; zero-test receipts |
-| Nested router-server | 6.6 | 49-file syntax pass, 15/15 direct Node tests pass | npm wrapper broken; live CDP not reproduced |
-| Documentation alignment | 6.9 | strong GOAL.md and plan/score history | claims exceed current executable proof |
+| Nested router-server | 6.9 | `./run_tests.sh` now passes 49-file syntax and 15/15 offline Node tests | live CDP not reproduced |
+| Documentation alignment | 7.0 | plan target implemented and score evidence updated | GOAL claims still exceed current executable proof |
 
 ## Missing Validation Signals
 
@@ -394,7 +435,7 @@ required_before_higher_score = [
 2. Run `cargo fmt --check`, `cargo test --all-targets`, and `cargo clippy --all-targets -- -D warnings`.
 3. Regenerate `state/rustc/ai/graph.json` and capture wrapper telemetry.
 4. Replace zero-command validation receipts with required command outputs, hashes, and test counts.
-5. Fix `ai-chromium/router-server/run_tests.sh` so it runs the direct Node checks that currently pass.
+5. Run the router live CDP gate with `RUN_LIVE_TESTS=1` or `LIVE_ROUTER_URL` against an available browser/router.
 6. Capture one current-head trace: observation ingress → command → effect receipt → semantic verification → eval → learning/policy promotion.
 7. Add root `README.md` with restore, wrapper override, build, test, graph, and runtime archive interpretation instructions.
 
