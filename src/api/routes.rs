@@ -82,6 +82,18 @@ fn handle_command_with_receipt(
             )?;
             tick_for_command_response(&mut candidate_state, &mut candidate_tlog, cfg, receipt)?;
         }
+        Command::SubmitProcessReceiptBatch(receipts) => {
+            for receipt_record in receipts {
+                append_submission_event(
+                    &mut candidate_state,
+                    &mut candidate_tlog,
+                    cfg,
+                    receipt_record.submission(),
+                    receipt,
+                )?;
+            }
+            tick_for_command_response(&mut candidate_state, &mut candidate_tlog, cfg, receipt)?;
+        }
     }
 
     let response = ControlEventResponse {

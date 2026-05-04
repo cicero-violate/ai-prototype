@@ -14,6 +14,7 @@ pub enum Command {
     SubmitEvidenceBatch(Vec<EvidenceSubmission>),
     SubmitObservationIngress(ObservationIngressBatch),
     SubmitProcessReceipt(SandboxProcessReceipt),
+    SubmitProcessReceiptBatch(Vec<SandboxProcessReceipt>),
 }
 
 impl Command {
@@ -32,6 +33,14 @@ impl Command {
                 receipt.is_contract_valid()
                     && receipt.registry_policy_hash == CapabilityRegistry::canonical().policy_hash()
             }
+            Self::SubmitProcessReceiptBatch(receipts) => {
+                !receipts.is_empty()
+                    && receipts.iter().all(|receipt| {
+                        receipt.is_contract_valid()
+                            && receipt.registry_policy_hash
+                                == CapabilityRegistry::canonical().policy_hash()
+                    })
+            }
         }
     }
 
@@ -41,6 +50,7 @@ impl Command {
             Self::SubmitEvidenceBatch(submissions) => submissions.len(),
             Self::SubmitObservationIngress(batch) => batch.records.len(),
             Self::SubmitProcessReceipt(_) => 1,
+            Self::SubmitProcessReceiptBatch(receipts) => receipts.len(),
         }
     }
 
@@ -80,6 +90,18 @@ impl Command {
                 h = h.wrapping_mul(0x100000001b3);
                 h ^= receipt.effect.contract_hash();
                 h.wrapping_mul(0x100000001b3).max(1)
+            }
+            Self::SubmitProcessReceiptBatch(receipts) => {
+                let mut h = 0x9a9b_5ee1_5e7c_0005u64;
+                h ^= self.submission_count() as u64;
+                h = h.wrapping_mul(0x100000001b3);
+                for receipt in receipts {
+                    h ^= receipt.contract_hash();
+                    h = h.wrapping_mul(0x100000001b3);
+                    h ^= receipt.effect.contract_hash();
+                    h = h.wrapping_mul(0x100000001b3);
+                }
+                h.max(1)
             }
         }
     }
