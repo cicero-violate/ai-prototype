@@ -13,6 +13,10 @@ from typing import Any
 APPLY_COMMAND = "git fetch ./{} HEAD && git merge --ff-only FETCH_HEAD"
 
 
+def fail(message: str) -> None:
+    raise SystemExit(message)
+
+
 def run_git(*args: str, check: bool = True) -> str:
     done = subprocess.run(["git", *args], text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False)
     if check and done.returncode:
@@ -46,6 +50,54 @@ def command_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return [row.get("result", {}) for row in rows if row.get("event") == "validation_command"]
 
 
+def validation_commands(summary: dict[str, Any], rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    commands = summary.get("validation_commands") or [
+        {"name": c.get("name"), "cmd": c.get("cmd"), "status": c.get("status")}
+        for c in command_rows(rows)
+    ]
+    if not commands:
+        fail("validation report has no validation commands")
+    for index, command in enumerate(commands, 1):
+        if not command.get("name"):
+            fail(f"validation command {index} has no name")
+        if not command.get("status"):
+            fail(f"validation command {command.get('name')} has no status")
+        if "cmd" not in command:
+            fail(f"validation command {command.get('name')} has no cmd field")
+    return commands
+
+
+def positive_int(value: Any, name: str) -> int:
+    try:
+        result = int(value)
+    except (TypeError, ValueError):
+        fail(f"{name} is not an integer: {value!r}")
+    if result < 0:
+        fail(f"{name} is negative: {result}")
+    return result
+
+
+def validation_closure(summary: dict[str, Any], rows: list[dict[str, Any]], head: str,
+                       zero_test_reason: str | None) -> tuple[list[dict[str, Any]], str | None]:
+    report_head = summary.get("git_head")
+    if not report_head:
+        fail("validation report has no git_head")
+    if report_head != head:
+        fail(f"stale validation report: report head {report_head} != manifest head {head}")
+    commands = validation_commands(summary, rows)
+    command_count = positive_int(summary.get("validation_command_count", len(commands)),
+                                 "validation_command_count")
+    if command_count <= 0:
+        fail("validation_command_count must be greater than zero")
+    if command_count != len(commands):
+        fail(f"validation_command_count {command_count} != command rows {len(commands)}")
+    test_count = positive_int(summary.get("validation_test_count", 0), "validation_test_count")
+    reason = zero_test_reason or summary.get("zero_test_reason")
+    if test_count == 0 and not reason:
+        fail("validation_test_count is zero without zero_test_reason")
+    return commands, reason
+
+
 def changed_files(base: str, head: str) -> list[str]:
     run_git("cat-file", "-e", f"{base}^{{commit}}")
     run_git("cat-file", "-e", f"{head}^{{commit}}")
@@ -74,15 +126,10 @@ def receipt(args: argparse.Namespace) -> dict[str, Any]:
     rows = report_rows(Path(args.report))
     summary = last_event(rows, "validation_summary")
     if not summary:
-        raise SystemExit("validation report has no validation_summary event")
+        fail("validation report has no validation_summary event")
+    commands, zero_test_reason = validation_closure(summary, rows, args.head, args.zero_test_reason)
     report_head = summary.get("git_head")
-    if report_head and report_head != args.head:
-        raise SystemExit(f"stale validation report: report head {report_head} != manifest head {args.head}")
     bundle_verify, bundle_heads = verify_bundle(args.bundle, args.head)
-    commands = summary.get("validation_commands") or [
-        {"name": c.get("name"), "cmd": c.get("cmd"), "status": c.get("status")}
-        for c in command_rows(rows)
-    ]
     r = {
         "schema_version": 2,
         "base_commit": args.base,
@@ -92,6 +139,8 @@ def receipt(args: argparse.Namespace) -> dict[str, Any]:
         "validation_commands": commands,
         "validation_command_count": summary.get("validation_command_count", len(commands)),
         "validation_test_count": summary.get("validation_test_count", 0),
+        "zero_test_reason": zero_test_reason,
+        "python_unit_test_count": summary.get("python_unit_test_count", 0),
         "router_test_count": summary.get("router_test_count", 0),
         "cargo_test_count_when_available": summary.get("cargo_test_count_when_available"),
         "failed_required_commands": summary.get("failed_required_commands", []),
@@ -158,6 +207,8 @@ def write_manifest(path: Path, r: dict[str, Any]) -> None:
         f"- validation_status: {r['validation_status']}",
         f"- validation_command_count: {r['validation_command_count']}",
         f"- validation_test_count: {r['validation_test_count']}",
+        f"- zero_test_reason: {r['zero_test_reason']}",
+        f"- python_unit_test_count: {r['python_unit_test_count']}",
         f"- router_test_count: {r['router_test_count']}",
         f"- cargo_test_count_when_available: {r['cargo_test_count_when_available']}",
         f"- failed_required_commands: {json.dumps(r['failed_required_commands'], sort_keys=True)}",
@@ -216,6 +267,7 @@ def main() -> None:
     p.add_argument("--receipt-out", required=True)
     p.add_argument("--bundle", default="")
     p.add_argument("--bundle-verify", default="ignored_compat")
+    p.add_argument("--zero-test-reason", default=None)
     args = p.parse_args()
 
     r = receipt(args)

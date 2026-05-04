@@ -264,6 +264,12 @@ def router_tests(result: dict[str, Any]) -> int:
     return max(counts) if counts else text.count(".")
 
 
+def unittest_tests(result: dict[str, Any]) -> int:
+    text = f"{result.get('stdout', '')}\n{result.get('stderr', '')}"
+    counts = [int(x) for x in re.findall(r"Ran\s+(\d+)\s+tests?", text)]
+    return max(counts) if counts else 0
+
+
 toolchain = configure_toolchain()
 w, g, r, repo, delta = wrapper(), graph(), runtime(), repo_metrics(), delta_metrics()
 cargo_env = {"RUSTC_WRAPPER": "", "RUSTC_WORKSPACE_WRAPPER": ""} if w["wrapper_override_required"] else {}
@@ -286,6 +292,7 @@ emit(event="delta_metrics", **delta)
 commands = [
     run("git_diff_check", ["git", "diff", "--check"], timeout=30),
     run("git_delta_diff_check", delta_diff_command(), timeout=30),
+    run("delta_manifest_unit_tests", ["python3", "-m", "unittest", "tests/test_write_delta_manifest.py"], timeout=90),
     run("router_offline_tests", ["bash", "run_tests.sh"], cwd=router_dir(), timeout=180),
     run("cargo_fmt_check", ["cargo", "fmt", "--check"], timeout=180, env=cargo_env),
     run("cargo_test_all_targets", ["cargo", "test", "--all-targets"], timeout=600, env=cargo_env),
@@ -324,16 +331,18 @@ missing = {
     "missing_semantic_artifact_verification_test": True,
     "missing_policy_learning_replay_trace": True,
 }
-required = {"git_diff_check", "git_delta_diff_check", "router_offline_tests"}
+required = {"git_diff_check", "git_delta_diff_check", "delta_manifest_unit_tests", "router_offline_tests"}
 failed_required = [c["name"] for c in commands if c["name"] in required and c["status"] != "pass"]
 status = "fail" if failed_required else ("partial" if any(missing.values()) else "pass")
+python_test = next(c for c in commands if c["name"] == "delta_manifest_unit_tests")
 emit(event="validation_summary", validation_status=status, git_head=head,
      git_status_clean=git_status.returncode == 0 and not git_status.stdout.strip(),
      validation_command_count=len(commands),
      validation_commands=[{"name": c["name"], "cmd": c["cmd"], "status": c["status"],
                            "env_overrides": c.get("env_overrides", [])} for c in commands],
-     validation_test_count=(cargo_tests(cargo_test) or 0) + router_tests(router_test),
-     router_test_count=router_tests(router_test), cargo_test_count_when_available=cargo_tests(cargo_test),
+     validation_test_count=unittest_tests(python_test) + (cargo_tests(cargo_test) or 0) + router_tests(router_test),
+     python_unit_test_count=unittest_tests(python_test), router_test_count=router_tests(router_test),
+     cargo_test_count_when_available=cargo_tests(cargo_test),
      failed_required_commands=failed_required, cargo_available=toolchain["cargo_available"],
      rustc_available=toolchain["rustc_available"], toolchain_path_added=toolchain["toolchain_path_added"],
      rust_toolchain_source=toolchain["rust_toolchain_source"], wrapper_override_required=w["wrapper_override_required"],

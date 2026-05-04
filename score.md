@@ -15,178 +15,154 @@ G  = geometric-mean goodness
 
 ```text
 G = (I·E·C·A·R·P·S·D·T·Co·Em·B·L·Si·F)^(1/15)
-G = 6.77 / 10
+G = 6.66 / 10
 max(G) = good
 ```
 
-One-line explanation: Goodness is the geometric mean; one weak dimension lowers
+Goodness is the geometric mean of all 15 dimensions; one weak dimension lowers
 the whole system.
 
 ## Score Summary
 
 ```text
-I  = 7.4 / 10
-E  = 6.4 / 10
-C  = 5.9 / 10
+I  = 7.5 / 10
+E  = 6.2 / 10
+C  = 5.6 / 10
 A  = 7.7 / 10
-R  = 6.4 / 10
-P  = 5.5 / 10
+R  = 6.2 / 10
+P  = 5.4 / 10
 S  = 5.9 / 10
-D  = 8.0 / 10
-T  = 8.4 / 10
-Co = 6.9 / 10
-Em = 7.5 / 10
-B  = 7.1 / 10
-L  = 6.0 / 10
-Si = 5.9 / 10
-F  = 7.3 / 10
+D  = 7.8 / 10
+T  = 8.5 / 10
+Co = 6.8 / 10
+Em = 7.3 / 10
+B  = 7.0 / 10
+L  = 6.1 / 10
+Si = 5.6 / 10
+F  = 7.2 / 10
 
-G = 6.77 / 10
-GOOD = max(G) = 6.77 / 10 = good
+G = 6.66 / 10
+GOOD = max(G) = 6.66 / 10 = good
 ```
 
-Judgment: this is an above-average autonomous-agent prototype with a coherent
-kernel/capability/TLog architecture, but it is still evidence-limited. The
-uploaded runtime archive materially improves traceability and this execution
-stage hardened delta/manifest verification. The current restored environment
-still cannot reproduce the root Rust build, test suite, graph telemetry, Ollama
-receipt path, semantic verification, or policy-learning promotion trace. Treat
-this as a serious prototype score, not production proof.
+Judgment: this is a serious autonomous-agent prototype with unusually strong
+architecture for replay, receipts, deterministic gates, and policy learning.
+It is not yet production-grade. The restored repository contains useful runtime
+and router evidence, but current root Rust validation, graph telemetry, Ollama
+proof replay, and policy-learning replay were not reproduced in this environment.
 
-## Evidence
+## Evidence Snapshot
 
 ```text
 bundle = /mnt/data/ai.bundle
-restored_repo = /mnt/data/ai-repo
-git_head = dce0d671d547613915f35f00926b45d34bd821c6
-recent_history_shape = repeated starting-agent-run commits plus one compact-validation commit
-source_delta = validation-script hardening, manifest hardening, score/plan update
-score_md_changed_only = false
+restored_repo = /mnt/data/ai-restored/ai
+git_head = ebf09b8ad9d4b850404b2003f49d65c04af0b772
+git_status_clean_before_score_update = true
 goal_md_present = true
 tracked_files = 189
 rust_files_src_examples = 53
 rust_test_attrs = 103
 rust_cfg_test_sections = 2
 unsafe_token_count_src_examples = 0
-panic_call_count_src_examples = 0
-unwrap_calls_src_examples = 316
-expect_calls_src_examples = 9
-third_party_rust_dependencies = 0
-tracked_runtime_download_bundle_files = 9
-
-runtime_archive_ai_present = true
-runtime_archive_path = /mnt/data/ai-runtime.tar.gz
-runtime_archive_sha256 = 9cb696748f26b34176114bfcfb02fa0f9cac896b84764d49a4886caedb70524e
-runtime_manifest_base_commit = dce0d671d547613915f35f00926b45d34bd821c6
-runtime_archive_member_count = 84
-runtime_manifest_included_files = 83
-runtime_manifest_redacted_files = 35
-runtime_archive_cache_files = 0
-runtime_archive_conversation_snapshots = 0
-runtime_candidate_ledger_files = 15
-runtime_download_ledger_files = 15
-runtime_message_ledger_files = 15
-runtime_process_network_log_files = 5
-runtime_candidate_rows = 66
-runtime_candidate_error_count = 0
-runtime_message_rows = 4372
-runtime_log_rows_parsed = 5155
-runtime_archive_log_total_observe = 9760
-runtime_archive_download_total_observe = 167
-runtime_manifest_download_history_records = 149
-runtime_download_history_by_classification = delta_applied:14, download_event:22, download_ledger:99, live_evidence:13, stale_advisory:1
-runtime_duplicate_artifact_aliases = 8
+unwrap_call_count_src_examples = 316
+expect_call_count_src_examples = 9
+root_cargo_toml_dependencies = 0 third-party Rust dependencies
+configured_rustc_wrapper_path_exists = false
+state_graph_present = false
+runtime_archive_present = true
+runtime_archive_sha256 = 9439e3b0ca82ffd9f8e743948cd1f8d7fd9334d7e882f79f2db6118afad384f5
+runtime_manifest_base_commit = ebf09b8ad9d4b850404b2003f49d65c04af0b772
+runtime_archive_member_count = 88
+runtime_archive_log_total = 10357
+runtime_archive_download_total = 176
+runtime_download_history_records = 160
 runtime_unique_download_alias_count = 17
-runtime_duplicate_alias_top = repo-delta-004.bundle:25, DELTA_MANIFEST.md:14
-runtime_excluded_by_reason = apply-worktree:2997, generated-bundle:22, generated-runtime-archive:1, secret-token-cache:1, signed-url-cache:15
-runtime_leak_scan_findings = 0
-runtime_schema_scan_findings = 0
-runtime_integrity_scan_findings = 0
-
+runtime_duplicate_artifact_aliases = 8
+runtime_stale_advisory_count = 1
+runtime_candidate_error_count = 0
+runtime_conversation_snapshots = 0
 router_offline_tests = pass
 router_syntax_checks = 41
 router_behavior_tests = 4
 router_test_count = 45
 git_diff_check = pass
-git_delta_diff_check = pass
-python_py_compile_write_delta_manifest = pass
-bash_n_observe_validation = pass
-delta_manifest_bundle_verify_gate = implemented
-delta_manifest_expected_head_gate = implemented
-runtime_unique_alias_reporting = implemented
+git_delta_diff_check = fail
 cargo_available = false
 rustc_available = false
 cargo_fmt_check = unavailable
 cargo_test_all_targets = unavailable
 cargo_clippy_all_targets = unavailable
 ollama_judgment_example = skipped_env_missing
-configured_rustc_wrapper_path_exists = false
-state_graph_present = false
-validation_status = partial
+validation_status = fail
 missing_signal_count = 12
 ```
 
-Positive evidence:
+## Positive Evidence
 
-- `GOAL.md` states a coherent target: frozen deterministic kernel, append-only
-  TLog, bounded recovery, layered capabilities, LLM promotion, policy learning,
-  and replayable/auditable decisions.
-- The Rust crate is intentionally low-supply-chain: root `Cargo.toml` contains
-  no third-party Rust dependencies.
-- Static inspection found `#![forbid(unsafe_code)]` at the library boundary and
-  `0` unsafe tokens in `src` plus `examples`.
-- The source tree contains meaningful test intent: `103` Rust `#[test]`
-  attributes and `2` `cfg(test)` sections.
-- `scripts/observe_validation.sh` emits machine-readable records for git state,
-  repo metrics, toolchain state, graph state, runtime archive metrics, validation
-  commands, and missing validation flags.
-- `scripts/write_delta_manifest.py` now verifies the generated bundle itself and
-  refuses manifests when the bundle does not expose the expected committed head.
-- Runtime archive reporting now exposes unique accepted download aliases, so
-  repeated candidate aliases are separated from accepted lineage evidence.
+- `GOAL.md` defines a coherent architecture: frozen kernel, codec/runtime,
+  capability layer, append-only TLog, bounded recovery, policy learning, and
+  LLM promotion.
+- `src/lib.rs` enforces `#![forbid(unsafe_code)]`; static source scan found no
+  unsafe tokens in `src` or `examples`.
+- The crate has no third-party Rust dependencies in the root `Cargo.toml`, which
+  improves auditability and supply-chain control.
+- The source surface is broad for a prototype: kernel, codec, runtime, API,
+  observation, context, memory, planning, LLM, judgment, tooling, verification,
+  eval, policy, learning, and orchestration modules are present.
+- Test intent is substantial: static scan found `103` Rust `#[test]` attributes
+  and `2` `cfg(test)` sections.
 - Router-side offline validation passed: `41` syntax checks plus `4` behavior
-  tests, total `45` reported checks.
-- The uploaded runtime archive is sanitized and useful: `84` members, `35`
-  redacted files, explicit exclusion of token/signed-url caches, and `0`
-  leak/schema/integrity findings in the manifest.
-- Runtime history is no longer absent: the archive contains candidate ledgers,
-  download ledgers, message ledgers, network/process logs, delta-apply receipts,
-  loop-stop receipts, and downloaded score/manifest/report artifacts.
+  tests, total `45` checks.
+- Runtime archive evidence is present and sanitized: `88` members, `10,357`
+  log rows observed by the validation script, `176` download rows, and `0`
+  candidate errors.
+- Runtime archive base binding matches the restored head.
 
-Critical risks and constraints:
+## Critical Risks
 
-- Current root Rust validation is not reproducible in this environment because
-  neither `cargo` nor `rustc` exists on `PATH`.
-- `.cargo/config.toml` configures a rustc wrapper at
-  `/mnt/data/canon-mini-agent-extracted/canon-mini-agent/prototype/canon-rustc-v3/target/debug/canon-rustc-v3`,
-  but that path does not exist here. Wrapper override is required before normal
-  Cargo validation can run.
-- `GOAL.md` claims a prior local run with `cargo build` passing, `103` tests
-  passing, Ollama judgment passing, graph intent coverage, and semantic pathway
-  telemetry. Those are historical claims, not reproduced evidence in this
-  restored environment.
-- No `state/rustc/*/graph.json` exists, so graph node counts, edge counts,
-  intent coverage, redundant path-pair trends, and wrapper telemetry are absent.
-- Runtime archive logs improve traceability but do not prove current source
-  correctness. They show prior ChatGPT/runtime activity and artifact handling,
-  not a fresh Rust build/test/proof replay.
-- The runtime archive has `0` `.conversation.json` snapshots. It has
-  `.messages.ndjson` ledgers, but no full conversation JSON snapshots.
-- Download history has one stale advisory caused by a base-commit mismatch.
-- Candidate history has repeated artifact aliases: `repo-delta-004.bundle` appears
-  `25` times and `DELTA_MANIFEST.md` appears `14` times. Accepted-lineage
-  reporting is now collapsed, but the underlying runtime history remains noisy.
-- Recent git history includes tracked runtime/upload/download artifacts: staged
-  project history contains `.repo-agent-runtime/upload-bundles/ai.bundle`,
-  apply-worktree markers, `downloads/DELTA_MANIFEST.md`, and
-  `downloads/repo-delta-004.bundle`. This weakens simplicity and repository
-  hygiene.
-- `316` `unwrap()` calls remain in `src` and `examples`. That is a large implicit
-  panic surface for a system claiming bounded deterministic recovery.
-- Ollama judgment was skipped because `CANON_OLLAMA_BASE_URL` and
-  `CANON_OLLAMA_MODEL` are unset and no local endpoint was validated.
-- Policy learning exists as source surface, but this observation did not find a
-  replay trace proving promotion from completed TLog history.
+- Current validation status is `fail`, not `pass`.
+- Root Rust validation was not reproducible here: `cargo` and `rustc` were not
+  available on `PATH`, so fmt/test/clippy did not run.
+- `.cargo/config.toml` points to a rustc wrapper path that does not exist in this
+  restored environment. Wrapper override is required before normal Cargo checks.
+- `git diff --check` passes for the current working tree, but base-to-head delta
+  whitespace validation fails because historical committed files contain trailing
+  whitespace and blank-line-at-EOF issues.
+- `state/rustc/*/graph.json` is absent, so graph node/edge counts, intent
+  coverage, redundant-path telemetry, and wrapper-derived semantic evidence are
+  unavailable.
+- `GOAL.md` records historical local successes, including Rust tests and Ollama
+  judgment proof replay, but those claims were not reproduced in this stage.
+- The runtime archive has message ledgers but `0` full `.conversation.json`
+  snapshots.
+- Runtime/download lineage is still noisy: duplicate artifact aliases remain,
+  including repeated delta bundles and manifests.
+- `316` `unwrap()` calls remain in `src` and `examples`, which is a large panic
+  surface for a system claiming bounded recovery.
+- Tracked runtime/upload/download artifacts remain in repo history, weakening
+  simplicity and repository hygiene.
+- Policy learning exists as source and tests, but this evaluation did not find a
+  fresh replay trace proving promotion from completed TLog history.
+
+## Dimension Rationale
+
+| Dimension | Score | Evidence |
+|---|---:|---|
+| I | 7.5 | Strong architecture across deterministic kernel, evidence routing, verification, learning, and LLM adapter surfaces. |
+| E | 6.2 | Observe script and router checks are compact, but missing root toolchain and wrapper friction slow validation. |
+| C | 5.6 | Router checks pass and current diff is clean; root Rust tests/fmt/clippy and graph replay were unavailable, and delta whitespace check fails. |
+| A | 7.7 | Repository direction closely matches `GOAL.md`; live autonomous operation remains unproven. |
+| R | 6.2 | Receipts, replay, and runtime archive hardening help; missing graph/toolchain/Ollama proof and many unwraps cap robustness. |
+| P | 5.4 | Router offline tests are fast, but no root benchmark, throughput, latency, or cargo timing signal was reproduced. |
+| S | 5.9 | Layer boundaries and capability decomposition can scale; validation remains single-repo and partially unavailable. |
+| D | 7.8 | Frozen-kernel intent, hash-chained logs, bundle/head binding, and deterministic records are strong; absent graph/proof replay weakens confidence. |
+| T | 8.5 | Missing signals, runtime archive metrics, and validation command outcomes are explicit and machine-readable. |
+| Co | 6.8 | README, GOAL, score, and scripts guide collaboration; tracked generated artifacts and duplicate aliases add noise. |
+| Em | 7.3 | Restore, observe, and delta workflows are operational; external toolchain/Ollama/wrapper setup is still required. |
+| B | 7.0 | High-potential autonomous-runtime prototype; benefit is capped until validation is portable and reproducible. |
+| L | 6.1 | Learning/policy modules and tests exist; no fresh policy-promotion replay trace was reproduced. |
+| Si | 5.6 | Dependency-minimal Rust helps; repo history clutter, generated artifacts, wrapper coupling, and unwrap surface hurt simplicity. |
+| F | 7.2 | Canonical normal-form direction and sanitized runtime archives improve future compatibility; missing portable proof pipeline remains the blocker. |
 
 ## Missing Validation Signals
 
@@ -207,36 +183,16 @@ missing_policy_learning_replay_trace = true
 missing_artifact_apply_worktree = false
 ```
 
-## Dimension Rationale
-
-| Dimension | Score | Evidence |
-|---|---:|---|
-| I | 7.4 | Strong architecture: frozen kernel, capabilities, TLog, verification, policy learning, and LLM promotion surfaces. |
-| E | 6.4 | Observe script compresses evidence and now separates unique accepted aliases; missing toolchain/wrapper still slows evaluation. |
-| C | 5.9 | Router tests and manifest hardening pass, but root Rust build/test/clippy/fmt were unavailable. |
-| A | 7.7 | Direction matches `GOAL.md`; evidence still does not prove live autonomous operation. |
-| R | 6.4 | Bundle/head verification reduces artifact risk; missing graph/toolchain/Ollama/replay proof keeps robustness moderate. |
-| P | 5.5 | No root runtime latency, throughput, benchmark, or cargo timing signal was reproduced. |
-| S | 5.9 | Layered design can scale conceptually; current validation is single-repo and partially unavailable. |
-| D | 8.0 | Git head, archive base binding, bundle-head checks, redaction scans, and validation records are strong; graph/proof replay is absent. |
-| T | 8.4 | Missing signals, bundle verification, and runtime-history classifications are explicit and machine-readable. |
-| Co | 6.9 | README/GOAL/score are useful; accepted-alias reporting improves navigation, but history clutter remains. |
-| Em | 7.5 | Restore/observe/delta commands are clearer and safer; external Rust/Ollama/wrapper setup is still required. |
-| B | 7.1 | Useful autonomous-runtime prototype; benefit is capped until validation is portable and reproducible. |
-| L | 6.0 | Runtime ledgers show activity and feedback surfaces; no reproduced policy-promotion replay trace. |
-| Si | 5.9 | Manifest validation and alias reporting are simpler; history clutter, duplicate artifacts, and many unwraps remain. |
-| F | 7.3 | Safer delta artifacts improve forward compatibility; missing portable toolchain/graph proof weakens future confidence. |
-
 ## Required Next Work
 
 ```text
-1. Provide or restore a reproducible Rust toolchain in this environment.
-2. Run cargo fmt/test/clippy with wrapper variables cleared.
-3. Restore/build canon-rustc-v3 and require state/rustc/*/graph.json output.
-4. Run ollama_judgment against a local endpoint and verify receipt/proof replay.
-5. Add offline semantic-artifact verification and policy-learning replay tests.
-6. Convert high-risk unwrap/expect sites into typed errors or classify them as deterministic-safe.
-7. Stop tracking generated runtime/upload/download artifacts in normal repo history.
-8. Add full conversation snapshot capture or explicitly justify `.messages.ndjson` as the canonical substitute.
-9. Stop generating repeated candidate aliases, not merely reporting accepted aliases separately.
+1. Restore a portable Rust toolchain and run fmt/test/clippy with wrapper variables cleared.
+2. Restore/build the configured rustc wrapper or remove the absolute wrapper dependency.
+3. Regenerate state/rustc/*/graph.json and require wrapper telemetry in validation.
+4. Fix committed base-to-head whitespace defects or scope delta whitespace checks to new changes.
+5. Run ollama_judgment against a local endpoint and verify receipt/proof replay.
+6. Add an offline semantic-artifact verification test and a policy-learning replay test.
+7. Classify or replace high-risk unwrap/expect sites with typed error handling.
+8. Stop tracking runtime/upload/download artifacts in normal repository history.
+9. Capture full conversation snapshots or formally declare message ledgers canonical.
 ```
