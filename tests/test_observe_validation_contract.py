@@ -47,6 +47,30 @@ class ObserveValidationContractTest(unittest.TestCase):
         self.assertIn("missing_panic_surface_validation", self.script)
         self.assertIn("panic_surface_production_unwrap_count", self.script)
 
+    def test_runtime_performance_contract_is_emitted_and_budgeted(self) -> None:
+        for token in (
+            "runtime_performance_metrics",
+            "runtime_performance_signal_present",
+            "runtime_performance_budget_status",
+            "project_agent_elapsed_ms_median",
+            "project_agent_elapsed_ms_p95",
+            "download_initial_get_ms_median",
+            "download_follow_get_ms_median",
+            "download_write_ms_median",
+            "validation_command_duration_ms",
+            "missing_runtime_performance_signal",
+        ):
+            self.assertIn(token, self.script)
+
+    def test_runtime_performance_budgets_are_environment_configurable(self) -> None:
+        for name in (
+            "CANON_MAX_PROJECT_AGENT_ELAPSED_MS_P95",
+            "CANON_MAX_DOWNLOAD_INITIAL_GET_MS_P95",
+            "CANON_MAX_DOWNLOAD_FOLLOW_GET_MS_P95",
+            "CANON_MAX_DOWNLOAD_WRITE_MS_P95",
+        ):
+            self.assertIn(name, self.script)
+
 
 if __name__ == "__main__":
     unittest.main()

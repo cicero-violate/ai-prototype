@@ -12,6 +12,7 @@ import shutil
 import subprocess
 import tarfile
 import time
+from math import ceil
 from pathlib import Path
 from typing import Any
 
@@ -62,6 +63,57 @@ def sha256(path: Path) -> str:
         for chunk in iter(lambda: fh.read(1024 * 1024), b""):
             h.update(chunk)
     return h.hexdigest()
+
+
+def numeric(value: Any) -> float | None:
+    return float(value) if isinstance(value, (int, float)) and value >= 0 else None
+
+
+def add_number(bucket: dict[str, list[float]], name: str, value: Any) -> None:
+    number = numeric(value)
+    if number is not None:
+        bucket.setdefault(name, []).append(number)
+
+
+def summary(values: list[float]) -> dict[str, Any]:
+    if not values:
+        return {"count": 0, "min": None, "median": None, "p95": None, "max": None}
+    ordered = sorted(values)
+    mid = len(ordered) // 2
+    median = ordered[mid] if len(ordered) % 2 else (ordered[mid - 1] + ordered[mid]) / 2
+    p95 = ordered[max(0, ceil(len(ordered) * 0.95) - 1)]
+    return {"count": len(ordered), "min": round(ordered[0], 3), "median": round(median, 3),
+            "p95": round(p95, 3), "max": round(ordered[-1], 3)}
+
+
+def budget(name: str, default: float) -> float:
+    try:
+        return float(os.environ.get(name, default))
+    except ValueError:
+        return default
+
+
+def budget_status(perf: dict[str, Any]) -> str:
+    checks = {
+        "project_agent_elapsed_ms": budget("CANON_MAX_PROJECT_AGENT_ELAPSED_MS_P95", 1_800_000),
+        "download_initial_get_ms": budget("CANON_MAX_DOWNLOAD_INITIAL_GET_MS_P95", 60_000),
+        "download_follow_get_ms": budget("CANON_MAX_DOWNLOAD_FOLLOW_GET_MS_P95", 60_000),
+        "download_write_ms": budget("CANON_MAX_DOWNLOAD_WRITE_MS_P95", 1_000),
+    }
+    seen = False
+    failures: dict[str, dict[str, float]] = {}
+    for key, limit in checks.items():
+        item = perf.get(key, {})
+        if int(item.get("count") or 0) < 3 or item.get("p95") is None:
+            continue
+        seen = True
+        if float(item["p95"]) > limit:
+            failures[key] = {"p95": float(item["p95"]), "budget": limit}
+    perf["runtime_performance_budget_failures"] = failures
+    perf["runtime_performance_budgets"] = checks
+    if failures:
+        return "fail"
+    return "pass" if seen else "missing"
 
 
 def run(name: str, cmd: list[str], *, cwd: Path = ROOT, timeout: int = 120,
@@ -167,6 +219,7 @@ def runtime() -> dict[str, Any]:
                                "runtime_candidate_error_count": 0, "runtime_duplicate_artifact_aliases": 0}
     aliases: dict[str, int] = {}
     accepted_aliases: dict[str, str] = {}
+    timings: dict[str, list[float]] = {}
     try:
         with tarfile.open(archive, "r:gz") as tf:
             for member in (m for m in tf.getmembers() if m.isfile()):
@@ -197,9 +250,31 @@ def runtime() -> dict[str, Any]:
                         if not raw.strip():
                             continue
                         count += 1
+                        try:
+                            row = json.loads(raw)
+                        except Exception:
+                            row = None
+                        if isinstance(row, dict):
+                            if "elapsedMs" in row:
+                                add_number(timings, "project_agent_elapsed_ms", row.get("elapsedMs"))
+                            row_timings = row.get("timingsMs")
+                            if isinstance(row_timings, dict):
+                                for key in ("turnTotalMs", "loopTotalMs", "uploadMs", "validationMs"):
+                                    add_number(timings, f"project_agent_{key}", row_timings.get(key))
+                            candidate = row.get("candidate")
+                            if isinstance(candidate, dict):
+                                candidate_timings = candidate.get("timingsMs")
+                                if isinstance(candidate_timings, dict):
+                                    for src, dst in {
+                                        "initialGetMs": "download_initial_get_ms",
+                                        "followGetMs": "download_follow_get_ms",
+                                        "resolvedGetMs": "download_resolved_get_ms",
+                                        "writeMs": "download_write_ms",
+                                    }.items():
+                                        add_number(timings, dst, candidate_timings.get(src))
                         if "candidate-ledger" in name:
                             try:
-                                row = json.loads(raw)
+                                row = row if isinstance(row, dict) else json.loads(raw)
                                 alias = str(row.get("artifactAlias") or "")
                                 if alias:
                                     aliases[alias] = aliases.get(alias, 0) + 1
@@ -212,6 +287,9 @@ def runtime() -> dict[str, Any]:
         metrics["runtime_duplicate_artifact_aliases"] = sum(1 for value in aliases.values() if value > 1)
         metrics["runtime_unique_download_alias_count"] = len(accepted_aliases)
         metrics["runtime_unique_download_aliases"] = sorted(accepted_aliases)
+        metrics["runtime_performance_metrics"] = {key: summary(value) for key, value in sorted(timings.items())}
+        metrics["runtime_performance_signal_present"] = bool(timings)
+        metrics["runtime_performance_budget_status"] = budget_status(metrics["runtime_performance_metrics"])
         metrics["runtime_archive_parse_status"] = "pass"
     except Exception as exc:
         metrics.update({"runtime_archive_parse_status": "fail", "runtime_archive_parse_error": str(exc)})
@@ -294,6 +372,11 @@ def router_tests(result: dict[str, Any]) -> int:
     return max(counts) if counts else text.count(".")
 
 
+def command_duration_metrics(commands: list[dict[str, Any]]) -> dict[str, Any]:
+    durations = [float(c.get("duration_ms") or 0) for c in commands if c.get("duration_ms") is not None]
+    return {"validation_command_duration_ms": summary(durations)}
+
+
 def unittest_tests(result: dict[str, Any]) -> int:
     text = f"{result.get('stdout', '')}\n{result.get('stderr', '')}"
     counts = [int(x) for x in re.findall(r"Ran\s+(\d+)\s+tests?", text)]
@@ -358,8 +441,13 @@ commands = [
 ]
 g = graph()
 p = panic_surface_metrics()
+command_perf = command_duration_metrics(commands)
 emit(event="graph_metrics", **g)
 emit(event="panic_surface_metrics", **p)
+runtime_perf = r.get("runtime_performance_metrics", {}) if isinstance(r.get("runtime_performance_metrics"), dict) else {}
+emit(event="runtime_performance_metrics", runtime_performance_signal_present=r.get("runtime_performance_signal_present", False),
+     runtime_performance_budget_status=r.get("runtime_performance_budget_status", "missing"),
+     **runtime_perf, **command_perf)
 
 ollama_env = os.environ.get("CANON_OLLAMA_BASE_URL") and os.environ.get("CANON_OLLAMA_MODEL")
 if ollama_env:
@@ -387,6 +475,7 @@ missing = {
     "missing_generated_graph_json": not bool(g.get("state_graph_present")),
     "missing_rustc_wrapper_telemetry": next(c for c in commands if c["name"] == "wrapper_graph_validation")["status"] != "pass" or not bool(g.get("state_graph_present")),
     "missing_runtime_download_history": download_total == 0,
+    "missing_runtime_performance_signal": not bool(r.get("runtime_performance_signal_present")),
     "missing_panic_surface_validation": next(c for c in commands if c["name"] == "panic_surface_validation")["status"] != "pass",
     "missing_conversation_snapshot": int(r.get("runtime_archive_conversation_snapshots", 0) or 0) == 0,
     "missing_artifact_apply_worktree": not (ROOT / ".repo-agent-runtime" / "apply-worktrees").exists(),
@@ -398,8 +487,14 @@ missing = {
 required = {"git_diff_check", "git_delta_diff_check", "python_unit_tests", "router_offline_tests"}
 required.add("panic_surface_validation")
 failed_required = [c["name"] for c in commands if c["name"] in required and c["status"] != "pass"]
-status = "fail" if failed_required else ("partial" if any(missing.values()) else "pass")
+performance_budget_status = r.get("runtime_performance_budget_status", "missing")
+status = "fail" if failed_required or performance_budget_status == "fail" else ("partial" if any(missing.values()) else "pass")
 python_test = next(c for c in commands if c["name"] == "python_unit_tests")
+project_elapsed = runtime_perf.get("project_agent_elapsed_ms", {})
+download_initial = runtime_perf.get("download_initial_get_ms", {})
+download_follow = runtime_perf.get("download_follow_get_ms", {})
+download_resolved = runtime_perf.get("download_resolved_get_ms", {})
+download_write = runtime_perf.get("download_write_ms", {})
 emit(event="validation_summary", validation_status=status, git_head=head,
      git_status_clean=git_status.returncode == 0 and not git_status.stdout.strip(),
      validation_command_count=len(commands),
@@ -425,6 +520,27 @@ emit(event="validation_summary", validation_status=status, git_head=head,
      graph_edge_count_when_present=g.get("graph_edge_count"), graph_intent_coverage_when_present=g.get("graph_intent_coverage"),
      runtime_archive_present=r.get("runtime_archive_present", False), runtime_archive_log_total=log_total,
      runtime_archive_download_total=download_total,
+     runtime_performance_signal_present=r.get("runtime_performance_signal_present", False),
+     runtime_performance_budget_status=performance_budget_status,
+     runtime_performance_budget_failures=runtime_perf.get("runtime_performance_budget_failures", {}),
+     runtime_performance_budgets=runtime_perf.get("runtime_performance_budgets", {}),
+     validation_command_duration_ms=command_perf["validation_command_duration_ms"],
+     project_agent_elapsed_ms_count=project_elapsed.get("count", 0),
+     project_agent_elapsed_ms_median=project_elapsed.get("median"),
+     project_agent_elapsed_ms_p95=project_elapsed.get("p95"),
+     project_agent_elapsed_ms_max=project_elapsed.get("max"),
+     download_initial_get_ms_median=download_initial.get("median"),
+     download_initial_get_ms_p95=download_initial.get("p95"),
+     download_initial_get_ms_max=download_initial.get("max"),
+     download_follow_get_ms_median=download_follow.get("median"),
+     download_follow_get_ms_p95=download_follow.get("p95"),
+     download_follow_get_ms_max=download_follow.get("max"),
+     download_resolved_get_ms_median=download_resolved.get("median"),
+     download_resolved_get_ms_p95=download_resolved.get("p95"),
+     download_resolved_get_ms_max=download_resolved.get("max"),
+     download_write_ms_median=download_write.get("median"),
+     download_write_ms_p95=download_write.get("p95"),
+     download_write_ms_max=download_write.get("max"),
      runtime_download_history_record_count=r.get("runtime_download_history_record_count", 0),
      runtime_unique_download_alias_count=r.get("runtime_unique_download_alias_count", 0),
      runtime_unique_download_aliases=r.get("runtime_unique_download_aliases", []),
