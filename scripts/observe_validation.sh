@@ -1,361 +1,221 @@
 #!/usr/bin/env bash
-# Emit deterministic observe-stage validation evidence as NDJSON.
-#
-# Usage:
-#   bash scripts/observe_validation.sh
-#   CANON_OBSERVE_REPORT=target/observe/custom.ndjson bash scripts/observe_validation.sh
-#   CANON_RUNTIME_ARCHIVE=/path/to/ai-runtime.tar.gz bash scripts/observe_validation.sh
-#
-# The script is intentionally evidence-only. It does not mutate source files,
-# does not require cargo or Ollama to be installed, and records unavailable
-# validation surfaces explicitly instead of silently skipping them.
+# Emit one current-head validation report without requiring unavailable tools.
 set -euo pipefail
 
-python3 - "$@" <<'PY'
+python3 - <<'PY'
 from __future__ import annotations
 
-import json
 import hashlib
+import json
 import os
 import re
 import shutil
 import subprocess
-import sys
 import tarfile
 import time
 from pathlib import Path
 from typing import Any
 
-
-REPO = Path.cwd()
+ROOT = Path.cwd()
 REPORT = Path(os.environ.get("CANON_OBSERVE_REPORT", "target/observe/validation-report.ndjson"))
+OUT = REPORT.parent / "command-output"
 REPORT.parent.mkdir(parents=True, exist_ok=True)
-COMMAND_OUTPUT_DIR = REPORT.parent / "command-output"
-COMMAND_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+OUT.mkdir(parents=True, exist_ok=True)
+REPORT.write_text("", encoding="utf-8")
 
 records: list[dict[str, Any]] = []
 
 
-def now_ms() -> int:
+def ms() -> int:
     return time.time_ns() // 1_000_000
 
 
-def clean_text(value: str, limit: int = 4000) -> str:
-    value = value.replace("\x00", "")
-    if len(value) > limit:
-        return value[:limit] + "...[truncated]"
-    return value
-
-
-def command_output_paths(cmd: list[str]) -> dict[str, str]:
-    safe_name = re.sub(r"[^A-Za-z0-9_.-]+", "_", "_".join(cmd))[:80] or "command"
-    digest = hashlib.sha256(json.dumps(cmd, separators=(",", ":")).encode("utf-8")).hexdigest()[:12]
-    stem = f"{safe_name}.{digest}"
-    return {
-        "stdout_path": str(COMMAND_OUTPUT_DIR / f"{stem}.stdout.txt"),
-        "stderr_path": str(COMMAND_OUTPUT_DIR / f"{stem}.stderr.txt"),
-    }
-
-
-def persist_command_output(result: dict[str, Any]) -> dict[str, Any]:
-    paths = command_output_paths([str(part) for part in result["cmd"]])
-    Path(paths["stdout_path"]).write_text(str(result.get("stdout", "")), encoding="utf-8")
-    Path(paths["stderr_path"]).write_text(str(result.get("stderr", "")), encoding="utf-8")
-    result["output_path"] = paths
-    return result
+def short(text: str, limit: int = 4000) -> str:
+    text = text.replace("\x00", "")
+    return text if len(text) <= limit else text[:limit] + "...[truncated]"
 
 
 def emit(record: dict[str, Any]) -> None:
-    full_record = {"ts_ms": now_ms(), **record}
-    records.append(full_record)
-    line = json.dumps(full_record, sort_keys=True, separators=(",", ":"))
-    with REPORT.open("a", encoding="utf-8") as fh:
-        fh.write(line + "\n")
+    row = {"ts_ms": ms(), **record}
+    records.append(row)
+    line = json.dumps(row, sort_keys=True, separators=(",", ":"))
+    REPORT.open("a", encoding="utf-8").write(line + "\n")
     print(line)
 
 
-def run(cmd: list[str], timeout_s: int = 120) -> dict[str, Any]:
-    started = time.monotonic()
+def save(cmd: list[str], stdout: str, stderr: str) -> dict[str, str]:
+    safe = re.sub(r"[^A-Za-z0-9_.-]+", "_", "_".join(cmd))[:80] or "cmd"
+    digest = hashlib.sha256(json.dumps(cmd, separators=(",", ":")).encode()).hexdigest()[:12]
+    base = OUT / f"{safe}.{digest}"
+    stdout_path, stderr_path = f"{base}.stdout.txt", f"{base}.stderr.txt"
+    Path(stdout_path).write_text(stdout, encoding="utf-8")
+    Path(stderr_path).write_text(stderr, encoding="utf-8")
+    return {"stdout_path": stdout_path, "stderr_path": stderr_path}
+
+
+def run(name: str, cmd: list[str], cwd: Path = ROOT, timeout: int = 120) -> dict[str, Any]:
     if shutil.which(cmd[0]) is None:
-        return persist_command_output({
-            "cmd": cmd,
-            "available": False,
-            "status": "unavailable",
-            "returncode": None,
-            "duration_ms": 0,
-            "stdout": "",
-            "stderr": f"{cmd[0]} not found in PATH",
-        })
-    try:
-        completed = subprocess.run(
-            cmd,
-            cwd=REPO,
-            text=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            timeout=timeout_s,
-            check=False,
-        )
-        return persist_command_output({
-            "cmd": cmd,
-            "available": True,
-            "status": "pass" if completed.returncode == 0 else "fail",
-            "returncode": completed.returncode,
-            "duration_ms": int((time.monotonic() - started) * 1000),
-            "stdout": clean_text(completed.stdout),
-            "stderr": clean_text(completed.stderr),
-        })
-    except subprocess.TimeoutExpired as exc:
-        return persist_command_output({
-            "cmd": cmd,
-            "available": True,
-            "status": "timeout",
-            "returncode": None,
-            "duration_ms": int((time.monotonic() - started) * 1000),
-            "stdout": clean_text(exc.stdout or ""),
-            "stderr": clean_text(exc.stderr or f"timeout after {timeout_s}s"),
-        })
-
-
-def git_scalar(args: list[str]) -> str | None:
-    result = run(["git", *args], timeout_s=30)
-    if result["status"] != "pass":
-        return None
-    return str(result["stdout"]).strip()
-
-
-def cargo_result(kind: str, args: list[str], timeout_s: int) -> dict[str, Any]:
-    result = run(args, timeout_s=timeout_s)
-    emit({"event": kind, "result": result})
+        result = {"name": name, "cmd": cmd, "status": "unavailable", "available": False,
+                  "returncode": None, "duration_ms": 0, "stdout": "", "stderr": f"{cmd[0]} not found in PATH"}
+    else:
+        start = time.monotonic()
+        try:
+            done = subprocess.run(cmd, cwd=cwd, text=True, stdout=subprocess.PIPE,
+                                  stderr=subprocess.PIPE, timeout=timeout, check=False)
+            result = {"name": name, "cmd": cmd, "status": "pass" if done.returncode == 0 else "fail",
+                      "available": True, "returncode": done.returncode,
+                      "duration_ms": int((time.monotonic() - start) * 1000),
+                      "stdout": short(done.stdout), "stderr": short(done.stderr)}
+        except subprocess.TimeoutExpired as exc:
+            result = {"name": name, "cmd": cmd, "status": "timeout", "available": True,
+                      "returncode": None, "duration_ms": int((time.monotonic() - start) * 1000),
+                      "stdout": short(exc.stdout or ""), "stderr": short(exc.stderr or f"timeout after {timeout}s")}
+    result["output_path"] = save(cmd, result["stdout"], result["stderr"])
+    emit({"event": "validation_command", "result": result})
     return result
 
 
-def count_cargo_tests(output: str) -> int | None:
-    counts = [int(match.group(1)) for match in re.finditer(r"running\s+(\d+)\s+tests?", output)]
-    if counts:
-        return sum(counts)
-    return None
-
-
-def read_wrapper_config() -> dict[str, Any]:
-    config = REPO / ".cargo" / "config.toml"
-    text = config.read_text(encoding="utf-8") if config.exists() else ""
-    match = re.search(r"^\s*rustc-wrapper\s*=\s*\"([^\"]+)\"", text, flags=re.MULTILINE)
-    wrapper = match.group(1) if match else None
-    path_exists = bool(wrapper and Path(wrapper).exists())
-    return {
-        "config_present": config.exists(),
-        "rustc_wrapper_configured": wrapper is not None,
-        "rustc_wrapper_path": wrapper,
-        "rustc_wrapper_path_exists": path_exists,
-    }
-
-
-def graph_candidates() -> list[Path]:
-    candidates: list[Path] = []
-    for root in [REPO / "state" / "rustc", REPO.parent / "state" / "rustc"]:
-        if root.exists():
-            candidates.extend(sorted(root.glob("*/graph.json")))
-    return candidates
-
-
-def graph_metrics() -> dict[str, Any]:
-    graphs = graph_candidates()
-    if not graphs:
-        return {"state_graph_present": False, "graph_paths": []}
-
-    path = graphs[0]
+def scalar(cmd: list[str]) -> str | None:
     try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-    except Exception as exc:  # noqa: BLE001 - report evidence, do not crash.
-        return {
-            "state_graph_present": True,
-            "graph_paths": [str(p) for p in graphs],
-            "graph_parse_status": "fail",
-            "graph_parse_error": str(exc),
-        }
-
-    nodes = data.get("nodes", []) if isinstance(data, dict) else []
-    edges = data.get("edges", []) if isinstance(data, dict) else []
-    fn_nodes = [n for n in nodes if isinstance(n, dict) and str(n.get("kind", "")).lower() in {"fn", "function"}]
-    intent_nodes = [n for n in fn_nodes if isinstance(n, dict) and n.get("intent_class")]
-    coverage = (len(intent_nodes) / len(fn_nodes)) if fn_nodes else None
-    return {
-        "state_graph_present": True,
-        "graph_paths": [str(p) for p in graphs],
-        "graph_parse_status": "pass",
-        "graph_node_count": len(nodes) if isinstance(nodes, list) else None,
-        "graph_edge_count": len(edges) if isinstance(edges, list) else None,
-        "graph_function_node_count": len(fn_nodes),
-        "graph_intent_node_count": len(intent_nodes),
-        "graph_intent_coverage": coverage,
-    }
+        return subprocess.check_output(cmd, cwd=ROOT, text=True).strip()
+    except Exception:
+        return None
 
 
-def runtime_archive_candidates() -> list[Path]:
-    paths: list[Path] = []
-    env_path = os.environ.get("CANON_RUNTIME_ARCHIVE")
-    if env_path:
-        paths.append(Path(env_path))
-    paths.extend([
-        REPO / "ai-runtime.tar.gz",
-        REPO.parent / "ai-runtime.tar.gz",
-        Path("/mnt/data/ai-runtime.tar.gz"),
-    ])
-    deduped: list[Path] = []
-    seen: set[str] = set()
-    for path in paths:
-        key = str(path)
-        if key not in seen:
-            seen.add(key)
-            deduped.append(path)
-    return deduped
+def wrapper() -> dict[str, Any]:
+    cfg = ROOT / ".cargo" / "config.toml"
+    text = cfg.read_text(encoding="utf-8") if cfg.exists() else ""
+    match = re.search(r'^\s*rustc-wrapper\s*=\s*"([^"]+)"', text, re.MULTILINE)
+    path = match.group(1) if match else None
+    return {"config_present": cfg.exists(), "rustc_wrapper_configured": path is not None,
+            "rustc_wrapper_path": path, "rustc_wrapper_path_exists": bool(path and Path(path).exists())}
 
 
-def ndjson_line_count_from_tar(tf: tarfile.TarFile, member: tarfile.TarInfo) -> int:
-    fh = tf.extractfile(member)
-    if fh is None:
-        return 0
-    with fh:
-        return sum(1 for line in fh if line.strip())
+def graph() -> dict[str, Any]:
+    paths = sorted((ROOT / "state" / "rustc").glob("*/graph.json"))
+    if not paths:
+        return {"state_graph_present": False, "graph_paths": []}
+    try:
+        data = json.loads(paths[0].read_text(encoding="utf-8"))
+        nodes, edges = data.get("nodes", []), data.get("edges", [])
+        fns = [n for n in nodes if isinstance(n, dict) and str(n.get("kind", "")).lower() in {"fn", "function"}]
+        intents = [n for n in fns if n.get("intent_class")]
+        return {"state_graph_present": True, "graph_paths": [str(p) for p in paths],
+                "graph_parse_status": "pass", "graph_node_count": len(nodes), "graph_edge_count": len(edges),
+                "graph_function_node_count": len(fns), "graph_intent_node_count": len(intents),
+                "graph_intent_coverage": len(intents) / len(fns) if fns else None}
+    except Exception as exc:
+        return {"state_graph_present": True, "graph_paths": [str(p) for p in paths],
+                "graph_parse_status": "fail", "graph_parse_error": str(exc)}
 
 
-def runtime_metrics() -> dict[str, Any]:
-    archive = next((path for path in runtime_archive_candidates() if path.exists()), None)
-    if archive is None:
-        return {"runtime_archive_present": False, "runtime_archive_candidates": [str(p) for p in runtime_archive_candidates()]}
-
-    metrics: dict[str, Any] = {
-        "runtime_archive_present": True,
-        "runtime_archive_path": str(archive),
-        "runtime_archive_member_count": 0,
-        "runtime_archive_log_counts": {},
-        "runtime_archive_download_counts": {},
-        "runtime_archive_conversation_snapshots": 0,
-        "runtime_archive_cache_files": 0,
-    }
+def runtime() -> dict[str, Any]:
+    candidates = [Path(p) for p in [os.environ.get("CANON_RUNTIME_ARCHIVE", ""), str(ROOT / "ai-runtime.tar.gz"),
+                                    str(ROOT.parent / "ai-runtime.tar.gz"), "/mnt/data/ai-runtime.tar.gz"] if p]
+    archive = next((p for p in candidates if p.exists()), None)
+    if not archive:
+        return {"runtime_archive_present": False, "runtime_archive_candidates": [str(p) for p in candidates]}
+    metrics: dict[str, Any] = {"runtime_archive_present": True, "runtime_archive_path": str(archive),
+                               "runtime_archive_member_count": 0, "runtime_archive_log_counts": {},
+                               "runtime_archive_download_counts": {}, "runtime_archive_conversation_snapshots": 0,
+                               "runtime_archive_cache_files": 0}
     try:
         with tarfile.open(archive, "r:gz") as tf:
-            members = [member for member in tf.getmembers() if member.isfile()]
-            metrics["runtime_archive_member_count"] = len(members)
-            for member in members:
+            for member in [m for m in tf.getmembers() if m.isfile()]:
                 name = member.name
-                if ".chatgpt-agent-cache" in name or "cache" in name.lower():
-                    metrics["runtime_archive_cache_files"] += 1
-                if name.endswith(".conversation.json"):
-                    metrics["runtime_archive_conversation_snapshots"] += 1
-                if name.endswith(".ndjson") or name.endswith(".jsonl"):
-                    line_count = ndjson_line_count_from_tar(tf, member)
-                    if "download" in name.lower():
-                        metrics["runtime_archive_download_counts"][name] = line_count
-                    else:
-                        metrics["runtime_archive_log_counts"][name] = line_count
-    except Exception as exc:  # noqa: BLE001 - report evidence, do not crash.
-        metrics["runtime_archive_parse_status"] = "fail"
-        metrics["runtime_archive_parse_error"] = str(exc)
-        return metrics
-    metrics["runtime_archive_parse_status"] = "pass"
+                metrics["runtime_archive_member_count"] += 1
+                metrics["runtime_archive_cache_files"] += int("cache" in name.lower())
+                metrics["runtime_archive_conversation_snapshots"] += int(name.endswith(".conversation.json"))
+                if name.endswith((".ndjson", ".jsonl")):
+                    fh = tf.extractfile(member)
+                    count = sum(1 for line in fh or [] if line.strip())
+                    key = "runtime_archive_download_counts" if "download" in name.lower() else "runtime_archive_log_counts"
+                    metrics[key][name] = count
+        metrics["runtime_archive_parse_status"] = "pass"
+    except Exception as exc:
+        metrics.update({"runtime_archive_parse_status": "fail", "runtime_archive_parse_error": str(exc)})
     return metrics
 
 
-def bool_missing(status: str) -> bool:
-    return status != "pass"
+def cargo_tests(result: dict[str, Any]) -> int | None:
+    text = f"{result.get('stdout', '')}\n{result.get('stderr', '')}"
+    counts = [int(x) for x in re.findall(r"running\s+(\d+)\s+tests?", text)]
+    return sum(counts) if counts else None
 
 
-REPORT.write_text("", encoding="utf-8")
+def router_tests(result: dict[str, Any]) -> int:
+    text = f"{result.get('stdout', '')}\n{result.get('stderr', '')}"
+    node_counts = [int(x) for x in re.findall(r"tests\s+(\d+)", text)]
+    return max(node_counts) if node_counts else text.count(".")
 
-git_head = git_scalar(["rev-parse", "HEAD"])
-git_status = run(["git", "status", "--short"], timeout_s=30)
-wrapper = read_wrapper_config()
-graph = graph_metrics()
-runtime = runtime_metrics()
 
-emit({
-    "event": "validation_start",
-    "schema_version": 1,
-    "repo": str(REPO),
-    "report_path": str(REPORT),
-    "git_head": git_head,
-})
-emit({
-    "event": "git_state",
-    "git_head": git_head,
-    "git_status_clean": git_status["status"] == "pass" and str(git_status["stdout"]).strip() == "",
-    "git_status_short": str(git_status["stdout"]).splitlines(),
-    "git_status_result": git_status,
-})
-emit({
-    "event": "toolchain",
-    "cargo_available": shutil.which("cargo") is not None,
-    "rustc_available": shutil.which("rustc") is not None,
-    "python3_available": shutil.which("python3") is not None,
-    **wrapper,
-})
-emit({"event": "graph_metrics", **graph})
-emit({"event": "runtime_archive_metrics", **runtime})
+head = scalar(["git", "rev-parse", "HEAD"])
+git_status = subprocess.run(["git", "status", "--short"], cwd=ROOT, text=True,
+                            stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False)
+w, g, r = wrapper(), graph(), runtime()
 
-cargo_fmt = cargo_result("cargo_fmt_check", ["cargo", "fmt", "--check"], timeout_s=180)
-cargo_test = cargo_result("cargo_test_all_targets", ["cargo", "test", "--all-targets"], timeout_s=600)
-cargo_clippy = cargo_result("cargo_clippy_all_targets", ["cargo", "clippy", "--all-targets", "--", "-D", "warnings"], timeout_s=600)
+emit({"event": "validation_start", "schema_version": 2, "repo": str(ROOT), "report_path": str(REPORT), "git_head": head})
+emit({"event": "git_state", "git_head": head, "git_status_clean": git_status.returncode == 0 and not git_status.stdout.strip(),
+      "git_status_short": git_status.stdout.splitlines()})
+emit({"event": "toolchain", "cargo_available": shutil.which("cargo") is not None,
+      "rustc_available": shutil.which("rustc") is not None, "python3_available": shutil.which("python3") is not None, **w})
+emit({"event": "graph_metrics", **g})
+emit({"event": "runtime_archive_metrics", **r})
 
-ollama_env_present = bool(os.environ.get("CANON_OLLAMA_BASE_URL") and os.environ.get("CANON_OLLAMA_MODEL"))
-if ollama_env_present:
-    ollama_example = cargo_result("ollama_judgment_example", ["cargo", "run", "--example", "ollama_judgment"], timeout_s=600)
+commands = [
+    run("git_diff_check", ["git", "diff", "--check"], timeout=30),
+    run("router_offline_tests", ["bash", "run_tests.sh"], cwd=ROOT / "ai-chromium" / "router-server", timeout=180),
+    run("cargo_fmt_check", ["cargo", "fmt", "--check"], timeout=180),
+    run("cargo_test_all_targets", ["cargo", "test", "--all-targets"], timeout=600),
+    run("cargo_clippy_all_targets", ["cargo", "clippy", "--all-targets", "--", "-D", "warnings"], timeout=600),
+]
+if os.environ.get("CANON_OLLAMA_BASE_URL") and os.environ.get("CANON_OLLAMA_MODEL"):
+    commands.append(run("ollama_judgment_example", ["cargo", "run", "--example", "ollama_judgment"], timeout=600))
 else:
-    ollama_example = {
-        "cmd": ["cargo", "run", "--example", "ollama_judgment"],
-        "available": shutil.which("cargo") is not None,
-        "status": "skipped_env_missing",
-        "returncode": None,
-        "duration_ms": 0,
-        "stdout": "",
-        "stderr": "CANON_OLLAMA_BASE_URL and CANON_OLLAMA_MODEL are required for this optional live path",
-    }
-    emit({"event": "ollama_judgment_example", "result": ollama_example})
+    skipped = {"name": "ollama_judgment_example", "cmd": ["cargo", "run", "--example", "ollama_judgment"],
+               "status": "skipped_env_missing", "available": shutil.which("cargo") is not None,
+               "returncode": None, "duration_ms": 0, "stdout": "", "stderr": "missing CANON_OLLAMA_BASE_URL or CANON_OLLAMA_MODEL"}
+    skipped["output_path"] = save(skipped["cmd"], "", skipped["stderr"])
+    commands.append(skipped)
+    emit({"event": "validation_command", "result": skipped})
 
-test_output = f"{cargo_test.get('stdout', '')}\n{cargo_test.get('stderr', '')}"
-test_count = count_cargo_tests(test_output)
-download_total = sum(int(v) for v in runtime.get("runtime_archive_download_counts", {}).values()) if runtime.get("runtime_archive_present") else 0
-log_total = sum(int(v) for v in runtime.get("runtime_archive_log_counts", {}).values()) if runtime.get("runtime_archive_present") else 0
-
+cargo_test = next(c for c in commands if c["name"] == "cargo_test_all_targets")
+router_test = next(c for c in commands if c["name"] == "router_offline_tests")
+download_total = sum(map(int, r.get("runtime_archive_download_counts", {}).values())) if r.get("runtime_archive_present") else 0
+log_total = sum(map(int, r.get("runtime_archive_log_counts", {}).values())) if r.get("runtime_archive_present") else 0
 missing = {
-    "missing_cargo_fmt": bool_missing(cargo_fmt["status"]),
-    "missing_cargo_test": bool_missing(cargo_test["status"]),
-    "missing_cargo_run_ollama_judgment": ollama_example["status"] != "pass",
-    "missing_clippy": bool_missing(cargo_clippy["status"]),
-    "missing_generated_graph_json": not bool(graph.get("state_graph_present")),
-    "missing_rustc_wrapper_telemetry": not (wrapper["rustc_wrapper_configured"] and wrapper["rustc_wrapper_path_exists"] and graph.get("state_graph_present")),
+    "missing_cargo_fmt": next(c for c in commands if c["name"] == "cargo_fmt_check")["status"] != "pass",
+    "missing_cargo_test": cargo_test["status"] != "pass",
+    "missing_cargo_run_ollama_judgment": next(c for c in commands if c["name"] == "ollama_judgment_example")["status"] != "pass",
+    "missing_clippy": next(c for c in commands if c["name"] == "cargo_clippy_all_targets")["status"] != "pass",
+    "missing_generated_graph_json": not bool(g.get("state_graph_present")),
+    "missing_rustc_wrapper_telemetry": not (w["rustc_wrapper_configured"] and w["rustc_wrapper_path_exists"] and g.get("state_graph_present")),
     "missing_runtime_download_history": download_total == 0,
-    "missing_conversation_snapshot": int(runtime.get("runtime_archive_conversation_snapshots", 0) or 0) == 0,
-    "missing_artifact_apply_worktree": not (REPO / ".repo-agent-runtime" / "apply-worktrees").exists(),
+    "missing_conversation_snapshot": int(r.get("runtime_archive_conversation_snapshots", 0) or 0) == 0,
+    "missing_artifact_apply_worktree": not (ROOT / ".repo-agent-runtime" / "apply-worktrees").exists(),
     "missing_external_observation_stream_test": True,
     "missing_external_api_action_test": True,
     "missing_semantic_artifact_verification_test": True,
     "missing_policy_learning_replay_trace": True,
 }
-
-summary = {
-    "event": "validation_summary",
-    "git_head": git_head,
-    "git_status_clean": git_status["status"] == "pass" and str(git_status["stdout"]).strip() == "",
-    "cargo_available": shutil.which("cargo") is not None,
-    "cargo_fmt_check_result": cargo_fmt["status"],
-    "cargo_test_result": cargo_test["status"],
-    "cargo_test_count_when_available": test_count,
-    "ollama_example_result_when_available": ollama_example["status"],
-    "clippy_result_when_available": cargo_clippy["status"],
-    "rustc_wrapper_configured": wrapper["rustc_wrapper_configured"],
-    "rustc_wrapper_path_exists": wrapper["rustc_wrapper_path_exists"],
-    "state_graph_present": graph.get("state_graph_present", False),
-    "graph_node_count_when_present": graph.get("graph_node_count"),
-    "graph_edge_count_when_present": graph.get("graph_edge_count"),
-    "graph_intent_coverage_when_present": graph.get("graph_intent_coverage"),
-    "runtime_archive_present": runtime.get("runtime_archive_present", False),
-    "runtime_archive_log_total": log_total,
-    "runtime_archive_download_total": download_total,
-    "runtime_archive_conversation_snapshots": runtime.get("runtime_archive_conversation_snapshots", 0),
-    "missing_signal_flags": missing,
-    "missing_signal_count": sum(1 for value in missing.values() if value),
-}
-emit(summary)
+required = ["git_diff_check", "router_offline_tests"]
+failed_required = [c["name"] for c in commands if c["name"] in required and c["status"] != "pass"]
+status = "fail" if failed_required else ("partial" if any(missing.values()) else "pass")
+emit({
+    "event": "validation_summary", "validation_status": status, "git_head": head,
+    "git_status_clean": git_status.returncode == 0 and not git_status.stdout.strip(),
+    "validation_command_count": len(commands), "validation_commands": [{"name": c["name"], "cmd": c["cmd"], "status": c["status"]} for c in commands],
+    "validation_test_count": (cargo_tests(cargo_test) or 0) + router_tests(router_test),
+    "router_test_count": router_tests(router_test), "cargo_test_count_when_available": cargo_tests(cargo_test),
+    "failed_required_commands": failed_required, "cargo_available": shutil.which("cargo") is not None,
+    "cargo_fmt_check_result": next(c for c in commands if c["name"] == "cargo_fmt_check")["status"],
+    "cargo_test_result": cargo_test["status"], "ollama_example_result_when_available": next(c for c in commands if c["name"] == "ollama_judgment_example")["status"],
+    "clippy_result_when_available": next(c for c in commands if c["name"] == "cargo_clippy_all_targets")["status"],
+    "rustc_wrapper_configured": w["rustc_wrapper_configured"], "rustc_wrapper_path_exists": w["rustc_wrapper_path_exists"],
+    "state_graph_present": g.get("state_graph_present", False), "graph_node_count_when_present": g.get("graph_node_count"),
+    "graph_edge_count_when_present": g.get("graph_edge_count"), "graph_intent_coverage_when_present": g.get("graph_intent_coverage"),
+    "runtime_archive_present": r.get("runtime_archive_present", False), "runtime_archive_log_total": log_total,
+    "runtime_archive_download_total": download_total, "runtime_archive_conversation_snapshots": r.get("runtime_archive_conversation_snapshots", 0),
+    "missing_signal_flags": missing, "missing_signal_count": sum(1 for v in missing.values() if v),
+})
 PY

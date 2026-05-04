@@ -22,21 +22,21 @@ S = (K · C · V · P · B · E · N · D)^(1/8)
 GOOD = max(K,C,V,P,B,E,N,D)
 ```
 
-One-line explanation: the geometric score keeps the rating bounded by the weakest proof surface.
+One-line explanation: the geometric score keeps the repository bounded by the weakest proof surface.
 
 ## Score Summary
 
 ```text
 K = 8.4 / 10
 C = 7.8 / 10
-V = 7.7 / 10
+V = 7.9 / 10
 P = 6.1 / 10
-B = 3.3 / 10
-E = 6.4 / 10
-N = 6.9 / 10
-D = 7.0 / 10
+B = 3.8 / 10
+E = 7.0 / 10
+N = 7.1 / 10
+D = 7.3 / 10
 
-S = 6.49 / 10
+S = 6.76 / 10
 GOOD = max(K,C,V,P,B,E,N,D) = K = 8.4 / 10 = good
 ```
 
@@ -44,22 +44,22 @@ GOOD = max(K,C,V,P,B,E,N,D) = K = 8.4 / 10 = good
 
 ```text
 stage = EXECUTE turn 1
-source_changes = ai-chromium/router-server/run_tests.sh
-scorecard_change = score.md execution evidence update
-restored_repo_path = /mnt/data/work-ai/repo
+source_changes = validation receipt + delta manifest tooling only
+scorecard_change = score.md evidence refresh
+restored_repo_path = /mnt/data/ai-restored/repo
 uploaded_bundle = /mnt/data/ai.bundle
-base_commit = 07ad58b4bf0e41e087a4584ecc97cd778a416a29
+base_commit = d47aaa7d3487521df1d0b5d2ee11310934e9a359
 branch = main
-working_tree_before_execution = clean at d0041c2f17785076bbd5dc4190c901239bf95ceb
+kernel_runtime_source_changed = false
 ```
 
-Judgment: this remains a serious deterministic runtime prototype, but current sandbox evidence does not prove root Rust build/test/lint, graph emission, or live Ollama execution.
+Judgment: this is a serious deterministic-runtime prototype with strong static architecture, but its autonomous-agent claims are still ahead of reproducible local proof in this sandbox.
 
 ## GOAL.md Alignment
 
-`GOAL.md` defines a deterministic self-improving agent runtime with a frozen kernel, append-only TLog, typed capability layer, bounded recovery, policy learning, and LLM promotion from routine work to novelty handling.
+`GOAL.md` defines a deterministic, self-improving agent runtime with a frozen kernel, append-only TLog, typed capability layer, bounded recovery, policy learning, and LLM promotion from routine work to novelty handling.
 
-Observed source topology matches the stated layer model:
+Observed source topology still matches that stated layer model:
 
 ```text
 src/kernel
@@ -80,39 +80,56 @@ src/capability/tooling
 src/capability/verification
 ```
 
-Positive evidence:
+Positive static evidence:
 
 ```text
 src/lib.rs has #![forbid(unsafe_code)]
 Cargo.toml package = ai
 Cargo.toml edition = 2024
-Cargo.toml dependencies = none
+Cargo.toml dependency_count = 0
 Cargo.lock package set = ai only
-src_rust_files = 52
-all_rust_files = 53
-test_markers_in_src_examples = 104
+rust_files_src_examples = 53
+rust_loc_src_examples = 15825
+rust_tests_declared = 103
+public_items = 215
 unsafe_markers_in_src_examples = 0
-panic_todo_unimplemented_markers = 0
+todo_unimplemented_panic_markers = 0
 ```
 
-Constraint: the strongest GOAL.md claims cite previous local validation, but that proof was not reproducible in this sandbox at current `HEAD`.
+Critical constraint: `GOAL.md` records prior local validation claims such as `cargo test`, Ollama judgment runs, graph metrics, and intent coverage, but those claims were not reproducible here because the Rust toolchain and configured wrapper path are unavailable.
 
-## Recent Git History Inspected
+## Recent Git History
+
+Recent commits inspected:
 
 ```text
+f81b2d9 Evaluate ai repository scorecard
+  score.md only
+
+d47aaa7 ready for agent run
+  generated bundle bookkeeping only
+
+ab4cd5b starting agent run
+  generated runtime/bundle bookkeeping and downloads only
+
+8fe6fec Fix router validation wrapper
+  ai-chromium/router-server/run_tests.sh
+  score.md
+
+d0041c2 Plan router validation wrapper fix
+  IMPLEMENTATION_PLAN.md only
+
+107eb86 Observe ai repository evidence
+  score.md only
+
 2f261eb Evaluate ai repository scorecard
+  score.md only
+
 07ad58b starting agent run
-a23ba19 ready for agent run
-9a23cea Close router artifact quality gate
-7261f1c Plan router artifact quality fix
-18db8c1 Observe ai repository evidence
-19e017c Evaluate ai repository scorecard
-12f02b6 ready for agent run
-bac66f7 Close router artifact quality gate
-e901518 Plan router artifact fixture gate
+  generated bundle bookkeeping only
 ```
 
-Recent history shows repeated scorecard/plan turns plus nested router artifact-quality work. The prior `2f261eb` commit changed only `score.md`.
+Judgment: recent source-bearing work is concentrated in the nested router validation wrapper. Most recent top-level commits are scorecard or generated artifact bookkeeping, not core runtime implementation changes.
 
 ## Build and Test Metadata
 
@@ -136,7 +153,7 @@ rustflags include -Dwarnings, -Dunused, -Ddead-code,
 RUST_BACKTRACE = full
 ```
 
-Observed toolchain state:
+Observed toolchain state from `scripts/observe_validation.sh`:
 
 ```text
 cargo_available = false
@@ -144,32 +161,38 @@ rustc_available = false
 python3_available = true
 rustc_wrapper_configured = true
 rustc_wrapper_path_exists = false
+state_graph_present = false
 ```
 
-Constraint: the repository is configured for strict Rust validation, but this sandbox lacks both the Rust toolchain and the configured wrapper path.
+Constraint: the repository is configured for strict Rust validation and wrapper graph emission, but this sandbox cannot execute root Rust validation or wrapper telemetry.
 
-## Root Observation Harness
+## Validation Run Evidence
 
-Command run:
+Commands run in this EXECUTE pass:
 
 ```text
-CANON_RUNTIME_ARCHIVE=/mnt/data/ai-runtime.tar.gz bash scripts/observe_validation.sh
+CANON_RUNTIME_ARCHIVE=/mnt/data/ai-runtime.tar.gz bash scripts/observe_validation.sh = pass as evidence emitter
+git diff --check = pass inside observe report
+ai-chromium/router-server/run_tests.sh = pass inside observe report
+python3 scripts/write_delta_manifest.py = pass when generating receipt/manifest
 ```
 
-Result summary from `target/observe/validation-report.ndjson`:
+`target/observe/validation-report.ndjson` now binds the available current-head checks into one summary:
 
 ```text
-git_head = 2f261eb6f63fe4b9634f83bfb5915db4a568d468
-git_status_clean = true
+validation_status = partial
+validation_command_count = 6
+validation_test_count = 15
+router_test_count = 15
+git_diff_check = pass
+router_offline_tests = pass
 cargo_fmt_check = unavailable
 cargo_test_all_targets = unavailable
 cargo_clippy_all_targets = unavailable
 ollama_judgment_example = skipped_env_missing
-state_graph_present = false
 runtime_archive_present = true
-runtime_archive_member_count = 18
-runtime_archive_download_total = 13
-runtime_archive_log_total = 1266
+runtime_archive_download_total = 17
+runtime_archive_log_total = 1895
 runtime_archive_conversation_snapshots = 0
 missing_signal_count = 11
 ```
@@ -192,83 +215,110 @@ missing_runtime_download_history = false
 missing_artifact_apply_worktree = false
 ```
 
-Judgment: the observation harness is valuable because it records absence as evidence. It does not prove build correctness.
+Judgment: the observation harness now records available checks, unavailable checks, and router test counts in one receipt surface. It still does not prove root Rust build correctness.
+
+## Delta Receipt Tooling Evidence
+
+Implemented source surfaces:
+
+```text
+scripts/observe_validation.sh = compact schema-v2 validation emitter
+scripts/write_delta_manifest.py = receipt + manifest writer from one validation report
+```
+
+The manifest generator records:
+
+```text
+base_commit
+head_commit
+changed_files
+validation_status
+validation_commands
+validation_command_count
+validation_test_count
+missing_signal_flags
+report_sha256
+bundle_sha256
+receiver_apply_commands
+```
+
+Judgment: this closes the specific null validation receipt gap for generated deltas. It does not close the missing root toolchain, wrapper telemetry, graph, live Ollama, or live CDP gaps.
 
 ## Uploaded Runtime Archive Evidence
 
-Primary archive:
+Primary archive inspected:
 
 ```text
 archive = /mnt/data/ai-runtime.tar.gz
-members = 18
-manifest_included = 17
-manifest_excluded = 515
-ndjson_log_files = 12
-download_records = 13
-candidate_ledger_records = 7
-message_records = 622
-audit_records = 23
-process_log_records = 100
-network_request_records = 514
-bad_candidate_entries = 3
+members = 22
+manifest_baseCommit = d47aaa7d3487521df1d0b5d2ee11310934e9a359
+manifest_repo = /workspace/ai_sandbox/canon-mini-agent/prototype/ai
+manifest_included = 21
+manifest_excluded = 773
+excluded_apply_worktree = 762
+excluded_generated_bundle = 6
+excluded_generated_runtime_archive = 1
+excluded_secret_token_cache = 1
+excluded_signed_url_cache = 3
+integrity_findings = 0
+leak_findings = 0
+schema_findings = 0
+```
+
+Archive logs and cache evidence:
+
+```text
+candidate_ledger_records = 9
+selected_candidate_records = 9
+download_records = 17
+message_snapshot_records = 921
+audit_records = 36
+process_log_records = 143
+network_request_records = 786
+bad_candidate_entries = 7
+bad_candidate_reason = missing-file-extension
 conversation_snapshots = 0
-cache_files = 0
-runtime_manifest_download_history = 1
-runtime_manifest_download_history_classification = stale_advisory
 ```
 
-Top runtime events:
+Runtime archive process signals:
 
 ```text
-turn-wait = 58
-candidate_ledger_written = 10
-turn-start = 8
-turn-complete = 8
-background-download-complete = 8
-loop_iteration_observed_audit_linked = 6
-loop_iteration_observed = 6
-turn-signal = 4
-runtime_archive_created = 2
-delta_pair_verified = 2
-delta_applied = 2
-live_cdp_evidence_summary = 2
+audit_top_events = candidate_ledger_written:15, loop_iteration_observed_audit_linked:9,
+  runtime_archive_created:4, delta_pair_verified:3, delta_applied:3
+process_log_top_events = turn_wait:79, turn_start:12, turn_complete:12,
+  background_download_complete:12, loop_iteration_observed:9
+network_turn_1 = GET:394, POST:113
+network_turn_2 = GET:4, POST:92
+network_turn_3 = POST:75
+network_turn_4 = GET:2, POST:106
 ```
 
-Download history examples:
+Runtime download history:
 
 ```text
-repo-delta-004.bundle downloaded via json-download-url
-DELTA_MANIFEST.md downloaded via json-download-url
-ai-observe-validation-output.txt downloaded via json-download-url
-resolved URL cache was refreshed from network, not reused, in sampled records
-```
-
-Critical constraint:
-
-```text
-currentBaseCommit = 07ad58b4bf0e41e087a4584ecc97cd778a416a29
-manifestBaseCommit = 12f02b6a0f3936ab5ffd8ff59762b71084c443fb
 classification = stale_advisory
+currentBaseCommit = d47aaa7d3487521df1d0b5d2ee11310934e9a359
+manifestBaseCommit = 07ad58b4bf0e41e087a4584ecc97cd778a416a29
+manifestHeadCommit = 8fe6feca9a50fe7a97c004ad333b995da0c784f2
 reason = base_commit_mismatch
 ```
 
-Judgment: the runtime archive proves useful CDP/download activity, but the archived manifest is advisory for this repo state, not authoritative for current `HEAD`.
+Judgment: the AI runtime archive is useful operational evidence, but it predates the current scorecard-only HEAD and its downloaded manifest history is stale advisory evidence rather than current authority.
 
 ## Delta Receipt Evidence
 
 Receipts in `/mnt/data/ai-runtime.tar.gz`:
 
 ```text
-receipt = bac66f75055cb5238f38d8888110ea2a06ec224c.json
-baseCommit = b9830281da5618db55c12371ec1f17b3abdd0b00
-headCommit = bac66f75055cb5238f38d8888110ea2a06ec224c
+receipt = 8fe6feca9a50fe7a97c004ad333b995da0c784f2.json
+baseCommit = 07ad58b4bf0e41e087a4584ecc97cd778a416a29
+headCommit = 8fe6feca9a50fe7a97c004ad333b995da0c784f2
 verified = true
 merged = true
-changed_files = 21
-commands = git bundle verify; git fetch; git merge --ff-only
-validation_status = pass
-validation_test_count = 0
-validation_commands = []
+changed_files = 3
+validation_status = null
+validation_command_count = null
+validation_test_count = null
 
 receipt = 9a23cea59f874bd988cf75eee0210fb30ccb99b7.json
 baseCommit = 12f02b6a0f3936ab5ffd8ff59762b71084c443fb
@@ -276,48 +326,51 @@ headCommit = 9a23cea59f874bd988cf75eee0210fb30ccb99b7
 verified = true
 merged = true
 changed_files = 18
-commands = git bundle verify; git fetch; git merge --ff-only
-validation_status = pass
-validation_test_count = 0
-validation_commands = []
+validation_status = null
+validation_command_count = null
+validation_test_count = null
+
+receipt = bac66f75055cb5238f38d8888110ea2a06ec224c.json
+baseCommit = b9830281da5618db55c12371ec1f17b3abdd0b00
+headCommit = bac66f75055cb5238f38d8888110ea2a06ec224c
+verified = true
+merged = true
+changed_files = 21
+validation_status = null
+validation_command_count = null
+validation_test_count = null
 ```
 
-Judgment: merge proof exists. Validation proof is weak because both AI delta receipts mark validation success with zero commands and zero tests.
+Judgment: older merge proof exists but older receipts remain weak because their validation fields are null. The current execute path now generates a non-null validation receipt for the final delta artifact.
 
-## Additional Uploaded Runtime Archives
-
-`/mnt/data/chatgpt-project-agent-runtime.tar.gz`:
+## Adjacent Uploaded Runtime Archives
 
 ```text
-members = 13
-manifest_included = 12
-manifest_excluded = 66
-download_records = 5
-candidate_records = 2
-message_records = 379
-audit_records = 11
-network_request_records = 302
-receipt_head = c2e90c48afa6286e1cfd9b9635e792fe05721252
-receipt_validation = pass
-receipt_validation_commands = py_compile + unittest discover
-receipt_test_count = 73
+router-server-runtime.tar.gz:
+  members = 3
+  repo = /workspace/ai_sandbox/canon-mini-agent/prototype/ai/ai-chromium/router-server
+  baseCommit = 01ec13fce5482e2d53d4097ec7a65d74fe19c11f
+  audit_records = 1
+  process_log_records = 1
+  receipts = 0
+  integrity/leak/schema_findings = 0/0/0
+
+chatgpt-project-agent-runtime.tar.gz:
+  members = 17
+  repo = /workspace/ai_sandbox/canon-mini-agent/prototype/chatgpt-project-agent
+  baseCommit = c3152468e3a623f3499b75c4603ac737e83cc5ab
+  download_history = stale_advisory:1
+  message_snapshot_records = 773
+  audit_records = 22
+  process_log_records = 153
+  network_request_records = 612
+  receipts = 2
+  integrity/leak/schema_findings = 0/0/0
 ```
 
-`/mnt/data/router-server-runtime.tar.gz`:
+Judgment: adjacent archives confirm the broader automation harness existed, but they are not authoritative proof for the restored `ai` root repository.
 
-```text
-members = 3
-manifest_included = 2
-manifest_excluded = 2
-download_records = 0
-candidate_records = 0
-audit_records = 1
-process_log_records = 1
-```
-
-Judgment: the ChatGPT Project Agent archive contains stronger validation discipline than the AI archive. The router-server archive is too small to carry meaningful validation proof.
-
-## Nested Router-Server Validation
+## Nested Router-Server Evidence
 
 Path inspected:
 
@@ -325,61 +378,20 @@ Path inspected:
 ai-chromium/router-server
 ```
 
-Commands reproduced:
+Current offline validation:
 
 ```text
-node --version = v22.16.0
-npm --version = 10.9.2
-package.json_present = false
 node src/tools/check-syntax.mjs = pass, syntax_ok files=49
-node --test test/openai-contract.test.mjs = pass, 7/7
-node --test test/mock-cdp-integration.test.mjs = pass, 3/3
-node --test test/artifact-quality.test.mjs = pass, 5/5
-./run_tests.sh before EXECUTE = fail, npm ENOENT package.json missing
-./run_tests.sh after EXECUTE = pass, 15/15 offline tests via dot reporter
+node --test --test-reporter=dot \
+  test/openai-contract.test.mjs \
+  test/mock-cdp-integration.test.mjs \
+  test/artifact-quality.test.mjs = pass, 15/15 dots
+./run_tests.sh = pass
+live_cdp_test = not run; gated by RUN_LIVE_TESTS=1 or LIVE_ROUTER_URL
+package.json_present = false
 ```
 
-Judgment: direct offline Node validation is now script-backed. The wrapper no longer depends on absent npm metadata; live CDP remains opt-in and unproven here.
-
-## EXECUTE Turn 1 Evidence
-
-Changed source file:
-
-```text
-ai-chromium/router-server/run_tests.sh
-```
-
-Implementation:
-
-```text
-removed = npm run test:live assumptions
-added = direct node syntax check + three offline node:test suites
-verbosity_reduction = node --test --test-reporter=dot
-live_gate = RUN_LIVE_TESTS=1 or LIVE_ROUTER_URL present
-```
-
-Validation commands and results:
-
-```text
-node --version = v22.16.0
-node --check ai-chromium/router-server/src/server.mjs = pass
-(cd ai-chromium/router-server && ./run_tests.sh) = pass, syntax_ok files=49, 15 dots
-bash scripts/observe_validation.sh = pass as evidence emitter, root Rust checks unavailable
-target/observe/validation-report.ndjson = pass JSON parse, 10 records
-git diff --check = pass
-```
-
-Remaining constraints:
-
-```text
-cargo_fmt_check = unavailable, cargo not found in PATH
-cargo_test_all_targets = unavailable, cargo not found in PATH
-cargo_clippy_all_targets = unavailable, cargo not found in PATH
-rustc_wrapper_path_exists = false
-state_graph_present = false
-live_cdp_test = not run
-ollama_judgment_example = skipped_env_missing
-```
+Judgment: router offline validation is script-backed and avoids the prior missing-`package.json` npm failure. Live CDP remains opt-in and unproven here.
 
 ## Risk Register
 
@@ -388,9 +400,10 @@ ollama_judgment_example = skipped_env_missing
 | Root Rust validation unavailable | High | `cargo` and `rustc` absent | Provide portable toolchain or committed validation receipt with command hashes |
 | Configured wrapper missing | High | wrapper path does not exist | Make wrapper optional for sandbox validation or include/repoint it |
 | No graph telemetry | High | no `state/rustc/*/graph.json` | Regenerate graph and record node/edge/intent metrics |
-| Zero-test AI validation receipts | High | AI receipts have `commands=[]`, `testCount=0` | Bind concrete validation commands and outputs to receipts |
-| Runtime manifest is stale advisory | Medium | base commit mismatch in archive download history | Tie archive manifest to current base/head |
-| Live router path unvalidated | Medium | offline `./run_tests.sh` passes; live CDP is opt-in and not run here | Run `RUN_LIVE_TESTS=1 ./run_tests.sh` against reachable CDP |
+| Weak AI delta validation receipts | High | receipt validation fields are null | Bind concrete validation commands and outputs to receipts |
+| Runtime manifest history stale | Medium | archive download history has `base_commit_mismatch` | Tie downloaded manifests to current base/head |
+| Runtime archive not current HEAD | Low | archive base is `d47aaa7`, observed HEAD is `f81b2d9` | Re-archive after scorecard update if needed |
+| Live router path unvalidated | Medium | offline `./run_tests.sh` passes; live CDP not run | Run `RUN_LIVE_TESTS=1 ./run_tests.sh` against reachable CDP |
 | Live Ollama path unproven here | Medium | skipped env + missing cargo | Run and archive current-head receipt/proof output |
 | Learning loop not proven end-to-end | High | no durable observation→eval→learning trace observed | Add one replayable policy-promotion integration trace |
 | Production unwrap surface unclassified | Medium | 316 `.unwrap()` and 9 `.expect()` calls | Classify test-only vs production path |
@@ -402,12 +415,12 @@ ollama_judgment_example = skipped_env_missing
 |---|---:|---|---|
 | Kernel | 8.4 | frozen-layer intent, `forbid(unsafe_code)`, typed gates/phases/evidence | no formal proof artifact observed |
 | Codec / TLog | 7.8 | NDJSON codec, durable runtime, command ledger exports | root tests unavailable |
-| Replay / verification | 7.7 | replay, semantic diff, proof-record APIs, receipt checks | current-head execution not reproduced |
+| Replay / verification | 7.9 | replay, semantic diff, proof-record APIs, receipt checks, current delta receipt tooling | current-head Rust execution not reproduced |
 | Capability layer | 6.1 | all named capability modules present | external objective loop not proven |
-| Build/test reproducibility | 3.3 | router wrapper now runs offline checks; cargo/rustc/wrapper unavailable; graph absent | cannot validate root crate here |
-| Runtime evidence | 6.4 | 18-member AI archive, 1266 logs, 13 downloads, 2 delta receipts | stale advisory manifest; zero-test receipts |
-| Nested router-server | 6.9 | `./run_tests.sh` now passes 49-file syntax and 15/15 offline Node tests | live CDP not reproduced |
-| Documentation alignment | 7.0 | plan target implemented and score evidence updated | GOAL claims still exceed current executable proof |
+| Build/test reproducibility | 3.8 | router wrapper passes offline checks; observe harness emits command/test counts | cannot validate root crate here |
+| Runtime evidence | 7.0 | 22-member AI archive, 1895 log lines, 17 downloads, current delta receipt generator | older runtime receipts still have null validation fields |
+| Nested router-server | 7.1 | `./run_tests.sh` passes 49-file syntax and 15/15 offline Node tests | live CDP not reproduced |
+| Documentation alignment | 7.3 | GOAL, scorecard, plan, and manifest schema now align | GOAL claims exceed current executable proof |
 
 ## Missing Validation Signals
 
@@ -420,12 +433,12 @@ required_before_higher_score = [
   ollama_judgment_example_run,
   state_rustc_graph_json,
   rustc_wrapper_telemetry,
-  current_head_runtime_archive,
-  current_head_delta_receipts_with_nonzero_tests,
+  current_head_runtime_manifest_without_stale_download_history,
   policy_learning_replay_trace,
   external_observation_stream_test,
   external_api_action_test,
-  semantic_artifact_verification_trace
+  semantic_artifact_verification_trace,
+  live_cdp_router_test
 ]
 ```
 
@@ -434,16 +447,15 @@ required_before_higher_score = [
 1. Restore a Rust toolchain and either provide the configured wrapper or make wrapper use optional for portable validation.
 2. Run `cargo fmt --check`, `cargo test --all-targets`, and `cargo clippy --all-targets -- -D warnings`.
 3. Regenerate `state/rustc/ai/graph.json` and capture wrapper telemetry.
-4. Replace zero-command validation receipts with required command outputs, hashes, and test counts.
-5. Run the router live CDP gate with `RUN_LIVE_TESTS=1` or `LIVE_ROUTER_URL` against an available browser/router.
-6. Capture one current-head trace: observation ingress → command → effect receipt → semantic verification → eval → learning/policy promotion.
-7. Add root `README.md` with restore, wrapper override, build, test, graph, and runtime archive interpretation instructions.
+4. Run the router live CDP gate with `RUN_LIVE_TESTS=1` or `LIVE_ROUTER_URL` against an available browser/router.
+5. Capture one current-head trace: observation ingress → command → effect receipt → semantic verification → eval → learning/policy promotion.
+6. Add root `README.md` with restore, wrapper override, build, test, graph, and runtime archive interpretation instructions.
 
 ## Verdict
 
 ```text
 classification = serious_deterministic_runtime_prototype
 not_yet = reproducibly_validated_autonomous_agent
-main_blocker = missing_root_rust_validation + missing_wrapper + absent_graph_telemetry + zero-test_AI_receipts
+main_blocker = missing_root_rust_validation + missing_wrapper + absent_graph_telemetry + missing_live_runtime_replay
 score_confidence = medium_static_low_runtime
 ```
