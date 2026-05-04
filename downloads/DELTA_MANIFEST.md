@@ -1,4 +1,4 @@
-base_commit: 52d402c00e2ace712d22a3cabf2ca1176b67e7c0
+base_commit: 4e76762f8011c4c40f85373a8dc9264d7a31746c
 head_commit: unavailable-no-valid-source-worktree
 
 status: failed_to_create_valid_delta_bundle
@@ -6,47 +6,47 @@ bundle_path: /mnt/data/repo-delta-002.bundle
 bundle_valid_git_bundle: false
 
 reason:
-- The required restored ai source repository is unavailable in the current sandbox state.
-- /mnt/data/ai.bundle is absent.
+- The required restored ai source repository became unavailable in the current sandbox state after a tool-state reset during Rust validation.
+- /mnt/data/ai.bundle is absent in the current sandbox.
 - file_search retrieval for uploaded files failed repeatedly with RetrievalClientResponseError.
-- api_tool fallback confirmed the public GitHub repository exists, but the required base commit 52d402c00e2ace712d22a3cabf2ca1176b67e7c0 is not present there.
-- /mnt/data/ai-runtime.tar.gz was inspected with Python tarfile and JSON readers; it contains runtime logs, ledgers, manifests, and downloaded reports, but intentionally excludes source apply-worktrees and generated git bundles.
-- A synthetic git bundle from partial runtime/GitHub data would be unsafe because the receiver command `git fetch ./repo-delta-002.bundle HEAD && git merge --ff-only FETCH_HEAD` would replace the worktree with an incomplete reconstructed tree.
+- The runtime tarball was inspected with Python tarfile and contains logs, conversation ledgers, download indexes, prior runtime state, and diagnostic manifests, but it does not contain the source worktree or a usable ai git bundle.
+- GitHub fallback identified cicero-violate/ai, but the required base commit 4e76762f8011c4c40f85373a8dc9264d7a31746c is not present there, so a receiver-safe cumulative B..H bundle cannot be reconstructed from GitHub.
+- A synthetic git bundle would be unsafe because the receiver command `git fetch ./repo-delta-002.bundle HEAD && git merge --ff-only FETCH_HEAD` could replace the target tree with incomplete reconstructed content.
 
 runtime_archive_inspection:
 - runtime_archive: /mnt/data/ai-runtime.tar.gz
-- parsed_with: Python tarfile + Python json
-- runtime_manifest_base_commit: 52d402c00e2ace712d22a3cabf2ca1176b67e7c0
-- runtime_member_count: 64
-- runtime_download_history_count: 131
-- runtime_included_count: 63
-- runtime_excluded_apply_worktree_files_detected: true
-- generated_git_bundles_excluded_by_runtime_archive: true
+- parsed_with: Python tarfile + Python json/text readers
+- runtime_member_count: 67
+- runtime_logs_detected: true
+- runtime_conversation_ledgers_detected: true
+- runtime_download_indexes_detected: true
+- runtime_prior_state_detected: true
+- runtime_delta_apply_receipts_detected: true
+- runtime_manifest_detected: true
 
-rust_toolchain_status:
-- shell_tar_used_for_rust: false
-- python_tarfile_extraction_used: true
-- installed_prefix: /mnt/data/rustc-python-install-prefix
-- cargo_home: /mnt/data/rustc-python-cargo-home
-- rustc_available: true
-- cargo_available: true
-- note: dependency-free cargo probe cannot substitute for repository validation because the source repository is unavailable.
+attempted_work_before_reset:
+- restored /mnt/data/ai.bundle to /mnt/data/ai-phase2/ai before sandbox reset
+- inspected GOAL.md, score.md, plan.md, source tree, TODO/FIXME markers, and runtime tarball
+- applied planned compatibility edits to Cargo.toml and Cargo.lock before sandbox reset
+- extracted Rust components using Python tarfile, not shell tar
+- validated dependency-free cargo probe after repairing partial extraction
+- observed cargo check passing before sandbox reset
 
 validation_results:
-- source_repo_restore: failed_source_bundle_absent
 - runtime_archive_parse: pass
-- github_fallback_search: partial
-- github_required_base_commit_lookup: not_found
+- source_repo_restore_current_state: failed_source_bundle_absent
+- rust_python_tarfile_probe: pass before reset
+- repository_validation_current_state: failed_source_worktree_absent
 - valid_git_bundle_create: failed_no_source_worktree
 
 changed_files_B_to_H:
-- none_validated
+- none_validated_in_current_source_worktree
 
 receiver_apply_commands:
 - git fetch ./repo-delta-002.bundle HEAD && git merge --ff-only FETCH_HEAD
 
 receiver_warning:
-- Do not apply this artifact as a git bundle. It is a diagnostic placeholder created to avoid fabricating a destructive synthetic delta.
+- Do not apply this artifact as a git bundle. It is a diagnostic placeholder, not a valid cumulative delta.
 
 recovery_required:
-- Re-upload the ai git bundle containing base commit 52d402c00e2ace712d22a3cabf2ca1176b67e7c0, or restore /mnt/data/ai.bundle in the sandbox, then rerun Phase 2.
+- Re-upload the ai git bundle containing base commit 4e76762f8011c4c40f85373a8dc9264d7a31746c, or restore /mnt/data/ai.bundle in the sandbox, then rerun Phase 2.
