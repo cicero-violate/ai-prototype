@@ -83,6 +83,14 @@ def run(name: str, cmd: list[str], *, cwd: Path = ROOT, timeout: int = 120,
     return result
 
 
+def router_dir() -> Path:
+    for rel in ("ai-chromium/router-server", "ai-chromium/router-server_bak"):
+        path = ROOT / rel
+        if (path / "run_tests.sh").exists():
+            return path
+    return ROOT / "ai-chromium" / "router-server"
+
+
 def configure_toolchain() -> dict[str, Any]:
     before = {name: shutil.which(name) for name in ("cargo", "rustc")}
     sandbox = Path("/mnt/data/rust-sandbox/bin")
@@ -192,7 +200,7 @@ emit(event="runtime_archive_metrics", **r)
 
 commands = [
     run("git_diff_check", ["git", "diff", "--check"], timeout=30),
-    run("router_offline_tests", ["bash", "run_tests.sh"], cwd=ROOT / "ai-chromium" / "router-server", timeout=180),
+    run("router_offline_tests", ["bash", "run_tests.sh"], cwd=router_dir(), timeout=180),
     run("cargo_fmt_check", ["cargo", "fmt", "--check"], timeout=180, env=cargo_env),
     run("cargo_test_all_targets", ["cargo", "test", "--all-targets"], timeout=600, env=cargo_env),
     run("cargo_clippy_all_targets", ["cargo", "clippy", "--all-targets", "--", "-D", "warnings"], timeout=600, env=cargo_env),

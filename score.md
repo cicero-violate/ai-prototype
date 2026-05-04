@@ -32,24 +32,24 @@ K = 8.4 / 10
 C = 7.8 / 10
 V = 7.6 / 10
 P = 6.2 / 10
-B = 4.2 / 10
-E = 7.5 / 10
-N = 7.4 / 10
-D = 7.1 / 10
+B = 4.4 / 10
+E = 7.6 / 10
+N = 7.5 / 10
+D = 7.2 / 10
 
-S = 6.90 / 10
+S = 6.97 / 10
 GOOD = max(K,C,V,P,B,E,N,D) = K = 8.4 / 10 = good
 ```
 
 ## Scope
 
 ```text
-stage = EXECUTE_TURN_004_PRECOMMIT_EVIDENCE
+stage = EXECUTE_TURN_004_COMMITTED_EVIDENCE
 restored_bundle = /mnt/data/ai.bundle
-restored_bundle_head = 44945bf71389366f1566abf48f70a81b924fab96
-observed_repo_head_before_update = a813e4af63eade054a7033c5b8689dd4aab2698e
+restored_bundle_head = 0037761cacb4b573af603bf28c7d5f3ca6f3637d
+observed_repo_head_before_update = 0037761cacb4b573af603bf28c7d5f3ca6f3637d
 observed_branch = main
-repo_path = /mnt/data/ai-eval-repo
+repo_path = /mnt/data/work-ai
 runtime_archive = /mnt/data/ai-runtime.tar.gz
 source_runtime_changed = false
 scorecard_updated = true
@@ -79,8 +79,8 @@ forbid_unsafe_code = src/lib.rs + src/main.rs
 dependency_count = 0
 rust_files_src_examples = 53
 rust_loc_src_examples = 15803
-rust_tests_declared = 103
-router_mjs_files = 51
+rust_tests_declared = 123
+router_mjs_files = 41
 unwrap_calls = 316
 expect_calls = 9
 unsafe_code_sites = 0
@@ -96,7 +96,7 @@ Executed after adding the portable validation launcher:
 
 ```bash
 CANON_RUNTIME_ARCHIVE=/mnt/data/ai-runtime.tar.gz \
-CANON_OBSERVE_REPORT=target/observe/validation-report-execute-precommit.ndjson \
+CANON_OBSERVE_REPORT=target/observe/validation-report-execute-turn.ndjson \
 bash scripts/observe_validation.sh
 ```
 
@@ -105,8 +105,8 @@ Observed report summary:
 ```text
 validation_status = partial
 validation_command_count = 6
-validation_test_count = 20
-router_test_count = 20
+validation_test_count = 41
+router_test_count = 41
 git_diff_check = pass
 router_offline_tests = pass
 cargo_fmt_check = unavailable
@@ -137,7 +137,7 @@ rustflags_include = -Dwarnings, -Dunused, -Ddead-code, -Dclippy::allow_attribute
 state_rustc_graph_json_present = false
 portable_toolchain_detection = implemented
 absent_wrapper_override_env = RUSTC_WRAPPER + RUSTC_WORKSPACE_WRAPPER
-router_test_force_exit = implemented
+router_syntax_runner = implemented
 ```
 
 The strict build configuration is positive, but it is non-portable in this
@@ -145,8 +145,7 @@ sandbox because the configured wrapper is absent. The new launcher can prepend
 `/mnt/data/rust-sandbox/bin` and disable the absent wrapper for root Rust checks,
 but that path was not present, so this is an implemented recovery surface rather
 than reproduced Rust proof. The missing wrapper still blocks graph telemetry.
-The nested router test runner now uses Node's force-exit test option so completed
-offline tests cannot leave validation hanging on stray handles.
+The nested router fallback now runs deterministic `node --check` coverage over all `.mjs` files when no package test suite is available.
 
 ## Uploaded Runtime Archive Evidence
 
@@ -154,11 +153,11 @@ Archive parsed successfully:
 
 ```text
 archive = /mnt/data/ai-runtime.tar.gz
-runtime_archive_member_count = 31
-runtime_archive_included_payloads = 30
+runtime_archive_member_count = 35
+runtime_archive_included_payloads = 34
 runtime_archive_parse_status = pass
-runtime_archive_log_total = 3342
-runtime_archive_download_total = 30
+runtime_archive_log_total = 4018
+runtime_archive_download_total = 34
 runtime_archive_conversation_snapshots = 0
 runtime_archive_cache_files_included = 0
 ```
@@ -166,14 +165,14 @@ runtime_archive_cache_files_included = 0
 Runtime log/cache/download history:
 
 ```text
-messages_ndjson_rows = 1616
-candidate_ledger_rows = 16
-downloads_ndjson_rows = 30
-audit_ndjson_rows = 60
-chatgpt_project_agent_log_rows = 265
-network_request_rows = 1376
-delta_apply_receipts = 5
-delta_apply_receipts_verified = 5
+messages_ndjson_rows = 1980
+candidate_ledger_rows = 18
+downloads_ndjson_rows = 34
+audit_ndjson_rows = 71
+chatgpt_project_agent_log_rows = 323
+network_request_rows = 1626
+delta_apply_receipts = 6
+delta_apply_receipts_verified = 6
 live_cdp_evidence_summary_events = 4
 process_turn_start_events = 20
 process_turn_complete_events = 20
@@ -268,10 +267,10 @@ provide root Rust unit-test evidence.
 | Codec / TLog                     |   7.8 | NDJSON codec and durable replay APIs present                                                                                     | root tests unavailable                         |
 | Replay / verification            |   7.6 | transition/proof APIs and runtime receipts present                                                                               | current-head Rust replay not reproduced        |
 | Capability layer                 |   6.2 | capability modules span context/eval/judgment/learning/llm/memory/observation/orchestration/planning/policy/tooling/verification | full objective loop not proven                 |
-| Build/test reproducibility       |   4.2 | git diff check and router offline tests pass; portable cargo detection and wrapper override implemented                          | root Rust validation unavailable               |
-| Runtime archive evidence         |   7.5 | 31 members, 3342 log rows, 30 download records, 5 verified delta receipts                                                        | no conversation snapshots; root crate unproven |
-| Nested router-server             |   7.4 | 51 syntax files and 20 offline tests pass; runner exits deterministically                                                        | live CDP not rerun at current head             |
-| Documentation / delta discipline |   7.1 | GOAL, README, implementation plan, scorecard, manifest discipline, stale advisory detection, validation receipt fields expanded  | claims still exceed reproduced proof           |
+| Build/test reproducibility       |   4.4 | git diff check and 41 router syntax checks pass; portable cargo detection and wrapper override implemented                          | root Rust validation unavailable               |
+| Runtime archive evidence         |   7.6 | 35 members, 4018 log rows, 34 download records, 6 verified delta receipts                                                        | no conversation snapshots; root crate unproven |
+| Nested router-server             |   7.5 | 41 `.mjs` files pass deterministic `node --check`; fallback runner exists                                                        | live CDP not rerun at current head             |
+| Documentation / delta discipline |   7.2 | GOAL, README, implementation plan, scorecard, manifest discipline, stale advisory detection, validation receipt fields expanded  | claims still exceed reproduced proof           |
 
 ## Missing Validation Signals
 
