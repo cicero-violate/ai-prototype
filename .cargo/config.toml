@@ -1,4 +1,4 @@
-
+# RUSTC_WRAPPER="$PWD/target/debug/canon-rustc-v3" cargo check
 
 [build]
 rustflags = [
