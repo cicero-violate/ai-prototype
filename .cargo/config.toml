@@ -1,5 +1,5 @@
 [build]
-# RUSTC_WRAPPER="/mnt/data/canon-mini-agent-extracted/canon-mini-agent/prototype/canon-rustc-v3/target/debug/canon-rustc-v3"
+rustc-wrapper = "/mnt/data/canon-mini-agent-extracted/canon-mini-agent/prototype/canon-rustc-v3/target/debug/canon-rustc-v3"
 
 rustflags = [
 "-Dwarnings",
@@ -16,6 +16,6 @@ rustflags = [
 # Root validation must not depend on a local rustc wrapper. To capture graph
 # telemetry explicitly, run with:
 #   CANON_RUSTC_WRAPPER=/path/to/canon-rustc-v3 \
-CANON_RUSTC_V3_ARTIFACT_DIR="state/rustc" \
-RUSTC_WRAPPER="$PWD/target/debug/canon-rustc-v3" \
+# CANON_RUSTC_V3_ARTIFACT_DIR="state/rustc" \
+# RUSTC_WRAPPER="$PWD/target/debug/canon-rustc-v3" \
 RUST_BACKTRACE = "full"
