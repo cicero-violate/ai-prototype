@@ -70,14 +70,14 @@ rust_dependencies = 0
 unsafe_token_count_src_examples = 0
 unwrap_calls_src_examples = 316
 expect_calls_src_examples = 9
-configured_rustc_wrapper = /workspace/ai_sandbox/canon-rustc-v2/target/debug/canon-rustc-v2
+configured_rustc_wrapper = canon-rustc-v3/target/debug/canon-rustc-v2
 configured_rustc_wrapper_present_here = false
 generated_state_graph_present = false
 ```
 
 Positive: `src/lib.rs` and `src/main.rs` forbid unsafe code, the root crate has no third-party Rust dependencies, and the source tree separates kernel, codec, runtime, API, and capability layers.
 
-Risk: many `unwrap()` calls remain unclassified, graph telemetry is absent, and the rustc wrapper path is workstation-specific.
+Risk: many `unwrap()` calls remain unclassified and graph telemetry is absent until the vendored rustc wrapper is built and used.
 
 ### Git History
 

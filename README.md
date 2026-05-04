@@ -38,6 +38,14 @@ runtime archive/download history, graph presence, and missing validation flags.
 
 ## Root Rust Validation
 
+Build the local rustc wrapper first:
+
+```bash
+cd canon-rustc-v3
+cargo build
+cd ..
+```
+
 Run these when the Rust toolchain is present:
 
 ```bash
