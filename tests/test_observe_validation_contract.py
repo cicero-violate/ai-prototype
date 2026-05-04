@@ -61,9 +61,17 @@ class ObserveValidationContractTest(unittest.TestCase):
     def test_external_surface_evidence_is_source_derived(self) -> None:
         for token in (
             "def source_evidence()",
+            "def token_files(tokens:",
+            "def unique_files(mapping:",
             "external_observation_stream_test_present",
+            "external_observation_stream_evidence_files",
+            "external_observation_stream_evidence_tokens",
             "external_api_action_test_present",
+            "external_api_action_evidence_files",
+            "external_api_action_evidence_tokens",
             "semantic_artifact_verification_test_present",
+            "semantic_artifact_verification_evidence_files",
+            "semantic_artifact_verification_evidence_tokens",
             '"missing_external_observation_stream_test": not evidence["external_observation_stream_test_present"]',
             '"missing_external_api_action_test": not evidence["external_api_action_test_present"]',
             '"missing_semantic_artifact_verification_test": not evidence["semantic_artifact_verification_test_present"]',

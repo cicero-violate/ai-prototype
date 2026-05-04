@@ -388,13 +388,32 @@ def source_evidence() -> dict[str, Any]:
         "verify_verification_proof_record_replay",
     )
 
+    def token_files(tokens: tuple[str, ...]) -> dict[str, list[str]]:
+        matches: dict[str, list[str]] = {}
+        for token in tokens:
+            matches[token] = sorted(path for path, text in texts.items() if token in text)
+        return matches
+
     def has_all(tokens: tuple[str, ...]) -> bool:
         return all(token in joined for token in tokens)
 
+    observation_files = token_files(external_observation_tokens)
+    api_files = token_files(external_api_tokens)
+    semantic_files = token_files(semantic_verification_tokens)
+
+    def unique_files(mapping: dict[str, list[str]]) -> list[str]:
+        return sorted({path for paths in mapping.values() for path in paths})
+
     return {
         "external_observation_stream_test_present": has_all(external_observation_tokens),
+        "external_observation_stream_evidence_files": unique_files(observation_files),
+        "external_observation_stream_evidence_tokens": observation_files,
         "external_api_action_test_present": has_all(external_api_tokens),
+        "external_api_action_evidence_files": unique_files(api_files),
+        "external_api_action_evidence_tokens": api_files,
         "semantic_artifact_verification_test_present": has_all(semantic_verification_tokens),
+        "semantic_artifact_verification_evidence_files": unique_files(semantic_files),
+        "semantic_artifact_verification_evidence_tokens": semantic_files,
     }
 
 
@@ -695,8 +714,11 @@ emit(event="validation_summary", validation_status=status, git_head=head,
      panic_surface_production_expect_count=p.get("panic_surface_production_expect_count"),
      panic_surface_production_panic_count=p.get("panic_surface_production_panic_count"),
      external_observation_stream_test_present=evidence["external_observation_stream_test_present"],
+     external_observation_stream_evidence_files=evidence["external_observation_stream_evidence_files"],
      external_api_action_test_present=evidence["external_api_action_test_present"],
+     external_api_action_evidence_files=evidence["external_api_action_evidence_files"],
      semantic_artifact_verification_test_present=evidence["semantic_artifact_verification_test_present"],
+     semantic_artifact_verification_evidence_files=evidence["semantic_artifact_verification_evidence_files"],
      panic_surface_test_total=p.get("panic_surface_test_total"),
      panic_surface_example_total=p.get("panic_surface_example_total"),
      missing_signal_flags=missing, missing_signal_count=sum(1 for v in missing.values() if v))
