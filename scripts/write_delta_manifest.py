@@ -236,6 +236,16 @@ def receipt(args: argparse.Namespace) -> dict[str, Any]:
         "rust_cfg_test_count",
         "unwrap_call_count_src_examples",
         "expect_call_count_src_examples",
+        "policy_learning_trace_validation_result",
+        "policy_learning_trace_status",
+        "policy_learning_trace_function",
+        "policy_learning_trace_check_count",
+        "policy_learning_trace_missing_count",
+        "panic_surface_production_unwrap_count",
+        "panic_surface_production_expect_count",
+        "panic_surface_production_panic_count",
+        "panic_surface_test_total",
+        "panic_surface_example_total",
     ]:
         r[key] = summary.get(key)
     return r
@@ -325,6 +335,16 @@ def write_manifest(path: Path, r: dict[str, Any]) -> None:
         f"- rust_cfg_test_count: {r['rust_cfg_test_count']}",
         f"- unwrap_call_count_src_examples: {r['unwrap_call_count_src_examples']}",
         f"- expect_call_count_src_examples: {r['expect_call_count_src_examples']}",
+        f"- policy_learning_trace_validation_result: {r['policy_learning_trace_validation_result']}",
+        f"- policy_learning_trace_status: {r['policy_learning_trace_status']}",
+        f"- policy_learning_trace_function: {r['policy_learning_trace_function']}",
+        f"- policy_learning_trace_check_count: {r['policy_learning_trace_check_count']}",
+        f"- policy_learning_trace_missing_count: {r['policy_learning_trace_missing_count']}",
+        f"- panic_surface_production_unwrap_count: {r['panic_surface_production_unwrap_count']}",
+        f"- panic_surface_production_expect_count: {r['panic_surface_production_expect_count']}",
+        f"- panic_surface_production_panic_count: {r['panic_surface_production_panic_count']}",
+        f"- panic_surface_test_total: {r['panic_surface_test_total']}",
+        f"- panic_surface_example_total: {r['panic_surface_example_total']}",
         "",
         "## Validation Commands",
     ]

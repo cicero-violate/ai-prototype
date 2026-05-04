@@ -7,6 +7,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from collections import Counter
 from types import SimpleNamespace
 from pathlib import Path
 
@@ -101,6 +102,9 @@ class DeltaManifestTest(unittest.TestCase):
         done = self.run_script()
         self.assertEqual(done.returncode, 0, done.stderr)
         receipt = json.loads(self.receipt.read_text(encoding="utf-8"))
+        manifest_lines = self.out.read_text(encoding="utf-8").splitlines()
+        self.assertEqual(manifest_lines[0], f"base_commit: {self.base}")
+        self.assertEqual(manifest_lines[1], f"head_commit: {self.head}")
         self.assertEqual(receipt["validation_command_count"], 1)
         self.assertEqual(receipt["validation_test_count"], 2)
         self.assertEqual(receipt["bundle_verify"], "pass")
@@ -154,6 +158,40 @@ class DeltaManifestTest(unittest.TestCase):
         self.assertEqual(receipt["runtime_manifest_base_expected"], self.base)
         self.assertTrue(receipt["runtime_manifest_base_matches_delta_base"])
         self.assertIn("runtime_manifest_base_matches_delta_base: True", manifest)
+
+    def test_preserves_policy_learning_and_panic_surface_evidence_once(self) -> None:
+        self.write_report(extra={
+            "policy_learning_trace_validation_result": "pass",
+            "policy_learning_trace_status": "pass",
+            "policy_learning_trace_function": "policy_learning_trace_promotes_and_uses_policy",
+            "policy_learning_trace_check_count": 12,
+            "policy_learning_trace_missing_count": 0,
+            "panic_surface_production_unwrap_count": 0,
+            "panic_surface_production_expect_count": 0,
+            "panic_surface_production_panic_count": 0,
+            "panic_surface_test_total": 319,
+            "panic_surface_example_total": 0,
+            "router_test_count": 0,
+        })
+        done = self.run_script()
+        self.assertEqual(done.returncode, 0, done.stderr)
+        receipt = json.loads(self.receipt.read_text(encoding="utf-8"))
+        manifest = self.out.read_text(encoding="utf-8")
+        self.assertEqual(receipt["policy_learning_trace_validation_result"], "pass")
+        self.assertEqual(receipt["policy_learning_trace_missing_count"], 0)
+        self.assertEqual(receipt["panic_surface_production_unwrap_count"], 0)
+        for token in (
+            "policy_learning_trace_validation_result: pass",
+            "policy_learning_trace_status: pass",
+            "policy_learning_trace_missing_count: 0",
+            "panic_surface_production_unwrap_count: 0",
+            "panic_surface_test_total: 319",
+        ):
+            self.assertIn(token, manifest)
+        metric_names = [line[2:].split(":", 1)[0] for line in manifest.splitlines()
+                        if line.startswith("- ") and ":" in line]
+        self.assertEqual(Counter(metric_names)["router_test_count"], 1)
+        self.assertEqual(Counter(metric_names)["policy_learning_trace_validation_result"], 1)
 
 
 if __name__ == "__main__":
