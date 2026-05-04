@@ -32,22 +32,22 @@ K = 8.4 / 10
 C = 7.8 / 10
 V = 7.6 / 10
 P = 6.2 / 10
-B = 4.0 / 10
+B = 4.2 / 10
 E = 7.5 / 10
 N = 7.4 / 10
-D = 7.0 / 10
+D = 7.1 / 10
 
-S = 6.84 / 10
+S = 6.90 / 10
 GOOD = max(K,C,V,P,B,E,N,D) = K = 8.4 / 10 = good
 ```
 
 ## Scope
 
 ```text
-stage = OBSERVE
+stage = EXECUTE_TURN_004_PRECOMMIT_EVIDENCE
 restored_bundle = /mnt/data/ai.bundle
 restored_bundle_head = 44945bf71389366f1566abf48f70a81b924fab96
-observed_repo_head_before_update = ed0e480ba6b4fcc13a2fddf7705fe47de4e9bf9d
+observed_repo_head_before_update = a813e4af63eade054a7033c5b8689dd4aab2698e
 observed_branch = main
 repo_path = /mnt/data/ai-eval-repo
 runtime_archive = /mnt/data/ai-runtime.tar.gz
@@ -92,11 +92,11 @@ current observed head in this sandbox.
 
 ## Current Validation Evidence
 
-Executed at `ed0e480ba6b4fcc13a2fddf7705fe47de4e9bf9d`:
+Executed after adding the portable validation launcher:
 
 ```bash
 CANON_RUNTIME_ARCHIVE=/mnt/data/ai-runtime.tar.gz \
-CANON_OBSERVE_REPORT=target/observe/validation-report-observe-turn.ndjson \
+CANON_OBSERVE_REPORT=target/observe/validation-report-execute-precommit.ndjson \
 bash scripts/observe_validation.sh
 ```
 
@@ -109,20 +109,24 @@ validation_test_count = 20
 router_test_count = 20
 git_diff_check = pass
 router_offline_tests = pass
-router_syntax_files = 51
 cargo_fmt_check = unavailable
 cargo_test_all_targets = unavailable
 cargo_clippy_all_targets = unavailable
 ollama_judgment_example = skipped_env_missing
 cargo_available = false
 rustc_available = false
-missing_signal_count = 11
+toolchain_path_added = false
+rust_toolchain_source = missing
+wrapper_override_required = true
+wrapper_override_used = false
+missing_signal_count = 12
 ```
 
 Required commands passed only for repository cleanliness and nested router
-offline coverage. Root Rust validation did not run.
+offline coverage. Root Rust validation still did not run because neither PATH nor
+`/mnt/data/rust-sandbox/bin` exposed cargo/rustc in this sandbox.
 
-## Build Metadata Constraints
+## Build Metadata Constraints And Launcher Improvement
 
 ```text
 Cargo.toml.package = ai 0.1.0 edition 2024
@@ -131,11 +135,18 @@ Cargo.toml.dependencies = none
 rustc_wrapper_path_exists = false
 rustflags_include = -Dwarnings, -Dunused, -Ddead-code, -Dclippy::allow_attributes_without_reason
 state_rustc_graph_json_present = false
+portable_toolchain_detection = implemented
+absent_wrapper_override_env = RUSTC_WRAPPER + RUSTC_WORKSPACE_WRAPPER
+router_test_force_exit = implemented
 ```
 
-The strict build configuration is positive, but it is also non-portable in this
-sandbox because the configured wrapper is absent. The missing wrapper also
-blocks the claimed graph telemetry path.
+The strict build configuration is positive, but it is non-portable in this
+sandbox because the configured wrapper is absent. The new launcher can prepend
+`/mnt/data/rust-sandbox/bin` and disable the absent wrapper for root Rust checks,
+but that path was not present, so this is an implemented recovery surface rather
+than reproduced Rust proof. The missing wrapper still blocks graph telemetry.
+The nested router test runner now uses Node's force-exit test option so completed
+offline tests cannot leave validation hanging on stray handles.
 
 ## Uploaded Runtime Archive Evidence
 
@@ -239,8 +250,8 @@ provide root Rust unit-test evidence.
 
 | Risk | Severity | Evidence | Required closure |
 |---|---:|---|---|
-| Root Rust validation unavailable | High | `cargo` and `rustc` absent from PATH | Provide toolchain and rerun fmt/test/clippy |
-| Configured wrapper missing | High | `.cargo/config.toml` points to absent `/workspace/.../canon-rustc-v2` | Include wrapper or document portable override |
+| Root Rust validation unavailable | High | `cargo` and `rustc` absent from PATH and sandbox path | Provide toolchain and rerun fmt/test/clippy |
+| Configured wrapper missing | High | `.cargo/config.toml` points to absent `/workspace/.../canon-rustc-v2`; override path implemented but unused | Include wrapper or run with cargo available |
 | Graph telemetry absent | High | no `state/rustc/*/graph.json` | Regenerate graph and record node/edge/intent metrics |
 | Current-head Ollama path unproven | Medium | env missing; example skipped | Run `examples/ollama_judgment.rs` with local endpoint |
 | Policy learning trace missing | High | no current-head observation→eval→learning replay | Add one integration trace |
@@ -257,10 +268,10 @@ provide root Rust unit-test evidence.
 | Codec / TLog | 7.8 | NDJSON codec and durable replay APIs present | root tests unavailable |
 | Replay / verification | 7.6 | transition/proof APIs and runtime receipts present | current-head Rust replay not reproduced |
 | Capability layer | 6.2 | capability modules span context/eval/judgment/learning/llm/memory/observation/orchestration/planning/policy/tooling/verification | full objective loop not proven |
-| Build/test reproducibility | 4.0 | git diff check and router offline tests pass | root Rust validation unavailable |
+| Build/test reproducibility | 4.2 | git diff check and router offline tests pass; portable cargo detection and wrapper override implemented | root Rust validation unavailable |
 | Runtime archive evidence | 7.5 | 31 members, 3342 log rows, 30 download records, 5 verified delta receipts | no conversation snapshots; root crate unproven |
-| Nested router-server | 7.4 | 51 syntax files and 20 offline tests pass | live CDP not rerun at current head |
-| Documentation / delta discipline | 7.0 | GOAL, README, implementation plan, scorecard, manifest discipline, stale advisory detection | claims still exceed reproduced proof |
+| Nested router-server | 7.4 | 51 syntax files and 20 offline tests pass; runner exits deterministically | live CDP not rerun at current head |
+| Documentation / delta discipline | 7.1 | GOAL, README, implementation plan, scorecard, manifest discipline, stale advisory detection, validation receipt fields expanded | claims still exceed reproduced proof |
 
 ## Missing Validation Signals
 

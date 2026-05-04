@@ -13,7 +13,7 @@ N = nested router-server evidence score
 Q = implementable score lift
 R = implementation risk
 BASE = 44945bf71389366f1566abf48f70a81b924fab96
-HEAD = 418f6722ddb02b15a1b09dd1306c3733ada4a9c1
+HEAD = created by EXECUTE turn 004
 ```
 
 ## Equations
@@ -42,11 +42,11 @@ K = 8.4 / 10
 C = 7.8 / 10
 V = 7.6 / 10
 P = 6.2 / 10
-B = 4.0 / 10
+B = 4.2 / 10 after EXECUTE recovery-surface implementation
 E = 7.5 / 10
 N = 7.4 / 10
-D = 7.0 / 10
-S = 6.84 / 10
+D = 7.1 / 10 after manifest receipt field expansion
+S = 6.90 / 10 after EXECUTE validation-tooling evidence
 ```
 
 Current critical blockers from `score.md`:
@@ -74,6 +74,7 @@ Target files for the EXECUTE stage:
 ```text
 scripts/observe_validation.sh
 scripts/write_delta_manifest.py
+ai-chromium/router-server/run_tests.sh
 IMPLEMENTATION_PLAN.md / score.md only if evidence changes
 ```
 
@@ -83,7 +84,7 @@ Required behavior:
 1. Detect usable Rust tooling from PATH first.
 2. If PATH lacks cargo/rustc, detect /mnt/data/rust-sandbox/bin and prepend it.
 3. If .cargo/config.toml points to an absent rustc-wrapper, run root Rust checks
-   with RUSTC_WORKSPACE_WRAPPER="" and record wrapper_override_used = true.
+   with wrapper override env and record wrapper_override_used.
 4. Run current-head root checks when cargo becomes available:
    - cargo fmt --check
    - cargo test --all-targets
@@ -99,10 +100,14 @@ Required behavior:
 
 This is higher impact than another documentation or router-only change because
 `score.md` identifies build/test reproducibility as the lowest scored axis
-(`B = 4.0`) and names missing root Rust validation plus absent wrapper as the
+(`B = 4.2`) and names missing root Rust validation plus absent wrapper as the
 main blocker. The change is implementable now because it requires only validation
 script/tooling changes; it does not mutate kernel, codec, runtime, capability, or
 application logic.
+
+Router test runner scope is limited to deterministic process termination:
+`--test-force-exit` prevents completed offline Node tests from hanging on stray
+handles without changing test assertions or enabling live CDP tests.
 
 ## Explicit Non-Targets
 
@@ -128,7 +133,7 @@ Plan-stage checks:
 
 ```bash
 git status --short
-rg -n "S = 6.84|BASE = 44945bf|Highest-Impact Implementable Target|wrapper_override_used|RUSTC_WORKSPACE_WRAPPER" IMPLEMENTATION_PLAN.md
+rg -n "S = 6.90|BASE = 44945bf|Highest-Impact Implementable Target|wrapper_override_used|RUSTC_WRAPPER" IMPLEMENTATION_PLAN.md
 git diff --check
 ```
 
@@ -159,6 +164,8 @@ required = [
     'validation_command_count',
     'validation_test_count',
     'missing_signal_flags',
+    'wrapper_override_required',
+    'wrapper_override_used',
 ]
 missing = [key for key in required if key not in receipt]
 assert not missing, missing
@@ -196,8 +203,9 @@ PY
 ## Expected Score Movement
 
 ```text
-B: 4.0 -> 4.8  if root fmt/test/clippy run with wrapper override and pass
-D: 7.0 -> 7.2  validation receipt and manifest remain current-head aligned
+B: 4.0 -> 4.2  if portable detection is added but Rust remains unavailable
+B: 4.2 -> 4.8  if root fmt/test/clippy run with wrapper override and pass
+D: 7.0 -> 7.2  if validation receipt and manifest remain current-head aligned
 E: 7.5 -> 7.6  runtime archive evidence binds to current validation receipt
 V: 7.6 -> 7.7  replay/verification claims gain cleaner validation gating
 S: 6.84 -> about 6.98
@@ -225,14 +233,14 @@ Use the uploaded restore base preserved by `origin/main`:
 B="$(git rev-parse origin/main)"
 H="$(git rev-parse HEAD)"
 git status --short
-git bundle create /mnt/data/repo-delta-0001.bundle "$B..$H"
-git bundle verify /mnt/data/repo-delta-0001.bundle
+git bundle create /mnt/data/repo-delta-004.bundle "$B..$H"
+git bundle verify /mnt/data/repo-delta-004.bundle
 ```
 
 Receiver apply command:
 
 ```bash
-git fetch ./repo-delta-0001.bundle HEAD && git merge --ff-only FETCH_HEAD
+git fetch ./repo-delta-004.bundle HEAD && git merge --ff-only FETCH_HEAD
 ```
 
 Required final manifest fields:
@@ -246,9 +254,10 @@ validation_status = pass/fail/partial
 validation_command_count = nonzero
 validation_test_count = nonzero when router tests pass
 missing_signal_flags = preserved from observe report
+wrapper_override_required = true/false
 wrapper_override_used = true/false when Rust checks run
 bundle_verify = pass
-receiver_apply_command = git fetch ./repo-delta-0001.bundle HEAD && git merge --ff-only FETCH_HEAD
+receiver_apply_command = git fetch ./repo-delta-004.bundle HEAD && git merge --ff-only FETCH_HEAD
 ```
 
 ## Plan-Stage Result
@@ -260,5 +269,5 @@ source_code_changed = false
 plan_file_changed = IMPLEMENTATION_PLAN.md
 implementation_target = portable root-validation launcher + wrapper override path
 safe_delta_base = origin/main = 44945bf71389366f1566abf48f70a81b924fab96
-current_observed_head = 418f6722ddb02b15a1b09dd1306c3733ada4a9c1
+current_observed_head = a813e4af63eade054a7033c5b8689dd4aab2698e
 ```

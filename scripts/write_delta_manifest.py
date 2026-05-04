@@ -55,7 +55,7 @@ def receipt(args: argparse.Namespace) -> dict[str, Any]:
         {"name": c.get("name"), "cmd": c.get("cmd"), "status": c.get("status")}
         for c in command_rows(rows)
     ]
-    return {
+    r = {
         "schema_version": 2,
         "base_commit": args.base,
         "head_commit": args.head,
@@ -76,6 +76,24 @@ def receipt(args: argparse.Namespace) -> dict[str, Any]:
         "bundle_verify": args.bundle_verify,
         "receiver_apply_command": APPLY_COMMAND.format(Path(args.bundle or "repo-delta.bundle").name),
     }
+    for key in [
+        "cargo_available",
+        "rustc_available",
+        "toolchain_path_added",
+        "rust_toolchain_source",
+        "wrapper_override_required",
+        "wrapper_override_used",
+        "wrapper_override_env",
+        "rustc_wrapper_configured",
+        "rustc_wrapper_path_exists",
+        "state_graph_present",
+        "runtime_archive_present",
+        "runtime_archive_log_total",
+        "runtime_archive_download_total",
+        "runtime_archive_conversation_snapshots",
+    ]:
+        r[key] = summary.get(key)
+    return r
 
 
 def write_manifest(path: Path, r: dict[str, Any]) -> None:
@@ -99,6 +117,18 @@ def write_manifest(path: Path, r: dict[str, Any]) -> None:
         f"- report_sha256: {r['report_sha256']}",
         f"- bundle_sha256: {r['bundle_sha256']}",
         f"- bundle_verify: {r['bundle_verify']}",
+        f"- cargo_available: {r['cargo_available']}",
+        f"- rustc_available: {r['rustc_available']}",
+        f"- toolchain_path_added: {r['toolchain_path_added']}",
+        f"- rust_toolchain_source: {r['rust_toolchain_source']}",
+        f"- wrapper_override_required: {r['wrapper_override_required']}",
+        f"- wrapper_override_used: {r['wrapper_override_used']}",
+        f"- wrapper_override_env: {json.dumps(r['wrapper_override_env'], sort_keys=True)}",
+        f"- rustc_wrapper_path_exists: {r['rustc_wrapper_path_exists']}",
+        f"- state_graph_present: {r['state_graph_present']}",
+        f"- runtime_archive_log_total: {r['runtime_archive_log_total']}",
+        f"- runtime_archive_download_total: {r['runtime_archive_download_total']}",
+        f"- runtime_archive_conversation_snapshots: {r['runtime_archive_conversation_snapshots']}",
         "",
         "## Validation Commands",
     ]
