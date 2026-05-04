@@ -1,12 +1,23 @@
-base_commit: c2f34ba6de533809414f6b11cccdd6592926d619
-head_commit: 4b4cf034d3fd762cd57f4b27a5171d803b3ec6d9
+base_commit: 3f23e0884e9d8d0189f91fde8ee76244bc25a82f
+head_commit: e870106ebbbe1700887f9bb6cb63344805f51c87
 
 # Delta Manifest
 
 ## Changed Files
+- .gitignore
+- .repo-agent-runtime/apply-worktrees/07ad58b4bf0e
+- .repo-agent-runtime/apply-worktrees/12f02b6a0f39
+- .repo-agent-runtime/apply-worktrees/b9830281da56
+- .repo-agent-runtime/apply-worktrees/d47aaa7d3487
+- .repo-agent-runtime/upload-bundles/ai.bundle
 - IMPLEMENTATION_PLAN.md
+- downloads/DELTA_MANIFEST.md
+- downloads/ai-observe-validation-output.txt
+- downloads/ai-router-tests-run.txt
+- downloads/repo-delta-004.bundle
 - score.md
 - scripts/observe_validation.sh
+- scripts/validate_delta_artifacts.py
 - scripts/write_delta_manifest.py
 
 ## Validation Results
@@ -17,10 +28,11 @@ head_commit: 4b4cf034d3fd762cd57f4b27a5171d803b3ec6d9
 - cargo_test_count_when_available: None
 - failed_required_commands: []
 - missing_signal_count: 12
-- report_sha256: 5988b12fb96f61860d4c4d0c63d2abfa649d40b9daaa486608c5d7728fab2a1c
-- bundle_sha256: 9b6ba5f721ded0cda664a3f2bc444e53f28ade73b055dcd76d1996f7b72b020c
+- report_sha256: b40a87b8df33047aecabf283638144d597be3c9e1396ea7842e0cf6bee438d7b
+- bundle_size_bytes: 12025
+- bundle_sha256: 7ca2ef8d872097e5cfdd6ee29258421aa9b5eef0e0f12dea49ce2e52883fc502
 - bundle_verify: pass
-- changed_file_count: 4
+- changed_file_count: 15
 - cargo_available: False
 - rustc_available: False
 - toolchain_path_added: False
@@ -30,12 +42,13 @@ head_commit: 4b4cf034d3fd762cd57f4b27a5171d803b3ec6d9
 - wrapper_override_env: ["RUSTC_WORKSPACE_WRAPPER", "RUSTC_WRAPPER"]
 - rustc_wrapper_path_exists: False
 - state_graph_present: False
-- runtime_archive_log_total: 4516
-- runtime_archive_download_total: 38
+- runtime_archive_log_total: 5139
+- runtime_archive_download_total: 53
 - runtime_archive_conversation_snapshots: 0
 - delta_base_is_ancestor: True
-- delta_changed_file_count: 4
-- tracked_file_count: 188
+- delta_changed_file_count: 15
+- tracked_file_count: 180
+- tracked_generated_artifact_count: 0
 - rust_file_count_src_examples: 53
 - rust_test_attr_count: 103
 - rust_cfg_test_count: 2
@@ -65,6 +78,10 @@ head_commit: 4b4cf034d3fd762cd57f4b27a5171d803b3ec6d9
 - missing_runtime_download_history: False
 - missing_rustc_wrapper_telemetry: True
 - missing_semantic_artifact_verification_test: True
+- tracked_generated_artifacts: False
+
+## Tracked Generated Artifacts
+- none
 
 ## Receiver Apply Commands
 ```bash
