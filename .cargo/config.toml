@@ -5,7 +5,8 @@
 #
 # To override the artifact output directory set CANON_RUSTC_V2_ARTIFACT_DIR.
 # To disable wrapper for a single invocation: RUSTC_WORKSPACE_WRAPPER="" cargo build
-rustc-wrapper = "/mnt/data/canon-mini-agent-extracted/canon-mini-agent/prototype/canon-rustc-v3/target/debug/canon-rustc-v2"
+rustc-wrapper = "/mnt/data/canon-mini-agent-extracted/canon-mini-agent/prototype/canon-rustc-v3/target/debug/canon-rustc-v3"
+
 rustflags = [
 "-Dwarnings",
 "-Dunused",
