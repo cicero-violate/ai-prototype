@@ -154,4 +154,5 @@ chrome-dev-profile/
 ai.tar.gz
 target/
 .repo-agent-runtime/
+.repo-agent-runtime/upload-bundles/
 downloads/
