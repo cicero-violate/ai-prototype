@@ -1,55 +1,61 @@
-base_commit: ebf09b8ad9d4b850404b2003f49d65c04af0b772
-head_commit: 1ca65f829f23be870cb08aedda61a33a8fb33b69
+base_commit: 3d0c73cd5770487808d9b644a384697bc249fcae
+head_commit: dcab364f54cd141518b4265b40a5dea299ddfc2d
 
 # Delta Manifest
 
 ## Changed Files
+- .cargo/config.toml
 - IMPLEMENTATION_PLAN.md
+- README.md
 - score.md
 - scripts/observe_validation.sh
 - scripts/write_delta_manifest.py
-- tests/test_write_delta_manifest.py
+- tests/test_observe_validation_contract.py
 
 ## Validation Results
 - validation_status: partial
-- validation_command_count: 8
-- validation_test_count: 50
+- validation_command_count: 9
+- validation_test_count: 54
 - zero_test_reason: None
-- python_unit_test_count: 5
+- python_unit_test_count: 9
 - router_test_count: 45
 - cargo_test_count_when_available: None
 - failed_required_commands: []
-- missing_signal_count: 12
-- report_sha256: 818df6a70079bb63e5cfefd3b546d3d2c73ad4f315dbb50cdd679a9796124147
-- bundle_sha256: 53746c5a677be85121f42f98e42c8c87e7ede185f252a8a7600ade781b658b3b
+- missing_signal_count: 13
+- report_sha256: 254604b9352c11e05664035cca72c626d1c9e198ac144350d7eed2334a718d24
+- bundle_sha256: eae4063151f256ba0e61c9e7879208a43b3701a458df2296794eb8401c74920d
 - bundle_verify: pass
-- bundle_heads: ["1ca65f829f23be870cb08aedda61a33a8fb33b69 HEAD"]
-- validation_report_git_head: 1ca65f829f23be870cb08aedda61a33a8fb33b69
-- changed_file_count: 5
+- bundle_heads: ["dcab364f54cd141518b4265b40a5dea299ddfc2d HEAD"]
+- validation_report_git_head: dcab364f54cd141518b4265b40a5dea299ddfc2d
+- changed_file_count: 7
 - cargo_available: False
 - rustc_available: False
 - toolchain_path_added: False
 - rust_toolchain_source: missing
-- wrapper_override_required: True
+- root_rust_env_overrides: ["RUSTC_WORKSPACE_WRAPPER", "RUSTC_WRAPPER"]
+- wrapper_override_required: False
 - wrapper_override_used: False
-- wrapper_override_env: ["RUSTC_WORKSPACE_WRAPPER", "RUSTC_WRAPPER"]
+- wrapper_override_env: []
+- wrapper_graph_validation_result: skipped_env_missing
+- wrapper_graph_validation_requested: False
+- wrapper_graph_validation_available: False
 - rustc_wrapper_path_exists: False
 - git_delta_diff_check_result: pass
 - state_graph_present: False
-- runtime_archive_sha256: 9439e3b0ca82ffd9f8e743948cd1f8d7fd9334d7e882f79f2db6118afad384f5
-- runtime_manifest_base_commit: ebf09b8ad9d4b850404b2003f49d65c04af0b772
-- runtime_archive_log_total: 10357
-- runtime_archive_download_total: 176
-- runtime_download_history_record_count: 160
-- runtime_unique_download_alias_count: 17
-- runtime_unique_download_aliases: ["DELTA_MANIFEST.md", "IMPLEMENTATION_PLAN.md", "ai-IMPLEMENTATION_PLAN.md", "ai-eval-validation-report.ndjson", "ai-implementation-plan-update.patch", "ai-observe-score-update.patch", "ai-observe-score.md", "ai-observe-validation-output-latest.txt", "ai-observe-validation-output.txt", "ai-observe-validation-report.ndjson", "ai-router-tests-run.txt", "ai-runtime-observe-summary.json", "ai-score-update.patch", "ai-score.md", "ai-validation-report-eval.ndjson", "repo-delta-004.bundle", "score.md"]
+- runtime_archive_sha256: b2578606919ef545e5bda7a87ddef2b362d5913ba1f796a9e138b4f17ecbbae5
+- runtime_manifest_base_commit: 3d0c73cd5770487808d9b644a384697bc249fcae
+- runtime_archive_log_total: 10979
+- runtime_archive_download_total: 202
+- runtime_download_history_record_count: 174
+- runtime_unique_download_alias_count: 19
+- runtime_unique_download_aliases: ["DELTA_MANIFEST.md", "IMPLEMENTATION_PLAN.md", "ai-IMPLEMENTATION_PLAN.md", "ai-eval-validation-report.ndjson", "ai-implementation-plan-update.patch", "ai-observe-score-update.patch", "ai-observe-score.md", "ai-observe-validation-current.ndjson", "ai-observe-validation-output-latest.txt", "ai-observe-validation-output.txt", "ai-observe-validation-report.ndjson", "ai-router-tests-run.txt", "ai-runtime-observe-current-summary.json", "ai-runtime-observe-summary.json", "ai-score-update.patch", "ai-score.md", "ai-validation-report-eval.ndjson", "repo-delta-004.bundle", "score.md"]
 - runtime_archive_conversation_snapshots: 0
 - runtime_stale_advisory_count: 1
 - runtime_candidate_error_count: 0
 - runtime_duplicate_artifact_aliases: 8
 - delta_base_is_ancestor: True
-- delta_changed_file_count: 5
-- tracked_file_count: 190
+- delta_changed_file_count: 7
+- tracked_file_count: 191
 - rust_file_count_src_examples: 53
 - rust_test_attr_count: 103
 - rust_cfg_test_count: 2
@@ -58,12 +64,13 @@ head_commit: 1ca65f829f23be870cb08aedda61a33a8fb33b69
 
 ## Validation Commands
 - git_diff_check: pass :: git diff --check
-- git_delta_diff_check: pass :: git diff --check ebf09b8ad9d4b850404b2003f49d65c04af0b772..HEAD
-- delta_manifest_unit_tests: pass :: python3 -m unittest tests/test_write_delta_manifest.py
+- git_delta_diff_check: pass :: git diff --check 3d0c73cd5770487808d9b644a384697bc249fcae..HEAD
+- python_unit_tests: pass :: python3 -m unittest discover -s tests -p test_*.py
 - router_offline_tests: pass :: bash run_tests.sh
 - cargo_fmt_check: unavailable :: cargo fmt --check
 - cargo_test_all_targets: unavailable :: cargo test --all-targets
 - cargo_clippy_all_targets: unavailable :: cargo clippy --all-targets -- -D warnings
+- wrapper_graph_validation: skipped_env_missing :: cargo test --all-targets
 - ollama_judgment_example: skipped_env_missing :: cargo run --example ollama_judgment
 
 ## Missing Signal Flags
@@ -81,6 +88,7 @@ head_commit: 1ca65f829f23be870cb08aedda61a33a8fb33b69
 - missing_runtime_download_history: False
 - missing_rustc_wrapper_telemetry: True
 - missing_semantic_artifact_verification_test: True
+- missing_wrapper_graph_validation: True
 
 ## Receiver Apply Commands
 ```bash
