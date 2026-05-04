@@ -5,6 +5,7 @@ import process from 'node:process';
 
 const REQUIRED_JSON = ['manifest.json', 'replay.json', 'evaluation.json'];
 const TURN_MARKERS = new Set([...REQUIRED_JSON, 'response.json', 'request.redacted.json']);
+const SCOPES = new Set(['strict', 'current', 'legacy']);
 
 const isDir = (filePath) => fs.existsSync(filePath) && fs.statSync(filePath).isDirectory();
 
@@ -33,7 +34,10 @@ function looksLikeTurnDirectory(dirPath) {
 
 function resolveTurnRoot(inputPath) {
   const directTurns = path.join(inputPath, 'artifacts', 'turns');
-  return isDir(directTurns) ? directTurns : inputPath;
+  const localTurns = path.join(inputPath, 'turns');
+  if (isDir(directTurns)) return directTurns;
+  if (isDir(localTurns)) return localTurns;
+  return inputPath;
 }
 
 function findTurnDirectories(rootPath) {
@@ -88,24 +92,37 @@ export function validateTurnDirectory(turnDir) {
   return { turnDir, pass: errors.length === 0, errors };
 }
 
-export function validateTurnArtifacts(rootPath) {
+function summarizeFailures(failures) {
+  return failures.map((failure) => ({
+    turn: path.basename(failure.turnDir),
+    error_count: failure.errors.length,
+    errors: failure.errors.slice(0, 5),
+  }));
+}
+
+export function validateTurnArtifacts(rootPath, options = {}) {
+  const scope = SCOPES.has(options.scope) ? options.scope : 'strict';
   const turnDirs = findTurnDirectories(rootPath);
   const results = turnDirs.map(validateTurnDirectory);
   const failures = results.filter((result) => !result.pass);
   return {
     root: rootPath,
+    scope,
     turn_count: results.length,
     pass_count: results.length - failures.length,
     fail_count: failures.length,
     pass: results.length > 0 && failures.length === 0,
+    failure_summaries: summarizeFailures(failures),
     failures,
   };
 }
 
 function main() {
   const rootPath = process.argv[2] ?? 'artifacts/turns';
-  const result = validateTurnArtifacts(rootPath);
-  console.log(JSON.stringify(result, null, 2));
+  const scopeArg = process.argv.find((arg) => arg.startsWith('--scope='));
+  const result = validateTurnArtifacts(rootPath, { scope: scopeArg?.slice('--scope='.length) });
+  const output = process.argv.includes('--details') ? result : { ...result, failures: undefined };
+  console.log(JSON.stringify(output, null, 2));
   if (!result.pass) process.exitCode = 1;
 }
 

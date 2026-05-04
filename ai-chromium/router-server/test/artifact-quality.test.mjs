@@ -18,9 +18,13 @@ const cases = [
 for (const [name, pass, pattern] of cases) {
   test(`artifact fixture: ${name}`, () => {
     const result = validateTurnArtifacts(path.join(fixtureRoot, name));
+    assert.equal(result.scope, 'strict');
     assert.equal(result.pass, pass);
     assert.equal(result.turn_count, 1);
-    if (pattern) assert.match(result.failures[0].errors.join('\n'), pattern);
+    if (pattern) {
+      assert.match(result.failures[0].errors.join('\n'), pattern);
+      assert.equal(result.failure_summaries.length, 1);
+    }
     else assert.equal(result.fail_count, 0);
   });
 }

@@ -1,12 +1,11 @@
-base_commit: d47aaa7d3487521df1d0b5d2ee11310934e9a359
-head_commit: 54cf9b3fac63da09e12f4ffbcd2b9383924ad0cf
+base_commit: da1ebc2656e5d48631b07ef830c7dbec2033739b
+head_commit: 8b8fb6cb424d7d26f1ddd085c6bbdc30f219638d
 
 # Delta Manifest
 
 ## Changed Files
-- IMPLEMENTATION_PLAN.md
+- README.md
 - score.md
-- scripts/observe_validation.sh
 - scripts/write_delta_manifest.py
 
 ## Validation Results
@@ -17,9 +16,8 @@ head_commit: 54cf9b3fac63da09e12f4ffbcd2b9383924ad0cf
 - cargo_test_count_when_available: None
 - failed_required_commands: []
 - missing_signal_count: 11
-- report_path: target/observe/validation-report.ndjson
-- report_sha256: 4b09b2d0f0c8bed69bf2871c3b8b64776aab283ff73d1e21b9c1672027d26294
-- bundle_sha256: f15bd8fdf7f641aacf97328ace05b766ce5f2aba37e484a36a9547d6ab5ad488
+- report_sha256: 9ec2782ba81de44bdebff25a71a1e519e8135fab87fda8260b5b26f7aff444f4
+- bundle_sha256: 7ca3d903fe7327130f169e4348467bcb613b23833f3ea4d55ffa623fd28b883b
 - bundle_verify: pass
 
 ## Validation Commands

@@ -3,124 +3,138 @@
 ## Variables
 
 ```text
-B = 01ec13fce5482e2d53d4097ec7a65d74fe19c11f
-H = committed HEAD after this PLAN stage
-O = OpenAI endpoint/envelope compatibility
-Q = request schema compatibility
+B = 84aa6a369a32eec9674c9aef34c3826944c9f49f  # restored uploaded bundle head / origin/main
+H = committed HEAD after EXECUTE
+A = OpenAI-like assistant response shape
+K = SDK/drop-in client compatibility
 S = streaming SSE compatibility
-K = SDK/drop-in compatibility
+T = offline test strength
 E = evidence/provenance quality
-V = replay/verification correctness
-X = privacy/redaction correctness
-T = testability
-R = operational realism
-L = policy learning quality
-G = geometric_mean(O, Q, S, K, E, V, X, T, R, L)
+V = replay/artifact verification correctness
+R = live operational realism
+L = policy-learning proof
+C = complexity / artifact-corpus maintainability
+G = aggregate project goodness
 ```
 
 ## Equation
 
 ```text
-next_fix = argmax(score_gain × validation_power × implementation_feasibility ÷ source_risk)
-Good = max(O, Q, S, K, E, V, X, T, R, L)
+next_fix = argmax(score_gain × validation_power × feasibility ÷ source_risk)
+Good = max(A=7.9, T=7.8, S=7.6, P=7.4, O=7.3, Q=7.2, X=7.2, K=7.1, E=6.7, D=6.6, V=6.3, R=6.2, M=6.0, C=5.8, L=3.8) = A
 ```
 
-One-line explanation: choose the smallest executable change that raises the weakest proven production signal without expanding the browser-control trust boundary.
+One-line explanation: after the SDK gate landed, the best implementable improvement is to make replay/artifact verification separate current generated evidence from legacy failing evidence.
 
-## Evidence Source
+## Evidence Basis
 
-This plan is derived from `GOAL.md` and the current `score.md` evidence at observed HEAD `346128db7569637c95c378d93158c9987ee300c8`.
+This PLAN is derived from `GOAL.md` and the latest `score.md` OBSERVE section.
 
 ```text
-GOAL.md target = provider-capability router over authenticated browser sessions
-GOAL.md current_status = architecture_defined ∧ implementation_unproven
-score.md offline_validated = syntax_pass ∧ unit_pass ∧ mock_CDP_pass ∧ smoke_pass
-score.md live_unvalidated = CDP_9221_unreachable
-score.md artifact_quality_gap = replay_redaction_joint_pass_count / evaluation_files = 2 / 80
-score.md weakest_axes = L, K, V, M/R class signals
-score.md strongest_current_gain = mocked route/artifact pipeline now passes offline
+GOAL.md purpose = local browser-control server exposing an OpenAI-compatible API over authenticated browser sessions
+GOAL.md target = evidence → dataset registry → feature extraction → pattern mining → policy decision → response extraction → feedback + replay/privacy verification
+GOAL.md status = architecture_defined ∧ implementation_unproven
+GOAL.md next target = minimal provider registry plus chatgpt_private send/read loop
+GOAL.md boundary = do not harvest credentials, bypass login/CAPTCHA, evade rate limits, or persist cookies/tokens/auth headers
+score.md current_score ≈ 6.6/10
+score.md strongest_axis = A=7.9; response envelope evidence is strongest
+score.md offline_tests = strong; npm test passes unit + mock + sdk + artifact fixture gates
+score.md live_CDP = unproven; npm run test:live failed with ECONNREFUSED 127.0.0.1:9221 / healthz 502
+score.md artifact_gap = 86/88 committed historical turns fail the current quality gate
+score.md runtime_receipt_gap = validation_commands=[] and test_count=0 in runtime delta receipts
+score.md policy_learning_gap = L=3.8; no replay-backed before/after improvement proof
 ```
 
-Concrete validation evidence already available:
+Validation already observed for this PLAN pass:
 
 ```text
-npm run check = pass; syntax_ok files=47
-npm run test:unit = pass; 7/7 node:test cases passed
-npm run test:mock = pass; 3/3 node:test cases passed
+npm test = pass; unit 7/7, mock 3/3, sdk 4/4, artifact fixtures 5/5
 npm run smoke = pass; openai_contract_smoke_ok
-npm test = pass; unit + mock integration
-npm run test:live = fail_environment; CDP unavailable at 127.0.0.1:9221
 ```
 
 ## Highest-Impact EXECUTE Target
 
-Target the artifact-quality and replay/redaction gate, not another broad architecture rewrite.
+Target `V = replay/artifact verification correctness` by adding a current-corpus artifact gate that does not confuse legacy committed evidence with newly generated evidence.
 
 ```text
-target = artifact_quality_gate_for_completed_turns
-primary_axes = V, X, E, T
-secondary_axes = R, K, Q, S
-blocked_axis = live_CDP_behavior; cannot be proven without authenticated CDP endpoint
+target = current_artifact_corpus_gate
+primary_axes = V, E, C
+secondary_axes = T, R, M
+blocked_axis = live authenticated CDP behavior
+large_deferred_axis = L until policy deltas are replay-backed
 ```
 
 Reasoning:
 
 ```text
-mocked_CDP_route_now_exists = true
-live_CDP_unavailable_in_current_environment = true
-historical_artifact_joint_pass = 2 / 80
-current_gap = completed turns can exist without a hard replay∧redaction quality threshold
-highest_feasible_gain = make offline completed-turn artifacts fail validation when replay/redaction evidence is missing or false
+SDK_contract_matrix = already implemented and passing
+artifact_fixture_gate = already implemented and passing
+full_committed_artifact_corpus_gate = currently fails 86/88 historical turns
+legacy_failures_are_real = preserve as risk evidence, not default CI blocker
+current_generated_artifacts_need_gate = true
+best_score_gain_now = verify newly generated turn artifacts while keeping legacy debt explicit
 ```
 
-The next source change should add a deterministic artifact-quality validation tool and test fixture. This directly addresses the weakest evidence gap in `score.md`: historical artifacts show poor replay/redaction joint quality, while current mocked turns prove the route can generate better evidence. The project now needs a gate that prevents low-quality completed-turn artifacts from being silently accepted.
+This improves the highest practical confidence gap without requiring authenticated browser access, changing provider behavior, or deleting historical evidence.
 
 ## Planned Source Changes for EXECUTE Stage
 
 Do not modify source code in this PLAN stage. The next EXECUTE stage should stay within this scope:
 
-1. Add an artifact-quality validator.
-   - Validate completed turn directories under `artifacts/turns/` or a supplied fixture directory.
-   - Require manifest presence for completed turns.
-   - Require replay evidence with `replay_match=true`.
-   - Require redaction evidence with `redaction_pass=true` or equivalent explicit pass signal.
-   - Fail closed on malformed JSON/NDJSON.
+1. Add a corpus-mode validator option.
+   - Keep `validateTurnArtifacts(rootPath)` strict by default.
+   - Add an explicit mode for current/generated artifacts, not a silent legacy bypass.
+   - Report `scope`, `turn_count`, `pass_count`, `fail_count`, and failure summaries.
+   - Do not weaken `replay_match` or `redaction_pass` checks.
 
-2. Add a focused test fixture for the validator.
-   - Include one passing completed turn fixture.
-   - Include failing fixtures for missing manifest, replay mismatch, redaction failure, and malformed evidence.
-   - Keep fixtures minimal; do not depend on live browser/CDP.
+2. Add a current-corpus test path.
+   - Use the mocked CDP integration or a temporary generated artifact directory.
+   - Validate only artifacts generated during the current test run or a deliberately curated fixture corpus.
+   - Assert that generated turns include `manifest.json`, `replay.json`, `evaluation.json`, valid NDJSON, matching `turn_id`, `replay_match=true`, and `redaction_pass=true`.
 
-3. Wire validation into offline commands.
-   - Add a dedicated script such as `npm run test:artifacts` or include it in `npm test` only if deterministic and fast.
-   - Avoid making historical committed artifacts a required all-pass gate until legacy failures are either quarantined or documented as historical.
+3. Preserve legacy corpus visibility.
+   - Keep a command that reports the committed `artifacts/turns` failure count.
+   - Do not make historical legacy failures pass by ignoring them globally.
+   - Record legacy corpus status in `score.md` as debt, not resolved evidence.
 
-4. Preserve the live-browser boundary.
-   - Keep `npm run test:live` manual/environment-gated.
-   - Do not claim live ChatGPT/Gemini behavior is validated unless a reachable authenticated CDP browser passes the live test.
+4. Add explicit npm scripts.
+   - Keep `npm test` deterministic and no-browser by default.
+   - Add a required current/generated artifact gate to default tests.
+   - Add a separate advisory legacy-corpus report command that is expected to fail until historical turns are migrated or quarantined.
 
-5. Update `score.md` after EXECUTE validation.
-   - Record exact commands and pass/fail results.
-   - Raise only axes supported by new evidence.
-   - Continue listing live CDP and strict OpenAI semantic parity as unproven if not validated.
+5. Update evidence after EXECUTE.
+   - Update `score.md` only with command-backed facts.
+   - Raise `V`, `E`, or `C` only for the newly gated current/generated corpus.
+   - Keep `R` and live CDP capped unless `npm run test:live` passes against a reachable authenticated browser.
+   - Keep `L` capped unless a replay-backed before/after policy improvement is implemented and validated.
 
 ## Expected Files to Change in EXECUTE Stage
 
 ```text
 src/tools/validate-turn-artifacts.mjs
 test/artifact-quality.test.mjs
-test/fixtures/artifacts/*
 package.json
 score.md
 ```
 
-Acceptable alternative:
+Acceptable if a cleaner split is needed:
 
 ```text
-src/artifacts/* validator module + test wrapper
+test/current-artifact-corpus.test.mjs
+test/fixtures/artifacts/current-valid/...
+docs/07-operations-roadmap.md
 ```
 
-Avoid changes to provider adapters, CDP target management, or OpenAI envelope helpers unless the validator needs exported metadata constants.
+Avoid:
+
+```text
+provider adapter rewrites
+browser target-management rewrites
+large artifact deletions
+legacy evidence erasure
+policy-learning rewrites
+live-CDP behavior claims without live validation
+```
 
 ## Validation Commands
 
@@ -132,62 +146,71 @@ npm --version
 npm run check
 npm run test:unit
 npm run test:mock
+npm run test:sdk
+npm run test:artifacts
 npm run smoke
-node --test test/artifact-quality.test.mjs
-```
-
-If the artifact validator is added to `npm test`, also run:
-
-```bash
 npm test
 ```
 
-Optional live validation when an authenticated browser is running on CDP port 9221:
+Required artifact-specific validation:
+
+```bash
+node src/tools/validate-turn-artifacts.mjs test/fixtures/artifacts/valid
+node src/tools/validate-turn-artifacts.mjs artifacts/turns || true
+```
+
+The second command must remain advisory unless the EXECUTE stage explicitly migrates or quarantines legacy artifacts.
+
+Optional live validation when an authenticated browser is reachable on CDP port `9221`:
 
 ```bash
 npm run test:live
 ```
 
-Delta validation after commit:
+Safe delta validation after the EXECUTE commit:
 
 ```bash
 git status --short
-git log --oneline -n 5
-git bundle create /mnt/data/repo-delta-0001.bundle 01ec13fce5482e2d53d4097ec7a65d74fe19c11f..HEAD
-git bundle verify /mnt/data/repo-delta-0001.bundle
+git log --oneline -n 10
+rm -f /mnt/data/repo-delta-XXX.bundle /mnt/data/DELTA_MANIFEST.md
+git bundle create /mnt/data/repo-delta-XXX.bundle 84aa6a369a32eec9674c9aef34c3826944c9f49f..HEAD
+git bundle verify /mnt/data/repo-delta-XXX.bundle
 ```
 
 Receiver apply commands:
 
 ```bash
-git fetch ./repo-delta-0001.bundle HEAD && git merge --ff-only FETCH_HEAD
+git fetch ./repo-delta-XXX.bundle HEAD
+git merge --ff-only FETCH_HEAD
 npm run check
-npm run test:unit
-npm run test:mock
+npm test
 npm run smoke
 ```
 
 ## Acceptance Criteria
 
 ```text
-A1: validator rejects completed turns without manifest evidence
-A2: validator rejects replay_match=false or missing replay result
-A3: validator rejects redaction_pass=false or missing redaction result
-A4: validator rejects malformed JSON/NDJSON deterministically
-A5: validator accepts a minimal valid completed-turn fixture
-A6: validator is covered by node:test and included in documented validation commands
-A7: score.md update is evidence-backed and does not overclaim live CDP validation
-A8: delta artifacts are created from B..H and verify successfully
+A1: default artifact tests validate current/generated artifacts, not only static fixtures
+A2: generated current-turn artifacts prove manifest/replay/evaluation presence
+A3: generated current-turn artifacts prove turn_id consistency
+A4: generated current-turn artifacts prove replay_match=true and redaction_pass=true
+A5: all NDJSON files in generated current-turn artifacts are parse-checked
+A6: legacy committed corpus remains visible with measured fail_count, not hidden
+A7: npm test remains deterministic and no-browser by default
+A8: npm run test:live remains optional and does not support offline overclaims
+A9: score.md records exact validation commands and distinguishes current evidence from legacy debt
+A10: final delta bundle is cumulative from B..H and verifies successfully
 ```
 
 ## Risk Controls
 
 ```text
-risk_legacy_artifacts_fail_gate ⇒ test fixture path first; document historical corpus separately
-risk_false_privacy_confidence ⇒ require explicit redaction pass signal, not absence-only heuristics
-risk_replay_overfit ⇒ compare declared expected/extracted content fields, not filenames alone
-risk_source_churn ⇒ keep validator standalone and CLI-friendly
-risk_live_overclaim ⇒ preserve test:live as separate environment-gated signal
+risk_masking_legacy_failures ⇒ keep legacy corpus report explicit and advisory, not silently skipped
+risk_false_replay_confidence ⇒ do not relax replay_match/redaction_pass predicates
+risk_artifact_bloat ⇒ generate temp artifacts in tests unless committed fixtures are minimal
+risk_live_overclaim ⇒ keep live CDP optional and score-capped unless test:live passes
+risk_policy_learning_overclaim ⇒ do not raise L without replay-backed before/after deltas
+risk_delta_corruption ⇒ create bundle from 84aa6a3..HEAD and verify before returning final links
 ```
 
 ## Stage Boundary
