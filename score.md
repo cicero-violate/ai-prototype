@@ -3,189 +3,175 @@
 ## Variables
 
 ```text
-K  = kernel determinism score
-C  = codec / durable format score
-A  = api command-surface score
-R  = runtime / replay score
-OB = observation capability score
-CX = context capability score
-ME = memory capability score
-PL = planning capability score
-LL = llm capability score
-JG = judgment capability score
-TO = tooling capability score
-VF = verification capability score
-EV = eval capability score
-PO = policy capability score
-LE = learning capability score
-OR = orchestration capability score
-
-CORE = deterministic foundation score
-CAP  = implemented capability-layer score
-ARCH = declared GOAL.md alignment score
-GOOD = strongest present module
+K = deterministic Rust kernel strength
+C = codec / TLog durability strength
+V = replay / verification strength
+P = capability + policy + learning maturity
+B = build and test reproducibility
+E = runtime evidence quality
+N = nested router-server evidence quality
+D = documentation / goal alignment
+S = overall repository score
+GOOD = strongest current axis
 ```
 
 ## Equations
 
 ```text
-CORE = (K · C · A · R)^(1/4)
-CAP  = (OB · CX · ME · PL · LL · JG · TO · VF · EV · PO · LE · OR)^(1/12)
-ARCH = (K · C · A · R · OB · CX · ME · PL · LL · JG · TO · VF · EV · PO · LE · OR)^(1/16)
-GOOD = max(K,C,A,R,OB,CX,ME,PL,LL,JG,TO,VF,EV,PO,LE,OR)
+S = (K · C · V · P · B · E · N · D)^(1/8)
+GOOD = max(K,C,V,P,B,E,N,D)
 ```
 
-One-line explanation: the repo has a strong deterministic/replay core, but the observed evidence still shows a local prototype rather than a validated autonomous system.
+One-line explanation: the architecture is strong, but reproduced validation evidence is weak.
 
 ## Score Summary
 
 ```text
-K  = 8.4 / 10
-C  = 7.7 / 10
-A  = 7.0 / 10
-R  = 8.4 / 10
+K = 8.4 / 10
+C = 7.7 / 10
+V = 8.2 / 10
+P = 6.1 / 10
+B = 3.0 / 10
+E = 4.2 / 10
+N = 5.6 / 10
+D = 6.8 / 10
 
-OB = 6.0 / 10
-CX = 5.1 / 10
-ME = 5.4 / 10
-PL = 5.3 / 10
-LL = 7.6 / 10
-JG = 5.4 / 10
-TO = 8.0 / 10
-VF = 8.4 / 10
-EV = 6.4 / 10
-PO = 7.3 / 10
-LE = 6.1 / 10
-OR = 6.2 / 10
-
-CORE = 7.85 / 10
-CAP  = 6.35 / 10
-ARCH = 6.69 / 10
-GOOD = VF = 8.4 / 10
-max(K,C,A,R,OB,CX,ME,PL,LL,JG,TO,VF,EV,PO,LE,OR) = VF = 8.4 / 10 = good
+S = 5.94 / 10
+GOOD = max(K,C,V,P,B,E,N,D) = K = 8.4 / 10 = good
 ```
 
-## Observed Evidence
+## Evidence Reviewed
 
 ```text
-base_commit = ca0537f311aa35d538addc0236fb696acf5b8629
-restored_head = ca0537f311aa35d538addc0236fb696acf5b8629
-bundle_verify = passed_inside_restored_repo
-bundle_history = complete_history_sha1_bundle
-recent_history = ca0537f ready_for_agent_run; 4c9025d auto; 82f7eb5 add_observe_validation_harness; ba70600 add_implementation_plan_for_validation_harness; 2d0cf30 update_evidence_backed_observe_scorecard
-
-goal_md_present = yes
-readme_present = no
-cargo_toml_present = yes
+restored_bundle = /mnt/data/ai.bundle
+restored_head = b9830281da5618db55c12371ec1f17b3abdd0b00
+branch = main
+goal_md_present = true
+readme_present = false
+cargo_toml_present = true
 cargo_edition = 2024
-cargo_dependencies = 0
-src_rust_files = 53
-rust_files_reviewed = 53
-inline_test_markers = 103
-state_graph_present = no
+cargo_dependency_count = 0
+rust_files = 53
+rust_test_markers = 103
+rust_unwrap_calls = 316
 panic_todo_unimplemented_count = 0
-unwrap_call_count = 316
-
-local_rust_toolchain = unavailable_in_this_container
-observe_validation_script = scripts/observe_validation.sh
-observe_validation_report = target/observe/validation-report.ndjson
-observe_validation_ndjson_lines = 10
-cargo_fmt_check = unavailable_cargo_missing_recorded_by_harness
-cargo_test_all_targets = unavailable_cargo_missing_recorded_by_harness
-cargo_clippy_all_targets = unavailable_cargo_missing_recorded_by_harness
-ollama_judgment_example = skipped_env_missing_recorded_by_harness
-cargo_wrapper_config = points_to_/workspace/ai_sandbox/canon-rustc-v2/target/debug/canon-rustc-v2
-wrapper_path_in_this_container = unavailable
-validation_executed_here = observe_validation_harness_passed_ndjson_parse + git_diff_check_passed + cargo_fmt_check_unavailable + cargo_test_unavailable
+state_rustc_graph_json_present = false
 ```
 
-## Runtime Archive Evidence
+Recent history shows root validation work followed by nested router-server work:
 
 ```text
-ai_runtime_archive = present
-ai_runtime_base_commit = ca0537f311aa35d538addc0236fb696acf5b8629
-ai_runtime_included_files = .repo-agent-runtime/audit.ndjson + log/chatgpt_project_agent.ndjson
-ai_runtime_audit_lines = 1
-ai_runtime_process_log_lines = 1
-ai_runtime_download_history_count = 0
-ai_runtime_download_history_by_classification = {}
-ai_runtime_excluded_generated_bundle_count = 1
-ai_runtime_excluded_generated_runtime_archive_count = 1
-ai_runtime_leak_scan_findings = 0
-ai_runtime_schema_scan_findings = 0
-ai_runtime_integrity_scan_findings = 0
-
-other_uploaded_runtime_archives = chatgpt-project-agent-runtime.tar.gz + router-server-runtime.tar.gz
-other_runtime_download_history_count = 0_for_each_archive
+b983028 ready for agent run
+b16db0a Add observe command output evidence paths
+653bb6f Plan validation evidence gate
+ef2c405 Evaluate ai repository scorecard
+ca0537f ready for agent run
 ```
 
-The runtime archive proves only the current loop preflight was captured. It does not contain conversation snapshots, downloaded artifact histories, build logs, cargo logs, graph captures, or prior apply worktrees. That is useful for confirming sanitized upload hygiene, but weak as execution evidence.
+## Reproduced Validation
+
+Root observe harness:
+
+```text
+command = CANON_RUNTIME_ARCHIVE=/mnt/data/ai-runtime.tar.gz bash scripts/observe_validation.sh
+report = target/observe/validation-report.ndjson
+git_status_clean_at_start = true
+cargo_available = false
+rustc_available = false
+cargo_fmt_check = unavailable
+cargo_test_all_targets = unavailable
+cargo_clippy_all_targets = unavailable
+ollama_judgment_example = skipped_env_missing
+missing_signal_count = 13
+```
+
+Runtime archive:
+
+```text
+runtime_archive = /mnt/data/ai-runtime.tar.gz
+runtime_manifest_base_commit = b9830281da5618db55c12371ec1f17b3abdd0b00
+runtime_member_count = 3
+runtime_ndjson_logs = 2 lines total
+download_history_count = 0
+conversation_snapshot_count = 0
+cache_file_count = 0
+leak_scan_findings = 0
+schema_scan_findings = 0
+integrity_scan_findings = 0
+```
+
+Nested router-server evidence inside this repo:
+
+```text
+router_mjs_files = 49
+node_check_all_mjs = pass
+node src/tools/check-syntax.mjs = pass, syntax_ok files=49
+node --test test/openai-contract.test.mjs = pass, 7/7
+node --test test/mock-cdp-integration.test.mjs = pass, 3/3
+node --test test/artifact-quality.test.mjs = fail, 0/5
+artifact_quality_failure = missing test/fixtures/artifacts/* fixture directories
+router_package_json_present = false
+router_artifacts_dir_present = false
+live_cdp_validation = not_reproduced
+```
 
 ## Critical Judgment
 
-The `GOAL.md` target is coherent: a frozen deterministic kernel, replayable TLog, append-only policy growth, and capability-layer intelligence. The repository structure supports that target with explicit `kernel`, `codec`, `runtime`, `api`, and `capability/*` modules.
+`GOAL.md` defines a coherent target: frozen deterministic kernel, typed capability layer, append-only policy, replayable TLog, bounded recovery, and LLM promotion through learned policy. The Rust crate structure matches that target with `kernel`, `codec`, `runtime`, `api`, and `capability/*` modules.
 
-The strongest implemented surface is still verification/runtime discipline. The repo contains a replay-oriented runtime, command ledger, durable writer, transition table, semantic diff, verification proof module, NDJSON codec, policy store, local tooling records, observation records, and an Ollama/OpenAI-compatible LLM path. The 103 checked-in test markers show serious local validation intent.
+The strongest axis is still the deterministic Rust kernel. The repo exports a broad replay/receipt/verification surface and has 103 checked-in Rust test markers. It also forbids unsafe Rust at crate entry points reviewed here.
 
-The hard limitation is validation freshness. The new `scripts/observe_validation.sh` harness now makes that gap machine-readable, but in this container `rustc` and `cargo` are absent, so the current EXECUTE pass still cannot prove `cargo fmt`, `cargo test`, the Ollama example, graph regeneration, or wrapper-backed rustc telemetry. Prior claims in `GOAL.md` and the previous `score.md` may be true in the original workstation, but they are not reproduced here.
+The weakest axis is reproduced validation. This container has no `cargo` or `rustc`, the configured rustc wrapper path does not exist here, and no `state/rustc/ai/graph.json` is present. Therefore prior claims about cargo tests, graph metrics, and wrapper telemetry are not independently proven from this restored bundle.
 
-The second limitation is artifact evidence. No `README.md` exists even though older scoring text referenced one. No `state/rustc/ai/graph.json` exists in this restored bundle, so graph-node, graph-edge, redundant-path, alpha-pathway, and intent-coverage claims cannot be independently verified from the restored repository.
+The runtime archive is hygienic but thin. It proves sanitized preflight capture and clean scans, not execution quality. It contains no conversation snapshot, download history, build log, graph capture, apply worktree, or end-to-end artifact lineage.
 
-The third limitation is autonomous behavior. Observation remains represented as bounded/file/API-ingress machinery rather than live external stream ingestion. Tooling and LLM receipts are meaningful, but there is no observed end-to-end loop proving external perception, authenticated external action, semantic artifact verification, policy promotion from empirical history, and orchestration under load.
+The nested router-server has useful offline validation, but the latest committed artifact-quality test is broken because required fixture directories are absent. This directly contradicts any claim that the new artifact-quality gate is currently reproducible from the bundle.
 
 ## Module Scorecard
 
-| Module                     | Score | Evidence                                                                                                                                                                        | Risk                                                                                                                                 |
-|----------------------------+-------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------------------------------------------------|
-| `kernel`                   |   8.4 | Dedicated module; GOAL requires frozen deterministic reduce/hash/state; runtime tests exist in source.                                                                          | Formal proof layer and external invariant proof are not present in restored evidence.                                                |
-| `codec`                    |   7.7 | `codec/ndjson.rs`; TLog/receipt encoding surfaces are exported from `lib.rs`.                                                                                                   | Schema migration and compatibility guarantees are not validated here.                                                                |
-| `api`                      |   7.0 | `api/protocol.rs` and `api/routes.rs`; command-style route layer exists.                                                                                                        | No network service, authentication, or hostile-client validation observed.                                                           |
-| `runtime`                  |   8.4 | `runtime/{verify,reducer,durable,writer,command_ledger,transition_table}.rs`; replay and durable-writing concerns are separated.                                                | Cargo replay tests could not be run here; graph telemetry absent.                                                                    |
-| `capability/observation`   |   6.0 | Observation record/source modules exist; GOAL describes bounded ingress and API routing.                                                                                        | No live SSE/webhook/browser adapter evidence in the bundle.                                                                          |
-| `capability/context`       |   5.1 | Context record module exists.                                                                                                                                                   | No retrieval, grounding, conflict handling, or token-budget evidence.                                                                |
-| `capability/memory`        |   5.4 | Memory store module exists.                                                                                                                                                     | No embeddings, durable namespace model, invalidation, or cross-run retrieval proof.                                                  |
-| `capability/planning`      |   5.3 | Planning record module exists.                                                                                                                                                  | No observed planner search, dependency solving, or risk/cost tradeoff engine.                                                        |
-| `capability/llm`           |   7.6 | `capability/llm/ollama.rs`; example `ollama_judgment.rs`; GOAL documents local OpenAI-compatible path.                                                                          | No live Ollama run was possible here; streaming and provider-signed receipts absent.                                                 |
-| `capability/judgment`      |   5.4 | Judgment record module exists and is wired by exported APIs.                                                                                                                    | Judgment appears record-based, not a validated comparative decision process.                                                         |
-| `capability/tooling`       |   8.0 | Tooling record module and proof/receipt concepts are present in source and GOAL.                                                                                                | External API action tools and hostile execution validation are not observed.                                                         |
-| `capability/verification`  |   8.4 | Verification proof module exists and is heavily represented in exports/tests.                                                                                                   | Semantic truth outside receipt/proof structure is still not proven.                                                                  |
-| `capability/eval`          |   6.4 | Eval record module exists, and `scripts/observe_validation.sh` now emits a deterministic NDJSON evidence report with build/test/toolchain/graph/runtime/missing-signal records. | No calibrated benchmark suite, threshold governance, adversarial eval evidence, or successful Rust validation run in this container. |
-| `capability/policy`        |   7.3 | Policy store module exists; GOAL emphasizes append-only policy.                                                                                                                 | Promotion governance is not validated by runtime archive evidence.                                                                   |
-| `capability/learning`      |   6.1 | Learning promotion module exists.                                                                                                                                               | No empirical learning loop or policy compounding trace in runtime archive.                                                           |
-| `capability/orchestration` |   6.2 | Orchestration record module exists.                                                                                                                                             | Distributed/parallel orchestration under load is not evidenced.                                                                      |
+| Area | Score | Evidence | Risk |
+|---|---:|---|---|
+| Rust kernel | 8.4 | `src/kernel`, exported gates/phases/state, deterministic goal alignment | No formal proof artifact or reproduced cargo run here |
+| Codec / TLog | 7.7 | `src/codec/ndjson.rs`, TLog encode/decode exports | Schema compatibility not stress-tested here |
+| Runtime / replay / verification | 8.2 | `runtime/*`, verification proof exports, receipt concepts | Cargo tests and graph replay not reproduced |
+| Capability layer | 6.1 | observation/context/memory/planning/llm/judgment/tooling/eval/policy/learning/orchestration modules exist | Mostly record/store surfaces; external loops not proven |
+| Build/test reproducibility | 3.0 | observe harness records missing toolchain instead of hiding it | Root Rust validation unavailable; router artifact-quality test fails |
+| Runtime evidence | 4.2 | sanitized archive, leak/schema/integrity scans all zero findings | Only 2 NDJSON log lines; no downstream execution evidence |
+| Nested router-server | 5.6 | 49 MJS syntax pass; OpenAI contract and mock CDP tests pass | No package.json; missing fixtures; live CDP not reproduced |
+| Documentation alignment | 6.8 | GOAL.md is detailed and architecture-specific | No README; several validation claims remain unreproduced |
 
 ## Missing Validation Signals
 
 ```text
 missing_cargo_fmt = true
 missing_cargo_test = true
-missing_cargo_run_ollama_judgment = true
 missing_clippy = true
+missing_ollama_judgment_run = true
 missing_generated_graph_json = true
 missing_rustc_wrapper_telemetry = true
-missing_runtime_download_history = true
 missing_conversation_snapshot = true
-missing_artifact_apply_worktree = true
+missing_download_history = true
+missing_apply_worktree = true
 missing_external_observation_stream_test = true
 missing_external_api_action_test = true
-missing_semantic_artifact_verification_test = true
 missing_policy_learning_replay_trace = true
+missing_router_artifact_quality_fixtures = true
+missing_live_cdp_validation = true
 ```
 
 ## Highest-Leverage Next Work
 
-1. Re-run `bash scripts/observe_validation.sh` in an environment with Rust, cargo, and the configured wrapper available; require `cargo fmt --check`, `cargo test --all-targets`, and `cargo clippy --all-targets -- -D warnings` to produce pass/fail evidence.
-2. Run `cargo run --example ollama_judgment` with `CANON_OLLAMA_BASE_URL` and `CANON_OLLAMA_MODEL` set to a local Ollama endpoint, then preserve the resulting receipt/proof trace.
-3. Regenerate and commit or archive `state/rustc/ai/graph.json` so graph-health claims are inspectable from the delta artifacts and captured by the harness.
-4. Add one live external observation fixture and one external action fixture behind deterministic receipts.
-5. Add semantic artifact verification fixtures that prove more than hash lineage.
-6. Reduce reliance on `unwrap()` in non-test logic, or classify each unwrap as test-only, validated invariant, or technical debt.
+1. Restore Rust toolchain and wrapper availability, then rerun `cargo fmt --check`, `cargo test --all-targets`, and `cargo clippy --all-targets -- -D warnings`.
+2. Generate `state/rustc/ai/graph.json` and capture wrapper telemetry in the evidence bundle.
+3. Add the missing router artifact-quality fixtures or remove the failing test until fixtures are committed.
+4. Preserve runtime conversation snapshots, artifact manifests, and apply-worktree evidence in sanitized form.
+5. Prove one external observation → action → semantic verification → policy learning loop.
 
 ## Verdict
 
 ```text
 classification = serious_deterministic_runtime_prototype
-not_yet = validated_autonomous_self_improving_agent
-deployment_readiness = low_without_reproduced_cargo_validation_and_external_loop_tests
-score_confidence = medium_for_static_architecture_low_for_runtime_behavior
+not_yet = reproducibly_validated_autonomous_agent
+main_blocker = missing_root_rust_validation + thin_runtime_evidence + broken_nested_artifact_quality_test
+score_confidence = medium_static_low_runtime
 ```
