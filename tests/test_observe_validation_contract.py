@@ -23,11 +23,12 @@ class ObserveValidationContractTest(unittest.TestCase):
             self.assertRegex(self.script, pattern)
 
     def test_default_cargo_config_has_no_absolute_wrapper(self) -> None:
-        self.assertNotRegex(self.config, r'^\s*rustc-wrapper\s*=', re.MULTILINE)
+        self.assertIsNone(re.search(r'^\s*rustc-wrapper\s*=', self.config, re.MULTILINE))
         self.assertIn("CANON_RUSTC_WRAPPER=/path/to/canon-rustc-v3", self.config)
 
     def test_wrapper_graph_capture_is_explicit_and_optional(self) -> None:
         self.assertIn('os.environ.get("CANON_RUSTC_WRAPPER", "")', self.script)
+        self.assertIn('CANON_RUSTC_V3_ARTIFACT_DIR', self.script)
         self.assertIn('wrapper_graph_validation_requested', self.script)
         self.assertIn('status": "skipped_env_missing"', self.script)
         self.assertIn('CANON_RUSTC_WRAPPER not found', self.script)

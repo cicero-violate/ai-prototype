@@ -401,8 +401,9 @@ def wrapper_graph_command(w: dict[str, Any], toolchain: dict[str, Any]) -> dict[
     if not w["rustc_wrapper_path_exists"]:
         return synthetic("wrapper_graph_validation", cmd, "unavailable",
                          f"CANON_RUSTC_WRAPPER not found: {w['rustc_wrapper_env_path']}")
+    artifact_dir = os.environ.get("CANON_RUSTC_V3_ARTIFACT_DIR") or os.environ.get("CANON_RUSTC_V2_ARTIFACT_DIR", "state/rustc")
     env = {"RUSTC_WRAPPER": str(w["rustc_wrapper_path"]), "RUSTC_WORKSPACE_WRAPPER": "",
-           "CANON_RUSTC_V2_ARTIFACT_DIR": os.environ.get("CANON_RUSTC_V2_ARTIFACT_DIR", "state/rustc")}
+           "CANON_RUSTC_V3_ARTIFACT_DIR": artifact_dir}
     if not toolchain["cargo_available"]:
         return synthetic("wrapper_graph_validation", cmd, "unavailable", "cargo not found in PATH", env)
     return run("wrapper_graph_validation", cmd, timeout=600, env=env)

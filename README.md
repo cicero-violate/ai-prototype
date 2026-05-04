@@ -39,7 +39,8 @@ Capture graph telemetry only when the wrapper is explicitly available:
 
 ```bash
 CANON_RUSTC_WRAPPER=/path/to/canon-rustc-v3 \
-CANON_RUSTC_V2_ARTIFACT_DIR=state/rustc \
+CANON_RUSTC_V3_ARTIFACT_DIR=state/rustc \
+RUSTC_WRAPPER=/path/to/canon-rustc-v3 \
 cargo test --all-targets
 ```
 
