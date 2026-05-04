@@ -1,28 +1,28 @@
-base_commit: 4e8a41f7f6a4c31d275e986147d6193c1d1f3895
-head_commit: 80ace85a63fb69c4899bbca8e29fce1c7b17ee73
+base_commit: fae4c60c6fae6177f92837119930e412c9d02e65
+head_commit: 1978744b23710ca1f4c7bd97b113f2815335f265
 
 # Delta Manifest
 
 ## Changed Files
-- .gitignore
 - IMPLEMENTATION_PLAN.md
 - README.md
-- ai-chromium/router-server_bak/run_tests.sh
-- ai-chromium/router-server_bak/test/offline-contract.test.mjs
 - score.md
+- scripts/observe_validation.sh
+- scripts/write_delta_manifest.py
 
 ## Validation Results
 - validation_status: partial
-- validation_command_count: 6
+- validation_command_count: 7
 - validation_test_count: 45
 - router_test_count: 45
 - cargo_test_count_when_available: None
 - failed_required_commands: []
 - missing_signal_count: 12
-- report_sha256: e1d0a3aed0e6bacc7b16b9c73eb5d92ef672823b0552e4717c053bccd23bb110
-- bundle_sha256: 7d0b26b1c63d0629cc21a328b17f3f676b67571661c05a133fa45b4b6624fb60
+- report_sha256: bd675a94d07d694ca150ca871aff4f75a2484339b2a3b93c52959544240ad420
+- bundle_sha256: 878435adacffa89c24bed33e4604ea6f9d9518250e86cf6ecb0dbf61f7e238f4
 - bundle_verify: pass
-- changed_file_count: 6
+- validation_report_git_head: 1978744b23710ca1f4c7bd97b113f2815335f265
+- changed_file_count: 5
 - cargo_available: False
 - rustc_available: False
 - toolchain_path_added: False
@@ -31,12 +31,18 @@ head_commit: 80ace85a63fb69c4899bbca8e29fce1c7b17ee73
 - wrapper_override_used: False
 - wrapper_override_env: ["RUSTC_WORKSPACE_WRAPPER", "RUSTC_WRAPPER"]
 - rustc_wrapper_path_exists: False
+- git_delta_diff_check_result: pass
 - state_graph_present: False
-- runtime_archive_log_total: 5677
-- runtime_archive_download_total: 62
+- runtime_archive_sha256: 6aa85edd54e97fdd62f7484fda96bd2821ac96445ebf6a28f4a6ffc682268922
+- runtime_manifest_base_commit: fae4c60c6fae6177f92837119930e412c9d02e65
+- runtime_archive_log_total: 6259
+- runtime_archive_download_total: 69
 - runtime_archive_conversation_snapshots: 0
+- runtime_stale_advisory_count: 1
+- runtime_candidate_error_count: 0
+- runtime_duplicate_artifact_aliases: 6
 - delta_base_is_ancestor: True
-- delta_changed_file_count: 6
+- delta_changed_file_count: 5
 - tracked_file_count: 189
 - rust_file_count_src_examples: 53
 - rust_test_attr_count: 103
@@ -46,6 +52,7 @@ head_commit: 80ace85a63fb69c4899bbca8e29fce1c7b17ee73
 
 ## Validation Commands
 - git_diff_check: pass :: git diff --check
+- git_delta_diff_check: pass :: git diff --check fae4c60c6fae6177f92837119930e412c9d02e65..HEAD
 - router_offline_tests: pass :: bash run_tests.sh
 - cargo_fmt_check: unavailable :: cargo fmt --check
 - cargo_test_all_targets: unavailable :: cargo test --all-targets
