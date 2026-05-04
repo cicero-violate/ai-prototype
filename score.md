@@ -187,23 +187,23 @@ missing_signal_count = 13
 
 ## Dimension Rationale
 
-| Dimension | Score | Evidence |
-|---|---:|---|
-| I | 7.7 | Strong typed architecture across kernel, runtime, capabilities, receipts, verification, learning, policy, observation, and LLM surfaces. |
-| E | 6.6 | Observe now completes with explicit runtime performance extraction; missing Rust toolchain and graph path still block complete evaluation. |
-| C | 6.2 | Git diff, Python tests, panic validation, router tests, and performance budget checks pass; Rust, graph, and Ollama checks are unavailable or skipped. |
-| A | 7.9 | Source layout and `GOAL.md` are aligned around deterministic kernel plus growing capability layer; autonomous operation remains unproven here. |
-| R | 6.8 | No production unsafe/panic/unwrap/expect surface detected; unvalidated Rust build and proof paths cap confidence. |
-| P | 5.8 | Runtime archive performance evidence is now parsed and budgeted; no Rust timing, benchmark, LLM latency, memory, or sustained-load signal exists. |
-| S | 6.2 | Layered capability model and zero Rust dependencies help scale; validation is still environment-sensitive and single-repo. |
-| D | 7.8 | Hash/log/replay direction and observe summary are deterministic; missing graph/toolchain replay prevents stronger score. |
-| T | 9.0 | Missing signals, runtime archive hygiene, command outputs, panic buckets, performance budgets, and archive lineage are explicit. |
-| Co | 6.9 | README/GOAL/score/scripts/reports help handoff; generated artifacts and repeated bundle commits reduce review clarity. |
-| Em | 7.3 | Restore/observe/delta scripts and runtime performance evidence empower independent work; missing cargo/rustc blocks full verification. |
-| B | 7.0 | Targets high-value autonomous correctness and auditability; demonstrated benefit remains prototype-level. |
-| L | 6.2 | Learning/policy surfaces and runtime history exist; no fresh policy-promotion replay trace was reproduced. |
-| Si | 6.0 | Frozen-kernel/capability split is simple; broad exports, fixtures, receipts, patches, and generated context keep complexity high. |
-| F | 7.4 | Canonical effect/proof direction is future-proof; missing graph/Ollama/Rust/semantic validation limits confidence. |
+| Dimension | Score | Evidence                                                                                                                                               |
+|-----------+-------+--------------------------------------------------------------------------------------------------------------------------------------------------------|
+| I         |   7.7 | Strong typed architecture across kernel, runtime, capabilities, receipts, verification, learning, policy, observation, and LLM surfaces.               |
+| E         |   6.6 | Observe now completes with explicit runtime performance extraction; missing Rust toolchain and graph path still block complete evaluation.             |
+| C         |   6.2 | Git diff, Python tests, panic validation, router tests, and performance budget checks pass; Rust, graph, and Ollama checks are unavailable or skipped. |
+| A         |   7.9 | Source layout and `GOAL.md` are aligned around deterministic kernel plus growing capability layer; autonomous operation remains unproven here.         |
+| R         |   6.8 | No production unsafe/panic/unwrap/expect surface detected; unvalidated Rust build and proof paths cap confidence.                                      |
+| P         |   5.8 | Runtime archive performance evidence is now parsed and budgeted; no Rust timing, benchmark, LLM latency, memory, or sustained-load signal exists.      |
+| S         |   6.2 | Layered capability model and zero Rust dependencies help scale; validation is still environment-sensitive and single-repo.                             |
+| D         |   7.8 | Hash/log/replay direction and observe summary are deterministic; missing graph/toolchain replay prevents stronger score.                               |
+| T         |   9.0 | Missing signals, runtime archive hygiene, command outputs, panic buckets, performance budgets, and archive lineage are explicit.                       |
+| Co        |   6.9 | README/GOAL/score/scripts/reports help handoff; generated artifacts and repeated bundle commits reduce review clarity.                                 |
+| Em        |   7.3 | Restore/observe/delta scripts and runtime performance evidence empower independent work; missing cargo/rustc blocks full verification.                 |
+| B         |   7.0 | Targets high-value autonomous correctness and auditability; demonstrated benefit remains prototype-level.                                              |
+| L         |   6.2 | Learning/policy surfaces and runtime history exist; no fresh policy-promotion replay trace was reproduced.                                             |
+| Si        |   6.0 | Frozen-kernel/capability split is simple; broad exports, fixtures, receipts, patches, and generated context keep complexity high.                      |
+| F         |   7.4 | Canonical effect/proof direction is future-proof; missing graph/Ollama/Rust/semantic validation limits confidence.                                     |
 
 ## Missing Validation Signals
 
