@@ -51,9 +51,13 @@ def changed_files(base: str, head: str) -> list[str]:
 def receipt(args: argparse.Namespace) -> dict[str, Any]:
     rows = report_rows(Path(args.report))
     summary = last_event(rows, "validation_summary")
+    if not summary:
+        raise SystemExit("validation report has no validation_summary event")
     report_head = summary.get("git_head")
     if report_head and report_head != args.head:
         raise SystemExit(f"stale validation report: report head {report_head} != manifest head {args.head}")
+    if args.bundle and not Path(args.bundle).exists():
+        raise SystemExit(f"bundle does not exist: {args.bundle}")
     commands = summary.get("validation_commands") or [
         {"name": c.get("name"), "cmd": c.get("cmd"), "status": c.get("status")}
         for c in command_rows(rows)

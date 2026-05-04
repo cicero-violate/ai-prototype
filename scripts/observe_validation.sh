@@ -153,16 +153,19 @@ def runtime() -> dict[str, Any]:
         return {"runtime_archive_present": False, "runtime_archive_candidates": [str(p) for p in candidates]}
     metrics: dict[str, Any] = {"runtime_archive_present": True, "runtime_archive_path": str(archive),
                                "runtime_archive_sha256": sha256(archive),
-                               "runtime_archive_member_count": 0, "runtime_archive_log_counts": {},
-                               "runtime_archive_download_counts": {}, "runtime_archive_conversation_snapshots": 0,
-                               "runtime_archive_cache_files": 0, "runtime_candidate_error_count": 0,
-                               "runtime_duplicate_artifact_aliases": 0}
+                               "runtime_archive_member_count": 0, "runtime_archive_log_total": 0,
+                               "runtime_archive_download_total": 0, "runtime_archive_log_files": 0,
+                               "runtime_archive_download_files": 0, "runtime_archive_sample_files": [],
+                               "runtime_archive_conversation_snapshots": 0, "runtime_archive_cache_files": 0,
+                               "runtime_candidate_error_count": 0, "runtime_duplicate_artifact_aliases": 0}
     aliases: dict[str, int] = {}
     try:
         with tarfile.open(archive, "r:gz") as tf:
             for member in (m for m in tf.getmembers() if m.isfile()):
                 name = member.name
                 metrics["runtime_archive_member_count"] += 1
+                if len(metrics["runtime_archive_sample_files"]) < 12:
+                    metrics["runtime_archive_sample_files"].append(name)
                 metrics["runtime_archive_cache_files"] += int("cache" in name.lower())
                 metrics["runtime_archive_conversation_snapshots"] += int(name.endswith(".conversation.json"))
                 if name.endswith("RUNTIME_MANIFEST.json"):
@@ -188,8 +191,9 @@ def runtime() -> dict[str, Any]:
                                 metrics["runtime_candidate_error_count"] += int(bool(row.get("error")))
                             except Exception:
                                 metrics["runtime_candidate_error_count"] += 1
-                    key = "runtime_archive_download_counts" if "download" in name.lower() else "runtime_archive_log_counts"
-                    metrics[key][name] = count
+                    is_download = "download" in name.lower()
+                    metrics["runtime_archive_download_files" if is_download else "runtime_archive_log_files"] += 1
+                    metrics["runtime_archive_download_total" if is_download else "runtime_archive_log_total"] += count
         metrics["runtime_duplicate_artifact_aliases"] = sum(1 for value in aliases.values() if value > 1)
         metrics["runtime_archive_parse_status"] = "pass"
     except Exception as exc:
@@ -292,8 +296,8 @@ else:
 
 cargo_test = next(c for c in commands if c["name"] == "cargo_test_all_targets")
 router_test = next(c for c in commands if c["name"] == "router_offline_tests")
-download_total = sum(map(int, r.get("runtime_archive_download_counts", {}).values())) if r.get("runtime_archive_present") else 0
-log_total = sum(map(int, r.get("runtime_archive_log_counts", {}).values())) if r.get("runtime_archive_present") else 0
+download_total = int(r.get("runtime_archive_download_total", 0) or 0)
+log_total = int(r.get("runtime_archive_log_total", 0) or 0)
 missing = {
     "missing_root_rust_toolchain": not (toolchain["cargo_available"] and toolchain["rustc_available"]),
     "missing_cargo_fmt": next(c for c in commands if c["name"] == "cargo_fmt_check")["status"] != "pass",

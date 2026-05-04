@@ -1,52 +1,33 @@
 # Canon Agent
 
-Deterministic agent-runtime prototype with a frozen Rust kernel, typed
-capabilities, replayable logs, and an embedded router-server validation target.
+Deterministic agent-runtime prototype: frozen Rust kernel, typed capability
+surface, replayable logs, and router-server validation evidence.
 
 ## Restore
 
 ```bash
 git clone /path/to/ai.bundle ai
 cd ai
-```
-
-Use the restored commit as delta base unless a task supplies another base:
-
-```bash
 B="$(git rev-parse HEAD)"
 ```
 
-## Validate What Is Available
+## Observe
 
 ```bash
-B=<base-commit>
 CANON_DELTA_BASE="$B" \
 CANON_RUNTIME_ARCHIVE=/mnt/data/ai-runtime.tar.gz \
 CANON_OBSERVE_REPORT=target/observe/validation-report.ndjson \
 bash scripts/observe_validation.sh
 ```
 
-The observe report is written to:
+The observe report is one NDJSON stream with Git hygiene, base-to-head hygiene,
+router tests, Rust command status, wrapper evidence, compact runtime archive
+counts, graph presence, Ollama status, and missing-signal flags.
 
-```text
-target/observe/validation-report.ndjson
-```
+## Rust Checks
 
-This emits one NDJSON receipt stream for Git hygiene, base-to-head diff
-hygiene, router tests, Rust checks when available, wrapper override evidence,
-runtime archive/download history, graph presence, and missing validation flags.
-
-## Root Rust Validation
-
-Build the local rustc wrapper first:
-
-```bash
-cd canon-rustc-v3
-cargo build
-cd ..
-```
-
-Run these when the Rust toolchain is present:
+Run when a Rust toolchain exists. Wrapper variables are cleared because the
+configured wrapper path may not exist after bundle restore.
 
 ```bash
 RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo fmt --check
@@ -54,20 +35,18 @@ RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets
 RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo clippy --all-targets -- -D warnings
 ```
 
-Run the local LLM path only with an explicit local endpoint:
+Run the live local LLM path only with an explicit local endpoint:
 
 ```bash
 CANON_OLLAMA_BASE_URL=http://127.0.0.1:11434/v1 \
 CANON_OLLAMA_MODEL=qwen2.5-coder:7b \
+RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" \
 cargo run --example ollama_judgment
 ```
 
 ## Delta Artifacts
 
-After committing work:
-
 ```bash
-B=<base-commit>
 H="$(git rev-parse HEAD)"
 rm -f /mnt/data/repo-delta-004.bundle /mnt/data/DELTA_MANIFEST.md
 git bundle create /mnt/data/repo-delta-004.bundle "$B..$H"
@@ -88,9 +67,9 @@ Receiver:
 git fetch ./repo-delta-004.bundle HEAD && git merge --ff-only FETCH_HEAD
 ```
 
-## Current Constraints
+## Constraints
 
-- Do not treat router offline tests as proof of the root Rust crate.
-- Do not score graph telemetry until `state/rustc/*/graph.json` exists.
-- Do not score Ollama judgment until the example runs and its receipt verifies.
-- Treat downloaded manifests with base mismatches as stale advisory evidence.
+- Router offline tests do not prove the root Rust crate.
+- Graph telemetry is absent until `state/rustc/*/graph.json` exists.
+- Ollama judgment is absent until the example runs and receipt replay passes.
+- Runtime archives are evidence; token and signed URL caches must stay out.

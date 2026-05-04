@@ -3,93 +3,65 @@
 ## Variables
 
 ```text
-I,E,C,A,R,P,S,D,T,Co,Em,B,L,Si,F = score dimensions
 G = (I·E·C·A·R·P·S·D·T·Co·Em·B·L·Si·F)^(1/15)
-B = base commit
-H = committed head
+B = 181519a9fd945532cc6de825c71d197dd01e65ec
+H = committed execution head
 κ = implementation risk
-ΔG = expected score lift
 ```
 
-## Equation
+## Target
 
 ```text
 next_work = argmax(ΔG / κ)
-          = portable current-head validation closure
+          = compact current-head validation closure
 ```
 
-One-line explanation: close reproducible validation gaps before claiming deeper autonomy gains.
+One-line explanation: improve correctness, determinism, transparency, and
+collaboration by making missing proof explicit without inflating scores.
 
-## Source Evidence
+## Implement Now
 
-- `GOAL.md` targets a frozen deterministic kernel, append-only TLog, replayable evidence, bounded recovery, policy learning, LLM promotion, and cheaper repeated reasoning.
-- `score.md` shows the dominant weakness is not architecture; it is missing current-head validation for Rust, graph telemetry, Ollama judgment, semantic artifact verification, and policy-learning replay.
-- Existing router offline validation is useful but insufficient because it does not prove the root Rust crate or live CDP/API behavior.
+1. Compact `scripts/observe_validation.sh` runtime evidence from large per-file
+   maps into totals plus bounded samples.
+2. Harden `scripts/write_delta_manifest.py` so stale or incomplete validation
+   reports cannot produce a receiver manifest.
+3. Refresh `README.md` and `score.md` to match current base `B`, runtime archive
+   evidence, validation commands, and remaining proof gaps.
 
-## Highest-Impact Target
-
-Implement one portable observe command that records:
-
-1. working-tree diff hygiene
-2. base-to-head diff hygiene
-3. router offline validation
-4. cargo fmt/test/clippy pass/fail/unavailable state
-5. configured rustc-wrapper presence and override use
-6. runtime archive/download/cache/log evidence
-7. graph telemetry presence/absence
-8. Ollama judgment run or explicit skip reason
-9. missing validation flags
-10. manifest/receipt fields needed for safe delta output
-
-## Mutation Scope
-
-Primary files:
+## Do Not Fake
 
 ```text
-scripts/observe_validation.sh
-scripts/write_delta_manifest.py
-README.md
-score.md
-IMPLEMENTATION_PLAN.md
-```
-
-No kernel, runtime, API, router, or capability semantic rewrite is justified unless validation exposes a concrete defect.
-
-## Safety Rules
-
-```text
-no_fake_graph_json = true
-no_fake_ollama_receipt = true
-no_test_relaxation = true
-no_generated_bundle_committed = true
-no_token_or_signed_url_cache_committed = true
-no_delta_without_manifest = true
+graph_json = real_or_absent
+ollama_receipt = real_or_skipped
+rust_toolchain = present_or_unavailable
+bundle_manifest = validated_or_rejected
 ```
 
 ## Validation Commands
 
 ```bash
-B=fae4c60c6fae6177f92837119930e412c9d02e65
+B=181519a9fd945532cc6de825c71d197dd01e65ec
 CANON_DELTA_BASE="$B" \
 CANON_RUNTIME_ARCHIVE=/mnt/data/ai-runtime.tar.gz \
-CANON_OBSERVE_REPORT=target/observe/validation-report-execute.ndjson \
+CANON_OBSERVE_REPORT=target/observe/validation-report.ndjson \
 bash scripts/observe_validation.sh
 
 git status --short
 git diff --check
+rm -f /mnt/data/repo-delta-004.bundle /mnt/data/DELTA_MANIFEST.md
 git bundle create /mnt/data/repo-delta-004.bundle "$B..$(git rev-parse HEAD)"
 git bundle verify /mnt/data/repo-delta-004.bundle
 python3 scripts/write_delta_manifest.py \
   --base "$B" \
   --head "$(git rev-parse HEAD)" \
-  --report target/observe/validation-report-execute.ndjson \
+  --report target/observe/validation-report.ndjson \
   --bundle /mnt/data/repo-delta-004.bundle \
   --bundle-verify pass \
   --out /mnt/data/DELTA_MANIFEST.md \
   --receipt-out target/observe/delta-validation-receipt.json
 ```
 
-Receiver command:
+Receiver:
 
 ```bash
 git fetch ./repo-delta-004.bundle HEAD && git merge --ff-only FETCH_HEAD
@@ -98,8 +70,8 @@ git fetch ./repo-delta-004.bundle HEAD && git merge --ff-only FETCH_HEAD
 ## Expected Score Movement
 
 ```text
-C,R,D,T,Em,F ↑ from reproducible validation closure
-L,graph,Ollama,semantic-proof scores stay capped until those commands pass
+C,R,D,T,Co,Em,Si,F ↑
+L,graph,Ollama,semantic-proof remain capped until real validation passes
 ```
 
-`max(G)=good`; the immediate good is deterministic evidence, not inflated scores.
+`max(G)=good`; the immediate good is smaller, reproducible evidence.
