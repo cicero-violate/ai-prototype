@@ -31,12 +31,12 @@ K = 8.4 / 10
 C = 7.7 / 10
 V = 7.8 / 10
 P = 6.0 / 10
-B = 2.8 / 10
+B = 3.1 / 10
 E = 5.7 / 10
-N = 4.6 / 10
-D = 6.8 / 10
+N = 6.8 / 10
+D = 6.9 / 10
 
-S = 5.92 / 10
+S = 6.31 / 10
 GOOD = max(K,C,V,P,B,E,N,D) = K = 8.4 / 10 = good
 ```
 
@@ -47,7 +47,7 @@ uploaded_bundle = /mnt/data/ai.bundle
 restored_repo_path = /mnt/data/ai-restored
 uploaded_runtime_archive = /mnt/data/ai-runtime.tar.gz
 runtime_extract_path = /mnt/data/ai-runtime-extracted
-observed_head_before_scorecard_update = 19e017cd1dad4295a4f7b67b82b60dc7361e9a7d
+observed_head_before_execute_stage = 7261f1c0cbf3033d431dffb9db9fd11446dad4cb
 base_runtime_manifest_commit = 12f02b6a0f3936ab5ffd8ff59762b71084c443fb
 branch = main
 goal_md_present = true
@@ -243,20 +243,28 @@ node --version                                      = v22.16.0
 node src/tools/check-syntax.mjs                    = pass, syntax_ok files=49
 node --test test/openai-contract.test.mjs          = pass, 7/7
 node --test test/mock-cdp-integration.test.mjs     = pass, 3/3
-node --test test/artifact-quality.test.mjs         = fail, 0/5
+node --test test/artifact-quality.test.mjs         = pass, 5/5
 ```
 
-Failure evidence:
+Closed failure evidence:
 
 ```text
-artifact fixture: valid              expected turn_count 1, actual 2
-artifact fixture: missing-manifest   expected turn_count 1, actual 2
-artifact fixture: replay-mismatch    expected turn_count 1, actual 2
-artifact fixture: redaction-fail     expected turn_count 1, actual 2
-artifact fixture: malformed-evidence expected turn_count 1, actual 2
+removed stale duplicate fixture turn records:
+valid/turn_pass
+missing-manifest/turn_missing_manifest
+replay-mismatch/turn_replay_mismatch
+redaction-fail/turn_redaction_fail
+malformed-evidence/turn_malformed
+
+retained canonical fixture turn records:
+valid/turn-001
+missing-manifest/turn-001
+replay-mismatch/turn-001
+redaction-fail/turn-001
+malformed-evidence/turn-001
 ```
 
-Judgment: syntax, OpenAI-compatible response shape, deterministic usage estimates, redaction classifier alignment, replay comparison, mocked non-streaming CDP, mocked streaming CDP, and unsupported-tool rejection are validated offline. Artifact-quality validation is currently regressed because each fixture case has two turn directories where the test expects one.
+Judgment: syntax, OpenAI-compatible response shape, deterministic usage estimates, redaction classifier alignment, replay comparison, mocked non-streaming CDP, mocked streaming CDP, unsupported-tool rejection, and artifact-quality fixture validation are now validated offline. This closes the highest-impact validation failure that was implementable in this sandbox.
 
 ## Critical Judgment
 
@@ -264,7 +272,7 @@ This repository should be classified as a serious deterministic runtime prototyp
 
 The strongest evidence is structural: frozen-kernel intent, capability decomposition, no third-party Rust dependencies, strict rustflags, explicit replay/verification modules, and runtime archive capture.
 
-The weakest evidence is reproducibility: root Rust checks cannot run here, the configured wrapper is absent, no generated graph exists, no live Ollama path was reproduced, and the nested artifact-quality suite fails all five fixture cases.
+The weakest evidence is still reproducibility: root Rust checks cannot run here, the configured wrapper is absent, no generated graph exists, no live Ollama path was reproduced, and no live CDP path was reproduced. The nested router artifact-quality regression is closed.
 
 ## Risk Register
 
@@ -273,7 +281,7 @@ The weakest evidence is reproducibility: root Rust checks cannot run here, the c
 | Root Rust validation unavailable | High | `cargo` and `rustc` absent in PATH | Provide toolchain or committed validation logs with hashes |
 | Configured wrapper missing | High | wrapper path points to absent `/workspace/.../canon-rustc-v2` | Make wrapper optional for portable validation or include/repoint it |
 | No generated graph evidence | High | no `state/rustc/*/graph.json` found | Regenerate graph and include node/edge/intent telemetry |
-| Artifact-quality regression | High | router artifact-quality test fails `0/5` | Deduplicate fixture turns or revise validator semantics |
+| Artifact-quality regression | Closed | router artifact-quality test passes `5/5` after fixture deduplication | Keep one canonical turn directory per fixture |
 | Runtime archive advisory mismatch | Medium | manifest classifies `DELTA_MANIFEST.md` as `stale_advisory` | Archive downloads tied to the current base/head |
 | Receipt validation too weak | Medium | delta receipt has `validation_status=pass`, `test_count=0`, `commands=[]` | Bind concrete validation commands and outputs to receipts |
 | Live CDP not reproduced | Medium | live CDP test not run | Run with sanitized current-head output artifacts |
@@ -289,10 +297,10 @@ The weakest evidence is reproducibility: root Rust checks cannot run here, the c
 | Codec / TLog | 7.7 | NDJSON codec, writer, durable runtime, command ledger, verify modules | schema compatibility not stress-tested here |
 | Runtime / replay / verification | 7.8 | reducer, transition table, recovery policy, diff, verification proof modules | root tests unavailable |
 | Capability layer | 6.0 | context/eval/judgment/learning/llm/memory/observation/orchestration/planning/policy/tooling/verification modules exist | external loop maturity not proven |
-| Build/test reproducibility | 2.8 | observe harness records unavailable cargo/rustc and missing wrapper | no root Rust validation reproduced |
+| Build/test reproducibility | 3.1 | observe harness records unavailable cargo/rustc and missing wrapper; available Node gates pass | no root Rust validation reproduced |
 | Runtime evidence | 5.7 | 13 archive members, 640 log lines, 6 download records, audit and receipt records | stale advisory manifest and zero-test receipt validation |
-| Nested router-server | 4.6 | syntax and two node test suites pass | artifact-quality suite fails 0/5 |
-| Documentation alignment | 6.8 | detailed `GOAL.md`, implementation plan, scorecard | no root README; claims outrun current proof |
+| Nested router-server | 6.8 | syntax, OpenAI contract, mock CDP, and artifact-quality suites pass | live CDP still not reproduced |
+| Documentation alignment | 6.9 | detailed `GOAL.md`, implementation plan, scorecard | no root README; claims outrun current proof |
 
 ## Missing Validation Signals
 
@@ -310,7 +318,7 @@ missing_external_observation_stream_test = true
 missing_external_api_action_test = true
 missing_policy_learning_replay_trace = true
 missing_semantic_artifact_verification_test = true
-missing_router_artifact_quality_fixtures = true
+missing_router_artifact_quality_fixtures = false
 missing_live_cdp_validation = true
 ```
 
@@ -318,17 +326,16 @@ missing_live_cdp_validation = true
 
 1. Restore a Rust toolchain and either provide the configured wrapper or make wrapper use optional for portable validation.
 2. Run `cargo fmt --check`, `cargo test --all-targets`, and `cargo clippy --all-targets -- -D warnings`.
-3. Fix `ai-chromium/router-server/test/fixtures/artifacts/*` so each fixture has one canonical turn directory or change the validator to reject duplicate turns explicitly.
-4. Regenerate `state/rustc/ai/graph.json` and capture wrapper telemetry.
-5. Bind concrete validation commands and outputs into delta-apply receipts instead of allowing zero-command validation passes.
-6. Capture one current-head trace: observation ingress → command → effect receipt → semantic verification → eval → learning/policy promotion.
-7. Add root `README.md` with restore, build, test, wrapper override, and runtime archive interpretation instructions.
+3. Regenerate `state/rustc/ai/graph.json` and capture wrapper telemetry.
+4. Bind concrete validation commands and outputs into delta-apply receipts instead of allowing zero-command validation passes.
+5. Capture one current-head trace: observation ingress → command → effect receipt → semantic verification → eval → learning/policy promotion.
+6. Add root `README.md` with restore, build, test, wrapper override, and runtime archive interpretation instructions.
 
 ## Verdict
 
 ```text
 classification = serious_deterministic_runtime_prototype
 not_yet = reproducibly_validated_autonomous_agent
-main_blocker = missing_root_rust_validation + missing_wrapper + absent_graph_telemetry + failing_router_artifact_quality_suite
+main_blocker = missing_root_rust_validation + missing_wrapper + absent_graph_telemetry + missing_live_runtime_trace
 score_confidence = medium_static_low_runtime
 ```

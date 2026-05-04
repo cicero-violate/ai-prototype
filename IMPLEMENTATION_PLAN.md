@@ -28,7 +28,7 @@ One-line explanation: target the smallest current mutation that turns a reproduc
 `score.md` is the current evidence authority. It records strong architecture but weak reproducibility:
 
 ```text
-overall_score = 5.92 / 10
+overall_score = 6.31 / 10 after EXECUTE turn 1
 strongest_axis = kernel_boundary_architecture, 8.4 / 10
 root_rust_validation = unavailable here
 rustc_wrapper_path_exists = false
@@ -37,14 +37,23 @@ runtime_archive = advisory, stale base mismatch
 router_syntax = pass
 router_openai_contract = pass, 7/7
 router_mock_cdp = pass, 3/3
-router_artifact_quality = fail, 0/5
+router_artifact_quality = pass, 5/5 after EXECUTE turn 1
 ```
 
-Root Rust validation would be higher impact, but it is not implementable in this environment because `cargo`/`rustc` and the configured workspace wrapper are unavailable. The highest implementable score lift is the nested router artifact-quality gate because Node is available, the failure is reproduced, and the cause is local fixture duplication rather than missing external infrastructure.
+Root Rust validation would be higher impact, but it is not implementable in this environment because `cargo`/`rustc` and the configured workspace wrapper are unavailable. The highest implementable score lift was the nested router artifact-quality gate because Node is available, the failure was reproduced, and the cause was local fixture duplication rather than missing external infrastructure.
 
 ## Highest-Impact Target For EXECUTE
 
 Close `ai-chromium/router-server/test/artifact-quality.test.mjs` from `0/5 fail` to `5/5 pass`.
+
+Status after EXECUTE turn 1:
+
+```text
+closed = true
+artifact_quality = pass, 5/5
+implementation = removed stale legacy turn_* fixture records
+source_simplification = shortened validate-turn-artifacts helper flow without weakening checks
+```
 
 Current reproduced failure:
 
@@ -126,6 +135,15 @@ K/C/V: unchanged; frozen-kernel architecture and root runtime claims remain stat
 ```
 
 This plan does not claim root Rust validation, live Ollama validation, graph regeneration, live CDP validation, or policy-learning replay validation.
+
+Actual movement after EXECUTE turn 1:
+
+```text
+N: 4.6 -> 6.8
+B: 2.8 -> 3.1
+D: 6.8 -> 6.9
+S: 5.92 -> 6.31
+```
 
 ## Risks And Constraints
 

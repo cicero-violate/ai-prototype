@@ -1,6 +1,0 @@
-{
-  "schema": "ai_chromium.evaluation.v1",
-  "turn_id": "turn_replay_mismatch",
-  "replay_match": false,
-  "redaction_pass": true
-}

@@ -6,6 +6,8 @@ import process from 'node:process';
 const REQUIRED_JSON = ['manifest.json', 'replay.json', 'evaluation.json'];
 const TURN_MARKERS = new Set([...REQUIRED_JSON, 'response.json', 'request.redacted.json']);
 
+const isDir = (filePath) => fs.existsSync(filePath) && fs.statSync(filePath).isDirectory();
+
 function readJson(filePath) {
   try {
     return JSON.parse(fs.readFileSync(filePath, 'utf8'));
@@ -26,36 +28,32 @@ function validateNdjson(filePath) {
 }
 
 function looksLikeTurnDirectory(dirPath) {
-  if (!fs.statSync(dirPath).isDirectory()) return false;
-  return fs.readdirSync(dirPath).some((name) => TURN_MARKERS.has(name));
+  return isDir(dirPath) && fs.readdirSync(dirPath).some((name) => TURN_MARKERS.has(name));
 }
 
 function resolveTurnRoot(inputPath) {
   const directTurns = path.join(inputPath, 'artifacts', 'turns');
-  if (fs.existsSync(directTurns) && fs.statSync(directTurns).isDirectory()) return directTurns;
-  return inputPath;
+  return isDir(directTurns) ? directTurns : inputPath;
 }
 
 function findTurnDirectories(rootPath) {
   const turnRoot = resolveTurnRoot(rootPath);
   return fs.readdirSync(turnRoot)
     .map((name) => path.join(turnRoot, name))
-    .filter((entry) => fs.statSync(entry).isDirectory())
     .filter(looksLikeTurnDirectory)
     .sort();
 }
 
 export function validateTurnDirectory(turnDir) {
   const errors = [];
-  for (const fileName of REQUIRED_JSON) {
-    const filePath = path.join(turnDir, fileName);
-    if (!fs.existsSync(filePath)) errors.push(`${turnDir}: missing ${fileName}`);
-  }
-
   const docs = {};
+
   for (const fileName of REQUIRED_JSON) {
     const filePath = path.join(turnDir, fileName);
-    if (!fs.existsSync(filePath)) continue;
+    if (!fs.existsSync(filePath)) {
+      errors.push(`${turnDir}: missing ${fileName}`);
+      continue;
+    }
     try {
       docs[fileName] = readJson(filePath);
     } catch (error) {
@@ -63,32 +61,28 @@ export function validateTurnDirectory(turnDir) {
     }
   }
 
-  for (const fileName of fs.readdirSync(turnDir)) {
-    if (!fileName.endsWith('.ndjson')) continue;
+  for (const fileName of fs.readdirSync(turnDir).filter((name) => name.endsWith('.ndjson'))) {
     try { validateNdjson(path.join(turnDir, fileName)); } catch (error) { errors.push(error.message); }
   }
 
   const manifest = docs['manifest.json'];
-  const replay = docs['replay.json'];
-  const evaluation = docs['evaluation.json'];
+
+  const checks = [
+    [docs['replay.json'], 'replay.replay_match must be true', (doc) => doc.replay_match === true],
+    [docs['evaluation.json'], 'evaluation.replay_match must be true', (doc) => doc.replay_match === true],
+    [docs['evaluation.json'], 'evaluation.redaction_pass must be true', (doc) => doc.redaction_pass === true],
+  ];
 
   if (manifest && typeof manifest.turn_id !== 'string') {
     errors.push(`${turnDir}: manifest.turn_id must be a string`);
   }
-  if (replay && replay.replay_match !== true) {
-    errors.push(`${turnDir}: replay.replay_match must be true`);
+  for (const [doc, message, predicate] of checks) {
+    if (doc && !predicate(doc)) errors.push(`${turnDir}: ${message}`);
   }
-  if (evaluation && evaluation.replay_match !== true) {
-    errors.push(`${turnDir}: evaluation.replay_match must be true`);
-  }
-  if (evaluation && evaluation.redaction_pass !== true) {
-    errors.push(`${turnDir}: evaluation.redaction_pass must be true`);
-  }
-  if (manifest?.turn_id && replay?.turn_id && manifest.turn_id !== replay.turn_id) {
-    errors.push(`${turnDir}: replay.turn_id does not match manifest.turn_id`);
-  }
-  if (manifest?.turn_id && evaluation?.turn_id && manifest.turn_id !== evaluation.turn_id) {
-    errors.push(`${turnDir}: evaluation.turn_id does not match manifest.turn_id`);
+  for (const [doc, label] of [[docs['replay.json'], 'replay'], [docs['evaluation.json'], 'evaluation']]) {
+    if (manifest?.turn_id && doc?.turn_id && manifest.turn_id !== doc.turn_id) {
+      errors.push(`${turnDir}: ${label}.turn_id does not match manifest.turn_id`);
+    }
   }
 
   return { turnDir, pass: errors.length === 0, errors };
