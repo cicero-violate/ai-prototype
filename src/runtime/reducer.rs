@@ -302,14 +302,15 @@ fn persist(input: State) -> Outcome {
         };
     }
 
-    apply_repair(&mut s, action);
+    let Some((gate, evidence)) = action.repaired_gate().zip(action.produced_evidence()) else {
+        return halt_recovery(
+            &mut s,
+            FailureClass::RecoveryExhausted,
+            Cause::RecoveryLimit,
+        );
+    };
 
-    let gate = action
-        .repaired_gate()
-        .expect("non-escalation repair action must target a gate");
-    let evidence = action
-        .produced_evidence()
-        .expect("non-escalation repair action must produce evidence");
+    apply_repair(&mut s, action);
 
     s.gates.set_pass(gate, evidence);
     s.phase = action.target();

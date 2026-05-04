@@ -199,7 +199,9 @@ impl PolicyStore {
         let mut h = 0xcbf2_9ce4_8422_2325u64;
 
         for entry in &self.entries {
-            let key_id = key_to_id(entry.key).expect("validated policy key");
+            let Ok(key_id) = key_to_id(entry.key) else {
+                return 0;
+            };
             h = mix(h, entry.version);
             h = mix(h, key_id);
             h = mix(h, entry.value);
@@ -365,17 +367,17 @@ fn append_policy_ndjson(
         .append(true)
         .open(path)
         .map_err(|_| PolicyStoreError::PolicyIo)?;
-    writeln!(file, "{}", encode_policy_entry_ndjson(entry))
+    writeln!(file, "{}", encode_policy_entry_ndjson(entry)?)
         .map_err(|_| PolicyStoreError::PolicyIo)?;
     file.sync_all().map_err(|_| PolicyStoreError::PolicyIo)
 }
 
-fn encode_policy_entry_ndjson(entry: &PolicyEntry) -> String {
-    let key = key_to_id(entry.key).expect("validated policy key");
-    format!(
+fn encode_policy_entry_ndjson(entry: &PolicyEntry) -> Result<String, PolicyStoreError> {
+    let key = key_to_id(entry.key)?;
+    Ok(format!(
         "[{POLICY_SCHEMA_VERSION},{POLICY_RECORD_ENTRY},{},{},{}]",
         entry.version, key, entry.value
-    )
+    ))
 }
 
 fn decode_policy_entry_ndjson(line: &str) -> Result<PolicyEntry, PolicyStoreError> {

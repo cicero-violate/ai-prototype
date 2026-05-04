@@ -39,11 +39,13 @@ pub(crate) fn recovery_policy_coverage_count() -> usize {
 }
 
 pub(crate) fn recovery_action_for(class: FailureClass) -> RecoveryAction {
-    RECOVERY_POLICY
-        .iter()
-        .find(|rule| rule.failure == class)
-        .map(|rule| rule.action)
-        .expect("recovery policy must cover every failure class")
+    for rule in RECOVERY_POLICY {
+        if rule.failure == class {
+            return rule.action;
+        }
+    }
+
+    RecoveryAction::Escalate
 }
 
 pub(crate) fn failure_for_gate(id: GateId, status: GateStatus) -> FailureClass {

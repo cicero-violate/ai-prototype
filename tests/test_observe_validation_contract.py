@@ -41,6 +41,12 @@ class ObserveValidationContractTest(unittest.TestCase):
         ):
             self.assertIn(flag, self.script)
 
+    def test_panic_surface_validation_is_required(self) -> None:
+        self.assertIn("validate_rust_panic_surface.py", self.script)
+        self.assertIn("panic_surface_validation", self.script)
+        self.assertIn("missing_panic_surface_validation", self.script)
+        self.assertIn("panic_surface_production_unwrap_count", self.script)
+
 
 if __name__ == "__main__":
     unittest.main()

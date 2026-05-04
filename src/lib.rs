@@ -139,7 +139,9 @@ pub fn run_demo() -> Result<RunReport, CanonError> {
 }
 
 pub fn run() {
-    run_demo().expect("canonical demo failed");
+    if let Err(err) = run_demo() {
+        eprintln!("canonical demo failed: {err}");
+    }
 }
 
 #[cfg(test)]

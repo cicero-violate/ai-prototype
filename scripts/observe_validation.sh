@@ -18,6 +18,7 @@ from typing import Any
 ROOT = Path.cwd()
 REPORT = Path(os.environ.get("CANON_OBSERVE_REPORT", "target/observe/validation-report.ndjson"))
 OUT = REPORT.parent / "command-output"
+PANIC_SURFACE_REPORT = REPORT.parent / "panic-surface.json"
 REPORT.parent.mkdir(parents=True, exist_ok=True)
 OUT.mkdir(parents=True, exist_ok=True)
 REPORT.write_text("", encoding="utf-8")
@@ -234,6 +235,29 @@ def repo_metrics() -> dict[str, Any]:
     }
 
 
+def panic_surface_metrics() -> dict[str, Any]:
+    if not PANIC_SURFACE_REPORT.exists():
+        return {"panic_surface_report_present": False}
+    try:
+        data = json.loads(PANIC_SURFACE_REPORT.read_text(encoding="utf-8"))
+    except Exception as exc:
+        return {"panic_surface_report_present": True, "panic_surface_report_status": "fail", "panic_surface_report_error": str(exc)}
+    buckets = data.get("buckets", {}) if isinstance(data, dict) else {}
+    production = buckets.get("production", {}) if isinstance(buckets, dict) else {}
+    test = buckets.get("test", {}) if isinstance(buckets, dict) else {}
+    example = buckets.get("example", {}) if isinstance(buckets, dict) else {}
+    return {
+        "panic_surface_report_present": True,
+        "panic_surface_report_status": "pass",
+        "panic_surface_production_unwrap_count": int(production.get("unwrap", 0) or 0),
+        "panic_surface_production_expect_count": int(production.get("expect", 0) or 0),
+        "panic_surface_production_panic_count": int(production.get("panic", 0) or 0),
+        "panic_surface_test_total": int(data.get("test_total", 0) or 0),
+        "panic_surface_example_total": int(data.get("example_total", 0) or 0),
+        "panic_surface_finding_count": int(data.get("finding_count", 0) or 0),
+    }
+
+
 def delta_metrics() -> dict[str, Any]:
     base = os.environ.get("CANON_DELTA_BASE", "").strip()
     if not base:
@@ -325,6 +349,7 @@ commands = [
     run("git_diff_check", ["git", "diff", "--check"], timeout=30),
     run("git_delta_diff_check", delta_diff_command(), timeout=30),
     run("python_unit_tests", ["python3", "-m", "unittest", "discover", "-s", "tests", "-p", "test_*.py"], timeout=90),
+    run("panic_surface_validation", ["python3", "scripts/validate_rust_panic_surface.py", "--root", ".", "--fail-production-unwrap", "--report", str(PANIC_SURFACE_REPORT)], timeout=90),
     run("router_offline_tests", ["bash", "run_tests.sh"], cwd=router_dir(), timeout=180),
     run("cargo_fmt_check", ["cargo", "fmt", "--check"], timeout=180, env=root_rust_env),
     run("cargo_test_all_targets", ["cargo", "test", "--all-targets"], timeout=600, env=root_rust_env),
@@ -332,7 +357,9 @@ commands = [
     wrapper_graph_command(w, toolchain),
 ]
 g = graph()
+p = panic_surface_metrics()
 emit(event="graph_metrics", **g)
+emit(event="panic_surface_metrics", **p)
 
 ollama_env = os.environ.get("CANON_OLLAMA_BASE_URL") and os.environ.get("CANON_OLLAMA_MODEL")
 if ollama_env:
@@ -360,6 +387,7 @@ missing = {
     "missing_generated_graph_json": not bool(g.get("state_graph_present")),
     "missing_rustc_wrapper_telemetry": next(c for c in commands if c["name"] == "wrapper_graph_validation")["status"] != "pass" or not bool(g.get("state_graph_present")),
     "missing_runtime_download_history": download_total == 0,
+    "missing_panic_surface_validation": next(c for c in commands if c["name"] == "panic_surface_validation")["status"] != "pass",
     "missing_conversation_snapshot": int(r.get("runtime_archive_conversation_snapshots", 0) or 0) == 0,
     "missing_artifact_apply_worktree": not (ROOT / ".repo-agent-runtime" / "apply-worktrees").exists(),
     "missing_external_observation_stream_test": True,
@@ -368,6 +396,7 @@ missing = {
     "missing_policy_learning_replay_trace": True,
 }
 required = {"git_diff_check", "git_delta_diff_check", "python_unit_tests", "router_offline_tests"}
+required.add("panic_surface_validation")
 failed_required = [c["name"] for c in commands if c["name"] in required and c["status"] != "pass"]
 status = "fail" if failed_required else ("partial" if any(missing.values()) else "pass")
 python_test = next(c for c in commands if c["name"] == "python_unit_tests")
@@ -411,5 +440,10 @@ emit(event="validation_summary", validation_status=status, git_head=head,
      rust_test_attr_count=repo["rust_test_attr_count"], rust_cfg_test_count=repo["rust_cfg_test_count"],
      unwrap_call_count_src_examples=repo["unwrap_call_count_src_examples"],
      expect_call_count_src_examples=repo["expect_call_count_src_examples"],
+     panic_surface_production_unwrap_count=p.get("panic_surface_production_unwrap_count"),
+     panic_surface_production_expect_count=p.get("panic_surface_production_expect_count"),
+     panic_surface_production_panic_count=p.get("panic_surface_production_panic_count"),
+     panic_surface_test_total=p.get("panic_surface_test_total"),
+     panic_surface_example_total=p.get("panic_surface_example_total"),
      missing_signal_flags=missing, missing_signal_count=sum(1 for v in missing.values() if v))
 PY
