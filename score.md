@@ -248,30 +248,30 @@ provide root Rust unit-test evidence.
 
 ## Risk Register
 
-| Risk | Severity | Evidence | Required closure |
-|---|---:|---|---|
-| Root Rust validation unavailable | High | `cargo` and `rustc` absent from PATH and sandbox path | Provide toolchain and rerun fmt/test/clippy |
-| Configured wrapper missing | High | `.cargo/config.toml` points to absent `/workspace/.../canon-rustc-v2`; override path implemented but unused | Include wrapper or run with cargo available |
-| Graph telemetry absent | High | no `state/rustc/*/graph.json` | Regenerate graph and record node/edge/intent metrics |
-| Current-head Ollama path unproven | Medium | env missing; example skipped | Run `examples/ollama_judgment.rs` with local endpoint |
-| Policy learning trace missing | High | no current-head observation→eval→learning replay | Add one integration trace |
-| Semantic artifact verification missing | High | no external artifact proof trace | Bind artifact checks to receipts |
-| Stale download artifact hazard | Medium | runtime manifest records `base_commit_mismatch` stale advisory | Keep base/head verification mandatory |
-| Production unwrap surface unclassified | Medium | 316 unwrap + 9 expect calls | Classify test-only vs runtime paths |
-| Runtime archive lacks conversation snapshots | Medium | `.conversation.json` count is 0 | Include redacted conversation snapshots or explain omission |
+| Risk                                         | Severity | Evidence                                                                                                    | Required closure                                            |
+|----------------------------------------------+----------+-------------------------------------------------------------------------------------------------------------+-------------------------------------------------------------|
+| Root Rust validation unavailable             | High     | `cargo` and `rustc` absent from PATH and sandbox path                                                       | Provide toolchain and rerun fmt/test/clippy                 |
+| Configured wrapper missing                   | High     | `.cargo/config.toml` points to absent `/workspace/.../canon-rustc-v2`; override path implemented but unused | Include wrapper or run with cargo available                 |
+| Graph telemetry absent                       | High     | no `state/rustc/*/graph.json`                                                                               | Regenerate graph and record node/edge/intent metrics        |
+| Current-head Ollama path unproven            | Medium   | env missing; example skipped                                                                                | Run `examples/ollama_judgment.rs` with local endpoint       |
+| Policy learning trace missing                | High     | no current-head observation→eval→learning replay                                                            | Add one integration trace                                   |
+| Semantic artifact verification missing       | High     | no external artifact proof trace                                                                            | Bind artifact checks to receipts                            |
+| Stale download artifact hazard               | Medium   | runtime manifest records `base_commit_mismatch` stale advisory                                              | Keep base/head verification mandatory                       |
+| Production unwrap surface unclassified       | Medium   | 316 unwrap + 9 expect calls                                                                                 | Classify test-only vs runtime paths                         |
+| Runtime archive lacks conversation snapshots | Medium   | `.conversation.json` count is 0                                                                             | Include redacted conversation snapshots or explain omission |
 
 ## Module Scorecard
 
-| Area | Score | Evidence | Constraint |
-|---|---:|---|---|
-| Kernel | 8.4 | frozen-layer design, typed gates, `#![forbid(unsafe_code)]` | no formal proof artifact |
-| Codec / TLog | 7.8 | NDJSON codec and durable replay APIs present | root tests unavailable |
-| Replay / verification | 7.6 | transition/proof APIs and runtime receipts present | current-head Rust replay not reproduced |
-| Capability layer | 6.2 | capability modules span context/eval/judgment/learning/llm/memory/observation/orchestration/planning/policy/tooling/verification | full objective loop not proven |
-| Build/test reproducibility | 4.2 | git diff check and router offline tests pass; portable cargo detection and wrapper override implemented | root Rust validation unavailable |
-| Runtime archive evidence | 7.5 | 31 members, 3342 log rows, 30 download records, 5 verified delta receipts | no conversation snapshots; root crate unproven |
-| Nested router-server | 7.4 | 51 syntax files and 20 offline tests pass; runner exits deterministically | live CDP not rerun at current head |
-| Documentation / delta discipline | 7.1 | GOAL, README, implementation plan, scorecard, manifest discipline, stale advisory detection, validation receipt fields expanded | claims still exceed reproduced proof |
+| Area                             | Score | Evidence                                                                                                                         | Constraint                                     |
+|----------------------------------+-------+----------------------------------------------------------------------------------------------------------------------------------+------------------------------------------------|
+| Kernel                           |   8.4 | frozen-layer design, typed gates, `#![forbid(unsafe_code)]`                                                                      | no formal proof artifact                       |
+| Codec / TLog                     |   7.8 | NDJSON codec and durable replay APIs present                                                                                     | root tests unavailable                         |
+| Replay / verification            |   7.6 | transition/proof APIs and runtime receipts present                                                                               | current-head Rust replay not reproduced        |
+| Capability layer                 |   6.2 | capability modules span context/eval/judgment/learning/llm/memory/observation/orchestration/planning/policy/tooling/verification | full objective loop not proven                 |
+| Build/test reproducibility       |   4.2 | git diff check and router offline tests pass; portable cargo detection and wrapper override implemented                          | root Rust validation unavailable               |
+| Runtime archive evidence         |   7.5 | 31 members, 3342 log rows, 30 download records, 5 verified delta receipts                                                        | no conversation snapshots; root crate unproven |
+| Nested router-server             |   7.4 | 51 syntax files and 20 offline tests pass; runner exits deterministically                                                        | live CDP not rerun at current head             |
+| Documentation / delta discipline |   7.1 | GOAL, README, implementation plan, scorecard, manifest discipline, stale advisory detection, validation receipt fields expanded  | claims still exceed reproduced proof           |
 
 ## Missing Validation Signals
 
