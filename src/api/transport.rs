@@ -3,7 +3,8 @@
 //! This module defines the request-frame contract that an HTTP/gRPC adapter can
 //! validate before command envelopes are allowed to mutate runtime state.
 
-use std::fs::{File, OpenOptions};
+use std::collections::BTreeSet;
+use std::fs::{self, File, OpenOptions};
 use std::io::{BufRead, BufReader, Write};
 use std::path::Path;
 
@@ -134,7 +135,9 @@ impl ApiTransportReceipt {
     }
 
     pub fn matches_event(&self, event: &ControlEvent) -> bool {
-        event.api_command_id == self.command_id && event.api_command_hash == self.command_hash
+        event.self_hash == self.event_hash
+            && event.api_command_id == self.command_id
+            && event.api_command_hash == self.command_hash
     }
 }
 
@@ -438,14 +441,42 @@ pub fn append_api_transport_receipt_ndjson(
         return Err(CanonError::InvalidTlogRecord);
     }
     let path = path.as_ref();
-    let mut file = OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open(path)
-        .map_err(|_| CanonError::TlogIo)?;
-    writeln!(file, "{}", encode_api_transport_receipt_ndjson(receipt))
-        .map_err(|_| CanonError::TlogIo)?;
-    file.sync_all().map_err(|_| CanonError::TlogIo)
+    ensure_parent_dir(path)?;
+
+    {
+        let mut file = OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(path)
+            .map_err(|_| CanonError::TlogIo)?;
+        writeln!(file, "{}", encode_api_transport_receipt_ndjson(receipt))
+            .map_err(|_| CanonError::TlogIo)?;
+        file.sync_all().map_err(|_| CanonError::TlogIo)?;
+    }
+
+    sync_parent_dir(path)
+}
+
+fn ensure_parent_dir(path: &Path) -> Result<(), CanonError> {
+    let Some(parent) = path.parent() else {
+        return Ok(());
+    };
+    if parent.as_os_str().is_empty() {
+        return Ok(());
+    }
+    fs::create_dir_all(parent).map_err(|_| CanonError::TlogIo)
+}
+
+fn sync_parent_dir(path: &Path) -> Result<(), CanonError> {
+    let Some(parent) = path.parent() else {
+        return Ok(());
+    };
+    if parent.as_os_str().is_empty() {
+        return Ok(());
+    }
+    File::open(parent)
+        .and_then(|dir| dir.sync_all())
+        .map_err(|_| CanonError::TlogIo)
 }
 
 pub fn load_api_transport_receipts_ndjson(
@@ -478,21 +509,16 @@ pub fn verify_api_transport_receipts(
     tlog: &TLog,
     receipts: &[ApiTransportReceipt],
 ) -> Result<(), CanonError> {
-    let mut seen_request_ids = Vec::new();
+    let mut seen_request_ids = BTreeSet::new();
     for receipt in receipts {
         if !receipt.is_contract_valid()
-            || request_id_seen(&seen_request_ids, receipt.request_id)
+            || !seen_request_ids.insert(receipt.request_id)
         {
             return Err(CanonError::InvalidApiCommand);
         }
         event_for_transport_receipt(tlog, *receipt)?;
-        seen_request_ids.push(receipt.request_id);
     }
     Ok(())
-}
-
-fn request_id_seen(seen_request_ids: &[u64], request_id: u64) -> bool {
-    seen_request_ids.contains(&request_id)
 }
 
 fn transport_frame_hash(

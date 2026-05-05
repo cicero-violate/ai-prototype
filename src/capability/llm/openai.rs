@@ -4,6 +4,7 @@
 //! represented as OpenAI-compatible chat history for prompt simulation; the
 //! router still does not execute tools natively.
 
+use std::collections::BTreeSet;
 use std::env;
 use std::fs::{self, File, OpenOptions};
 use std::fmt;
@@ -242,7 +243,7 @@ impl OpenAiRetryBudgetDecision {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct OpenAiRetryBudgetLedger {
     policy: OpenAiRetryBudgetPolicy,
-    seen_request_identity_hashes: Vec<u64>,
+    seen_request_identity_hashes: BTreeSet<u64>,
     attempts_used: u32,
 }
 
@@ -250,7 +251,7 @@ impl OpenAiRetryBudgetLedger {
     pub fn new(policy: OpenAiRetryBudgetPolicy) -> Self {
         Self {
             policy,
-            seen_request_identity_hashes: Vec::new(),
+            seen_request_identity_hashes: BTreeSet::new(),
             attempts_used: 0,
         }
     }
@@ -268,9 +269,7 @@ impl OpenAiRetryBudgetLedger {
             model_id,
             request_hash,
         );
-        let duplicate_request = self
-            .seen_request_identity_hashes
-            .contains(&request_identity_hash);
+        let duplicate_request = self.seen_request_identity_hashes.contains(&request_identity_hash);
         let decision = self
             .policy
             .decision_for_attempt(
@@ -288,7 +287,7 @@ impl OpenAiRetryBudgetLedger {
         if !decision.allowed {
             return Err(OpenAiError::BudgetExhausted);
         }
-        self.seen_request_identity_hashes.push(request_identity_hash);
+        self.seen_request_identity_hashes.insert(request_identity_hash);
         self.attempts_used = self.attempts_used.saturating_add(1);
         Ok(decision)
     }

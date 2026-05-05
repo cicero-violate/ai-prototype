@@ -14,6 +14,13 @@ fn transport_receipt_path(name: &str) -> std::path::PathBuf {
     ))
 }
 
+fn nested_transport_receipt_path(name: &str) -> std::path::PathBuf {
+    std::env::temp_dir()
+        .join(format!("ai-api-transport-{name}-{}", std::process::id()))
+        .join("receipts")
+        .join("transport.ndjson")
+}
+
 fn observation_frame() -> ApiTransportFrame {
     let record = ObservationRecord::new(1, 1, 0xabc, 1);
     let envelope = CommandEnvelope::new(11, Command::SubmitEvidence(record.submission()));
@@ -227,6 +234,23 @@ fn transport_receipt_persists_and_verifies_against_tlog() {
 }
 
 #[test]
+fn transport_receipt_append_creates_missing_parent_directory() {
+    let receipt = ApiTransportReceipt::new(101, 202, 303, 404, 505);
+    let path = nested_transport_receipt_path("nested-parent");
+    let root = path.parent().and_then(|p| p.parent()).map(std::path::Path::to_path_buf);
+    if let Some(root) = &root {
+        let _ = std::fs::remove_dir_all(root);
+    }
+
+    assert!(append_api_transport_receipt_ndjson(&path, receipt).is_ok());
+    assert_eq!(load_api_transport_receipts_ndjson(&path), Ok(vec![receipt]));
+
+    if let Some(root) = root {
+        let _ = std::fs::remove_dir_all(root);
+    }
+}
+
+#[test]
 fn transport_ledger_loads_persisted_receipts_for_process_restart_replay() {
     let cfg = RuntimeConfig::default();
     let mut state = State::default();
@@ -327,6 +351,40 @@ fn transport_receipt_verifier_rejects_tampered_command_hash() {
         receipt.command_id,
         receipt.command_hash ^ 1,
         receipt.event_hash,
+    );
+
+    assert_eq!(
+        verify_api_transport_receipts(&tlog, &[tampered]),
+        Err(CanonError::InvalidReplay)
+    );
+}
+
+#[test]
+fn transport_receipt_verifier_rejects_tampered_event_hash() {
+    let cfg = RuntimeConfig::default();
+    let mut state = State::default();
+    let mut tlog = TLog::default();
+    let mut command_ledger = CommandLedger::default();
+    let mut transport_ledger = ApiTransportLedger::default();
+    let frame = observation_frame();
+    assert!(tick(&mut state, &mut tlog, cfg).is_ok());
+    assert!(handle_transport_frame_once(
+        &mut state,
+        &mut tlog,
+        cfg,
+        &mut command_ledger,
+        &mut transport_ledger,
+        frame,
+    )
+    .is_ok());
+
+    let receipt = transport_ledger.receipts()[0];
+    let tampered = ApiTransportReceipt::new(
+        receipt.request_id,
+        receipt.payload_hash,
+        receipt.command_id,
+        receipt.command_hash,
+        receipt.event_hash ^ 1,
     );
 
     assert_eq!(
