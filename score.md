@@ -133,52 +133,52 @@ Critical reading: runtime state is rich enough to support continuity review, but
 
 ## Validation Evidence
 
-| Command | Result | Evidence |
-|---|---:|---|
-| `python3 /mnt/data/bootstrap_rustc_session.py` | pass | rustc 1.75.0, cargo 1.75.0, offline probe pass, internal registry dependency probe pass |
-| `cargo test --all-targets -- --test-threads=1` | pass | 103 Rust tests passed; binary and examples compiled |
-| `python3 -m unittest tests.test_observe_validation_contract -v` | pass | 12 contract tests passed |
-| `python3 -m unittest tests.test_policy_learning_trace_contract -v` | pass | 2 contract tests passed |
-| `python3 -m unittest tests.test_write_delta_manifest -v` | pass | 10 contract tests passed |
-| `python3 scripts/validate_policy_learning_trace.py --root . --report target/observe/policy-learning-trace.json` | pass | 4 check groups passed; missing count 0 |
-| `python3 scripts/validate_rust_panic_surface.py --root . --fail-production-unwrap --report target/observe/panic-surface.json` | pass | production total 0; test total 319; example total 1 |
-| `bash -n scripts/observe_validation.sh` | pass | shell syntax valid |
-| `python3 -m py_compile scripts/write_delta_manifest.py scripts/validate_policy_learning_trace.py scripts/validate_rust_panic_surface.py` | pass | validation scripts compile |
-| `git diff --check` | pass | whitespace check passed |
+| Command                                                                                                                                  | Result | Evidence                                                                                |
+|------------------------------------------------------------------------------------------------------------------------------------------+--------+-----------------------------------------------------------------------------------------|
+| `python3 /mnt/data/bootstrap_rustc_session.py`                                                                                           | pass   | rustc 1.75.0, cargo 1.75.0, offline probe pass, internal registry dependency probe pass |
+| `cargo test --all-targets -- --test-threads=1`                                                                                           | pass   | 103 Rust tests passed; binary and examples compiled                                     |
+| `python3 -m unittest tests.test_observe_validation_contract -v`                                                                          | pass   | 12 contract tests passed                                                                |
+| `python3 -m unittest tests.test_policy_learning_trace_contract -v`                                                                       | pass   | 2 contract tests passed                                                                 |
+| `python3 -m unittest tests.test_write_delta_manifest -v`                                                                                 | pass   | 10 contract tests passed                                                                |
+| `python3 scripts/validate_policy_learning_trace.py --root . --report target/observe/policy-learning-trace.json`                          | pass   | 4 check groups passed; missing count 0                                                  |
+| `python3 scripts/validate_rust_panic_surface.py --root . --fail-production-unwrap --report target/observe/panic-surface.json`            | pass   | production total 0; test total 319; example total 1                                     |
+| `bash -n scripts/observe_validation.sh`                                                                                                  | pass   | shell syntax valid                                                                      |
+| `python3 -m py_compile scripts/write_delta_manifest.py scripts/validate_policy_learning_trace.py scripts/validate_rust_panic_surface.py` | pass   | validation scripts compile                                                              |
+| `git diff --check`                                                                                                                       | pass   | whitespace check passed                                                                 |
 
 Note: `cargo test --all-targets` without serialized test execution hit the tool timeout during display/collection, so the successful validation used `-- --test-threads=1` after the build was warm.
 
 ## Dimension Scores
 
-| Var | Score | Evidence-backed rationale |
-|---|---:|---|
-| I | 7.4 | Evidence handoff now preserves more operational context for future agents and reviewers. |
-| E | 7.2 | Validation remains executable with a deterministic bootstrap toolchain; tests are grouped cleanly. |
-| C | 7.6 | Rust tests, Python contract tests, policy trace validation, panic-surface validation, py_compile, and diff checks pass. |
-| A | 8.5 | Change directly supports `GOAL.md` auditability and replayable evidence lineage. |
-| R | 7.6 | Manifest-level contract test reduces risk of silent evidence loss at handoff. |
-| P | 6.7 | Runtime archive contains performance signals; no fresh benchmark or full observe run is proven here. |
-| S | 6.6 | Token-to-file evidence survives handoff and scales better than opaque booleans. |
-| D | 8.4 | Delta receipts and manifests remain deterministic functions of validation report and `B..H`. |
-| T | 8.9 | Final artifact transparency improves materially by including exact evidence files and tokens. |
-| Co | 7.8 | Contributors get a precise regression test for final-manifest evidence preservation. |
-| Em | 7.7 | Operators can inspect external capability evidence from the manifest without reopening observe logs. |
-| B | 7.4 | Receiver value improves because handoff artifacts now carry stronger proof context. |
-| L | 6.7 | Preserved evidence is more useful as learning data for future policy and score updates. |
-| Si | 6.3 | The manifest gained fields; complexity rose slightly but stayed localized. |
-| F | 7.7 | Handoff schema is more future-proof because evidence mappings are explicit. |
+| Var | Score | Evidence-backed rationale                                                                                               |
+|-----+-------+-------------------------------------------------------------------------------------------------------------------------|
+| I   |   7.4 | Evidence handoff now preserves more operational context for future agents and reviewers.                                |
+| E   |   7.2 | Validation remains executable with a deterministic bootstrap toolchain; tests are grouped cleanly.                      |
+| C   |   7.6 | Rust tests, Python contract tests, policy trace validation, panic-surface validation, py_compile, and diff checks pass. |
+| A   |   8.5 | Change directly supports `GOAL.md` auditability and replayable evidence lineage.                                        |
+| R   |   7.6 | Manifest-level contract test reduces risk of silent evidence loss at handoff.                                           |
+| P   |   6.7 | Runtime archive contains performance signals; no fresh benchmark or full observe run is proven here.                    |
+| S   |   6.6 | Token-to-file evidence survives handoff and scales better than opaque booleans.                                         |
+| D   |   8.4 | Delta receipts and manifests remain deterministic functions of validation report and `B..H`.                            |
+| T   |   8.9 | Final artifact transparency improves materially by including exact evidence files and tokens.                           |
+| Co  |   7.8 | Contributors get a precise regression test for final-manifest evidence preservation.                                    |
+| Em  |   7.7 | Operators can inspect external capability evidence from the manifest without reopening observe logs.                    |
+| B   |   7.4 | Receiver value improves because handoff artifacts now carry stronger proof context.                                     |
+| L   |   6.7 | Preserved evidence is more useful as learning data for future policy and score updates.                                 |
+| Si  |   6.3 | The manifest gained fields; complexity rose slightly but stayed localized.                                              |
+| F   |   7.7 | Handoff schema is more future-proof because evidence mappings are explicit.                                             |
 
 ## Risk Register
 
-| Risk | Severity | Evidence | Closure requirement |
-|---|---:|---|---|
-| Full observe script completion still unproven here | Medium | only syntax and subvalidations were run this phase | Split observe validation into bounded subcommands or reduce nested subprocess cost. |
-| `cargo fmt` unavailable | Medium | bootstrap Cargo lacks `cargo-fmt` / `rustfmt` | Add rustfmt component to bootstrap or validate formatting with a complete toolchain. |
-| `cargo clippy` unavailable | Medium | bootstrap Cargo lacks clippy | Add clippy component or run with a complete toolchain. |
-| Wrapper graph telemetry absent | High | no generated `state/rustc/*/graph.json` in this phase | Run wrapper graph capture with `CANON_RUSTC_WRAPPER`. |
-| Live Ollama proof absent at current head | High | local Ollama example not executed here | Run `cargo run --example ollama_judgment` with configured local Ollama. |
-| Production API deployment unproven | High | no live HTTP/gRPC deployment validation | Add executable API deployment and request/response tests. |
-| Archived patch debt | Medium | four archived TODO markers | Confirm obsolete patch status or promote unresolved protocol work to active plan. |
+| Risk                                               | Severity | Evidence                                              | Closure requirement                                                                  |
+|----------------------------------------------------+----------+-------------------------------------------------------+--------------------------------------------------------------------------------------|
+| Full observe script completion still unproven here | Medium   | only syntax and subvalidations were run this phase    | Split observe validation into bounded subcommands or reduce nested subprocess cost.  |
+| `cargo fmt` unavailable                            | Medium   | bootstrap Cargo lacks `cargo-fmt` / `rustfmt`         | Add rustfmt component to bootstrap or validate formatting with a complete toolchain. |
+| `cargo clippy` unavailable                         | Medium   | bootstrap Cargo lacks clippy                          | Add clippy component or run with a complete toolchain.                               |
+| Wrapper graph telemetry absent                     | High     | no generated `state/rustc/*/graph.json` in this phase | Run wrapper graph capture with `CANON_RUSTC_WRAPPER`.                                |
+| Live Ollama proof absent at current head           | High     | local Ollama example not executed here                | Run `cargo run --example ollama_judgment` with configured local Ollama.              |
+| Production API deployment unproven                 | High     | no live HTTP/gRPC deployment validation               | Add executable API deployment and request/response tests.                            |
+| Archived patch debt                                | Medium   | four archived TODO markers                            | Confirm obsolete patch status or promote unresolved protocol work to active plan.    |
 
 ## Next Closure Targets
 
