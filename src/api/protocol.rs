@@ -40,6 +40,7 @@ impl Command {
                             && receipt.registry_policy_hash
                                 == CapabilityRegistry::canonical().policy_hash()
                     })
+                    && process_receipt_hashes_are_unique(receipts)
             }
         }
     }
@@ -174,6 +175,18 @@ fn gates_are_unique(submissions: &[EvidenceSubmission]) -> bool {
             return false;
         }
         seen |= bit;
+    }
+    true
+}
+
+fn process_receipt_hashes_are_unique(receipts: &[SandboxProcessReceipt]) -> bool {
+    for (idx, receipt) in receipts.iter().enumerate() {
+        if receipts[..idx]
+            .iter()
+            .any(|prior| prior.receipt_hash == receipt.receipt_hash)
+        {
+            return false;
+        }
     }
     true
 }

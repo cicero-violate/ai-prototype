@@ -2675,6 +2675,48 @@ mod tests {
     }
 
     #[test]
+    fn api_rejects_duplicate_process_receipt_batch_atomically() {
+        let sandbox_root = std::env::temp_dir().join(format!(
+            "canon-duplicate-process-batch-{}-{}",
+            std::process::id(),
+            0xd00d_u64
+        ));
+        let _ = std::fs::remove_dir_all(&sandbox_root);
+
+        let executor = LiveSandboxProcessExecutor::new(&sandbox_root)
+            .with_allowed_command("/usr/bin/printf")
+            .with_locked_env("CANON_SANDBOX", "1")
+            .with_timeout_ms(1000)
+            .with_max_output_bytes(4096);
+        let receipt = executor
+            .execute_process("/usr/bin/printf", &["duplicate-process-batch"], "")
+            .unwrap();
+
+        let mut state = State::default();
+        state.phase = Phase::Execute;
+        state.packet.bind_ready_task();
+        state.gates.invariant = Gate::pass(Evidence::InvariantProof);
+        state.gates.analysis = Gate::pass(Evidence::AnalysisReport);
+        state.gates.judgment = Gate::pass(Evidence::JudgmentRecord);
+        state.gates.plan = Gate::pass(Evidence::TaskReady);
+
+        let before = state;
+        let mut tlog = Vec::new();
+        let result = crate::api::routes::handle_command(
+            &mut state,
+            &mut tlog,
+            RuntimeConfig::default(),
+            Command::SubmitProcessReceiptBatch(vec![receipt.clone(), receipt]),
+        );
+
+        assert_eq!(result, Err(CanonError::InvalidApiCommand));
+        assert_eq!(state, before);
+        assert!(tlog.is_empty());
+
+        let _ = std::fs::remove_dir_all(&sandbox_root);
+    }
+
+    #[test]
     fn live_sandbox_process_runner_denies_unlisted_command() {
         let sandbox_root = std::env::temp_dir().join(format!(
             "canon-live-process-deny-{}-{}",

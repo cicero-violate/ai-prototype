@@ -1,4 +1,4 @@
-# Phase 2 Turn 3 Plan
+# Phase 2 Turn 1 Plan
 
 ## Variables
 
@@ -32,59 +32,52 @@ One-line explanation: Goodness is the geometric mean of all 15 dimensions; one w
 
 ## Source Inputs
 
-- `GOAL.md` requires verified evolution, TLog-derived learning, policy promotion, and distillation rows that retain semantic input/action/output/score/proof lineage.
-- `score.md` remains preserved from the prior Phase 1 scorecard update and was not edited during this turn.
-- Runtime archive inspection found `RUNTIME_MANIFEST.json`, `.repo-agent-runtime/audit.ndjson`, `log/chatgpt_project_agent.ndjson`, download manifests, observe-validation reports, score snapshots, and prior delta/download history.
-- Active implementation TODO/FIXME scan found no source-level TODO/FIXME markers outside plan/score text.
+- `GOAL.md` requires externally verified candidates, typed receipts, replayable TLog evidence, and kernel-gated deployment.
+- `score.md` identifies missing end-to-end integration proof, incomplete observe validation, absent wrapper graph telemetry, and simplicity/API transport risk. `score.md` is preserved and must not be edited in this phase.
+- Active TODO/FIXME source scan remains clean outside plan/score text and generated build output.
 
 ## Boundary
 
-- Preserve `learning -> policy`; policy remains append-only storage and must not own learning promotion.
-- Do not move learning behavior into `policy/store.rs`.
-- Do not edit `score.md` during this turn.
-- Final artifacts are created only after the committed `B..H` range is complete.
+- Do not edit `score.md`.
+- Do not create final delta bundle or manifest during this intermediate turn.
+- Make a bounded source change that improves correctness/auditability without broad architecture churn.
+- Keep policy-learning ownership unchanged: learning promotes; policy stores append-only entries.
 
 ## Tasks
 
-1. Preserve the prior scorecard and policy-learning contract commits from this conversation.
-2. Add a learning-owned `DistillationRow` record for training-ready trace rows derived from verified policy promotion.
-3. Bind distillation rows to nonzero instruction, input-state, action, output, score, proof hash, and source event fields.
-4. Reject rows with zero semantic fields or proof hashes not equal to the promotion proof hash.
-5. Extend the policy-learning validator so the learning contract includes distillation evidence while policy remains append-only only.
-6. Extend Python and Rust tests for the new distillation contract.
-7. Validate with explicit bounded Python tests, Rust tests, validators, syntax checks, py_compile, and diff checks.
-8. Commit the turn result, then create `/mnt/data/repo-delta-004.bundle` and `/mnt/data/DELTA_MANIFEST.md` for `B..H`.
+1. Refresh `plan.md` from `GOAL.md` and `score.md`.
+2. Close one API correctness gap from the score risk surface: duplicate process receipts must not be accepted in one batch.
+3. Preserve atomic command behavior: invalid batches must not mutate `State` or `TLog`.
+4. Add Rust test coverage for duplicate process receipt batch rejection.
+5. Run Rust bootstrap before validation.
+6. Run bounded validation and keep `score.md` untouched.
+7. Commit the turn change without producing final bundle artifacts.
 
-## Completed Change
+## Completed This Turn
 
-- Added `DISTILLATION_ROW_SCHEMA_VERSION`.
-- Added `DistillationRow` in `src/capability/learning/promote.rs`.
-- Added `DistillationRow::from_policy_promotion`, `is_valid_for`, and `expected_row_hash`.
-- Exported distillation types through `capability::learning` and crate root exports.
-- Added Rust tests:
-  - `verified_policy_promotion_distills_training_ready_row`
-  - `distillation_row_rejects_unbound_or_zero_training_fields`
-- Extended `scripts/validate_policy_learning_trace.py` with `distillation_row_contract`.
-- Extended `tests/test_policy_learning_trace_contract.py` to require the distillation contract under `timeout=30s`.
+- Updated `Command::SubmitProcessReceiptBatch` contract validation to reject duplicate `receipt_hash` values.
+- Added `process_receipt_hashes_are_unique` in `src/api/protocol.rs`.
+- Added `api_rejects_duplicate_process_receipt_batch_atomically` in `src/lib.rs`.
+- Verified that a duplicated sandbox process receipt batch returns `CanonError::InvalidApiCommand` and leaves both `State` and `TLog` unchanged.
 
 ## Validation Result
 
 ```text
-bootstrap_rustc_session.py with writable cargo home: pass
-runtime archive inspected: pass
-TODO/FIXME source scan: pass, no active source markers outside plan/score text
+python3 /mnt/data/bootstrap_rustc_session.py --skip-library-probe --no-install-launchers: pass
+cargo test api_rejects_duplicate_process_receipt_batch_atomically -- --nocapture: pass
+cargo check --offline: pass
+python3 -m py_compile scripts/write_delta_manifest.py scripts/validate_policy_learning_trace.py scripts/validate_rust_panic_surface.py: pass
 timeout 30s python3 -X faulthandler -m unittest tests.test_policy_learning_trace_contract -v: pass, 3 tests
 timeout 30s python3 -X faulthandler -m unittest tests.test_observe_validation_contract -v: pass, 12 tests
 timeout 30s python3 -X faulthandler -m unittest tests.test_write_delta_manifest -v: pass, 10 tests
-timeout 300s cargo test --all-targets --no-fail-fast: pass, 105 Rust tests
 timeout 30s python3 scripts/validate_policy_learning_trace.py --root . --report target/observe/policy-learning-trace.json: pass, missing_count=0
 timeout 30s python3 scripts/validate_rust_panic_surface.py --root . --fail-production-unwrap --report target/observe/panic-surface.json: pass, production_total=0
-timeout 30s bash -n scripts/observe_validation.sh: pass
-timeout 30s python3 -m py_compile scripts/write_delta_manifest.py scripts/validate_policy_learning_trace.py scripts/validate_rust_panic_surface.py: pass
 git diff --check: pass
-git diff --exit-code -- score.md: pass, untouched during this turn
+git diff --exit-code -- score.md: pass, untouched
 ```
 
 ## Remaining Risk
 
-- Distillation rows are now typed and proof-bound, but this turn does not implement JSONL export, full dataset retention, a student-model training job, or live AlphaEvolve candidate selection.
+- Full `cargo test --all-targets --no-fail-fast` was attempted but timed out during compilation in this environment before this bounded change was validated.
+- `cargo fmt --check` could not run because the supplied bootstrap toolchain does not include `cargo-fmt`.
+- This turn improves API batch correctness but does not implement external HTTP/gRPC transport, wrapper graph telemetry, live Ollama proof, or full observe-validation completion.
