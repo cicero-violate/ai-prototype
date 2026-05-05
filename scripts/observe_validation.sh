@@ -24,6 +24,7 @@ POLICY_LEARNING_TRACE_REPORT = REPORT.parent / "policy-learning-trace.json"
 REPORT.parent.mkdir(parents=True, exist_ok=True)
 OUT.mkdir(parents=True, exist_ok=True)
 REPORT.write_text("", encoding="utf-8")
+DEFAULT_TEST_TIMEOUT_SECONDS = 300
 
 
 def now_ms() -> int:
@@ -115,6 +116,15 @@ def budget_status(perf: dict[str, Any]) -> str:
     if failures:
         return "fail"
     return "pass" if seen else "missing"
+
+
+def test_timeout_seconds() -> int:
+    raw = os.environ.get("CANON_TEST_TIMEOUT_SECONDS", str(DEFAULT_TEST_TIMEOUT_SECONDS)).strip()
+    try:
+        value = int(raw)
+    except ValueError:
+        return DEFAULT_TEST_TIMEOUT_SECONDS
+    return value if value > 0 else DEFAULT_TEST_TIMEOUT_SECONDS
 
 
 def run(name: str, cmd: list[str], *, cwd: Path = ROOT, timeout: int = 120,
@@ -526,7 +536,7 @@ def wrapper_graph_command(w: dict[str, Any], toolchain: dict[str, Any]) -> dict[
            "CANON_RUSTC_V3_ARTIFACT_DIR": artifact_dir}
     if not toolchain["cargo_available"]:
         return synthetic("wrapper_graph_validation", cmd, "unavailable", "cargo not found in PATH", env)
-    return run("wrapper_graph_validation", cmd, timeout=600, env=env)
+    return run("wrapper_graph_validation", cmd, timeout=test_timeout_seconds(), env=env)
 
 
 toolchain = configure_toolchain()
@@ -558,8 +568,8 @@ commands = [
     run("policy_learning_trace_validation", ["python3", "scripts/validate_policy_learning_trace.py", "--root", ".", "--report", str(POLICY_LEARNING_TRACE_REPORT)], timeout=90),
     run("router_offline_tests", ["bash", "run_tests.sh"], cwd=router_dir(), timeout=180),
     run("cargo_fmt_check", ["cargo", "fmt", "--check"], timeout=180, env=root_rust_env),
-    run("cargo_test_all_targets", ["cargo", "test", "--all-targets"], timeout=600, env=root_rust_env),
-    run("cargo_clippy_all_targets", ["cargo", "clippy", "--all-targets", "--", "-D", "warnings"], timeout=600, env=root_rust_env),
+    run("cargo_test_all_targets", ["cargo", "test", "--all-targets"], timeout=test_timeout_seconds(), env=root_rust_env),
+    run("cargo_clippy_all_targets", ["cargo", "clippy", "--all-targets", "--", "-D", "warnings"], timeout=test_timeout_seconds(), env=root_rust_env),
     wrapper_graph_command(w, toolchain),
 ]
 g = graph()
@@ -576,7 +586,7 @@ emit(event="runtime_performance_metrics", runtime_performance_signal_present=r.g
 
 ollama_env = os.environ.get("CANON_OLLAMA_BASE_URL") and os.environ.get("CANON_OLLAMA_MODEL")
 if ollama_env:
-    commands.append(run("ollama_judgment_example", ["cargo", "run", "--example", "ollama_judgment"], timeout=600, env=root_rust_env))
+    commands.append(run("ollama_judgment_example", ["cargo", "run", "--example", "ollama_judgment"], timeout=test_timeout_seconds(), env=root_rust_env))
 else:
     skipped = {"name": "ollama_judgment_example", "cmd": ["cargo", "run", "--example", "ollama_judgment"],
                "env_overrides": sorted(root_rust_env.keys()), "status": "skipped_env_missing",

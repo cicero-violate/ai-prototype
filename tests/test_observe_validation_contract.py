@@ -102,6 +102,19 @@ class ObserveValidationContractTest(unittest.TestCase):
         ):
             self.assertIn(name, self.script)
 
+    def test_long_running_validation_uses_300_second_test_timeout(self) -> None:
+        self.assertIn("DEFAULT_TEST_TIMEOUT_SECONDS = 300", self.script)
+        self.assertIn("CANON_TEST_TIMEOUT_SECONDS", self.script)
+        for name in (
+            "cargo_test_all_targets",
+            "cargo_clippy_all_targets",
+            "wrapper_graph_validation",
+            "ollama_judgment_example",
+        ):
+            pattern = rf'run\("{name}".*timeout=test_timeout_seconds\(\)'
+            self.assertRegex(self.script, pattern)
+        self.assertNotIn("timeout=600", self.script)
+
     def test_runtime_archive_base_match_contract_is_emitted(self) -> None:
         for token in (
             "runtime_manifest_base_expected",
