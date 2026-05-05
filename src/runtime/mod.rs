@@ -1,3 +1,7 @@
-pub mod recovery_policy;
+mod eval_gate;
+mod recovery_policy;
+mod score;
 
-pub use recovery_policy::{FailureClass, RecoveryAction, RecoveryDecision, RecoveryInput, RecoveryPolicy};
+pub use eval_gate::{Decision, EvalGate, GateInput, Signal};
+pub use recovery_policy::{RecoveryAction, RecoveryPolicy};
+pub use score::ScoreDelta;
