@@ -320,16 +320,17 @@ pub fn decode_observation_cursor_ndjson(line: &str) -> Option<ObservationCursor>
     if fields.len() != 5
         || fields[0] != OBSERVATION_CURSOR_SCHEMA_VERSION
         || fields[1] != OBSERVATION_CURSOR_RECORD
-        || fields[2] == 0
     {
         return None;
     }
 
-    Some(ObservationCursor {
+    let cursor = ObservationCursor {
         source_id: fields[2],
         last_sequence: fields[3],
         last_observed_hash: fields[4],
-    })
+    };
+
+    cursor.is_valid().then_some(cursor)
 }
 
 pub fn load_observation_cursor_ndjson(path: impl AsRef<Path>) -> io::Result<Option<ObservationCursor>> {

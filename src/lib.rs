@@ -551,6 +551,30 @@ mod tests {
     }
 
     #[test]
+    fn observation_cursor_rejects_partial_persisted_state() {
+        assert!(decode_observation_cursor_ndjson("[1,190709761,7,0,0]").is_some());
+        assert!(decode_observation_cursor_ndjson("[1,190709761,7,3,12345]").is_some());
+        assert!(decode_observation_cursor_ndjson("[1,190709761,7,3,0]").is_none());
+        assert!(decode_observation_cursor_ndjson("[1,190709761,7,0,12345]").is_none());
+
+        let corrupt_cursor = ObservationCursor {
+            source_id: 7,
+            last_sequence: 3,
+            last_observed_hash: 0,
+        };
+        let frame = ObservationFrame::from_payload(
+            ObservationFrameKind::ExternalSignal,
+            7,
+            4,
+            9,
+            b"line-after-corrupt-cursor",
+        );
+
+        assert!(!corrupt_cursor.is_valid());
+        assert!(!corrupt_cursor.accepts(&frame));
+    }
+
+    #[test]
     fn bounded_line_observation_source_persists_cursor_and_applies_backpressure() {
         let stem = std::env::temp_dir().join(format!(
             "ai-observation-ingress-{}",

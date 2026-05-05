@@ -104,6 +104,12 @@ impl ObservationCursor {
         }
     }
 
+    pub fn is_valid(&self) -> bool {
+        self.source_id != 0
+            && ((self.last_sequence == 0 && self.last_observed_hash == 0)
+                || (self.last_sequence != 0 && self.last_observed_hash != 0))
+    }
+
     pub fn ingest(&mut self, frame: &ObservationFrame) -> ObservationRecord {
         if self.accepts(frame) {
             let record = frame.record();
@@ -116,7 +122,7 @@ impl ObservationCursor {
     }
 
     pub fn accepts(&self, frame: &ObservationFrame) -> bool {
-        self.source_id != 0
+        self.is_valid()
             && frame.is_valid()
             && frame.source_id == self.source_id
             && frame.sequence > self.last_sequence

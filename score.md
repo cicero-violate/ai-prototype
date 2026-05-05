@@ -25,202 +25,148 @@ G  = Goodness
 
 ```text
 G = (I*E*C*A*R*P*S*D*T*Co*Em*B*L*Si*F)^(1/15)
+G = 7.07
 max(G) = good
 ```
 
-One-line explanation: Goodness is the geometric mean of all 15 dimensions; one weak dimension lowers the whole system.
+Goodness is the geometric mean of all 15 dimensions; one weak dimension lowers the whole system.
 
-## Score Summary
-
-```text
-I  = 6.8 / 10
-E  = 6.3 / 10
-C  = 5.8 / 10
-A  = 8.2 / 10
-R  = 6.4 / 10
-P  = 5.7 / 10
-S  = 5.9 / 10
-D  = 7.8 / 10
-T  = 8.3 / 10
-Co = 7.1 / 10
-Em = 7.0 / 10
-B  = 6.6 / 10
-L  = 6.4 / 10
-Si = 5.3 / 10
-F  = 7.1 / 10
-
-G = 6.66 / 10
-max(G) = good
-```
-
-Judgment: the repository is architecturally serious and unusually audit-oriented, but still not production-ready. Its strongest properties are deterministic state modeling, typed capability boundaries, replay/receipt thinking, and transparent handoff evidence. Its weakest properties are current Rust validation under the supplied toolchain, live external integration proof, performance proof, graph telemetry, and simplicity.
-
-## Scope
+## Phase 1 Review Scope
 
 ```text
-stage = PHASE_1_REVIEW
-source_changes_allowed = false
-source_changes_made = false
-score_md_updated = true
+repository = ai
 restored_bundle = /mnt/data/ai.bundle
 restored_repo_path = /mnt/data/ai-phase1/ai
-observed_branch = main
-head_commit = 4e76762f8011c4c40f85373a8dc9264d7a31746c
-tracked_files = 123
-rust_files_src_examples = 53
-python_test_count = 22
-rust_test_attr_count = 103
-requested_external_rustc_guide_path_present = false
-repo_local_rustc_guide_present = true
+branch = main
+head_commit = c5e91b717c253bf1383ed3344d0e4ffd2c5b1cd0
+tracked_files = 83
+rust_files = 58
+python_test_files = 3
+score_md_updated = true
+source_changes_made = false
 ```
 
-The requested guide path `/mnt/data/canon-mini-agent-extracted/canon-mini-agent/prototype/ai/rustc_installation_guide.md` was not present in this environment. The repository-local `rustc_installation_guide.md` was present and describes the corrected Python `tarfile` extraction procedure.
+`GOAL.md` exists and defines Canon Agent as a deterministic, self-improving agent runtime with a frozen kernel, append-only replayable TLog, bounded recovery, capability-layer intelligence, policy learning, verified evolution, and LLM promotion from routine reasoner to novelty specialist.
 
-## Existing File Contents Observed
-
-`GOAL.md` exists. It defines Canon Agent as a deterministic, self-improving runtime with a frozen kernel, append-only replayable TLog, bounded recovery, capability-layer intelligence, policy learning, and LLM promotion from routine reasoner to novelty specialist.
-
-Prior `score.md` existed. It was a Phase 2 scorecard tied to older delta/manifest evidence and older validation context. This file replaces that stale score with a Phase 1 review of the restored bundle at `4e76762f8011c4c40f85373a8dc9264d7a31746c`.
+Prior `score.md` existed, but it contained stale Phase 2 evidence tied to a different restored head and older validation context. This scorecard replaces it with a Phase 1 review of the restored bundle at `c5e91b717c253bf1383ed3344d0e4ffd2c5b1cd0`.
 
 ## Evidence Summary
 
 Repository shape:
 
 ```text
-tracked_files = 123
-rust_files_src_examples = 53
-largest_rust_file = src/lib.rs, 3686 lines
-large_integration_file = src/capability/llm/ollama.rs, 1929 lines
+tracked_files = 83
+rust_files = 58
+largest_rust_file = src/lib.rs, 3843 lines
+large_llm_modules = src/capability/llm/openai.rs, 1970 lines; src/capability/llm/ollama.rs, 1930 lines
 capability_modules = context, eval, judgment, learning, llm, memory, observation, orchestration, planning, policy, tooling, verification
 ```
 
 Positive evidence:
 
-- `src/lib.rs` forbids unsafe code at crate level with `#![forbid(unsafe_code)]`.
-- `GOAL.md` and source layout agree on the intended split: kernel, codec, runtime, capability, API.
-- `.cargo/config.toml` enforces strict Rust diagnostics with `-Dwarnings`, `-Dunused`, `-Ddead-code`, and related flags.
-- `src/runtime/verify.rs` validates transition legality, hash linkage, state continuity, registry projection, API command receipt data, and replay semantics.
-- `src/capability/verification/proof.rs` defines a canonical effect proof spine: request, authority, effect, receipt, proof, proof record, replay.
-- `src/api/routes.rs` has idempotent envelope handling through `CommandLedger`, including conflicting-command rejection and replayed-event reuse.
-- Python regression tests passed: `22/22`.
+- `src/lib.rs` and `src/main.rs` both declare `#![forbid(unsafe_code)]`.
+- The source layout matches the goal structure: kernel, codec, runtime, capability, and API surfaces are separated under `src/`.
+- `cargo check --offline` passed under the bootstrapped nightly toolchain.
+- Library unit tests passed: `107/107`.
+- Python regression tests passed: `25/25`.
 - Policy-learning trace validation passed with `missing_count = 0`.
-- Panic-surface validation passed for production code with `production_total = 0`.
-- Runtime archive parsing evidence was emitted before the observe command timed out; the archive base matched the restored head and runtime performance budget status was `pass`.
+- Panic-surface validation passed for production Rust code with `production_total = 0`.
+- `cargo run --example loop_trace --offline` completed a deterministic 31-event run from `Delta` to `Done` with `success=true`.
+- Core surfaces expose replay, verification, durable runtime, policy promotion, distillation rows, command ledger, capability registry, and LLM receipt/proof bindings.
 
 Negative evidence:
 
-- `cargo check --offline` failed before compilation because the supplied corrected toolchain is Cargo/Rust `1.75.0`, while this crate declares `edition = "2024"`.
-- `cargo fmt`, `cargo test --all-targets`, and `cargo clippy` were not proven for the current head under the supplied archive set.
-- Wrapper graph telemetry is absent: no `state/rustc/*/graph.json` was observed.
-- Live Ollama execution was not proven in this phase.
-- External API/HTTP/gRPC behavior is represented by deterministic route functions, not by an executable server or end-to-end integration test in this restored repo.
-- `scripts/observe_validation.sh` did not complete in the allotted run; it emitted early report events, then timed out before a full final validation summary.
-- Test code contains a high number of panic-surface findings: `test_total = 319`.
-- Simplicity is weak: `src/lib.rs` is a 3,686-line public surface with extensive embedded tests, and the Ollama adapter is a 1,929-line integration module.
+- `cargo fmt --check` could not run because the extracted toolchain does not include `cargo-fmt` / `rustfmt`.
+- `cargo clippy --all-targets` could not run because the extracted toolchain does not include `clippy`.
+- `cargo test --all-targets --offline` reached the example test binaries and then exceeded the execution limit; only the library suite is fully proven.
+- No wrapper graph telemetry was observed under `state/rustc/*/graph.json`.
+- Live Ollama/OpenAI network paths were not exercised; tests prove request/receipt/proof structure, not live provider behavior.
+- The API surface is deterministic route/protocol code, not a proven HTTP/gRPC transport.
+- Simplicity is weak: `src/lib.rs` is 3843 lines and two LLM adapter modules are about 1900 lines each.
+- Test/example panic surface remains high even though production panic surface is clean: `finding_count = 328`, `test_total = 327`, `example_total = 1`.
 
 ## TODO / FIXME Marker Evidence
 
-Search commands:
+Search command:
 
 ```bash
-rg -n --hidden -g '!.git/**' -g '!target/**' -g '!patch/**' -g '!score.md' 'TODO|FIXME' .
-rg -n --hidden -g '!.git/**' -g '!target/**' 'TODO|FIXME' .
+rg -n --hidden -g '!.git/**' -g '!target/**' -g '!score.md' 'TODO|FIXME' .
 ```
 
-Findings:
+Finding:
 
 ```text
-active TODO/FIXME markers outside score.md, target, and patch archive = 0
-archived patch TODO markers = 4
-score.md marker references = expected scorecard evidence text
+active TODO/FIXME markers outside .git, target, and score.md = 0
 ```
 
-Archived patch markers remain in `patch/improve_score_codebase.apply_patch`:
-
-```text
-command intake awaiting external API protocol
-judgment payload awaiting versioned policy
-handlers awaiting protocol schema freeze
-wire encoding awaiting HTTP/gRPC transport choice
-```
-
-Critical reading: active source does not defer requested work with live TODO/FIXME markers, but archived patch history still points to unresolved protocol/API and versioned-policy boundaries.
+Critical reading: the repo does not carry explicit TODO/FIXME deferrals in active source, tests, scripts, or docs outside this scorecard. That is positive for closure discipline, but absence of markers is not proof of completion; unresolved work is visible through missing fmt/clippy tools, incomplete all-target test proof, absent graph telemetry, unproven live LLM execution, and lack of transport-level API proof.
 
 ## Validation Evidence
 
-Toolchain probe using Python `tarfile` extraction:
+Rust bootstrap:
 
 ```text
-archive = /mnt/data/rust-1.75.0-x86_64-unknown-linux-gnu.tar.gz
-prefix = /mnt/data/rustc-python-install-prefix
-cargo_home = /mnt/data/rustc-python-cargo-home
-rustc --version = rustc 1.75.0 (82e1608df 2023-12-21)
-cargo --version = cargo 1.75.0 (1d8b05cdd 2023-11-20)
-dependency_free_probe = cargo run --offline => pass
+script = /mnt/data/bootstrap_rustc_session.py
+archive = /mnt/data/rust-nightly-x86_64-unknown-linux-gnu.tar.gz
+prefix = /mnt/data/rust-sandbox
+cargo_home = /mnt/data/.cargo
+rustc = rustc 1.77.0-nightly (30dfb9e04 2024-01-14)
+cargo = cargo 1.77.0-nightly (84976cd69 2024-01-12)
+dependency_free_probe = pass
+library_fetch_probe = pass
 ```
 
 Repository validation:
 
 ```text
-cargo check --offline => fail, manifest requires edition2024 not stabilized in cargo 1.75.0
-python3 -m unittest discover -s tests -p 'test_*.py' -v => pass, 22 tests
-python3 -m py_compile scripts/write_delta_manifest.py scripts/validate_policy_learning_trace.py scripts/validate_rust_panic_surface.py => pass
-python3 scripts/validate_policy_learning_trace.py --root . --report target/observe/policy-learning-trace.json => pass
-python3 scripts/validate_rust_panic_surface.py --root . --fail-production-unwrap --report target/observe/panic-surface.json => pass
-git diff --check => pass
+cargo check --offline = pass
+cargo test --lib --offline = pass, 107 passed
+python3 -m unittest discover -s tests -p 'test_*.py' -v = pass, 25 passed
+python3 scripts/validate_policy_learning_trace.py --root . --report /mnt/data/ai-phase1/policy-learning-trace.json = pass
+python3 scripts/validate_rust_panic_surface.py --root . --fail-production-unwrap --report /mnt/data/ai-phase1/panic-surface.json = pass, production_total 0
+cargo run --example loop_trace --offline = pass, 31 events, success true
+git diff --check = pass
+cargo fmt --check = unavailable, no cargo-fmt in extracted toolchain
+cargo clippy --all-targets --offline -- -D warnings = unavailable, no clippy in extracted toolchain
+cargo test --all-targets --offline = incomplete, timeout after library tests and several example test binaries
 ```
 
-Partial observe evidence:
-
-```text
-CANON_DELTA_BASE = 4e76762f8011c4c40f85373a8dc9264d7a31746c
-CANON_RUNTIME_ARCHIVE = /mnt/data/ai-runtime.tar.gz
-runtime_archive_sha256 = bf7fe98ff934d09d12fb124d4e02e2023a05e2ecf7473de1526589e9db3f2ee6
-runtime_archive_member_count = 67
-runtime_manifest_base_matches_delta_base = true
-runtime_performance_budget_status = pass
-git_diff_check = pass
-git_delta_diff_check = pass
-observe_completion = timeout before final validation summary
-```
-
-## Axis Detail
+## Axis Scores
 
 | Axis | Score | Critical basis |
 |---|---:|---|
-| I | 6.8 | Strong typed runtime/capability model and policy-learning intent; still lacks measured autonomous improvement on current head. |
-| E | 6.3 | Dependency-free Rust probe and Python tests are lightweight; observe validation timed out and the Rust crate cannot be checked with the supplied toolchain. |
-| C | 5.8 | Python/test-script validation is strong, but current Rust correctness is unproven because manifest parsing fails before compilation. |
-| A | 8.2 | Source layout and verification spine closely match `GOAL.md`: frozen kernel, capability evidence, replay, and auditability. |
-| R | 6.4 | Replay, receipt, and durable modules exist; live integration and full compile/test proof are missing. |
-| P | 5.7 | Runtime archive budget status is pass, but no current Rust benchmark exists and observe completion was not achieved. |
-| S | 5.9 | Modular capability taxonomy exists, but orchestration/API scale is not proven end-to-end. |
-| D | 7.8 | Deterministic transition tables, hash-linked events, and replay checks are central; the unvalidated current Rust build lowers confidence. |
-| T | 8.3 | GOAL, README, plan, score, manifest scripts, and validation reports provide unusually explicit evidence trails. |
-| Co | 7.1 | Handoff docs and scripts help future operators, but stale prior score context and large surfaces increase onboarding cost. |
-| Em | 7.0 | Operators can run tests and inspect receipts; missing current-head Rust proof limits safe extension. |
-| B | 6.6 | The architecture is useful for auditable autonomous execution, but deployed user value is still indirect. |
-| L | 6.4 | Policy-learning trace exists and passes, but learning remains a validated pattern more than a demonstrated compounding loop. |
-| Si | 5.3 | Large monolithic public surface, large LLM adapter, many archived patches, and many test unwraps reduce simplicity. |
-| F | 7.1 | Canonical proof spine and strict contracts are future-compatible; edition/toolchain mismatch and unclosed integration proof remain risks. |
+| I | 7.2 | Strong typed agent model, policy promotion, distillation, replay, and LLM receipt/proof concepts; live self-improvement is still not demonstrated end to end. |
+| E | 6.8 | Dependency-free crate and fast library tests help efficiency; all-target test timeout and missing fmt/clippy reduce execution efficiency. |
+| C | 7.4 | `cargo check`, 107 Rust library tests, 25 Python tests, policy trace validation, panic-surface validation, and loop trace passed. Full all-target correctness remains unproven. |
+| A | 8.4 | GOAL and implementation align closely around frozen kernel, TLog, bounded recovery, policy learning, verification, and LLM-as-capability. |
+| R | 7.5 | Replay, durable runtime, recovery policy, command ledger, and receipt/proof modules are strong; live provider and external transport failure modes remain under-tested. |
+| P | 6.2 | Loop trace and unit tests are lightweight; no benchmark suite, no provider latency proof, and all-target test timeout lower confidence. |
+| S | 6.4 | Capability taxonomy and registry are scalable in structure; large modules and no transport-level proof limit operational scale. |
+| D | 8.5 | Deterministic reducer, phase ordering, hash-linked TLog, replay verification, and command idempotency are central strengths. |
+| T | 8.3 | GOAL, score, tests, validation scripts, trace outputs, and explicit evidence contracts make the repo unusually inspectable. |
+| Co | 7.0 | Handoff files and scripts support collaboration; stale prior score context and large monolithic files increase review burden. |
+| Em | 7.2 | Operators can validate core behavior with local commands and inspect proof artifacts; missing fmt/clippy/all-target closure limits safe extension. |
+| B | 6.8 | The system has clear benefit for auditable autonomous execution, but user-facing deployment value is still indirect. |
+| L | 6.7 | Policy-learning trace and distillation contracts exist and validate; compounding learning is not yet measured across repeated real runs. |
+| Si | 5.1 | Large `src/lib.rs`, large LLM adapters, and high test unwrap/expect counts materially reduce simplicity. |
+| F | 7.4 | Proof spine, typed receipts, policy versioning, and replay semantics are future-compatible; missing external integration proof remains the main risk. |
 
 ## Risk Register
 
 | Risk | Severity | Evidence | Closure requirement |
 |---|---:|---|---|
-| Rust crate not validated | High | `cargo check --offline` fails on `edition2024` with Cargo 1.75.0 | Provide a Rust/Cargo toolchain that supports edition 2024, then run fmt/test/clippy. |
-| Wrapper graph telemetry absent | High | no `state/rustc/*/graph.json` | Run explicit `CANON_RUSTC_WRAPPER` capture and record graph metrics. |
-| Live LLM path unproven | High | `cargo run --example ollama_judgment` not run | Run with local Ollama and verify receipts/proof events. |
-| Observe validation incomplete | Medium | report emitted 9 events, then timed out | Profile and bound slow/hanging observe checks. |
-| External API not end-to-end proven | High | routes exist, server/transport proof absent | Add executable API transport and command-ingress tests. |
-| Simplicity debt | Medium | `src/lib.rs` 3686 lines, `ollama.rs` 1929 lines | Split public exports/tests and adapter internals into smaller modules. |
-| Test panic surface | Medium | `test_total = 319` | Reduce unnecessary `unwrap`/`expect` in tests where failure messages matter. |
-| Archived protocol debt | Medium | 4 archived TODO markers | Resolve or retire obsolete patch debt around protocol/schema/transport. |
+| All-target Rust tests incomplete | High | `cargo test --all-targets --offline` timed out after library tests and example binaries | Bound or split example tests, then prove all targets complete. |
+| Formatting and lint proof unavailable | Medium | extracted Rust archive lacks `cargo-fmt` and `clippy` | Provide components or separate toolchain, then run fmt and clippy. |
+| Live LLM path unproven | High | Ollama/OpenAI examples not run against live local endpoints | Run live provider examples and verify receipts/proof replay. |
+| Wrapper graph telemetry absent | High | no `state/rustc/*/graph.json` observed | Run explicit wrapper graph capture and record node/edge/intent metrics. |
+| Transport API proof missing | High | API appears route/protocol-level, not HTTP/gRPC end-to-end | Add executable transport and command-ingress integration tests. |
+| Simplicity debt | Medium | `src/lib.rs` 3843 lines; `openai.rs` 1970 lines; `ollama.rs` 1930 lines | Split tests/public exports/adapters into smaller modules. |
+| Test panic surface | Medium | panic validation reports `test_total = 327`, `example_total = 1` | Replace low-value unwrap/expect calls with explicit failure messages where useful. |
 
 ## Next Closure Targets
 
-1. Install or provide a Rust/Cargo toolchain that supports `edition = "2024"`, then run `cargo fmt --check`, `cargo test --all-targets`, and `cargo clippy --all-targets -- -D warnings`.
-2. Generate wrapper graph telemetry under `state/rustc` and record node, edge, and intent coverage metrics.
-3. Run the live Ollama judgment example and verify durable receipt/proof replay.
-4. Fix or bound the observe-validation timeout path.
-5. Add executable external API/transport tests instead of only deterministic route-level proof.
+1. Add a toolchain path that includes `rustfmt` and `clippy`, then run `cargo fmt --check` and `cargo clippy --all-targets -- -D warnings`.
+2. Split or bound all-target example tests so `cargo test --all-targets --offline` completes deterministically.
+3. Generate Rust wrapper graph telemetry under `state/rustc/` and report graph metrics.
+4. Run live Ollama and/or OpenAI-compatible examples with local endpoints and verify proof replay.
+5. Reduce `src/lib.rs` and LLM adapter size by moving embedded tests and adapter internals into narrower modules.
