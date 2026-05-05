@@ -1,0 +1,51 @@
+{
+  "ai": {
+    "crate_name": "ai",
+    "captured_at_ms": 1777959140691,
+    "node_count": 2004,
+    "edge_count": 5583,
+    "artifact_dir": "ai"
+  },
+  "ai__bin": {
+    "crate_name": "ai__bin",
+    "captured_at_ms": 1777959141560,
+    "node_count": 1,
+    "edge_count": 12,
+    "artifact_dir": "ai__bin"
+  },
+  "loop_trace__bin": {
+    "crate_name": "loop_trace__bin",
+    "captured_at_ms": 1777958947159,
+    "node_count": 1,
+    "edge_count": 26,
+    "artifact_dir": "loop_trace__bin"
+  },
+  "ollama_judgment__bin": {
+    "crate_name": "ollama_judgment__bin",
+    "captured_at_ms": 1777958947240,
+    "node_count": 4,
+    "edge_count": 124,
+    "artifact_dir": "ollama_judgment__bin"
+  },
+  "ollama_loop_trace__bin": {
+    "crate_name": "ollama_loop_trace__bin",
+    "captured_at_ms": 1777958947174,
+    "node_count": 2,
+    "edge_count": 44,
+    "artifact_dir": "ollama_loop_trace__bin"
+  },
+  "ollama_tool_loop_trace__bin": {
+    "crate_name": "ollama_tool_loop_trace__bin",
+    "captured_at_ms": 1777958947222,
+    "node_count": 8,
+    "edge_count": 125,
+    "artifact_dir": "ollama_tool_loop_trace__bin"
+  },
+  "openai_tool_loop_trace__bin": {
+    "crate_name": "openai_tool_loop_trace__bin",
+    "captured_at_ms": 1777958947241,
+    "node_count": 12,
+    "edge_count": 176,
+    "artifact_dir": "openai_tool_loop_trace__bin"
+  }
+}

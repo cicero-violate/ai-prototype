@@ -1,0 +1,27 @@
+digraph canon_agent_architecture {
+  rankdir=LR;
+  node [shape=box, style="rounded"];
+
+  api [label="api/\nexternal surface"];
+  capability [label="capability/\nevidence producers"];
+  eval [label="capability::eval\nEvalRecord { score, dimensions, threshold_used }"];
+  runtime [label="runtime/\ntick + durable + verify"];
+  codec [label="codec/\nndjson serialize/deserialize only"];
+  kernel [label="kernel/\nFROZEN: Phase, GateSet, Packet, State, Evidence, GateId"];
+
+  api -> capability [label="Command"];
+  capability -> eval [label="score against policy"];
+  eval -> runtime [label="Evidence::EvalScore pass/fail"];
+  runtime -> kernel [label="reduce gate state"];
+  runtime -> codec [label="persist ControlEvent"];
+  codec -> runtime [label="decoded TLog"];
+
+  policy [label="capability::policy\nversioned thresholds"];
+  learning [label="capability::learning\nPolicyPromotion from TLog"];
+  judgment [label="capability::judgment\nJudgmentRecord"];
+
+  policy -> eval [label="threshold_used"];
+  runtime -> learning [label="TLog history"];
+  learning -> policy [label="promote threshold"];
+  judgment -> runtime [label="Evidence::JudgmentRecord"];
+}

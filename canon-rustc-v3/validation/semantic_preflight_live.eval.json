@@ -1,0 +1,131 @@
+{
+  "determinism_inputs": {
+    "artifact_root": "state/rustc-test-1",
+    "compare_artifact_root": "state/rustc-test-2",
+    "graph_roots_comparable": true,
+    "normalized_replay": {
+      "comparison": "passed",
+      "graph_roots_comparable": true,
+      "left_graphs": [
+        {
+          "crate_name": "witness_crate",
+          "declared_hashes": {
+            "graph_hash": "a3111e026d49be7526277892d279781902b238fbe3f516ecf33396660b759268",
+            "intent_hash": "60ad365f0ffbe4842a44bb41267d1c760b0deb7a686509acdf24d4bbf475e6fa",
+            "receipt_hash": "b27f649dba999a80448376e56f4d2070227996abda7999b43559aba179dec367",
+            "risk_hash": "eb40914b40c4ea91f36ae03cefb6d1681c373b0a510a49865063e18c0f0a38da"
+          },
+          "declared_hashes_complete": true,
+          "declared_hashes_present": [
+            "graph_hash",
+            "intent_hash",
+            "receipt_hash",
+            "risk_hash"
+          ],
+          "declared_match_canonical": {
+            "graph_hash": false,
+            "intent_hash": true,
+            "receipt_hash": false,
+            "risk_hash": false
+          },
+          "normalized_hash": "52cdc697a399c1cc0e89489426749ada76c7714b0f76ebada24c4a5b1f5d9c48",
+          "path": "state/rustc-test-1/witness_crate/graph.json",
+          "recomputed_hashes": {
+            "graph_hash": "fa67a6c8b3a7e86ca457d73d9be886106a24a67dc17656ff22e89bcffba17316",
+            "intent_hash": "60ad365f0ffbe4842a44bb41267d1c760b0deb7a686509acdf24d4bbf475e6fa",
+            "receipt_hash": "9c9a95260aa487d196528057c9afa11ea0911d9ec5eb5200773d6ecc7479dcef",
+            "risk_hash": "619f2c7c973e55f9f61d79a57ccd45f83d25c844324d812f4cccc217f633ff42"
+          }
+        }
+      ],
+      "pairs": [
+        {
+          "crate_name": "witness_crate",
+          "equal": true,
+          "left_hash": "52cdc697a399c1cc0e89489426749ada76c7714b0f76ebada24c4a5b1f5d9c48",
+          "right_hash": "52cdc697a399c1cc0e89489426749ada76c7714b0f76ebada24c4a5b1f5d9c48"
+        }
+      ],
+      "right_graphs": [
+        {
+          "crate_name": "witness_crate",
+          "declared_hashes": {
+            "graph_hash": "a3111e026d49be7526277892d279781902b238fbe3f516ecf33396660b759268",
+            "intent_hash": "60ad365f0ffbe4842a44bb41267d1c760b0deb7a686509acdf24d4bbf475e6fa",
+            "receipt_hash": "b27f649dba999a80448376e56f4d2070227996abda7999b43559aba179dec367",
+            "risk_hash": "eb40914b40c4ea91f36ae03cefb6d1681c373b0a510a49865063e18c0f0a38da"
+          },
+          "declared_hashes_complete": true,
+          "declared_hashes_present": [
+            "graph_hash",
+            "intent_hash",
+            "receipt_hash",
+            "risk_hash"
+          ],
+          "declared_match_canonical": {
+            "graph_hash": false,
+            "intent_hash": true,
+            "receipt_hash": false,
+            "risk_hash": false
+          },
+          "normalized_hash": "52cdc697a399c1cc0e89489426749ada76c7714b0f76ebada24c4a5b1f5d9c48",
+          "path": "state/rustc-test-2/witness_crate/graph.json",
+          "recomputed_hashes": {
+            "graph_hash": "fa67a6c8b3a7e86ca457d73d9be886106a24a67dc17656ff22e89bcffba17316",
+            "intent_hash": "60ad365f0ffbe4842a44bb41267d1c760b0deb7a686509acdf24d4bbf475e6fa",
+            "receipt_hash": "9c9a95260aa487d196528057c9afa11ea0911d9ec5eb5200773d6ecc7479dcef",
+            "risk_hash": "619f2c7c973e55f9f61d79a57ccd45f83d25c844324d812f4cccc217f633ff42"
+          }
+        }
+      ]
+    },
+    "replay_comparison": "passed",
+    "require_live_replay": true,
+    "volatile_fields_removed": [
+      "meta.captured_at_ms"
+    ]
+  },
+  "failures": [],
+  "live_validation": true,
+  "missing_signals": [
+    {
+      "detail": "rust-toolchain.toml uses bare nightly",
+      "kind": "unpinned_nightly"
+    },
+    {
+      "detail": "vendor/rust-source is not initialized",
+      "kind": "rust_source_uninitialized"
+    }
+  ],
+  "mode": "semantic_preflight",
+  "receipt_hash": "3ec4bb47f99ec0ec0798192b03328ce3e08fa955a8b1be7165d146bca6aa7ebf",
+  "repo_state": {
+    "cargo_lock_present": true,
+    "head_commit": "5bd529b89e69bb5765181c0d174deffbbad0509f",
+    "rust_toolchain_channel": "nightly",
+    "rust_toolchain_drift_risk": true,
+    "vendor_rust_source_initialized": false
+  },
+  "schema_version": 1,
+  "status": "pass_with_skip",
+  "tool_availability": {
+    "cargo": {
+      "available": true,
+      "path": "/usr/bin/cargo",
+      "returncode": 0,
+      "version": "cargo 1.96.0-nightly (90ed291a5 2026-03-05)"
+    },
+    "rustc": {
+      "available": true,
+      "path": "/usr/bin/rustc",
+      "returncode": 0,
+      "version": "rustc 1.96.0-nightly (2d76d9bc7 2026-03-09)"
+    },
+    "rustup": {
+      "available": true,
+      "path": "/usr/bin/rustup",
+      "returncode": 0,
+      "version": "rustup 1.28.2 (2025-12-16)"
+    }
+  }
+}

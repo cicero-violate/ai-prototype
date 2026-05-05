@@ -1,0 +1,35 @@
+{
+  "failures": [],
+  "missing_signals": [
+    {
+      "detail": "baseline vs wrapped compiler overhead is absent",
+      "kind": "native_overhead_absent"
+    }
+  ],
+  "mode": "performance_gate",
+  "native_overhead": {
+    "baseline_ms": null,
+    "computed_overhead_ratio": null,
+    "overhead_ratio": null,
+    "report_hash_valid": false,
+    "report_present": false,
+    "required": false,
+    "status": null,
+    "wrapped_ms": null
+  },
+  "receipt_hash": "4bef6936a6d75936d1c71c991eb947907e308634bb5e6b65f12d3ceddab4c5d6",
+  "scale": {
+    "edge_count": 10100,
+    "elapsed_ms": 45.196,
+    "gate_status": "deny",
+    "node_count": 5000,
+    "prompt_fact_count": 8,
+    "report_hash_valid": true,
+    "report_present": true,
+    "risk_additions": 100,
+    "status": "pass",
+    "threshold_ms": 2000.0
+  },
+  "schema_version": 1,
+  "status": "pass"
+}

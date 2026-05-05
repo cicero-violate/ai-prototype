@@ -1,0 +1,30 @@
+{
+  "archive": {
+    "path": null,
+    "present": false,
+    "readable": false
+  },
+  "failures": [],
+  "missing_signals": [
+    {
+      "detail": "standalone Rust toolchain archive was not supplied",
+      "kind": "toolchain_archive_absent"
+    }
+  ],
+  "mode": "toolchain_archive_gate",
+  "receipt_hash": "df6e86b75327b6467fe8366d52e1c168349821d80c0f45f5c68587b9ca96f194",
+  "repo_toolchain": {
+    "channel": "nightly-2026-04-30",
+    "components": [
+      "llvm-tools-preview",
+      "rustc-dev"
+    ],
+    "path": "rust-toolchain.toml",
+    "pinned_date": "2026-04-30"
+  },
+  "requirements": {
+    "channel_match": false
+  },
+  "schema_version": 1,
+  "status": "pass_with_skip"
+}

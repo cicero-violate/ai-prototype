@@ -1,0 +1,49 @@
+{
+  "determinism_inputs": {
+    "artifact_root": null,
+    "compare_artifact_root": null,
+    "graph_roots_comparable": false,
+    "normalized_replay": {
+      "comparison": "not_run",
+      "graph_roots_comparable": false,
+      "left_graphs": [],
+      "right_graphs": []
+    },
+    "replay_comparison": "not_run",
+    "require_live_replay": false,
+    "volatile_fields_removed": [
+      "meta.captured_at_ms"
+    ]
+  },
+  "failures": [],
+  "live_validation": true,
+  "missing_signals": [],
+  "mode": "semantic_preflight",
+  "receipt_hash": "6670b7ece8db94c7b91061d8bc6410ab1d2906584619e91c07cdbd7a11c1d175",
+  "repo_state": {
+    "cargo_lock_present": true,
+    "head_commit": "fixture",
+    "rust_toolchain_channel": "nightly-2099-01-01",
+    "rust_toolchain_drift_risk": false,
+    "vendor_rust_source_initialized": true
+  },
+  "schema_version": 1,
+  "status": "pass",
+  "tool_availability": {
+    "cargo": {
+      "available": true,
+      "path": "/bin/cargo",
+      "version": "cargo fake"
+    },
+    "rustc": {
+      "available": true,
+      "path": "/bin/rustc",
+      "version": "rustc fake"
+    },
+    "rustup": {
+      "available": true,
+      "path": "/bin/rustup",
+      "version": "rustup fake"
+    }
+  }
+}

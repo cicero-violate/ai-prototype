@@ -1,0 +1,54 @@
+{
+  "failures": [
+    {
+      "detail": "required vendor/rust-source is not initialized",
+      "kind": "rust_source_required"
+    }
+  ],
+  "head_commit": "5bd529b89e69bb5765181c0d174deffbbad0509f",
+  "live_validation": {
+    "graph_roots_comparable": true,
+    "preflight_receipt_valid": true,
+    "preflight_report_present": true,
+    "preflight_status": "pass_with_skip",
+    "replay_comparison": "passed",
+    "required": true,
+    "witness_receipt_valid": true,
+    "witness_report_present": true,
+    "witness_status": "pass",
+    "wrapper_overhead_measured": true
+  },
+  "lockfile": {
+    "present": true,
+    "required": true
+  },
+  "missing_signals": [
+    {
+      "detail": "rust-toolchain.toml is absent or uses bare nightly",
+      "kind": "unpinned_toolchain"
+    },
+    {
+      "detail": "vendor/rust-source is not initialized",
+      "kind": "rust_source_uninitialized"
+    }
+  ],
+  "mode": "reproducibility_gate",
+  "receipt_hash": "5437ac1edde6cf2e14d21e595995650efed21b2e96c6208f79862a5890d8cbca",
+  "schema_version": 1,
+  "status": "fail",
+  "submodule": {
+    "configured": true,
+    "initialized": false,
+    "path": "vendor/rust-source",
+    "required": true
+  },
+  "toolchain": {
+    "channel": "nightly",
+    "components": [
+      "rustc-dev",
+      "llvm-tools-preview"
+    ],
+    "drift_risk": true,
+    "pinned": false
+  }
+}

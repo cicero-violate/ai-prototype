@@ -1,0 +1,18 @@
+{
+  "changed_file_count": 1,
+  "edge_count": 10100,
+  "elapsed_ms": 223.08,
+  "fanout": 2,
+  "gate_reason": "risk_added_without_validation",
+  "gate_status": "deny",
+  "new_graph_hash": "aaa024a7f32d2647e27818a635232d50f56081bbf3e91d472c6b085ee3466008",
+  "node_count": 5000,
+  "old_graph_hash": "cdac0313448e99268f0ffcf92ac14dba00e3d9e5cb8a7bbadce322a78e726ed5",
+  "prompt_fact_count": 8,
+  "report_hash": "aad0f753e2c99fac154a3abce9033f9624ab1a7930cb8c007556a129ac20e925",
+  "risk_additions": 100,
+  "risk_delta_score": 500,
+  "schema_version": 1,
+  "status": "pass",
+  "threshold_ms": 2000.0
+}

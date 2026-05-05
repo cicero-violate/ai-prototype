@@ -1,0 +1,733 @@
+{
+  "meta": {
+    "crate_name": "ollama_tool_loop_trace",
+    "captured_at_ms": 1777958947220,
+    "node_count": 8,
+    "edge_count": 125,
+    "schema_version": 11,
+    "receipt_hash": "11d70db6453dfaf3d43c29504618dca00a8ad7ead67f41de1ce3b489baab4a81",
+    "graph_hash": "48331bcccebad1166f6bdf5e0fbda9f911921c0494969562e457dbbed1cd73c4",
+    "intent_hash": "b99805750ffd9176051df31b1eaaece14cccfb34593fd45dab81451eee9a2e80",
+    "risk_hash": "f982524bdfa191285d95582b55a87985fc65a838637d21118a74312a3742ef9a"
+  },
+  "nodes": {
+    "<ToolSpec as std::clone::Clone>": {
+      "def_id": "0:42",
+      "path": "<ToolSpec as std::clone::Clone>",
+      "kind": "impl"
+    },
+    "<ToolSpec as std::clone::Clone>::clone": {
+      "def_id": "0:43",
+      "path": "<ToolSpec as std::clone::Clone>::clone",
+      "kind": "fn"
+    },
+    "main": {
+      "def_id": "0:26",
+      "path": "main",
+      "kind": "fn",
+      "def": {
+        "file": "examples/ollama_tool_loop_trace.rs",
+        "line": 20,
+        "col": 0,
+        "lo": 569,
+        "hi": 620
+      }
+    },
+    "matches_tool_intent": {
+      "def_id": "0:34",
+      "path": "matches_tool_intent",
+      "kind": "fn",
+      "def": {
+        "file": "examples/ollama_tool_loop_trace.rs",
+        "line": 245,
+        "col": 0,
+        "lo": 8185,
+        "hi": 8249
+      }
+    },
+    "print_event": {
+      "def_id": "0:32",
+      "path": "print_event",
+      "kind": "fn",
+      "def": {
+        "file": "examples/ollama_tool_loop_trace.rs",
+        "line": 190,
+        "col": 0,
+        "lo": 6653,
+        "hi": 6689
+      }
+    },
+    "submit_ollama_judgment": {
+      "def_id": "0:27",
+      "path": "submit_ollama_judgment",
+      "kind": "fn",
+      "def": {
+        "file": "examples/ollama_tool_loop_trace.rs",
+        "line": 82,
+        "col": 0,
+        "lo": 2494,
+        "hi": 2685
+      }
+    },
+    "submit_ollama_tool_calls": {
+      "def_id": "0:28",
+      "path": "submit_ollama_tool_calls",
+      "kind": "fn",
+      "def": {
+        "file": "examples/ollama_tool_loop_trace.rs",
+        "line": 109,
+        "col": 0,
+        "lo": 3482,
+        "hi": 3685
+      }
+    },
+    "tool_spec": {
+      "def_id": "0:33",
+      "path": "tool_spec",
+      "kind": "fn",
+      "def": {
+        "file": "examples/ollama_tool_loop_trace.rs",
+        "line": 208,
+        "col": 0,
+        "lo": 7142,
+        "hi": 7216
+      }
+    }
+  },
+  "edges": [
+    {
+      "relation": "alloc",
+      "from": "main",
+      "to": "fact::alloc"
+    },
+    {
+      "relation": "alloc",
+      "from": "submit_ollama_judgment",
+      "to": "fact::alloc"
+    },
+    {
+      "relation": "alloc",
+      "from": "submit_ollama_tool_calls",
+      "to": "fact::alloc"
+    },
+    {
+      "relation": "alloc",
+      "from": "tool_spec",
+      "to": "fact::alloc"
+    },
+    {
+      "relation": "call",
+      "from": "main",
+      "to": "ai::OllamaClient::config"
+    },
+    {
+      "relation": "call",
+      "from": "main",
+      "to": "ai::OllamaClient::from_env"
+    },
+    {
+      "relation": "call",
+      "from": "main",
+      "to": "ai::State::is_success"
+    },
+    {
+      "relation": "call",
+      "from": "main",
+      "to": "ai::tick"
+    },
+    {
+      "relation": "call",
+      "from": "main",
+      "to": "ai::verify_tlog"
+    },
+    {
+      "relation": "call",
+      "from": "main",
+      "to": "ai::write_tlog_ndjson"
+    },
+    {
+      "relation": "call",
+      "from": "main",
+      "to": "core::fmt::rt::Argument::<'_>::new_debug"
+    },
+    {
+      "relation": "call",
+      "from": "main",
+      "to": "core::fmt::rt::Argument::<'_>::new_display"
+    },
+    {
+      "relation": "call",
+      "from": "main",
+      "to": "print_event"
+    },
+    {
+      "relation": "call",
+      "from": "main",
+      "to": "std::cmp::PartialEq::eq"
+    },
+    {
+      "relation": "call",
+      "from": "main",
+      "to": "std::cmp::PartialEq::ne"
+    },
+    {
+      "relation": "call",
+      "from": "main",
+      "to": "std::default::Default::default"
+    },
+    {
+      "relation": "call",
+      "from": "main",
+      "to": "std::fmt::Arguments::<'a>::new"
+    },
+    {
+      "relation": "call",
+      "from": "main",
+      "to": "std::fs::create_dir_all"
+    },
+    {
+      "relation": "call",
+      "from": "main",
+      "to": "std::fs::remove_file"
+    },
+    {
+      "relation": "call",
+      "from": "main",
+      "to": "std::io::_print"
+    },
+    {
+      "relation": "call",
+      "from": "main",
+      "to": "std::iter::IntoIterator::into_iter"
+    },
+    {
+      "relation": "call",
+      "from": "main",
+      "to": "std::iter::Iterator::next"
+    },
+    {
+      "relation": "call",
+      "from": "main",
+      "to": "std::ops::Deref::deref"
+    },
+    {
+      "relation": "call",
+      "from": "main",
+      "to": "std::ops::FromResidual::from_residual"
+    },
+    {
+      "relation": "call",
+      "from": "main",
+      "to": "std::ops::Index::index"
+    },
+    {
+      "relation": "call",
+      "from": "main",
+      "to": "std::ops::Try::branch"
+    },
+    {
+      "relation": "call",
+      "from": "main",
+      "to": "std::path::Path::display"
+    },
+    {
+      "relation": "call",
+      "from": "main",
+      "to": "std::path::Path::join"
+    },
+    {
+      "relation": "call",
+      "from": "main",
+      "to": "std::path::Path::new"
+    },
+    {
+      "relation": "call",
+      "from": "main",
+      "to": "std::prelude::v1::Ok"
+    },
+    {
+      "relation": "call",
+      "from": "main",
+      "to": "std::result::Result::<T, E>::ok"
+    },
+    {
+      "relation": "call",
+      "from": "main",
+      "to": "std::vec::Vec::<T, A>::len"
+    },
+    {
+      "relation": "call",
+      "from": "main",
+      "to": "std::vec::Vec::<T>::new"
+    },
+    {
+      "relation": "call",
+      "from": "main",
+      "to": "submit_ollama_judgment"
+    },
+    {
+      "relation": "call",
+      "from": "main",
+      "to": "submit_ollama_tool_calls"
+    },
+    {
+      "relation": "call",
+      "from": "matches_tool_intent",
+      "to": "core::slice::<impl [T]>::iter"
+    },
+    {
+      "relation": "call",
+      "from": "matches_tool_intent",
+      "to": "core::str::<impl str>::contains"
+    },
+    {
+      "relation": "call",
+      "from": "matches_tool_intent",
+      "to": "std::iter::Iterator::any"
+    },
+    {
+      "relation": "call",
+      "from": "print_event",
+      "to": "core::fmt::rt::Argument::<'_>::new_debug"
+    },
+    {
+      "relation": "call",
+      "from": "print_event",
+      "to": "core::fmt::rt::Argument::<'_>::new_display"
+    },
+    {
+      "relation": "call",
+      "from": "print_event",
+      "to": "core::fmt::rt::Argument::<'_>::new_lower_hex"
+    },
+    {
+      "relation": "call",
+      "from": "print_event",
+      "to": "std::fmt::Arguments::<'a>::new"
+    },
+    {
+      "relation": "call",
+      "from": "print_event",
+      "to": "std::io::_print"
+    },
+    {
+      "relation": "call",
+      "from": "submit_ollama_judgment",
+      "to": "ai::Command::SubmitEvidence"
+    },
+    {
+      "relation": "call",
+      "from": "submit_ollama_judgment",
+      "to": "ai::CommandEnvelope::new"
+    },
+    {
+      "relation": "call",
+      "from": "submit_ollama_judgment",
+      "to": "ai::ContextRecord::from_packet_memory"
+    },
+    {
+      "relation": "call",
+      "from": "submit_ollama_judgment",
+      "to": "ai::MemoryFact::new"
+    },
+    {
+      "relation": "call",
+      "from": "submit_ollama_judgment",
+      "to": "ai::MemoryIndex::insert"
+    },
+    {
+      "relation": "call",
+      "from": "submit_ollama_judgment",
+      "to": "ai::MemoryIndex::lookup"
+    },
+    {
+      "relation": "call",
+      "from": "submit_ollama_judgment",
+      "to": "ai::OllamaClient::call_from_context"
+    },
+    {
+      "relation": "call",
+      "from": "submit_ollama_judgment",
+      "to": "ai::OllamaLlmCall::submission"
+    },
+    {
+      "relation": "call",
+      "from": "submit_ollama_judgment",
+      "to": "ai::api::routes::handle_envelope"
+    },
+    {
+      "relation": "call",
+      "from": "submit_ollama_judgment",
+      "to": "core::fmt::rt::Argument::<'_>::new_display"
+    },
+    {
+      "relation": "call",
+      "from": "submit_ollama_judgment",
+      "to": "std::default::Default::default"
+    },
+    {
+      "relation": "call",
+      "from": "submit_ollama_judgment",
+      "to": "std::fmt::Arguments::<'a>::from_str"
+    },
+    {
+      "relation": "call",
+      "from": "submit_ollama_judgment",
+      "to": "std::fmt::Arguments::<'a>::new"
+    },
+    {
+      "relation": "call",
+      "from": "submit_ollama_judgment",
+      "to": "std::io::_print"
+    },
+    {
+      "relation": "call",
+      "from": "submit_ollama_judgment",
+      "to": "std::ops::FromResidual::from_residual"
+    },
+    {
+      "relation": "call",
+      "from": "submit_ollama_judgment",
+      "to": "std::ops::Try::branch"
+    },
+    {
+      "relation": "call",
+      "from": "submit_ollama_judgment",
+      "to": "std::prelude::v1::Ok"
+    },
+    {
+      "relation": "call",
+      "from": "submit_ollama_tool_calls",
+      "to": "ai::Command::SubmitProcessReceiptBatch"
+    },
+    {
+      "relation": "call",
+      "from": "submit_ollama_tool_calls",
+      "to": "ai::CommandEnvelope::new"
+    },
+    {
+      "relation": "call",
+      "from": "submit_ollama_tool_calls",
+      "to": "ai::LiveSandboxProcessExecutor::execute_process"
+    },
+    {
+      "relation": "call",
+      "from": "submit_ollama_tool_calls",
+      "to": "ai::LiveSandboxProcessExecutor::new"
+    },
+    {
+      "relation": "call",
+      "from": "submit_ollama_tool_calls",
+      "to": "ai::LiveSandboxProcessExecutor::with_allowed_command"
+    },
+    {
+      "relation": "call",
+      "from": "submit_ollama_tool_calls",
+      "to": "ai::LiveSandboxProcessExecutor::with_locked_env"
+    },
+    {
+      "relation": "call",
+      "from": "submit_ollama_tool_calls",
+      "to": "ai::LiveSandboxProcessExecutor::with_max_output_bytes"
+    },
+    {
+      "relation": "call",
+      "from": "submit_ollama_tool_calls",
+      "to": "ai::LiveSandboxProcessExecutor::with_timeout_ms"
+    },
+    {
+      "relation": "call",
+      "from": "submit_ollama_tool_calls",
+      "to": "ai::OllamaClient::chat"
+    },
+    {
+      "relation": "call",
+      "from": "submit_ollama_tool_calls",
+      "to": "ai::OllamaMessage::system"
+    },
+    {
+      "relation": "call",
+      "from": "submit_ollama_tool_calls",
+      "to": "ai::OllamaMessage::user"
+    },
+    {
+      "relation": "call",
+      "from": "submit_ollama_tool_calls",
+      "to": "ai::api::routes::handle_envelope"
+    },
+    {
+      "relation": "call",
+      "from": "submit_ollama_tool_calls",
+      "to": "ai::append_sandbox_process_receipt_ndjson"
+    },
+    {
+      "relation": "call",
+      "from": "submit_ollama_tool_calls",
+      "to": "core::fmt::rt::Argument::<'_>::new_debug"
+    },
+    {
+      "relation": "call",
+      "from": "submit_ollama_tool_calls",
+      "to": "core::fmt::rt::Argument::<'_>::new_display"
+    },
+    {
+      "relation": "call",
+      "from": "submit_ollama_tool_calls",
+      "to": "core::slice::<impl [T]>::iter"
+    },
+    {
+      "relation": "call",
+      "from": "submit_ollama_tool_calls",
+      "to": "core::str::<impl str>::trim"
+    },
+    {
+      "relation": "call",
+      "from": "submit_ollama_tool_calls",
+      "to": "matches_tool_intent"
+    },
+    {
+      "relation": "call",
+      "from": "submit_ollama_tool_calls",
+      "to": "std::cmp::Ord::max"
+    },
+    {
+      "relation": "call",
+      "from": "submit_ollama_tool_calls",
+      "to": "std::convert::Into::into"
+    },
+    {
+      "relation": "call",
+      "from": "submit_ollama_tool_calls",
+      "to": "std::env::temp_dir"
+    },
+    {
+      "relation": "call",
+      "from": "submit_ollama_tool_calls",
+      "to": "std::fmt::Arguments::<'a>::new"
+    },
+    {
+      "relation": "call",
+      "from": "submit_ollama_tool_calls",
+      "to": "std::fmt::format"
+    },
+    {
+      "relation": "call",
+      "from": "submit_ollama_tool_calls",
+      "to": "std::hint::must_use"
+    },
+    {
+      "relation": "call",
+      "from": "submit_ollama_tool_calls",
+      "to": "std::io::_print"
+    },
+    {
+      "relation": "call",
+      "from": "submit_ollama_tool_calls",
+      "to": "std::iter::IntoIterator::into_iter"
+    },
+    {
+      "relation": "call",
+      "from": "submit_ollama_tool_calls",
+      "to": "std::iter::Iterator::fold"
+    },
+    {
+      "relation": "call",
+      "from": "submit_ollama_tool_calls",
+      "to": "std::iter::Iterator::next"
+    },
+    {
+      "relation": "call",
+      "from": "submit_ollama_tool_calls",
+      "to": "std::ops::Deref::deref"
+    },
+    {
+      "relation": "call",
+      "from": "submit_ollama_tool_calls",
+      "to": "std::ops::FromResidual::from_residual"
+    },
+    {
+      "relation": "call",
+      "from": "submit_ollama_tool_calls",
+      "to": "std::ops::RangeInclusive::<Idx>::new"
+    },
+    {
+      "relation": "call",
+      "from": "submit_ollama_tool_calls",
+      "to": "std::ops::Try::branch"
+    },
+    {
+      "relation": "call",
+      "from": "submit_ollama_tool_calls",
+      "to": "std::path::Path::join"
+    },
+    {
+      "relation": "call",
+      "from": "submit_ollama_tool_calls",
+      "to": "std::prelude::v1::Err"
+    },
+    {
+      "relation": "call",
+      "from": "submit_ollama_tool_calls",
+      "to": "std::prelude::v1::Ok"
+    },
+    {
+      "relation": "call",
+      "from": "submit_ollama_tool_calls",
+      "to": "std::process::id"
+    },
+    {
+      "relation": "call",
+      "from": "submit_ollama_tool_calls",
+      "to": "std::result::Result::<T, E>::map_err"
+    },
+    {
+      "relation": "call",
+      "from": "submit_ollama_tool_calls",
+      "to": "std::str::<impl str>::to_ascii_uppercase"
+    },
+    {
+      "relation": "call",
+      "from": "submit_ollama_tool_calls",
+      "to": "std::vec::Vec::<T, A>::push"
+    },
+    {
+      "relation": "call",
+      "from": "submit_ollama_tool_calls",
+      "to": "std::vec::Vec::<T>::new"
+    },
+    {
+      "relation": "call",
+      "from": "submit_ollama_tool_calls",
+      "to": "tool_spec"
+    },
+    {
+      "relation": "call",
+      "from": "tool_spec",
+      "to": "core::fmt::rt::Argument::<'_>::new_display"
+    },
+    {
+      "relation": "call",
+      "from": "tool_spec",
+      "to": "std::convert::Into::into"
+    },
+    {
+      "relation": "call",
+      "from": "tool_spec",
+      "to": "std::fmt::Arguments::<'a>::new"
+    },
+    {
+      "relation": "call",
+      "from": "tool_spec",
+      "to": "std::fmt::format"
+    },
+    {
+      "relation": "call",
+      "from": "tool_spec",
+      "to": "std::hint::must_use"
+    },
+    {
+      "relation": "call",
+      "from": "tool_spec",
+      "to": "std::prelude::v1::Err"
+    },
+    {
+      "relation": "call",
+      "from": "tool_spec",
+      "to": "std::prelude::v1::Ok"
+    },
+    {
+      "relation": "io",
+      "from": "main",
+      "to": "fact::io"
+    },
+    {
+      "relation": "io",
+      "from": "print_event",
+      "to": "fact::io"
+    },
+    {
+      "relation": "io",
+      "from": "submit_ollama_judgment",
+      "to": "fact::io"
+    },
+    {
+      "relation": "io",
+      "from": "submit_ollama_tool_calls",
+      "to": "fact::io"
+    },
+    {
+      "relation": "mut",
+      "from": "<ToolSpec as std::clone::Clone>::clone",
+      "to": "fact::mut"
+    },
+    {
+      "relation": "mut",
+      "from": "TOOL_CALL_TARGET",
+      "to": "fact::mut"
+    },
+    {
+      "relation": "mut",
+      "from": "main",
+      "to": "fact::mut"
+    },
+    {
+      "relation": "mut",
+      "from": "matches_tool_intent",
+      "to": "fact::mut"
+    },
+    {
+      "relation": "mut",
+      "from": "print_event",
+      "to": "fact::mut"
+    },
+    {
+      "relation": "mut",
+      "from": "submit_ollama_judgment",
+      "to": "fact::mut"
+    },
+    {
+      "relation": "mut",
+      "from": "submit_ollama_tool_calls",
+      "to": "fact::mut"
+    },
+    {
+      "relation": "mut",
+      "from": "tool_spec",
+      "to": "fact::mut"
+    },
+    {
+      "relation": "unsafe",
+      "from": "main",
+      "to": "fact::unsafe"
+    },
+    {
+      "relation": "unsafe",
+      "from": "print_event",
+      "to": "fact::unsafe"
+    },
+    {
+      "relation": "unsafe",
+      "from": "submit_ollama_judgment",
+      "to": "fact::unsafe"
+    },
+    {
+      "relation": "unsafe",
+      "from": "submit_ollama_tool_calls",
+      "to": "fact::unsafe"
+    },
+    {
+      "relation": "unsafe",
+      "from": "tool_spec",
+      "to": "fact::unsafe"
+    }
+  ],
+  "intents": {
+    "<ToolSpec as std::clone::Clone>::clone": "mutation",
+    "main": "unsafe",
+    "matches_tool_intent": "mutation",
+    "print_event": "unsafe",
+    "submit_ollama_judgment": "unsafe",
+    "submit_ollama_tool_calls": "unsafe",
+    "tool_spec": "unsafe"
+  }
+}

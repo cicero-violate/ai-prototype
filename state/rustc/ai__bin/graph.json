@@ -1,0 +1,92 @@
+{
+  "meta": {
+    "crate_name": "ai",
+    "captured_at_ms": 1777959141560,
+    "node_count": 1,
+    "edge_count": 12,
+    "schema_version": 11,
+    "receipt_hash": "9c201970ef1de234196a153270d51571ec19bed40ae00d5d5104b54732585394",
+    "graph_hash": "18457a300061b826ad750b6b8d47217ca889fd7226f05163c4c7b895f023022d",
+    "intent_hash": "cb7ae49dfb663d0fcfaa91aa428bce4296695806f9638f053cc0e468d61bd270",
+    "risk_hash": "f46cc28fee7f5dc9c63463fabd26e4c3b54ca24dc7778d3bf5b2027c06c16d7d"
+  },
+  "nodes": {
+    "main": {
+      "def_id": "0:3",
+      "path": "main",
+      "kind": "fn",
+      "def": {
+        "file": "src/main.rs",
+        "line": 3,
+        "col": 0,
+        "lo": 25,
+        "hi": 34
+      }
+    }
+  },
+  "edges": [
+    {
+      "relation": "alloc",
+      "from": "main",
+      "to": "fact::alloc"
+    },
+    {
+      "relation": "call",
+      "from": "main",
+      "to": "ai::RunReport::both_succeeded"
+    },
+    {
+      "relation": "call",
+      "from": "main",
+      "to": "ai::run_demo"
+    },
+    {
+      "relation": "call",
+      "from": "main",
+      "to": "core::fmt::rt::Argument::<'_>::new_display"
+    },
+    {
+      "relation": "call",
+      "from": "main",
+      "to": "std::fmt::Arguments::<'a>::new"
+    },
+    {
+      "relation": "call",
+      "from": "main",
+      "to": "std::io::_eprint"
+    },
+    {
+      "relation": "call",
+      "from": "main",
+      "to": "std::io::_print"
+    },
+    {
+      "relation": "call",
+      "from": "main",
+      "to": "std::process::exit"
+    },
+    {
+      "relation": "call",
+      "from": "main",
+      "to": "std::vec::Vec::<T, A>::len"
+    },
+    {
+      "relation": "io",
+      "from": "main",
+      "to": "fact::io"
+    },
+    {
+      "relation": "mut",
+      "from": "main",
+      "to": "fact::mut"
+    },
+    {
+      "relation": "unsafe",
+      "from": "main",
+      "to": "fact::unsafe"
+    }
+  ],
+  "intents": {
+    "main": "unsafe"
+  }
+}
