@@ -354,7 +354,7 @@ def run_checked(cmd: list[str], env: dict[str, str], cwd: Path | None = None) ->
         env=env,
         text=True,
         capture_output=True,
-        timeout=120,
+        timeout=300,
     )
     if proc.returncode != 0:
         raise RuntimeError(
