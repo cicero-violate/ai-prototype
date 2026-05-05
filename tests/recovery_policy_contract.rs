@@ -1,14 +1,23 @@
 use ai::runtime::{FailureClass, RecoveryAction, RecoveryInput, RecoveryPolicy};
 
 fn event(failure: FailureClass, attempts: u32, transient: bool) -> RecoveryInput {
-    RecoveryInput { failure, attempts, transient, invariant_broken: false, evidence_hash: 7 }
+    RecoveryInput {
+        failure,
+        attempts,
+        transient,
+        invariant_broken: false,
+        evidence_hash: 7,
+    }
 }
 
 #[test]
 fn terminal_classes_never_retry() {
     let policy = RecoveryPolicy::default();
     for failure in [FailureClass::Kernel, FailureClass::Policy] {
-        assert_ne!(policy.decide(event(failure, 0, true)).action, RecoveryAction::Retry);
+        assert_ne!(
+            policy.decide(event(failure, 0, true)).action,
+            RecoveryAction::Retry
+        );
     }
 }
 
@@ -29,5 +38,10 @@ fn very_large_backoff_cannot_overflow() {
 
 #[test]
 fn non_transient_unknown_work_is_quarantined() {
-    assert_eq!(RecoveryPolicy::default().decide(event(FailureClass::Unknown, 0, false)).action, RecoveryAction::Quarantine);
+    assert_eq!(
+        RecoveryPolicy::default()
+            .decide(event(FailureClass::Unknown, 0, false))
+            .action,
+        RecoveryAction::Quarantine
+    );
 }

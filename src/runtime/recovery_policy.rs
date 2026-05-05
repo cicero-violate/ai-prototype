@@ -71,7 +71,11 @@ impl RecoveryPolicy {
 
         RecoveryDecision {
             action,
-            retry_after_ticks: if action == RecoveryAction::Retry { self.retry_delay(input.attempts) } else { 0 },
+            retry_after_ticks: if action == RecoveryAction::Retry {
+                self.retry_delay(input.attempts)
+            } else {
+                0
+            },
             max_attempts: self.max_attempts,
             reason_hash: self.reason_hash(input, action),
         }
@@ -79,7 +83,9 @@ impl RecoveryPolicy {
 
     fn retry_delay(self, attempts: u32) -> u64 {
         let multiplier = 1_u64.checked_shl(attempts.min(20)).unwrap_or(1 << 20);
-        self.backoff_base_ticks.saturating_mul(multiplier).min(1_000_000)
+        self.backoff_base_ticks
+            .saturating_mul(multiplier)
+            .min(1_000_000)
     }
 
     fn reason_hash(self, input: RecoveryInput, action: RecoveryAction) -> u64 {
@@ -102,7 +108,13 @@ mod tests {
     use super::*;
 
     fn event(failure: FailureClass) -> RecoveryInput {
-        RecoveryInput { failure, attempts: 0, transient: true, invariant_broken: false, evidence_hash: 42 }
+        RecoveryInput {
+            failure,
+            attempts: 0,
+            transient: true,
+            invariant_broken: false,
+            evidence_hash: 42,
+        }
     }
 
     #[test]
@@ -125,6 +137,11 @@ mod tests {
 
     #[test]
     fn policy_failures_are_quarantined() {
-        assert_eq!(RecoveryPolicy::default().decide(event(FailureClass::Policy)).action, RecoveryAction::Quarantine);
+        assert_eq!(
+            RecoveryPolicy::default()
+                .decide(event(FailureClass::Policy))
+                .action,
+            RecoveryAction::Quarantine
+        );
     }
 }
