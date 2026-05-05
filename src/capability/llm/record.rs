@@ -215,6 +215,70 @@ impl LlmStructuredAdapter {
     }
 }
 
+pub(crate) fn retry_budget_policy_valid(
+    timeout_ms: u64,
+    max_retries: u32,
+    attempt_budget: u32,
+) -> bool {
+    timeout_ms != 0
+        && attempt_budget != 0
+        && attempt_budget <= max_retries.saturating_add(1)
+}
+
+pub(crate) fn retry_budget_exhausted(
+    retry_count: u32,
+    max_retries: u32,
+    attempt_budget: u32,
+) -> bool {
+    retry_count.saturating_add(1) >= attempt_budget || retry_count >= max_retries
+}
+
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn retry_budget_decision_valid(
+    timeout_ms: u64,
+    retry_count: u32,
+    max_retries: u32,
+    attempt_budget: u32,
+    request_identity_hash: u64,
+    retry_budget_hash: u64,
+    duplicate_request: bool,
+    allowed: bool,
+) -> bool {
+    retry_budget_policy_valid(timeout_ms, max_retries, attempt_budget)
+        && request_identity_hash != 0
+        && retry_budget_hash != 0
+        && (!allowed
+            || (!duplicate_request
+                && retry_count <= max_retries
+                && retry_count < attempt_budget))
+}
+
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn retry_budget_decision_receiptable(
+    timeout_ms: u64,
+    retry_count: u32,
+    max_retries: u32,
+    attempt_budget: u32,
+    request_identity_hash: u64,
+    retry_budget_hash: u64,
+    duplicate_request: bool,
+    allowed: bool,
+) -> bool {
+    retry_budget_decision_valid(
+        timeout_ms,
+        retry_count,
+        max_retries,
+        attempt_budget,
+        request_identity_hash,
+        retry_budget_hash,
+        duplicate_request,
+        allowed,
+    ) && allowed
+        && !duplicate_request
+        && retry_count <= max_retries
+        && retry_count < attempt_budget
+}
+
 fn prompt_hash(context: &ContextRecord, policy_version: u64, policy_hash: u64) -> u64 {
     let mut h = 0x106689d45497fdb5u64;
     h = mix(h, context.objective_id);

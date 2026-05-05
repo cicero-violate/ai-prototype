@@ -13,7 +13,10 @@ use std::path::Path;
 use std::time::Duration;
 
 use crate::capability::context::ContextRecord;
-use crate::capability::llm::record::{LlmRecord, LlmStructuredAdapter};
+use crate::capability::llm::record::{
+    retry_budget_decision_receiptable, retry_budget_decision_valid,
+    retry_budget_exhausted, retry_budget_policy_valid, LlmRecord, LlmStructuredAdapter,
+};
 use crate::capability::policy::PolicyStore;
 use crate::capability::verification::{
     verify_verification_proof_record_bindings, CanonicalEffect, CanonicalEffectProof,
@@ -112,10 +115,7 @@ pub struct OpenAiRetryBudgetPolicy {
 
 impl OpenAiRetryBudgetPolicy {
     pub fn new(timeout_ms: u64, max_retries: u32, attempt_budget: u32) -> Option<Self> {
-        if timeout_ms == 0 || attempt_budget == 0 {
-            return None;
-        }
-        if attempt_budget > max_retries.saturating_add(1) {
+        if !retry_budget_policy_valid(timeout_ms, max_retries, attempt_budget) {
             return None;
         }
         Some(Self {
@@ -169,10 +169,10 @@ impl OpenAiRetryBudgetPolicy {
             self.request_identity_hash(provider_hash, base_url_hash, model_id, request_hash);
         let retry_allowed = retry_count <= self.max_retries;
         let budget_allowed = retry_count < self.attempt_budget;
-        let allowed = request_identity_hash != 0 && retry_allowed && budget_allowed && !duplicate_request;
+        let allowed =
+            request_identity_hash != 0 && retry_allowed && budget_allowed && !duplicate_request;
         let budget_exhausted = !budget_allowed
-            || retry_count.saturating_add(1) >= self.attempt_budget
-            || retry_count >= self.max_retries;
+            || retry_budget_exhausted(retry_count, self.max_retries, self.attempt_budget);
         let decision = OpenAiRetryBudgetDecision {
             timeout_ms: self.timeout_ms,
             retry_count,
@@ -213,23 +213,29 @@ pub struct OpenAiRetryBudgetDecision {
 
 impl OpenAiRetryBudgetDecision {
     pub fn is_valid_decision(self) -> bool {
-        self.timeout_ms != 0
-            && self.attempt_budget != 0
-            && self.attempt_budget <= self.max_retries.saturating_add(1)
-            && self.request_identity_hash != 0
-            && self.retry_budget_hash != 0
-            && (!self.allowed
-                || (!self.duplicate_request
-                    && self.retry_count <= self.max_retries
-                    && self.retry_count < self.attempt_budget))
+        retry_budget_decision_valid(
+            self.timeout_ms,
+            self.retry_count,
+            self.max_retries,
+            self.attempt_budget,
+            self.request_identity_hash,
+            self.retry_budget_hash,
+            self.duplicate_request,
+            self.allowed,
+        )
     }
 
     pub fn is_receiptable_success(self) -> bool {
-        self.is_valid_decision()
-            && self.allowed
-            && !self.duplicate_request
-            && self.retry_count <= self.max_retries
-            && self.retry_count < self.attempt_budget
+        retry_budget_decision_receiptable(
+            self.timeout_ms,
+            self.retry_count,
+            self.max_retries,
+            self.attempt_budget,
+            self.request_identity_hash,
+            self.retry_budget_hash,
+            self.duplicate_request,
+            self.allowed,
+        )
     }
 }
 

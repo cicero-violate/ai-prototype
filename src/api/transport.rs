@@ -327,14 +327,7 @@ pub fn handle_transport_frame_once(
     }
 
     if let Some(receipt) = transport_ledger.receipt_for(&frame) {
-        let event = tlog
-            .iter()
-            .copied()
-            .find(|event| event.self_hash == receipt.event_hash)
-            .ok_or(CanonError::InvalidReplay)?;
-        if !receipt.matches_event(&event) {
-            return Err(CanonError::InvalidReplay);
-        }
+        let event = *event_for_transport_receipt(tlog, receipt)?;
         return Ok(ApiTransportResponse {
             request_id: receipt.request_id,
             command_id: receipt.command_id,
@@ -369,6 +362,20 @@ pub fn handle_transport_frame_once(
     };
     transport_ledger.push_response(&frame, &response)?;
     Ok(response)
+}
+
+fn event_for_transport_receipt<'a>(
+    tlog: &'a TLog,
+    receipt: ApiTransportReceipt,
+) -> Result<&'a ControlEvent, CanonError> {
+    let event = tlog
+        .iter()
+        .find(|event| event.self_hash == receipt.event_hash)
+        .ok_or(CanonError::InvalidReplay)?;
+    receipt
+        .matches_event(event)
+        .then_some(event)
+        .ok_or(CanonError::InvalidReplay)
 }
 
 pub fn encode_api_transport_receipt_ndjson(receipt: ApiTransportReceipt) -> String {
@@ -478,13 +485,7 @@ pub fn verify_api_transport_receipts(
         {
             return Err(CanonError::InvalidApiCommand);
         }
-        let event = tlog
-            .iter()
-            .find(|event| event.self_hash == receipt.event_hash)
-            .ok_or(CanonError::InvalidReplay)?;
-        if !receipt.matches_event(event) {
-            return Err(CanonError::InvalidReplay);
-        }
+        event_for_transport_receipt(tlog, *receipt)?;
         seen_request_ids.push(receipt.request_id);
     }
     Ok(())

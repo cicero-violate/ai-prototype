@@ -48,33 +48,43 @@ pub(crate) fn recovery_action_for(class: FailureClass) -> RecoveryAction {
     RecoveryAction::Escalate
 }
 
-pub(crate) fn failure_for_gate(id: GateId, status: GateStatus) -> FailureClass {
+pub(crate) fn failure_for_gate(id: GateId, status: GateStatus) -> Option<FailureClass> {
     match (id, status) {
-        (GateId::Invariant, GateStatus::Unknown) => FailureClass::InvariantUnknown,
-        (GateId::Invariant, GateStatus::Fail) => FailureClass::InvariantBlocked,
+        (GateId::Invariant, GateStatus::Unknown) => Some(FailureClass::InvariantUnknown),
+        (GateId::Invariant, GateStatus::Fail) => Some(FailureClass::InvariantBlocked),
 
-        (GateId::Analysis, GateStatus::Unknown) => FailureClass::AnalysisMissing,
-        (GateId::Analysis, GateStatus::Fail) => FailureClass::AnalysisFailed,
+        (GateId::Analysis, GateStatus::Unknown) => Some(FailureClass::AnalysisMissing),
+        (GateId::Analysis, GateStatus::Fail) => Some(FailureClass::AnalysisFailed),
 
-        (GateId::Judgment, GateStatus::Unknown) => FailureClass::JudgmentMissing,
-        (GateId::Judgment, GateStatus::Fail) => FailureClass::JudgmentFailed,
+        (GateId::Judgment, GateStatus::Unknown) => Some(FailureClass::JudgmentMissing),
+        (GateId::Judgment, GateStatus::Fail) => Some(FailureClass::JudgmentFailed),
 
-        (GateId::Plan, GateStatus::Unknown) => FailureClass::PlanMissing,
-        (GateId::Plan, GateStatus::Fail) => FailureClass::PlanFailed,
+        (GateId::Plan, GateStatus::Unknown) => Some(FailureClass::PlanMissing),
+        (GateId::Plan, GateStatus::Fail) => Some(FailureClass::PlanFailed),
 
-        (GateId::Execution, GateStatus::Unknown) => FailureClass::ExecutionMissing,
-        (GateId::Execution, GateStatus::Fail) => FailureClass::ExecutionFailed,
+        (GateId::Execution, GateStatus::Unknown) => Some(FailureClass::ExecutionMissing),
+        (GateId::Execution, GateStatus::Fail) => Some(FailureClass::ExecutionFailed),
 
-        (GateId::Verification, GateStatus::Unknown) => FailureClass::VerificationUnknown,
-        (GateId::Verification, GateStatus::Fail) => FailureClass::VerificationFailed,
+        (GateId::Verification, GateStatus::Unknown) => Some(FailureClass::VerificationUnknown),
+        (GateId::Verification, GateStatus::Fail) => Some(FailureClass::VerificationFailed),
 
-        (GateId::Eval, GateStatus::Unknown) => FailureClass::EvalMissing,
-        (GateId::Eval, GateStatus::Fail) => FailureClass::EvalFailed,
+        (GateId::Eval, GateStatus::Unknown) => Some(FailureClass::EvalMissing),
+        (GateId::Eval, GateStatus::Fail) => Some(FailureClass::EvalFailed),
 
-        (GateId::Learning, GateStatus::Unknown) => FailureClass::LearningMissing,
-        (GateId::Learning, GateStatus::Fail) => FailureClass::LearningFailed,
+        (GateId::Learning, GateStatus::Unknown) => Some(FailureClass::LearningMissing),
+        (GateId::Learning, GateStatus::Fail) => Some(FailureClass::LearningFailed),
 
-        (_, GateStatus::Pass) => unreachable!("passing gate cannot produce failure"),
+        (_, GateStatus::Pass) => None,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn passing_gate_has_no_failure_class() {
+        assert_eq!(failure_for_gate(GateId::Eval, GateStatus::Pass), None);
     }
 }
 

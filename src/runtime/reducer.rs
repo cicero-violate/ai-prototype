@@ -164,18 +164,20 @@ fn complete(s: &mut State) -> Outcome {
 }
 
 fn raise_gate_failure(s: &mut State, gate_id: GateId, gate: Gate) -> Outcome {
-    let class = failure_for_gate(gate_id, gate.status);
+    let Some(class) = failure_for_gate(gate_id, gate.status) else {
+        return raise_domain_failure(
+            s,
+            FailureClass::ConvergenceFailed,
+            Cause::GateFailed,
+            gate.evidence,
+            gate_id,
+        );
+    };
     let kind = event_kind_for_failure(class);
     let decision = decision_for_failure(class);
-    let cause = match gate.status {
-        GateStatus::Unknown => Cause::EvidenceMissing,
-        GateStatus::Fail => Cause::GateFailed,
-        GateStatus::Pass => unreachable!("passing gate cannot raise failure"),
-    };
-    let evidence = match gate.status {
-        GateStatus::Unknown => Evidence::Missing,
-        GateStatus::Fail => gate.evidence,
-        GateStatus::Pass => unreachable!("passing gate cannot raise failure"),
+    let (cause, evidence) = match gate.status {
+        GateStatus::Unknown => (Cause::EvidenceMissing, Evidence::Missing),
+        GateStatus::Fail | GateStatus::Pass => (Cause::GateFailed, gate.evidence),
     };
 
     s.phase = Phase::Recovery;
