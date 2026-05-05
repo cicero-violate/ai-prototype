@@ -1,9 +1,0 @@
-{
-  "canon_rustc_v3": {
-    "crate_name": "canon_rustc_v3",
-    "captured_at_ms": 1777899255050,
-    "node_count": 93,
-    "edge_count": 127,
-    "artifact_dir": "/workspace/ai_sandbox/canon-mini-agent/prototype/canon-rustc-v3/state/rustc/canon_rustc_v3"
-  }
-}

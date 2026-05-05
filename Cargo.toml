@@ -1,8 +1,9 @@
 [package]
-name = "ai-delta-overlay"
+name = "ai"
 version = "0.1.0"
 edition = "2021"
 
 [lib]
-name = "ai_delta_overlay"
 path = "src/lib.rs"
+
+[dependencies]
