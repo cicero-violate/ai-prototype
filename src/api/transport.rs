@@ -11,6 +11,7 @@ use crate::api::protocol::{CommandEnvelope, CommandLedger, ControlEventResponse}
 use crate::api::routes::handle_envelope_once;
 use crate::error::CanonError;
 use crate::kernel::{RuntimeConfig, State, TLog};
+use crate::runtime::verify_tlog;
 
 pub const API_TRANSPORT_SCHEMA_VERSION: u64 = 1;
 pub const API_TRANSPORT_ROUTE_COMMAND: u64 = 1;
@@ -192,6 +193,98 @@ impl ApiTransportLedger {
             ))?;
         }
         Ok(())
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ApiTransportSession {
+    state: State,
+    tlog: TLog,
+    cfg: RuntimeConfig,
+    command_ledger: CommandLedger,
+    transport_ledger: ApiTransportLedger,
+}
+
+impl ApiTransportSession {
+    pub fn new(state: State, cfg: RuntimeConfig) -> Self {
+        Self {
+            state,
+            tlog: TLog::default(),
+            cfg,
+            command_ledger: CommandLedger::default(),
+            transport_ledger: ApiTransportLedger::default(),
+        }
+    }
+
+    pub fn from_parts(
+        state: State,
+        tlog: TLog,
+        cfg: RuntimeConfig,
+        command_ledger: CommandLedger,
+        transport_ledger: ApiTransportLedger,
+    ) -> Result<Self, CanonError> {
+        verify_tlog(&tlog)?;
+        verify_api_transport_receipts(&tlog, transport_ledger.receipts())?;
+        Ok(Self {
+            state,
+            tlog,
+            cfg,
+            command_ledger,
+            transport_ledger,
+        })
+    }
+
+    pub fn state(&self) -> &State {
+        &self.state
+    }
+
+    pub fn tlog(&self) -> &TLog {
+        &self.tlog
+    }
+
+    pub fn command_ledger(&self) -> &CommandLedger {
+        &self.command_ledger
+    }
+
+    pub fn transport_ledger(&self) -> &ApiTransportLedger {
+        &self.transport_ledger
+    }
+
+    pub fn handle_frame(
+        &mut self,
+        frame: ApiTransportFrame,
+    ) -> Result<ApiTransportResponse, CanonError> {
+        handle_transport_frame_once(
+            &mut self.state,
+            &mut self.tlog,
+            self.cfg,
+            &mut self.command_ledger,
+            &mut self.transport_ledger,
+            frame,
+        )
+    }
+
+    pub fn verify(&self) -> Result<(), CanonError> {
+        verify_tlog(&self.tlog)?;
+        verify_api_transport_receipts(&self.tlog, self.transport_ledger.receipts())
+    }
+
+    pub fn into_parts(
+        self,
+    ) -> (
+        State,
+        TLog,
+        RuntimeConfig,
+        CommandLedger,
+        ApiTransportLedger,
+    ) {
+        (
+            self.state,
+            self.tlog,
+            self.cfg,
+            self.command_ledger,
+            self.transport_ledger,
+        )
     }
 }
 

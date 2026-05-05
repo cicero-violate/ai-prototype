@@ -4,7 +4,7 @@ use ai::{
     load_api_transport_ledger_ndjson, load_api_transport_receipts_ndjson, tick,
     verify_api_transport_receipts, verify_tlog, ApiTransportDisposition, ApiTransportFrame,
     ApiTransportLedger, ApiTransportReceipt, CanonError, Command, CommandEnvelope, CommandLedger,
-    ObservationRecord, Phase, RuntimeConfig, State, TLog,
+    ApiTransportSession, ObservationRecord, Phase, RuntimeConfig, State, TLog,
 };
 
 fn transport_receipt_path(name: &str) -> std::path::PathBuf {
@@ -310,5 +310,67 @@ fn transport_receipt_decode_rejects_payload_hash_tamper() {
     assert_eq!(
         decode_api_transport_receipt_ndjson(&tampered),
         Err(CanonError::InvalidTlogRecord)
+    );
+}
+
+#[test]
+fn transport_session_handles_replay_and_verifies_receipts() {
+    let cfg = RuntimeConfig::default();
+    let mut state = State::default();
+    let mut tlog = TLog::default();
+    assert!(tick(&mut state, &mut tlog, cfg).is_ok());
+    let mut session = match ApiTransportSession::from_parts(
+        state,
+        tlog,
+        cfg,
+        CommandLedger::default(),
+        ApiTransportLedger::default(),
+    ) {
+        Ok(session) => session,
+        Err(err) => panic!("transport session should initialize from valid parts: {err:?}"),
+    };
+    let frame = observation_frame();
+
+    let first = match session.handle_frame(frame.clone()) {
+        Ok(response) => response,
+        Err(err) => panic!("session should accept first transport frame: {err:?}"),
+    };
+    let state_after_first = *session.state();
+    let tlog_len_after_first = session.tlog().len();
+    assert_eq!(first.disposition, ApiTransportDisposition::Accepted);
+    assert_eq!(session.transport_ledger().len(), 1);
+    assert_eq!(session.command_ledger().len(), 1);
+    assert!(session.verify().is_ok());
+
+    let replay = match session.handle_frame(frame) {
+        Ok(response) => response,
+        Err(err) => panic!("session should replay persisted transport frame: {err:?}"),
+    };
+    assert_eq!(replay.disposition, ApiTransportDisposition::Replayed);
+    assert_eq!(replay.event_hash, first.event_hash);
+    assert_eq!(*session.state(), state_after_first);
+    assert_eq!(session.tlog().len(), tlog_len_after_first);
+    assert_eq!(session.transport_ledger().len(), 1);
+    assert_eq!(session.command_ledger().len(), 1);
+    assert!(session.verify().is_ok());
+}
+
+#[test]
+fn transport_session_rejects_receipts_not_backed_by_tlog_events() {
+    let receipt = ApiTransportReceipt::new(101, 202, 303, 404, 505);
+    let transport_ledger = match ApiTransportLedger::from_receipts(vec![receipt]) {
+        Ok(ledger) => ledger,
+        Err(err) => panic!("syntactically valid receipt should build a ledger: {err:?}"),
+    };
+
+    assert_eq!(
+        ApiTransportSession::from_parts(
+            State::default(),
+            TLog::default(),
+            RuntimeConfig::default(),
+            CommandLedger::default(),
+            transport_ledger,
+        ),
+        Err(CanonError::InvalidReplay)
     );
 }

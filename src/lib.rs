@@ -22,7 +22,7 @@ pub use crate::api::transport::{
     load_api_transport_ledger_ndjson, load_api_transport_receipts_ndjson,
     verify_api_transport_receipts,
     ApiTransportDisposition, ApiTransportFrame, ApiTransportLedger, ApiTransportReceipt,
-    ApiTransportResponse, API_TRANSPORT_RECEIPT_RECORD,
+    ApiTransportResponse, ApiTransportSession, API_TRANSPORT_RECEIPT_RECORD,
     API_TRANSPORT_RECEIPT_SCHEMA_VERSION, API_TRANSPORT_ROUTE_COMMAND,
     API_TRANSPORT_SCHEMA_VERSION,
 };
