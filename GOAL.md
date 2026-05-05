@@ -58,14 +58,14 @@ seed program
 
 Real names:
 
-- **seed program**: the current code, plan, policy, or action sequence.
-- **candidate patch**: one proposed mutation of the seed.
-- **sandbox run**: isolated execution of the candidate.
-- **evaluator**: tests, replay, proof checks, benchmarks, and eval rules.
-- **fitness score**: measured quality, not model opinion.
-- **program database**: archive of candidates, scores, receipts, and lineage.
-- **selection**: keep candidates that pass and improve the score.
-- **next generation**: use selected winners as context for more mutations.
+- **seed program**		: the current code, plan, policy, or action sequence.
+- **candidate patch**	: one proposed mutation of the seed.
+- **sandbox run**		: isolated execution of the candidate.
+- **evaluator**			: tests, replay, proof checks, benchmarks, and eval rules.
+- **fitness score**		: measured quality, not model opinion.
+- **program database**	: archive of candidates, scores, receipts, and lineage.
+- **selection**			: keep candidates that pass and improve the score.
+- **next generation**	: use selected winners as context for more mutations.
 
 Authority rule:
 
