@@ -209,7 +209,7 @@ def extract_components_with_python_tarfile(archive: Path, tmp: Path, prefix: Pat
 
 
 BASHRC_LINES = [
-    # Tier 1 — parallelism + native codegen
+    # Tier 1 — parallelism + native codegen (Rust / C / Fortran)
     'export MAKEFLAGS="-j$(nproc)"',
     'export CARGO_BUILD_JOBS="$(nproc)"',
     'export RAYON_NUM_THREADS="$(nproc)"',
@@ -217,6 +217,10 @@ BASHRC_LINES = [
     'export OPENBLAS_NUM_THREADS="$(nproc)"',
     'export MKL_NUM_THREADS="$(nproc)"',
     'export RUSTFLAGS="-C target-cpu=native"',
+    # Python parallelism — numpy/pandas/numba paths
+    'export NUMEXPR_NUM_THREADS="$(nproc)"',
+    'export NUMBA_NUM_THREADS="$(nproc)"',
+    'export PYTHONOPTIMIZE="1"',
     # Tier 4 — sccache (RUSTC_WRAPPER only activates when sccache is on PATH)
     'export SCCACHE_DIR="/mnt/data/.sccache"',
     'command -v sccache >/dev/null 2>&1 && export RUSTC_WRAPPER="sccache"',
