@@ -46,31 +46,25 @@ impl CommandLedger {
         let mut ledger = Self::default();
 
         for event in tlog {
-            if event.api_command_id == 0 && event.api_command_hash == 0 {
-                continue;
-            }
-
-            if event.api_command_id == 0 || event.api_command_hash == 0 {
-                return Err(CanonError::InvalidApiCommand);
-            }
-
-            let receipt = CommandReceipt {
-                command_id: event.api_command_id,
-                command_hash: event.api_command_hash,
-                event_hash: event.self_hash,
-            };
-
-            if ledger.receipts.iter().any(|existing| {
-                existing.command_id == receipt.command_id
-                    && existing.command_hash != receipt.command_hash
-            }) {
-                return Err(CanonError::InvalidApiCommand);
-            }
-
-            ledger.insert_or_update(receipt);
+            ledger.observe_event(event)?;
         }
 
         Ok(ledger)
+    }
+
+    pub fn observe_event(&mut self, event: &ControlEvent) -> Result<(), CanonError> {
+        if event.api_command_id == 0 && event.api_command_hash == 0 {
+            return Ok(());
+        }
+        if event.api_command_id == 0 || event.api_command_hash == 0 || event.self_hash == 0 {
+            return Err(CanonError::InvalidApiCommand);
+        }
+
+        self.insert_or_update_checked(CommandReceipt {
+            command_id: event.api_command_id,
+            command_hash: event.api_command_hash,
+            event_hash: event.self_hash,
+        })
     }
 
     pub fn receipt_for_ids(
@@ -114,17 +108,22 @@ impl CommandLedger {
         if event.api_command_id != command_id || event.api_command_hash != command_hash {
             return Err(CanonError::InvalidReplay);
         }
-        if self.has_conflicting_command_ids(command_id, command_hash) {
-            return Err(CanonError::InvalidApiCommand);
-        }
-
         let receipt = CommandReceipt {
             command_id,
             command_hash,
             event_hash: event.self_hash,
         };
-        self.insert_or_update(receipt);
+        self.insert_or_update_checked(receipt)?;
         Ok(receipt)
+    }
+
+    fn insert_or_update_checked(&mut self, receipt: CommandReceipt) -> Result<(), CanonError> {
+        if self.has_conflicting_command_ids(receipt.command_id, receipt.command_hash) {
+            return Err(CanonError::InvalidApiCommand);
+        }
+
+        self.insert_or_update(receipt);
+        Ok(())
     }
 
     fn insert_or_update(&mut self, receipt: CommandReceipt) {
@@ -135,5 +134,40 @@ impl CommandLedger {
         } else {
             self.receipts.push(receipt);
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::kernel::{RuntimeConfig, State};
+
+    #[test]
+    fn observing_command_event_updates_ledger_without_replay_scan() {
+        let mut state = State::default();
+        let mut tlog = Vec::new();
+
+        crate::runtime::tick_with_api_command(
+            &mut state,
+            &mut tlog,
+            RuntimeConfig::default(),
+            7,
+            11,
+        )
+        .unwrap();
+
+        let event = tlog[0];
+        let mut ledger = CommandLedger::default();
+        ledger.observe_event(&event).unwrap();
+
+        assert_eq!(ledger.len(), 1);
+        assert_eq!(
+            ledger.receipt_for_ids(7, 11),
+            Some(CommandReceipt {
+                command_id: 7,
+                command_hash: 11,
+                event_hash: event.self_hash,
+            })
+        );
     }
 }

@@ -102,11 +102,19 @@ pub fn run_until_done_durable_with_ledger(
         }
 
         tick_durable(&mut runtime.state, &mut runtime.tlog, path, cfg)?;
+        observe_latest_command_event(&mut runtime)?;
     }
 
     append_convergence_failure_durable(&mut runtime.state, &mut runtime.tlog, path, cfg)?;
-    runtime.command_ledger = CommandLedger::reconstruct_from_tlog(&runtime.tlog)?;
+    observe_latest_command_event(&mut runtime)?;
     Ok(runtime)
+}
+
+fn observe_latest_command_event(runtime: &mut DurableRuntimeState) -> Result<(), CanonError> {
+    let Some(event) = runtime.tlog.last() else {
+        return Ok(());
+    };
+    runtime.command_ledger.observe_event(event)
 }
 
 fn append_convergence_failure_durable(

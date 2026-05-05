@@ -140,17 +140,36 @@ impl ObservationIngressBatch {
     }
 
     pub fn is_accepted(&self) -> bool {
-        self.decision == ObservationIngressDecision::Accepted
-            && !self.records.is_empty()
-            && self.cursor.last_sequence != 0
-            && self.cursor.last_observed_hash != 0
+        self.decision == ObservationIngressDecision::Accepted && self.accepted_contract_valid()
     }
 
     pub fn is_contract_valid(&self) -> bool {
-        if !self.is_accepted()
-            || self.source_id == 0
-            || self.source_hash == 0
+        if self.source_id == 0
             || self.cursor.source_id != self.source_id
+            || !self.cursor.is_valid()
+        {
+            return false;
+        }
+
+        match self.decision {
+            ObservationIngressDecision::Accepted => self.accepted_contract_valid(),
+            ObservationIngressDecision::Empty => {
+                self.source_hash != 0 && self.backlog_len == 0 && self.records.is_empty()
+            }
+            ObservationIngressDecision::Backpressure => {
+                self.source_hash != 0 && self.backlog_len != 0 && self.records.is_empty()
+            }
+            ObservationIngressDecision::Rejected => {
+                self.source_hash == 0 && self.backlog_len == 0 && self.records.is_empty()
+            }
+        }
+    }
+
+    fn accepted_contract_valid(&self) -> bool {
+        if self.source_hash == 0
+            || self.records.is_empty()
+            || self.cursor.last_sequence == 0
+            || self.cursor.last_observed_hash == 0
         {
             return false;
         }
@@ -179,7 +198,7 @@ impl ObservationIngressBatch {
         EvidenceSubmission::with_payload(
             GateId::Invariant,
             Evidence::InvariantProof,
-            self.is_contract_valid(),
+            self.is_accepted(),
             self.contract_hash(),
         )
     }
@@ -353,6 +372,7 @@ pub fn write_observation_cursor_ndjson(
 ) -> io::Result<()> {
     let path = path.as_ref();
     let parent = path.parent().unwrap_or_else(|| Path::new("."));
+    fs::create_dir_all(parent)?;
     let file_name = path
         .file_name()
         .and_then(|name| name.to_str())
@@ -375,7 +395,16 @@ pub fn write_observation_cursor_ndjson(
     fs::rename(&tmp_path, path).map_err(|error| {
         let _ = fs::remove_file(&tmp_path);
         error
-    })
+    })?;
+    sync_parent_dir(parent)
+}
+
+fn sync_parent_dir(parent: &Path) -> io::Result<()> {
+    if parent.as_os_str().is_empty() {
+        return Ok(());
+    }
+
+    fs::File::open(parent)?.sync_all()
 }
 
 fn line_frames(

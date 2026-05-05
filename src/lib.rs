@@ -658,6 +658,8 @@ mod tests {
         assert_eq!(pressured.decision, ObservationIngressDecision::Backpressure);
         assert_eq!(pressured.backlog_len, 3);
         assert!(pressured.records.is_empty());
+        assert!(pressured.is_contract_valid());
+        assert!(!pressured.submission().passed);
         assert!(load_observation_cursor_ndjson(&cursor_path).unwrap().is_none());
 
         let source = BoundedLineObservationSource::new(
@@ -690,6 +692,8 @@ mod tests {
         let finished = source.read_batch().unwrap();
         assert_eq!(finished.decision, ObservationIngressDecision::Empty);
         assert!(finished.records.is_empty());
+        assert!(finished.is_contract_valid());
+        assert!(!finished.submission().passed);
 
         std::fs::remove_file(&source_path).ok();
         std::fs::remove_file(&cursor_path).ok();
