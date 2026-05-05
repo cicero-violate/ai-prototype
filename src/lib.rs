@@ -594,6 +594,38 @@ mod tests {
     }
 
     #[test]
+    fn observation_cursor_write_replaces_existing_cursor_atomically() {
+        let stem = std::env::temp_dir().join(format!(
+            "ai-observation-atomic-cursor-{}",
+            std::process::id()
+        ));
+        let cursor_path = stem.with_extension("cursor.ndjson");
+        std::fs::remove_file(&cursor_path).ok();
+
+        let first = ObservationCursor {
+            source_id: 11,
+            last_sequence: 1,
+            last_observed_hash: 99,
+        };
+        let second = ObservationCursor {
+            source_id: 11,
+            last_sequence: 2,
+            last_observed_hash: 12345,
+        };
+
+        write_observation_cursor_ndjson(&cursor_path, first).unwrap();
+        write_observation_cursor_ndjson(&cursor_path, second).unwrap();
+
+        let loaded = load_observation_cursor_ndjson(&cursor_path)
+            .unwrap()
+            .unwrap();
+        assert_eq!(loaded, second);
+        assert_eq!(std::fs::read_to_string(&cursor_path).unwrap().lines().count(), 1);
+
+        std::fs::remove_file(&cursor_path).ok();
+    }
+
+    #[test]
     fn bounded_line_observation_source_persists_cursor_and_applies_backpressure() {
         let stem = std::env::temp_dir().join(format!(
             "ai-observation-ingress-{}",

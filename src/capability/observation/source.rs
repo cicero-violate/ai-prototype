@@ -6,8 +6,8 @@
 //! frames exceed the configured backlog cap, no records are emitted and the
 //! cursor is not advanced.
 
-use std::fs;
-use std::io;
+use std::fs::{self, OpenOptions};
+use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 
 use crate::capability::EvidenceSubmission;
@@ -350,7 +350,31 @@ pub fn write_observation_cursor_ndjson(
     path: impl AsRef<Path>,
     cursor: ObservationCursor,
 ) -> io::Result<()> {
-    fs::write(path, encode_observation_cursor_ndjson(cursor))
+    let path = path.as_ref();
+    let parent = path.parent().unwrap_or_else(|| Path::new("."));
+    let file_name = path
+        .file_name()
+        .and_then(|name| name.to_str())
+        .unwrap_or("observation.cursor.ndjson");
+    let tmp_path = parent.join(format!(
+        ".{}.{}.tmp",
+        file_name,
+        std::process::id()
+    ));
+
+    let mut tmp = OpenOptions::new()
+        .write(true)
+        .create(true)
+        .truncate(true)
+        .open(&tmp_path)?;
+    tmp.write_all(encode_observation_cursor_ndjson(cursor).as_bytes())?;
+    tmp.sync_all()?;
+    drop(tmp);
+
+    fs::rename(&tmp_path, path).map_err(|error| {
+        let _ = fs::remove_file(&tmp_path);
+        error
+    })
 }
 
 fn parse_line_frames(bytes: &[u8], config: ObservationIngressConfig) -> Vec<ObservationFrame> {

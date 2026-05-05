@@ -1,4 +1,4 @@
-# Phase 2 Turn 2 Plan
+# Phase 2 Turn 3 Plan
 
 ## Variables
 
@@ -33,41 +33,44 @@ One-line explanation: Goodness is the geometric mean of all 15 dimensions; one w
 ## Source Inputs
 
 - `GOAL.md` requires deterministic observation ingress, replayable TLog evidence, bounded recovery, and verified external inputs before learning or policy reuse.
-- `score.md` identifies remaining risks around validation closure, graph telemetry, live provider proof, transport proof, and simplicity debt. `score.md` is preserved and must not be edited in this phase.
-- Turn 1 tightened observation cursor lineage so persisted cursor rows must be fresh or fully lineage-bound.
+- `score.md` identifies remaining risk around validation closure, graph telemetry, live provider proof, transport proof, and simplicity debt. `score.md` is preserved and must not be edited in this phase.
+- Runtime tarball inspection found prior agent-runtime logs, candidate/download ledgers, audit records, and prior delta-apply receipts; no source authority was taken from those runtime artifacts beyond confirming prior workflow context.
+- Turn 1 tightened observation cursor lineage validation.
+- Turn 2 rejected corrupt latest cursor rows instead of rolling back to older valid rows.
 
 ## Boundary
 
 - Do not edit `score.md`.
-- Do not create final delta bundle or manifest artifacts on this intermediate turn.
-- Keep this turn source-level and cumulative on top of Phase 2 Turn 1.
+- Preserve all committed Phase 2 changes since base commit `c5e91b717c253bf1383ed3344d0e4ffd2c5b1cd0`.
+- Create the final cumulative turn artifact only after this turn is committed and validated.
 - Prefer deterministic replay-safety hardening over broad refactors.
 
 ## Tasks
 
 1. Refresh `plan.md` from `GOAL.md` and `score.md`.
 2. Inspect TODO/FIXME markers and avoid adding deferrals.
-3. Close one concrete correctness/robustness gap in current source.
-4. Add a targeted regression test proving the new boundary.
-5. Run Rust bootstrap before validation.
-6. Run bounded validation.
-7. Commit the cumulative repository state for this turn.
+3. Inspect runtime tarball context for logs, snapshots, indexes, and prior runtime state.
+4. Close one concrete correctness/robustness gap in current source.
+5. Add a targeted regression test proving the new boundary.
+6. Run Rust bootstrap before validation.
+7. Run bounded validation.
+8. Commit the cumulative repository state for this turn.
+9. Create `/mnt/data/repo-delta-004.bundle` and `/mnt/data/DELTA_MANIFEST.md` for `B..H`.
 
 ## Completed This Turn
 
-- Hardened observation cursor loading so only the latest non-empty cursor row has authority.
-- Changed `load_observation_cursor_ndjson` to reject a latest corrupt cursor row with `InvalidData` instead of scanning backward to an older valid row.
-- Prevented stale cursor rollback after persisted cursor corruption, which protects observation replay determinism and external ingress lineage.
-- Added `observation_cursor_loader_rejects_latest_corrupt_row` to prove an older valid cursor row cannot mask a newer corrupt cursor row.
+- Hardened observation cursor persistence so cursor writes go through a synced sibling temporary file and atomic rename instead of direct overwrite.
+- Reduced crash/interruption risk where a partial write could corrupt the only cursor authority and break deterministic observation replay.
+- Added `observation_cursor_write_replaces_existing_cursor_atomically` to prove replacement leaves exactly one authoritative cursor row and reloads the latest cursor.
 
 ## Validation Result
 
 ```text
-python3 /mnt/data/bootstrap_rustc_session.py: pass
+python3 /mnt/data/bootstrap_rustc_session.py --skip-library-probe: pass
+cargo test observation_cursor_write_replaces_existing_cursor_atomically --offline -- --nocapture: pass
 cargo test observation_cursor_loader_rejects_latest_corrupt_row --offline -- --nocapture: pass
-cargo test observation_cursor_rejects_partial_persisted_state --offline -- --nocapture: pass
 cargo check --offline: pass
-cargo test --lib --offline: pass, 109 passed
+cargo test --lib --offline: pass, 110 passed
 python3 -m unittest discover -s tests -p 'test_*.py' -v: pass, 25 passed
 git diff --check: pass
 score.md: preserved; not edited during this turn
@@ -77,4 +80,4 @@ score.md: preserved; not edited during this turn
 
 - Full all-target validation remains large for this environment.
 - `cargo fmt` and `cargo clippy` remain unavailable in the supplied extracted toolchain.
-- This turn improves observation cursor corruption handling but does not close graph telemetry, live LLM proof, transport integration proof, or large-module simplicity debt.
+- This turn improves observation cursor persistence but does not close graph telemetry, live LLM proof, transport integration proof, or large-module simplicity debt.
