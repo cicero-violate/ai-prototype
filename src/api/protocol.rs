@@ -6,7 +6,7 @@ use crate::capability::{CapabilityRegistry, EvidenceSubmission};
 use crate::kernel::{ControlEvent, TLog};
 pub use crate::runtime::{CommandLedger, CommandReceipt};
 
-pub const API_PROTOCOL_SCHEMA_VERSION: u64 = 4;
+pub const API_PROTOCOL_SCHEMA_VERSION: u64 = 5;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Command {

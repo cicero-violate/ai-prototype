@@ -2175,8 +2175,8 @@ mod tests {
     }
 
     #[test]
-    fn api_protocol_schema_v4_binds_command_hash_to_payload() {
-        assert_eq!(API_PROTOCOL_SCHEMA_VERSION, 4);
+    fn api_protocol_schema_v5_binds_command_hash_to_payload() {
+        assert_eq!(API_PROTOCOL_SCHEMA_VERSION, 5);
 
         let first_submission = ObservationRecord::new(1, 1, 0xabc, 1).submission();
         let second_submission = ObservationRecord::new(2, 1, 0xabc, 1).submission();
