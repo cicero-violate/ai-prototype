@@ -239,12 +239,14 @@ def ensure_bashrc_sources_env(env_file: Path, bashrc: Path = Path("/root/.bashrc
 
 
 def write_env_file(env_file: Path, prefix: Path, cargo_home: Path) -> None:
+    perf_lines = "\n".join(BASHRC_LINES)
     env_file.write_text(
         textwrap.dedent(
             f"""\
             export PATH={prefix / 'bin'}:$PATH
             export CARGO_HOME={cargo_home}
             export RUSTUP_TOOLCHAIN=
+            {perf_lines}
             """
         ),
         encoding="utf-8",
