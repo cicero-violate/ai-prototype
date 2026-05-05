@@ -133,35 +133,35 @@ cargo test --all-targets --offline = incomplete, timeout after library tests and
 
 ## Axis Scores
 
-| Axis | Score | Critical basis |
-|---|---:|---|
-| I | 7.2 | Strong typed agent model, policy promotion, distillation, replay, and LLM receipt/proof concepts; live self-improvement is still not demonstrated end to end. |
-| E | 6.8 | Dependency-free crate and fast library tests help efficiency; all-target test timeout and missing fmt/clippy reduce execution efficiency. |
-| C | 7.4 | `cargo check`, 107 Rust library tests, 25 Python tests, policy trace validation, panic-surface validation, and loop trace passed. Full all-target correctness remains unproven. |
-| A | 8.4 | GOAL and implementation align closely around frozen kernel, TLog, bounded recovery, policy learning, verification, and LLM-as-capability. |
-| R | 7.5 | Replay, durable runtime, recovery policy, command ledger, and receipt/proof modules are strong; live provider and external transport failure modes remain under-tested. |
-| P | 6.2 | Loop trace and unit tests are lightweight; no benchmark suite, no provider latency proof, and all-target test timeout lower confidence. |
-| S | 6.4 | Capability taxonomy and registry are scalable in structure; large modules and no transport-level proof limit operational scale. |
-| D | 8.5 | Deterministic reducer, phase ordering, hash-linked TLog, replay verification, and command idempotency are central strengths. |
-| T | 8.3 | GOAL, score, tests, validation scripts, trace outputs, and explicit evidence contracts make the repo unusually inspectable. |
-| Co | 7.0 | Handoff files and scripts support collaboration; stale prior score context and large monolithic files increase review burden. |
-| Em | 7.2 | Operators can validate core behavior with local commands and inspect proof artifacts; missing fmt/clippy/all-target closure limits safe extension. |
-| B | 6.8 | The system has clear benefit for auditable autonomous execution, but user-facing deployment value is still indirect. |
-| L | 6.7 | Policy-learning trace and distillation contracts exist and validate; compounding learning is not yet measured across repeated real runs. |
-| Si | 5.1 | Large `src/lib.rs`, large LLM adapters, and high test unwrap/expect counts materially reduce simplicity. |
-| F | 7.4 | Proof spine, typed receipts, policy versioning, and replay semantics are future-compatible; missing external integration proof remains the main risk. |
+| Axis | Score | Critical basis                                                                                                                                                                  |
+|------+-------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| I    |   7.2 | Strong typed agent model, policy promotion, distillation, replay, and LLM receipt/proof concepts; live self-improvement is still not demonstrated end to end.                   |
+| E    |   6.8 | Dependency-free crate and fast library tests help efficiency; all-target test timeout and missing fmt/clippy reduce execution efficiency.                                       |
+| C    |   7.4 | `cargo check`, 107 Rust library tests, 25 Python tests, policy trace validation, panic-surface validation, and loop trace passed. Full all-target correctness remains unproven. |
+| A    |   8.4 | GOAL and implementation align closely around frozen kernel, TLog, bounded recovery, policy learning, verification, and LLM-as-capability.                                       |
+| R    |   7.5 | Replay, durable runtime, recovery policy, command ledger, and receipt/proof modules are strong; live provider and external transport failure modes remain under-tested.         |
+| P    |   6.2 | Loop trace and unit tests are lightweight; no benchmark suite, no provider latency proof, and all-target test timeout lower confidence.                                         |
+| S    |   6.4 | Capability taxonomy and registry are scalable in structure; large modules and no transport-level proof limit operational scale.                                                 |
+| D    |   8.5 | Deterministic reducer, phase ordering, hash-linked TLog, replay verification, and command idempotency are central strengths.                                                    |
+| T    |   8.3 | GOAL, score, tests, validation scripts, trace outputs, and explicit evidence contracts make the repo unusually inspectable.                                                     |
+| Co   |   7.0 | Handoff files and scripts support collaboration; stale prior score context and large monolithic files increase review burden.                                                   |
+| Em   |   7.2 | Operators can validate core behavior with local commands and inspect proof artifacts; missing fmt/clippy/all-target closure limits safe extension.                              |
+| B    |   6.8 | The system has clear benefit for auditable autonomous execution, but user-facing deployment value is still indirect.                                                            |
+| L    |   6.7 | Policy-learning trace and distillation contracts exist and validate; compounding learning is not yet measured across repeated real runs.                                        |
+| Si   |   5.1 | Large `src/lib.rs`, large LLM adapters, and high test unwrap/expect counts materially reduce simplicity.                                                                        |
+| F    |   7.4 | Proof spine, typed receipts, policy versioning, and replay semantics are future-compatible; missing external integration proof remains the main risk.                           |
 
 ## Risk Register
 
-| Risk | Severity | Evidence | Closure requirement |
-|---|---:|---|---|
-| All-target Rust tests incomplete | High | `cargo test --all-targets --offline` timed out after library tests and example binaries | Bound or split example tests, then prove all targets complete. |
-| Formatting and lint proof unavailable | Medium | extracted Rust archive lacks `cargo-fmt` and `clippy` | Provide components or separate toolchain, then run fmt and clippy. |
-| Live LLM path unproven | High | Ollama/OpenAI examples not run against live local endpoints | Run live provider examples and verify receipts/proof replay. |
-| Wrapper graph telemetry absent | High | no `state/rustc/*/graph.json` observed | Run explicit wrapper graph capture and record node/edge/intent metrics. |
-| Transport API proof missing | High | API appears route/protocol-level, not HTTP/gRPC end-to-end | Add executable transport and command-ingress integration tests. |
-| Simplicity debt | Medium | `src/lib.rs` 3843 lines; `openai.rs` 1970 lines; `ollama.rs` 1930 lines | Split tests/public exports/adapters into smaller modules. |
-| Test panic surface | Medium | panic validation reports `test_total = 327`, `example_total = 1` | Replace low-value unwrap/expect calls with explicit failure messages where useful. |
+| Risk                                  | Severity | Evidence                                                                                | Closure requirement                                                                |
+|---------------------------------------+----------+-----------------------------------------------------------------------------------------+------------------------------------------------------------------------------------|
+| All-target Rust tests incomplete      | High     | `cargo test --all-targets --offline` timed out after library tests and example binaries | Bound or split example tests, then prove all targets complete.                     |
+| Formatting and lint proof unavailable | Medium   | extracted Rust archive lacks `cargo-fmt` and `clippy`                                   | Provide components or separate toolchain, then run fmt and clippy.                 |
+| Live LLM path unproven                | High     | Ollama/OpenAI examples not run against live local endpoints                             | Run live provider examples and verify receipts/proof replay.                       |
+| Wrapper graph telemetry absent        | High     | no `state/rustc/*/graph.json` observed                                                  | Run explicit wrapper graph capture and record node/edge/intent metrics.            |
+| Transport API proof missing           | High     | API appears route/protocol-level, not HTTP/gRPC end-to-end                              | Add executable transport and command-ingress integration tests.                    |
+| Simplicity debt                       | Medium   | `src/lib.rs` 3843 lines; `openai.rs` 1970 lines; `ollama.rs` 1930 lines                 | Split tests/public exports/adapters into smaller modules.                          |
+| Test panic surface                    | Medium   | panic validation reports `test_total = 327`, `example_total = 1`                        | Replace low-value unwrap/expect calls with explicit failure messages where useful. |
 
 ## Next Closure Targets
 
