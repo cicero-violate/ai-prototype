@@ -37,12 +37,30 @@ PROMOTION_TOKENS = (
 )
 
 STORE_TOKENS = (
+    "pub fn try_append",
+    "pub fn append_durable",
+    "key_to_id(entry.key)?",
+    "InvalidPromotion",
+    "PolicyEntry",
+    "pub fn fingerprint",
+    "pub fn latest_version",
+)
+
+LEARNING_TO_POLICY_TOKENS = (
+    "impl PolicyStore",
     "pub fn promote_feedback",
     "PolicyStoreError::InvalidPromotion",
     "PolicyEntry",
     "self.try_append(PolicyEntry",
-    "pub fn fingerprint",
-    "pub fn latest_version",
+    "key: POLICY_FEEDBACK_HASH",
+    "pub fn promote_feedback_durable",
+    "self.append_durable(",
+)
+
+POLICY_LAYER_FORBIDDEN_TOKENS = (
+    "pub fn promote_feedback",
+    "pub fn promote_feedback_durable",
+    "PolicyPromotion",
 )
 
 
@@ -83,6 +101,16 @@ def token_check(name: str, text: str, tokens: tuple[str, ...]) -> dict[str, Any]
     }
 
 
+def forbidden_token_check(name: str, text: str, tokens: tuple[str, ...]) -> dict[str, Any]:
+    present = [token for token in tokens if token in text]
+    return {
+        "name": name,
+        "status": "pass" if not present else "fail",
+        "checked": len(tokens),
+        "missing": [f"forbidden:{token}" for token in present],
+    }
+
+
 def validate(root: Path) -> dict[str, Any]:
     lib = read(root / "src" / "lib.rs")
     promote = read(root / "src" / "capability" / "learning" / "promote.rs")
@@ -97,7 +125,9 @@ def validate(root: Path) -> dict[str, Any]:
         },
         token_check("trace_function_contract", trace_body, TRACE_TOKENS),
         token_check("policy_promotion_contract", promote, PROMOTION_TOKENS),
-        token_check("policy_store_feedback_contract", store, STORE_TOKENS),
+        token_check("learning_to_policy_append_contract", promote, LEARNING_TO_POLICY_TOKENS),
+        token_check("policy_store_append_only_contract", store, STORE_TOKENS),
+        forbidden_token_check("policy_store_no_learning_promotion_contract", store, POLICY_LAYER_FORBIDDEN_TOKENS),
     ]
     missing = [item for check in checks for item in check["missing"]]
     return {
