@@ -1,164 +1,226 @@
-# Canon Mini Agent Scorecard
+# Canon Agent Scorecard
 
-## Judgment
-
-Current score: `6.92 / 10`
-
-This is a strong research prototype with a real deterministic kernel, typed
-gate progression, replayable TLogs, durable NDJSON persistence, local LLM
-adapter paths, sandbox process receipts, and an initial append-only policy
-store. It is not yet a mature self-improving agent. The strongest parts are
-auditability, determinism, and kernel correctness. The weakest parts are real
-learning quality, scalability, operational deployment, evaluator depth, and
-simplicity.
-
-The score is intentionally conservative. The project has many proof-shaped
-pieces, but several are still examples, tests, or local traces rather than a
-closed production loop.
-
-## Formula
+## Variables
 
 ```text
-G = geometric_mean(I, E, C, A, R, P, S, D, T, Co, Em, B, L, Si, F)
+I  = Intelligence
+E  = Efficiency
+C  = Correctness
+A  = Alignment
+R  = Robustness
+P  = Performance
+S  = Scalability
+D  = Determinism
+T  = Transparency
+Co = Collaboration
+Em = Empowerment
+B  = Benefit
+L  = Learning
+Si = Simplicity
+F  = Future-Proofing
+G  = Goodness
 ```
 
-A geometric mean is used because one weak dimension should reduce the whole
-score. A system that is transparent but cannot scale, or learns but cannot
-verify, is not good enough.
-
-## Scores
-
-| Var | Dimension       | Score | Critical rationale                                                                                                                                                                       |
-|-----+-----------------+-------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| I   | Intelligence    |   6.8 | The runtime can route LLM judgment and tool intent through structured gates, but reasoning is still mostly delegated to model calls and static recovery rules.                           |
-| E   | Efficiency      |   7.0 | Common paths are small and testable; policy can reduce future LLM calls, but no measured cost-reduction curve exists yet.                                                                |
-| C   | Correctness     |   7.8 | `cargo test` passes 103 tests, and TLog replay/hash checks are central. Correctness is strongest inside the kernel, weaker at live external boundaries.                                  |
-| A   | Alignment       |   8.0 | The architecture matches the stated goal: kernel governs, LLM serves, policy learns only after evidence. The implementation now follows the policy-before-learning dependency direction. |
-| R   | Robustness      |   7.4 | Recovery gates, bounded transitions, receipt checks, and partial TLog persistence help. Live endpoint behavior can still break examples, as the OpenAI-compatible 400 showed.            |
-| P   | Performance     |   5.8 | There is no benchmark suite, latency budget, throughput target, or cost-per-objective measurement. Performance claims are mostly architectural.                                          |
-| S   | Scalability     |   5.9 | NDJSON traces and append-only stores are simple, but there is no compaction, indexing, concurrent writer design, retention policy, or large-run replay strategy.                         |
-| D   | Determinism     |   8.5 | Kernel transitions, hash chains, replay, and typed events are deterministic. External LLM/tool calls are nondeterministic but are isolated behind receipts.                              |
-| T   | Transparency    |   8.2 | TLogs, receipts, process evidence, and explicit phase events make behavior inspectable. Missing semantic payload capture limits usefulness for training and debugging.                   |
-| Co  | Collaboration   |   6.9 | The code is understandable and tests document many contracts. The prototype still concentrates many tests in `src/lib.rs`, making navigation and ownership harder.                       |
-| Em  | Empowerment     |   6.8 | Operators can run local Ollama/OpenAI-compatible examples and inspect durable traces. There is no polished CLI, dashboard, replay viewer, or policy inspection tool.                     |
-| B   | Benefit         |   7.0 | The core idea is valuable: a deterministic audit spine around model/tool behavior. Practical benefit remains limited until real tasks, deployment, and evaluator quality improve.        |
-| L   | Learning        |   5.8 | Policy promotion exists and is append-only, but learning is not yet a true distillation, GRPO, AlphaEvolve, or student-model loop. Hashes prove lineage; they are not training signal.   |
-| Si  | Simplicity      |   5.6 | The conceptual split is clean, but the implementation surface is broad: kernel, codec, runtime, policy, learning, receipts, proofs, multiple LLM examples, and many NDJSON formats.      |
-| F   | Future-proofing |   7.2 | Layering, typed evidence, and append-only logs are good foundations. Future evolution needs stronger schemas, migration/versioning, and storage strategy.                                |
+## Equation
 
 ```text
-G = 6.92 / 10
+G = (I*E*C*A*R*P*S*D*T*Co*Em*B*L*Si*F)^(1/15)
+max(G) = good
 ```
 
-## Current Evidence
+One-line explanation: Goodness is the geometric mean of all 15 dimensions; one weak dimension lowers the whole system.
 
-- `cargo test` passes: `103 passed`.
-- `cargo check --example openai_tool_loop_trace` passes.
-- `cargo check --example ollama_tool_loop_trace` passed during the trace persistence work.
-- OpenAI-compatible tool loop completed successfully and wrote:
-  - `tlog/openai_tool_loop_trace.tlog.ndjson`
-  - `tlog/openai_tool_loop_trace.process_receipts.ndjson`
-- Ollama tool loop writes:
-  - `tlog/ollama_tool_loop_trace.tlog.ndjson`
-  - `tlog/ollama_tool_loop_trace.process_receipts.ndjson`
-- Existing root-level judgment NDJSON artifacts were moved under `tlog/`.
-- Policy store is now independent of learning; learning imports policy and appends promotions.
+## Score Summary
 
-## What Makes Sense
+```text
+I  = 6.8 / 10
+E  = 6.3 / 10
+C  = 5.8 / 10
+A  = 8.2 / 10
+R  = 6.4 / 10
+P  = 5.7 / 10
+S  = 5.9 / 10
+D  = 7.8 / 10
+T  = 8.3 / 10
+Co = 7.1 / 10
+Em = 7.0 / 10
+B  = 6.6 / 10
+L  = 6.4 / 10
+Si = 5.3 / 10
+F  = 7.1 / 10
 
-The architecture makes sense. The kernel is treated as the authority, while
-LLMs and tools are evidence producers. That is the right separation for an
-auditable agent. Event sourcing also makes sense here: the TLog is the source
-of truth for phase/gate/control history, while receipt files provide supporting
-evidence for external effects.
+G = 6.66 / 10
+max(G) = good
+```
 
-The policy-before-learning change also makes sense. Judgment, eval, and LLM
-prompting should be able to read policy before adaptive learning exists.
-Learning should append verified entries into policy, not own the policy layer.
+Judgment: the repository is architecturally serious and unusually audit-oriented, but still not production-ready. Its strongest properties are deterministic state modeling, typed capability boundaries, replay/receipt thinking, and transparent handoff evidence. Its weakest properties are current Rust validation under the supplied toolchain, live external integration proof, performance proof, graph telemetry, and simplicity.
 
-The local traces are useful, but they should not be mistaken for model training
-data. Hashes, request hashes, response hashes, and proof hashes establish
-lineage. Training requires retained semantic inputs, actions, outputs, scores,
-and verifier results.
+## Scope
 
-## Critical Weaknesses
+```text
+stage = PHASE_1_REVIEW
+source_changes_allowed = false
+source_changes_made = false
+score_md_updated = true
+restored_bundle = /mnt/data/ai.bundle
+restored_repo_path = /mnt/data/ai-phase1/ai
+observed_branch = main
+head_commit = 4e76762f8011c4c40f85373a8dc9264d7a31746c
+tracked_files = 123
+rust_files_src_examples = 53
+python_test_count = 22
+rust_test_attr_count = 103
+requested_external_rustc_guide_path_present = false
+repo_local_rustc_guide_present = true
+```
 
-The biggest weakness is that the learning loop is still mostly structural.
-There is no demonstrated dataset builder that extracts semantically rich
-`distill.jsonl` rows from successful TLogs, no student model training, no GRPO
-training path, and no AlphaEvolve-style candidate database with measured
-fitness selection.
+The requested guide path `/mnt/data/canon-mini-agent-extracted/canon-mini-agent/prototype/ai/rustc_installation_guide.md` was not present in this environment. The repository-local `rustc_installation_guide.md` was present and describes the corrected Python `tarfile` extraction procedure.
 
-The evaluator is too shallow for serious self-improvement. Passing the current
-gate path proves the runtime mechanics, not that an agent completed meaningful
-external work. A bad evaluator would let the system learn bad policy with a
-perfect-looking audit trail.
+## Existing File Contents Observed
 
-Persistence is improving but fragmented. TLogs and process receipts now go into
-`tlog/`, and policy has durable append methods, but there is not yet a unified
-run directory layout, manifest, index, retention policy, or replay CLI.
+`GOAL.md` exists. It defines Canon Agent as a deterministic, self-improving runtime with a frozen kernel, append-only replayable TLog, bounded recovery, capability-layer intelligence, policy learning, and LLM promotion from routine reasoner to novelty specialist.
 
-The codebase needs structure cleanup. Many tests live in one large file, patch
-archives contain historical TODOs, and examples encode important behavior that
-should graduate into reusable runtime paths.
+Prior `score.md` existed. It was a Phase 2 scorecard tied to older delta/manifest evidence and older validation context. This file replaces that stale score with a Phase 1 review of the restored bundle at `4e76762f8011c4c40f85373a8dc9264d7a31746c`.
 
-## Areas To Improve The Score
+## Evidence Summary
 
-1. Improve `L` by building a real distillation exporter.
-   - Add `tlog -> distill.jsonl`.
-   - Include semantic input, action, output, score, proof hash, source seq, and replay verdict.
-   - Reject rows that only contain hashes.
+Repository shape:
 
-2. Improve `P` by adding benchmark targets.
-   - Measure cost per completed objective.
-   - Track LLM calls per run, token counts, wall time, replay time, and policy hit rate.
-   - Store benchmark summaries under `tlog/` or a versioned `runs/` directory.
+```text
+tracked_files = 123
+rust_files_src_examples = 53
+largest_rust_file = src/lib.rs, 3686 lines
+large_integration_file = src/capability/llm/ollama.rs, 1929 lines
+capability_modules = context, eval, judgment, learning, llm, memory, observation, orchestration, planning, policy, tooling, verification
+```
 
-3. Improve `S` by designing durable run storage.
-   - Use one directory per run.
-   - Store TLog, receipts, LLM call records, policy snapshot hash, manifest, and replay report together.
-   - Add indexing or summaries so large histories do not require full replay for every query.
+Positive evidence:
 
-4. Improve `C` and `R` with adapter contract tests.
-   - Test OpenAI-compatible plain chat.
-   - Test tool-call rejection and fallback.
-   - Test Ollama-compatible request/response parsing.
-   - Persist partial TLogs on all external call failures.
+- `src/lib.rs` forbids unsafe code at crate level with `#![forbid(unsafe_code)]`.
+- `GOAL.md` and source layout agree on the intended split: kernel, codec, runtime, capability, API.
+- `.cargo/config.toml` enforces strict Rust diagnostics with `-Dwarnings`, `-Dunused`, `-Ddead-code`, and related flags.
+- `src/runtime/verify.rs` validates transition legality, hash linkage, state continuity, registry projection, API command receipt data, and replay semantics.
+- `src/capability/verification/proof.rs` defines a canonical effect proof spine: request, authority, effect, receipt, proof, proof record, replay.
+- `src/api/routes.rs` has idempotent envelope handling through `CommandLedger`, including conflicting-command rejection and replayed-event reuse.
+- Python regression tests passed: `22/22`.
+- Policy-learning trace validation passed with `missing_count = 0`.
+- Panic-surface validation passed for production code with `production_total = 0`.
+- Runtime archive parsing evidence was emitted before the observe command timed out; the archive base matched the restored head and runtime performance budget status was `pass`.
 
-5. Improve `T` with a replay/audit CLI.
-   - `canon replay tlog/...`
-   - `canon inspect-run ...`
-   - `canon verify-receipts ...`
-   - Human-readable event, receipt, proof, and policy summaries.
+Negative evidence:
 
-6. Improve `Si` by splitting tests and examples.
-   - Move large test clusters out of `src/lib.rs`.
-   - Promote repeated example logic into reusable runtime helpers.
-   - Keep examples thin.
+- `cargo check --offline` failed before compilation because the supplied corrected toolchain is Cargo/Rust `1.75.0`, while this crate declares `edition = "2024"`.
+- `cargo fmt`, `cargo test --all-targets`, and `cargo clippy` were not proven for the current head under the supplied archive set.
+- Wrapper graph telemetry is absent: no `state/rustc/*/graph.json` was observed.
+- Live Ollama execution was not proven in this phase.
+- External API/HTTP/gRPC behavior is represented by deterministic route functions, not by an executable server or end-to-end integration test in this restored repo.
+- `scripts/observe_validation.sh` did not complete in the allotted run; it emitted early report events, then timed out before a full final validation summary.
+- Test code contains a high number of panic-surface findings: `test_total = 319`.
+- Simplicity is weak: `src/lib.rs` is a 3,686-line public surface with extensive embedded tests, and the Ollama adapter is a 1,929-line integration module.
 
-7. Improve `L` and `A` with evaluator hardening.
-   - Define task-specific external success criteria.
-   - Require independent verification before policy promotion.
-   - Store failed candidates too, so learning can distinguish bad actions from missing evidence.
+## TODO / FIXME Marker Evidence
 
-8. Improve `F` with schema versioning.
-   - Version every NDJSON record type.
-   - Add migrations or compatibility readers.
-   - Document which fields are stable, experimental, or deprecated.
+Search commands:
 
-9. Improve `Em` with policy inspection.
-   - List current policy entries.
-   - Show why an entry was promoted.
-   - Link policy entries back to source TLog events and proof records.
+```bash
+rg -n --hidden -g '!.git/**' -g '!target/**' -g '!patch/**' -g '!score.md' 'TODO|FIXME' .
+rg -n --hidden -g '!.git/**' -g '!target/**' 'TODO|FIXME' .
+```
 
-10. Improve `B` by running real tasks.
-    - Use the agent on concrete file, API, or coding objectives.
-    - Compare runs with and without policy.
-    - Prove that repeated objectives get cheaper without reducing correctness.
+Findings:
 
-## Score Ceiling
+```text
+active TODO/FIXME markers outside score.md, target, and patch archive = 0
+archived patch TODO markers = 4
+score.md marker references = expected scorecard evidence text
+```
 
-The current design can plausibly reach `8+` if the next work closes the
-learning, evaluator, and storage gaps. It should not be scored that high yet.
-Right now the system is an auditable runtime prototype with early policy
-learning, not a proven self-improving agent.
+Archived patch markers remain in `patch/improve_score_codebase.apply_patch`:
+
+```text
+command intake awaiting external API protocol
+judgment payload awaiting versioned policy
+handlers awaiting protocol schema freeze
+wire encoding awaiting HTTP/gRPC transport choice
+```
+
+Critical reading: active source does not defer requested work with live TODO/FIXME markers, but archived patch history still points to unresolved protocol/API and versioned-policy boundaries.
+
+## Validation Evidence
+
+Toolchain probe using Python `tarfile` extraction:
+
+```text
+archive = /mnt/data/rust-1.75.0-x86_64-unknown-linux-gnu.tar.gz
+prefix = /mnt/data/rustc-python-install-prefix
+cargo_home = /mnt/data/rustc-python-cargo-home
+rustc --version = rustc 1.75.0 (82e1608df 2023-12-21)
+cargo --version = cargo 1.75.0 (1d8b05cdd 2023-11-20)
+dependency_free_probe = cargo run --offline => pass
+```
+
+Repository validation:
+
+```text
+cargo check --offline => fail, manifest requires edition2024 not stabilized in cargo 1.75.0
+python3 -m unittest discover -s tests -p 'test_*.py' -v => pass, 22 tests
+python3 -m py_compile scripts/write_delta_manifest.py scripts/validate_policy_learning_trace.py scripts/validate_rust_panic_surface.py => pass
+python3 scripts/validate_policy_learning_trace.py --root . --report target/observe/policy-learning-trace.json => pass
+python3 scripts/validate_rust_panic_surface.py --root . --fail-production-unwrap --report target/observe/panic-surface.json => pass
+git diff --check => pass
+```
+
+Partial observe evidence:
+
+```text
+CANON_DELTA_BASE = 4e76762f8011c4c40f85373a8dc9264d7a31746c
+CANON_RUNTIME_ARCHIVE = /mnt/data/ai-runtime.tar.gz
+runtime_archive_sha256 = bf7fe98ff934d09d12fb124d4e02e2023a05e2ecf7473de1526589e9db3f2ee6
+runtime_archive_member_count = 67
+runtime_manifest_base_matches_delta_base = true
+runtime_performance_budget_status = pass
+git_diff_check = pass
+git_delta_diff_check = pass
+observe_completion = timeout before final validation summary
+```
+
+## Axis Detail
+
+| Axis | Score | Critical basis |
+|---|---:|---|
+| I | 6.8 | Strong typed runtime/capability model and policy-learning intent; still lacks measured autonomous improvement on current head. |
+| E | 6.3 | Dependency-free Rust probe and Python tests are lightweight; observe validation timed out and the Rust crate cannot be checked with the supplied toolchain. |
+| C | 5.8 | Python/test-script validation is strong, but current Rust correctness is unproven because manifest parsing fails before compilation. |
+| A | 8.2 | Source layout and verification spine closely match `GOAL.md`: frozen kernel, capability evidence, replay, and auditability. |
+| R | 6.4 | Replay, receipt, and durable modules exist; live integration and full compile/test proof are missing. |
+| P | 5.7 | Runtime archive budget status is pass, but no current Rust benchmark exists and observe completion was not achieved. |
+| S | 5.9 | Modular capability taxonomy exists, but orchestration/API scale is not proven end-to-end. |
+| D | 7.8 | Deterministic transition tables, hash-linked events, and replay checks are central; the unvalidated current Rust build lowers confidence. |
+| T | 8.3 | GOAL, README, plan, score, manifest scripts, and validation reports provide unusually explicit evidence trails. |
+| Co | 7.1 | Handoff docs and scripts help future operators, but stale prior score context and large surfaces increase onboarding cost. |
+| Em | 7.0 | Operators can run tests and inspect receipts; missing current-head Rust proof limits safe extension. |
+| B | 6.6 | The architecture is useful for auditable autonomous execution, but deployed user value is still indirect. |
+| L | 6.4 | Policy-learning trace exists and passes, but learning remains a validated pattern more than a demonstrated compounding loop. |
+| Si | 5.3 | Large monolithic public surface, large LLM adapter, many archived patches, and many test unwraps reduce simplicity. |
+| F | 7.1 | Canonical proof spine and strict contracts are future-compatible; edition/toolchain mismatch and unclosed integration proof remain risks. |
+
+## Risk Register
+
+| Risk | Severity | Evidence | Closure requirement |
+|---|---:|---|---|
+| Rust crate not validated | High | `cargo check --offline` fails on `edition2024` with Cargo 1.75.0 | Provide a Rust/Cargo toolchain that supports edition 2024, then run fmt/test/clippy. |
+| Wrapper graph telemetry absent | High | no `state/rustc/*/graph.json` | Run explicit `CANON_RUSTC_WRAPPER` capture and record graph metrics. |
+| Live LLM path unproven | High | `cargo run --example ollama_judgment` not run | Run with local Ollama and verify receipts/proof events. |
+| Observe validation incomplete | Medium | report emitted 9 events, then timed out | Profile and bound slow/hanging observe checks. |
+| External API not end-to-end proven | High | routes exist, server/transport proof absent | Add executable API transport and command-ingress tests. |
+| Simplicity debt | Medium | `src/lib.rs` 3686 lines, `ollama.rs` 1929 lines | Split public exports/tests and adapter internals into smaller modules. |
+| Test panic surface | Medium | `test_total = 319` | Reduce unnecessary `unwrap`/`expect` in tests where failure messages matter. |
+| Archived protocol debt | Medium | 4 archived TODO markers | Resolve or retire obsolete patch debt around protocol/schema/transport. |
+
+## Next Closure Targets
+
+1. Install or provide a Rust/Cargo toolchain that supports `edition = "2024"`, then run `cargo fmt --check`, `cargo test --all-targets`, and `cargo clippy --all-targets -- -D warnings`.
+2. Generate wrapper graph telemetry under `state/rustc` and record node, edge, and intent coverage metrics.
+3. Run the live Ollama judgment example and verify durable receipt/proof replay.
+4. Fix or bound the observe-validation timeout path.
+5. Add executable external API/transport tests instead of only deterministic route-level proof.
