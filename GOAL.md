@@ -38,37 +38,79 @@ The end state is a system where:
   for smaller, faster specialist models
 - The cost per objective completed falls monotonically over time
 
-## Verified Distillation Loop
+## Verified Evolution Loop
 
-The runtime must explicitly support post-training distillation as an
-outcome of normal execution. Distillation is not part of the frozen
-kernel and does not replace replay, proof, or policy promotion. It is a
-learning capability that converts verified execution traces into clean
-training data.
-
-The canonical flow is:
+Use an AlphaEvolve-style loop: generate code candidates, run them, score
+them, keep the winners, and feed the winners back into the next prompt.
 
 ```text
-code/action execution → receipts → TLog → verification/eval → distill.jsonl → student model → gated deployment
+seed program
+→ prompt sampler
+→ LLM mutation/crossover
+→ candidate patch
+→ sandbox run
+→ evaluator
+→ fitness score
+→ program database
+→ winner selection
+→ next generation
 ```
 
-Only verified or passing events may enter the distillation dataset:
+Real names:
+
+- **seed program**: the current code, plan, policy, or action sequence.
+- **candidate patch**: one proposed mutation of the seed.
+- **sandbox run**: isolated execution of the candidate.
+- **evaluator**: tests, replay, proof checks, benchmarks, and eval rules.
+- **fitness score**: measured quality, not model opinion.
+- **program database**: archive of candidates, scores, receipts, and lineage.
+- **selection**: keep candidates that pass and improve the score.
+- **next generation**: use selected winners as context for more mutations.
+
+Authority rule:
+
+```text
+LLM proposes candidates.
+Sandbox executes candidates.
+Evaluator scores candidates.
+TLog records receipts.
+Program database stores lineage.
+Kernel gates deployment.
+```
+
+The LLM never approves itself. A candidate becomes learning data only when
+external evidence proves it passed.
+
+## TLog Distillation Loop
+
+After verified evolution, convert only winning traces into learning data.
+
+```text
+winning candidate → receipt/proof → TLog → distill.jsonl → policy/student → gated reuse
+```
+
+Dataset rule:
 
 ```text
 D = { E ∈ TLog | E.verified = true ∨ E.verdict = pass ∨ E.eval.verdict = pass }
 ```
 
-Each distilled row should preserve the minimum causal training tuple:
+Each `distill.jsonl` row must keep:
 
 ```text
 (instruction, input_state, action, output, score, proof_hash, source_event)
 ```
 
-This makes every model-improvement step traceable back to the original
-hash-chained event that produced it. The LLM remains mostly frozen at
-runtime; the system first learns through policy and verified traces.
-Fine-tuning or student-model training is optional and only allowed after
-the data has passed verification and eval gates.
+Use the data in this order:
+
+1. Promote simple repeated wins into policy.
+2. Keep hard or novel wins as examples for retrieval.
+3. Train a small student model only after the dataset is large and clean.
+4. Serve the student through Ollama or another host.
+5. Keep the same verifier, proof, replay, and kernel gates.
+
+Ollama is not the student. Ollama is only a local model host. The student
+is the trained small model or adapter.
 
 ## Architecture
 
