@@ -10,7 +10,7 @@ use std::path::Path;
 use crate::api::protocol::{CommandEnvelope, CommandLedger, ControlEventResponse};
 use crate::api::routes::handle_envelope_once;
 use crate::error::CanonError;
-use crate::kernel::{RuntimeConfig, State, TLog};
+use crate::kernel::{ControlEvent, RuntimeConfig, State, TLog};
 use crate::runtime::verify_tlog;
 
 pub const API_TRANSPORT_SCHEMA_VERSION: u64 = 1;
@@ -56,6 +56,10 @@ impl ApiTransportFrame {
                     self.request_id,
                     &self.envelope,
                 )
+    }
+
+    pub fn matches_receipt(&self, receipt: ApiTransportReceipt) -> bool {
+        self.request_id == receipt.request_id && self.payload_hash == receipt.payload_hash
     }
 }
 
@@ -125,6 +129,10 @@ impl ApiTransportReceipt {
                     self.event_hash,
                 )
     }
+
+    pub fn matches_event(&self, event: &ControlEvent) -> bool {
+        event.api_command_id == self.command_id && event.api_command_hash == self.command_hash
+    }
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -155,8 +163,14 @@ impl ApiTransportLedger {
 
     pub fn receipt_for(&self, frame: &ApiTransportFrame) -> Option<ApiTransportReceipt> {
         self.receipts.iter().copied().find(|receipt| {
-            receipt.request_id == frame.request_id && receipt.payload_hash == frame.payload_hash
+            frame.matches_receipt(*receipt)
         })
+    }
+
+    pub fn contains_request_id(&self, request_id: u64) -> bool {
+        self.receipts
+            .iter()
+            .any(|receipt| receipt.request_id == request_id)
     }
 
     pub fn has_conflicting_request(&self, frame: &ApiTransportFrame) -> bool {
@@ -166,12 +180,7 @@ impl ApiTransportLedger {
     }
 
     fn push_receipt(&mut self, receipt: ApiTransportReceipt) -> Result<(), CanonError> {
-        if !receipt.is_contract_valid()
-            || self
-                .receipts
-                .iter()
-                .any(|existing| existing.request_id == receipt.request_id)
-        {
+        if !receipt.is_contract_valid() || self.contains_request_id(receipt.request_id) {
             return Err(CanonError::InvalidApiCommand);
         }
         self.receipts.push(receipt);
@@ -454,21 +463,25 @@ pub fn verify_api_transport_receipts(
 ) -> Result<(), CanonError> {
     let mut seen_request_ids = Vec::new();
     for receipt in receipts {
-        if !receipt.is_contract_valid() || seen_request_ids.contains(&receipt.request_id) {
+        if !receipt.is_contract_valid()
+            || request_id_seen(&seen_request_ids, receipt.request_id)
+        {
             return Err(CanonError::InvalidApiCommand);
         }
         let event = tlog
             .iter()
             .find(|event| event.self_hash == receipt.event_hash)
             .ok_or(CanonError::InvalidReplay)?;
-        if event.api_command_id != receipt.command_id
-            || event.api_command_hash != receipt.command_hash
-        {
+        if !receipt.matches_event(event) {
             return Err(CanonError::InvalidReplay);
         }
         seen_request_ids.push(receipt.request_id);
     }
     Ok(())
+}
+
+fn request_id_seen(seen_request_ids: &[u64], request_id: u64) -> bool {
+    seen_request_ids.contains(&request_id)
 }
 
 fn transport_frame_hash(

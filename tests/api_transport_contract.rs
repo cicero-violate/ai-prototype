@@ -148,6 +148,40 @@ fn transport_frame_rejects_tampered_payload_without_state_mutation() {
 }
 
 #[test]
+fn transport_frame_receipt_match_is_payload_scoped() {
+    let frame = observation_frame();
+    let matching = ApiTransportReceipt::new(
+        frame.request_id,
+        frame.payload_hash,
+        frame.envelope.command_id,
+        frame.envelope.command_hash,
+        55,
+    );
+    let different_payload = ApiTransportReceipt::new(
+        frame.request_id,
+        frame.payload_hash ^ 1,
+        frame.envelope.command_id,
+        frame.envelope.command_hash,
+        55,
+    );
+
+    assert!(frame.matches_receipt(matching));
+    assert!(!frame.matches_receipt(different_payload));
+}
+
+#[test]
+fn transport_ledger_exposes_request_id_membership() {
+    let receipt = ApiTransportReceipt::new(101, 202, 303, 404, 505);
+    let ledger = match ApiTransportLedger::from_receipts(vec![receipt]) {
+        Ok(ledger) => ledger,
+        Err(err) => panic!("transport ledger should accept unique receipt: {err:?}"),
+    };
+
+    assert!(ledger.contains_request_id(101));
+    assert!(!ledger.contains_request_id(102));
+}
+
+#[test]
 fn transport_receipt_persists_and_verifies_against_tlog() {
     let cfg = RuntimeConfig::default();
     let mut state = State::default();

@@ -14,6 +14,16 @@ pub struct CommandReceipt {
     pub event_hash: u64,
 }
 
+impl CommandReceipt {
+    pub fn matches_ids(self, command_id: u64, command_hash: u64) -> bool {
+        self.command_id == command_id && self.command_hash == command_hash
+    }
+
+    pub fn conflicts_with_ids(self, command_id: u64, command_hash: u64) -> bool {
+        self.command_id == command_id && self.command_hash != command_hash
+    }
+}
+
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct CommandLedger {
     receipts: Vec<CommandReceipt>,
@@ -71,15 +81,13 @@ impl CommandLedger {
         self.receipts
             .iter()
             .copied()
-            .find(|receipt| {
-                receipt.command_id == command_id && receipt.command_hash == command_hash
-            })
+            .find(|receipt| receipt.matches_ids(command_id, command_hash))
     }
 
     pub fn has_conflicting_command_ids(&self, command_id: u64, command_hash: u64) -> bool {
-        self.receipts.iter().any(|receipt| {
-            receipt.command_id == command_id && receipt.command_hash != command_hash
-        })
+        self.receipts
+            .iter()
+            .any(|receipt| receipt.conflicts_with_ids(command_id, command_hash))
     }
 
     pub fn replayed_event_by_ids(
@@ -111,8 +119,7 @@ impl CommandLedger {
 
     fn insert_or_update(&mut self, receipt: CommandReceipt) {
         if let Some(existing) = self.receipts.iter_mut().find(|existing| {
-            existing.command_id == receipt.command_id
-                && existing.command_hash == receipt.command_hash
+            existing.matches_ids(receipt.command_id, receipt.command_hash)
         }) {
             *existing = receipt;
         } else {
