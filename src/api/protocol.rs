@@ -6,7 +6,8 @@ use crate::capability::{CapabilityRegistry, EvidenceSubmission};
 use crate::kernel::{ControlEvent, TLog};
 pub use crate::runtime::{CommandLedger, CommandReceipt};
 
-pub const API_PROTOCOL_SCHEMA_VERSION: u64 = 5;
+pub const API_PROTOCOL_SCHEMA_VERSION: u64 = 6;
+pub const API_COMMAND_BATCH_LIMIT: usize = 16;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Command {
@@ -23,11 +24,14 @@ impl Command {
             Self::SubmitEvidence(submission) => submission.is_contract_valid(),
             Self::SubmitEvidenceBatch(submissions) => {
                 !submissions.is_empty()
+                    && submissions.len() <= API_COMMAND_BATCH_LIMIT
                     && submissions.iter().copied().all(EvidenceSubmission::is_contract_valid)
                     && gates_are_unique(submissions)
             }
             Self::SubmitObservationIngress(batch) => {
-                batch.is_contract_valid() && batch.submission().is_contract_valid()
+                batch.records.len() <= API_COMMAND_BATCH_LIMIT
+                    && batch.is_contract_valid()
+                    && batch.submission().is_contract_valid()
             }
             Self::SubmitProcessReceipt(receipt) => {
                 receipt.is_contract_valid()
@@ -35,6 +39,7 @@ impl Command {
             }
             Self::SubmitProcessReceiptBatch(receipts) => {
                 !receipts.is_empty()
+                    && receipts.len() <= API_COMMAND_BATCH_LIMIT
                     && receipts.iter().all(|receipt| {
                         receipt.is_contract_valid()
                             && receipt.registry_policy_hash

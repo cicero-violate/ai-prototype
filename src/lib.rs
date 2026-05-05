@@ -13,7 +13,8 @@ pub mod kernel;
 pub mod runtime;
 
 pub use crate::api::protocol::{
-    Command, CommandEnvelope, ControlEventResponse, API_PROTOCOL_SCHEMA_VERSION,
+    Command, CommandEnvelope, ControlEventResponse, API_COMMAND_BATCH_LIMIT,
+    API_PROTOCOL_SCHEMA_VERSION,
 };
 pub use crate::capability::context::{ContextDecision, ContextRecord};
 pub use crate::capability::eval::{EvalDecision, EvalDimension, EvalRecord};
@@ -2175,8 +2176,8 @@ mod tests {
     }
 
     #[test]
-    fn api_protocol_schema_v5_binds_command_hash_to_payload() {
-        assert_eq!(API_PROTOCOL_SCHEMA_VERSION, 5);
+    fn api_protocol_schema_v6_binds_command_hash_to_payload() {
+        assert_eq!(API_PROTOCOL_SCHEMA_VERSION, 6);
 
         let first_submission = ObservationRecord::new(1, 1, 0xabc, 1).submission();
         let second_submission = ObservationRecord::new(2, 1, 0xabc, 1).submission();
@@ -2707,6 +2708,54 @@ mod tests {
             &mut tlog,
             RuntimeConfig::default(),
             Command::SubmitProcessReceiptBatch(vec![receipt.clone(), receipt]),
+        );
+
+        assert_eq!(result, Err(CanonError::InvalidApiCommand));
+        assert_eq!(state, before);
+        assert!(tlog.is_empty());
+
+        let _ = std::fs::remove_dir_all(&sandbox_root);
+    }
+
+    #[test]
+    fn api_rejects_oversized_process_receipt_batch_atomically() {
+        let sandbox_root = std::env::temp_dir().join(format!(
+            "canon-oversized-process-batch-{}-{}",
+            std::process::id(),
+            0xbad_u64
+        ));
+        let _ = std::fs::remove_dir_all(&sandbox_root);
+
+        let executor = LiveSandboxProcessExecutor::new(&sandbox_root)
+            .with_allowed_command("/usr/bin/printf")
+            .with_locked_env("CANON_SANDBOX", "1")
+            .with_timeout_ms(1000)
+            .with_max_output_bytes(4096);
+        let mut receipts = Vec::new();
+        for idx in 0..=API_COMMAND_BATCH_LIMIT {
+            let arg = format!("oversized-process-batch-{idx}");
+            receipts.push(
+                executor
+                    .execute_process("/usr/bin/printf", &[arg.as_str()], "")
+                    .unwrap(),
+            );
+        }
+
+        let mut state = State::default();
+        state.phase = Phase::Execute;
+        state.packet.bind_ready_task();
+        state.gates.invariant = Gate::pass(Evidence::InvariantProof);
+        state.gates.analysis = Gate::pass(Evidence::AnalysisReport);
+        state.gates.judgment = Gate::pass(Evidence::JudgmentRecord);
+        state.gates.plan = Gate::pass(Evidence::TaskReady);
+
+        let before = state;
+        let mut tlog = Vec::new();
+        let result = crate::api::routes::handle_command(
+            &mut state,
+            &mut tlog,
+            RuntimeConfig::default(),
+            Command::SubmitProcessReceiptBatch(receipts),
         );
 
         assert_eq!(result, Err(CanonError::InvalidApiCommand));
