@@ -1,27 +1,31 @@
-base_commit: 237654df4e2d62f79987d8c686a2e22d78e079e6
-head_commit: aaae6aaa77c715f96adfa3d67df3405c87cb281e
-
-bundle: repo-delta-004.bundle
-range: 237654df4e2d62f79987d8c686a2e22d78e079e6..aaae6aaa77c715f96adfa3d67df3405c87cb281e
+base_commit: c5e91b717c253bf1383ed3344d0e4ffd2c5b1cd0
+head_commit: 0ca6bcf4127f498b867a994691657fe5787e7f2b
 
 changed_files:
 - plan.md
-- src/api/protocol.rs
+- score.md
+- src/capability/observation/record.rs
+- src/capability/observation/source.rs
 - src/lib.rs
 
-validation_results:
-- python3 /mnt/data/bootstrap_rustc_session.py --skip-library-probe --skip-probe: pass
-- cargo test api_protocol_schema_v6_binds_command_hash_to_payload --offline -- --nocapture: pass
-- cargo test api_rejects_oversized_process_receipt_batch_atomically --offline -- --nocapture: pass
-- cargo test api_rejects_duplicate_process_receipt_batch_atomically --offline -- --nocapture: pass
-- cargo check --offline: pass
-- git diff --check: pass
-- git diff --exit-code -- score.md: pass, untouched
-- python3 -m unittest discover -s tests -p 'test_*.py' -v: pass, 25 tests
+commits:
+- 6d33930 Tighten observation cursor lineage validation
+- 174cd50 Reject corrupt latest observation cursor
+- 0ca6bcf Persist observation cursor atomically
 
-runtime_archive_inspection:
-- /mnt/data/ai-runtime.tar.gz inspected for logs, conversation/runtime snapshots, download indexes, and prior runtime state.
-- Found .repo-agent-runtime candidate ledger, downloads ledger, audit ledger, current-run summary, delta apply receipt, downloads manifest/config/bootstrap files, network request logs, chatgpt_project_agent log, and RUNTIME_MANIFEST.json.
+validation_results:
+- python3 /mnt/data/bootstrap_rustc_session.py --skip-library-probe: pass
+- cargo test observation_cursor_write_replaces_existing_cursor_atomically --offline -- --nocapture: pass
+- cargo test observation_cursor_loader_rejects_latest_corrupt_row --offline -- --nocapture: pass
+- cargo check --offline: pass
+- cargo test --lib --offline: pass, 110 passed
+- python3 -m unittest discover -s tests -p 'test_*.py' -v: pass, 25 passed
+- git diff --check: pass
+- score.md preserved during Phase 2 turn 3; included in B..H from prior committed Phase 1/2 state
+
+runtime_tarball_inspection:
+- inspected /mnt/data/ai-runtime.tar.gz
+- found .repo-agent-runtime candidate/download ledgers, audit.ndjson, current-run-summary.json, delta-apply receipts, downloads/DELTA_MANIFEST.md, logs, and RUNTIME_MANIFEST.json
 
 receiver_apply_commands:
 - git fetch ./repo-delta-004.bundle HEAD
