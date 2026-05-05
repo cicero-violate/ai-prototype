@@ -134,16 +134,7 @@ fn advance(s: &mut State, to: Phase, cause: Cause, evidence: Evidence) -> Outcom
     s.failure = None;
     s.recovery_action = None;
 
-    Outcome {
-        state: *s,
-        kind: EventKind::Advanced,
-        cause,
-        evidence,
-        decision: Decision::Continue,
-        failure: None,
-        recovery_action: None,
-        affected_gate: None,
-    }
+    outcome(*s, EventKind::Advanced, cause, evidence, Decision::Continue)
 }
 
 fn complete(s: &mut State) -> Outcome {
@@ -151,16 +142,13 @@ fn complete(s: &mut State) -> Outcome {
     s.failure = None;
     s.recovery_action = None;
 
-    Outcome {
-        state: *s,
-        kind: EventKind::Completed,
-        cause: Cause::EvalPassed,
-        evidence: Evidence::CompletionProof,
-        decision: Decision::Complete,
-        failure: None,
-        recovery_action: None,
-        affected_gate: None,
-    }
+    outcome(
+        *s,
+        EventKind::Completed,
+        Cause::EvalPassed,
+        Evidence::CompletionProof,
+        Decision::Complete,
+    )
 }
 
 fn raise_gate_failure(s: &mut State, gate_id: GateId, gate: Gate) -> Outcome {
@@ -184,16 +172,9 @@ fn raise_gate_failure(s: &mut State, gate_id: GateId, gate: Gate) -> Outcome {
     s.failure = Some(class);
     s.recovery_action = None;
 
-    Outcome {
-        state: *s,
-        kind,
-        cause,
-        evidence,
-        decision,
-        failure: Some(class),
-        recovery_action: None,
-        affected_gate: Some(gate_id),
-    }
+    outcome(*s, kind, cause, evidence, decision)
+        .with_failure(class)
+        .with_affected_gate(gate_id)
 }
 
 fn raise_domain_failure(
@@ -207,16 +188,9 @@ fn raise_domain_failure(
     s.failure = Some(class);
     s.recovery_action = None;
 
-    Outcome {
-        state: *s,
-        kind: EventKind::Failed,
-        cause,
-        evidence,
-        decision: Decision::Fail,
-        failure: Some(class),
-        recovery_action: None,
-        affected_gate: Some(gate_id),
-    }
+    outcome(*s, EventKind::Failed, cause, evidence, Decision::Fail)
+        .with_failure(class)
+        .with_affected_gate(gate_id)
 }
 
 fn recover(input: State, cfg: RuntimeConfig) -> Outcome {
@@ -241,16 +215,15 @@ fn recover(input: State, cfg: RuntimeConfig) -> Outcome {
     s.recovery_attempts = s.recovery_attempts.saturating_add(1);
     s.recovery_action = Some(action);
 
-    Outcome {
-        state: s,
-        kind: EventKind::Recovered,
-        cause: Cause::RepairSelected,
-        evidence: Evidence::RecoveryPolicy,
-        decision: Decision::Repair,
-        failure: Some(failure),
-        recovery_action: Some(action),
-        affected_gate: None,
-    }
+    outcome(
+        s,
+        EventKind::Recovered,
+        Cause::RepairSelected,
+        Evidence::RecoveryPolicy,
+        Decision::Repair,
+    )
+    .with_failure(failure)
+    .with_recovery_action(action)
 }
 
 fn halt_recovery(s: &mut State, class: FailureClass, cause: Cause) -> Outcome {
@@ -258,16 +231,15 @@ fn halt_recovery(s: &mut State, class: FailureClass, cause: Cause) -> Outcome {
     s.failure = Some(class);
     s.recovery_action = Some(RecoveryAction::Escalate);
 
-    Outcome {
-        state: *s,
-        kind: EventKind::Failed,
+    outcome(
+        *s,
+        EventKind::Failed,
         cause,
-        evidence: Evidence::ConvergenceLimit,
-        decision: Decision::Halt,
-        failure: Some(class),
-        recovery_action: Some(RecoveryAction::Escalate),
-        affected_gate: None,
-    }
+        Evidence::ConvergenceLimit,
+        Decision::Halt,
+    )
+    .with_failure(class)
+    .with_recovery_action(RecoveryAction::Escalate)
 }
 
 fn persist(input: State) -> Outcome {
@@ -276,32 +248,28 @@ fn persist(input: State) -> Outcome {
     let Some(action) = input.recovery_action else {
         s.phase = Phase::Learn;
 
-        return Outcome {
-            state: s,
-            kind: EventKind::Persisted,
-            cause: Cause::Persisted,
-            evidence: Evidence::PersistedRecord,
-            decision: Decision::Continue,
-            failure: None,
-            recovery_action: None,
-            affected_gate: None,
-        };
+        return outcome(
+            s,
+            EventKind::Persisted,
+            Cause::Persisted,
+            Evidence::PersistedRecord,
+            Decision::Continue,
+        );
     };
 
     if action == RecoveryAction::Escalate {
         s.phase = Phase::Done;
         s.failure = Some(input.failure.unwrap_or(FailureClass::RecoveryExhausted));
 
-        return Outcome {
-            state: s,
-            kind: EventKind::Persisted,
-            cause: Cause::RepairApplied,
-            evidence: Evidence::ConvergenceLimit,
-            decision: Decision::Halt,
-            failure: s.failure,
-            recovery_action: Some(action),
-            affected_gate: None,
-        };
+        return outcome(
+            s,
+            EventKind::Persisted,
+            Cause::RepairApplied,
+            Evidence::ConvergenceLimit,
+            Decision::Halt,
+        )
+        .with_optional_failure(s.failure)
+        .with_recovery_action(action);
     }
 
     let Some((gate, evidence)) = action.repaired_gate().zip(action.produced_evidence()) else {
@@ -319,16 +287,16 @@ fn persist(input: State) -> Outcome {
     s.failure = None;
     s.recovery_action = None;
 
-    Outcome {
-        state: s,
-        kind: EventKind::Persisted,
-        cause: Cause::RepairApplied,
+    outcome(
+        s,
+        EventKind::Persisted,
+        Cause::RepairApplied,
         evidence,
-        decision: Decision::Continue,
-        failure: input.failure,
-        recovery_action: Some(action),
-        affected_gate: Some(gate),
-    }
+        Decision::Continue,
+    )
+    .with_optional_failure(input.failure)
+    .with_recovery_action(action)
+    .with_affected_gate(gate)
 }
 
 fn learn(input: State) -> Outcome {
@@ -339,16 +307,24 @@ fn learn(input: State) -> Outcome {
     s.failure = None;
     s.recovery_action = None;
 
-    Outcome {
-        state: s,
-        kind: EventKind::Learned,
-        cause: Cause::PolicyPromoted,
-        evidence: Evidence::PolicyPromotion,
-        decision: Decision::Complete,
-        failure: None,
-        recovery_action: None,
-        affected_gate: Some(GateId::Learning),
-    }
+    outcome(
+        s,
+        EventKind::Learned,
+        Cause::PolicyPromoted,
+        Evidence::PolicyPromotion,
+        Decision::Complete,
+    )
+    .with_affected_gate(GateId::Learning)
+}
+
+fn outcome(
+    state: State,
+    kind: EventKind,
+    cause: Cause,
+    evidence: Evidence,
+    decision: Decision,
+) -> Outcome {
+    Outcome::new(state, kind, cause, evidence, decision)
 }
 
 fn apply_repair(s: &mut State, action: RecoveryAction) {

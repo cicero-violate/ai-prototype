@@ -6,7 +6,7 @@
 use crate::kernel::{
     Cause, Decision, EventKind, Evidence, FailureClass, GateId, GateSet, GateStatus,
     Packet, Phase, RecoveryAction, RuntimeConfig, SemanticDelta,
-    State, TLog, GATE_ORDER, PHASES,
+    State, TLog, FAILURE_CLASSES, GATE_ORDER, PHASES,
 };
 
 pub(crate) mod command_ledger;
@@ -42,6 +42,46 @@ pub(crate) struct Outcome {
     pub(crate) failure: Option<FailureClass>,
     pub(crate) recovery_action: Option<RecoveryAction>,
     pub(crate) affected_gate: Option<GateId>,
+}
+
+impl Outcome {
+    pub(crate) fn new(
+        state: State,
+        kind: EventKind,
+        cause: Cause,
+        evidence: Evidence,
+        decision: Decision,
+    ) -> Self {
+        Self {
+            state,
+            kind,
+            cause,
+            evidence,
+            decision,
+            failure: None,
+            recovery_action: None,
+            affected_gate: None,
+        }
+    }
+
+    pub(crate) fn with_failure(self, failure: FailureClass) -> Self {
+        self.with_optional_failure(Some(failure))
+    }
+
+    pub(crate) fn with_optional_failure(mut self, failure: Option<FailureClass>) -> Self {
+        self.failure = failure;
+        self
+    }
+
+    pub(crate) fn with_recovery_action(mut self, action: RecoveryAction) -> Self {
+        self.recovery_action = Some(action);
+        self
+    }
+
+    pub(crate) fn with_affected_gate(mut self, gate: GateId) -> Self {
+        self.affected_gate = Some(gate);
+        self
+    }
 }
 
 pub fn tick(state: &mut State, tlog: &mut TLog, cfg: RuntimeConfig) -> Result<(), CanonError> {
@@ -98,16 +138,15 @@ pub(crate) fn convergence_outcome(before: State) -> Outcome {
     state.failure = Some(FailureClass::ConvergenceFailed);
     state.recovery_action = Some(RecoveryAction::Escalate);
 
-    Outcome {
+    Outcome::new(
         state,
-        kind: EventKind::Failed,
-        cause: Cause::MaxSteps,
-        evidence: Evidence::ConvergenceLimit,
-        decision: Decision::Halt,
-        failure: Some(FailureClass::ConvergenceFailed),
-        recovery_action: Some(RecoveryAction::Escalate),
-        affected_gate: None,
-    }
+        EventKind::Failed,
+        Cause::MaxSteps,
+        Evidence::ConvergenceLimit,
+        Decision::Halt,
+    )
+    .with_failure(FailureClass::ConvergenceFailed)
+    .with_recovery_action(RecoveryAction::Escalate)
 }
 
 fn append_convergence_failure(
@@ -142,29 +181,6 @@ pub fn touch_all_surfaces() -> usize {
         Evidence::PersistedRecord,
         Evidence::LearningRecord,
         Evidence::PolicyPromotion,
-    ];
-    let failures = [
-        FailureClass::InvariantUnknown,
-        FailureClass::InvariantBlocked,
-        FailureClass::AnalysisMissing,
-        FailureClass::AnalysisFailed,
-        FailureClass::JudgmentMissing,
-        FailureClass::JudgmentFailed,
-        FailureClass::PlanMissing,
-        FailureClass::PlanFailed,
-        FailureClass::PlanReadyQueueEmpty,
-        FailureClass::ExecutionMissing,
-        FailureClass::ExecutionFailed,
-        FailureClass::TaskReceiptMissing,
-        FailureClass::VerificationUnknown,
-        FailureClass::VerificationFailed,
-        FailureClass::ArtifactLineageBroken,
-        FailureClass::EvalMissing,
-        FailureClass::EvalFailed,
-        FailureClass::RecoveryExhausted,
-        FailureClass::ConvergenceFailed,
-        FailureClass::LearningMissing,
-        FailureClass::LearningFailed,
     ];
     let actions = [
         RecoveryAction::RecheckInvariant,
@@ -296,7 +312,7 @@ pub fn touch_all_surfaces() -> usize {
         + TRANSITIONS.len()
         + recovery_policy_coverage_count()
         + evidences.len()
-        + failures.len()
+        + FAILURE_CLASSES.len()
         + actions.len()
         + kinds.len()
         + causes.len()

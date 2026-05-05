@@ -8,6 +8,7 @@ pub use crate::runtime::{CommandLedger, CommandReceipt};
 
 pub const API_PROTOCOL_SCHEMA_VERSION: u64 = 6;
 pub const API_COMMAND_BATCH_LIMIT: usize = 16;
+const HASH_PRIME: u64 = 0x100000001b3;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Command {
@@ -63,51 +64,39 @@ impl Command {
     pub fn contract_hash(&self) -> u64 {
         match self {
             Self::SubmitEvidence(submission) => {
-                let mut h = 0x9e3779b97f4a7c15u64;
-                h ^= self.submission_count() as u64;
-                h = h.wrapping_mul(0x100000001b3);
-                h ^= submission.contract_hash();
-                h.wrapping_mul(0x100000001b3).max(1)
+                finish_hash(fold_hash(
+                    counted_hash(0x9e3779b97f4a7c15u64, self.submission_count()),
+                    submission.contract_hash(),
+                ))
             }
             Self::SubmitEvidenceBatch(submissions) => {
                 let mut h = 0x94d049bb133111ebu64;
-                h ^= self.submission_count() as u64;
-                h = h.wrapping_mul(0x100000001b3);
+                h = counted_hash(h, self.submission_count());
                 for submission in submissions {
-                    h ^= submission.contract_hash();
-                    h = h.wrapping_mul(0x100000001b3);
+                    h = fold_hash(h, submission.contract_hash());
                 }
-                h.max(1)
+                finish_hash(h)
             }
             Self::SubmitObservationIngress(batch) => {
                 let mut h = 0x6eed_0e51_0b5e_0001u64;
-                h ^= self.submission_count() as u64;
-                h = h.wrapping_mul(0x100000001b3);
-                h ^= batch.contract_hash();
-                h = h.wrapping_mul(0x100000001b3);
-                h ^= batch.submission().contract_hash();
-                h.wrapping_mul(0x100000001b3).max(1)
+                h = counted_hash(h, self.submission_count());
+                h = fold_hash(h, batch.contract_hash());
+                finish_hash(fold_hash(h, batch.submission().contract_hash()))
             }
             Self::SubmitProcessReceipt(receipt) => {
                 let mut h = 0x0d6e_8feb_8665_9fd9u64;
-                h ^= self.submission_count() as u64;
-                h = h.wrapping_mul(0x100000001b3);
-                h ^= receipt.contract_hash();
-                h = h.wrapping_mul(0x100000001b3);
-                h ^= receipt.effect.contract_hash();
-                h.wrapping_mul(0x100000001b3).max(1)
+                h = counted_hash(h, self.submission_count());
+                h = fold_hash(h, receipt.contract_hash());
+                finish_hash(fold_hash(h, receipt.effect.contract_hash()))
             }
             Self::SubmitProcessReceiptBatch(receipts) => {
                 let mut h = 0x9a9b_5ee1_5e7c_0005u64;
-                h ^= self.submission_count() as u64;
-                h = h.wrapping_mul(0x100000001b3);
+                h = counted_hash(h, self.submission_count());
                 for receipt in receipts {
-                    h ^= receipt.contract_hash();
-                    h = h.wrapping_mul(0x100000001b3);
-                    h ^= receipt.effect.contract_hash();
-                    h = h.wrapping_mul(0x100000001b3);
+                    h = fold_hash(h, receipt.contract_hash());
+                    h = fold_hash(h, receipt.effect.contract_hash());
                 }
-                h.max(1)
+                finish_hash(h)
             }
         }
     }
@@ -198,10 +187,19 @@ fn process_receipt_hashes_are_unique(receipts: &[SandboxProcessReceipt]) -> bool
 
 fn envelope_hash(schema_version: u64, command_id: u64, command: &Command) -> u64 {
     let mut h = 0x517cc1b727220a95u64;
-    h ^= schema_version;
-    h = h.wrapping_mul(0x100000001b3);
-    h ^= command_id;
-    h = h.wrapping_mul(0x100000001b3);
-    h ^= command.contract_hash();
-    h.wrapping_mul(0x100000001b3).max(1)
+    h = fold_hash(h, schema_version);
+    h = fold_hash(h, command_id);
+    finish_hash(fold_hash(h, command.contract_hash()))
+}
+
+fn counted_hash(seed: u64, count: usize) -> u64 {
+    fold_hash(seed, count as u64)
+}
+
+fn fold_hash(seed: u64, value: u64) -> u64 {
+    (seed ^ value).wrapping_mul(HASH_PRIME)
+}
+
+fn finish_hash(hash: u64) -> u64 {
+    hash.max(1)
 }

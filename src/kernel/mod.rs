@@ -492,6 +492,30 @@ pub enum FailureClass {
     LearningFailed = 21,
 }
 
+pub const FAILURE_CLASSES: [FailureClass; 21] = [
+    FailureClass::InvariantUnknown,
+    FailureClass::InvariantBlocked,
+    FailureClass::AnalysisMissing,
+    FailureClass::AnalysisFailed,
+    FailureClass::JudgmentMissing,
+    FailureClass::JudgmentFailed,
+    FailureClass::PlanMissing,
+    FailureClass::PlanFailed,
+    FailureClass::PlanReadyQueueEmpty,
+    FailureClass::ExecutionMissing,
+    FailureClass::ExecutionFailed,
+    FailureClass::TaskReceiptMissing,
+    FailureClass::VerificationUnknown,
+    FailureClass::VerificationFailed,
+    FailureClass::ArtifactLineageBroken,
+    FailureClass::EvalMissing,
+    FailureClass::EvalFailed,
+    FailureClass::RecoveryExhausted,
+    FailureClass::ConvergenceFailed,
+    FailureClass::LearningMissing,
+    FailureClass::LearningFailed,
+];
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[repr(u8)]
 pub enum RecoveryAction {

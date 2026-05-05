@@ -113,7 +113,8 @@ pub use crate::codec::ndjson::{
 pub use crate::kernel::{
     CapabilityRegistryProjection, Cause, ControlEvent, Decision, EventKind, Evidence,
     FailureClass, Gate, GateId, GateSet, GateStatus, Packet, Phase, RecoveryAction,
-    RuntimeConfig, SemanticDelta, State, TLog, EXECUTION_GATE_ORDER, GATE_ORDER, PHASES,
+    RuntimeConfig, SemanticDelta, State, TLog, EXECUTION_GATE_ORDER, FAILURE_CLASSES, GATE_ORDER,
+    PHASES,
 };
 pub use crate::runtime::{
     CanonError, CommandLedger, CommandReceipt,
@@ -238,36 +239,12 @@ mod tests {
 
     #[test]
     fn recovery_policy_covers_every_failure_class() {
-        let failures = [
-            FailureClass::InvariantUnknown,
-            FailureClass::InvariantBlocked,
-            FailureClass::AnalysisMissing,
-            FailureClass::AnalysisFailed,
-            FailureClass::JudgmentMissing,
-            FailureClass::JudgmentFailed,
-            FailureClass::PlanMissing,
-            FailureClass::PlanFailed,
-            FailureClass::PlanReadyQueueEmpty,
-            FailureClass::ExecutionMissing,
-            FailureClass::ExecutionFailed,
-            FailureClass::TaskReceiptMissing,
-            FailureClass::VerificationUnknown,
-            FailureClass::VerificationFailed,
-            FailureClass::ArtifactLineageBroken,
-            FailureClass::EvalMissing,
-            FailureClass::EvalFailed,
-            FailureClass::RecoveryExhausted,
-            FailureClass::ConvergenceFailed,
-            FailureClass::LearningMissing,
-            FailureClass::LearningFailed,
-        ];
-
         assert_eq!(
             crate::runtime::recovery_policy::recovery_policy_coverage_count(),
-            failures.len()
+            FAILURE_CLASSES.len()
         );
 
-        for failure in failures {
+        for failure in FAILURE_CLASSES {
             let action = crate::runtime::recovery_policy::recovery_action_for(failure);
             assert_eq!(
                 action == RecoveryAction::Escalate,
