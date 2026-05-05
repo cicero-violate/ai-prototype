@@ -247,7 +247,7 @@ BASHRC_LINES = [
     'export PYTHONOPTIMIZE="1"',
     # Tier 4 — sccache (RUSTC_WRAPPER only activates when sccache is on PATH)
     'export SCCACHE_DIR="/mnt/data/.sccache"',
-    'command -v sccache >/dev/null 2>&1 && export RUSTC_WRAPPER="sccache"',
+    'if command -v sccache >/dev/null 2>&1; then export RUSTC_WRAPPER="sccache"; fi',
 ]
 
 

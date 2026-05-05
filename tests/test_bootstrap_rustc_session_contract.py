@@ -1,6 +1,8 @@
 import importlib.util
 import io
+import os
 import stat
+import subprocess
 import tarfile
 import tempfile
 from pathlib import Path
@@ -82,6 +84,24 @@ class BootstrapRustcSessionContract(TestCase):
             self.assertEqual((prefix / "bin" / "rustc").read_bytes(), b"rustc/bin/rustc")
             self.assertEqual((prefix / "bin" / "cargo").read_bytes(), b"cargo/bin/cargo")
             self.assertFalse((root / "extract-tmp" / "prefix-stage").exists())
+
+    def test_written_env_file_is_safe_to_source_with_errexit(self):
+        bootstrap = load_bootstrap_module()
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            env_file = root / "rust.env"
+            bootstrap.write_env_file(env_file, root / "prefix", root / "cargo-home")
+
+            probe = subprocess.run(
+                ["bash", "-lc", f"set -euo pipefail; source {env_file}; echo env-ok"],
+                env={**os.environ, "PATH": os.environ.get("PATH", "")},
+                text=True,
+                capture_output=True,
+                timeout=30,
+            )
+
+            self.assertEqual(probe.returncode, 0, probe.stderr)
+            self.assertIn("env-ok", probe.stdout)
 
 
 if __name__ == "__main__":
