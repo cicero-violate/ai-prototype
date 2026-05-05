@@ -1,5 +1,5 @@
 [build]
-rustc-wrapper = "/mnt/data/canon-mini-agent-extracted/canon-mini-agent/prototype/canon-rustc-v3/target/debug/canon-rustc-v3"
+rustc-wrapper = "canon-rustc-v3/target/debug/canon-rustc-v3"
 
 rustflags = [
 "-Dwarnings",
