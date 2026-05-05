@@ -208,6 +208,17 @@ def extract_components_with_python_tarfile(archive: Path, tmp: Path, prefix: Pat
         raise RuntimeError("no cargo/rustc/rust-std bin/lib payloads were extracted")
 
 
+def ensure_bashrc_sources_env(env_file: Path, bashrc: Path = Path("/root/.bashrc")) -> bool:
+    source_line = f"source {env_file}"
+    if bashrc.exists():
+        existing = bashrc.read_text(encoding="utf-8")
+        if source_line in existing:
+            return False
+    with bashrc.open("a", encoding="utf-8") as f:
+        f.write(f"\n# added by bootstrap_rustc_session.py\n{source_line}\n")
+    return True
+
+
 def write_env_file(env_file: Path, prefix: Path, cargo_home: Path) -> None:
     env_file.write_text(
         textwrap.dedent(
@@ -403,6 +414,7 @@ def main() -> int:
         extract_components_with_python_tarfile(args.archive, args.tmp, args.prefix)
 
     write_env_file(args.env_file, args.prefix, args.cargo_home)
+    patched = ensure_bashrc_sources_env(args.env_file)
     launchers: list[Path] = []
     if not args.no_install_launchers:
         launchers = write_launchers(
@@ -431,6 +443,7 @@ def main() -> int:
         print()
     print(f"env_file={args.env_file}")
     print(f"usage=source {args.env_file}")
+    print(f"bashrc_patched={patched}")
     if cargo_config:
         print(f"cargo_config={cargo_config}")
         print(f"registry_url={args.registry_url}")
