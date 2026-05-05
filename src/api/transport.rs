@@ -59,7 +59,10 @@ impl ApiTransportFrame {
     }
 
     pub fn matches_receipt(&self, receipt: ApiTransportReceipt) -> bool {
-        self.request_id == receipt.request_id && self.payload_hash == receipt.payload_hash
+        self.request_id == receipt.request_id
+            && self.payload_hash == receipt.payload_hash
+            && self.envelope.command_id == receipt.command_id
+            && self.envelope.command_hash == receipt.command_hash
     }
 }
 
@@ -329,6 +332,9 @@ pub fn handle_transport_frame_once(
             .copied()
             .find(|event| event.self_hash == receipt.event_hash)
             .ok_or(CanonError::InvalidReplay)?;
+        if !receipt.matches_event(&event) {
+            return Err(CanonError::InvalidReplay);
+        }
         return Ok(ApiTransportResponse {
             request_id: receipt.request_id,
             command_id: receipt.command_id,
@@ -337,6 +343,10 @@ pub fn handle_transport_frame_once(
             disposition: ApiTransportDisposition::Replayed,
             control: ControlEventResponse { event },
         });
+    }
+
+    if transport_ledger.contains_request_id(frame.request_id) {
+        return Err(CanonError::InvalidReplay);
     }
 
     let request_id = frame.request_id;

@@ -107,14 +107,24 @@ impl CommandLedger {
         command_id: u64,
         command_hash: u64,
         event: &ControlEvent,
-    ) -> CommandReceipt {
+    ) -> Result<CommandReceipt, CanonError> {
+        if command_id == 0 || command_hash == 0 || event.self_hash == 0 {
+            return Err(CanonError::InvalidApiCommand);
+        }
+        if event.api_command_id != command_id || event.api_command_hash != command_hash {
+            return Err(CanonError::InvalidReplay);
+        }
+        if self.has_conflicting_command_ids(command_id, command_hash) {
+            return Err(CanonError::InvalidApiCommand);
+        }
+
         let receipt = CommandReceipt {
             command_id,
             command_hash,
             event_hash: event.self_hash,
         };
         self.insert_or_update(receipt);
-        receipt
+        Ok(receipt)
     }
 
     fn insert_or_update(&mut self, receipt: CommandReceipt) {

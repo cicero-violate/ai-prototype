@@ -162,7 +162,7 @@ impl CommandLedger {
         &mut self,
         envelope: &CommandEnvelope,
         event: &ControlEvent,
-    ) -> CommandReceipt {
+    ) -> Result<CommandReceipt, crate::error::CanonError> {
         self.push_receipt(envelope.command_id, envelope.command_hash, event)
     }
 }

@@ -2326,6 +2326,40 @@ mod tests {
     }
 
     #[test]
+    fn command_ledger_rejects_mismatched_response_event() {
+        let mut state = State::default();
+        let mut tlog = Vec::new();
+        let mut ledger = CommandLedger::default();
+        let cfg = RuntimeConfig::default();
+        tick(&mut state, &mut tlog, cfg).unwrap();
+
+        let first = CommandEnvelope::new(
+            41,
+            Command::SubmitEvidence(ObservationRecord::new(1, 1, 0xabc, 1).submission()),
+        );
+        let second = CommandEnvelope::new(
+            42,
+            Command::SubmitEvidence(ObservationRecord::new(2, 1, 0xdef, 1).submission()),
+        );
+
+        let response = crate::api::routes::handle_envelope_once(
+            &mut state,
+            &mut tlog,
+            cfg,
+            &mut ledger,
+            first,
+        )
+        .unwrap();
+
+        assert_eq!(
+            ledger.push_response(&second, &response.event),
+            Err(CanonError::InvalidReplay)
+        );
+        assert_eq!(ledger.len(), 1);
+        verify_tlog(&tlog).unwrap();
+    }
+
+    #[test]
     fn command_ledger_reconstructs_from_tlog_after_restart() {
         let mut state = State::default();
         let mut tlog = Vec::new();
@@ -2413,6 +2447,43 @@ mod tests {
         assert_eq!(tlog.len(), tlog_len_after_first);
         assert_eq!(ledger.len(), 1);
         verify_tlog(&tlog).unwrap();
+    }
+
+    #[test]
+    fn api_transport_rejects_tampered_receipt_before_mutating() {
+        let mut state = State::default();
+        let mut tlog = Vec::new();
+        let mut command_ledger = CommandLedger::default();
+        let cfg = RuntimeConfig::default();
+        let envelope = CommandEnvelope::new(
+            73,
+            Command::SubmitEvidence(ObservationRecord::new(1, 1, 0xabc, 1).submission()),
+        );
+        let frame = ApiTransportFrame::new(707, envelope.clone());
+        let forged_receipt = ApiTransportReceipt::new(
+            frame.request_id,
+            frame.payload_hash,
+            envelope.command_id,
+            envelope.command_hash.wrapping_add(1).max(1),
+            0xfee1_dead,
+        );
+        let mut transport_ledger = ApiTransportLedger::from_receipts(vec![forged_receipt]).unwrap();
+        let before_state = state;
+        let before_tlog = tlog.clone();
+
+        let result = handle_transport_frame_once(
+            &mut state,
+            &mut tlog,
+            cfg,
+            &mut command_ledger,
+            &mut transport_ledger,
+            frame,
+        );
+
+        assert_eq!(result, Err(CanonError::InvalidReplay));
+        assert_eq!(state, before_state);
+        assert_eq!(tlog, before_tlog);
+        assert!(command_ledger.is_empty());
     }
 
     #[test]

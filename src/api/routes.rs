@@ -165,7 +165,7 @@ pub fn handle_envelope_once(
         envelope.clone().into_command(),
         Some((envelope.command_id, envelope.command_hash)),
     )?;
-    ledger.push_response(&envelope, &response.event);
+    ledger.push_response(&envelope, &response.event)?;
     Ok(response)
 }
 

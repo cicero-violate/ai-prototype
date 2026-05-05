@@ -244,40 +244,41 @@ impl BoundedLineObservationSource {
             ));
         }
 
-        let frames = parse_line_frames(&bytes, self.config);
-        let unseen = frames
-            .iter()
-            .filter(|frame| frame.sequence > cursor.last_sequence)
-            .count();
+        let starting_cursor = cursor;
+        let mut unseen = 0usize;
+        let mut attempted = 0usize;
+        let mut records = Vec::new();
+
+        for frame in line_frames(&bytes, self.config) {
+            if frame.sequence <= starting_cursor.last_sequence {
+                continue;
+            }
+
+            unseen = unseen.saturating_add(1);
+            if unseen > self.config.max_backlog_frames {
+                return Ok(ObservationIngressBatch::backpressure(
+                    self.config.source_id,
+                    source_hash,
+                    starting_cursor,
+                    unseen,
+                ));
+            }
+
+            if attempted < self.config.max_batch_frames {
+                attempted = attempted.saturating_add(1);
+                let record = cursor.ingest(&frame);
+                if record.is_valid() {
+                    records.push(record);
+                }
+            }
+        }
 
         if unseen == 0 {
             return Ok(ObservationIngressBatch::empty(
                 self.config.source_id,
                 source_hash,
-                cursor,
+                starting_cursor,
             ));
-        }
-
-        if unseen > self.config.max_backlog_frames {
-            return Ok(ObservationIngressBatch::backpressure(
-                self.config.source_id,
-                source_hash,
-                cursor,
-                unseen,
-            ));
-        }
-
-        let start_sequence = cursor.last_sequence;
-        let mut records = Vec::new();
-        for frame in frames
-            .iter()
-            .filter(|frame| frame.sequence > start_sequence)
-            .take(self.config.max_batch_frames)
-        {
-            let record = cursor.ingest(frame);
-            if record.is_valid() {
-                records.push(record);
-            }
         }
 
         if records.is_empty() {
@@ -377,12 +378,15 @@ pub fn write_observation_cursor_ndjson(
     })
 }
 
-fn parse_line_frames(bytes: &[u8], config: ObservationIngressConfig) -> Vec<ObservationFrame> {
+fn line_frames(
+    bytes: &[u8],
+    config: ObservationIngressConfig,
+) -> impl Iterator<Item = ObservationFrame> + '_ {
     bytes
         .split(|byte| *byte == b'\n')
         .filter(|line| !line.is_empty())
         .enumerate()
-        .map(|(idx, line)| {
+        .map(move |(idx, line)| {
             ObservationFrame::from_payload(
                 ObservationFrameKind::ExternalSignal,
                 config.source_id,
@@ -391,7 +395,6 @@ fn parse_line_frames(bytes: &[u8], config: ObservationIngressConfig) -> Vec<Obse
                 trim_carriage_return(line),
             )
         })
-        .collect()
 }
 
 fn trim_carriage_return(line: &[u8]) -> &[u8] {
