@@ -210,12 +210,17 @@ def extract_components_with_python_tarfile(archive: Path, tmp: Path, prefix: Pat
 
 def ensure_bashrc_sources_env(env_file: Path, bashrc: Path = Path("/root/.bashrc")) -> bool:
     source_line = f"source {env_file}"
-    if bashrc.exists():
-        existing = bashrc.read_text(encoding="utf-8")
-        if source_line in existing:
-            return False
+    jobs_line = 'export CARGO_BUILD_JOBS="$(nproc)"'
+    existing = bashrc.read_text(encoding="utf-8") if bashrc.exists() else ""
+
+    additions = [l for l in [source_line, jobs_line] if l not in existing]
+    if not additions:
+        return False
+
     with bashrc.open("a", encoding="utf-8") as f:
-        f.write(f"\n# added by bootstrap_rustc_session.py\n{source_line}\n")
+        f.write("\n# added by bootstrap_rustc_session.py\n")
+        for line in additions:
+            f.write(f"{line}\n")
     return True
 
 
