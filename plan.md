@@ -1,4 +1,4 @@
-# Phase 2 Turn 2 Plan
+# Phase 2 Turn 3 Plan
 
 ## Variables
 
@@ -32,35 +32,37 @@ One-line explanation: Goodness is the geometric mean of all 15 dimensions; one w
 
 ## Source Inputs
 
-- `GOAL.md` requires deterministic validation evidence, external evaluator authority, replayable receipts, and policy learning from proven traces.
-- `score.md` is preserved and not edited in this phase. Its remaining closure targets include missing wrapper graph telemetry, unavailable fmt/clippy components, live provider proof gaps, and large-module simplicity debt.
-- Turn 1 already closed the default missing wrapper, Python contract, and production panic-surface blockers.
-- TODO/FIXME search found only meta-plan/scorecard references; no active source TODO/FIXME markers were used to defer this turn's work.
+- `GOAL.md` requires replayable receipts, external evidence, runtime archive inspection, policy learning, and deterministic validation.
+- `score.md` is preserved and not edited in this phase.
+- Turn 1 closed the missing default wrapper and production panic-surface blockers.
+- Turn 2 bounded long-running validation commands with the requested `300s` test budget.
+- Runtime archive inspection found `/mnt/data/ai-runtime.tar.gz` with `RUNTIME_MANIFEST.json`, `.repo-agent-runtime/audit.ndjson`, and `log/chatgpt_project_agent.ndjson`; it has no conversation snapshot or message/download history ledger.
 
 ## Boundary
 
 - Base commit: `c914c14987938a0d95c7904a2ffa5164bb30f2d9`.
-- Current cumulative working HEAD before this turn: `2e2558482dbbb360d1f1f40edea5c511144b37df`.
+- Current cumulative working HEAD before this turn: `c0489a03192f8f7974591b8dc97a71336e412cea`.
 - Do not edit or stage `score.md`.
-- Do not create final delta bundle or manifest in this intermediate turn.
-- Keep changes narrow and validation-focused.
+- This is the final artifact turn: create `/mnt/data/repo-delta-004.bundle` and `/mnt/data/DELTA_MANIFEST.md` only after committing the new HEAD.
+- Keep the cumulative bundle scoped to `B..H`, not only the latest turn.
 
 ## Tasks
 
-1. Refresh `plan.md` from `GOAL.md` and `score.md`.
-2. Make long-running validation command budgets match the requested `300s` test bound.
-3. Preserve an environment override for operators who need a longer local validation budget.
-4. Add a Python contract test proving long-running observe-validation commands use the shared test timeout.
-5. Run Rust bootstrap before validation with `timeout 300s`.
-6. Run bounded validation with `timeout 300s` for tests.
-7. Commit only this turn's cumulative repository change; leave `score.md` unstaged.
+1. Refresh `plan.md` from `GOAL.md`, `score.md`, current runtime archive evidence, and prior Phase 2 commits.
+2. Preserve conversation/download ledger absence as explicit missing signals, but stop treating that absence as a failed runtime inspection when current-loop audit/process logs and manifest evidence are present.
+3. Add a Python contract proving runtime archive inspection now records process-log and semantic-history evidence fields.
+4. Run Rust bootstrap before validation with `timeout 300s`.
+5. Run bounded validation with `timeout 300s` for tests and validators.
+6. Commit only the cumulative repository change; leave `score.md` unstaged.
+7. Recreate `/mnt/data/repo-delta-004.bundle` and `/mnt/data/DELTA_MANIFEST.md` for `c914c14987938a0d95c7904a2ffa5164bb30f2d9..H`.
 
 ## Completed This Turn
 
-- Added `DEFAULT_TEST_TIMEOUT_SECONDS = 300` to `scripts/observe_validation.sh`.
-- Added `CANON_TEST_TIMEOUT_SECONDS` as a positive-integer override for operators who intentionally need a different local budget.
-- Routed long-running observe-validation commands through the shared timeout: `cargo_test_all_targets`, `cargo_clippy_all_targets`, `wrapper_graph_validation`, and `ollama_judgment_example`.
-- Added `tests/test_observe_validation_contract.py` coverage proving the 300-second timeout contract and rejecting stale `timeout=600` calls.
+- Updated `scripts/observe_validation.sh` to count `runtime_archive_process_log_files`.
+- Added `runtime_archive_current_loop_evidence_files` and `runtime_archive_semantic_history_files`.
+- Changed `runtime_archive_inspection_status` so manifest + logs + prior-state audit evidence can pass inspection even when conversation snapshots are absent.
+- Kept `missing_runtime_conversation_ledger` and `missing_conversation_snapshot` as separate transparency signals.
+- Updated `tests/test_observe_validation_contract.py` to require the new runtime archive evidence fields.
 
 ## Validation Result
 
@@ -71,9 +73,10 @@ timeout 300s cargo check --offline: pass
 timeout 300s cargo test --lib --offline: pass, 110 passed
 timeout 300s cargo test --all-targets --offline: pass, 110 library tests and 0-test bin/example targets completed
 timeout 300s python3 -m unittest discover -s tests -p 'test_*.py' -v: pass, 27 passed
-timeout 300s python3 scripts/validate_rust_panic_surface.py --root . --fail-production-unwrap --report /mnt/data/ai-phase2-turn2-panic-surface.json: pass, production_total=0, test_total=335, example_total=1
-timeout 300s python3 scripts/validate_policy_learning_trace.py --root . --report /mnt/data/ai-phase2-turn2-policy-learning-trace.json: pass, missing_count=0
+timeout 300s python3 scripts/validate_rust_panic_surface.py --root . --fail-production-unwrap --report /mnt/data/ai-phase2-turn3-panic-surface.json: pass, production_total=0, test_total=335, example_total=1
+timeout 300s python3 scripts/validate_policy_learning_trace.py --root . --report /mnt/data/ai-phase2-turn3-policy-learning-trace.json: pass, missing_count=0
 timeout 300s cargo run --example loop_trace --offline: pass, 31 events, Done, success=true
+timeout 300s env CANON_DELTA_BASE=... CANON_RUNTIME_ARCHIVE=/mnt/data/ai-runtime.tar.gz CANON_OBSERVE_REPORT=/mnt/data/ai-phase2-turn3-observe.ndjson bash scripts/observe_validation.sh: timed out before validation_summary; emitted runtime_archive_metrics before timeout with runtime_archive_inspection_status=pass, runtime_archive_process_log_files=1, runtime_archive_current_loop_evidence_files=2, runtime_archive_semantic_history_files=2, runtime_manifest_base_matches_delta_base=true
 git diff --check: pass
 ```
 
@@ -82,4 +85,5 @@ git diff --check: pass
 - Wrapper graph telemetry is still optional and requires an explicit built `CANON_RUSTC_WRAPPER` binary.
 - `cargo fmt` and `cargo clippy` remain dependent on unavailable rustfmt/clippy components in the supplied extracted toolchain.
 - Live Ollama/OpenAI provider paths remain gated on explicit local/provider endpoints.
+- Runtime archive conversation snapshots and message/download ledgers remain absent from the supplied archive, but current-loop manifest/audit/process-log inspection is now separated from those missing history signals.
 - Large-module simplicity debt remains, especially in `src/lib.rs` and LLM adapter modules.

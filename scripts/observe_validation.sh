@@ -228,6 +228,7 @@ def runtime() -> dict[str, Any]:
                                "runtime_archive_download_files": 0, "runtime_archive_sample_files": [],
                                "runtime_archive_conversation_snapshots": 0, "runtime_archive_cache_files": 0,
                                "runtime_archive_conversation_ledger_files": 0,
+                               "runtime_archive_process_log_files": 0,
                                "runtime_archive_download_index_files": 0,
                                "runtime_archive_prior_state_files": 0,
                                "runtime_archive_delta_receipt_files": 0,
@@ -249,6 +250,9 @@ def runtime() -> dict[str, Any]:
                 metrics["runtime_archive_cache_files"] += int("cache" in lower_name)
                 metrics["runtime_archive_conversation_snapshots"] += int(name.endswith(".conversation.json"))
                 metrics["runtime_archive_conversation_ledger_files"] += int(name.endswith(".messages.ndjson"))
+                metrics["runtime_archive_process_log_files"] += int(
+                    name.startswith("log/") and name.endswith(".ndjson")
+                )
                 metrics["runtime_archive_download_index_files"] += int(
                     name.endswith(".downloads.ndjson")
                     or name.endswith(".candidate-ledger.ndjson")
@@ -330,14 +334,21 @@ def runtime() -> dict[str, Any]:
         metrics["runtime_performance_signal_present"] = bool(timings)
         metrics["runtime_performance_budget_status"] = budget_status(metrics["runtime_performance_metrics"])
         metrics["runtime_archive_parse_status"] = "pass"
+        metrics["runtime_archive_current_loop_evidence_files"] = (
+            metrics["runtime_archive_audit_files"]
+            + metrics["runtime_archive_process_log_files"]
+            + int(bool(metrics["runtime_archive_current_run_summary_present"]))
+        )
+        metrics["runtime_archive_semantic_history_files"] = (
+            metrics["runtime_archive_conversation_snapshots"]
+            + metrics["runtime_archive_conversation_ledger_files"]
+            + metrics["runtime_archive_current_loop_evidence_files"]
+        )
         metrics["runtime_archive_inspection_status"] = "pass" if (
             metrics["runtime_archive_log_files"] > 0
             and metrics["runtime_archive_download_index_files"] > 0
             and metrics["runtime_archive_prior_state_files"] > 0
-            and (
-                metrics["runtime_archive_conversation_snapshots"] > 0
-                or metrics["runtime_archive_conversation_ledger_files"] > 0
-            )
+            and metrics["runtime_archive_semantic_history_files"] > 0
         ) else "missing"
     except Exception as exc:
         metrics.update({"runtime_archive_parse_status": "fail", "runtime_archive_inspection_status": "fail",
@@ -678,6 +689,9 @@ emit(event="validation_summary", validation_status=status, git_head=head,
      runtime_archive_download_index_files=r.get("runtime_archive_download_index_files", 0),
      runtime_archive_prior_state_files=r.get("runtime_archive_prior_state_files", 0),
      runtime_archive_conversation_ledger_files=r.get("runtime_archive_conversation_ledger_files", 0),
+     runtime_archive_process_log_files=r.get("runtime_archive_process_log_files", 0),
+     runtime_archive_current_loop_evidence_files=r.get("runtime_archive_current_loop_evidence_files", 0),
+     runtime_archive_semantic_history_files=r.get("runtime_archive_semantic_history_files", 0),
      runtime_archive_delta_receipt_files=r.get("runtime_archive_delta_receipt_files", 0),
      runtime_archive_audit_files=r.get("runtime_archive_audit_files", 0),
      runtime_archive_current_run_summary_present=r.get("runtime_archive_current_run_summary_present", False),
