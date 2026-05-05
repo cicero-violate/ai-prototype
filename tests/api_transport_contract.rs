@@ -356,6 +356,46 @@ fn transport_session_handles_replay_and_verifies_receipts() {
 }
 
 #[test]
+fn transport_session_rejects_stale_command_ledger_on_restart() {
+    let cfg = RuntimeConfig::default();
+    let mut state = State::default();
+    let mut tlog = TLog::default();
+    assert!(tick(&mut state, &mut tlog, cfg).is_ok());
+    let mut session = match ApiTransportSession::from_parts(
+        state,
+        tlog,
+        cfg,
+        CommandLedger::default(),
+        ApiTransportLedger::default(),
+    ) {
+        Ok(session) => session,
+        Err(err) => panic!("transport session should initialize from valid empty parts: {err:?}"),
+    };
+    assert!(session.handle_frame(observation_frame()).is_ok());
+
+    let (state, tlog, cfg, command_ledger, transport_ledger) = session.clone().into_parts();
+    assert!(ApiTransportSession::from_parts(
+        state,
+        tlog.clone(),
+        cfg,
+        command_ledger,
+        transport_ledger.clone(),
+    )
+    .is_ok());
+
+    assert_eq!(
+        ApiTransportSession::from_parts(
+            state,
+            tlog,
+            cfg,
+            CommandLedger::default(),
+            transport_ledger,
+        ),
+        Err(CanonError::InvalidReplay)
+    );
+}
+
+#[test]
 fn transport_session_rejects_receipts_not_backed_by_tlog_events() {
     let receipt = ApiTransportReceipt::new(101, 202, 303, 404, 505);
     let transport_ledger = match ApiTransportLedger::from_receipts(vec![receipt]) {

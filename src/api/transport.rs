@@ -224,6 +224,7 @@ impl ApiTransportSession {
         transport_ledger: ApiTransportLedger,
     ) -> Result<Self, CanonError> {
         verify_tlog(&tlog)?;
+        verify_command_ledger_matches_tlog(&tlog, &command_ledger)?;
         verify_api_transport_receipts(&tlog, transport_ledger.receipts())?;
         Ok(Self {
             state,
@@ -266,6 +267,7 @@ impl ApiTransportSession {
 
     pub fn verify(&self) -> Result<(), CanonError> {
         verify_tlog(&self.tlog)?;
+        verify_command_ledger_matches_tlog(&self.tlog, &self.command_ledger)?;
         verify_api_transport_receipts(&self.tlog, self.transport_ledger.receipts())
     }
 
@@ -285,6 +287,18 @@ impl ApiTransportSession {
             self.command_ledger,
             self.transport_ledger,
         )
+    }
+}
+
+fn verify_command_ledger_matches_tlog(
+    tlog: &TLog,
+    command_ledger: &CommandLedger,
+) -> Result<(), CanonError> {
+    let reconstructed = CommandLedger::reconstruct_from_tlog(tlog)?;
+    if &reconstructed == command_ledger {
+        Ok(())
+    } else {
+        Err(CanonError::InvalidReplay)
     }
 }
 
