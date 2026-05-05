@@ -33,7 +33,11 @@ class PolicyLearningTraceContractTest(unittest.TestCase):
             self.assertEqual(data["status"], "pass")
             self.assertEqual(data["trace_function"], "learning_policy_llm_feedback_loop_drives_judgment")
             self.assertEqual(data["missing_count"], 0)
-            self.assertEqual(len(data["checks"]), 6)
+            self.assertEqual(len(data["checks"]), 7)
+            self.assertIn(
+                "distillation_row_contract",
+                {check["name"] for check in data["checks"]},
+            )
 
     def test_missing_trace_fails_with_explicit_missing_tokens(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -68,6 +72,18 @@ class PolicyLearningTraceContractTest(unittest.TestCase):
                         "Evidence::PolicyPromotion",
                         "promoted_policy_hash",
                         "source_seq",
+                        "pub struct DistillationRow",
+                        "pub const DISTILLATION_ROW_SCHEMA_VERSION",
+                        "pub fn from_policy_promotion",
+                        "instruction_hash",
+                        "input_state_hash",
+                        "action_hash",
+                        "output_hash",
+                        "score",
+                        "proof_hash != promotion.promoted_policy_hash",
+                        "source_event: promotion.source_seq",
+                        "pub fn is_valid_for",
+                        "expected_row_hash",
                         "impl PolicyStore",
                         "pub fn promote_feedback",
                         "PolicyStoreError::InvalidPromotion",

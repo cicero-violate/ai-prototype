@@ -1,4 +1,4 @@
-# Phase 2 Plan
+# Phase 2 Turn 3 Plan
 
 ## Variables
 
@@ -30,34 +30,61 @@ max(G) = good
 
 One-line explanation: Goodness is the geometric mean of all 15 dimensions; one weak dimension lowers the whole system.
 
-## Current Truth
+## Source Inputs
 
-`GOAL.md` asks for a deterministic, auditable agent runtime where the frozen kernel stays small and capability evidence, policy learning, verification, receipts, and replay carry growth outside the kernel.
-
-The current repository already has strong prototype coverage: Rust tests, Python contract tests, policy-learning trace validation, panic-surface validation, runtime archive inspection, and delta manifest tooling. The main active gap from `score.md` is evidence handoff: `scripts/observe_validation.sh` emits external capability evidence files and token mappings, but `scripts/write_delta_manifest.py` does not preserve those fields in the final delta receipt and manifest.
-
-Runtime archive `/mnt/data/ai-runtime.tar.gz` is present. Python/tarfile inspection found runtime logs, download ledgers, message ledgers, candidate ledgers, audit records, delta receipts, summaries, and `RUNTIME_MANIFEST.json`.
-
-## Work
-
-1. Restore `/mnt/data/ai.bundle` and use base `ba8714dbbe2b57c625611dffb9a5f079d3e2aa65`.
-2. Inspect `/mnt/data/ai-runtime.tar.gz` for logs, ledgers, indexes, summaries, manifests, and prior runtime state.
-3. Update `scripts/write_delta_manifest.py` so final receipts and `DELTA_MANIFEST.md` preserve:
-   - external observation evidence files and token mappings
-   - external API action evidence files and token mappings
-   - semantic artifact verification evidence files and token mappings
-4. Extend `tests/test_write_delta_manifest.py` to enforce one-time preservation of those evidence fields.
-5. Update `score.md` with actual validation, marker review, changed files, remaining risks, and recomputed `G`.
-6. Run required validation after `/mnt/data/bootstrap_rustc_session.py`:
-   - `cargo test --all-targets`
-   - `python3 -m unittest discover -s tests -p 'test_*.py' -v`
-   - `python3 scripts/validate_policy_learning_trace.py --root . --report target/observe/policy-learning-trace.json`
-   - `python3 scripts/validate_rust_panic_surface.py --root . --fail-production-unwrap --report target/observe/panic-surface.json`
-   - `bash -n scripts/observe_validation.sh`
-   - `python3 -m py_compile scripts/write_delta_manifest.py scripts/validate_policy_learning_trace.py scripts/validate_rust_panic_surface.py`
-   - `git diff --check`
-7. Commit the result, create `/mnt/data/repo-delta-002.bundle` for `B..H`, and write `/mnt/data/DELTA_MANIFEST.md`.
+- `GOAL.md` requires verified evolution, TLog-derived learning, policy promotion, and distillation rows that retain semantic input/action/output/score/proof lineage.
+- `score.md` remains preserved from the prior Phase 1 scorecard update and was not edited during this turn.
+- Runtime archive inspection found `RUNTIME_MANIFEST.json`, `.repo-agent-runtime/audit.ndjson`, `log/chatgpt_project_agent.ndjson`, download manifests, observe-validation reports, score snapshots, and prior delta/download history.
+- Active implementation TODO/FIXME scan found no source-level TODO/FIXME markers outside plan/score text.
 
 ## Boundary
 
-This phase closes final-manifest evidence loss. It does not claim fresh live Ollama execution, rustc-wrapper graph generation, production API deployment, rustfmt/clippy availability, or full observe-summary execution unless validated in this environment.
+- Preserve `learning -> policy`; policy remains append-only storage and must not own learning promotion.
+- Do not move learning behavior into `policy/store.rs`.
+- Do not edit `score.md` during this turn.
+- Final artifacts are created only after the committed `B..H` range is complete.
+
+## Tasks
+
+1. Preserve the prior scorecard and policy-learning contract commits from this conversation.
+2. Add a learning-owned `DistillationRow` record for training-ready trace rows derived from verified policy promotion.
+3. Bind distillation rows to nonzero instruction, input-state, action, output, score, proof hash, and source event fields.
+4. Reject rows with zero semantic fields or proof hashes not equal to the promotion proof hash.
+5. Extend the policy-learning validator so the learning contract includes distillation evidence while policy remains append-only only.
+6. Extend Python and Rust tests for the new distillation contract.
+7. Validate with explicit bounded Python tests, Rust tests, validators, syntax checks, py_compile, and diff checks.
+8. Commit the turn result, then create `/mnt/data/repo-delta-004.bundle` and `/mnt/data/DELTA_MANIFEST.md` for `B..H`.
+
+## Completed Change
+
+- Added `DISTILLATION_ROW_SCHEMA_VERSION`.
+- Added `DistillationRow` in `src/capability/learning/promote.rs`.
+- Added `DistillationRow::from_policy_promotion`, `is_valid_for`, and `expected_row_hash`.
+- Exported distillation types through `capability::learning` and crate root exports.
+- Added Rust tests:
+  - `verified_policy_promotion_distills_training_ready_row`
+  - `distillation_row_rejects_unbound_or_zero_training_fields`
+- Extended `scripts/validate_policy_learning_trace.py` with `distillation_row_contract`.
+- Extended `tests/test_policy_learning_trace_contract.py` to require the distillation contract under `timeout=30s`.
+
+## Validation Result
+
+```text
+bootstrap_rustc_session.py with writable cargo home: pass
+runtime archive inspected: pass
+TODO/FIXME source scan: pass, no active source markers outside plan/score text
+timeout 30s python3 -X faulthandler -m unittest tests.test_policy_learning_trace_contract -v: pass, 3 tests
+timeout 30s python3 -X faulthandler -m unittest tests.test_observe_validation_contract -v: pass, 12 tests
+timeout 30s python3 -X faulthandler -m unittest tests.test_write_delta_manifest -v: pass, 10 tests
+timeout 300s cargo test --all-targets --no-fail-fast: pass, 105 Rust tests
+timeout 30s python3 scripts/validate_policy_learning_trace.py --root . --report target/observe/policy-learning-trace.json: pass, missing_count=0
+timeout 30s python3 scripts/validate_rust_panic_surface.py --root . --fail-production-unwrap --report target/observe/panic-surface.json: pass, production_total=0
+timeout 30s bash -n scripts/observe_validation.sh: pass
+timeout 30s python3 -m py_compile scripts/write_delta_manifest.py scripts/validate_policy_learning_trace.py scripts/validate_rust_panic_surface.py: pass
+git diff --check: pass
+git diff --exit-code -- score.md: pass, untouched during this turn
+```
+
+## Remaining Risk
+
+- Distillation rows are now typed and proof-bound, but this turn does not implement JSONL export, full dataset retention, a student-model training job, or live AlphaEvolve candidate selection.

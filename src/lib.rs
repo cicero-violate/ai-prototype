@@ -17,7 +17,9 @@ pub use crate::api::protocol::{
 };
 pub use crate::capability::context::{ContextDecision, ContextRecord};
 pub use crate::capability::eval::{EvalDecision, EvalDimension, EvalRecord};
-pub use crate::capability::learning::PolicyPromotion;
+pub use crate::capability::learning::{
+    DistillationRow, PolicyPromotion, DISTILLATION_ROW_SCHEMA_VERSION,
+};
 pub use crate::capability::llm::{
     append_ollama_judgment_proof_event_ndjson, append_ollama_llm_effect_receipt_ndjson,
     decode_ollama_judgment_proof_event_ndjson, decode_ollama_llm_effect_receipt_ndjson,
@@ -1776,6 +1778,56 @@ mod tests {
         assert_ne!(store.fingerprint(), empty_fingerprint);
         assert_eq!(loaded.entries(), &[entry]);
         assert_eq!(loaded.feedback_hash(), promotion.promoted_policy_hash);
+    }
+
+    #[test]
+    fn verified_policy_promotion_distills_training_ready_row() {
+        let (_state, tlog) = run_until_done(State::ready(), RuntimeConfig::default()).unwrap();
+        let promotion = PolicyPromotion::from_tlog(&tlog, 1).unwrap();
+        let row = DistillationRow::from_policy_promotion(
+            &promotion,
+            0x1111,
+            promotion.judgment_seq,
+            promotion.eval_seq,
+            promotion.completion_seq,
+            100,
+            promotion.promoted_policy_hash,
+        )
+        .unwrap();
+
+        assert_eq!(row.schema_version, DISTILLATION_ROW_SCHEMA_VERSION);
+        assert_eq!(row.source_event, promotion.source_seq);
+        assert_eq!(row.proof_hash, promotion.promoted_policy_hash);
+        assert_ne!(row.row_hash, 0);
+        assert!(row.is_valid_for(&promotion));
+        verify_tlog(&tlog).unwrap();
+    }
+
+    #[test]
+    fn distillation_row_rejects_unbound_or_zero_training_fields() {
+        let (_state, tlog) = run_until_done(State::ready(), RuntimeConfig::default()).unwrap();
+        let promotion = PolicyPromotion::from_tlog(&tlog, 1).unwrap();
+
+        assert!(DistillationRow::from_policy_promotion(
+            &promotion,
+            0,
+            promotion.judgment_seq,
+            promotion.eval_seq,
+            promotion.completion_seq,
+            100,
+            promotion.promoted_policy_hash,
+        )
+        .is_none());
+        assert!(DistillationRow::from_policy_promotion(
+            &promotion,
+            0x1111,
+            promotion.judgment_seq,
+            promotion.eval_seq,
+            promotion.completion_seq,
+            100,
+            promotion.promoted_policy_hash.wrapping_add(1),
+        )
+        .is_none());
     }
 
     #[test]

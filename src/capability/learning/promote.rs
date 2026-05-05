@@ -1,4 +1,4 @@
-//! Policy promotion payloads derived from TLog history.
+//! Policy promotion and distillation payloads derived from TLog history.
 
 use std::path::Path;
 
@@ -9,6 +9,8 @@ use crate::capability::policy::{
 };
 use crate::kernel::{mix, ControlEvent, EventKind, Evidence, GateId, Phase};
 
+pub const DISTILLATION_ROW_SCHEMA_VERSION: u64 = 1;
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PolicyPromotion {
     pub source_seq: u64,
@@ -18,6 +20,95 @@ pub struct PolicyPromotion {
     pub completion_seq: u64,
     pub promoted_policy_hash: u64,
     pub evidence: Evidence,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct DistillationRow {
+    pub schema_version: u64,
+    pub instruction_hash: u64,
+    pub input_state_hash: u64,
+    pub action_hash: u64,
+    pub output_hash: u64,
+    pub score: u64,
+    pub proof_hash: u64,
+    pub source_event: u64,
+    pub row_hash: u64,
+}
+
+impl DistillationRow {
+    pub fn from_policy_promotion(
+        promotion: &PolicyPromotion,
+        instruction_hash: u64,
+        input_state_hash: u64,
+        action_hash: u64,
+        output_hash: u64,
+        score: u64,
+        proof_hash: u64,
+    ) -> Option<Self> {
+        if !promotion.is_valid()
+            || instruction_hash == 0
+            || input_state_hash == 0
+            || action_hash == 0
+            || output_hash == 0
+            || score == 0
+            || proof_hash != promotion.promoted_policy_hash
+        {
+            return None;
+        }
+
+        let mut row = Self {
+            schema_version: DISTILLATION_ROW_SCHEMA_VERSION,
+            instruction_hash,
+            input_state_hash,
+            action_hash,
+            output_hash,
+            score,
+            proof_hash,
+            source_event: promotion.source_seq,
+            row_hash: 0,
+        };
+        row.row_hash = row.expected_row_hash()?;
+        row.is_valid_for(promotion).then_some(row)
+    }
+
+    pub fn is_valid_for(&self, promotion: &PolicyPromotion) -> bool {
+        promotion.is_valid()
+            && self.schema_version == DISTILLATION_ROW_SCHEMA_VERSION
+            && self.instruction_hash != 0
+            && self.input_state_hash != 0
+            && self.action_hash != 0
+            && self.output_hash != 0
+            && self.score != 0
+            && self.proof_hash == promotion.promoted_policy_hash
+            && self.source_event == promotion.source_seq
+            && self.row_hash != 0
+            && self.row_hash == self.expected_row_hash().unwrap_or(0)
+    }
+
+    pub fn expected_row_hash(&self) -> Option<u64> {
+        if self.schema_version != DISTILLATION_ROW_SCHEMA_VERSION
+            || self.instruction_hash == 0
+            || self.input_state_hash == 0
+            || self.action_hash == 0
+            || self.output_hash == 0
+            || self.score == 0
+            || self.proof_hash == 0
+            || self.source_event == 0
+        {
+            return None;
+        }
+
+        let mut h = 0x4449_5354_494c_4c31u64;
+        h = mix(h, self.schema_version);
+        h = mix(h, self.instruction_hash);
+        h = mix(h, self.input_state_hash);
+        h = mix(h, self.action_hash);
+        h = mix(h, self.output_hash);
+        h = mix(h, self.score);
+        h = mix(h, self.proof_hash);
+        h = mix(h, self.source_event);
+        Some(h.max(1))
+    }
 }
 
 impl PolicyPromotion {

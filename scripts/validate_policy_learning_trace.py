@@ -36,6 +36,21 @@ PROMOTION_TOKENS = (
     "source_seq",
 )
 
+DISTILLATION_TOKENS = (
+    "pub struct DistillationRow",
+    "pub const DISTILLATION_ROW_SCHEMA_VERSION",
+    "pub fn from_policy_promotion",
+    "instruction_hash",
+    "input_state_hash",
+    "action_hash",
+    "output_hash",
+    "score",
+    "proof_hash != promotion.promoted_policy_hash",
+    "source_event: promotion.source_seq",
+    "pub fn is_valid_for",
+    "expected_row_hash",
+)
+
 STORE_TOKENS = (
     "pub fn try_append",
     "pub fn append_durable",
@@ -125,6 +140,7 @@ def validate(root: Path) -> dict[str, Any]:
         },
         token_check("trace_function_contract", trace_body, TRACE_TOKENS),
         token_check("policy_promotion_contract", promote, PROMOTION_TOKENS),
+        token_check("distillation_row_contract", promote, DISTILLATION_TOKENS),
         token_check("learning_to_policy_append_contract", promote, LEARNING_TO_POLICY_TOKENS),
         token_check("policy_store_append_only_contract", store, STORE_TOKENS),
         forbidden_token_check("policy_store_no_learning_promotion_contract", store, POLICY_LAYER_FORBIDDEN_TOKENS),
