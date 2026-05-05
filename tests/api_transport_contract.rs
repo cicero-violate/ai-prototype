@@ -1,9 +1,10 @@
 use ai::{
     append_api_transport_receipt_ndjson, decode_api_transport_receipt_ndjson,
     encode_api_transport_receipt_ndjson, handle_transport_frame_once,
-    load_api_transport_receipts_ndjson, tick, verify_api_transport_receipts, verify_tlog,
-    ApiTransportDisposition, ApiTransportFrame, ApiTransportLedger, ApiTransportReceipt, CanonError, Command,
-    CommandEnvelope, CommandLedger, ObservationRecord, Phase, RuntimeConfig, State, TLog,
+    load_api_transport_ledger_ndjson, load_api_transport_receipts_ndjson, tick,
+    verify_api_transport_receipts, verify_tlog, ApiTransportDisposition, ApiTransportFrame,
+    ApiTransportLedger, ApiTransportReceipt, CanonError, Command, CommandEnvelope, CommandLedger,
+    ObservationRecord, Phase, RuntimeConfig, State, TLog,
 };
 
 fn transport_receipt_path(name: &str) -> std::path::PathBuf {
@@ -189,6 +190,81 @@ fn transport_receipt_persists_and_verifies_against_tlog() {
 
     assert_eq!(loaded, vec![receipt]);
     assert!(verify_api_transport_receipts(&tlog, &loaded).is_ok());
+}
+
+#[test]
+fn transport_ledger_loads_persisted_receipts_for_process_restart_replay() {
+    let cfg = RuntimeConfig::default();
+    let mut state = State::default();
+    let mut tlog = TLog::default();
+    let mut command_ledger = CommandLedger::default();
+    let mut transport_ledger = ApiTransportLedger::default();
+    let frame = observation_frame();
+    assert!(tick(&mut state, &mut tlog, cfg).is_ok());
+
+    let first = match handle_transport_frame_once(
+        &mut state,
+        &mut tlog,
+        cfg,
+        &mut command_ledger,
+        &mut transport_ledger,
+        frame.clone(),
+    ) {
+        Ok(response) => response,
+        Err(err) => panic!("transport frame should be accepted before restart: {err:?}"),
+    };
+    let receipt = transport_ledger.receipts()[0];
+    let state_after_first = state;
+    let tlog_len_after_first = tlog.len();
+
+    let path = transport_receipt_path("restart-replay");
+    let _ = std::fs::remove_file(&path);
+    assert!(append_api_transport_receipt_ndjson(&path, receipt).is_ok());
+    let mut restored_transport_ledger = match load_api_transport_ledger_ndjson(&path) {
+        Ok(ledger) => ledger,
+        Err(err) => panic!("transport ledger should load from receipts: {err:?}"),
+    };
+    let _ = std::fs::remove_file(&path);
+    let mut restored_command_ledger = CommandLedger::default();
+
+    let replay = match handle_transport_frame_once(
+        &mut state,
+        &mut tlog,
+        cfg,
+        &mut restored_command_ledger,
+        &mut restored_transport_ledger,
+        frame,
+    ) {
+        Ok(response) => response,
+        Err(err) => panic!("loaded transport receipt should replay: {err:?}"),
+    };
+
+    assert_eq!(replay.disposition, ApiTransportDisposition::Replayed);
+    assert_eq!(replay.event_hash, first.event_hash);
+    assert_eq!(state, state_after_first);
+    assert_eq!(tlog.len(), tlog_len_after_first);
+    assert!(restored_command_ledger.is_empty());
+    assert_eq!(restored_transport_ledger.len(), 1);
+    assert!(verify_api_transport_receipts(
+        &tlog,
+        restored_transport_ledger.receipts()
+    )
+    .is_ok());
+}
+
+#[test]
+fn transport_ledger_load_rejects_duplicate_request_ids() {
+    let receipt = ApiTransportReceipt::new(101, 202, 303, 404, 505);
+    let path = transport_receipt_path("duplicate-request-id");
+    let _ = std::fs::remove_file(&path);
+    assert!(append_api_transport_receipt_ndjson(&path, receipt).is_ok());
+    assert!(append_api_transport_receipt_ndjson(&path, receipt).is_ok());
+
+    assert_eq!(
+        load_api_transport_ledger_ndjson(&path),
+        Err(CanonError::InvalidApiCommand)
+    );
+    let _ = std::fs::remove_file(&path);
 }
 
 #[test]

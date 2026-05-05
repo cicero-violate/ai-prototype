@@ -132,6 +132,14 @@ pub struct ApiTransportLedger {
 }
 
 impl ApiTransportLedger {
+    pub fn from_receipts(receipts: Vec<ApiTransportReceipt>) -> Result<Self, CanonError> {
+        let mut ledger = Self::default();
+        for receipt in receipts {
+            ledger.push_receipt(receipt)?;
+        }
+        Ok(ledger)
+    }
+
     pub fn len(&self) -> usize {
         self.receipts.len()
     }
@@ -156,16 +164,34 @@ impl ApiTransportLedger {
         })
     }
 
-    fn push_response(&mut self, frame: &ApiTransportFrame, response: &ApiTransportResponse) {
+    fn push_receipt(&mut self, receipt: ApiTransportReceipt) -> Result<(), CanonError> {
+        if !receipt.is_contract_valid()
+            || self
+                .receipts
+                .iter()
+                .any(|existing| existing.request_id == receipt.request_id)
+        {
+            return Err(CanonError::InvalidApiCommand);
+        }
+        self.receipts.push(receipt);
+        Ok(())
+    }
+
+    fn push_response(
+        &mut self,
+        frame: &ApiTransportFrame,
+        response: &ApiTransportResponse,
+    ) -> Result<(), CanonError> {
         if self.receipt_for(frame).is_none() {
-            self.receipts.push(ApiTransportReceipt::new(
+            self.push_receipt(ApiTransportReceipt::new(
                 frame.request_id,
                 frame.payload_hash,
                 response.command_id,
                 response.command_hash,
                 response.event_hash,
-            ));
+            ))?;
         }
+        Ok(())
     }
 }
 
@@ -215,7 +241,7 @@ pub fn handle_transport_frame_once(
         },
         control,
     };
-    transport_ledger.push_response(&frame, &response);
+    transport_ledger.push_response(&frame, &response)?;
     Ok(response)
 }
 
@@ -307,6 +333,12 @@ pub fn load_api_transport_receipts_ndjson(
         receipts.push(decode_api_transport_receipt_ndjson(&line)?);
     }
     Ok(receipts)
+}
+
+pub fn load_api_transport_ledger_ndjson(
+    path: impl AsRef<Path>,
+) -> Result<ApiTransportLedger, CanonError> {
+    ApiTransportLedger::from_receipts(load_api_transport_receipts_ndjson(path)?)
 }
 
 pub fn verify_api_transport_receipts(
