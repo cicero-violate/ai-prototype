@@ -16,6 +16,15 @@ pub use crate::api::protocol::{
     Command, CommandEnvelope, ControlEventResponse, API_COMMAND_BATCH_LIMIT,
     API_PROTOCOL_SCHEMA_VERSION,
 };
+pub use crate::api::transport::{
+    append_api_transport_receipt_ndjson, decode_api_transport_receipt_ndjson,
+    encode_api_transport_receipt_ndjson, handle_transport_frame_once,
+    load_api_transport_receipts_ndjson, verify_api_transport_receipts,
+    ApiTransportDisposition, ApiTransportFrame, ApiTransportLedger, ApiTransportReceipt,
+    ApiTransportResponse, API_TRANSPORT_RECEIPT_RECORD,
+    API_TRANSPORT_RECEIPT_SCHEMA_VERSION, API_TRANSPORT_ROUTE_COMMAND,
+    API_TRANSPORT_SCHEMA_VERSION,
+};
 pub use crate::capability::context::{ContextDecision, ContextRecord};
 pub use crate::capability::eval::{EvalDecision, EvalDimension, EvalRecord};
 pub use crate::capability::learning::{

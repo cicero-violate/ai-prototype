@@ -32,58 +32,67 @@ One-line explanation: Goodness is the geometric mean of all 15 dimensions; one w
 
 ## Source Inputs
 
-- `GOAL.md` requires replayable receipts, external evidence, runtime archive inspection, policy learning, and deterministic validation.
-- `score.md` is preserved and not edited in this phase.
-- Turn 1 closed the missing default wrapper and production panic-surface blockers.
-- Turn 2 bounded long-running validation commands with the requested `300s` test budget.
-- Runtime archive inspection found `/mnt/data/ai-runtime.tar.gz` with `RUNTIME_MANIFEST.json`, `.repo-agent-runtime/audit.ndjson`, and `log/chatgpt_project_agent.ndjson`; it has no conversation snapshot or message/download history ledger.
+- `GOAL.md` requires API command intake, deterministic receipts, replayable TLog evidence, policy learning, and evaluator-gated evolution.
+- `score.md` is evidence input only and must not be edited or staged in this phase.
+- Current score risks include external transport proof, missing wrapper graph telemetry, unavailable fmt/clippy tooling, live provider paths not exercised, and large-module simplicity debt.
+- Runtime archive inspection found sanitized audit/process logs only; there were no download indexes, conversation snapshots, or prior apply worktrees in `ai-runtime.tar.gz`.
+- Phase 2 turn 3 must preserve cumulative commits from base commit `7e21d9bf2295430508bf12f3cbfb7e52a639e15a`, validate with bounded commands, commit, and create the final cumulative bundle/manifest.
 
 ## Boundary
 
-- Base commit: `c914c14987938a0d95c7904a2ffa5164bb30f2d9`.
-- Current cumulative working HEAD before this turn: `c0489a03192f8f7974591b8dc97a71336e412cea`.
+- Base commit: `7e21d9bf2295430508bf12f3cbfb7e52a639e15a`.
+- Worktree: `/mnt/data/ai-work/ai`.
 - Do not edit or stage `score.md`.
-- This is the final artifact turn: create `/mnt/data/repo-delta-004.bundle` and `/mnt/data/DELTA_MANIFEST.md` only after committing the new HEAD.
-- Keep the cumulative bundle scoped to `B..H`, not only the latest turn.
+- Remove stale `/mnt/data/repo-delta-004.bundle` and `/mnt/data/DELTA_MANIFEST.md` before final artifact creation.
+- Run `/mnt/data/bootstrap_rustc_session.py` before Rust validation.
+- Run `nproc` before every Cargo command.
+- Use `timeout 300s` for tests and Rust validation commands.
 
 ## Tasks
 
-1. Refresh `plan.md` from `GOAL.md`, `score.md`, current runtime archive evidence, and prior Phase 2 commits.
-2. Preserve conversation/download ledger absence as explicit missing signals, but stop treating that absence as a failed runtime inspection when current-loop audit/process logs and manifest evidence are present.
-3. Add a Python contract proving runtime archive inspection now records process-log and semantic-history evidence fields.
-4. Run Rust bootstrap before validation with `timeout 300s`.
-5. Run bounded validation with `timeout 300s` for tests and validators.
-6. Commit only the cumulative repository change; leave `score.md` unstaged.
-7. Recreate `/mnt/data/repo-delta-004.bundle` and `/mnt/data/DELTA_MANIFEST.md` for `c914c14987938a0d95c7904a2ffa5164bb30f2d9..H`.
+1. Replace stale `plan.md` content with a current Phase 2 turn 3 plan derived from `GOAL.md` and `score.md`.
+2. Preserve the cumulative deterministic API transport frame and request-ledger changes from turns 1 and 2.
+3. Add deterministic transport receipt NDJSON encode/decode/load/append functions so accepted API ingress can be audited outside process memory.
+4. Add transport receipt verification against TLog event hashes, command ids, and command hashes.
+5. Add focused transport tests proving persistence, replay verification, and tamper rejection.
+6. Run bootstrap and bounded validation.
+7. Update this plan with completed work and validation evidence.
+8. Commit cumulative changes from `B..H`, then create `/mnt/data/repo-delta-004.bundle` and `/mnt/data/DELTA_MANIFEST.md`.
 
 ## Completed This Turn
 
-- Updated `scripts/observe_validation.sh` to count `runtime_archive_process_log_files`.
-- Added `runtime_archive_current_loop_evidence_files` and `runtime_archive_semantic_history_files`.
-- Changed `runtime_archive_inspection_status` so manifest + logs + prior-state audit evidence can pass inspection even when conversation snapshots are absent.
-- Kept `missing_runtime_conversation_ledger` and `missing_conversation_snapshot` as separate transparency signals.
-- Updated `tests/test_observe_validation_contract.py` to require the new runtime archive evidence fields.
+- Replaced stale Phase 2 Turn 2 plan content with a current Phase 2 Turn 3 scope and final artifact boundary.
+- Preserved cumulative API transport frame, request-id ledger, replay, conflict rejection, and no-mutation tamper tests from prior turns.
+- Added deterministic transport receipt persistence: `ApiTransportReceipt::new`, receipt self-hash binding, NDJSON encode/decode/load/append helpers, and TLog-backed receipt verification.
+- Added focused transport coverage proving receipt persistence, TLog verification, command-hash tamper rejection, and payload-hash tamper rejection through the receipt hash.
+- Re-exported the new transport receipt helpers and constants through `src/lib.rs`.
+- Inspected `ai-runtime.tar.gz`; it contains sanitized runtime manifest, audit NDJSON, and process NDJSON, with no download indexes, conversation snapshots, or prior runtime worktrees.
+- Kept `score.md` untouched.
 
 ## Validation Result
 
 ```text
-timeout 300s python3 /mnt/data/bootstrap_rustc_session.py ...: pass
-
-timeout 300s cargo check --offline: pass
-timeout 300s cargo test --lib --offline: pass, 110 passed
-timeout 300s cargo test --all-targets --offline: pass, 110 library tests and 0-test bin/example targets completed
+timeout 300s python3 /mnt/data/bootstrap_rustc_session.py --skip-probe --skip-library-probe: pass, rustc 1.75.0, cargo 1.75.0
+nproc_before_cargo_check_after_receipt_hash = 56
+CARGO_INCREMENTAL=0 timeout 300s cargo check --offline: pass
+nproc_before_cargo_test_api_transport_after_receipt_hash = 56
+CARGO_INCREMENTAL=0 timeout 300s cargo test --test api_transport_contract --offline: pass, 6 passed
+nproc_before_cargo_test_lib_after_receipt_hash = 56
+CARGO_INCREMENTAL=0 timeout 300s cargo test --lib --offline: pass, 110 passed
+nproc_before_cargo_test_all_targets_after_receipt_hash = 56
+CARGO_INCREMENTAL=0 timeout 300s cargo test --all-targets --offline: pass, 110 lib tests + 6 integration tests + 0-test binary/examples
 timeout 300s python3 -m unittest discover -s tests -p 'test_*.py' -v: pass, 27 passed
-timeout 300s python3 scripts/validate_rust_panic_surface.py --root . --fail-production-unwrap --report /mnt/data/ai-phase2-turn3-panic-surface.json: pass, production_total=0, test_total=335, example_total=1
 timeout 300s python3 scripts/validate_policy_learning_trace.py --root . --report /mnt/data/ai-phase2-turn3-policy-learning-trace.json: pass, missing_count=0
-timeout 300s cargo run --example loop_trace --offline: pass, 31 events, Done, success=true
-timeout 300s env CANON_DELTA_BASE=... CANON_RUNTIME_ARCHIVE=/mnt/data/ai-runtime.tar.gz CANON_OBSERVE_REPORT=/mnt/data/ai-phase2-turn3-observe.ndjson bash scripts/observe_validation.sh: timed out before validation_summary; emitted runtime_archive_metrics before timeout with runtime_archive_inspection_status=pass, runtime_archive_process_log_files=1, runtime_archive_current_loop_evidence_files=2, runtime_archive_semantic_history_files=2, runtime_manifest_base_matches_delta_base=true
+timeout 300s python3 scripts/validate_rust_panic_surface.py --root . --fail-production-unwrap --report /mnt/data/ai-phase2-turn3-panic-surface.json: pass, production_total=0, test_total=335, example_total=1, finding_count=336
+nproc_before_cargo_fmt = 56; timeout 300s cargo fmt --check --offline: unavailable, cargo-fmt not installed
+nproc_before_cargo_clippy = 56; timeout 300s cargo clippy --all-targets --offline -- -D warnings: unavailable, clippy not installed
 git diff --check: pass
 ```
 
 ## Remaining Risk
 
-- Wrapper graph telemetry is still optional and requires an explicit built `CANON_RUSTC_WRAPPER` binary.
-- `cargo fmt` and `cargo clippy` remain dependent on unavailable rustfmt/clippy components in the supplied extracted toolchain.
-- Live Ollama/OpenAI provider paths remain gated on explicit local/provider endpoints.
-- Runtime archive conversation snapshots and message/download ledgers remain absent from the supplied archive, but current-loop manifest/audit/process-log inspection is now separated from those missing history signals.
-- Large-module simplicity debt remains, especially in `src/lib.rs` and LLM adapter modules.
+- Wrapper graph telemetry still requires an explicit root wrapper capture path.
+- `rustfmt` and `clippy` are unavailable in the supplied bootstrapped toolchain unless a fuller toolchain is provided.
+- Live Ollama/OpenAI provider paths remain endpoint-dependent and are not part of this turn.
+- The transport surface is deterministic API ingress proof, not a full HTTP/gRPC server implementation.
+- Large-module simplicity debt remains in `src/lib.rs` and provider adapters.
