@@ -575,6 +575,25 @@ mod tests {
     }
 
     #[test]
+    fn observation_cursor_loader_rejects_latest_corrupt_row() {
+        let cursor_path = std::env::temp_dir().join(format!(
+            "ai-observation-corrupt-cursor-{}.ndjson",
+            std::process::id()
+        ));
+        std::fs::remove_file(&cursor_path).ok();
+        std::fs::write(
+            &cursor_path,
+            "[1,190709761,7,2,12345]\n[1,190709761,7,3,0]\n",
+        )
+        .unwrap();
+
+        let error = load_observation_cursor_ndjson(&cursor_path).unwrap_err();
+
+        assert_eq!(error.kind(), std::io::ErrorKind::InvalidData);
+        std::fs::remove_file(&cursor_path).ok();
+    }
+
+    #[test]
     fn bounded_line_observation_source_persists_cursor_and_applies_backpressure() {
         let stem = std::env::temp_dir().join(format!(
             "ai-observation-ingress-{}",

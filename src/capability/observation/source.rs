@@ -335,10 +335,12 @@ pub fn decode_observation_cursor_ndjson(line: &str) -> Option<ObservationCursor>
 
 pub fn load_observation_cursor_ndjson(path: impl AsRef<Path>) -> io::Result<Option<ObservationCursor>> {
     match fs::read_to_string(path) {
-        Ok(content) => Ok(content
-            .lines()
-            .rev()
-            .find_map(decode_observation_cursor_ndjson)),
+        Ok(content) => match content.lines().rev().find(|line| !line.trim().is_empty()) {
+            Some(line) => decode_observation_cursor_ndjson(line)
+                .map(Some)
+                .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "invalid observation cursor")),
+            None => Ok(None),
+        },
         Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(None),
         Err(error) => Err(error),
     }

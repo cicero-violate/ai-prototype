@@ -1,4 +1,4 @@
-# Phase 2 Turn 1 Plan
+# Phase 2 Turn 2 Plan
 
 ## Variables
 
@@ -32,22 +32,22 @@ One-line explanation: Goodness is the geometric mean of all 15 dimensions; one w
 
 ## Source Inputs
 
-- `GOAL.md` requires deterministic external observation, typed evidence, replayable TLog transitions, bounded recovery, and verified learning inputs.
-- `score.md` identifies remaining risks around full validation closure, graph telemetry, live provider proof, transport proof, and simplicity debt. `score.md` is preserved and must not be edited in this phase.
-- The restored repository already contains API batch bounding, command hash binding, command-ledger idempotence, process receipt proof surfaces, and observation ingress.
+- `GOAL.md` requires deterministic observation ingress, replayable TLog evidence, bounded recovery, and verified external inputs before learning or policy reuse.
+- `score.md` identifies remaining risks around validation closure, graph telemetry, live provider proof, transport proof, and simplicity debt. `score.md` is preserved and must not be edited in this phase.
+- Turn 1 tightened observation cursor lineage so persisted cursor rows must be fresh or fully lineage-bound.
 
 ## Boundary
 
 - Do not edit `score.md`.
 - Do not create final delta bundle or manifest artifacts on this intermediate turn.
-- Keep the change bounded and source-level.
-- Prefer deterministic contract tightening over broad refactors.
+- Keep this turn source-level and cumulative on top of Phase 2 Turn 1.
+- Prefer deterministic replay-safety hardening over broad refactors.
 
 ## Tasks
 
 1. Refresh `plan.md` from `GOAL.md` and `score.md`.
-2. Inspect TODO/FIXME markers and keep them out of source unless needed for real future work.
-3. Close one concrete correctness/robustness gap in the current source.
+2. Inspect TODO/FIXME markers and avoid adding deferrals.
+3. Close one concrete correctness/robustness gap in current source.
 4. Add a targeted regression test proving the new boundary.
 5. Run Rust bootstrap before validation.
 6. Run bounded validation.
@@ -55,26 +55,26 @@ One-line explanation: Goodness is the geometric mean of all 15 dimensions; one w
 
 ## Completed This Turn
 
-- Tightened observation cursor validity so persisted cursor state must be either fresh `(last_sequence=0,last_observed_hash=0)` or fully lineage-bound `(last_sequence!=0,last_observed_hash!=0)`.
-- Made `ObservationCursor::accepts` reject corrupt partial cursor state before advancing external observation ingress.
-- Made `decode_observation_cursor_ndjson` reject partial persisted cursor rows instead of accepting lineage-breaking state.
-- Added `observation_cursor_rejects_partial_persisted_state` to prove corrupt cursor rows are rejected and cannot accept a later frame.
+- Hardened observation cursor loading so only the latest non-empty cursor row has authority.
+- Changed `load_observation_cursor_ndjson` to reject a latest corrupt cursor row with `InvalidData` instead of scanning backward to an older valid row.
+- Prevented stale cursor rollback after persisted cursor corruption, which protects observation replay determinism and external ingress lineage.
+- Added `observation_cursor_loader_rejects_latest_corrupt_row` to prove an older valid cursor row cannot mask a newer corrupt cursor row.
 
 ## Validation Result
 
 ```text
-python3 /mnt/data/bootstrap_rustc_session.py --archive /mnt/data/rust-nightly-x86_64-unknown-linux-gnu.tar.gz --prefix /mnt/data/rust-sandbox --cargo-home /mnt/data/.cargo --env-file /mnt/data/rustc-session.env --no-install-launchers: pass
+python3 /mnt/data/bootstrap_rustc_session.py: pass
+cargo test observation_cursor_loader_rejects_latest_corrupt_row --offline -- --nocapture: pass
 cargo test observation_cursor_rejects_partial_persisted_state --offline -- --nocapture: pass
-cargo test bounded_line_observation_source_persists_cursor_and_applies_backpressure --offline -- --nocapture: pass
 cargo check --offline: pass
-cargo test --lib --offline: pass, 108 passed
+cargo test --lib --offline: pass, 109 passed
 python3 -m unittest discover -s tests -p 'test_*.py' -v: pass, 25 passed
 git diff --check: pass
-score.md: preserved from Phase 1; not edited during this turn
+score.md: preserved; not edited during this turn
 ```
 
 ## Remaining Risk
 
-- Full all-target validation is still large for this environment.
-- `cargo fmt` and `cargo clippy` are still unavailable in the supplied extracted toolchain.
-- This turn improves observation replay lineage but does not close transport API proof, graph telemetry, live LLM proof, or large-module simplicity debt.
+- Full all-target validation remains large for this environment.
+- `cargo fmt` and `cargo clippy` remain unavailable in the supplied extracted toolchain.
+- This turn improves observation cursor corruption handling but does not close graph telemetry, live LLM proof, transport integration proof, or large-module simplicity debt.
