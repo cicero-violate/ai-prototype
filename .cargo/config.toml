@@ -1,5 +1,8 @@
+# Root validation must not require a local wrapper binary. Wrapper graph capture is
+# explicit and opt-in:
+# CANON_RUSTC_WRAPPER=/path/to/canon-rustc-v3 cargo test --all-targets
+
 [build]
-rustc-wrapper = "canon-rustc-v3/target/debug/canon-rustc-v3"
 
 rustflags = [
 "-Dwarnings",

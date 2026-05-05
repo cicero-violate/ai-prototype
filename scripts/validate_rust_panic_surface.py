@@ -77,7 +77,9 @@ def classify_src_lines(lines: list[str]) -> list[str]:
 def scan_file(root: Path, path: Path) -> list[Finding]:
     rel = path.relative_to(root).as_posix()
     lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
-    if rel.startswith("examples/"):
+    if "/validation/fixtures/" in f"/{rel}":
+        buckets = ["test"] * len(lines)
+    elif rel.startswith("examples/"):
         buckets = ["example"] * len(lines)
     else:
         buckets = classify_src_lines(lines)

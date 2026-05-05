@@ -207,9 +207,10 @@ fn receipt_hash(
 }
 
 fn stable_json_bytes<T: Serialize + ?Sized>(value: &T, label: &str) -> Vec<u8> {
-    serde_json::to_vec(value).unwrap_or_else(|err| {
-        panic!("canon-rustc-v3: failed to serialize {label} for stable hash: {err}")
-    })
+    match serde_json::to_vec(value) {
+        Ok(bytes) => bytes,
+        Err(err) => format!("canon-rustc-v3:{label}:stable-json-error:{err}").into_bytes(),
+    }
 }
 
 fn intent_for(function: &str, edges: &[GraphEdge]) -> &'static str {

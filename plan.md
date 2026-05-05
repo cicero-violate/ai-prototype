@@ -1,4 +1,4 @@
-# Phase 2 Turn 3 Plan
+# Phase 2 Turn 1 Plan
 
 ## Variables
 
@@ -32,52 +32,52 @@ One-line explanation: Goodness is the geometric mean of all 15 dimensions; one w
 
 ## Source Inputs
 
-- `GOAL.md` requires deterministic observation ingress, replayable TLog evidence, bounded recovery, and verified external inputs before learning or policy reuse.
-- `score.md` identifies remaining risk around validation closure, graph telemetry, live provider proof, transport proof, and simplicity debt. `score.md` is preserved and must not be edited in this phase.
-- Runtime tarball inspection found prior agent-runtime logs, candidate/download ledgers, audit records, and prior delta-apply receipts; no source authority was taken from those runtime artifacts beyond confirming prior workflow context.
-- Turn 1 tightened observation cursor lineage validation.
-- Turn 2 rejected corrupt latest cursor rows instead of rolling back to older valid rows.
+- `GOAL.md` requires a frozen deterministic kernel, explicit capability growth, verified TLog evidence, policy learning from passed traces, and external evaluator authority over LLM proposals.
+- `score.md` is preserved and not edited in this phase. Its highest-priority closure items are broken default Cargo validation, failing root Python validation, production panic-surface findings, missing wrapper graph telemetry, missing fmt/clippy components, and unproven live provider paths.
+- TODO/FIXME search found only meta-plan/scorecard references; no active source TODO/FIXME markers were used to defer this turn's work.
 
 ## Boundary
 
-- Do not edit `score.md`.
-- Preserve all committed Phase 2 changes since base commit `c5e91b717c253bf1383ed3344d0e4ffd2c5b1cd0`.
-- Create the final cumulative turn artifact only after this turn is committed and validated.
-- Prefer deterministic replay-safety hardening over broad refactors.
+- Base commit: `c914c14987938a0d95c7904a2ffa5164bb30f2d9`.
+- Do not edit or stage `score.md`.
+- Do not create final delta bundle or manifest in this intermediate turn.
+- Prefer closure of validation blockers over broad refactors.
 
 ## Tasks
 
 1. Refresh `plan.md` from `GOAL.md` and `score.md`.
-2. Inspect TODO/FIXME markers and avoid adding deferrals.
-3. Inspect runtime tarball context for logs, snapshots, indexes, and prior runtime state.
-4. Close one concrete correctness/robustness gap in current source.
-5. Add a targeted regression test proving the new boundary.
-6. Run Rust bootstrap before validation.
-7. Run bounded validation.
-8. Commit the cumulative repository state for this turn.
-9. Create `/mnt/data/repo-delta-004.bundle` and `/mnt/data/DELTA_MANIFEST.md` for `B..H`.
+2. Remove the default Cargo dependency on a missing local `rustc-wrapper` while preserving explicit opt-in wrapper graph capture.
+3. Reduce production panic surface to zero for the current scanner.
+4. Add a regression test proving validation fixtures are not counted as production panic surface.
+5. Run Rust bootstrap before validation with `timeout 300s`.
+6. Run bounded validation with `timeout 300s` for tests.
+7. Commit only this turn's cumulative repository change; leave `score.md` unstaged.
 
 ## Completed This Turn
 
-- Hardened observation cursor persistence so cursor writes go through a synced sibling temporary file and atomic rename instead of direct overwrite.
-- Reduced crash/interruption risk where a partial write could corrupt the only cursor authority and break deterministic observation replay.
-- Added `observation_cursor_write_replaces_existing_cursor_atomically` to prove replacement leaves exactly one authoritative cursor row and reloads the latest cursor.
+- Made root `.cargo/config.toml` wrapper-free by default and documented explicit opt-in usage via `CANON_RUSTC_WRAPPER=/path/to/canon-rustc-v3`.
+- Replaced the wrapper's `stable_json_bytes` serialization panic with a deterministic fallback byte string so hash material generation does not crash the wrapper.
+- Classified `canon-rustc-v3/validation/fixtures/**` panic-surface findings as test evidence, not production evidence.
+- Added `tests/test_panic_surface_contract.py` to prove fixture panic facts do not fail `--fail-production-unwrap`.
 
 ## Validation Result
 
 ```text
-python3 /mnt/data/bootstrap_rustc_session.py --skip-library-probe: pass
-cargo test observation_cursor_write_replaces_existing_cursor_atomically --offline -- --nocapture: pass
-cargo test observation_cursor_loader_rejects_latest_corrupt_row --offline -- --nocapture: pass
-cargo check --offline: pass
-cargo test --lib --offline: pass, 110 passed
-python3 -m unittest discover -s tests -p 'test_*.py' -v: pass, 25 passed
+timeout 300s python3 /mnt/data/bootstrap_rustc_session.py ...: pass
+
+timeout 300s cargo check --offline: pass
+timeout 300s cargo test --lib --offline: pass, 110 passed
+timeout 300s cargo test --all-targets --offline: pass, 110 library tests and 0-test bin/example targets completed
+timeout 300s python3 -m unittest discover -s tests -p 'test_*.py' -v: pass, 26 passed
+timeout 300s python3 scripts/validate_rust_panic_surface.py --root . --fail-production-unwrap --report /mnt/data/ai-phase2-turn1-panic-surface.json: pass, production_total=0, test_total=335, example_total=1
+timeout 300s python3 scripts/validate_policy_learning_trace.py --root . --report /mnt/data/ai-phase2-turn1-policy-learning-trace.json: pass, missing_count=0
+timeout 300s cargo run --example loop_trace --offline: pass, 31 events, Done, success=true
 git diff --check: pass
-score.md: preserved; not edited during this turn
 ```
 
 ## Remaining Risk
 
-- Full all-target validation remains large for this environment.
+- Wrapper graph telemetry is still optional and was not generated in this turn because no built `CANON_RUSTC_WRAPPER` binary was available.
 - `cargo fmt` and `cargo clippy` remain unavailable in the supplied extracted toolchain.
-- This turn improves observation cursor persistence but does not close graph telemetry, live LLM proof, transport integration proof, or large-module simplicity debt.
+- Live Ollama/OpenAI provider paths remain unproven by this turn.
+- Large-module simplicity debt remains, especially in `src/lib.rs` and LLM adapter modules.
