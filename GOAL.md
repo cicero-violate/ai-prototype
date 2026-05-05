@@ -34,7 +34,41 @@ The end state is a system where:
 - Policy encodes everything the system has learned from prior runs
 - The LLM is reserved for genuine novelty and architectural expansion
 - Every decision, recovery, and outcome is replayable and auditable
+- Verified TLog receipts can be distilled into training-ready datasets
+  for smaller, faster specialist models
 - The cost per objective completed falls monotonically over time
+
+## Verified Distillation Loop
+
+The runtime must explicitly support post-training distillation as an
+outcome of normal execution. Distillation is not part of the frozen
+kernel and does not replace replay, proof, or policy promotion. It is a
+learning capability that converts verified execution traces into clean
+training data.
+
+The canonical flow is:
+
+```text
+code/action execution → receipts → TLog → verification/eval → distill.jsonl → student model → gated deployment
+```
+
+Only verified or passing events may enter the distillation dataset:
+
+```text
+D = { E ∈ TLog | E.verified = true ∨ E.verdict = pass ∨ E.eval.verdict = pass }
+```
+
+Each distilled row should preserve the minimum causal training tuple:
+
+```text
+(instruction, input_state, action, output, score, proof_hash, source_event)
+```
+
+This makes every model-improvement step traceable back to the original
+hash-chained event that produced it. The LLM remains mostly frozen at
+runtime; the system first learns through policy and verified traces.
+Fine-tuning or student-model training is optional and only allowed after
+the data has passed verification and eval gates.
 
 ## Architecture
 
