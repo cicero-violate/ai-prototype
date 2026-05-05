@@ -32,17 +32,23 @@ One-line explanation: Goodness is the geometric mean of all 15 dimensions; one w
 
 ## Current Truth
 
-`GOAL.md` requires deterministic execution, auditable evidence, replayable run history, bounded recovery, policy learning outside the frozen kernel, and external capability surfaces. `score.md` shows a strong prototype with passing root Rust/Python tests and runtime archive evidence, but validation evidence for external observation, API action, and semantic verification was still too compressed: it emitted only booleans, not the tracked files and tokens that prove each surface exists.
+`GOAL.md` asks for a deterministic, auditable agent runtime where the frozen kernel stays small and capability evidence, policy learning, verification, receipts, and replay carry growth outside the kernel.
 
-The runtime archive `/mnt/data/ai-runtime.tar.gz` is present and contains runtime logs, candidate/download ledgers, audit records, delta receipts, prior-state indicators, runtime summaries, and a manifest whose base commit matches this turn's base commit.
+The current repository already has strong prototype coverage: Rust tests, Python contract tests, policy-learning trace validation, panic-surface validation, runtime archive inspection, and delta manifest tooling. The main active gap from `score.md` is evidence handoff: `scripts/observe_validation.sh` emits external capability evidence files and token mappings, but `scripts/write_delta_manifest.py` does not preserve those fields in the final delta receipt and manifest.
+
+Runtime archive `/mnt/data/ai-runtime.tar.gz` is present. Python/tarfile inspection found runtime logs, download ledgers, message ledgers, candidate ledgers, audit records, delta receipts, summaries, and `RUNTIME_MANIFEST.json`.
 
 ## Work
 
-1. Restore `/mnt/data/ai.bundle` at base `c8936ccbe7a4d8a3ca7d251de57fda9afd28b15a`.
+1. Restore `/mnt/data/ai.bundle` and use base `ba8714dbbe2b57c625611dffb9a5f079d3e2aa65`.
 2. Inspect `/mnt/data/ai-runtime.tar.gz` for logs, ledgers, indexes, summaries, manifests, and prior runtime state.
-3. Improve `scripts/observe_validation.sh` so source-derived external capability evidence includes concrete tracked evidence files and token-to-file mappings, not only present/missing booleans.
-4. Extend the Python contract test to require those evidence file/token fields.
-5. Run validation after reading and running `/mnt/data/bootstrap_rustc_session.py`:
+3. Update `scripts/write_delta_manifest.py` so final receipts and `DELTA_MANIFEST.md` preserve:
+   - external observation evidence files and token mappings
+   - external API action evidence files and token mappings
+   - semantic artifact verification evidence files and token mappings
+4. Extend `tests/test_write_delta_manifest.py` to enforce one-time preservation of those evidence fields.
+5. Update `score.md` with actual validation, marker review, changed files, remaining risks, and recomputed `G`.
+6. Run required validation after `/mnt/data/bootstrap_rustc_session.py`:
    - `cargo test --all-targets`
    - `python3 -m unittest discover -s tests -p 'test_*.py' -v`
    - `python3 scripts/validate_policy_learning_trace.py --root . --report target/observe/policy-learning-trace.json`
@@ -50,9 +56,8 @@ The runtime archive `/mnt/data/ai-runtime.tar.gz` is present and contains runtim
    - `bash -n scripts/observe_validation.sh`
    - `python3 -m py_compile scripts/write_delta_manifest.py scripts/validate_policy_learning_trace.py scripts/validate_rust_panic_surface.py`
    - `git diff --check`
-6. Update `score.md` with actual marker review, validation results, recomputed `G`, and remaining risks.
-7. Commit the result and create `/mnt/data/repo-delta-002.bundle` plus `/mnt/data/DELTA_MANIFEST.md` for `B..H`.
+7. Commit the result, create `/mnt/data/repo-delta-002.bundle` for `B..H`, and write `/mnt/data/DELTA_MANIFEST.md`.
 
 ## Boundary
 
-This phase improves evidence traceability in the validation layer. It does not claim live Ollama execution, generated rustc-wrapper graph telemetry, complete rustfmt/clippy availability, full observe-summary completion inside this environment, or production deployment unless those signals appear in validation output.
+This phase closes final-manifest evidence loss. It does not claim fresh live Ollama execution, rustc-wrapper graph generation, production API deployment, rustfmt/clippy availability, or full observe-summary execution unless validated in this environment.

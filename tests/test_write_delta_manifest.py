@@ -225,6 +225,41 @@ class DeltaManifestTest(unittest.TestCase):
         self.assertEqual(Counter(metric_names)["router_test_count"], 1)
         self.assertEqual(Counter(metric_names)["policy_learning_trace_validation_result"], 1)
 
+    def test_preserves_external_surface_evidence_files_and_tokens_once(self) -> None:
+        self.write_report(extra={
+            "external_observation_stream_test_present": True,
+            "external_observation_stream_evidence_files": ["src/api/protocol.rs"],
+            "external_observation_stream_evidence_tokens": {
+                "ObservationCursor": ["src/api/protocol.rs"]
+            },
+            "external_api_action_test_present": True,
+            "external_api_action_evidence_files": ["src/api/protocol.rs"],
+            "external_api_action_evidence_tokens": {
+                "CommandEnvelope::new": ["src/api/protocol.rs"]
+            },
+            "semantic_artifact_verification_test_present": True,
+            "semantic_artifact_verification_evidence_files": [
+                "src/capability/verification/semantic.rs"
+            ],
+            "semantic_artifact_verification_evidence_tokens": {
+                "SemanticVerificationReceipt": ["src/capability/verification/semantic.rs"]
+            },
+        })
+        done = self.run_script()
+        self.assertEqual(done.returncode, 0, done.stderr)
+        receipt = json.loads(self.receipt.read_text(encoding="utf-8"))
+        manifest = self.out.read_text(encoding="utf-8")
+        self.assertEqual(receipt["external_observation_stream_evidence_files"], ["src/api/protocol.rs"])
+        self.assertTrue(receipt["external_api_action_test_present"])
+        self.assertIn("external_observation_stream_evidence_files", manifest)
+        self.assertIn("external_api_action_evidence_tokens", manifest)
+        self.assertIn("SemanticVerificationReceipt", manifest)
+        metric_names = [line[2:].split(":", 1)[0] for line in manifest.splitlines()
+                        if line.startswith("- ") and ":" in line]
+        self.assertEqual(Counter(metric_names)["external_observation_stream_evidence_files"], 1)
+        self.assertEqual(Counter(metric_names)["external_api_action_evidence_tokens"], 1)
+        self.assertEqual(Counter(metric_names)["semantic_artifact_verification_evidence_files"], 1)
+
 
 if __name__ == "__main__":
     unittest.main()

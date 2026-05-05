@@ -254,6 +254,15 @@ def receipt(args: argparse.Namespace) -> dict[str, Any]:
         "panic_surface_production_panic_count",
         "panic_surface_test_total",
         "panic_surface_example_total",
+        "external_observation_stream_test_present",
+        "external_observation_stream_evidence_files",
+        "external_observation_stream_evidence_tokens",
+        "external_api_action_test_present",
+        "external_api_action_evidence_files",
+        "external_api_action_evidence_tokens",
+        "semantic_artifact_verification_test_present",
+        "semantic_artifact_verification_evidence_files",
+        "semantic_artifact_verification_evidence_tokens",
     ]:
         r[key] = summary.get(key)
     return r
@@ -361,6 +370,15 @@ def write_manifest(path: Path, r: dict[str, Any]) -> None:
         f"- panic_surface_production_panic_count: {r['panic_surface_production_panic_count']}",
         f"- panic_surface_test_total: {r['panic_surface_test_total']}",
         f"- panic_surface_example_total: {r['panic_surface_example_total']}",
+        f"- external_observation_stream_test_present: {r['external_observation_stream_test_present']}",
+        f"- external_observation_stream_evidence_files: {json.dumps(r['external_observation_stream_evidence_files'], sort_keys=True)}",
+        f"- external_observation_stream_evidence_tokens: {json.dumps(r['external_observation_stream_evidence_tokens'], sort_keys=True)}",
+        f"- external_api_action_test_present: {r['external_api_action_test_present']}",
+        f"- external_api_action_evidence_files: {json.dumps(r['external_api_action_evidence_files'], sort_keys=True)}",
+        f"- external_api_action_evidence_tokens: {json.dumps(r['external_api_action_evidence_tokens'], sort_keys=True)}",
+        f"- semantic_artifact_verification_test_present: {r['semantic_artifact_verification_test_present']}",
+        f"- semantic_artifact_verification_evidence_files: {json.dumps(r['semantic_artifact_verification_evidence_files'], sort_keys=True)}",
+        f"- semantic_artifact_verification_evidence_tokens: {json.dumps(r['semantic_artifact_verification_evidence_tokens'], sort_keys=True)}",
         "",
         "## Validation Commands",
     ]
