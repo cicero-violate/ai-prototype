@@ -1,51 +1,30 @@
-base_commit: c8936ccbe7a4d8a3ca7d251de57fda9afd28b15a
-head_commit: 96e3f33c89e29a18dedb1830ef4024f8931c28d4
+base_commit: ba8714dbbe2b57c625611dffb9a5f079d3e2aa65
+head_commit: 4ad21fbdcd58da0e947680e8beef8731649d55e3
 
 # Delta Manifest
 
-## Bundle
-
-- path: /mnt/data/repo-delta-002.bundle
-- sha256: 407a8dfa4ddd4c8cef177891ce8b9dc282c0388367d21e026c6893e31202b148
-- bundle_verify: pass
-- bundle_head: 96e3f33c89e29a18dedb1830ef4024f8931c28d4 HEAD
-- bundle_required_ref: c8936ccbe7a4d8a3ca7d251de57fda9afd28b15a
-
-## Changed Files in B..H
-
+## Changed Files
 - plan.md
 - score.md
-- scripts/observe_validation.sh
-- tests/test_observe_validation_contract.py
+- scripts/write_delta_manifest.py
+- tests/test_write_delta_manifest.py
 
 ## Validation Results
-
-- python3 /mnt/data/bootstrap_rustc_session.py: pass; rustc 1.75.0, cargo 1.75.0, offline probe pass, internal registry dependency probe pass.
-- cargo test --all-targets: pass; 103 Rust tests passed; binary and examples compiled.
-- python3 -m unittest discover -s tests -p test_*.py -v: pass; 23 Python tests passed.
-- python3 scripts/validate_policy_learning_trace.py --root . --report target/observe/policy-learning-trace.json: pass; 4 check groups passed, missing_count=0.
-- python3 scripts/validate_rust_panic_surface.py --root . --fail-production-unwrap --report target/observe/panic-surface.json: pass; production_total=0, test_total=319, example_total=1.
-- bash -n scripts/observe_validation.sh: pass.
-- python3 -m py_compile scripts/write_delta_manifest.py scripts/validate_policy_learning_trace.py scripts/validate_rust_panic_surface.py: pass.
-- git diff --check: pass.
-- observe_validation full run: partial; emitted source evidence, runtime archive metrics, and delta metrics, then timed out before final summary in this environment.
-
-## Runtime Archive Inspection
-
-- archive: /mnt/data/ai-runtime.tar.gz
-- member_count: 108
-- log_related_files: 25
-- download_related_files: 50
-- download_index_or_candidate_ledger_files: 20
-- ledger_files: 20
-- audit_files: 1
-- current_run_summary_present: true
-- runtime_manifest_present: true
-- runtime_manifest_base_matches_delta_base: true
-- runtime_performance_budget_status: pass
+- rust_bootstrap: pass :: python3 /mnt/data/bootstrap_rustc_session.py
+- cargo_test_all_targets_serial: pass :: cargo test --all-targets -- --test-threads=1 :: 103 Rust tests passed; examples and main compiled
+- python_observe_validation_contract: pass :: python3 -m unittest tests.test_observe_validation_contract -v :: 12 tests passed
+- python_policy_learning_trace_contract: pass :: python3 -m unittest tests.test_policy_learning_trace_contract -v :: 2 tests passed
+- python_write_delta_manifest_contract: pass :: python3 -m unittest tests.test_write_delta_manifest -v :: 10 tests passed
+- policy_learning_trace_validation: pass :: python3 scripts/validate_policy_learning_trace.py --root . --report target/observe/policy-learning-trace.json :: missing_count=0
+- panic_surface_validation: pass :: python3 scripts/validate_rust_panic_surface.py --root . --fail-production-unwrap --report target/observe/panic-surface.json :: production_total=0 test_total=319 example_total=1
+- observe_validation_shell_syntax: pass :: bash -n scripts/observe_validation.sh
+- python_compile_validation_scripts: pass :: python3 -m py_compile scripts/write_delta_manifest.py scripts/validate_policy_learning_trace.py scripts/validate_rust_panic_surface.py
+- git_diff_check: pass :: git diff --check
+- todo_fixme_active_source_markers: pass :: active markers outside score.md,target,patch = 0; archived patch markers = 4
+- runtime_archive_inspection: pass :: /mnt/data/ai-runtime.tar.gz members=118 logs=80 downloads=53 candidate_ledgers=23 download_ledgers=23 message_ledgers=23 delta_receipts=9 audit=1 summaries=3 manifests=1
+- bundle_verify: pass :: git bundle verify /mnt/data/repo-delta-002.bundle
+- bundle_sha256: cbccdae54efb3e422708c45314a903839dc5ee6a5eb73dd780a7531be15e0db6
 
 ## Receiver Apply Commands
 
-```bash
 git fetch ./repo-delta-002.bundle HEAD && git merge --ff-only FETCH_HEAD
-```
