@@ -1,3 +1,0 @@
-[submodule "canon-rustc-v3/vendor/rust-source"]
-	path = canon-rustc-v3/vendor/rust-source
-	url = https://github.com/rust-lang/rust.git
