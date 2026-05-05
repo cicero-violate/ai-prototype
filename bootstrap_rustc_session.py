@@ -208,12 +208,26 @@ def extract_components_with_python_tarfile(archive: Path, tmp: Path, prefix: Pat
         raise RuntimeError("no cargo/rustc/rust-std bin/lib payloads were extracted")
 
 
+BASHRC_LINES = [
+    # Tier 1 — parallelism + native codegen
+    'export MAKEFLAGS="-j$(nproc)"',
+    'export CARGO_BUILD_JOBS="$(nproc)"',
+    'export RAYON_NUM_THREADS="$(nproc)"',
+    'export OMP_NUM_THREADS="$(nproc)"',
+    'export OPENBLAS_NUM_THREADS="$(nproc)"',
+    'export MKL_NUM_THREADS="$(nproc)"',
+    'export RUSTFLAGS="-C target-cpu=native"',
+    # Tier 4 — sccache (RUSTC_WRAPPER only activates when sccache is on PATH)
+    'export SCCACHE_DIR="/mnt/data/.sccache"',
+    'command -v sccache >/dev/null 2>&1 && export RUSTC_WRAPPER="sccache"',
+]
+
+
 def ensure_bashrc_sources_env(env_file: Path, bashrc: Path = Path("/root/.bashrc")) -> bool:
     source_line = f"source {env_file}"
-    jobs_line = 'export CARGO_BUILD_JOBS="$(nproc)"'
     existing = bashrc.read_text(encoding="utf-8") if bashrc.exists() else ""
 
-    additions = [l for l in [source_line, jobs_line] if l not in existing]
+    additions = [l for l in [source_line] + BASHRC_LINES if l not in existing]
     if not additions:
         return False
 
