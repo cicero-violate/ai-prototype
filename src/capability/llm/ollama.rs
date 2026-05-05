@@ -38,7 +38,7 @@ pub const OLLAMA_JUDGMENT_PROOF_LINE: &str =
 
 const DEFAULT_BASE_URL: &str = "http://127.0.0.1:11434/v1";
 const DEFAULT_MODEL: &str = "qwen2.5-coder:7b";
-const DEFAULT_TIMEOUT_MS: u64 = 30_000;
+const DEFAULT_TIMEOUT_MS: u64 = 120_000;
 const DEFAULT_MAX_RETRIES: u32 = 0;
 const DEFAULT_ATTEMPT_BUDGET: u32 = 1;
 
