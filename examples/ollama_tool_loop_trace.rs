@@ -1,9 +1,11 @@
 use ai::api::routes::handle_envelope;
 use ai::{
-    tick, verify_tlog, Command, CommandEnvelope, ContextRecord, ControlEvent, GateStatus,
-    LiveSandboxProcessExecutor, MemoryFact, MemoryIndex, OllamaClient, OllamaMessage, Phase,
-    PolicyStore, RuntimeConfig, State, TLog,
+    append_sandbox_process_receipt_ndjson, tick, verify_tlog, write_tlog_ndjson, Command,
+    CommandEnvelope, ContextRecord, ControlEvent, GateStatus, LiveSandboxProcessExecutor,
+    MemoryFact, MemoryIndex, OllamaClient, OllamaMessage, Phase, PolicyStore, RuntimeConfig, State,
+    TLog,
 };
+use std::path::Path;
 
 const TOOL_CALL_TARGET: usize = 5;
 
@@ -22,6 +24,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut state = State::default();
     let mut tlog: TLog = Vec::new();
     let mut tool_calls = 0usize;
+    let tlog_dir = Path::new("tlog");
+    std::fs::create_dir_all(tlog_dir)?;
+    let tlog_path = tlog_dir.join("ollama_tool_loop_trace.tlog.ndjson");
+    let process_receipt_path = tlog_dir.join("ollama_tool_loop_trace.process_receipts.ndjson");
+    std::fs::remove_file(&tlog_path).ok();
+    std::fs::remove_file(&process_receipt_path).ok();
 
     println!(
         "ollama base_url={} model={}",
@@ -40,7 +48,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         if state.phase == Phase::Judgment && state.gates.judgment.status != GateStatus::Pass {
             submit_ollama_judgment(&client, &policy, &mut state, &mut tlog, cfg)?;
         } else if state.phase == Phase::Execute && tool_calls == 0 {
-            tool_calls = submit_ollama_tool_calls(&client, &mut state, &mut tlog, cfg)?;
+            tool_calls = submit_ollama_tool_calls(
+                &client,
+                &process_receipt_path,
+                &mut state,
+                &mut tlog,
+                cfg,
+            )?;
         } else {
             tick(&mut state, &mut tlog, cfg)?;
         }
@@ -51,12 +65,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     verify_tlog(&tlog)?;
+    write_tlog_ndjson(&tlog_path, &tlog)?;
     println!(
-        "done phase={:?} success={} events={} tool_calls={}",
+        "done phase={:?} success={} events={} tool_calls={} tlog_path={} process_receipt_path={}",
         state.phase,
         state.is_success(),
         tlog.len(),
-        tool_calls
+        tool_calls,
+        tlog_path.display(),
+        process_receipt_path.display()
     );
 
     Ok(())
@@ -91,6 +108,7 @@ fn submit_ollama_judgment(
 
 fn submit_ollama_tool_calls(
     client: &OllamaClient,
+    process_receipt_path: &Path,
     state: &mut State,
     tlog: &mut TLog,
     cfg: RuntimeConfig,
@@ -152,6 +170,8 @@ fn submit_ollama_tool_calls(
             receipt.stdout_hash,
             receipt.receipt_hash
         );
+        append_sandbox_process_receipt_ndjson(process_receipt_path, &receipt)
+            .map_err(|err| format!("failed to persist process receipt: {err:?}"))?;
         receipts.push(receipt);
     }
 

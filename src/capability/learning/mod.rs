@@ -2,4 +2,5 @@
 
 pub mod promote;
 
-pub use self::promote::{PolicyPromotion, POLICY_FEEDBACK_HASH, POLICY_PROMOTION_SOURCE_SEQ};
+pub use self::promote::PolicyPromotion;
+pub use crate::capability::policy::{POLICY_FEEDBACK_HASH, POLICY_PROMOTION_SOURCE_SEQ};

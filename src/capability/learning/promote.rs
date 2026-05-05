@@ -1,10 +1,13 @@
 //! Policy promotion payloads derived from TLog history.
 
-use crate::capability::{EvidenceProducer, EvidenceSubmission};
-use crate::kernel::{mix, ControlEvent, EventKind, Evidence, GateId, Phase};
+use std::path::Path;
 
-pub const POLICY_PROMOTION_SOURCE_SEQ: &str = "learning.policy_promotion.source_seq";
-pub const POLICY_FEEDBACK_HASH: &str = "learning.policy_feedback.hash";
+use crate::capability::{EvidenceProducer, EvidenceSubmission};
+use crate::capability::policy::{
+    PolicyEntry, PolicyStore, PolicyStoreError, POLICY_FEEDBACK_HASH,
+    POLICY_PROMOTION_SOURCE_SEQ,
+};
+use crate::kernel::{mix, ControlEvent, EventKind, Evidence, GateId, Phase};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PolicyPromotion {
@@ -86,6 +89,84 @@ impl EvidenceProducer for PolicyPromotion {
     }
 }
 
+impl PolicyStore {
+    pub fn promote(
+        &mut self,
+        promotion: PolicyPromotion,
+    ) -> Result<&PolicyEntry, PolicyStoreError> {
+        if !promotion.is_valid() {
+            return Err(PolicyStoreError::InvalidPromotion);
+        }
+
+        self.try_append(PolicyEntry {
+            version: promotion.promoted_policy_version,
+            key: POLICY_PROMOTION_SOURCE_SEQ,
+            value: promotion.source_seq,
+        })?;
+
+        self.entries()
+            .last()
+            .ok_or(PolicyStoreError::InvalidPromotion)
+    }
+
+    pub fn promote_feedback(
+        &mut self,
+        promotion: PolicyPromotion,
+    ) -> Result<&PolicyEntry, PolicyStoreError> {
+        if !promotion.is_valid() {
+            return Err(PolicyStoreError::InvalidPromotion);
+        }
+
+        self.try_append(PolicyEntry {
+            version: promotion.promoted_policy_version,
+            key: POLICY_FEEDBACK_HASH,
+            value: promotion.promoted_policy_hash,
+        })?;
+
+        self.entries()
+            .last()
+            .ok_or(PolicyStoreError::InvalidPromotion)
+    }
+
+    pub fn promote_durable(
+        &mut self,
+        path: impl AsRef<Path>,
+        promotion: PolicyPromotion,
+    ) -> Result<&PolicyEntry, PolicyStoreError> {
+        if !promotion.is_valid() {
+            return Err(PolicyStoreError::InvalidPromotion);
+        }
+
+        self.append_durable(
+            path,
+            PolicyEntry {
+                version: promotion.promoted_policy_version,
+                key: POLICY_PROMOTION_SOURCE_SEQ,
+                value: promotion.source_seq,
+            },
+        )
+    }
+
+    pub fn promote_feedback_durable(
+        &mut self,
+        path: impl AsRef<Path>,
+        promotion: PolicyPromotion,
+    ) -> Result<&PolicyEntry, PolicyStoreError> {
+        if !promotion.is_valid() {
+            return Err(PolicyStoreError::InvalidPromotion);
+        }
+
+        self.append_durable(
+            path,
+            PolicyEntry {
+                version: promotion.promoted_policy_version,
+                key: POLICY_FEEDBACK_HASH,
+                value: promotion.promoted_policy_hash,
+            },
+        )
+    }
+}
+
 fn promotion_hash(
     promoted_policy_version: u64,
     judgment_event: &ControlEvent,
@@ -102,4 +183,3 @@ fn promotion_hash(
     h = mix(h, completion_event.self_hash);
     h.max(1)
 }
-

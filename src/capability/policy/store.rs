@@ -4,9 +4,6 @@ use std::fs::{File, OpenOptions};
 use std::io::{BufRead, BufReader, Write};
 use std::path::Path;
 
-use crate::capability::learning::{
-    PolicyPromotion, POLICY_FEEDBACK_HASH, POLICY_PROMOTION_SOURCE_SEQ,
-};
 use crate::capability::verification::{
     CanonicalEffect, CanonicalEffectProof, CanonicalEffectReceipt, ProofSubjectKind,
     VerificationProofBinding, VerificationProofRecord, PROOF_FLAGS_REQUIRED,
@@ -17,6 +14,9 @@ const POLICY_SCHEMA_VERSION: u64 = 1;
 const POLICY_RECORD_ENTRY: u64 = 1;
 const POLICY_KEY_PROMOTION_SOURCE_SEQ: u64 = 1;
 const POLICY_KEY_FEEDBACK_HASH: u64 = 2;
+
+pub const POLICY_PROMOTION_SOURCE_SEQ: &str = "learning.policy_promotion.source_seq";
+pub const POLICY_FEEDBACK_HASH: &str = "learning.policy_feedback.hash";
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct PolicyEntry {
@@ -80,78 +80,6 @@ impl PolicyStore {
         self.entries
             .last()
             .ok_or(PolicyStoreError::InvalidPolicyRecord)
-    }
-
-    pub fn promote(
-        &mut self,
-        promotion: PolicyPromotion,
-    ) -> Result<&PolicyEntry, PolicyStoreError> {
-        if !promotion.is_valid() {
-            return Err(PolicyStoreError::InvalidPromotion);
-        }
-
-        self.try_append(PolicyEntry {
-            version: promotion.promoted_policy_version,
-            key: POLICY_PROMOTION_SOURCE_SEQ,
-            value: promotion.source_seq,
-        })?;
-
-        self.entries.last().ok_or(PolicyStoreError::InvalidPromotion)
-    }
-
-    pub fn promote_feedback(
-        &mut self,
-        promotion: PolicyPromotion,
-    ) -> Result<&PolicyEntry, PolicyStoreError> {
-        if !promotion.is_valid() {
-            return Err(PolicyStoreError::InvalidPromotion);
-        }
-
-        self.try_append(PolicyEntry {
-            version: promotion.promoted_policy_version,
-            key: POLICY_FEEDBACK_HASH,
-            value: promotion.promoted_policy_hash,
-        })?;
-
-        self.entries.last().ok_or(PolicyStoreError::InvalidPromotion)
-    }
-
-    pub fn promote_durable(
-        &mut self,
-        path: impl AsRef<Path>,
-        promotion: PolicyPromotion,
-    ) -> Result<&PolicyEntry, PolicyStoreError> {
-        if !promotion.is_valid() {
-            return Err(PolicyStoreError::InvalidPromotion);
-        }
-
-        self.append_durable(
-            path,
-            PolicyEntry {
-                version: promotion.promoted_policy_version,
-                key: POLICY_PROMOTION_SOURCE_SEQ,
-                value: promotion.source_seq,
-            },
-        )
-    }
-
-    pub fn promote_feedback_durable(
-        &mut self,
-        path: impl AsRef<Path>,
-        promotion: PolicyPromotion,
-    ) -> Result<&PolicyEntry, PolicyStoreError> {
-        if !promotion.is_valid() {
-            return Err(PolicyStoreError::InvalidPromotion);
-        }
-
-        self.append_durable(
-            path,
-            PolicyEntry {
-                version: promotion.promoted_policy_version,
-                key: POLICY_FEEDBACK_HASH,
-                value: promotion.promoted_policy_hash,
-            },
-        )
     }
 
     pub fn load_ndjson(path: impl AsRef<Path>) -> Result<Self, PolicyStoreError> {
@@ -424,4 +352,3 @@ fn key_from_id(id: u64) -> Result<&'static str, PolicyStoreError> {
         _ => Err(PolicyStoreError::UnknownPolicyKey),
     }
 }
-

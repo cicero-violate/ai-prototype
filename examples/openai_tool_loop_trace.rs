@@ -1,10 +1,11 @@
 use ai::api::routes::handle_envelope;
 use ai::{
-    tick, verify_tlog, Command, CommandEnvelope, ContextRecord, ControlEvent, GateStatus,
-    LiveSandboxProcessExecutor, MemoryFact, MemoryIndex, OpenAiChatRequest, OpenAiClient,
-    OpenAiMessage, OpenAiTool, OpenAiToolCall, Phase, PolicyStore, RuntimeConfig,
-    SandboxProcessReceipt, State, TLog,
+    append_sandbox_process_receipt_ndjson, tick, verify_tlog, write_tlog_ndjson, Command,
+    CommandEnvelope, ContextRecord, ControlEvent, GateStatus, LiveSandboxProcessExecutor,
+    MemoryFact, MemoryIndex, OpenAiChatRequest, OpenAiClient, OpenAiMessage, Phase, PolicyStore,
+    RuntimeConfig, SandboxProcessReceipt, State, TLog,
 };
+use std::path::Path;
 
 const TOOL_CALL_TARGET: usize = 5;
 
@@ -23,6 +24,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut state = State::default();
     let mut tlog: TLog = Vec::new();
     let mut tool_calls = 0usize;
+    let tlog_dir = Path::new("tlog");
+    std::fs::create_dir_all(tlog_dir)?;
+    let tlog_path = tlog_dir.join("openai_tool_loop_trace.tlog.ndjson");
+    let process_receipt_path = tlog_dir.join("openai_tool_loop_trace.process_receipts.ndjson");
+    if tlog_path.exists() {
+        std::fs::remove_file(&tlog_path)?;
+    }
+    if process_receipt_path.exists() {
+        std::fs::remove_file(&process_receipt_path)?;
+    }
 
     println!(
         "openai base_url={} model={}",
@@ -31,36 +42,63 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
     println!("start phase={:?}", state.phase);
 
-    for _ in 0..cfg.max_steps {
-        if state.phase == Phase::Done {
-            break;
+    let run_result: Result<(), Box<dyn std::error::Error>> = (|| {
+        for _ in 0..cfg.max_steps {
+            if state.phase == Phase::Done {
+                break;
+            }
+
+            let before_len = tlog.len();
+
+            if state.phase == Phase::Judgment && state.gates.judgment.status != GateStatus::Pass {
+                submit_openai_judgment(&client, &policy, &mut state, &mut tlog, cfg)?;
+            } else if state.phase == Phase::Execute && tool_calls == 0 {
+                tool_calls = submit_openai_tool_calls(
+                    &client,
+                    &mut state,
+                    &mut tlog,
+                    cfg,
+                    &process_receipt_path,
+                )?;
+            } else {
+                tick(&mut state, &mut tlog, cfg)?;
+            }
+
+            for event in &tlog[before_len..] {
+                print_event(event);
+            }
         }
 
-        let before_len = tlog.len();
+        verify_tlog(&tlog)?;
+        Ok(())
+    })();
 
-        if state.phase == Phase::Judgment && state.gates.judgment.status != GateStatus::Pass {
-            submit_openai_judgment(&client, &policy, &mut state, &mut tlog, cfg)?;
-        } else if state.phase == Phase::Execute && tool_calls == 0 {
-            tool_calls = submit_openai_tool_calls(&client, &mut state, &mut tlog, cfg)?;
-        } else {
-            tick(&mut state, &mut tlog, cfg)?;
-        }
-
-        for event in &tlog[before_len..] {
-            print_event(event);
-        }
+    if !tlog.is_empty() {
+        write_tlog_ndjson(&tlog_path, &tlog)?;
     }
 
-    verify_tlog(&tlog)?;
-    println!(
-        "done phase={:?} success={} events={} tool_calls={}",
-        state.phase,
-        state.is_success(),
-        tlog.len(),
-        tool_calls
-    );
-
-    Ok(())
+    match run_result {
+        Ok(()) => {
+            println!(
+                "done phase={:?} success={} events={} tool_calls={} tlog_path={} process_receipt_path={}",
+                state.phase,
+                state.is_success(),
+                tlog.len(),
+                tool_calls,
+                tlog_path.display(),
+                process_receipt_path.display()
+            );
+            Ok(())
+        }
+        Err(err) => {
+            eprintln!(
+                "partial_tlog_path={} process_receipt_path={}",
+                tlog_path.display(),
+                process_receipt_path.display()
+            );
+            Err(err)
+        }
+    }
 }
 
 fn submit_openai_judgment(
@@ -95,6 +133,7 @@ fn submit_openai_tool_calls(
     state: &mut State,
     tlog: &mut TLog,
     cfg: RuntimeConfig,
+    process_receipt_path: &Path,
 ) -> Result<usize, Box<dyn std::error::Error>> {
     let sandbox_root = std::env::temp_dir().join(format!(
         "canon-openai-tool-loop-{}",
@@ -148,6 +187,8 @@ fn submit_openai_tool_calls(
             receipt.stdout_hash,
             receipt.receipt_hash
         );
+        append_sandbox_process_receipt_ndjson(process_receipt_path, &receipt)
+            .map_err(|err| format!("process receipt persist failed: {err:?}"))?;
         submit_openai_tool_result(client, tool_call_index, spec, &receipt)?;
         receipts.push(receipt);
     }
@@ -188,8 +229,6 @@ fn submit_openai_tool_result(
 }
 
 fn tool_intent_request(tool_call_index: usize, spec: ToolSpec) -> OpenAiChatRequest {
-    let call_id = format!("call_safe_tool_{tool_call_index}");
-    let simulated_args = format!("{{\"intent\":\"{}\"}}", spec.intent);
     OpenAiChatRequest::new(vec![
         OpenAiMessage::system(
             "Return exactly the requested tool intent token. No markdown, no punctuation, no explanation.",
@@ -198,21 +237,11 @@ fn tool_intent_request(tool_call_index: usize, spec: ToolSpec) -> OpenAiChatRequ
             "Safe tool menu: RUN_PRINTF, RUN_PWD, RUN_UNAME, RUN_WHOAMI, RUN_TRUE. For tool call number {tool_call_index}, select {}.",
             spec.intent
         )),
-        OpenAiMessage::assistant_tool_call(OpenAiToolCall::function(
-            call_id.clone(),
-            "select_safe_tool",
-            simulated_args,
-        )),
-        OpenAiMessage::tool(call_id, format!("selected_intent={}", spec.intent)),
         OpenAiMessage::user(format!(
-            "Use the simulated tool result and return exactly {}.",
+            "Return exactly {}.",
             spec.intent
         )),
     ])
-    .with_tools(vec![OpenAiTool::function(
-        "select_safe_tool",
-        "{\"type\":\"object\",\"properties\":{\"intent\":{\"type\":\"string\"}},\"required\":[\"intent\"]}",
-    )])
 }
 
 fn tool_result_request(
@@ -220,30 +249,21 @@ fn tool_result_request(
     spec: ToolSpec,
     receipt: &SandboxProcessReceipt,
 ) -> OpenAiChatRequest {
-    let call_id = format!("call_safe_tool_{tool_call_index}");
-    let arguments = format!(
-        "{{\"intent\":\"{}\",\"command\":\"{}\"}}",
-        spec.intent, spec.command
-    );
     OpenAiChatRequest::new(vec![
         OpenAiMessage::system(
             "You are receiving the real result of an executed safe local tool. Acknowledge it concisely.",
         ),
-        OpenAiMessage::assistant_tool_call(OpenAiToolCall::function(
-            call_id.clone(),
-            "run_safe_process",
-            arguments,
+        OpenAiMessage::user(format!(
+            "Tool call index: {tool_call_index}\nIntent: {}\nCommand: {}\nResult: {}",
+            spec.intent,
+            spec.command,
+            actual_tool_result_content(receipt)
         )),
-        OpenAiMessage::tool(call_id, actual_tool_result_content(receipt)),
         OpenAiMessage::user(format!(
             "Record the real tool result for {} and answer with exactly TOOL_RESULT_RECORDED.",
             spec.intent
         )),
     ])
-    .with_tools(vec![OpenAiTool::function(
-        "run_safe_process",
-        "{\"type\":\"object\",\"properties\":{\"intent\":{\"type\":\"string\"},\"command\":{\"type\":\"string\"}},\"required\":[\"intent\",\"command\"]}",
-    )])
 }
 
 fn actual_tool_result_content(receipt: &SandboxProcessReceipt) -> String {

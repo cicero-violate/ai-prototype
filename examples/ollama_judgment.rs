@@ -168,32 +168,34 @@ fn main() -> Result<(), Box<dyn Error>> {
     )
     .ok_or_else(|| io::Error::other("failed to finalize ollama proof"))?;
 
-    let tlog_path = Path::new("ollama_judgment.tlog.ndjson");
-    let tampered_tlog_path = Path::new("ollama_judgment.tampered.tlog.ndjson");
-    std::fs::remove_file(tlog_path).ok();
-    std::fs::remove_file(tampered_tlog_path).ok();
+    let tlog_dir = Path::new("tlog");
+    std::fs::create_dir_all(tlog_dir)?;
+    let tlog_path = tlog_dir.join("ollama_judgment.tlog.ndjson");
+    let tampered_tlog_path = tlog_dir.join("ollama_judgment.tampered.tlog.ndjson");
+    std::fs::remove_file(&tlog_path).ok();
+    std::fs::remove_file(&tampered_tlog_path).ok();
 
-    write_tlog_ndjson(tlog_path, &tlog)?;
-    append_ollama_llm_effect_receipt_ndjson(tlog_path, &receipt)?;
-    append_ollama_judgment_proof_event_ndjson(tlog_path, &proof_event)?;
+    write_tlog_ndjson(&tlog_path, &tlog)?;
+    append_ollama_llm_effect_receipt_ndjson(&tlog_path, &receipt)?;
+    append_ollama_judgment_proof_event_ndjson(&tlog_path, &proof_event)?;
 
-    let loaded_tlog = load_tlog_ndjson(tlog_path)?;
-    let loaded_receipts = load_ollama_llm_effect_receipts_ndjson(tlog_path)?;
-    let loaded_proofs = load_ollama_judgment_proof_events_ndjson(tlog_path)?;
+    let loaded_tlog = load_tlog_ndjson(&tlog_path)?;
+    let loaded_receipts = load_ollama_llm_effect_receipts_ndjson(&tlog_path)?;
+    let loaded_proofs = load_ollama_judgment_proof_events_ndjson(&tlog_path)?;
     let receipt_replay_count = verify_ollama_llm_effect_receipts(&loaded_tlog, &loaded_receipts)?;
     let proof_replay_count =
         verify_ollama_judgment_proof_events(&loaded_tlog, &loaded_receipts, &loaded_proofs)?;
-    let proof_order_count = verify_ollama_judgment_proof_event_order_ndjson(tlog_path)?;
-    let durable_proof_count = verify_ollama_judgment_proof_events_ndjson(tlog_path)?;
-    let durable_receipt_count = verify_ollama_judgment_tlog_ndjson(tlog_path)?;
+    let proof_order_count = verify_ollama_judgment_proof_event_order_ndjson(&tlog_path)?;
+    let durable_proof_count = verify_ollama_judgment_proof_events_ndjson(&tlog_path)?;
+    let durable_receipt_count = verify_ollama_judgment_tlog_ndjson(&tlog_path)?;
 
-    tamper_first_ollama_receipt_field(tlog_path, tampered_tlog_path, 24)?;
+    tamper_first_ollama_receipt_field(&tlog_path, &tampered_tlog_path, 24)?;
     let tamper_rejected = matches!(
-        verify_ollama_judgment_tlog_ndjson(tampered_tlog_path),
+        verify_ollama_judgment_tlog_ndjson(&tampered_tlog_path),
         Err(OllamaError::InvalidReplay)
     );
     let tampered_total = critical_ollama_receipt_tamper_fields().len();
-    let tampered_rejected = tamper_rejected_count(tlog_path, receipt)?;
+    let tampered_rejected = tamper_rejected_count(&tlog_path, receipt)?;
 
     let result_lines = [
         "provider=ollama".to_string(),
@@ -265,6 +267,6 @@ fn main() -> Result<(), Box<dyn Error>> {
     }
     println!("results_path={}", results_path.display());
 
-    std::fs::remove_file(tampered_tlog_path).ok();
+    std::fs::remove_file(&tampered_tlog_path).ok();
     Ok(())
 }

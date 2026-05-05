@@ -36,7 +36,8 @@ The end state is a system where:
 - Every decision, recovery, and outcome is replayable and auditable
 - Verified TLog receipts can be distilled into training-ready datasets
   for smaller, faster specialist models
-- The cost per objective completed falls monotonically over time
+- The expected cost per recurring objective falls over time as verified
+  policy coverage increases
 
 ## Verified Evolution Loop
 
@@ -79,7 +80,9 @@ Kernel gates deployment.
 ```
 
 The LLM never approves itself. A candidate becomes learning data only when
-external evidence proves it passed.
+external evidence proves it passed. If the evaluator is subjective or can be
+steered by the same model that proposed the candidate, the loop is not verified
+evolution; it is only model self-review.
 
 ## TLog Distillation Loop
 
@@ -92,8 +95,17 @@ winning candidate → receipt/proof → TLog → distill.jsonl → policy/studen
 Dataset rule:
 
 ```text
-D = { E ∈ TLog | E.verified = true ∨ E.verdict = pass ∨ E.eval.verdict = pass }
+D = { E in TLog |
+      E.eval.verdict = pass
+  and E.replay.valid = true
+  and E.score >= threshold
+  and E.inputs are retained
+  and E.outputs are semantically inspectable }
 ```
+
+Hashes, receipts, and proof IDs prove lineage. They are not training signal by
+themselves. Training rows must retain the semantic input, selected action,
+observable output, measured score, proof hash, and source event.
 
 Each `distill.jsonl` row must keep:
 
@@ -131,12 +143,22 @@ canon-agent/
 │   ├── judgment/    ← reads state + policy, produces JudgmentRecord
 │   ├── tooling/     ← execute real work, APIs, files, code, queries
 │   ├── verification/← semantic artifact checking, not just hash
-│   ├── eval/        ← scores outcomes, produces EvalRecord
 │   ├── policy/      ← versioned, append-only, read by all caps
+│   ├── eval/        ← scores outcomes, produces EvalRecord
 │   ├── learning/    ← reads TLog, promotes patterns into policy
 │   └── orchestration/ ← parallel runs, prioritization, routing
 └── api/             ← external surface, HTTP / gRPC, command intake
 ```
+
+Policy exists before learning as a minimal read-only / append-only store:
+
+```text
+policy skeleton → eval signal → judgment reads policy → learning promotion
+```
+
+Learning may append verified entries into policy, but policy must not depend on
+learning. This keeps the policy surface available to judgment, LLM prompting,
+and evaluation before any adaptive learning loop exists.
 
 ## Core Properties
 
@@ -172,12 +194,12 @@ Each capability depends on the ones below it being stable first.
 3. observation   — without this the system cannot perceive the world
 4. context       — without this every run starts blind
 5. memory        — without this learning has nothing to query
-6. eval          — without this learning has no signal
-7. llm           — adapter must enforce structured output
-8. judgment      — reads policy and llm, produces JudgmentRecord
-9. verification  — semantic checking beyond hash validation
-10. learning     — reads TLog, promotes patterns into policy
-11. policy       — versioned store, promoted only by learning
+6. policy        — minimal read-only / append-only store, empty at first
+7. eval          — without this learning has no signal
+8. llm           — adapter must enforce structured output
+9. judgment      — reads policy and llm, produces JudgmentRecord
+10. verification — semantic checking beyond hash validation
+11. learning     — reads TLog, promotes patterns into policy
 12. orchestration — parallel runs, only after single-thread is proven
 
 ## LLM Promotion Ladder
@@ -220,4 +242,3 @@ This path runs:
 ```text
 agent runtime → observation → context → Ollama /v1/chat/completions → LlmRecord → Judgment gate → TLog receipt
 ```
-

@@ -17,9 +17,7 @@ pub use crate::api::protocol::{
 };
 pub use crate::capability::context::{ContextDecision, ContextRecord};
 pub use crate::capability::eval::{EvalDecision, EvalDimension, EvalRecord};
-pub use crate::capability::learning::{
-    PolicyPromotion, POLICY_FEEDBACK_HASH, POLICY_PROMOTION_SOURCE_SEQ,
-};
+pub use crate::capability::learning::PolicyPromotion;
 pub use crate::capability::llm::{
     append_ollama_judgment_proof_event_ndjson, append_ollama_llm_effect_receipt_ndjson,
     decode_ollama_judgment_proof_event_ndjson, decode_ollama_llm_effect_receipt_ndjson,
@@ -63,7 +61,10 @@ pub use crate::capability::orchestration::{
     CapabilityRoute, OrchestrationDecision, OrchestrationRecord,
 };
 pub use crate::capability::planning::{PlanDecision, PlanRecord};
-pub use crate::capability::policy::{PolicyEntry, PolicyProofReceipt, PolicyStore, PolicyStoreError};
+pub use crate::capability::policy::{
+    PolicyEntry, PolicyProofReceipt, PolicyStore, PolicyStoreError, POLICY_FEEDBACK_HASH,
+    POLICY_PROMOTION_SOURCE_SEQ,
+};
 pub use crate::capability::tooling::{
     append_process_effect_receipt_ndjson, append_sandbox_process_receipt_ndjson,
     append_tool_effect_receipt_ndjson, decode_process_effect_receipt_ndjson,
