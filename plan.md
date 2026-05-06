@@ -54,7 +54,7 @@ allowed_mutation = score.md and plan.md only
 - [x] The root crate exposes deterministic runtime, replay verification, recovery policy, scoring, command ledger, LLM receipts, process receipts, provider examples, API transport replay/idempotence, bounded observation ingress, durable policy promotion, generic verification proof records, semantic verification seams, a root validation harness, and graph telemetry validation receipt generation.
 - [x] `cargo -Znext-lockfile-bump run --bin root_validate --locked` passes and covers root cargo check, bounded score contract tests, and canon-rustc-v3 graph telemetry evidence.
 - [x] Bounded observation ingress with cursor persistence and backpressure is now implemented and tested; it should no longer appear as an open plan weakness.
-- [x] The current validation harness remains narrow compared with the repository surface: it does not run the full Rust integration suite, Python contract tests, API transport tests, observation tests, verification proof tests, or provider receipt replay tests.
+- [x] The root validation harness now runs root cargo check, score-contract tests, library unit tests, API transport integration tests, validation harness contract tests, graph telemetry, and a deterministic Python-contract skip receipt when required validation scripts are absent from this checkout.
 - [x] Planning still materializes a single synthetic ready task from packet fields rather than a deterministic objective decomposition with dependency graph, ordering, completion accounting, and replayable plan lineage.
 - [x] Orchestration still routes a single deterministic capability order through local gate readiness; it does not yet model bounded parallel runs, prioritization queues, resource budgets, or deterministic merge/selection receipts.
 - [x] Semantic verification has a typed request/receipt seam and generic proof spine, but the implementation explicitly does not inspect real files yet, leaving artifact validation short of GOAL.md's semantic checking requirement.
@@ -62,7 +62,7 @@ allowed_mutation = score.md and plan.md only
 
 ## Ranked Tasks By Expected Score Delta
 
-### 1. [ ] Widen root validation into a complete deterministic contract suite
+### 1. [x] Widen root validation into a complete deterministic contract suite
 
 ```text
 expected_delta = max(C, R, T, D, F, B)
@@ -116,4 +116,4 @@ The unchecked items above remain important, but they were already addressed by t
 - [x] Generated/runtime files unchanged.
 - [x] `score.md` updated with current values only.
 - [x] `plan.md` rewritten with ranked unchecked tasks.
-- [x] `cargo -Znext-lockfile-bump run --bin root_validate --locked` passed.
+- [x] `cargo -Znext-lockfile-bump run --bin root_validate --locked` passed after widening the validation receipt.

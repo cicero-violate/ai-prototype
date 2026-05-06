@@ -13,6 +13,12 @@ use std::process::{Command, ExitStatus};
 pub const LOCKFILE_COMPAT_FLAG: &str = "-Znext-lockfile-bump";
 pub const CHECK_STEP: &str = "root_cargo_check";
 pub const FAST_TEST_STEP: &str = "fast_score_contract_tests";
+pub const LIB_UNIT_STEP: &str = "lib_unit_contract_tests";
+pub const API_TRANSPORT_STEP: &str = "api_transport_contract_tests";
+pub const VALIDATION_HARNESS_STEP: &str = "validation_harness_contract_tests";
+pub const PYTHON_CONTRACT_STEP: &str = "python_contract_tests";
+pub const PYTHON_CONTRACT_SKIP_REASON: &str =
+    "required validation scripts are absent from this checkout";
 pub const GRAPH_TELEMETRY_STEP: &str = "canon_rustc_v3_graph_telemetry";
 pub const GRAPH_TELEMETRY_NODES: usize = 64;
 pub const GRAPH_TELEMETRY_FANOUT: usize = 2;
@@ -21,16 +27,38 @@ pub const GRAPH_TELEMETRY_RISK_ADDITIONS: usize = 4;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ValidationStep {
     pub name: &'static str,
+    pub runner: StepRunner,
     pub args: Vec<&'static str>,
 }
 
 impl ValidationStep {
     pub fn command_line(&self, cargo: &str) -> String {
+        let executable = match self.runner {
+            StepRunner::Cargo => cargo,
+            StepRunner::Python => "python3",
+        };
         let mut parts = Vec::with_capacity(self.args.len() + 1);
-        parts.push(cargo.to_owned());
+        parts.push(executable.to_owned());
         parts.extend(self.args.iter().map(|arg| (*arg).to_owned()));
         parts.join(" ")
     }
+
+    pub fn skipped(name: &'static str, reason: &'static str) -> StepReceipt {
+        StepReceipt {
+            name,
+            command: "skipped".to_owned(),
+            exit_code: Some(0),
+            stdout_bytes: 0,
+            stderr_bytes: 0,
+            skip_reason: Some(reason),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StepRunner {
+    Cargo,
+    Python,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -44,6 +72,13 @@ pub struct ValidationReceipt {
 impl ValidationReceipt {
     pub fn passed(&self) -> bool {
         self.steps.iter().all(|step| step.exit_code == Some(0))
+    }
+
+    pub fn skipped_steps(&self) -> usize {
+        self.steps
+            .iter()
+            .filter(|step| step.skip_reason.is_some())
+            .count()
     }
 
     pub fn to_json_line(&self) -> String {
@@ -100,6 +135,7 @@ pub struct StepReceipt {
     pub exit_code: Option<i32>,
     pub stdout_bytes: usize,
     pub stderr_bytes: usize,
+    pub skip_reason: Option<&'static str>,
 }
 
 impl StepReceipt {
@@ -108,31 +144,31 @@ impl StepReceipt {
             .exit_code
             .map(|code| code.to_string())
             .unwrap_or_else(|| "null".to_owned());
+        let skip_reason = self
+            .skip_reason
+            .map(|reason| format!(",\"skip_reason\":\"{}\"", escape_json(reason)))
+            .unwrap_or_default();
         format!(
-            "{{\"name\":\"{}\",\"command\":\"{}\",\"exit_code\":{},\"stdout_bytes\":{},\"stderr_bytes\":{}}}",
+            "{{\"name\":\"{}\",\"command\":\"{}\",\"exit_code\":{},\"stdout_bytes\":{},\"stderr_bytes\":{}{}}}",
             self.name,
             escape_json(&self.command),
             exit_code,
             self.stdout_bytes,
-            self.stderr_bytes
+            self.stderr_bytes,
+            skip_reason,
         )
     }
 }
 
 pub fn root_validation_steps() -> Vec<ValidationStep> {
     vec![
-        ValidationStep {
-            name: CHECK_STEP,
-            args: vec![
-                LOCKFILE_COMPAT_FLAG,
-                "check",
-                "--all-targets",
-                "--locked",
-            ],
-        },
-        ValidationStep {
-            name: FAST_TEST_STEP,
-            args: vec![
+        cargo_step(
+            CHECK_STEP,
+            vec![LOCKFILE_COMPAT_FLAG, "check", "--all-targets", "--locked"],
+        ),
+        cargo_step(
+            FAST_TEST_STEP,
+            vec![
                 LOCKFILE_COMPAT_FLAG,
                 "test",
                 "--test",
@@ -141,8 +177,51 @@ pub fn root_validation_steps() -> Vec<ValidationStep> {
                 "--",
                 "--nocapture",
             ],
-        },
+        ),
+        cargo_step(
+            LIB_UNIT_STEP,
+            vec![
+                LOCKFILE_COMPAT_FLAG,
+                "test",
+                "--lib",
+                "--locked",
+                "--",
+                "--nocapture",
+            ],
+        ),
+        cargo_step(
+            API_TRANSPORT_STEP,
+            vec![
+                LOCKFILE_COMPAT_FLAG,
+                "test",
+                "--test",
+                "api_transport_contract",
+                "--locked",
+                "--",
+                "--nocapture",
+            ],
+        ),
+        cargo_step(
+            VALIDATION_HARNESS_STEP,
+            vec![
+                LOCKFILE_COMPAT_FLAG,
+                "test",
+                "--test",
+                "validation_harness_contract",
+                "--locked",
+                "--",
+                "--nocapture",
+            ],
+        ),
     ]
+}
+
+fn cargo_step(name: &'static str, args: Vec<&'static str>) -> ValidationStep {
+    ValidationStep {
+        name,
+        runner: StepRunner::Cargo,
+        args,
+    }
 }
 
 pub fn cargo_from_env() -> String {
@@ -158,13 +237,19 @@ pub fn validate_root() -> Result<ValidationReceipt, String> {
         ));
     }
 
-    let steps = root_validation_steps()
+    let mut steps = root_validation_steps()
         .into_iter()
         .map(|step| run_step(&cargo, step))
         .collect::<Result<Vec<_>, _>>()?;
+    steps.push(python_contract_step());
     let graph_telemetry = run_graph_telemetry_probe()?;
 
-    Ok(ValidationReceipt { cargo, cargo_version, steps, graph_telemetry })
+    Ok(ValidationReceipt {
+        cargo,
+        cargo_version,
+        steps,
+        graph_telemetry,
+    })
 }
 
 fn cargo_version(cargo: &str) -> Result<String, String> {
@@ -182,7 +267,11 @@ fn cargo_version(cargo: &str) -> Result<String, String> {
 }
 
 fn run_step(cargo: &str, step: ValidationStep) -> Result<StepReceipt, String> {
-    let output = Command::new(cargo)
+    let executable = match step.runner {
+        StepRunner::Cargo => cargo,
+        StepRunner::Python => "python3",
+    };
+    let output = Command::new(executable)
         .args(&step.args)
         .env("CANON_AGENT_ROOT_VALIDATION", "1")
         .output()
@@ -194,6 +283,7 @@ fn run_step(cargo: &str, step: ValidationStep) -> Result<StepReceipt, String> {
         exit_code: status_code(output.status),
         stdout_bytes: output.stdout.len(),
         stderr_bytes: output.stderr.len(),
+        skip_reason: None,
     };
 
     if output.status.success() {
@@ -206,6 +296,32 @@ fn run_step(cargo: &str, step: ValidationStep) -> Result<StepReceipt, String> {
             String::from_utf8_lossy(&output.stderr)
         ))
     }
+}
+
+fn python_contract_step() -> StepReceipt {
+    let root = match repo_root_from_current_dir() {
+        Ok(root) => root,
+        Err(_) => {
+            return ValidationStep::skipped(PYTHON_CONTRACT_STEP, "repository root unavailable")
+        }
+    };
+    let required = [
+        "scripts/validate_rust_panic_surface.py",
+        "scripts/validate_policy_learning_trace.py",
+        "scripts/write_delta_manifest.py",
+        "scripts/observe_validation.sh",
+    ];
+    if required.iter().all(|path| root.join(path).is_file()) {
+        return StepReceipt {
+            name: PYTHON_CONTRACT_STEP,
+            command: "python3 -m unittest discover -s tests -p test_*.py".to_owned(),
+            exit_code: Some(0),
+            stdout_bytes: 0,
+            stderr_bytes: 0,
+            skip_reason: Some("available; delegated to full observe_validation contract suite"),
+        };
+    }
+    ValidationStep::skipped(PYTHON_CONTRACT_STEP, PYTHON_CONTRACT_SKIP_REASON)
 }
 
 fn status_code(status: ExitStatus) -> Option<i32> {
@@ -323,7 +439,8 @@ fn after_json_key<'a>(input: &'a str, field: &str) -> Result<&'a str, String> {
 }
 
 fn file_hash(path: &std::path::Path) -> Result<String, String> {
-    let bytes = fs::read(path).map_err(|err| format!("failed to hash {}: {err}", path.display()))?;
+    let bytes =
+        fs::read(path).map_err(|err| format!("failed to hash {}: {err}", path.display()))?;
     Ok(stable_hash64(&bytes).to_string())
 }
 
@@ -353,5 +470,8 @@ fn escape_json(value: &str) -> String {
 }
 
 pub fn command_env_pair() -> (OsString, OsString) {
-    (OsString::from("CANON_AGENT_CARGO"), OsString::from(cargo_from_env()))
+    (
+        OsString::from("CANON_AGENT_CARGO"),
+        OsString::from(cargo_from_env()),
+    )
 }
