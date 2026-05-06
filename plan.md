@@ -34,8 +34,8 @@ Goodness is the geometric mean of all 15 dimensions; the best next work raises w
 
 ```text
 repository = ai
-base_commit = 449ca9f823e7ed2e24e5d49a5bf1a467d04391ac
-restored_head_before_plan = 449ca9f823e7ed2e24e5d49a5bf1a467d04391ac
+base_commit = 5e1b97680261d3e83d8ff3464b7c50acc7940a79
+restored_head_before_plan = 5e1b97680261d3e83d8ff3464b7c50acc7940a79
 bundle_output = /mnt/data/repo-delta-001.bundle
 manifest_output = /mnt/data/DELTA_MANIFEST.md
 allowed_mutation = score.md and plan.md only
@@ -51,54 +51,57 @@ allowed_mutation = score.md and plan.md only
 
 ## Current State
 
-- [x] The codebase now has stronger deterministic runtime, replay, recovery, policy, evidence, and scoring surfaces than the stale baseline score reflected.
-- [x] `cargo check --all-targets --locked` passes only with nightly cargo plus `-Znext-lockfile-bump`; the default bootstrap Rust 1.75 path cannot parse the lockfile v4.
-- [x] `README.md` still references root validation and delta-manifest scripts under `scripts/`, but no root `scripts/` directory is present in the restored tree.
-- [x] The prior plan already names verified evolution, distillation, and manifest restoration, so the ranked tasks below focus on high-leverage gaps not yet represented as primary plan items.
-- [x] The weakest current axes remain `P`, `Si`, `E`, `R`, and `C`; next work should raise those without weakening determinism.
+- [x] The root crate exposes deterministic runtime, replay verification, recovery policy, scoring, command ledger, LLM receipts, process receipts, and provider examples.
+- [x] `cargo -Znext-lockfile-bump check --all-targets --locked` passes with the bootstrapped nightly cargo path.
+- [x] The checked-in `rust-toolchain.toml` names `nightly-2026-04-30`, but the available bootstrapped toolchain reports `rustc 1.77.0-nightly`; validation currently depends on manual environment setup and the lockfile compatibility flag.
+- [x] `cargo test --all-targets --locked` did not complete inside the available container timeout, so executable proof is currently slower than the repo needs for fast iterative verified evolution.
+- [x] The largest simplicity debt remains in `src/lib.rs`, `src/capability/llm/openai.rs`, `src/capability/llm/ollama.rs`, and verification/proof modules.
+- [x] No generated/runtime files were modified in this evaluation turn.
 
 ## Ranked Tasks By Expected Score Delta
 
-### 1. [ ] Canonicalize validation toolchain compatibility
+### 1. [ ] Add a root deterministic validation harness
 
 ```text
 expected_delta = max(C, R, E, P, Em, T)
 rank = 1
 ```
 
-Make the repository validate from a single documented command path that works with the checked-in lockfile. Either align bootstrap/toolchain support with lockfile v4 or add an explicit root validation shim that selects the required nightly `cargo -Znext-lockfile-bump` path deterministically. Tests or script assertions should fail closed when the wrong cargo version is used.
+Add a checked-in root validation command or script that selects the available bootstrapped cargo path, applies the required `-Znext-lockfile-bump` lockfile compatibility flag, runs root `cargo check --all-targets --locked`, and runs a bounded fast test subset. The harness should emit a concise machine-readable validation receipt and fail closed when cargo is missing, too old, or invoked without the required compatibility path.
 
-**Why this is first:** validation is the gate for every future score-improvement turn. A repo that requires hidden cargo flags leaks operator time, lowers reproducibility, and weakens confidence in all subsequent patches.
+**Why this is first:** every future patch relies on fast deterministic proof. The repo currently validates only after an operator knows the hidden cargo environment and flag.
 
-### 2. [ ] Add root wrapper graph telemetry regeneration
+### 2. [ ] Split provider clients behind a small shared transport/receipt core
 
 ```text
-expected_delta = max(T, C, I, R, L, F)
+expected_delta = max(Si, E, P, C, R, F)
 rank = 2
 ```
 
-Add a deterministic root validation step that proves `canon-rustc-v3` can emit or refresh `state/rustc/*/graph.json` for the root crate without committing generated graph files. The validation evidence should include crate name, graph path, node count, edge count, semantic function coverage, and wrapper version/hash.
+Extract the duplicated envelope, retry, timeout, hashing, and receipt-construction logic from `src/capability/llm/openai.rs` and `src/capability/llm/ollama.rs` into a small typed helper module. Preserve public examples and add focused tests for request identity hashes, retry-budget hashes, raw response hashes, and receipt tamper rejection.
 
-**Why this is second:** the goal depends on replayable, inspectable evidence. Graph telemetry connects Rust source changes to semantic structure, making future evaluation and learning less dependent on free-form model judgment.
+**Why this is second:** provider modules are among the largest files and carry high correctness risk. A shared core reduces code mass while strengthening receipt determinism.
 
-### 3. [ ] Reduce large-module simplicity debt with semantic-preserving splits
+### 3. [ ] Restore root graph telemetry proof without committing generated graphs
 
 ```text
-expected_delta = max(Si, P, E, C, Co, F)
+expected_delta = max(T, I, L, C, R, F)
 rank = 3
 ```
 
-Split the largest runtime and provider modules into smaller typed units without changing behavior. Preserve public APIs, add regression tests around replay, recovery, receipt verification, and provider envelopes, and prefer pure helper functions over broad rewrites.
+Add a root validation step that proves `canon-rustc-v3` can regenerate graph telemetry for the root crate and report crate name, graph path, node count, edge count, semantic function coverage, and wrapper hash. Keep generated `state/rustc/*` artifacts out of git unless explicitly requested.
 
-**Why this is third:** simplicity remains the lowest score axis. Smaller modules reduce review friction, improve compile/test targeting, and make verified evolution candidates easier to isolate and score.
+**Why this is third:** GOAL.md depends on auditable, inspectable evidence. Graph telemetry turns Rust source deltas into structured semantic evidence for future scoring and learning.
 
 ## Explicitly Already Represented In Prior Plan
 
+- [x] Re-score current repository state after recent source-code improvements.
+- [x] Rewrite this plan from current repository evidence.
 - [ ] Implement a verified evolution candidate ledger and selection record.
 - [ ] Add a gated `distill.jsonl` exporter from verified TLog receipts.
-- [ ] Restore the missing root validation and delta-manifest harness.
+- [ ] Add bounded observation ingress with cursor persistence and backpressure.
 
-These remain important, but they were already primary items in the previous plan and therefore are not counted as the three newly identified weaknesses for this evaluation turn.
+These remain important, but the ranked tasks above target the highest current weaknesses visible from this evaluation turn.
 
 ## Validation For This Eval-Only Turn
 
@@ -108,3 +111,4 @@ These remain important, but they were already primary items in the previous plan
 - [x] Generated/runtime files unchanged.
 - [x] `score.md` updated with current values only.
 - [x] `plan.md` rewritten with ranked unchecked tasks.
+- [x] `cargo -Znext-lockfile-bump check --all-targets --locked` passed.
