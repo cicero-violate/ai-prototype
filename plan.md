@@ -82,7 +82,7 @@ Extract the duplicated envelope, retry, timeout, hashing, and receipt-constructi
 
 **Why this is second:** provider modules are among the largest files and carry high correctness risk. A shared core reduces code mass while strengthening receipt determinism.
 
-### 3. [ ] Restore root graph telemetry proof without committing generated graphs
+### 3. [x] Restore root graph telemetry proof without committing generated graphs
 
 ```text
 expected_delta = max(T, I, L, C, R, F)
@@ -90,6 +90,8 @@ rank = 3
 ```
 
 Add a root validation step that proves `canon-rustc-v3` can regenerate graph telemetry for the root crate and report crate name, graph path, node count, edge count, semantic function coverage, and wrapper hash. Keep generated `state/rustc/*` artifacts out of git unless explicitly requested.
+
+Added a `canon_rustc_v3_graph_telemetry` receipt to the root validation harness. It runs a bounded semantic graph telemetry probe outside the git tree, reports crate name, graph/report path, node count, edge count, semantic function coverage, wrapper source hash, and report hash, and keeps generated graph telemetry out of version control.
 
 **Why this is third:** GOAL.md depends on auditable, inspectable evidence. Graph telemetry turns Rust source deltas into structured semantic evidence for future scoring and learning.
 
