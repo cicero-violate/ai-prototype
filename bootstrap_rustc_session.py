@@ -102,26 +102,7 @@ def is_safe_member(member_name: str, destination: Path) -> bool:
 def have_toolchain(prefix: Path) -> bool:
     rustc = prefix / "bin" / "rustc"
     cargo = prefix / "bin" / "cargo"
-    if not (rustc.exists() and os.access(rustc, os.X_OK) and cargo.exists() and os.access(cargo, os.X_OK)):
-        return False
-
-    env = os.environ.copy()
-    env["PATH"] = f"{prefix / 'bin'}:{env.get('PATH', '')}"
-    env["RUSTUP_TOOLCHAIN"] = ""
-    for binary in [rustc, cargo]:
-        try:
-            proc = subprocess.run(
-                [str(binary), "--version"],
-                env=env,
-                text=True,
-                capture_output=True,
-                timeout=10,
-            )
-        except (OSError, subprocess.TimeoutExpired):
-            return False
-        if proc.returncode != 0:
-            return False
-    return True
+    return rustc.exists() and os.access(rustc, os.X_OK) and cargo.exists() and os.access(cargo, os.X_OK)
 
 
 def reset_generated_paths(paths: list[Path]) -> None:
@@ -193,9 +174,8 @@ def extract_components_with_python_tarfile(archive: Path, tmp: Path, prefix: Pat
         raise FileNotFoundError(f"missing archive: {archive}")
 
     reset_generated_paths([tmp])
-    staging_prefix = tmp / "prefix-stage"
-    (staging_prefix / "bin").mkdir(parents=True, exist_ok=True)
-    (staging_prefix / "lib").mkdir(parents=True, exist_ok=True)
+    (prefix / "bin").mkdir(parents=True, exist_ok=True)
+    (prefix / "lib").mkdir(parents=True, exist_ok=True)
 
     root_name: str | None = None
     seen_components: set[str] = set()
@@ -209,13 +189,13 @@ def extract_components_with_python_tarfile(archive: Path, tmp: Path, prefix: Pat
             component = parts[1] if len(parts) >= 2 else None
             if component in WANTED_COMPONENTS:
                 seen_components.add(component)
-                target = merged_target_for_member(member.name, staging_prefix)
+                target = merged_target_for_member(member.name, prefix)
                 if target is not None:
-                    resolved_prefix = staging_prefix.resolve()
+                    resolved_prefix = prefix.resolve()
                     resolved_target = target.resolve()
                     if resolved_target != resolved_prefix and not str(resolved_target).startswith(str(resolved_prefix) + os.sep):
                         raise RuntimeError(f"unsafe merge target: {target}")
-                    extract_regular_or_dir_to_target(tf, member, target, staging_prefix)
+                    extract_regular_or_dir_to_target(tf, member, target, prefix)
                     extracted_targets += 1
 
     missing = WANTED_COMPONENTS - seen_components
@@ -226,10 +206,6 @@ def extract_components_with_python_tarfile(archive: Path, tmp: Path, prefix: Pat
 
     if extracted_targets == 0:
         raise RuntimeError("no cargo/rustc/rust-std bin/lib payloads were extracted")
-
-    reset_generated_paths([prefix])
-    prefix.parent.mkdir(parents=True, exist_ok=True)
-    shutil.move(str(staging_prefix), str(prefix))
 
 
 BASHRC_LINES = [
@@ -247,23 +223,37 @@ BASHRC_LINES = [
     'export PYTHONOPTIMIZE="1"',
     # Tier 4 — sccache (RUSTC_WRAPPER only activates when sccache is on PATH)
     'export SCCACHE_DIR="/mnt/data/.sccache"',
-    'if command -v sccache >/dev/null 2>&1; then export RUSTC_WRAPPER="sccache"; fi',
+    'command -v sccache >/dev/null 2>&1 && export RUSTC_WRAPPER="sccache"',
 ]
 
 
-def ensure_bashrc_sources_env(env_file: Path, bashrc: Path = Path("/root/.bashrc")) -> bool:
+def ensure_startup_file_sources_env(env_file: Path, startup_file: Path) -> bool:
     source_line = f"source {env_file}"
-    existing = bashrc.read_text(encoding="utf-8") if bashrc.exists() else ""
+    existing = startup_file.read_text(encoding="utf-8") if startup_file.exists() else ""
 
     additions = [l for l in [source_line] + BASHRC_LINES if l not in existing]
     if not additions:
         return False
 
-    with bashrc.open("a", encoding="utf-8") as f:
+    startup_file.parent.mkdir(parents=True, exist_ok=True)
+    with startup_file.open("a", encoding="utf-8") as f:
         f.write("\n# added by bootstrap_rustc_session.py\n")
         for line in additions:
             f.write(f"{line}\n")
     return True
+
+
+def ensure_login_and_interactive_shells_source_env(env_file: Path, home: Path | None = None) -> tuple[bool, bool]:
+    """Persist Rust session env for both `bash -lc` and `bash -ic`.
+
+    Bash login shells read ~/.profile on this container, while interactive shells
+    read ~/.bashrc. Writing both removes the previous /root/.bashrc assumption
+    and makes the generated toolchain visible from the active user's HOME.
+    """
+    home = home or Path.home()
+    profile_patched = ensure_startup_file_sources_env(env_file, home / ".profile")
+    bashrc_patched = ensure_startup_file_sources_env(env_file, home / ".bashrc")
+    return profile_patched, bashrc_patched
 
 
 def write_env_file(env_file: Path, prefix: Path, cargo_home: Path) -> None:
@@ -460,11 +450,10 @@ def main() -> int:
         cargo_config = write_cargo_config(args.cargo_home, args.registry_url)
 
     if not have_toolchain(args.prefix):
-        reset_generated_paths([args.prefix])
         extract_components_with_python_tarfile(args.archive, args.tmp, args.prefix)
 
     write_env_file(args.env_file, args.prefix, args.cargo_home)
-    patched = ensure_bashrc_sources_env(args.env_file)
+    profile_patched, bashrc_patched = ensure_login_and_interactive_shells_source_env(args.env_file)
     launchers: list[Path] = []
     if not args.no_install_launchers:
         launchers = write_launchers(
@@ -493,7 +482,8 @@ def main() -> int:
         print()
     print(f"env_file={args.env_file}")
     print(f"usage=source {args.env_file}")
-    print(f"bashrc_patched={patched}")
+    print(f"profile_patched={profile_patched}")
+    print(f"bashrc_patched={bashrc_patched}")
     if cargo_config:
         print(f"cargo_config={cargo_config}")
         print(f"registry_url={args.registry_url}")
