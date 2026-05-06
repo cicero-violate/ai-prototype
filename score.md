@@ -34,10 +34,10 @@ Goodness is the geometric mean of all 15 dimensions; one weak dimension lowers t
 
 ```text
 repository = ai
-base_commit = b903059731873bcf0be6a7d324294f786917b9be
-restored_head_before_changes = b903059731873bcf0be6a7d324294f786917b9be
-tracked_files = 128
-rust_files = 72
+base_commit = 449ca9f823e7ed2e24e5d49a5bf1a467d04391ac
+restored_head_before_changes = 449ca9f823e7ed2e24e5d49a5bf1a467d04391ac
+tracked_files = 121
+rust_files = 75
 runtime_archive = /mnt/data/ai-runtime.tar.gz
 runtime_ndjson_files = 15
 runtime_audit_events = 48
@@ -56,23 +56,23 @@ Baseline scores:
 
 | Axis | Score |
 |------+-------+
-| I    |   7.3 |
-| E    |   5.8 |
-| C    |   6.0 |
-| A    |   8.5 |
-| R    |   5.8 |
-| P    |   5.2 |
-| S    |   6.4 |
-| D    |   7.4 |
-| T    |   7.2 |
-| Co   |   6.5 |
-| Em   |   6.1 |
-| B    |   6.8 |
-| L    |   6.6 |
-| Si   |   5.0 |
-| F    |   6.9 |
+| I    |   7.4 |
+| E    |   6.1 |
+| C    |   6.6 |
+| A    |   8.6 |
+| R    |   6.5 |
+| P    |   5.7 |
+| S    |   6.7 |
+| D    |   7.9 |
+| T    |   7.7 |
+| Co   |   6.8 |
+| Em   |   6.5 |
+| B    |   7.0 |
+| L    |   6.9 |
+| Si   |   5.8 |
+| F    |   7.2 |
 
 ```text
-G = 6.44
+G = 6.85
 max(G) = good
 ```
