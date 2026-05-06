@@ -43,17 +43,6 @@ impl ScoreVector {
     }
 }
 
-pub fn geometric_mean(values: &[f64]) -> Option<f64> {
-    if values.is_empty() || values.iter().any(|v| !v.is_finite() || *v < 0.0) {
-        return None;
-    }
-    if values.iter().any(|v| *v == 0.0) {
-        return Some(0.0);
-    }
-    let log_sum: f64 = values.iter().map(|v| v.ln()).sum();
-    Some((log_sum / values.len() as f64).exp())
-}
-
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct ScoreDelta {
     pub before: f64,
@@ -64,4 +53,17 @@ impl ScoreDelta {
     pub fn is_real_gain(self) -> bool {
         self.after.is_finite() && self.before.is_finite() && self.after > self.before
     }
+}
+
+pub fn geometric_mean(values: &[f64]) -> Option<f64> {
+    if values.is_empty() || values.iter().any(|v| !v.is_finite() || *v < 0.0) {
+        return None;
+    }
+
+    if values.iter().any(|v| *v == 0.0) {
+        return Some(0.0);
+    }
+
+    let log_sum: f64 = values.iter().map(|v| v.ln()).sum();
+    Some((log_sum / values.len() as f64).exp())
 }

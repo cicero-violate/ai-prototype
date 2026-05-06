@@ -19,12 +19,12 @@ impl PhaseTimings {
             .saturating_add(self.validation_ms)
     }
 
+    pub fn satisfies_loop_invariant(self) -> bool {
+        self.loop_total_ms >= self.phase_sum()
+    }
+
     pub fn canonicalized(mut self) -> Self {
         self.loop_total_ms = self.loop_total_ms.max(self.phase_sum());
         self
-    }
-
-    pub fn satisfies_loop_invariant(self) -> bool {
-        self.loop_total_ms >= self.phase_sum()
     }
 }

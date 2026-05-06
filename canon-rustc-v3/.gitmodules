@@ -1,0 +1,3 @@
+[submodule "vendor/rust-source"]
+	path = vendor/rust-source
+	url = https://github.com/rust-lang/rust.git

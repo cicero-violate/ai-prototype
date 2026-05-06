@@ -4,6 +4,11 @@ version = "0.1.0"
 edition = "2021"
 
 [lib]
+name = "ai"
 path = "src/lib.rs"
+
+[[bin]]
+name = "ai"
+path = "src/main.rs"
 
 [dependencies]

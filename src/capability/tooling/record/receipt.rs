@@ -1,0 +1,746 @@
+use std::fs::{self, File, OpenOptions};
+use std::io::{BufRead, BufReader, Write};
+use std::path::Path;
+
+use crate::capability::{CapabilityId, CapabilityRegistry, EvidenceProducer, EvidenceSubmission};
+use crate::capability::verification::{
+    CanonicalEffect, CanonicalEffectProof, CanonicalEffectReceipt, ProofSubjectKind,
+    VerificationProofBinding, VerificationProofRecord, PROOF_FLAGS_REQUIRED,
+};
+use crate::kernel::{
+    mix, Cause, ControlEvent, Decision, EventKind, Evidence, GateId, GateStatus, Phase, TLog,
+};
+
+use super::artifact::{persisted_execution_effect_is_valid, ToolExecutionRecord};
+use super::hash::{
+    capability_from_u64, parse_u64_ndjson_fields, sync_dir, tool_effect_kind_from_u64,
+    tool_effect_output_hash, validate_u64_ndjson_header,
+};
+use super::process::SandboxProcessReceipt;
+use super::types::{
+    Effect, ToolEffectKind, ToolSandboxError, PROCESS_EFFECT_RECEIPT_RECORD,
+    PROCESS_EFFECT_RECEIPT_SCHEMA_VERSION, TOOL_EFFECT_RECEIPT_RECORD,
+    TOOL_EFFECT_RECEIPT_SCHEMA_VERSION,
+};
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ToolEffectReceipt {
+    pub capability: CapabilityId,
+    pub registry_policy_hash: u64,
+    pub request_hash: u64,
+    pub receipt_hash: u64,
+    pub effect_hash: u64,
+    pub effect: Effect,
+    pub event_seq: u64,
+    pub event_hash: u64,
+    pub artifact_id: u64,
+    pub artifact_receipt_hash: u64,
+    pub artifact_path_hash: u64,
+    pub artifact_content_hash: u64,
+    pub artifact_bytes: u64,
+    pub sandbox_root_hash: u64,
+}
+
+impl ToolEffectReceipt {
+    pub fn from_persisted_event(
+        record: &ToolExecutionRecord,
+        event: &ControlEvent,
+    ) -> Option<Self> {
+        if !persisted_execution_effect_is_valid(record, event) {
+            return None;
+        }
+
+        let effect_hash = tool_effect_output_hash(event.state_before.packet, event.state_after.packet);
+        let effect = Effect::artifact(
+            effect_hash,
+            record.receipt.artifact_path_hash,
+            record.receipt.artifact_content_hash,
+            record.receipt.artifact_bytes,
+            record.receipt.sandbox_root_hash,
+        );
+        Some(Self {
+            capability: record.request.capability,
+            registry_policy_hash: record.request.registry_policy_hash,
+            request_hash: record.request.contract_hash(),
+            receipt_hash: record.receipt.receipt_hash,
+            effect_hash,
+            effect,
+            event_seq: event.seq,
+            event_hash: event.self_hash,
+            artifact_id: event.state_after.packet.artifact_id,
+            artifact_receipt_hash: event.state_after.packet.artifact_receipt_hash,
+            artifact_path_hash: record.receipt.artifact_path_hash,
+            artifact_content_hash: record.receipt.artifact_content_hash,
+            artifact_bytes: record.receipt.artifact_bytes,
+            sandbox_root_hash: record.receipt.sandbox_root_hash,
+        })
+    }
+
+    pub fn is_valid(self) -> bool {
+        self.capability == CapabilityId::Tooling
+            && self.registry_policy_hash != 0
+            && self.request_hash != 0
+            && self.receipt_hash != 0
+            && self.effect_hash != 0
+            && self.effect.is_valid()
+            && self.effect.kind == ToolEffectKind::Artifact
+            && self.effect.digest == self.effect_hash
+            && self.effect
+                == Effect::artifact(
+                    self.effect_hash,
+                    self.artifact_path_hash,
+                    self.artifact_content_hash,
+                    self.artifact_bytes,
+                    self.sandbox_root_hash,
+                )
+            && self.event_seq != 0
+            && self.event_hash != 0
+            && self.artifact_id != 0
+            && self.artifact_receipt_hash != 0
+    }
+
+    pub fn is_sandbox_artifact_bound(self) -> bool {
+        self.effect.kind == ToolEffectKind::Artifact
+            && self.artifact_path_hash != 0
+            && self.artifact_content_hash != 0
+            && self.artifact_bytes != 0
+            && self.sandbox_root_hash != 0
+    }
+
+    pub fn receipt_core_hash(self) -> u64 {
+        let mut h = 0x7a7d_efc7_0019_04a1u64;
+        h = mix(h, self.capability as u64);
+        h = mix(h, self.registry_policy_hash);
+        h = mix(h, self.request_hash);
+        h = mix(h, self.effect_hash);
+        h = mix(h, self.effect.contract_hash());
+        h = mix(h, self.event_seq);
+        h = mix(h, self.event_hash);
+        h = mix(h, self.artifact_id);
+        h = mix(h, self.artifact_receipt_hash);
+        h = mix(h, self.artifact_path_hash);
+        h = mix(h, self.artifact_content_hash);
+        h = mix(h, self.artifact_bytes);
+        h = mix(h, self.sandbox_root_hash);
+        h.max(1)
+    }
+
+    pub fn verifier_context_hash(self) -> u64 {
+        let mut h = 0x3a15_b204_c097_994du64;
+        h = mix(h, ProofSubjectKind::ArtifactEffect as u64);
+        h = mix(h, self.registry_policy_hash);
+        h = mix(h, self.request_hash);
+        h = mix(h, self.effect.contract_hash());
+        h = mix(h, self.artifact_receipt_hash);
+        h.max(1)
+    }
+
+    pub fn provider_proof_hash(self, proof_event_seq: u64) -> Option<u64> {
+        if !self.is_valid() || proof_event_seq <= self.event_seq {
+            return None;
+        }
+
+        let mut h = 0x4d1b_105e_34b1_d9a7u64;
+        h = mix(h, self.receipt_core_hash());
+        h = mix(h, self.receipt_hash);
+        h = mix(h, self.event_hash);
+        h = mix(h, proof_event_seq);
+        h = mix(h, self.effect.contract_hash());
+        Some(h.max(1))
+    }
+
+    pub fn canonical_authority_hash(self) -> Option<u64> {
+        if !self.is_valid() {
+            return None;
+        }
+        let mut h = 0x544f_4f4c_4155_5448u64;
+        h = mix(h, self.capability as u64);
+        h = mix(h, self.registry_policy_hash);
+        Some(h.max(1))
+    }
+
+    pub fn canonical_request_hash(self) -> Option<u64> {
+        if !self.is_valid() {
+            return None;
+        }
+        let mut h = 0x544f_4f4c_5251_5354u64;
+        h = mix(h, self.request_hash);
+        h = mix(h, self.artifact_id);
+        h = mix(h, self.artifact_receipt_hash);
+        Some(h.max(1))
+    }
+
+    pub fn canonical_effect(self) -> Option<CanonicalEffect> {
+        if !self.is_valid() {
+            return None;
+        }
+        CanonicalEffect::artifact(self.effect_hash, self.effect.metadata)
+    }
+
+    pub fn canonical_effect_receipt(self) -> Option<CanonicalEffectReceipt> {
+        CanonicalEffectReceipt::new_unbound(
+            ProofSubjectKind::ArtifactEffect,
+            self.canonical_effect()?,
+            self.canonical_authority_hash()?,
+            self.canonical_request_hash()?,
+            self.event_seq,
+            self.event_hash,
+        )
+    }
+
+    pub fn to_canonical_effect_proof(
+        self,
+        proof_event_seq: u64,
+    ) -> Option<(CanonicalEffectReceipt, CanonicalEffectProof)> {
+        CanonicalEffectProof::finalize(
+            self.canonical_effect_receipt()?,
+            proof_event_seq,
+            self.verifier_context_hash(),
+            PROOF_FLAGS_REQUIRED,
+            self.provider_proof_hash(proof_event_seq)?,
+        )
+    }
+
+    pub fn proof_line_hash(self, proof_event_seq: u64) -> Option<u64> {
+        Some(self.to_canonical_effect_proof(proof_event_seq)?.1.proof_line_hash)
+    }
+
+    pub fn verification_proof_binding(
+        self,
+        proof_event_seq: u64,
+    ) -> Option<VerificationProofBinding> {
+        self.to_canonical_effect_proof(proof_event_seq)?
+            .1
+            .verification_proof_binding()
+    }
+
+    pub fn to_verification_proof_record(
+        self,
+        proof_event_seq: u64,
+    ) -> Option<VerificationProofRecord> {
+        self.to_canonical_effect_proof(proof_event_seq)?
+            .1
+            .to_verification_proof_record()
+    }
+
+    pub fn replay_verified(self, tlog: &TLog) -> bool {
+        self.is_valid() && tlog.iter().any(|event| self.matches_event(event))
+    }
+
+    pub fn replay_verified_with_registry(self, tlog: &TLog, registry: CapabilityRegistry) -> bool {
+        self.registry_policy_hash == registry.policy_hash()
+            && tlog.iter().any(|event| self.matches_event(event))
+    }
+
+    pub fn matches_event(self, event: &ControlEvent) -> bool {
+        event.seq == self.event_seq
+            && event.self_hash == self.event_hash
+            && self.capability == CapabilityId::Tooling
+            && self.registry_policy_hash != 0
+            && event.capability_registry_projection.policy_hash == self.registry_policy_hash
+            && event.state_after.packet.artifact_id == self.artifact_id
+            && event.state_after.packet.artifact_receipt_hash == self.artifact_receipt_hash
+            && self.effect.digest == self.effect_hash
+            && tool_effect_output_hash(event.state_before.packet, event.state_after.packet)
+                == self.effect_hash
+    }
+}
+
+impl EvidenceProducer for ToolExecutionRecord {
+    type Record = ToolExecutionRecord;
+
+    fn record(&self) -> &Self::Record {
+        self
+    }
+
+    fn submission(&self) -> EvidenceSubmission {
+        ToolExecutionRecord::submission(self)
+    }
+}
+
+pub fn append_tool_effect_receipt_ndjson(
+    path: impl AsRef<Path>,
+    receipt: &ToolEffectReceipt,
+) -> Result<(), ToolSandboxError> {
+    if !receipt.is_valid() {
+        return Err(ToolSandboxError::InvalidToolReceipt);
+    }
+
+    let path = path.as_ref();
+    if let Some(parent) = path.parent() {
+        if !parent.as_os_str().is_empty() {
+            fs::create_dir_all(parent).map_err(|_| ToolSandboxError::SandboxIo)?;
+        }
+    }
+
+    {
+        let mut file = OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(path)
+            .map_err(|_| ToolSandboxError::SandboxIo)?;
+        writeln!(file, "{}", encode_tool_effect_receipt_ndjson(*receipt))
+            .map_err(|_| ToolSandboxError::SandboxIo)?;
+        file.sync_all().map_err(|_| ToolSandboxError::SandboxIo)?;
+    }
+
+    if let Some(parent) = path.parent() {
+        if !parent.as_os_str().is_empty() {
+            sync_dir(parent)?;
+        }
+    }
+
+    Ok(())
+}
+
+pub fn load_tool_effect_receipts_ndjson(
+    path: impl AsRef<Path>,
+) -> Result<Vec<ToolEffectReceipt>, ToolSandboxError> {
+    let path = path.as_ref();
+    if !path.exists() {
+        return Ok(Vec::new());
+    }
+
+    let file = File::open(path).map_err(|_| ToolSandboxError::SandboxIo)?;
+    let reader = BufReader::new(file);
+    let mut receipts = Vec::new();
+
+    for line in reader.lines() {
+        let line = line.map_err(|_| ToolSandboxError::SandboxIo)?;
+        if line.trim().is_empty() {
+            continue;
+        }
+        receipts.push(decode_tool_effect_receipt_ndjson(&line)?);
+    }
+
+    Ok(receipts)
+}
+
+pub fn verify_tool_effect_receipts(
+    tlog: &TLog,
+    receipts: &[ToolEffectReceipt],
+) -> Result<usize, ToolSandboxError> {
+    for receipt in receipts {
+        if !receipt.replay_verified(tlog) {
+            return Err(ToolSandboxError::InvalidReplay);
+        }
+    }
+
+    Ok(receipts.len())
+}
+
+pub fn encode_tool_effect_receipt_ndjson(receipt: ToolEffectReceipt) -> String {
+    let fields = [
+        TOOL_EFFECT_RECEIPT_SCHEMA_VERSION,
+        TOOL_EFFECT_RECEIPT_RECORD,
+        receipt.capability as u64,
+        receipt.registry_policy_hash,
+        receipt.request_hash,
+        receipt.receipt_hash,
+        receipt.effect_hash,
+        receipt.effect.kind as u64,
+        receipt.effect.digest,
+        receipt.effect.metadata,
+        receipt.event_seq,
+        receipt.event_hash,
+        receipt.artifact_id,
+        receipt.artifact_receipt_hash,
+        receipt.artifact_path_hash,
+        receipt.artifact_content_hash,
+        receipt.artifact_bytes,
+        receipt.sandbox_root_hash,
+    ];
+    let body = fields
+        .iter()
+        .map(u64::to_string)
+        .collect::<Vec<_>>()
+        .join(",");
+    format!("[{body}]")
+}
+
+pub fn decode_tool_effect_receipt_ndjson(
+    line: &str,
+) -> Result<ToolEffectReceipt, ToolSandboxError> {
+    let fields = parse_u64_ndjson_fields(line)?;
+    validate_u64_ndjson_header(
+        &fields,
+        18,
+        TOOL_EFFECT_RECEIPT_SCHEMA_VERSION,
+        TOOL_EFFECT_RECEIPT_RECORD,
+    )?;
+
+    let effect = Effect {
+        kind: tool_effect_kind_from_u64(fields[7])?,
+        digest: fields[8],
+        metadata: fields[9],
+    };
+
+    let receipt = ToolEffectReceipt {
+        capability: capability_from_u64(fields[2])?,
+        registry_policy_hash: fields[3],
+        request_hash: fields[4],
+        receipt_hash: fields[5],
+        effect_hash: fields[6],
+        effect,
+        event_seq: fields[10],
+        event_hash: fields[11],
+        artifact_id: fields[12],
+        artifact_receipt_hash: fields[13],
+        artifact_path_hash: fields[14],
+        artifact_content_hash: fields[15],
+        artifact_bytes: fields[16],
+        sandbox_root_hash: fields[17],
+    };
+
+    if !receipt.is_valid() {
+        return Err(ToolSandboxError::InvalidToolReceipt);
+    }
+
+    Ok(receipt)
+}
+
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ProcessEffectReceipt {
+    pub capability: CapabilityId,
+    pub registry_policy_hash: u64,
+    pub request_hash: u64,
+    pub receipt_hash: u64,
+    pub effect_hash: u64,
+    pub effect: Effect,
+    pub event_seq: u64,
+    pub event_hash: u64,
+}
+
+impl ProcessEffectReceipt {
+    pub fn from_persisted_event(
+        receipt: &SandboxProcessReceipt,
+        event: &ControlEvent,
+    ) -> Option<Self> {
+        if !persisted_process_execution_effect_is_valid(receipt, event) {
+            return None;
+        }
+
+        Some(Self {
+            capability: CapabilityId::Tooling,
+            registry_policy_hash: receipt.registry_policy_hash,
+            request_hash: receipt.request_hash,
+            receipt_hash: receipt.receipt_hash,
+            effect_hash: receipt.effect.contract_hash(),
+            effect: receipt.effect,
+            event_seq: event.seq,
+            event_hash: event.self_hash,
+        })
+    }
+
+    pub fn is_valid(self) -> bool {
+        self.capability == CapabilityId::Tooling
+            && self.registry_policy_hash != 0
+            && self.request_hash != 0
+            && self.receipt_hash != 0
+            && self.effect_hash != 0
+            && self.effect.is_valid()
+            && self.effect.kind == ToolEffectKind::Process
+            && self.effect_hash == self.effect.contract_hash()
+            && self.event_seq != 0
+            && self.event_hash != 0
+    }
+
+    pub fn replay_verified(self, tlog: &TLog) -> bool {
+        self.is_valid() && tlog.iter().any(|event| self.matches_event(event))
+    }
+
+    pub fn replay_verified_with_registry(self, tlog: &TLog, registry: CapabilityRegistry) -> bool {
+        self.registry_policy_hash == registry.policy_hash()
+            && tlog.iter().any(|event| self.matches_event(event))
+    }
+
+    pub fn matches_event(self, event: &ControlEvent) -> bool {
+        event.seq == self.event_seq
+            && event.self_hash == self.event_hash
+            && self.capability == CapabilityId::Tooling
+            && event.capability_registry_projection.policy_hash == self.registry_policy_hash
+            && event.from == Phase::Execute
+            && event.to == Phase::Execute
+            && event.kind == EventKind::Persisted
+            && event.cause == Cause::EvidenceSubmitted
+            && event.evidence == Evidence::ExecutionReceipt
+            && event.affected_gate == Some(GateId::Execution)
+            && self.effect.kind == ToolEffectKind::Process
+            && self.effect_hash == self.effect.contract_hash()
+    }
+
+    pub fn receipt_core_hash(self) -> u64 {
+        let mut h = 0x61c0_7e28_fef2_9e5du64;
+        h = mix(h, self.capability as u64);
+        h = mix(h, self.registry_policy_hash);
+        h = mix(h, self.request_hash);
+        h = mix(h, self.effect_hash);
+        h = mix(h, self.effect.contract_hash());
+        h = mix(h, self.event_seq);
+        h = mix(h, self.event_hash);
+        h.max(1)
+    }
+
+    pub fn verifier_context_hash(self) -> u64 {
+        let mut h = 0x0700_35ee_fcf3_88d9u64;
+        h = mix(h, ProofSubjectKind::ProcessEffect as u64);
+        h = mix(h, self.registry_policy_hash);
+        h = mix(h, self.request_hash);
+        h = mix(h, self.effect.contract_hash());
+        h.max(1)
+    }
+
+    pub fn provider_proof_hash(self, proof_event_seq: u64) -> Option<u64> {
+        if !self.is_valid() || proof_event_seq <= self.event_seq {
+            return None;
+        }
+
+        let mut h = 0xb6ca_33cf_f013_2a11u64;
+        h = mix(h, self.receipt_core_hash());
+        h = mix(h, self.receipt_hash);
+        h = mix(h, self.event_hash);
+        h = mix(h, proof_event_seq);
+        h = mix(h, self.effect.contract_hash());
+        Some(h.max(1))
+    }
+
+    pub fn canonical_authority_hash(self) -> Option<u64> {
+        if !self.is_valid() {
+            return None;
+        }
+        let mut h = 0x5052_4f43_4155_5448u64;
+        h = mix(h, self.capability as u64);
+        h = mix(h, self.registry_policy_hash);
+        Some(h.max(1))
+    }
+
+    pub fn canonical_request_hash(self) -> Option<u64> {
+        if !self.is_valid() {
+            return None;
+        }
+        let mut h = 0x5052_4f43_5251_5354u64;
+        h = mix(h, self.request_hash);
+        Some(h.max(1))
+    }
+
+    pub fn canonical_effect(self) -> Option<CanonicalEffect> {
+        if !self.is_valid() {
+            return None;
+        }
+        CanonicalEffect::process(self.effect_hash, self.effect.metadata)
+    }
+
+    pub fn canonical_effect_receipt(self) -> Option<CanonicalEffectReceipt> {
+        CanonicalEffectReceipt::new_unbound(
+            ProofSubjectKind::ProcessEffect,
+            self.canonical_effect()?,
+            self.canonical_authority_hash()?,
+            self.canonical_request_hash()?,
+            self.event_seq,
+            self.event_hash,
+        )
+    }
+
+    pub fn to_canonical_effect_proof(
+        self,
+        proof_event_seq: u64,
+    ) -> Option<(CanonicalEffectReceipt, CanonicalEffectProof)> {
+        CanonicalEffectProof::finalize(
+            self.canonical_effect_receipt()?,
+            proof_event_seq,
+            self.verifier_context_hash(),
+            PROOF_FLAGS_REQUIRED,
+            self.provider_proof_hash(proof_event_seq)?,
+        )
+    }
+
+    pub fn proof_line_hash(self, proof_event_seq: u64) -> Option<u64> {
+        Some(self.to_canonical_effect_proof(proof_event_seq)?.1.proof_line_hash)
+    }
+
+    pub fn verification_proof_binding(
+        self,
+        proof_event_seq: u64,
+    ) -> Option<VerificationProofBinding> {
+        self.to_canonical_effect_proof(proof_event_seq)?
+            .1
+            .verification_proof_binding()
+    }
+
+    pub fn to_verification_proof_record(
+        self,
+        proof_event_seq: u64,
+    ) -> Option<VerificationProofRecord> {
+        self.to_canonical_effect_proof(proof_event_seq)?
+            .1
+            .to_verification_proof_record()
+    }
+}
+
+pub(crate) fn persisted_process_execution_effect_is_valid(
+    receipt: &SandboxProcessReceipt,
+    event: &ControlEvent,
+) -> bool {
+    if !receipt.is_contract_valid()
+        || event.from != Phase::Execute
+        || event.to != Phase::Execute
+        || event.kind != EventKind::Persisted
+        || event.cause != Cause::EvidenceSubmitted
+        || event.evidence != Evidence::ExecutionReceipt
+        || event.failure.is_some()
+        || event.recovery_action.is_some()
+        || event.affected_gate != Some(GateId::Execution)
+        || event.capability_registry_projection.policy_hash != receipt.registry_policy_hash
+    {
+        return false;
+    }
+
+    let passed = receipt.is_success();
+    let expected_decision = if passed {
+        Decision::Continue
+    } else {
+        Decision::Block
+    };
+
+    if event.decision != expected_decision {
+        return false;
+    }
+
+    let mut expected = event.state_before;
+    expected.apply_evidence(GateId::Execution, Evidence::ExecutionReceipt, passed);
+
+    event.state_after == expected
+        && event.state_after.gates.execution.evidence == Evidence::ExecutionReceipt
+        && event.state_after.gates.execution.status
+            == if passed { GateStatus::Pass } else { GateStatus::Fail }
+}
+
+pub fn append_process_effect_receipt_ndjson(
+    path: impl AsRef<Path>,
+    receipt: &ProcessEffectReceipt,
+) -> Result<(), ToolSandboxError> {
+    if !receipt.is_valid() {
+        return Err(ToolSandboxError::InvalidToolReceipt);
+    }
+
+    let path = path.as_ref();
+    if let Some(parent) = path.parent() {
+        if !parent.as_os_str().is_empty() {
+            fs::create_dir_all(parent).map_err(|_| ToolSandboxError::SandboxIo)?;
+        }
+    }
+
+    {
+        let mut file = OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(path)
+            .map_err(|_| ToolSandboxError::SandboxIo)?;
+        writeln!(file, "{}", encode_process_effect_receipt_ndjson(*receipt))
+            .map_err(|_| ToolSandboxError::SandboxIo)?;
+        file.sync_all().map_err(|_| ToolSandboxError::SandboxIo)?;
+    }
+
+    if let Some(parent) = path.parent() {
+        if !parent.as_os_str().is_empty() {
+            sync_dir(parent)?;
+        }
+    }
+
+    Ok(())
+}
+
+pub fn load_process_effect_receipts_ndjson(
+    path: impl AsRef<Path>,
+) -> Result<Vec<ProcessEffectReceipt>, ToolSandboxError> {
+    let path = path.as_ref();
+    if !path.exists() {
+        return Ok(Vec::new());
+    }
+
+    let file = File::open(path).map_err(|_| ToolSandboxError::SandboxIo)?;
+    let reader = BufReader::new(file);
+    let mut receipts = Vec::new();
+
+    for line in reader.lines() {
+        let line = line.map_err(|_| ToolSandboxError::SandboxIo)?;
+        if line.trim().is_empty() {
+            continue;
+        }
+        receipts.push(decode_process_effect_receipt_ndjson(&line)?);
+    }
+
+    Ok(receipts)
+}
+
+pub fn verify_process_effect_receipts(
+    tlog: &TLog,
+    receipts: &[ProcessEffectReceipt],
+) -> Result<usize, ToolSandboxError> {
+    for receipt in receipts {
+        if !receipt.replay_verified(tlog) {
+            return Err(ToolSandboxError::InvalidReplay);
+        }
+    }
+
+    Ok(receipts.len())
+}
+
+pub fn encode_process_effect_receipt_ndjson(receipt: ProcessEffectReceipt) -> String {
+    let fields = [
+        PROCESS_EFFECT_RECEIPT_SCHEMA_VERSION,
+        PROCESS_EFFECT_RECEIPT_RECORD,
+        receipt.capability as u64,
+        receipt.registry_policy_hash,
+        receipt.request_hash,
+        receipt.receipt_hash,
+        receipt.effect_hash,
+        receipt.effect.kind as u64,
+        receipt.effect.digest,
+        receipt.effect.metadata,
+        receipt.event_seq,
+        receipt.event_hash,
+    ];
+    let body = fields
+        .iter()
+        .map(u64::to_string)
+        .collect::<Vec<_>>()
+        .join(",");
+    format!("[{body}]")
+}
+
+pub fn decode_process_effect_receipt_ndjson(
+    line: &str,
+) -> Result<ProcessEffectReceipt, ToolSandboxError> {
+    let fields = parse_u64_ndjson_fields(line)?;
+    validate_u64_ndjson_header(
+        &fields,
+        12,
+        PROCESS_EFFECT_RECEIPT_SCHEMA_VERSION,
+        PROCESS_EFFECT_RECEIPT_RECORD,
+    )?;
+
+    let effect = Effect {
+        kind: tool_effect_kind_from_u64(fields[7])?,
+        digest: fields[8],
+        metadata: fields[9],
+    };
+
+    let receipt = ProcessEffectReceipt {
+        capability: capability_from_u64(fields[2])?,
+        registry_policy_hash: fields[3],
+        request_hash: fields[4],
+        receipt_hash: fields[5],
+        effect_hash: fields[6],
+        effect,
+        event_seq: fields[10],
+        event_hash: fields[11],
+    };
+
+    if !receipt.is_valid() {
+        return Err(ToolSandboxError::InvalidToolReceipt);
+    }
+
+    Ok(receipt)
+}
