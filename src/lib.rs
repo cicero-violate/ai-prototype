@@ -14,6 +14,7 @@ pub mod recovery;
 pub mod runtime;
 pub mod score;
 pub mod timing;
+pub mod validation_harness;
 
 pub use crate::api::protocol::{
     Command, CommandEnvelope, ControlEventResponse, API_COMMAND_BATCH_LIMIT,

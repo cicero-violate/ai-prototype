@@ -60,14 +60,14 @@ allowed_mutation = score.md and plan.md only
 
 ## Ranked Tasks By Expected Score Delta
 
-### 1. [ ] Add a root deterministic validation harness
+### 1. [x] Add a root deterministic validation harness
 
 ```text
 expected_delta = max(C, R, E, P, Em, T)
 rank = 1
 ```
 
-Add a checked-in root validation command or script that selects the available bootstrapped cargo path, applies the required `-Znext-lockfile-bump` lockfile compatibility flag, runs root `cargo check --all-targets --locked`, and runs a bounded fast test subset. The harness should emit a concise machine-readable validation receipt and fail closed when cargo is missing, too old, or invoked without the required compatibility path.
+Added `src/validation_harness.rs`, `src/bin/root_validate.rs`, and `tests/validation_harness_contract.rs`. The harness selects cargo via `CANON_AGENT_CARGO` or `cargo`, requires nightly cargo for `-Znext-lockfile-bump`, runs root `cargo check --all-targets --locked`, runs the bounded `score_contract` test target, emits one machine-readable JSON receipt line, and fails closed on cargo/version/step failure.
 
 **Why this is first:** every future patch relies on fast deterministic proof. The repo currently validates only after an operator knows the hidden cargo environment and flag.
 
@@ -112,3 +112,15 @@ These remain important, but the ranked tasks above target the highest current we
 - [x] `score.md` updated with current values only.
 - [x] `plan.md` rewritten with ranked unchecked tasks.
 - [x] `cargo -Znext-lockfile-bump check --all-targets --locked` passed.
+
+## Validation For Latest Source Patch Turn
+
+- [x] Source patches limited to Rust source/tests and `plan.md`.
+- [x] `GOAL.md` unchanged.
+- [x] `score.md` unchanged.
+- [x] `bootstrap_rustc_session.py` unchanged.
+- [x] Generated/runtime files unchanged.
+- [x] `cargo -Znext-lockfile-bump check --all-targets --locked` passed.
+- [x] `cargo -Znext-lockfile-bump test --test validation_harness_contract --locked` passed.
+- [x] `cargo -Znext-lockfile-bump run --bin root_validate --locked` emitted a passing validation receipt.
+- [x] `cargo fmt --check` unavailable in the bootstrapped toolchain (`cargo-fmt` not installed).
