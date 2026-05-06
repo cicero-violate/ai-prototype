@@ -16,6 +16,7 @@ pub const FAST_TEST_STEP: &str = "fast_score_contract_tests";
 pub const LIB_UNIT_STEP: &str = "lib_unit_contract_tests";
 pub const API_TRANSPORT_STEP: &str = "api_transport_contract_tests";
 pub const VALIDATION_HARNESS_STEP: &str = "validation_harness_contract_tests";
+pub const PLANNING_CONTRACT_STEP: &str = "planning_contract_tests";
 pub const PYTHON_CONTRACT_STEP: &str = "python_contract_tests";
 pub const PYTHON_CONTRACT_SKIP_REASON: &str =
     "required validation scripts are absent from this checkout";
@@ -208,6 +209,18 @@ pub fn root_validation_steps() -> Vec<ValidationStep> {
                 "test",
                 "--test",
                 "validation_harness_contract",
+                "--locked",
+                "--",
+                "--nocapture",
+            ],
+        ),
+        cargo_step(
+            PLANNING_CONTRACT_STEP,
+            vec![
+                LOCKFILE_COMPAT_FLAG,
+                "test",
+                "--test",
+                "planning_contract",
                 "--locked",
                 "--",
                 "--nocapture",

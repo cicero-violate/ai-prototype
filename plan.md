@@ -55,7 +55,7 @@ allowed_mutation = score.md and plan.md only
 - [x] `cargo -Znext-lockfile-bump run --bin root_validate --locked` passes and covers root cargo check, bounded score contract tests, and canon-rustc-v3 graph telemetry evidence.
 - [x] Bounded observation ingress with cursor persistence and backpressure is now implemented and tested; it should no longer appear as an open plan weakness.
 - [x] The root validation harness now runs root cargo check, score-contract tests, library unit tests, API transport integration tests, validation harness contract tests, graph telemetry, and a deterministic Python-contract skip receipt when required validation scripts are absent from this checkout.
-- [x] Planning still materializes a single synthetic ready task from packet fields rather than a deterministic objective decomposition with dependency graph, ordering, completion accounting, and replayable plan lineage.
+- [x] Planning now materializes a deterministic bounded task graph with dependency ordering, ready-set derivation, completion accounting, revision fields, and replayable lineage hashes while preserving the kernel-visible `TaskReady` evidence seam.
 - [x] Orchestration still routes a single deterministic capability order through local gate readiness; it does not yet model bounded parallel runs, prioritization queues, resource budgets, or deterministic merge/selection receipts.
 - [x] Semantic verification has a typed request/receipt seam and generic proof spine, but the implementation explicitly does not inspect real files yet, leaving artifact validation short of GOAL.md's semantic checking requirement.
 - [x] No source code, `GOAL.md`, `bootstrap_rustc_session.py`, generated files, or runtime files were modified in this evaluation turn.
@@ -73,7 +73,7 @@ Extend `root_validate` so the validation receipt covers the full current correct
 
 **Why this is first:** the repository claims auditability and correctness by construction, but the primary validation command currently proves only a subset of the code that now exists. A broader deterministic receipt would raise confidence across correctness, robustness, transparency, and future-proofing without changing the kernel.
 
-### 2. [ ] Replace single-task planning with deterministic objective decomposition and plan lineage
+### 2. [x] Replace single-task planning with deterministic objective decomposition and plan lineage
 
 ```text
 expected_delta = max(I, E, Co, Em, L, S)

@@ -1,12 +1,12 @@
 use ai::validation_harness::{
     root_validation_steps, API_TRANSPORT_STEP, CHECK_STEP, FAST_TEST_STEP, LIB_UNIT_STEP,
-    LOCKFILE_COMPAT_FLAG, VALIDATION_HARNESS_STEP,
+    LOCKFILE_COMPAT_FLAG, PLANNING_CONTRACT_STEP, VALIDATION_HARNESS_STEP,
 };
 
 #[test]
 fn root_validation_requires_lockfile_compatibility_flag() {
     let steps = root_validation_steps();
-    assert_eq!(steps.len(), 5);
+    assert_eq!(steps.len(), 6);
     for step in &steps {
         assert_eq!(step.args.first(), Some(&LOCKFILE_COMPAT_FLAG));
     }
@@ -24,6 +24,7 @@ fn root_validation_runs_check_before_contract_suites() {
             LIB_UNIT_STEP,
             API_TRANSPORT_STEP,
             VALIDATION_HARNESS_STEP,
+            PLANNING_CONTRACT_STEP,
         ]
     );
 
@@ -35,6 +36,7 @@ fn root_validation_runs_check_before_contract_suites() {
     assert!(steps[2].args.contains(&"--lib"));
     assert!(steps[3].args.contains(&"api_transport_contract"));
     assert!(steps[4].args.contains(&"validation_harness_contract"));
+    assert!(steps[5].args.contains(&"planning_contract"));
 }
 
 #[test]
