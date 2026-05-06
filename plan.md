@@ -34,8 +34,8 @@ Goodness is the geometric mean of all 15 dimensions; the best next work raises w
 
 ```text
 repository = ai
-base_commit = 5e1b97680261d3e83d8ff3464b7c50acc7940a79
-restored_head_before_plan = 5e1b97680261d3e83d8ff3464b7c50acc7940a79
+base_commit = 8a60ea0
+restored_head_before_plan = 8a60ea0
 bundle_output = /mnt/data/repo-delta-001.bundle
 manifest_output = /mnt/data/DELTA_MANIFEST.md
 allowed_mutation = score.md and plan.md only
@@ -51,59 +51,58 @@ allowed_mutation = score.md and plan.md only
 
 ## Current State
 
-- [x] The root crate exposes deterministic runtime, replay verification, recovery policy, scoring, command ledger, LLM receipts, process receipts, and provider examples.
-- [x] `cargo -Znext-lockfile-bump check --all-targets --locked` passes with the bootstrapped nightly cargo path.
-- [x] The checked-in `rust-toolchain.toml` names `nightly-2026-04-30`, but the available bootstrapped toolchain reports `rustc 1.77.0-nightly`; validation currently depends on manual environment setup and the lockfile compatibility flag.
-- [x] `cargo test --all-targets --locked` did not complete inside the available container timeout, so executable proof is currently slower than the repo needs for fast iterative verified evolution.
-- [x] The largest simplicity debt remains in `src/lib.rs`, `src/capability/llm/openai.rs`, `src/capability/llm/ollama.rs`, and verification/proof modules.
-- [x] No generated/runtime files were modified in this evaluation turn.
+- [x] The root crate exposes deterministic runtime, replay verification, recovery policy, scoring, command ledger, LLM receipts, process receipts, provider examples, a root validation harness, and graph telemetry validation receipt generation.
+- [x] `cargo -Znext-lockfile-bump run --bin root_validate --locked` passes and covers root cargo check, bounded score contract tests, and canon-rustc-v3 graph telemetry evidence.
+- [x] The checked-in `rust-toolchain.toml` still names `nightly-2026-04-30`; current validation succeeds through available cargo with `-Znext-lockfile-bump` rather than a fully self-contained toolchain bootstrap.
+- [x] OpenAI and Ollama provider clients remain large duplicated modules, creating simplicity, correctness, and future-proofing debt.
+- [x] The GOAL.md verified evolution loop is not yet backed by a durable candidate database, lineage ledger, or deterministic winner selection record.
+- [x] Verified TLog distillation into training-ready `distill.jsonl` rows is still represented as a goal and validation expectation, not a gated exporter.
+- [x] No source code, `GOAL.md`, `bootstrap_rustc_session.py`, generated files, or runtime files were modified in this evaluation turn.
 
 ## Ranked Tasks By Expected Score Delta
 
-### 1. [x] Add a root deterministic validation harness
-
-```text
-expected_delta = max(C, R, E, P, Em, T)
-rank = 1
-```
-
-Added `src/validation_harness.rs`, `src/bin/root_validate.rs`, and `tests/validation_harness_contract.rs`. The harness selects cargo via `CANON_AGENT_CARGO` or `cargo`, requires nightly cargo for `-Znext-lockfile-bump`, runs root `cargo check --all-targets --locked`, runs the bounded `score_contract` test target, emits one machine-readable JSON receipt line, and fails closed on cargo/version/step failure.
-
-**Why this is first:** every future patch relies on fast deterministic proof. The repo currently validates only after an operator knows the hidden cargo environment and flag.
-
-### 2. [ ] Split provider clients behind a small shared transport/receipt core
+### 1. [ ] Split provider clients behind a small shared transport/receipt core
 
 ```text
 expected_delta = max(Si, E, P, C, R, F)
+rank = 1
+```
+
+Extract duplicated request envelope, retry, timeout, hashing, response parsing, and receipt-construction logic from `src/capability/llm/openai.rs` and `src/capability/llm/ollama.rs` into a typed helper module. Preserve public examples and add focused tests for request identity hashes, retry-budget hashes, raw response hashes, replay verification, and receipt tamper rejection.
+
+**Why this is first:** provider modules are among the largest files and are structurally similar. A shared core should reduce code mass while improving deterministic receipt coverage.
+
+### 2. [ ] Implement a verified evolution candidate ledger and selection record
+
+```text
+expected_delta = max(I, L, T, C, D, F)
 rank = 2
 ```
 
-Extract the duplicated envelope, retry, timeout, hashing, and receipt-construction logic from `src/capability/llm/openai.rs` and `src/capability/llm/ollama.rs` into a small typed helper module. Preserve public examples and add focused tests for request identity hashes, retry-budget hashes, raw response hashes, and receipt tamper rejection.
+Add an append-only candidate ledger for patch identity, parent lineage, sandbox command receipts, evaluator scores, replay verdicts, and selection decisions. Ensure the LLM can propose candidates but cannot approve them; only external validation receipts and measured score deltas can mark a winner.
 
-**Why this is second:** provider modules are among the largest files and carry high correctness risk. A shared core reduces code mass while strengthening receipt determinism.
+**Why this is second:** GOAL.md centers the AlphaEvolve-style loop, but current evidence mostly validates runtime behavior rather than durable candidate evolution and winner selection.
 
-### 3. [x] Restore root graph telemetry proof without committing generated graphs
+### 3. [ ] Add a gated `distill.jsonl` exporter from verified TLog receipts
 
 ```text
-expected_delta = max(T, I, L, C, R, F)
+expected_delta = max(L, E, B, T, C, A)
 rank = 3
 ```
 
-Add a root validation step that proves `canon-rustc-v3` can regenerate graph telemetry for the root crate and report crate name, graph path, node count, edge count, semantic function coverage, and wrapper hash. Keep generated `state/rustc/*` artifacts out of git unless explicitly requested.
+Create a bounded exporter that emits training-ready rows only when the source event has pass verdict, valid replay, retained semantic inputs, inspectable outputs, measured score, proof hash, and source event lineage. Add rejection tests for failed evals, invalid replay, missing inputs, missing outputs, and hash/lineage mismatches.
 
-Added a `canon_rustc_v3_graph_telemetry` receipt to the root validation harness. It runs a bounded semantic graph telemetry probe outside the git tree, reports crate name, graph/report path, node count, edge count, semantic function coverage, wrapper source hash, and report hash, and keeps generated graph telemetry out of version control.
-
-**Why this is third:** GOAL.md depends on auditable, inspectable evidence. Graph telemetry turns Rust source deltas into structured semantic evidence for future scoring and learning.
+**Why this is third:** the project goal depends on reducing LLM cost over time by converting verified wins into policy or student-model data. Without a gated exporter, learning remains mostly aspirational.
 
 ## Explicitly Already Represented In Prior Plan
 
 - [x] Re-score current repository state after recent source-code improvements.
 - [x] Rewrite this plan from current repository evidence.
-- [ ] Implement a verified evolution candidate ledger and selection record.
-- [ ] Add a gated `distill.jsonl` exporter from verified TLog receipts.
+- [x] Add a root deterministic validation harness.
+- [x] Restore root graph telemetry proof without committing generated graphs.
 - [ ] Add bounded observation ingress with cursor persistence and backpressure.
 
-These remain important, but the ranked tasks above target the highest current weaknesses visible from this evaluation turn.
+These remain important, but the ranked tasks above target the highest current weaknesses visible from this evaluation turn that are not already addressed.
 
 ## Validation For This Eval-Only Turn
 
@@ -113,16 +112,4 @@ These remain important, but the ranked tasks above target the highest current we
 - [x] Generated/runtime files unchanged.
 - [x] `score.md` updated with current values only.
 - [x] `plan.md` rewritten with ranked unchecked tasks.
-- [x] `cargo -Znext-lockfile-bump check --all-targets --locked` passed.
-
-## Validation For Latest Source Patch Turn
-
-- [x] Source patches limited to Rust source/tests and `plan.md`.
-- [x] `GOAL.md` unchanged.
-- [x] `score.md` unchanged.
-- [x] `bootstrap_rustc_session.py` unchanged.
-- [x] Generated/runtime files unchanged.
-- [x] `cargo -Znext-lockfile-bump check --all-targets --locked` passed.
-- [x] `cargo -Znext-lockfile-bump test --test validation_harness_contract --locked` passed.
-- [x] `cargo -Znext-lockfile-bump run --bin root_validate --locked` emitted a passing validation receipt.
-- [x] `cargo fmt --check` unavailable in the bootstrapped toolchain (`cargo-fmt` not installed).
+- [x] `cargo -Znext-lockfile-bump run --bin root_validate --locked` passed.
