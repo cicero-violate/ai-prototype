@@ -73,11 +73,7 @@ impl CommandLedger {
         Ok(ledger)
     }
 
-    pub fn receipt_for_ids(
-        &self,
-        command_id: u64,
-        command_hash: u64,
-    ) -> Option<CommandReceipt> {
+    pub fn receipt_for_ids(&self, command_id: u64, command_hash: u64) -> Option<CommandReceipt> {
         self.receipts
             .iter()
             .copied()
@@ -128,9 +124,11 @@ impl CommandLedger {
     }
 
     fn insert_or_update(&mut self, receipt: CommandReceipt) {
-        if let Some(existing) = self.receipts.iter_mut().find(|existing| {
-            existing.matches_ids(receipt.command_id, receipt.command_hash)
-        }) {
+        if let Some(existing) = self
+            .receipts
+            .iter_mut()
+            .find(|existing| existing.matches_ids(receipt.command_id, receipt.command_hash))
+        {
             *existing = receipt;
         } else {
             self.receipts.push(receipt);

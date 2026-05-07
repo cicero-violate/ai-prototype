@@ -2,9 +2,7 @@ use std::fs::{self, File};
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
-use crate::capability::{
-    CapabilityRegistry, EvidenceSubmission, PacketEffect,
-};
+use crate::capability::{CapabilityRegistry, EvidenceSubmission, PacketEffect};
 use crate::kernel::{
     mix, Cause, ControlEvent, Decision, EventKind, Evidence, GateId, GateStatus, Packet, Phase,
 };
@@ -52,11 +50,7 @@ impl ToolReceipt {
                     self.sandbox_root_hash,
                 )
             && self.receipt_hash
-                == expected_receipt_hash_for_effect(
-                    request,
-                    self.exit_code,
-                    self.effect,
-                )
+                == expected_receipt_hash_for_effect(request, self.exit_code, self.effect)
     }
 
     pub fn is_sandbox_artifact_bound(self) -> bool {
@@ -297,9 +291,7 @@ impl LiveSandboxToolExecutor {
         root: &Path,
         request: ToolRequest,
     ) -> Result<PathBuf, ToolSandboxError> {
-        let path = root
-            .join("artifacts")
-            .join(artifact_relative_name(request));
+        let path = root.join("artifacts").join(artifact_relative_name(request));
         ensure_relative_name(&artifact_relative_name(request))?;
         ensure_under(root, &path)?;
         Ok(path)
@@ -419,7 +411,10 @@ fn tooling_payload_hash(record: &ToolExecutionRecord) -> u64 {
     h.max(1)
 }
 
-pub(crate) fn persisted_execution_effect_is_valid(record: &ToolExecutionRecord, event: &ControlEvent) -> bool {
+pub(crate) fn persisted_execution_effect_is_valid(
+    record: &ToolExecutionRecord,
+    event: &ControlEvent,
+) -> bool {
     if !record.is_valid()
         || event.from != Phase::Execute
         || event.to != Phase::Execute
@@ -447,11 +442,7 @@ pub(crate) fn persisted_execution_effect_is_valid(record: &ToolExecutionRecord, 
             == tool_effect_output_hash(event.state_before.packet, event.state_after.packet)
 }
 
-fn expected_receipt_hash_for_effect(
-    request: ToolRequest,
-    exit_code: u8,
-    effect: Effect,
-) -> u64 {
+fn expected_receipt_hash_for_effect(request: ToolRequest, exit_code: u8, effect: Effect) -> u64 {
     let mut h = 0x3c6ef372fe94f82bu64;
     h = mix(h, request.contract_hash());
     h = mix(h, effect.kind as u64);

@@ -6,4 +6,7 @@
 
 pub mod record;
 
-pub use self::record::{CapabilityRoute, OrchestrationDecision, OrchestrationRecord};
+pub use self::record::{
+    CapabilityRoute, OrchestrationBatchDecision, OrchestrationBatchRecord, OrchestrationBudget,
+    OrchestrationDecision, OrchestrationRecord, SelectedCapabilityRoute,
+};

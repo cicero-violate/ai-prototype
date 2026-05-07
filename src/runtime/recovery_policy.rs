@@ -11,27 +11,90 @@ struct RecoveryPolicyRule {
 }
 
 const RECOVERY_POLICY: [RecoveryPolicyRule; 21] = [
-    RecoveryPolicyRule { failure: FailureClass::InvariantUnknown, action: RecoveryAction::RecheckInvariant },
-    RecoveryPolicyRule { failure: FailureClass::InvariantBlocked, action: RecoveryAction::RecheckInvariant },
-    RecoveryPolicyRule { failure: FailureClass::AnalysisMissing, action: RecoveryAction::RunAnalysis },
-    RecoveryPolicyRule { failure: FailureClass::AnalysisFailed, action: RecoveryAction::RunAnalysis },
-    RecoveryPolicyRule { failure: FailureClass::JudgmentMissing, action: RecoveryAction::Rejudge },
-    RecoveryPolicyRule { failure: FailureClass::JudgmentFailed, action: RecoveryAction::Rejudge },
-    RecoveryPolicyRule { failure: FailureClass::PlanMissing, action: RecoveryAction::BindReadyTask },
-    RecoveryPolicyRule { failure: FailureClass::PlanFailed, action: RecoveryAction::Replan },
-    RecoveryPolicyRule { failure: FailureClass::PlanReadyQueueEmpty, action: RecoveryAction::BindReadyTask },
-    RecoveryPolicyRule { failure: FailureClass::ExecutionMissing, action: RecoveryAction::Reexecute },
-    RecoveryPolicyRule { failure: FailureClass::ExecutionFailed, action: RecoveryAction::Reexecute },
-    RecoveryPolicyRule { failure: FailureClass::TaskReceiptMissing, action: RecoveryAction::Reexecute },
-    RecoveryPolicyRule { failure: FailureClass::VerificationUnknown, action: RecoveryAction::Reverify },
-    RecoveryPolicyRule { failure: FailureClass::VerificationFailed, action: RecoveryAction::Reverify },
-    RecoveryPolicyRule { failure: FailureClass::ArtifactLineageBroken, action: RecoveryAction::RepairArtifactLineage },
-    RecoveryPolicyRule { failure: FailureClass::EvalMissing, action: RecoveryAction::RecomputeEval },
-    RecoveryPolicyRule { failure: FailureClass::EvalFailed, action: RecoveryAction::RecomputeEval },
-    RecoveryPolicyRule { failure: FailureClass::RecoveryExhausted, action: RecoveryAction::Escalate },
-    RecoveryPolicyRule { failure: FailureClass::ConvergenceFailed, action: RecoveryAction::Escalate },
-    RecoveryPolicyRule { failure: FailureClass::LearningMissing, action: RecoveryAction::RecomputeEval },
-    RecoveryPolicyRule { failure: FailureClass::LearningFailed, action: RecoveryAction::RecomputeEval },
+    RecoveryPolicyRule {
+        failure: FailureClass::InvariantUnknown,
+        action: RecoveryAction::RecheckInvariant,
+    },
+    RecoveryPolicyRule {
+        failure: FailureClass::InvariantBlocked,
+        action: RecoveryAction::RecheckInvariant,
+    },
+    RecoveryPolicyRule {
+        failure: FailureClass::AnalysisMissing,
+        action: RecoveryAction::RunAnalysis,
+    },
+    RecoveryPolicyRule {
+        failure: FailureClass::AnalysisFailed,
+        action: RecoveryAction::RunAnalysis,
+    },
+    RecoveryPolicyRule {
+        failure: FailureClass::JudgmentMissing,
+        action: RecoveryAction::Rejudge,
+    },
+    RecoveryPolicyRule {
+        failure: FailureClass::JudgmentFailed,
+        action: RecoveryAction::Rejudge,
+    },
+    RecoveryPolicyRule {
+        failure: FailureClass::PlanMissing,
+        action: RecoveryAction::BindReadyTask,
+    },
+    RecoveryPolicyRule {
+        failure: FailureClass::PlanFailed,
+        action: RecoveryAction::Replan,
+    },
+    RecoveryPolicyRule {
+        failure: FailureClass::PlanReadyQueueEmpty,
+        action: RecoveryAction::BindReadyTask,
+    },
+    RecoveryPolicyRule {
+        failure: FailureClass::ExecutionMissing,
+        action: RecoveryAction::Reexecute,
+    },
+    RecoveryPolicyRule {
+        failure: FailureClass::ExecutionFailed,
+        action: RecoveryAction::Reexecute,
+    },
+    RecoveryPolicyRule {
+        failure: FailureClass::TaskReceiptMissing,
+        action: RecoveryAction::Reexecute,
+    },
+    RecoveryPolicyRule {
+        failure: FailureClass::VerificationUnknown,
+        action: RecoveryAction::Reverify,
+    },
+    RecoveryPolicyRule {
+        failure: FailureClass::VerificationFailed,
+        action: RecoveryAction::Reverify,
+    },
+    RecoveryPolicyRule {
+        failure: FailureClass::ArtifactLineageBroken,
+        action: RecoveryAction::RepairArtifactLineage,
+    },
+    RecoveryPolicyRule {
+        failure: FailureClass::EvalMissing,
+        action: RecoveryAction::RecomputeEval,
+    },
+    RecoveryPolicyRule {
+        failure: FailureClass::EvalFailed,
+        action: RecoveryAction::RecomputeEval,
+    },
+    RecoveryPolicyRule {
+        failure: FailureClass::RecoveryExhausted,
+        action: RecoveryAction::Escalate,
+    },
+    RecoveryPolicyRule {
+        failure: FailureClass::ConvergenceFailed,
+        action: RecoveryAction::Escalate,
+    },
+    RecoveryPolicyRule {
+        failure: FailureClass::LearningMissing,
+        action: RecoveryAction::RecomputeEval,
+    },
+    RecoveryPolicyRule {
+        failure: FailureClass::LearningFailed,
+        action: RecoveryAction::RecomputeEval,
+    },
 ];
 
 pub(crate) fn recovery_policy_coverage_count() -> usize {

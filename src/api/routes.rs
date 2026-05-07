@@ -195,15 +195,17 @@ fn append_submission_event(
     };
     let registry_projection = CapabilityRegistry::canonical().projection();
     let event = match receipt {
-        Some((command_id, command_hash)) => CanonicalWriter::append_with_command_and_registry_projection(
-            tlog,
-            before,
-            outcome,
-            cfg,
-            command_id,
-            command_hash,
-            registry_projection,
-        )?,
+        Some((command_id, command_hash)) => {
+            CanonicalWriter::append_with_command_and_registry_projection(
+                tlog,
+                before,
+                outcome,
+                cfg,
+                command_id,
+                command_hash,
+                registry_projection,
+            )?
+        }
         None => CanonicalWriter::append_with_command_and_registry_projection(
             tlog,
             before,

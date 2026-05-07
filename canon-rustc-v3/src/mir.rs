@@ -126,6 +126,7 @@ fn emit(
         relation: relation.to_string(),
         from: from.into(),
         to: to.into(),
+        span: None,
     });
 }
 

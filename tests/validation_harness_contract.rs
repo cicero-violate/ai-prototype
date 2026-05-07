@@ -1,12 +1,35 @@
 use ai::validation_harness::{
-    root_validation_steps, API_TRANSPORT_STEP, CHECK_STEP, FAST_TEST_STEP, LIB_UNIT_STEP,
-    LOCKFILE_COMPAT_FLAG, PLANNING_CONTRACT_STEP, VALIDATION_HARNESS_STEP,
+    compare_runtime_performance_trend, compare_validation_cost_footprint, root_validation_steps,
+    runtime_performance_receipt, validation_footprint_receipt_for_steps, GraphTelemetryReceipt,
+    RuntimePerformanceReceipt, StepReceipt, StepRunner, ValidationReceipt, ValidationStep,
+    API_TRANSPORT_STEP, CHECK_STEP, EXTERNAL_AGENT_CLI_MODES_FIXTURE, FAST_TEST_STEP,
+    GRAPH_MUTATION_CLI_CONTRACT_EXPECTED_TESTS, GRAPH_MUTATION_CLI_CONTRACT_STEP, LIB_UNIT_STEP,
+    LOCKFILE_COMPAT_FLAG, PLANNING_CONTRACT_STEP, POLICY_CAPACITY_COST_SUMMARY_RECEIPTS_FIXTURE,
+    POLICY_CAPACITY_COST_SUMMARY_REGRESSION_SMOKE_STEP, POLICY_CAPACITY_COST_SUMMARY_SMOKE_STEP,
+    POLICY_CAPACITY_COST_SUMMARY_TREND_SMOKE_STEP, POLICY_ORCHESTRATION_CAPACITY_RECEIPTS_FIXTURE,
+    POLICY_REUSE_RECEIPTS_FIXTURE, POLICY_VALIDATION_HEALTH_RECEIPTS_FIXTURE,
+    POLICY_VALIDATION_HEALTH_TREND_RECEIPTS_FIXTURE, RUNTIME_PERFORMANCE_BUDGET_SMOKE_STEP,
+    RUNTIME_PERFORMANCE_STEP, RUNTIME_PERFORMANCE_THRESHOLDS_FIXTURE,
+    RUNTIME_PERFORMANCE_TREND_FIXTURE, VALIDATION_COMMAND_FOOTPRINT_RECEIPTS_FIXTURE,
+    VALIDATION_DURATION_PLANNING_RECEIPTS_FIXTURE,
+    RUNTIME_PERFORMANCE_TREND_REGRESSION_SMOKE_STEP,
+    RUNTIME_PERFORMANCE_TREND_SMOKE_STEP, VALIDATION_COST_FOOTPRINT_GROWTH_SMOKE_STEP,
+    VALIDATION_DURATION_PLANNING_BUDGET_EXHAUSTION_SMOKE_STEP,
+    VALIDATION_DURATION_PLANNING_REGRESSION_SMOKE_STEP,
+    VALIDATION_DURATION_PLANNING_STEP, VALIDATION_DURATION_PLANNING_TREND_SMOKE_STEP,
+    VALIDATION_FIXTURE_CATALOG_STEP, VALIDATION_FOOTPRINT_STEP,
+    VALIDATION_COMMAND_FOOTPRINT_PLANNING_STEP,
+    VALIDATION_COMMAND_FOOTPRINT_REGRESSION_SMOKE_STEP,
+    VALIDATION_COMMAND_FOOTPRINT_TARGET_MET_SMOKE_STEP, VALIDATION_COMMAND_FOOTPRINT_TARGET_STEPS,
+    VALIDATION_COMMAND_FOOTPRINT_TREND_SMOKE_STEP,
+    VALIDATION_COMMAND_FOOTPRINT_UNSAFE_TARGET_SMOKE_STEP,
+    VALIDATION_HARNESS_EXPECTED_TESTS, VALIDATION_HARNESS_STEP,
 };
 
 #[test]
 fn root_validation_requires_lockfile_compatibility_flag() {
     let steps = root_validation_steps();
-    assert_eq!(steps.len(), 6);
+    assert_eq!(steps.len(), 7);
     for step in &steps {
         assert_eq!(step.args.first(), Some(&LOCKFILE_COMPAT_FLAG));
     }
@@ -25,6 +48,7 @@ fn root_validation_runs_check_before_contract_suites() {
             API_TRANSPORT_STEP,
             VALIDATION_HARNESS_STEP,
             PLANNING_CONTRACT_STEP,
+            GRAPH_MUTATION_CLI_CONTRACT_STEP,
         ]
     );
 
@@ -36,7 +60,13 @@ fn root_validation_runs_check_before_contract_suites() {
     assert!(steps[2].args.contains(&"--lib"));
     assert!(steps[3].args.contains(&"api_transport_contract"));
     assert!(steps[4].args.contains(&"validation_harness_contract"));
+    assert_eq!(
+        steps[4].expected_test_count,
+        Some(VALIDATION_HARNESS_EXPECTED_TESTS)
+    );
+    assert_eq!(VALIDATION_HARNESS_EXPECTED_TESTS, 128);
     assert!(steps[5].args.contains(&"planning_contract"));
+    assert!(steps[6].args.contains(&"graph_mutation_cli_contract"));
 }
 
 #[test]
@@ -50,4 +80,3684 @@ fn validation_command_lines_are_stable() {
         steps[2].command_line("cargo"),
         "cargo -Znext-lockfile-bump test --lib --locked -- --nocapture"
     );
+}
+
+#[test]
+fn validation_footprint_receipt_summarizes_root_suite_contract() {
+    let receipt = ai::validation_harness::validation_footprint_receipt();
+
+    assert_eq!(receipt.schema, "canon_validation_footprint_v1");
+    assert_eq!(receipt.record_type, VALIDATION_FOOTPRINT_STEP);
+    assert_eq!(receipt.cargo_step_count, 7);
+    assert_eq!(receipt.python_step_count, 0);
+    assert_eq!(receipt.total_declared_steps, 7);
+    assert_eq!(receipt.expected_count_guarded_steps, 2);
+    assert_eq!(
+        receipt.expected_count_guarded_tests,
+        VALIDATION_HARNESS_EXPECTED_TESTS + GRAPH_MUTATION_CLI_CONTRACT_EXPECTED_TESTS
+    );
+    assert_eq!(receipt.lockfile_compat_step_count, receipt.cargo_step_count);
+    assert!(receipt.runtime_budget_required);
+    assert_eq!(
+        receipt.max_project_agent_elapsed_ms_p95,
+        ai::validation_harness::DEFAULT_MAX_PROJECT_AGENT_ELAPSED_MS_P95
+    );
+    assert_eq!(receipt.verdict, "pass");
+    assert!(receipt.passed());
+    assert!(!receipt.command_set_hash.is_empty());
+}
+
+#[test]
+fn root_validate_validation_footprint_mode_is_executable_contract() {
+    assert_root_validate_catalog_compact_mode_contract(
+        "--validation-footprint",
+        &[
+            "\"schema\":\"canon_validation_footprint_v1\"",
+            "\"record_type\":\"validation_footprint_summary\"",
+            "\"cargo_step_count\":7",
+            "\"python_step_count\":0",
+            "\"total_declared_steps\":7",
+            "\"expected_count_guarded_steps\":2",
+            &format!(
+                "\"expected_count_guarded_tests\":{}",
+                VALIDATION_HARNESS_EXPECTED_TESTS + GRAPH_MUTATION_CLI_CONTRACT_EXPECTED_TESTS
+            ),
+            "\"runtime_budget_required\":true",
+            "\"max_project_agent_elapsed_ms_p95\":10000",
+            "\"verdict\":\"pass\"",
+        ],
+    );
+}
+
+#[test]
+fn validation_command_footprint_planning_receipt_sets_safe_reduction_target() {
+    let footprint = ai::validation_harness::validation_footprint_receipt();
+    let receipt = ai::validation_harness::validation_command_footprint_planning_receipt(
+        &footprint,
+        VALIDATION_COMMAND_FOOTPRINT_TARGET_STEPS,
+    );
+
+    assert_eq!(receipt.schema, "canon_validation_command_footprint_planning_v1");
+    assert_eq!(receipt.record_type, VALIDATION_COMMAND_FOOTPRINT_PLANNING_STEP);
+    assert_eq!(receipt.current_total_declared_steps, 7);
+    assert_eq!(receipt.target_total_declared_steps, 6);
+    assert_eq!(receipt.command_reduction_target, 1);
+    assert_eq!(receipt.expected_count_guarded_steps, 2);
+    assert_eq!(
+        receipt.expected_count_guarded_tests,
+        VALIDATION_HARNESS_EXPECTED_TESTS + GRAPH_MUTATION_CLI_CONTRACT_EXPECTED_TESTS
+    );
+    assert_eq!(receipt.footprint_verdict, "pass");
+    assert_eq!(receipt.safety_status, "pass");
+    assert_eq!(receipt.planning_status, "action_required");
+    assert_eq!(receipt.verdict, "pass");
+    assert!(receipt.passed());
+}
+
+#[test]
+fn validation_command_footprint_target_met_smoke_passes_without_required_reduction() {
+    let receipt = ai::validation_harness::validation_command_footprint_target_met_smoke_receipt();
+
+    assert_eq!(receipt.current_total_declared_steps, 7);
+    assert_eq!(receipt.target_total_declared_steps, 7);
+    assert_eq!(receipt.command_reduction_target, 0);
+    assert_eq!(receipt.expected_count_guarded_steps, 2);
+    assert_eq!(receipt.record_type, VALIDATION_COMMAND_FOOTPRINT_TARGET_MET_SMOKE_STEP);
+    assert_eq!(receipt.safety_status, "pass");
+    assert_eq!(receipt.planning_status, "met");
+    assert_eq!(receipt.verdict, "pass");
+    assert!(receipt.passed());
+}
+
+#[test]
+fn validation_command_footprint_planning_rejects_unsafe_target() {
+    let receipt = ai::validation_harness::validation_command_footprint_unsafe_target_smoke_receipt();
+
+    assert_eq!(receipt.current_total_declared_steps, 7);
+    assert_eq!(receipt.target_total_declared_steps, 1);
+    assert_eq!(receipt.command_reduction_target, 6);
+    assert_eq!(receipt.expected_count_guarded_steps, 2);
+    assert_eq!(receipt.record_type, VALIDATION_COMMAND_FOOTPRINT_UNSAFE_TARGET_SMOKE_STEP);
+    assert_eq!(receipt.safety_status, "fail");
+    assert_eq!(receipt.planning_status, "unsafe_target");
+    assert_eq!(receipt.verdict, "fail");
+    assert!(!receipt.passed());
+}
+
+#[test]
+fn root_validate_validation_command_footprint_planning_modes_are_executable_contracts() {
+    assert_root_validate_catalog_compact_mode_contract(
+        "--validation-command-footprint-planning",
+        &[
+            "\"schema\":\"canon_validation_command_footprint_planning_v1\"",
+            "\"record_type\":\"validation_command_footprint_planning\"",
+            "\"current_total_declared_steps\":7",
+            "\"target_total_declared_steps\":6",
+            "\"command_reduction_target\":1",
+            "\"expected_count_guarded_steps\":2",
+            "\"safety_status\":\"pass\"",
+            "\"planning_status\":\"action_required\"",
+            "\"verdict\":\"pass\"",
+        ],
+    );
+    assert_root_validate_catalog_compact_mode_contract(
+        "--validation-command-footprint-target-met-smoke",
+        &[
+            "\"schema\":\"canon_validation_command_footprint_planning_v1\"",
+            "\"record_type\":\"validation_command_footprint_target_met_smoke\"",
+            "\"target_total_declared_steps\":7",
+            "\"command_reduction_target\":0",
+            "\"safety_status\":\"pass\"",
+            "\"planning_status\":\"met\"",
+            "\"verdict\":\"pass\"",
+        ],
+    );
+    assert_root_validate_catalog_compact_mode_contract(
+        "--validation-command-footprint-unsafe-target-smoke",
+        &[
+            "\"schema\":\"canon_validation_command_footprint_planning_v1\"",
+            "\"record_type\":\"validation_command_footprint_unsafe_target_smoke\"",
+            "\"target_total_declared_steps\":1",
+            "\"command_reduction_target\":6",
+            "\"safety_status\":\"fail\"",
+            "\"planning_status\":\"unsafe_target\"",
+            "\"verdict\":\"fail\"",
+        ],
+    );
+}
+
+
+#[test]
+fn validation_command_footprint_trend_smoke_compares_retained_targets() {
+    let receipt = ai::validation_harness::validation_command_footprint_trend_smoke_receipt();
+
+    assert_eq!(receipt.schema, "canon_validation_command_footprint_trend_v1");
+    assert_eq!(receipt.record_type, VALIDATION_COMMAND_FOOTPRINT_TREND_SMOKE_STEP);
+    assert_eq!(receipt.baseline_target_total_declared_steps, 6);
+    assert_eq!(receipt.current_target_total_declared_steps, 7);
+    assert_eq!(receipt.target_total_declared_step_delta, 1);
+    assert_eq!(receipt.baseline_command_reduction_target, 1);
+    assert_eq!(receipt.current_command_reduction_target, 0);
+    assert_eq!(receipt.command_reduction_target_delta, -1);
+    assert_eq!(receipt.baseline_planning_status, "action_required");
+    assert_eq!(receipt.current_planning_status, "met");
+    assert_eq!(receipt.trend_status, "pass");
+    assert_eq!(receipt.verdict, "pass");
+    assert!(receipt.passed());
+}
+
+#[test]
+fn validation_command_footprint_regression_smoke_exposes_controlled_negative() {
+    let receipt = ai::validation_harness::validation_command_footprint_regression_smoke_receipt();
+
+    assert_eq!(receipt.schema, "canon_validation_command_footprint_trend_v1");
+    assert_eq!(receipt.record_type, VALIDATION_COMMAND_FOOTPRINT_REGRESSION_SMOKE_STEP);
+    assert_eq!(receipt.baseline_target_total_declared_steps, 7);
+    assert_eq!(receipt.current_target_total_declared_steps, 6);
+    assert_eq!(receipt.target_total_declared_step_delta, -1);
+    assert_eq!(receipt.baseline_command_reduction_target, 0);
+    assert_eq!(receipt.current_command_reduction_target, 1);
+    assert_eq!(receipt.command_reduction_target_delta, 1);
+    assert_eq!(receipt.baseline_planning_status, "met");
+    assert_eq!(receipt.current_planning_status, "action_required");
+    assert_eq!(receipt.trend_status, "regressed");
+    assert_eq!(receipt.verdict, "fail");
+    assert!(!receipt.passed());
+}
+
+#[test]
+fn validation_command_footprint_trend_rejects_unsafe_current_target() {
+    let baseline = ai::validation_harness::validation_command_footprint_planning_smoke_receipt();
+    let current = ai::validation_harness::validation_command_footprint_unsafe_target_smoke_receipt();
+    let receipt = ai::validation_harness::compare_validation_command_footprint_trend(&baseline, &current);
+
+    assert_eq!(receipt.current_safety_status, "fail");
+    assert_eq!(receipt.current_planning_status, "unsafe_target");
+    assert_eq!(receipt.trend_status, "regressed");
+    assert_eq!(receipt.verdict, "fail");
+    assert!(!receipt.passed());
+}
+
+#[test]
+fn root_validate_validation_command_footprint_trend_modes_are_executable_contracts() {
+    assert_root_validate_catalog_compact_mode_contract(
+        "--validation-command-footprint-trend-smoke",
+        &[
+            "\"schema\":\"canon_validation_command_footprint_trend_v1\"",
+            "\"record_type\":\"validation_command_footprint_trend_smoke\"",
+            "\"baseline_target_total_declared_steps\":6",
+            "\"current_target_total_declared_steps\":7",
+            "\"target_total_declared_step_delta\":1",
+            "\"baseline_command_reduction_target\":1",
+            "\"current_command_reduction_target\":0",
+            "\"command_reduction_target_delta\":-1",
+            "\"trend_status\":\"pass\"",
+            "\"verdict\":\"pass\"",
+        ],
+    );
+    assert_root_validate_catalog_compact_mode_contract(
+        "--validation-command-footprint-regression-smoke",
+        &[
+            "\"schema\":\"canon_validation_command_footprint_trend_v1\"",
+            "\"record_type\":\"validation_command_footprint_regression_smoke\"",
+            "\"baseline_target_total_declared_steps\":7",
+            "\"current_target_total_declared_steps\":6",
+            "\"target_total_declared_step_delta\":-1",
+            "\"baseline_command_reduction_target\":0",
+            "\"current_command_reduction_target\":1",
+            "\"command_reduction_target_delta\":1",
+            "\"trend_status\":\"regressed\"",
+            "\"verdict\":\"fail\"",
+        ],
+    );
+}
+
+#[test]
+fn validation_footprint_negative_contract_fails_without_lockfile_flag() {
+    let mut steps = root_validation_steps();
+    steps[0] = ValidationStep {
+        name: CHECK_STEP,
+        runner: StepRunner::Cargo,
+        args: vec!["check", "--all-targets", "--locked"],
+        expected_test_count: None,
+    };
+
+    let receipt = validation_footprint_receipt_for_steps(
+        &steps,
+        ai::validation_harness::DEFAULT_MAX_PROJECT_AGENT_ELAPSED_MS_P95,
+        ai::validation_harness::DEFAULT_MAX_DOWNLOAD_INITIAL_GET_MS_P95,
+        ai::validation_harness::DEFAULT_MAX_DOWNLOAD_FOLLOW_GET_MS_P95,
+        ai::validation_harness::DEFAULT_MAX_DOWNLOAD_WRITE_MS_P95,
+    );
+
+    assert_eq!(receipt.cargo_step_count, 7);
+    assert_eq!(receipt.lockfile_compat_step_count, 6);
+    assert_eq!(receipt.verdict, "fail");
+    assert!(!receipt.passed());
+    assert!(receipt.to_json().contains("\"verdict\":\"fail\""));
+}
+
+#[test]
+fn validation_footprint_negative_contract_fails_when_runtime_budget_disabled() {
+    let steps = root_validation_steps();
+
+    let receipt = validation_footprint_receipt_for_steps(
+        &steps,
+        0,
+        ai::validation_harness::DEFAULT_MAX_DOWNLOAD_INITIAL_GET_MS_P95,
+        ai::validation_harness::DEFAULT_MAX_DOWNLOAD_FOLLOW_GET_MS_P95,
+        ai::validation_harness::DEFAULT_MAX_DOWNLOAD_WRITE_MS_P95,
+    );
+
+    assert_eq!(receipt.lockfile_compat_step_count, receipt.cargo_step_count);
+    assert!(!receipt.runtime_budget_required);
+    assert_eq!(receipt.max_project_agent_elapsed_ms_p95, 0);
+    assert_eq!(receipt.verdict, "fail");
+    assert!(!receipt.passed());
+    assert!(receipt
+        .to_json()
+        .contains("\"runtime_budget_required\":false"));
+}
+
+#[test]
+fn external_agent_cli_modes_fixture_documents_all_public_modes() {
+    let fixture = std::fs::read_to_string(EXTERNAL_AGENT_CLI_MODES_FIXTURE)
+        .expect("external agent CLI modes fixture must be readable");
+    let catalog = ExternalAgentCliCatalog::parse(&fixture)
+        .expect("external agent CLI modes fixture should parse");
+
+    assert_eq!(catalog.schema, "canon_external_agent_cli_modes_v1");
+    assert_eq!(catalog.declared_mode_count, 41);
+    assert_eq!(catalog.entries.len(), catalog.declared_mode_count);
+    assert!(catalog.contains(
+        "root_validate --validation-footprint",
+        "canon_validation_footprint_v1"
+    ));
+    assert!(catalog.contains(
+        "root_validate --validation-command-footprint-target-met-smoke",
+        "validation_command_footprint_target_met_smoke",
+    ));
+    assert!(catalog.contains(
+        "root_validate --validation-fixture-catalog",
+        "canon_validation_fixture_catalog_v1",
+    ));
+    assert!(catalog.contains(
+        "root_validate --runtime-budget-smoke",
+        "runtime_performance_budget_smoke"
+    ));
+    assert!(catalog.contains(
+        "root_validate --runtime-trend-smoke",
+        "runtime_performance_trend_smoke"
+    ));
+    assert!(catalog.contains(
+        "root_validate --runtime-trend-regression-smoke",
+        "runtime_performance_trend_regression_smoke",
+    ));
+    assert!(catalog.contains(
+        "root_validate --validation-cost-smoke",
+        "validation_cost_footprint_smoke"
+    ));
+    assert!(catalog.contains(
+        "root_validate --validation-cost-growth-smoke",
+        "validation_cost_footprint_growth_smoke",
+    ));
+    assert!(catalog.contains(
+        "root_validate --policy-orchestration-capacity-trend-smoke",
+        "policy_orchestration_capacity_trend_smoke",
+    ));
+    assert!(catalog.contains(
+        "root_validate --policy-orchestration-capacity-regression-smoke",
+        "policy_orchestration_capacity_regression_smoke",
+    ));
+    assert!(catalog.contains(
+        "root_validate --policy-capacity-cost-summary-fixture",
+        "canon_policy_capacity_cost_summary_receipts_v1",
+    ));
+    assert!(catalog.contains(
+        "root_validate --policy-orchestration-capacity-smoke",
+        "policy_orchestration_capacity_smoke",
+    ));
+    assert!(catalog.contains(
+        "root_validate --policy-orchestration-capacity-fixture",
+        "canon_policy_orchestration_capacity_receipts_v1",
+    ));
+    assert!(catalog.contains(
+        "root_validate --policy-validation-health-smoke",
+        "policy_validation_health_smoke",
+    ));
+    assert!(catalog.contains(
+        "root_validate --policy-validation-health-trend-smoke",
+        "policy_validation_health_trend_smoke",
+    ));
+    assert!(catalog.contains(
+        "root_validate --policy-validation-health-fixture",
+        "canon_policy_validation_health_receipts_v1",
+    ));
+    assert!(catalog.contains(
+        "root_validate --policy-validation-health-trend-fixture",
+        "canon_policy_validation_health_trend_receipts_v1",
+    ));
+    assert!(catalog.contains("root_validate --policy-reuse-smoke", "policy_reuse_smoke"));
+    assert!(catalog.contains(
+        "root_validate --policy-reuse-trend-smoke",
+        "policy_reuse_trend_smoke"
+    ));
+    assert!(catalog.contains(
+        "root_validate --policy-reuse-regression-smoke",
+        "policy_reuse_regression_smoke",
+    ));
+    assert!(catalog.contains(
+        "root_validate --root-validate-dispatch-catalog",
+        "canon_root_validate_dispatch_catalog_v1",
+    ));
+    assert!(catalog.contains(
+        "graph_mutation verify-ops <ops.ndjson>",
+        "GraphMutationOpSetReceipt",
+    ));
+    assert!(catalog.contains(
+        "graph_mutation verify-receipts <patch-receipts.ndjson> <mutation-receipts.ndjson>",
+        "GraphReceiptLedgerReceipt",
+    ));
+    assert!(catalog.contains(
+        "graph_mutation generate-patch <graph-contract.ndjson> <source-root> <ops.ndjson> <patch.out> <patch-receipt.out>",
+        "GraphPatchReceipt",
+    ));
+    assert!(catalog.contains(
+        "graph_mutation verify-landing <old-graph-contract.ndjson> <new-graph-contract.ndjson> <ops.ndjson> <mutation-receipt.out>",
+        "GraphMutationReceipt",
+    ));
+    assert!(catalog.contains("graph_mutation help", "usage"));
+}
+
+#[test]
+fn external_agent_cli_modes_fixture_matches_executable_help_surfaces() {
+    let fixture = std::fs::read_to_string(EXTERNAL_AGENT_CLI_MODES_FIXTURE)
+        .expect("external agent CLI modes fixture must be readable");
+    let catalog = ExternalAgentCliCatalog::parse(&fixture)
+        .expect("external agent CLI modes fixture should parse");
+    let graph_mutation = env!("CARGO_BIN_EXE_graph_mutation");
+    let graph_help = std::process::Command::new(graph_mutation)
+        .arg("help")
+        .output()
+        .expect("run graph_mutation help");
+
+    assert!(graph_help.status.success());
+    let graph_stdout = String::from_utf8_lossy(&graph_help.stdout);
+    for entry in catalog
+        .graph_mutation_entries()
+        .into_iter()
+        .filter(|entry| entry.command != "graph_mutation help")
+    {
+        let usage_line = entry
+            .command
+            .replacen("graph_mutation ", "  graph_mutation ", 1);
+        assert!(
+            graph_stdout.contains(&usage_line),
+            "graph help missing fixture command: {usage_line}"
+        );
+    }
+
+    for (arg, expected_fragments) in [
+        (
+            "--validation-footprint",
+            vec![
+                "\"schema\":\"canon_validation_footprint_v1\"",
+                "\"record_type\":\"validation_footprint_summary\"",
+            ],
+        ),
+        (
+            "--runtime-budget-smoke",
+            vec![
+                "\"step\":\"runtime_performance_budget_smoke\"",
+                "\"controlled_failure_observed\":true",
+            ],
+        ),
+        (
+            "--policy-reuse-smoke",
+            vec![
+                "\"record_type\":\"policy_reuse_smoke\"",
+                "\"avoided_llm_call_count\":1",
+            ],
+        ),
+        (
+            "--root-validate-dispatch-catalog",
+            vec![
+                "\"schema\":\"canon_root_validate_dispatch_catalog_v1\"",
+                "\"dispatch_catalog_hash\":",
+            ],
+        ),
+    ] {
+        root_validate_catalog_entry_contract(&catalog, arg, &expected_fragments);
+    }
+}
+
+#[test]
+fn root_validate_dispatch_catalog_matches_documented_root_modes_contract() {
+    let fixture = std::fs::read_to_string(EXTERNAL_AGENT_CLI_MODES_FIXTURE)
+        .expect("external agent CLI modes fixture must be readable");
+    let root_validate = env!("CARGO_BIN_EXE_root_validate");
+    let output = std::process::Command::new(root_validate)
+        .arg("--root-validate-dispatch-catalog")
+        .output()
+        .expect("run root_validate dispatch catalog");
+
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("\"schema\":\"canon_root_validate_dispatch_catalog_v1\""));
+    assert!(stdout.contains("\"record_type\":\"root_validate_dispatch_catalog\""));
+    assert!(stdout.contains("\"compact_mode_count\":36"));
+    assert!(!stdout.contains("canon_root_validation_v1"));
+
+    for line in fixture
+        .lines()
+        .filter(|line| line.starts_with("root_validate "))
+    {
+        let (command, marker) = line
+            .split_once(" => ")
+            .expect("root_validate fixture line must include marker");
+        let arg = command
+            .strip_prefix("root_validate ")
+            .expect("fixture command must use root_validate prefix");
+        assert!(
+            stdout.contains(&format!("\"arg\":\"{arg}\"")),
+            "dispatch catalog missing {arg}"
+        );
+        assert!(
+            stdout.contains(&format!("\"marker\":\"{marker}\"")),
+            "dispatch catalog missing marker {marker}"
+        );
+    }
+}
+
+#[test]
+fn root_validate_dispatch_catalog_negative_contract_detects_omitted_mode() {
+    let fixture = std::fs::read_to_string(EXTERNAL_AGENT_CLI_MODES_FIXTURE)
+        .expect("external agent CLI modes fixture must be readable");
+    let root_validate = env!("CARGO_BIN_EXE_root_validate");
+    let output = std::process::Command::new(root_validate)
+        .arg("--root-validate-dispatch-catalog")
+        .output()
+        .expect("run root_validate dispatch catalog");
+    assert!(output.status.success());
+    let catalog = String::from_utf8_lossy(&output.stdout);
+    let drifted = fixture
+        .lines()
+        .filter(|line| !line.starts_with("root_validate --policy-reuse-smoke "))
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    assert!(
+        !root_validate_dispatch_catalog_matches_fixture(&drifted, &catalog),
+        "a copied fixture omitting a root_validate mode must be rejected"
+    );
+}
+
+#[test]
+fn root_validate_dispatch_catalog_negative_contract_detects_marker_drift() {
+    let fixture = std::fs::read_to_string(EXTERNAL_AGENT_CLI_MODES_FIXTURE)
+        .expect("external agent CLI modes fixture must be readable");
+    let root_validate = env!("CARGO_BIN_EXE_root_validate");
+    let output = std::process::Command::new(root_validate)
+        .arg("--root-validate-dispatch-catalog")
+        .output()
+        .expect("run root_validate dispatch catalog");
+    assert!(output.status.success());
+    let catalog = String::from_utf8_lossy(&output.stdout);
+    let drifted = fixture.replace(
+        "root_validate --policy-reuse-smoke => policy_reuse_smoke",
+        "root_validate --policy-reuse-smoke => drifted_policy_reuse_marker",
+    );
+
+    assert!(
+        !root_validate_dispatch_catalog_matches_fixture(&drifted, &catalog),
+        "a copied fixture with a drifted root_validate marker must be rejected"
+    );
+}
+
+#[test]
+fn root_validate_dispatch_catalog_exposes_stable_hash_contract() {
+    let root_validate = env!("CARGO_BIN_EXE_root_validate");
+    let output = std::process::Command::new(root_validate)
+        .arg("--root-validate-dispatch-catalog")
+        .output()
+        .expect("run root_validate dispatch catalog");
+    assert!(output.status.success());
+    let catalog = String::from_utf8_lossy(&output.stdout);
+    let payload = root_validate_dispatch_catalog_payload_from_json(&catalog)
+        .expect("dispatch catalog payload must be extractable");
+    let expected_hash = stable_hash64_for_contract(payload.as_bytes()).to_string();
+
+    assert!(
+        catalog.contains(&format!("\"dispatch_catalog_hash\":\"{expected_hash}\"")),
+        "dispatch catalog must expose stable aggregate hash"
+    );
+
+    let drifted_payload = payload.replace(
+        "--policy-reuse-smoke=>policy_reuse_smoke",
+        "--policy-reuse-smoke=>drifted_policy_reuse_marker",
+    );
+    assert_ne!(
+        expected_hash,
+        stable_hash64_for_contract(drifted_payload.as_bytes()).to_string()
+    );
+}
+
+fn root_validate_dispatch_catalog_payload_from_json(catalog: &str) -> Option<String> {
+    let mut pairs = Vec::new();
+    for row in catalog.split("{\"arg\":").skip(1) {
+        let arg = row.split("\"").nth(1)?;
+        let marker = row.split("\"marker\":\"").nth(1)?.split("\"").next()?;
+        pairs.push(format!("{arg}=>{marker}"));
+    }
+    Some(pairs.join("\n"))
+}
+
+fn stable_hash64_for_contract(bytes: &[u8]) -> u64 {
+    let mut hash = 0xcbf29ce484222325u64;
+    for byte in bytes {
+        hash ^= u64::from(*byte);
+        hash = hash.wrapping_mul(0x100000001b3);
+    }
+    hash
+}
+
+fn root_validate_dispatch_catalog_matches_fixture(fixture: &str, catalog: &str) -> bool {
+    let Ok(parsed) = ExternalAgentCliCatalog::parse(fixture) else {
+        return false;
+    };
+    let root_entries = parsed.root_validate_entries();
+    let catalog_count = catalog.matches("\"arg\":").count();
+    if catalog_count != root_entries.len() {
+        return false;
+    }
+
+    root_entries.iter().all(|entry| {
+        let Some(arg) = entry.command.strip_prefix("root_validate ") else {
+            return false;
+        };
+        catalog.contains(&format!("\"arg\":\"{arg}\""))
+            && catalog.contains(&format!("\"marker\":\"{}\"", entry.marker))
+    })
+}
+
+#[test]
+fn external_agent_cli_modes_negative_contract_detects_omitted_mode() {
+    let fixture = std::fs::read_to_string(EXTERNAL_AGENT_CLI_MODES_FIXTURE)
+        .expect("external agent CLI modes fixture must be readable");
+    let drifted = fixture
+        .lines()
+        .filter(|line| !line.starts_with("graph_mutation verify-landing "))
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    let live_mode_count = fixture.lines().filter(|line| line.contains(" => ")).count();
+    assert_eq!(
+        drifted.lines().filter(|line| line.contains(" => ")).count(),
+        live_mode_count - 1
+    );
+    assert!(drifted.contains(&format!("mode_count={live_mode_count}")));
+    assert!(
+        !external_agent_cli_modes_catalog_valid(&drifted, "graph_mutation help output omitted"),
+        "catalog drift with an omitted mode must be rejected"
+    );
+}
+
+#[test]
+fn external_agent_cli_modes_negative_contract_detects_advertised_missing_help_mode() {
+    let fixture = std::fs::read_to_string(EXTERNAL_AGENT_CLI_MODES_FIXTURE)
+        .expect("external agent CLI modes fixture must be readable");
+    let graph_help = "  graph_mutation verify-ops <ops.ndjson>\n  graph_mutation verify-receipts <patch-receipts.ndjson> <mutation-receipts.ndjson>\n  graph_mutation generate-patch <graph-contract.ndjson> <source-root> <ops.ndjson> <patch.out> <patch-receipt.out>\n";
+
+    assert!(fixture.contains("graph_mutation verify-landing"));
+    assert!(
+        !external_agent_cli_modes_catalog_valid(&fixture, graph_help),
+        "catalog advertising a mode absent from executable help must be rejected"
+    );
+}
+
+fn external_agent_cli_modes_catalog_valid(fixture: &str, graph_help: &str) -> bool {
+    let Ok(catalog) = ExternalAgentCliCatalog::parse(fixture) else {
+        return false;
+    };
+    if catalog.schema != "canon_external_agent_cli_modes_v1" {
+        return false;
+    }
+    if catalog.declared_mode_count != catalog.entries.len() || catalog.entries.is_empty() {
+        return false;
+    }
+    if catalog.root_validate_entries().len() != 25 || catalog.graph_mutation_entries().len() != 5 {
+        return false;
+    }
+
+    for entry in catalog.graph_mutation_entries() {
+        if entry.command == "graph_mutation help" {
+            if entry.marker != "usage" {
+                return false;
+            }
+            continue;
+        }
+        let usage_line = entry
+            .command
+            .replacen("graph_mutation ", "  graph_mutation ", 1);
+        if !graph_help.contains(&usage_line) {
+            return false;
+        }
+    }
+
+    true
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct ExternalAgentCliEntry<'a> {
+    command: &'a str,
+    marker: &'a str,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+struct ExternalAgentCliCatalog<'a> {
+    schema: &'a str,
+    declared_mode_count: usize,
+    entries: Vec<ExternalAgentCliEntry<'a>>,
+}
+
+impl<'a> ExternalAgentCliCatalog<'a> {
+    fn parse(fixture: &'a str) -> Result<Self, String> {
+        let schema = fixture
+            .lines()
+            .find_map(|line| line.strip_prefix("schema="))
+            .ok_or_else(|| "missing schema".to_string())?;
+        let declared_mode_count = fixture
+            .lines()
+            .find_map(|line| line.strip_prefix("mode_count="))
+            .ok_or_else(|| "missing mode_count".to_string())?
+            .parse::<usize>()
+            .map_err(|err| format!("invalid mode_count: {err}"))?;
+        let entries = fixture
+            .lines()
+            .filter_map(|line| line.split_once(" => "))
+            .map(|(command, marker)| ExternalAgentCliEntry { command, marker })
+            .collect::<Vec<_>>();
+
+        if entries.len() != declared_mode_count {
+            return Err(format!(
+                "declared mode_count {declared_mode_count} != observed {}",
+                entries.len()
+            ));
+        }
+
+        Ok(Self {
+            schema,
+            declared_mode_count,
+            entries,
+        })
+    }
+
+    fn contains(&self, command: &str, marker: &str) -> bool {
+        self.entries
+            .iter()
+            .any(|entry| entry.command == command && entry.marker == marker)
+    }
+
+    fn root_validate_entries(&self) -> Vec<ExternalAgentCliEntry<'a>> {
+        self.entries
+            .iter()
+            .copied()
+            .filter(|entry| entry.command.starts_with("root_validate "))
+            .collect()
+    }
+
+    fn graph_mutation_entries(&self) -> Vec<ExternalAgentCliEntry<'a>> {
+        self.entries
+            .iter()
+            .copied()
+            .filter(|entry| entry.command.starts_with("graph_mutation "))
+            .collect()
+    }
+
+    fn root_validate_entry(&self, arg: &str) -> Option<ExternalAgentCliEntry<'a>> {
+        let command = format!("root_validate {arg}");
+        self.entries
+            .iter()
+            .copied()
+            .find(|entry| entry.command == command)
+    }
+}
+
+fn root_validate_catalog_entry_contract(
+    catalog: &ExternalAgentCliCatalog<'_>,
+    arg: &str,
+    expected_fragments: &[&str],
+) {
+    let entry = catalog
+        .root_validate_entry(arg)
+        .unwrap_or_else(|| panic!("catalog missing root_validate {arg}"));
+    let stdout = root_validate_compact_mode_stdout(arg, entry.marker);
+    assert_stdout_contains_all(&stdout, expected_fragments);
+}
+
+fn checked_external_agent_cli_catalog() -> ExternalAgentCliCatalog<'static> {
+    let fixture = std::fs::read_to_string(EXTERNAL_AGENT_CLI_MODES_FIXTURE)
+        .expect("external agent CLI modes fixture must be readable");
+    let fixture = Box::leak(fixture.into_boxed_str());
+    ExternalAgentCliCatalog::parse(fixture).expect("external agent CLI modes fixture should parse")
+}
+
+fn assert_root_validate_catalog_compact_mode_contract(arg: &str, expected_fragments: &[&str]) {
+    let catalog = checked_external_agent_cli_catalog();
+    root_validate_catalog_entry_contract(&catalog, arg, expected_fragments);
+}
+
+#[test]
+fn external_agent_cli_catalog_helper_executes_documented_root_modes() {
+    let catalog = checked_external_agent_cli_catalog();
+
+    root_validate_catalog_entry_contract(
+        &catalog,
+        "--validation-footprint",
+        &[
+            "\"record_type\":\"validation_footprint_summary\"",
+            "\"verdict\":\"pass\"",
+        ],
+    );
+    root_validate_catalog_entry_contract(
+        &catalog,
+        "--policy-reuse-smoke",
+        &[
+            "\"record_type\":\"policy_reuse_smoke\"",
+            "\"avoided_llm_call_count\":1",
+            "\"verdict\":\"pass\"",
+        ],
+    );
+    root_validate_catalog_entry_contract(
+        &catalog,
+        "--root-validate-dispatch-catalog",
+        &[
+            "\"record_type\":\"root_validate_dispatch_catalog\"",
+            "\"dispatch_catalog_hash\":",
+            "\"verdict\":\"pass\"",
+        ],
+    );
+}
+
+#[test]
+fn root_validate_catalog_compact_mode_contract_helper_covers_non_fixture_smokes() {
+    assert_root_validate_catalog_compact_mode_contract(
+        "--validation-cost-smoke",
+        &[
+            "\"record_type\":\"validation_cost_footprint_smoke\"",
+            "\"observed_regression_bps\":500",
+            "\"footprint_status\":\"pass\"",
+            "\"verdict\":\"pass\"",
+        ],
+    );
+    assert_root_validate_catalog_compact_mode_contract(
+        "--policy-orchestration-capacity-smoke",
+        &[
+            "\"record_type\":\"policy_orchestration_capacity_smoke\"",
+            "\"estimated_avoided_llm_calls_per_full_batch\":4",
+            "\"capacity_status\":\"pass\"",
+            "\"verdict\":\"pass\"",
+        ],
+    );
+}
+
+#[test]
+fn external_agent_cli_catalog_helper_rejects_count_drift() {
+    let fixture = "schema=canon_external_agent_cli_modes_v1
+mode_count=2
+root_validate --validation-footprint => canon_validation_footprint_v1
+";
+
+    let error = ExternalAgentCliCatalog::parse(fixture)
+        .expect_err("catalog helper should reject declared/observed count drift");
+    assert!(error.contains("declared mode_count 2 != observed 1"));
+}
+
+#[test]
+fn validation_fixture_catalog_receipt_summarizes_retained_fixture_inventory() {
+    let receipt = ai::validation_harness::validation_fixture_catalog_receipt()
+        .expect("fixture catalog receipt should load checked-in fixtures");
+
+    assert_eq!(receipt.schema, "canon_validation_fixture_catalog_v1");
+    assert_eq!(receipt.record_type, VALIDATION_FIXTURE_CATALOG_STEP);
+    assert_eq!(receipt.fixture_count, 10);
+    assert_eq!(receipt.retained_receipt_fixture_count, 8);
+    assert_eq!(receipt.command_fixture_count, 1);
+    assert!(receipt.total_fixture_bytes > 0);
+    assert_eq!(receipt.verdict, "pass");
+    assert!(receipt.passed());
+    assert!(receipt
+        .to_json()
+        .contains("\"schema\":\"canon_validation_fixture_catalog_v1\""));
+}
+
+#[test]
+fn validation_fixture_catalog_receipt_hash_changes_when_fixture_drifts() {
+    let baseline = ai::validation_harness::validation_fixture_catalog_receipt()
+        .expect("baseline fixture catalog receipt should load checked-in fixtures");
+    let mut drifted = baseline.clone();
+    drifted.fixture_set_hash = format!("{}-synthetic-drift", baseline.fixture_set_hash);
+    drifted.total_fixture_bytes += 1;
+
+    assert_ne!(baseline.fixture_set_hash, drifted.fixture_set_hash);
+    assert_ne!(baseline.total_fixture_bytes, drifted.total_fixture_bytes);
+    assert!(baseline.passed());
+    assert!(drifted.passed());
+}
+
+#[test]
+fn root_validate_validation_fixture_catalog_mode_is_executable_contract() {
+    let root_validate = env!("CARGO_BIN_EXE_root_validate");
+    let output = std::process::Command::new(root_validate)
+        .arg("--validation-fixture-catalog")
+        .output()
+        .expect("run root_validate validation fixture catalog");
+
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("\"schema\":\"canon_validation_fixture_catalog_v1\""));
+    assert!(stdout.contains("\"record_type\":\"validation_fixture_catalog\""));
+    assert!(stdout.contains("\"fixture_count\":10"));
+    assert!(stdout.contains("\"retained_receipt_fixture_count\":8"));
+    assert!(!stdout.contains("canon_root_validation_v1"));
+}
+
+#[test]
+fn validation_fixture_catalog_detail_receipt_exposes_per_fixture_rows() {
+    let detail = ai::validation_harness::validation_fixture_catalog_detail_receipt()
+        .expect("fixture catalog detail receipt should load checked-in fixtures");
+
+    assert_eq!(detail.schema, "canon_validation_fixture_catalog_detail_v1");
+    assert_eq!(detail.record_type, "validation_fixture_catalog_detail");
+    assert_eq!(detail.fixture_count, 10);
+    assert_eq!(detail.retained_receipt_fixture_count, 8);
+    assert_eq!(detail.command_fixture_count, 1);
+    assert!(detail.total_fixture_bytes > 0);
+    assert!(!detail.fixture_set_hash.is_empty());
+    assert_eq!(detail.rows.len(), 10);
+    assert!(detail.passed());
+    assert!(detail.rows.iter().any(|row| {
+        row.kind == "retained_receipt"
+            && row.path == VALIDATION_DURATION_PLANNING_RECEIPTS_FIXTURE
+            && row.byte_count > 0
+            && !row.content_hash.is_empty()
+    }));
+    assert!(detail.rows.iter().any(|row| {
+        row.kind == "retained_receipt"
+            && row.path == VALIDATION_COMMAND_FOOTPRINT_RECEIPTS_FIXTURE
+            && row.byte_count > 0
+            && !row.content_hash.is_empty()
+    }));
+    assert!(detail.rows.iter().any(|row| {
+        row.kind == "retained_receipt"
+            && row.path == POLICY_CAPACITY_COST_SUMMARY_RECEIPTS_FIXTURE
+            && row.byte_count > 0
+            && !row.content_hash.is_empty()
+    }));
+    assert!(detail
+        .to_json()
+        .contains("\"schema\":\"canon_validation_fixture_catalog_detail_v1\""));
+    assert!(detail
+        .to_text()
+        .contains("schema=canon_validation_fixture_catalog_detail_v1"));
+}
+
+#[test]
+fn validation_fixture_catalog_detail_hash_changes_when_fixture_drifts() {
+    let baseline = ai::validation_harness::validation_fixture_catalog_detail_receipt()
+        .expect("baseline fixture catalog detail should load checked-in fixtures");
+    let mut drifted = baseline.clone();
+    drifted.fixture_set_hash = format!("{}-synthetic-drift", baseline.fixture_set_hash);
+    let drifted_row = drifted
+        .rows
+        .iter_mut()
+        .find(|row| row.path == POLICY_CAPACITY_COST_SUMMARY_RECEIPTS_FIXTURE)
+        .expect("drifted row should include policy capacity cost fixture");
+    drifted_row.content_hash = format!("{}-synthetic-drift", drifted_row.content_hash);
+    drifted_row.byte_count += 1;
+    drifted.total_fixture_bytes += 1;
+
+    assert_ne!(baseline.fixture_set_hash, drifted.fixture_set_hash);
+    let baseline_row = baseline
+        .rows
+        .iter()
+        .find(|row| row.path == POLICY_CAPACITY_COST_SUMMARY_RECEIPTS_FIXTURE)
+        .expect("baseline row should include policy capacity cost fixture");
+    let drifted_row = drifted
+        .rows
+        .iter()
+        .find(|row| row.path == POLICY_CAPACITY_COST_SUMMARY_RECEIPTS_FIXTURE)
+        .expect("drifted row should include policy capacity cost fixture");
+    assert_ne!(baseline_row.content_hash, drifted_row.content_hash);
+    assert!(drifted_row.byte_count > baseline_row.byte_count);
+    assert!(baseline.passed());
+    assert!(drifted.passed());
+}
+
+#[test]
+fn root_validate_validation_fixture_catalog_detail_mode_is_executable_contract() {
+    assert_root_validate_catalog_compact_mode_contract(
+        "--validation-fixture-catalog-detail",
+        &[
+            "schema=canon_validation_fixture_catalog_detail_v1",
+            "record_type=validation_fixture_catalog_detail",
+            "fixture_count=10",
+            "retained_receipt_fixture_count=8",
+            "fixture=retained_receipt|tests/fixtures/policy_capacity_cost_summary_receipts.txt|",
+            "verdict=pass",
+        ],
+    );
+}
+
+#[test]
+fn validation_duration_planning_receipt_summarizes_retained_duration_and_footprint() {
+    let runtime = ai::validation_harness::runtime_performance_receipt(3_150);
+    let footprint = ai::validation_harness::validation_footprint_receipt();
+    let receipt =
+        ai::validation_harness::validation_duration_planning_receipt(&runtime, &footprint);
+
+    assert_eq!(receipt.schema, "canon_validation_duration_planning_v1");
+    assert_eq!(receipt.record_type, VALIDATION_DURATION_PLANNING_STEP);
+    assert_eq!(receipt.retained_project_agent_elapsed_ms_p95, 3_150);
+    assert_eq!(receipt.max_project_agent_elapsed_ms_p95, 10_000);
+    assert_eq!(receipt.retained_budget_headroom_ms, 6_850);
+    assert_eq!(receipt.total_declared_steps, 7);
+    assert_eq!(
+        receipt.expected_count_guarded_tests,
+        VALIDATION_HARNESS_EXPECTED_TESTS + GRAPH_MUTATION_CLI_CONTRACT_EXPECTED_TESTS
+    );
+    assert_eq!(receipt.estimated_ms_per_declared_step, 450);
+    assert!(receipt.estimated_ms_per_guarded_test > 0);
+    assert_eq!(receipt.runtime_budget_status, "pass");
+    assert_eq!(receipt.footprint_verdict, "pass");
+    assert_eq!(receipt.planning_status, "pass");
+    assert_eq!(receipt.verdict, "pass");
+    assert!(receipt.passed());
+    assert!(receipt
+        .to_json()
+        .contains("\"schema\":\"canon_validation_duration_planning_v1\""));
+}
+
+#[test]
+fn validation_duration_planning_receipt_rejects_budget_exhaustion() {
+    let mut runtime = ai::validation_harness::runtime_performance_receipt(10_001);
+    runtime.max_project_agent_elapsed_ms_p95 = 10_000;
+    runtime.runtime_performance_budget_status = "fail";
+    let footprint = ai::validation_harness::validation_footprint_receipt();
+    let receipt =
+        ai::validation_harness::validation_duration_planning_receipt(&runtime, &footprint);
+
+    assert_eq!(receipt.retained_budget_headroom_ms, -1);
+    assert_eq!(receipt.runtime_budget_status, "fail");
+    assert_eq!(receipt.planning_status, "fail");
+    assert_eq!(receipt.verdict, "fail");
+    assert!(!receipt.passed());
+}
+
+#[test]
+fn validation_duration_planning_budget_exhaustion_smoke_receipt_is_controlled_negative() {
+    let receipt = ai::validation_harness::validation_duration_planning_budget_exhaustion_smoke_receipt();
+
+    assert_eq!(receipt.schema, "canon_validation_duration_planning_v1");
+    assert_eq!(
+        receipt.record_type,
+        VALIDATION_DURATION_PLANNING_BUDGET_EXHAUSTION_SMOKE_STEP
+    );
+    assert_eq!(receipt.retained_project_agent_elapsed_ms_p95, 10_001);
+    assert_eq!(receipt.max_project_agent_elapsed_ms_p95, 10_000);
+    assert_eq!(receipt.retained_budget_headroom_ms, -1);
+    assert_eq!(receipt.total_declared_steps, 7);
+    assert_eq!(receipt.runtime_budget_status, "fail");
+    assert_eq!(receipt.footprint_verdict, "pass");
+    assert_eq!(receipt.planning_status, "fail");
+    assert_eq!(receipt.verdict, "fail");
+    assert!(!receipt.passed());
+}
+
+#[test]
+fn root_validate_validation_duration_planning_mode_is_executable_contract() {
+    assert_root_validate_catalog_compact_mode_contract(
+        "--validation-duration-planning",
+        &[
+            "\"schema\":\"canon_validation_duration_planning_v1\"",
+            "\"record_type\":\"validation_duration_planning_summary\"",
+            "\"retained_project_agent_elapsed_ms_p95\":3150",
+            "\"retained_budget_headroom_ms\":6850",
+            "\"total_declared_steps\":7",
+            "\"runtime_budget_status\":\"pass\"",
+            "\"footprint_verdict\":\"pass\"",
+            "\"planning_status\":\"pass\"",
+            "\"verdict\":\"pass\"",
+        ],
+    );
+}
+
+#[test]
+fn root_validate_validation_duration_planning_budget_exhaustion_smoke_is_executable_contract() {
+    assert_root_validate_catalog_compact_mode_contract(
+        "--validation-duration-planning-budget-exhaustion-smoke",
+        &[
+            "\"schema\":\"canon_validation_duration_planning_v1\"",
+            "\"record_type\":\"validation_duration_planning_budget_exhaustion_smoke\"",
+            "\"retained_project_agent_elapsed_ms_p95\":10001",
+            "\"retained_budget_headroom_ms\":-1",
+            "\"runtime_budget_status\":\"fail\"",
+            "\"footprint_verdict\":\"pass\"",
+            "\"planning_status\":\"fail\"",
+            "\"verdict\":\"fail\"",
+        ],
+    );
+}
+
+#[test]
+fn validation_duration_planning_trend_smoke_compares_retained_planning_cost() {
+    let receipt = ai::validation_harness::validation_duration_planning_trend_smoke_receipt();
+
+    assert_eq!(receipt.schema, "canon_validation_duration_planning_trend_v1");
+    assert_eq!(receipt.record_type, VALIDATION_DURATION_PLANNING_TREND_SMOKE_STEP);
+    assert_eq!(receipt.baseline_retained_project_agent_elapsed_ms_p95, 3_150);
+    assert_eq!(receipt.current_retained_project_agent_elapsed_ms_p95, 3_000);
+    assert_eq!(receipt.retained_duration_delta_ms, -150);
+    assert_eq!(receipt.retained_budget_headroom_delta_ms, 150);
+    assert_eq!(receipt.trend_status, "pass");
+    assert_eq!(receipt.verdict, "pass");
+    assert!(receipt.passed());
+}
+
+#[test]
+fn root_validate_validation_duration_planning_trend_smoke_is_executable_contract() {
+    assert_root_validate_catalog_compact_mode_contract(
+        "--validation-duration-planning-trend-smoke",
+        &[
+            "\"schema\":\"canon_validation_duration_planning_trend_v1\"",
+            "\"record_type\":\"validation_duration_planning_trend_smoke\"",
+            "\"baseline_retained_project_agent_elapsed_ms_p95\":3150",
+            "\"current_retained_project_agent_elapsed_ms_p95\":3000",
+            "\"retained_duration_delta_ms\":-150",
+            "\"retained_budget_headroom_delta_ms\":150",
+            "\"trend_status\":\"pass\"",
+            "\"verdict\":\"pass\"",
+        ],
+    );
+}
+
+#[test]
+fn validation_duration_planning_regression_smoke_exposes_controlled_negative_receipt() {
+    let receipt = ai::validation_harness::validation_duration_planning_regression_smoke_receipt();
+
+    assert_eq!(receipt.schema, "canon_validation_duration_planning_trend_v1");
+    assert_eq!(
+        receipt.record_type,
+        VALIDATION_DURATION_PLANNING_REGRESSION_SMOKE_STEP
+    );
+    assert_eq!(receipt.baseline_retained_project_agent_elapsed_ms_p95, 3_150);
+    assert_eq!(receipt.current_retained_project_agent_elapsed_ms_p95, 3_301);
+    assert_eq!(receipt.retained_duration_delta_ms, 151);
+    assert_eq!(receipt.retained_budget_headroom_delta_ms, -151);
+    assert_eq!(receipt.trend_status, "regressed");
+    assert_eq!(receipt.verdict, "fail");
+    assert!(!receipt.passed());
+}
+
+#[test]
+fn root_validate_validation_duration_planning_regression_smoke_is_executable_contract() {
+    assert_root_validate_catalog_compact_mode_contract(
+        "--validation-duration-planning-regression-smoke",
+        &[
+            "\"schema\":\"canon_validation_duration_planning_trend_v1\"",
+            "\"record_type\":\"validation_duration_planning_regression_smoke\"",
+            "\"baseline_retained_project_agent_elapsed_ms_p95\":3150",
+            "\"current_retained_project_agent_elapsed_ms_p95\":3301",
+            "\"retained_duration_delta_ms\":151",
+            "\"retained_budget_headroom_delta_ms\":-151",
+            "\"trend_status\":\"regressed\"",
+            "\"verdict\":\"fail\"",
+        ],
+    );
+}
+
+
+#[test]
+fn runtime_performance_receipt_json_contains_required_contract_fields() {
+    let receipt = runtime_performance_receipt(42);
+    let json = receipt.to_json();
+
+    assert!(RuntimePerformanceReceipt::json_contract_valid(&json));
+    for field in RuntimePerformanceReceipt::required_json_fields() {
+        assert!(json.contains(&format!("\"{field}\":")), "missing {field}");
+    }
+    assert!(json.contains("\"step\":\"runtime_performance_metrics\""));
+}
+
+#[test]
+fn runtime_performance_receipt_json_contract_rejects_missing_fields() {
+    let malformed =
+        "{\"step\":\"runtime_performance_metrics\",\"runtime_performance_signal_present\":true}";
+
+    assert!(!RuntimePerformanceReceipt::json_contract_valid(malformed));
+}
+
+#[test]
+fn runtime_performance_receipt_budget_failure_is_configurable_from_rust() {
+    let mut receipt = runtime_performance_receipt(50);
+    assert!(receipt.passed());
+
+    receipt.max_project_agent_elapsed_ms_p95 = 49;
+    receipt.runtime_performance_budget_status = if receipt.budgets_pass() {
+        "pass"
+    } else {
+        "fail"
+    };
+
+    assert_eq!(receipt.runtime_performance_budget_status, "fail");
+    assert!(!receipt.passed());
+    let json = receipt.to_json();
+    assert!(json.contains("\"runtime_performance_budget_status\":\"fail\""));
+    assert!(json.contains("\"max_project_agent_elapsed_ms_p95\":49"));
+}
+
+#[test]
+fn runtime_performance_threshold_fixture_matches_contract_constants() {
+    let fixture = std::fs::read_to_string(RUNTIME_PERFORMANCE_THRESHOLDS_FIXTURE)
+        .expect("runtime performance thresholds fixture must be readable");
+
+    assert!(fixture.contains("schema=canon_runtime_performance_thresholds_v1"));
+    assert!(fixture.contains(&format!(
+        "default_max_project_agent_elapsed_ms_p95={}",
+        ai::validation_harness::DEFAULT_MAX_PROJECT_AGENT_ELAPSED_MS_P95
+    )));
+    assert!(fixture.contains(&format!(
+        "default_max_download_initial_get_ms_p95={}",
+        ai::validation_harness::DEFAULT_MAX_DOWNLOAD_INITIAL_GET_MS_P95
+    )));
+    assert!(fixture.contains(&format!(
+        "default_max_download_follow_get_ms_p95={}",
+        ai::validation_harness::DEFAULT_MAX_DOWNLOAD_FOLLOW_GET_MS_P95
+    )));
+    assert!(fixture.contains(&format!(
+        "default_max_download_write_ms_p95={}",
+        ai::validation_harness::DEFAULT_MAX_DOWNLOAD_WRITE_MS_P95
+    )));
+    assert!(fixture.contains("low_budget_smoke_forced_validation_command_duration_ms=2"));
+    assert!(fixture.contains("low_budget_smoke_forced_max_project_agent_elapsed_ms_p95=1"));
+    assert!(fixture.contains("low_budget_smoke_expected_status=fail"));
+    assert!(fixture.contains("root_validate --runtime-budget-smoke"));
+}
+
+#[test]
+fn runtime_performance_trend_smoke_receipt_uses_fixture_values() {
+    let fixture = std::fs::read_to_string(RUNTIME_PERFORMANCE_TREND_FIXTURE)
+        .expect("runtime performance trend fixture must be readable");
+    let receipt = ai::validation_harness::runtime_performance_trend_smoke_receipt();
+
+    assert_eq!(receipt.record_type, RUNTIME_PERFORMANCE_TREND_SMOKE_STEP);
+    assert_eq!(
+        receipt.baseline_project_agent_elapsed_ms_p95,
+        fixture_value(&fixture, "baseline_project_agent_elapsed_ms_p95")
+    );
+    assert_eq!(
+        receipt.current_project_agent_elapsed_ms_p95,
+        fixture_value(&fixture, "current_project_agent_elapsed_ms_p95")
+    );
+    assert_eq!(
+        receipt.allowed_regression_bps,
+        fixture_value(&fixture, "allowed_regression_bps")
+    );
+    assert_eq!(
+        receipt.observed_regression_bps,
+        fixture_value(&fixture, "expected_observed_regression_bps")
+    );
+    assert_eq!(receipt.budget_status, "pass");
+    assert_eq!(
+        receipt.trend_status,
+        fixture_text(&fixture, "expected_trend_status")
+    );
+    assert!(receipt.passed());
+}
+
+#[test]
+fn runtime_performance_trend_regression_smoke_receipt_uses_fixture_values() {
+    let fixture = std::fs::read_to_string(RUNTIME_PERFORMANCE_TREND_FIXTURE)
+        .expect("runtime performance trend fixture must be readable");
+    let receipt = ai::validation_harness::runtime_performance_trend_regression_smoke_receipt();
+
+    assert_eq!(
+        receipt.record_type,
+        RUNTIME_PERFORMANCE_TREND_REGRESSION_SMOKE_STEP
+    );
+    assert_eq!(
+        receipt.baseline_project_agent_elapsed_ms_p95,
+        fixture_value(&fixture, "baseline_project_agent_elapsed_ms_p95")
+    );
+    assert_eq!(
+        receipt.current_project_agent_elapsed_ms_p95,
+        fixture_value(&fixture, "regressed_current_project_agent_elapsed_ms_p95")
+    );
+    assert_eq!(
+        receipt.allowed_regression_bps,
+        fixture_value(&fixture, "allowed_regression_bps")
+    );
+    assert_eq!(
+        receipt.observed_regression_bps,
+        fixture_value(&fixture, "expected_regressed_observed_regression_bps")
+    );
+    assert_eq!(receipt.budget_status, "pass");
+    assert_eq!(
+        receipt.trend_status,
+        fixture_text(&fixture, "expected_regressed_trend_status")
+    );
+    assert!(!receipt.passed());
+}
+
+#[test]
+fn runtime_performance_budget_smoke_receipt_records_controlled_failure() {
+    let receipt = ai::validation_harness::runtime_performance_budget_smoke_receipt();
+
+    assert_eq!(receipt.step, RUNTIME_PERFORMANCE_BUDGET_SMOKE_STEP);
+    assert!(receipt.passed());
+    assert_eq!(receipt.runtime_performance_budget_status, "fail");
+    assert!(receipt.controlled_failure_observed);
+    assert!(receipt.receipt_json_contract_valid);
+
+    let json = receipt.to_json();
+    assert!(json.contains("\"step\":\"runtime_performance_budget_smoke\""));
+    assert!(json.contains("\"runtime_performance_budget_status\":\"fail\""));
+    assert!(json.contains("\"controlled_failure_observed\":true"));
+}
+
+#[test]
+fn root_validate_runtime_trend_smoke_mode_is_executable_contract() {
+    assert_root_validate_catalog_compact_mode_contract(
+        "--runtime-trend-smoke",
+        &[
+            "\"schema\":\"canon_runtime_performance_trend_v1\"",
+            "\"record_type\":\"runtime_performance_trend_smoke\"",
+            "\"baseline_project_agent_elapsed_ms_p95\":3000",
+            "\"current_project_agent_elapsed_ms_p95\":3150",
+            "\"observed_regression_bps\":500",
+            "\"budget_status\":\"pass\"",
+            "\"trend_status\":\"pass\"",
+        ],
+    );
+}
+
+#[test]
+fn root_validate_runtime_trend_regression_smoke_mode_is_executable_contract() {
+    assert_root_validate_catalog_compact_mode_contract(
+        "--runtime-trend-regression-smoke",
+        &[
+            "\"schema\":\"canon_runtime_performance_trend_v1\"",
+            "\"record_type\":\"runtime_performance_trend_regression_smoke\"",
+            "\"baseline_project_agent_elapsed_ms_p95\":3000",
+            "\"current_project_agent_elapsed_ms_p95\":3301",
+            "\"observed_regression_bps\":1003",
+            "\"budget_status\":\"pass\"",
+            "\"trend_status\":\"fail\"",
+        ],
+    );
+}
+
+#[test]
+fn root_validate_runtime_budget_smoke_mode_is_executable_contract() {
+    assert_root_validate_catalog_compact_mode_contract(
+        "--runtime-budget-smoke",
+        &[
+            "\"step\":\"runtime_performance_budget_smoke\"",
+            "\"runtime_performance_budget_status\":\"fail\"",
+            "\"controlled_failure_observed\":true",
+            "\"receipt_json_contract_valid\":true",
+        ],
+    );
+}
+
+#[test]
+fn runtime_performance_budget_smoke_exit_is_independent_of_full_root_suite() {
+    let exe = env!("CARGO_BIN_EXE_root_validate");
+    let output = std::process::Command::new(exe)
+        .arg("--runtime-budget-smoke")
+        .env("CANON_MAX_PROJECT_AGENT_ELAPSED_MS_P95", "1")
+        .output()
+        .expect("run root_validate runtime budget smoke with env ceiling");
+
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("\"forced_validation_command_duration_ms\":2"));
+    assert!(stdout.contains("\"forced_max_project_agent_elapsed_ms_p95\":1"));
+    assert!(!stdout.contains("canon_root_validation_v1"));
+}
+
+fn root_validate_compact_mode_stdout(arg: &str, expected_marker: &str) -> String {
+    let exe = env!("CARGO_BIN_EXE_root_validate");
+    let output = std::process::Command::new(exe)
+        .arg(arg)
+        .output()
+        .unwrap_or_else(|err| panic!("run root_validate {arg}: {err}"));
+
+    assert!(output.status.success(), "root_validate {arg} failed");
+    let stdout = String::from_utf8_lossy(&output.stdout).into_owned();
+    assert!(
+        stdout.contains(expected_marker),
+        "root_validate {arg} missing {expected_marker}"
+    );
+    assert!(!stdout.contains("canon_root_validation_v1"));
+    stdout
+}
+
+fn assert_stdout_contains_all(stdout: &str, expected_fragments: &[&str]) {
+    for fragment in expected_fragments {
+        assert!(
+            stdout.contains(fragment),
+            "stdout missing expected fragment: {fragment}"
+        );
+    }
+}
+
+struct CompactFixtureModeContract<'a> {
+    arg: &'a str,
+    marker: &'a str,
+    expected_fragments: &'a [&'a str],
+}
+
+fn assert_root_validate_fixture_mode_contract(contract: CompactFixtureModeContract<'_>) {
+    let stdout = root_validate_compact_mode_stdout(contract.arg, contract.marker);
+    assert_stdout_contains_all(&stdout, contract.expected_fragments);
+}
+
+struct CompactModeOutputContract<'a> {
+    arg: &'a str,
+    marker: &'a str,
+    expected_fragments: &'a [&'a str],
+}
+
+fn assert_root_validate_compact_mode_contract(contract: CompactModeOutputContract<'_>) {
+    let stdout = root_validate_compact_mode_stdout(contract.arg, contract.marker);
+    assert_stdout_contains_all(&stdout, contract.expected_fragments);
+}
+
+fn assert_root_validate_compact_mode_contracts(contracts: &[CompactModeOutputContract<'_>]) {
+    for contract in contracts {
+        assert_root_validate_compact_mode_contract(CompactModeOutputContract {
+            arg: contract.arg,
+            marker: contract.marker,
+            expected_fragments: contract.expected_fragments,
+        });
+    }
+}
+
+#[test]
+fn root_validate_compact_mode_helper_reports_marker_contract() {
+    let stdout = root_validate_compact_mode_stdout(
+        "--runtime-budget-smoke",
+        RUNTIME_PERFORMANCE_BUDGET_SMOKE_STEP,
+    );
+
+    assert!(stdout.contains("\"controlled_failure_observed\":true"));
+}
+
+#[test]
+fn root_validate_compact_mode_contract_table_helper_covers_multiple_modes() {
+    assert_root_validate_compact_mode_contracts(&[
+        CompactModeOutputContract {
+            arg: "--runtime-trend-smoke",
+            marker: RUNTIME_PERFORMANCE_TREND_SMOKE_STEP,
+            expected_fragments: &["\"trend_status\":\"pass\""],
+        },
+        CompactModeOutputContract {
+            arg: "--policy-reuse-smoke",
+            marker: ai::validation_harness::POLICY_REUSE_SMOKE_STEP,
+            expected_fragments: &["\"avoided_llm_call_count\":1"],
+        },
+    ]);
+}
+
+#[test]
+fn root_validate_fixture_mode_contract_helper_covers_fixture_output() {
+    assert_root_validate_fixture_mode_contract(CompactFixtureModeContract {
+        arg: "--policy-orchestration-capacity-fixture",
+        marker: "canon_policy_orchestration_capacity_receipts_v1",
+        expected_fragments: &[
+            "schema=canon_policy_orchestration_capacity_receipts_v1",
+            "policy_orchestration_capacity_smoke.estimated_avoided_llm_calls_per_full_batch=4",
+        ],
+    });
+}
+
+fn runtime_receipt_with_p95(p95: u64) -> RuntimePerformanceReceipt {
+    RuntimePerformanceReceipt {
+        step: RUNTIME_PERFORMANCE_STEP,
+        runtime_performance_signal_present: true,
+        runtime_performance_budget_status: "pass",
+        project_agent_elapsed_ms_median: p95,
+        project_agent_elapsed_ms_p95: p95,
+        download_initial_get_ms_median: 0,
+        download_initial_get_ms_p95: 0,
+        download_follow_get_ms_median: 0,
+        download_follow_get_ms_p95: 0,
+        download_write_ms_median: 0,
+        download_write_ms_p95: 0,
+        validation_command_duration_ms: p95,
+        max_project_agent_elapsed_ms_p95: 10_000,
+        max_download_initial_get_ms_p95: 2_000,
+        max_download_follow_get_ms_p95: 2_000,
+        max_download_write_ms_p95: 1_000,
+    }
+}
+
+fn fixture_value(fixture: &str, key: &str) -> u64 {
+    fixture
+        .lines()
+        .find_map(|line| line.strip_prefix(&format!("{key}=")))
+        .and_then(|value| value.parse::<u64>().ok())
+        .unwrap_or_else(|| panic!("missing numeric fixture key {key}"))
+}
+
+fn fixture_text<'a>(fixture: &'a str, key: &str) -> &'a str {
+    fixture
+        .lines()
+        .find_map(|line| line.strip_prefix(&format!("{key}=")))
+        .unwrap_or_else(|| panic!("missing text fixture key {key}"))
+}
+
+fn fixture_contains_expected_lines(fixture: &str, expected: &[String]) -> bool {
+    expected.iter().all(|line| fixture.contains(line))
+}
+
+fn fixture_missing_expected_lines<'a>(fixture: &str, expected: &'a [String]) -> Vec<&'a str> {
+    expected
+        .iter()
+        .map(String::as_str)
+        .filter(|line| !fixture.contains(*line))
+        .collect()
+}
+
+#[test]
+fn retained_fixture_line_helper_reports_missing_expected_lines() {
+    let expected = vec![
+        "fixture.record_type=example".to_string(),
+        "fixture.verdict=pass".to_string(),
+    ];
+    let fixture = "schema=canon_fixture_helper_v1\nfixture.record_type=example\n";
+
+    assert!(!fixture_contains_expected_lines(fixture, &expected));
+    assert_eq!(
+        fixture_missing_expected_lines(fixture, &expected),
+        vec!["fixture.verdict=pass"]
+    );
+}
+
+#[test]
+fn retained_fixture_header_helper_accepts_exact_schema_and_count() {
+    let fixture = "schema=canon_fixture_header_v1\nreceipt_count=2\nrow=example\n";
+
+    assert!(ai::validation_harness::retained_fixture_header_valid(
+        fixture,
+        "canon_fixture_header_v1",
+        2
+    ));
+}
+
+#[test]
+fn retained_fixture_header_helper_rejects_drifted_count_and_prefix_matches() {
+    let fixture = "schema=canon_fixture_header_v1_extra\nschema=canon_fixture_header_v1\nreceipt_count=20\n";
+
+    assert!(!ai::validation_harness::retained_fixture_header_valid(
+        fixture,
+        "canon_fixture_header_v1",
+        2
+    ));
+}
+
+#[test]
+fn retained_receipt_fixture_validators_reject_prefix_header_drift() {
+    let drifted = "schema=canon_policy_reuse_receipts_v1_extra\nreceipt_count=30\npolicy_reuse_smoke.record_type=policy_reuse_smoke\n";
+
+    assert!(!policy_reuse_receipts_fixture_valid(drifted));
+}
+
+#[test]
+fn runtime_performance_trend_comparator_accepts_fixture_baseline() {
+    let fixture = std::fs::read_to_string(RUNTIME_PERFORMANCE_TREND_FIXTURE)
+        .expect("runtime performance trend fixture must be readable");
+    assert!(fixture.contains("schema=canon_runtime_performance_trend_fixture_v1"));
+
+    let baseline = runtime_receipt_with_p95(fixture_value(
+        &fixture,
+        "baseline_project_agent_elapsed_ms_p95",
+    ));
+    let current = runtime_receipt_with_p95(fixture_value(
+        &fixture,
+        "current_project_agent_elapsed_ms_p95",
+    ));
+    let trend = compare_runtime_performance_trend(
+        &baseline,
+        &current,
+        fixture_value(&fixture, "allowed_regression_bps"),
+    );
+
+    assert_eq!(
+        trend.observed_regression_bps,
+        fixture_value(&fixture, "expected_observed_regression_bps")
+    );
+    assert_eq!(
+        trend.trend_status,
+        fixture_text(&fixture, "expected_trend_status")
+    );
+    assert!(trend.passed());
+    assert!(trend
+        .to_json()
+        .contains("\"schema\":\"canon_runtime_performance_trend_v1\""));
+}
+
+#[test]
+fn runtime_performance_trend_comparator_detects_fixture_regression() {
+    let fixture = std::fs::read_to_string(RUNTIME_PERFORMANCE_TREND_FIXTURE)
+        .expect("runtime performance trend fixture must be readable");
+    let baseline = runtime_receipt_with_p95(fixture_value(
+        &fixture,
+        "baseline_project_agent_elapsed_ms_p95",
+    ));
+    let current = runtime_receipt_with_p95(fixture_value(
+        &fixture,
+        "regressed_current_project_agent_elapsed_ms_p95",
+    ));
+    let trend = compare_runtime_performance_trend(
+        &baseline,
+        &current,
+        fixture_value(&fixture, "allowed_regression_bps"),
+    );
+
+    assert_eq!(
+        trend.observed_regression_bps,
+        fixture_value(&fixture, "expected_regressed_observed_regression_bps")
+    );
+    assert_eq!(
+        trend.trend_status,
+        fixture_text(&fixture, "expected_regressed_trend_status")
+    );
+    assert!(!trend.passed());
+    assert!(trend.to_json().contains("\"trend_status\":\"fail\""));
+}
+
+#[test]
+fn runtime_performance_trend_comparator_preserves_budget_failure() {
+    let baseline = runtime_receipt_with_p95(3_000);
+    let mut current = runtime_receipt_with_p95(3_000);
+    current.runtime_performance_budget_status = "fail";
+
+    let trend = compare_runtime_performance_trend(&baseline, &current, 500);
+
+    assert_eq!(trend.observed_regression_bps, 0);
+    assert_eq!(trend.trend_status, "pass");
+    assert_eq!(trend.budget_status, "fail");
+    assert!(!trend.passed());
+}
+
+#[test]
+fn validation_cost_footprint_comparator_accepts_retained_receipts_without_running_suite() {
+    let baseline_runtime = runtime_receipt_with_p95(3_000);
+    let current_runtime = runtime_receipt_with_p95(3_150);
+    let footprint = ai::validation_harness::validation_footprint_receipt();
+
+    let receipt = compare_validation_cost_footprint(
+        &baseline_runtime,
+        &current_runtime,
+        &footprint,
+        &footprint,
+        500,
+    );
+
+    assert_eq!(receipt.schema, "canon_validation_cost_footprint_v1");
+    assert_eq!(receipt.record_type, "validation_cost_footprint");
+    assert_eq!(receipt.observed_regression_bps, 500);
+    assert_eq!(receipt.total_declared_step_delta, 0);
+    assert_eq!(receipt.expected_count_guarded_test_delta, 0);
+    assert!(!receipt.command_set_changed);
+    assert_eq!(receipt.budget_status, "pass");
+    assert_eq!(receipt.trend_status, "pass");
+    assert_eq!(receipt.footprint_status, "pass");
+    assert_eq!(receipt.verdict, "pass");
+    assert!(receipt.passed());
+    assert!(receipt
+        .to_json()
+        .contains("\"schema\":\"canon_validation_cost_footprint_v1\""));
+}
+
+#[test]
+fn validation_cost_footprint_comparator_binds_dispatch_catalog_hashes() {
+    let baseline_runtime = runtime_receipt_with_p95(3_000);
+    let current_runtime = runtime_receipt_with_p95(3_150);
+    let footprint = ai::validation_harness::validation_footprint_receipt();
+
+    let receipt = ai::validation_harness::compare_validation_cost_footprint_with_dispatch_hashes(
+        &baseline_runtime,
+        &current_runtime,
+        &footprint,
+        &footprint,
+        500,
+        "dispatch-hash-v1",
+        "dispatch-hash-v1",
+    );
+
+    assert_eq!(receipt.baseline_dispatch_catalog_hash, "dispatch-hash-v1");
+    assert_eq!(receipt.current_dispatch_catalog_hash, "dispatch-hash-v1");
+    assert!(!receipt.dispatch_catalog_changed);
+    assert_eq!(receipt.footprint_status, "pass");
+    assert_eq!(receipt.verdict, "pass");
+    assert!(receipt
+        .to_json()
+        .contains("\"baseline_dispatch_catalog_hash\":\"dispatch-hash-v1\""));
+    assert!(receipt
+        .to_json()
+        .contains("\"dispatch_catalog_changed\":false"));
+}
+
+#[test]
+fn validation_cost_footprint_comparator_rejects_dispatch_catalog_hash_drift() {
+    let baseline_runtime = runtime_receipt_with_p95(3_000);
+    let current_runtime = runtime_receipt_with_p95(3_000);
+    let footprint = ai::validation_harness::validation_footprint_receipt();
+
+    let receipt = ai::validation_harness::compare_validation_cost_footprint_with_dispatch_hashes(
+        &baseline_runtime,
+        &current_runtime,
+        &footprint,
+        &footprint,
+        500,
+        "dispatch-hash-v1",
+        "dispatch-hash-v2",
+    );
+
+    assert_eq!(receipt.observed_regression_bps, 0);
+    assert_eq!(receipt.total_declared_step_delta, 0);
+    assert_eq!(receipt.expected_count_guarded_test_delta, 0);
+    assert!(!receipt.command_set_changed);
+    assert!(receipt.dispatch_catalog_changed);
+    assert_eq!(receipt.trend_status, "pass");
+    assert_eq!(receipt.footprint_status, "fail");
+    assert_eq!(receipt.verdict, "fail");
+    assert!(!receipt.passed());
+}
+
+#[test]
+fn validation_cost_smoke_json_exposes_dispatch_catalog_hash_fields() {
+    let receipt = ai::validation_harness::validation_cost_footprint_smoke_receipt();
+    let json = receipt.to_json();
+
+    assert_eq!(
+        receipt.baseline_dispatch_catalog_hash,
+        receipt.current_dispatch_catalog_hash
+    );
+    assert!(!receipt.dispatch_catalog_changed);
+    assert!(json.contains("\"baseline_dispatch_catalog_hash\":"));
+    assert!(json.contains("\"current_dispatch_catalog_hash\":"));
+    assert!(json.contains("\"dispatch_catalog_changed\":false"));
+}
+
+#[test]
+fn validation_cost_footprint_comparator_rejects_runtime_regression() {
+    let baseline_runtime = runtime_receipt_with_p95(3_000);
+    let current_runtime = runtime_receipt_with_p95(3_301);
+    let footprint = ai::validation_harness::validation_footprint_receipt();
+
+    let receipt = compare_validation_cost_footprint(
+        &baseline_runtime,
+        &current_runtime,
+        &footprint,
+        &footprint,
+        500,
+    );
+
+    assert_eq!(receipt.observed_regression_bps, 1003);
+    assert_eq!(receipt.trend_status, "fail");
+    assert_eq!(receipt.footprint_status, "pass");
+    assert_eq!(receipt.verdict, "fail");
+    assert!(!receipt.passed());
+}
+
+#[test]
+fn validation_cost_footprint_comparator_rejects_footprint_growth() {
+    let baseline_runtime = runtime_receipt_with_p95(3_000);
+    let current_runtime = runtime_receipt_with_p95(3_000);
+    let baseline_footprint = ai::validation_harness::validation_footprint_receipt();
+    let mut steps = root_validation_steps();
+    steps.push(ValidationStep {
+        name: "synthetic_cost_growth_step",
+        runner: StepRunner::Cargo,
+        args: vec![
+            LOCKFILE_COMPAT_FLAG,
+            "test",
+            "--test",
+            "synthetic",
+            "--locked",
+        ],
+        expected_test_count: Some(1),
+    });
+    let current_footprint = validation_footprint_receipt_for_steps(
+        &steps,
+        ai::validation_harness::DEFAULT_MAX_PROJECT_AGENT_ELAPSED_MS_P95,
+        ai::validation_harness::DEFAULT_MAX_DOWNLOAD_INITIAL_GET_MS_P95,
+        ai::validation_harness::DEFAULT_MAX_DOWNLOAD_FOLLOW_GET_MS_P95,
+        ai::validation_harness::DEFAULT_MAX_DOWNLOAD_WRITE_MS_P95,
+    );
+
+    let receipt = compare_validation_cost_footprint(
+        &baseline_runtime,
+        &current_runtime,
+        &baseline_footprint,
+        &current_footprint,
+        500,
+    );
+
+    assert_eq!(receipt.observed_regression_bps, 0);
+    assert_eq!(receipt.total_declared_step_delta, 1);
+    assert_eq!(receipt.expected_count_guarded_test_delta, 1);
+    assert!(receipt.command_set_changed);
+    assert_eq!(receipt.trend_status, "pass");
+    assert_eq!(receipt.footprint_status, "fail");
+    assert_eq!(receipt.verdict, "fail");
+    assert!(!receipt.passed());
+}
+
+#[test]
+fn root_validate_validation_cost_smoke_mode_is_executable_contract() {
+    assert_root_validate_catalog_compact_mode_contract(
+        "--validation-cost-smoke",
+        &[
+            "\"schema\":\"canon_validation_cost_footprint_v1\"",
+            "\"record_type\":\"validation_cost_footprint_smoke\"",
+            "\"observed_regression_bps\":500",
+            "\"total_declared_step_delta\":0",
+            "\"expected_count_guarded_test_delta\":0",
+            "\"command_set_changed\":false",
+            "\"footprint_status\":\"pass\"",
+            "\"verdict\":\"pass\"",
+        ],
+    );
+}
+
+#[test]
+fn validation_cost_growth_smoke_receipt_is_controlled_negative_contract() {
+    let receipt = ai::validation_harness::validation_cost_footprint_growth_smoke_receipt();
+
+    assert_eq!(receipt.schema, "canon_validation_cost_footprint_v1");
+    assert_eq!(
+        receipt.record_type,
+        VALIDATION_COST_FOOTPRINT_GROWTH_SMOKE_STEP
+    );
+    assert_eq!(receipt.observed_regression_bps, 0);
+    assert_eq!(receipt.total_declared_step_delta, 1);
+    assert_eq!(receipt.expected_count_guarded_test_delta, 1);
+    assert!(receipt.command_set_changed);
+    assert_eq!(receipt.budget_status, "pass");
+    assert_eq!(receipt.trend_status, "pass");
+    assert_eq!(receipt.footprint_status, "fail");
+    assert_eq!(receipt.verdict, "fail");
+    assert!(!receipt.passed());
+}
+
+#[test]
+fn root_validate_validation_cost_growth_smoke_mode_is_executable_contract() {
+    assert_root_validate_catalog_compact_mode_contract(
+        "--validation-cost-growth-smoke",
+        &[
+            "\"schema\":\"canon_validation_cost_footprint_v1\"",
+            "\"record_type\":\"validation_cost_footprint_growth_smoke\"",
+            "\"observed_regression_bps\":0",
+            "\"total_declared_step_delta\":1",
+            "\"expected_count_guarded_test_delta\":1",
+            "\"command_set_changed\":true",
+            "\"budget_status\":\"pass\"",
+            "\"trend_status\":\"pass\"",
+            "\"footprint_status\":\"fail\"",
+            "\"verdict\":\"fail\"",
+        ],
+    );
+}
+
+#[test]
+fn root_validation_records_graph_mutation_cli_test_surface() {
+    let steps = root_validation_steps();
+    let graph_cli_step = steps
+        .iter()
+        .find(|step| step.name == GRAPH_MUTATION_CLI_CONTRACT_STEP)
+        .expect("graph mutation CLI contract step must be present");
+
+    assert_eq!(
+        graph_cli_step.expected_test_count,
+        Some(GRAPH_MUTATION_CLI_CONTRACT_EXPECTED_TESTS)
+    );
+    assert_eq!(GRAPH_MUTATION_CLI_CONTRACT_EXPECTED_TESTS, 10);
+    assert_eq!(
+        graph_cli_step.command_line("cargo"),
+        "cargo -Znext-lockfile-bump test --test graph_mutation_cli_contract --locked -- --nocapture"
+    );
+}
+
+#[test]
+fn policy_capacity_cost_summary_smoke_combines_capacity_and_validation_cost() {
+    let receipt = ai::validation_harness::policy_capacity_cost_summary_smoke_receipt();
+
+    assert_eq!(receipt.schema, "canon_policy_capacity_cost_summary_v1");
+    assert_eq!(receipt.record_type, POLICY_CAPACITY_COST_SUMMARY_SMOKE_STEP);
+    assert_eq!(receipt.batch_capacity_limit, 8);
+    assert_eq!(receipt.retained_policy_hit_rate_bps, 5_000);
+    assert_eq!(receipt.estimated_avoided_llm_calls_per_full_batch, 4);
+    assert_eq!(receipt.estimated_llm_fallbacks_per_full_batch, 4);
+    assert_eq!(receipt.retained_avoided_llm_call_count, 1);
+    assert_eq!(receipt.validation_observed_regression_bps, 500);
+    assert_eq!(receipt.validation_total_declared_step_delta, 0);
+    assert_eq!(receipt.validation_expected_count_guarded_test_delta, 0);
+    assert!(!receipt.validation_dispatch_catalog_changed);
+    assert_eq!(receipt.policy_capacity_status, "pass");
+    assert_eq!(receipt.validation_cost_verdict, "pass");
+    assert_eq!(receipt.summary_status, "pass");
+    assert_eq!(receipt.verdict, "pass");
+    assert!(receipt.passed());
+}
+
+#[test]
+fn root_validate_policy_capacity_cost_summary_smoke_mode_is_executable_contract() {
+    assert_root_validate_catalog_compact_mode_contract(
+        "--policy-capacity-cost-summary-smoke",
+        &[
+            "\"schema\":\"canon_policy_capacity_cost_summary_v1\"",
+            "\"record_type\":\"policy_capacity_cost_summary_smoke\"",
+            "\"retained_policy_hit_rate_bps\":5000",
+            "\"estimated_avoided_llm_calls_per_full_batch\":4",
+            "\"estimated_llm_fallbacks_per_full_batch\":4",
+            "\"validation_observed_regression_bps\":500",
+            "\"validation_total_declared_step_delta\":0",
+            "\"validation_expected_count_guarded_test_delta\":0",
+            "\"validation_dispatch_catalog_changed\":false",
+            "\"policy_capacity_status\":\"pass\"",
+            "\"validation_cost_verdict\":\"pass\"",
+            "\"summary_status\":\"pass\"",
+            "\"verdict\":\"pass\"",
+        ],
+    );
+}
+
+#[test]
+fn policy_capacity_cost_summary_growth_smoke_is_controlled_negative() {
+    let receipt = ai::validation_harness::policy_capacity_cost_summary_growth_smoke_receipt();
+
+    assert_eq!(receipt.schema, "canon_policy_capacity_cost_summary_v1");
+    assert_eq!(
+        receipt.record_type,
+        ai::validation_harness::POLICY_CAPACITY_COST_SUMMARY_GROWTH_SMOKE_STEP
+    );
+    assert_eq!(receipt.retained_policy_hit_rate_bps, 5_000);
+    assert_eq!(receipt.estimated_avoided_llm_calls_per_full_batch, 4);
+    assert_eq!(receipt.validation_observed_regression_bps, 0);
+    assert_eq!(receipt.validation_total_declared_step_delta, 1);
+    assert_eq!(receipt.validation_expected_count_guarded_test_delta, 1);
+    assert_eq!(receipt.policy_capacity_status, "pass");
+    assert_eq!(receipt.validation_cost_verdict, "fail");
+    assert_eq!(receipt.summary_status, "fail");
+    assert_eq!(receipt.verdict, "fail");
+    assert!(!receipt.passed());
+}
+
+#[test]
+fn root_validate_policy_capacity_cost_summary_growth_smoke_mode_is_executable_contract() {
+    assert_root_validate_catalog_compact_mode_contract(
+        "--policy-capacity-cost-summary-growth-smoke",
+        &[
+            "\"schema\":\"canon_policy_capacity_cost_summary_v1\"",
+            "\"record_type\":\"policy_capacity_cost_summary_growth_smoke\"",
+            "\"retained_policy_hit_rate_bps\":5000",
+            "\"estimated_avoided_llm_calls_per_full_batch\":4",
+            "\"validation_observed_regression_bps\":0",
+            "\"validation_total_declared_step_delta\":1",
+            "\"validation_expected_count_guarded_test_delta\":1",
+            "\"policy_capacity_status\":\"pass\"",
+            "\"validation_cost_verdict\":\"fail\"",
+            "\"summary_status\":\"fail\"",
+            "\"verdict\":\"fail\"",
+        ],
+    );
+}
+
+#[test]
+fn policy_capacity_cost_summary_trend_smoke_compares_capacity_and_cost() {
+    let receipt = ai::validation_harness::policy_capacity_cost_summary_trend_smoke_receipt();
+
+    assert_eq!(
+        receipt.schema,
+        "canon_policy_capacity_cost_summary_trend_v1"
+    );
+    assert_eq!(
+        receipt.record_type,
+        POLICY_CAPACITY_COST_SUMMARY_TREND_SMOKE_STEP
+    );
+    assert_eq!(receipt.batch_capacity_limit, 8);
+    assert_eq!(receipt.baseline_retained_policy_hit_rate_bps, 5_000);
+    assert_eq!(receipt.current_retained_policy_hit_rate_bps, 10_000);
+    assert_eq!(receipt.retained_policy_hit_rate_delta_bps, 5_000);
+    assert_eq!(
+        receipt.baseline_estimated_avoided_llm_calls_per_full_batch,
+        4
+    );
+    assert_eq!(
+        receipt.current_estimated_avoided_llm_calls_per_full_batch,
+        8
+    );
+    assert_eq!(receipt.avoided_llm_call_delta_per_full_batch, 4);
+    assert_eq!(receipt.baseline_validation_observed_regression_bps, 500);
+    assert_eq!(receipt.current_validation_observed_regression_bps, 500);
+    assert_eq!(receipt.validation_observed_regression_delta_bps, 0);
+    assert_eq!(receipt.baseline_summary_status, "pass");
+    assert_eq!(receipt.current_summary_status, "pass");
+    assert_eq!(receipt.baseline_validation_cost_verdict, "pass");
+    assert_eq!(receipt.current_validation_cost_verdict, "pass");
+    assert!(!receipt.baseline_dispatch_catalog_changed);
+    assert!(!receipt.current_dispatch_catalog_changed);
+    assert_eq!(receipt.trend_status, "pass");
+    assert_eq!(receipt.verdict, "pass");
+    assert!(receipt.passed());
+}
+
+#[test]
+fn root_validate_policy_capacity_cost_summary_trend_smoke_mode_is_executable_contract() {
+    assert_root_validate_catalog_compact_mode_contract(
+        "--policy-capacity-cost-summary-trend-smoke",
+        &[
+            "\"schema\":\"canon_policy_capacity_cost_summary_trend_v1\"",
+            "\"record_type\":\"policy_capacity_cost_summary_trend_smoke\"",
+            "\"baseline_retained_policy_hit_rate_bps\":5000",
+            "\"current_retained_policy_hit_rate_bps\":10000",
+            "\"retained_policy_hit_rate_delta_bps\":5000",
+            "\"baseline_estimated_avoided_llm_calls_per_full_batch\":4",
+            "\"current_estimated_avoided_llm_calls_per_full_batch\":8",
+            "\"avoided_llm_call_delta_per_full_batch\":4",
+            "\"validation_observed_regression_delta_bps\":0",
+            "\"trend_status\":\"pass\"",
+            "\"verdict\":\"pass\"",
+        ],
+    );
+}
+
+#[test]
+fn policy_capacity_cost_summary_regression_smoke_exposes_controlled_negative_receipt() {
+    let receipt = ai::validation_harness::policy_capacity_cost_summary_regression_smoke_receipt();
+
+    assert_eq!(
+        receipt.schema,
+        "canon_policy_capacity_cost_summary_trend_v1"
+    );
+    assert_eq!(
+        receipt.record_type,
+        POLICY_CAPACITY_COST_SUMMARY_REGRESSION_SMOKE_STEP
+    );
+    assert_eq!(receipt.batch_capacity_limit, 8);
+    assert_eq!(receipt.baseline_retained_policy_hit_rate_bps, 10_000);
+    assert_eq!(receipt.current_retained_policy_hit_rate_bps, 5_000);
+    assert_eq!(receipt.retained_policy_hit_rate_delta_bps, -5_000);
+    assert_eq!(
+        receipt.baseline_estimated_avoided_llm_calls_per_full_batch,
+        8
+    );
+    assert_eq!(
+        receipt.current_estimated_avoided_llm_calls_per_full_batch,
+        4
+    );
+    assert_eq!(receipt.avoided_llm_call_delta_per_full_batch, -4);
+    assert_eq!(receipt.baseline_summary_status, "pass");
+    assert_eq!(receipt.current_summary_status, "pass");
+    assert_eq!(receipt.baseline_validation_cost_verdict, "pass");
+    assert_eq!(receipt.current_validation_cost_verdict, "pass");
+    assert_eq!(receipt.trend_status, "regressed");
+    assert_eq!(receipt.verdict, "fail");
+    assert!(!receipt.passed());
+}
+
+#[test]
+fn root_validate_policy_capacity_cost_summary_regression_smoke_mode_is_executable_contract() {
+    assert_root_validate_catalog_compact_mode_contract(
+        "--policy-capacity-cost-summary-regression-smoke",
+        &[
+            "\"schema\":\"canon_policy_capacity_cost_summary_trend_v1\"",
+            "\"record_type\":\"policy_capacity_cost_summary_regression_smoke\"",
+            "\"baseline_retained_policy_hit_rate_bps\":10000",
+            "\"current_retained_policy_hit_rate_bps\":5000",
+            "\"retained_policy_hit_rate_delta_bps\":-5000",
+            "\"baseline_estimated_avoided_llm_calls_per_full_batch\":8",
+            "\"current_estimated_avoided_llm_calls_per_full_batch\":4",
+            "\"avoided_llm_call_delta_per_full_batch\":-4",
+            "\"trend_status\":\"regressed\"",
+            "\"verdict\":\"fail\"",
+        ],
+    );
+}
+
+#[test]
+fn policy_capacity_cost_summary_rejects_validation_cost_failure() {
+    let capacity = ai::validation_harness::policy_orchestration_capacity_smoke_receipt();
+    let validation_cost = ai::validation_harness::validation_cost_footprint_growth_smoke_receipt();
+
+    let receipt =
+        ai::validation_harness::compare_policy_capacity_cost_summary(&capacity, &validation_cost);
+
+    assert_eq!(receipt.record_type, "policy_capacity_cost_summary");
+    assert_eq!(receipt.policy_capacity_status, "pass");
+    assert_eq!(receipt.validation_cost_verdict, "fail");
+    assert_eq!(receipt.summary_status, "fail");
+    assert_eq!(receipt.verdict, "fail");
+    assert!(!receipt.passed());
+}
+
+#[test]
+fn policy_capacity_cost_summary_receipts_fixture_binds_expected_retained_receipts() {
+    let fixture = std::fs::read_to_string(POLICY_CAPACITY_COST_SUMMARY_RECEIPTS_FIXTURE)
+        .expect("policy capacity cost summary receipts fixture must be readable");
+    assert!(policy_capacity_cost_summary_receipts_fixture_valid(
+        &fixture
+    ));
+}
+
+#[test]
+fn root_validate_policy_capacity_cost_summary_fixture_mode_is_executable_contract() {
+    assert_root_validate_fixture_mode_contract(CompactFixtureModeContract {
+        arg: "--policy-capacity-cost-summary-fixture",
+        marker: "canon_policy_capacity_cost_summary_receipts_v1",
+        expected_fragments: &[
+            "schema=canon_policy_capacity_cost_summary_receipts_v1",
+            "receipt_count=4",
+            "policy_capacity_cost_summary_smoke.estimated_avoided_llm_calls_per_full_batch=4",
+            "policy_capacity_cost_summary_growth_smoke.validation_cost_verdict=fail",
+            "policy_capacity_cost_summary_trend_smoke.current_estimated_avoided_llm_calls_per_full_batch=8",
+            "policy_capacity_cost_summary_regression_smoke.avoided_llm_call_delta_per_full_batch=-4",
+        ],
+    });
+}
+
+#[test]
+fn policy_capacity_cost_summary_receipts_fixture_negative_contract_detects_drift() {
+    let fixture = std::fs::read_to_string(POLICY_CAPACITY_COST_SUMMARY_RECEIPTS_FIXTURE)
+        .expect("policy capacity cost summary receipts fixture must be readable");
+    let drifted = fixture.replace(
+        "policy_capacity_cost_summary_regression_smoke.current_estimated_avoided_llm_calls_per_full_batch=4",
+        "policy_capacity_cost_summary_regression_smoke.current_estimated_avoided_llm_calls_per_full_batch=8",
+    );
+    assert!(!policy_capacity_cost_summary_receipts_fixture_valid(
+        &drifted
+    ));
+}
+
+#[test]
+fn policy_capacity_cost_summary_receipts_fixture_negative_contract_detects_validation_cost_trend_drift() {
+    let fixture = std::fs::read_to_string(POLICY_CAPACITY_COST_SUMMARY_RECEIPTS_FIXTURE)
+        .expect("policy capacity cost summary receipts fixture must be readable");
+
+    let drifted_trend = fixture.replace(
+        "policy_capacity_cost_summary_trend_smoke.validation_observed_regression_delta_bps=0",
+        "policy_capacity_cost_summary_trend_smoke.validation_observed_regression_delta_bps=1",
+    );
+    assert!(!policy_capacity_cost_summary_receipts_fixture_valid(
+        &drifted_trend
+    ));
+
+    let drifted_regression = fixture.replace(
+        "policy_capacity_cost_summary_regression_smoke.current_validation_cost_verdict=pass",
+        "policy_capacity_cost_summary_regression_smoke.current_validation_cost_verdict=fail",
+    );
+    assert!(!policy_capacity_cost_summary_receipts_fixture_valid(
+        &drifted_regression
+    ));
+}
+
+fn policy_capacity_cost_summary_receipts_fixture_valid(fixture: &str) -> bool {
+    if !ai::validation_harness::retained_fixture_header_valid(
+        fixture,
+        "canon_policy_capacity_cost_summary_receipts_v1",
+        4,
+    ) {
+        return false;
+    }
+
+    let smoke = ai::validation_harness::policy_capacity_cost_summary_smoke_receipt();
+    let growth = ai::validation_harness::policy_capacity_cost_summary_growth_smoke_receipt();
+    let trend = ai::validation_harness::policy_capacity_cost_summary_trend_smoke_receipt();
+    let regression =
+        ai::validation_harness::policy_capacity_cost_summary_regression_smoke_receipt();
+
+    let expected = [
+        format!("policy_capacity_cost_summary_smoke.record_type={}", smoke.record_type),
+        format!("policy_capacity_cost_summary_smoke.batch_capacity_limit={}", smoke.batch_capacity_limit),
+        format!("policy_capacity_cost_summary_smoke.retained_policy_hit_rate_bps={}", smoke.retained_policy_hit_rate_bps),
+        format!("policy_capacity_cost_summary_smoke.estimated_avoided_llm_calls_per_full_batch={}", smoke.estimated_avoided_llm_calls_per_full_batch),
+        format!("policy_capacity_cost_summary_smoke.estimated_llm_fallbacks_per_full_batch={}", smoke.estimated_llm_fallbacks_per_full_batch),
+        format!("policy_capacity_cost_summary_smoke.retained_avoided_llm_call_count={}", smoke.retained_avoided_llm_call_count),
+        format!("policy_capacity_cost_summary_smoke.validation_observed_regression_bps={}", smoke.validation_observed_regression_bps),
+        format!("policy_capacity_cost_summary_smoke.validation_total_declared_step_delta={}", smoke.validation_total_declared_step_delta),
+        format!("policy_capacity_cost_summary_smoke.validation_expected_count_guarded_test_delta={}", smoke.validation_expected_count_guarded_test_delta),
+        format!("policy_capacity_cost_summary_smoke.validation_dispatch_catalog_changed={}", smoke.validation_dispatch_catalog_changed),
+        format!("policy_capacity_cost_summary_smoke.policy_capacity_status={}", smoke.policy_capacity_status),
+        format!("policy_capacity_cost_summary_smoke.validation_cost_verdict={}", smoke.validation_cost_verdict),
+        format!("policy_capacity_cost_summary_smoke.summary_status={}", smoke.summary_status),
+        format!("policy_capacity_cost_summary_smoke.verdict={}", smoke.verdict),
+        format!("policy_capacity_cost_summary_growth_smoke.record_type={}", growth.record_type),
+        format!("policy_capacity_cost_summary_growth_smoke.validation_observed_regression_bps={}", growth.validation_observed_regression_bps),
+        format!("policy_capacity_cost_summary_growth_smoke.validation_total_declared_step_delta={}", growth.validation_total_declared_step_delta),
+        format!("policy_capacity_cost_summary_growth_smoke.validation_expected_count_guarded_test_delta={}", growth.validation_expected_count_guarded_test_delta),
+        format!("policy_capacity_cost_summary_growth_smoke.validation_dispatch_catalog_changed={}", growth.validation_dispatch_catalog_changed),
+        format!("policy_capacity_cost_summary_growth_smoke.policy_capacity_status={}", growth.policy_capacity_status),
+        format!("policy_capacity_cost_summary_growth_smoke.validation_cost_verdict={}", growth.validation_cost_verdict),
+        format!("policy_capacity_cost_summary_growth_smoke.summary_status={}", growth.summary_status),
+        format!("policy_capacity_cost_summary_growth_smoke.verdict={}", growth.verdict),
+        format!("policy_capacity_cost_summary_trend_smoke.record_type={}", trend.record_type),
+        format!("policy_capacity_cost_summary_trend_smoke.batch_capacity_limit={}", trend.batch_capacity_limit),
+        format!("policy_capacity_cost_summary_trend_smoke.baseline_retained_policy_hit_rate_bps={}", trend.baseline_retained_policy_hit_rate_bps),
+        format!("policy_capacity_cost_summary_trend_smoke.current_retained_policy_hit_rate_bps={}", trend.current_retained_policy_hit_rate_bps),
+        format!("policy_capacity_cost_summary_trend_smoke.retained_policy_hit_rate_delta_bps={}", trend.retained_policy_hit_rate_delta_bps),
+        format!("policy_capacity_cost_summary_trend_smoke.baseline_estimated_avoided_llm_calls_per_full_batch={}", trend.baseline_estimated_avoided_llm_calls_per_full_batch),
+        format!("policy_capacity_cost_summary_trend_smoke.current_estimated_avoided_llm_calls_per_full_batch={}", trend.current_estimated_avoided_llm_calls_per_full_batch),
+        format!("policy_capacity_cost_summary_trend_smoke.avoided_llm_call_delta_per_full_batch={}", trend.avoided_llm_call_delta_per_full_batch),
+        format!("policy_capacity_cost_summary_trend_smoke.baseline_validation_observed_regression_bps={}", trend.baseline_validation_observed_regression_bps),
+        format!("policy_capacity_cost_summary_trend_smoke.current_validation_observed_regression_bps={}", trend.current_validation_observed_regression_bps),
+        format!("policy_capacity_cost_summary_trend_smoke.validation_observed_regression_delta_bps={}", trend.validation_observed_regression_delta_bps),
+        format!("policy_capacity_cost_summary_trend_smoke.baseline_summary_status={}", trend.baseline_summary_status),
+        format!("policy_capacity_cost_summary_trend_smoke.current_summary_status={}", trend.current_summary_status),
+        format!("policy_capacity_cost_summary_trend_smoke.baseline_validation_cost_verdict={}", trend.baseline_validation_cost_verdict),
+        format!("policy_capacity_cost_summary_trend_smoke.current_validation_cost_verdict={}", trend.current_validation_cost_verdict),
+        format!("policy_capacity_cost_summary_trend_smoke.baseline_dispatch_catalog_changed={}", trend.baseline_dispatch_catalog_changed),
+        format!("policy_capacity_cost_summary_trend_smoke.current_dispatch_catalog_changed={}", trend.current_dispatch_catalog_changed),
+        format!("policy_capacity_cost_summary_trend_smoke.trend_status={}", trend.trend_status),
+        format!("policy_capacity_cost_summary_trend_smoke.verdict={}", trend.verdict),
+        format!("policy_capacity_cost_summary_regression_smoke.record_type={}", regression.record_type),
+        format!("policy_capacity_cost_summary_regression_smoke.batch_capacity_limit={}", regression.batch_capacity_limit),
+        format!("policy_capacity_cost_summary_regression_smoke.baseline_retained_policy_hit_rate_bps={}", regression.baseline_retained_policy_hit_rate_bps),
+        format!("policy_capacity_cost_summary_regression_smoke.current_retained_policy_hit_rate_bps={}", regression.current_retained_policy_hit_rate_bps),
+        format!("policy_capacity_cost_summary_regression_smoke.retained_policy_hit_rate_delta_bps={}", regression.retained_policy_hit_rate_delta_bps),
+        format!("policy_capacity_cost_summary_regression_smoke.baseline_estimated_avoided_llm_calls_per_full_batch={}", regression.baseline_estimated_avoided_llm_calls_per_full_batch),
+        format!("policy_capacity_cost_summary_regression_smoke.current_estimated_avoided_llm_calls_per_full_batch={}", regression.current_estimated_avoided_llm_calls_per_full_batch),
+        format!("policy_capacity_cost_summary_regression_smoke.avoided_llm_call_delta_per_full_batch={}", regression.avoided_llm_call_delta_per_full_batch),
+        format!("policy_capacity_cost_summary_regression_smoke.baseline_validation_observed_regression_bps={}", regression.baseline_validation_observed_regression_bps),
+        format!("policy_capacity_cost_summary_regression_smoke.current_validation_observed_regression_bps={}", regression.current_validation_observed_regression_bps),
+        format!("policy_capacity_cost_summary_regression_smoke.validation_observed_regression_delta_bps={}", regression.validation_observed_regression_delta_bps),
+        format!("policy_capacity_cost_summary_regression_smoke.baseline_summary_status={}", regression.baseline_summary_status),
+        format!("policy_capacity_cost_summary_regression_smoke.current_summary_status={}", regression.current_summary_status),
+        format!("policy_capacity_cost_summary_regression_smoke.baseline_validation_cost_verdict={}", regression.baseline_validation_cost_verdict),
+        format!("policy_capacity_cost_summary_regression_smoke.current_validation_cost_verdict={}", regression.current_validation_cost_verdict),
+        format!("policy_capacity_cost_summary_regression_smoke.baseline_dispatch_catalog_changed={}", regression.baseline_dispatch_catalog_changed),
+        format!("policy_capacity_cost_summary_regression_smoke.current_dispatch_catalog_changed={}", regression.current_dispatch_catalog_changed),
+        format!("policy_capacity_cost_summary_regression_smoke.trend_status={}", regression.trend_status),
+        format!("policy_capacity_cost_summary_regression_smoke.verdict={}", regression.verdict),
+    ];
+
+    fixture_contains_expected_lines(fixture, &expected)
+        && fixture.contains("rule=summary smoke passes only when policy capacity and validation cost both pass")
+        && fixture.contains("rule=growth smoke proves validation footprint or dispatch growth fails summary while policy capacity remains passing")
+        && fixture.contains("rule=trend smoke passes when bounded-batch avoided LLM work improves and validation cost remains stable")
+        && fixture.contains("rule=regression smoke fails when bounded-batch avoided LLM work declines even if validation cost remains stable")
+        && fixture.contains("rule=fixture binds retained semantic values rather than brittle receipt hashes")
+        && smoke.passed()
+        && !growth.passed()
+        && trend.passed()
+        && !regression.passed()
+}
+
+#[test]
+fn policy_orchestration_capacity_trend_smoke_compares_batch_avoidance() {
+    let receipt = ai::validation_harness::policy_orchestration_capacity_trend_smoke_receipt();
+
+    assert_eq!(
+        receipt.schema,
+        "canon_policy_orchestration_capacity_trend_v1"
+    );
+    assert_eq!(
+        receipt.record_type,
+        ai::validation_harness::POLICY_ORCHESTRATION_CAPACITY_TREND_SMOKE_STEP
+    );
+    assert_eq!(receipt.batch_capacity_limit, 8);
+    assert_eq!(receipt.baseline_hit_rate_bps, 5_000);
+    assert_eq!(receipt.current_hit_rate_bps, 10_000);
+    assert_eq!(receipt.hit_rate_delta_bps, 5_000);
+    assert_eq!(
+        receipt.baseline_estimated_avoided_llm_calls_per_full_batch,
+        4
+    );
+    assert_eq!(
+        receipt.current_estimated_avoided_llm_calls_per_full_batch,
+        8
+    );
+    assert_eq!(receipt.avoided_llm_call_delta_per_full_batch, 4);
+    assert_eq!(receipt.baseline_policy_reuse_verdict, "pass");
+    assert_eq!(receipt.current_policy_reuse_verdict, "pass");
+    assert_eq!(receipt.baseline_capacity_status, "pass");
+    assert_eq!(receipt.current_capacity_status, "pass");
+    assert_eq!(receipt.trend_status, "pass");
+    assert_eq!(receipt.verdict, "pass");
+    assert!(receipt.passed());
+}
+
+#[test]
+fn root_validate_policy_orchestration_capacity_trend_smoke_mode_is_executable_contract() {
+    assert_root_validate_catalog_compact_mode_contract(
+        "--policy-orchestration-capacity-trend-smoke",
+        &[
+            "\"schema\":\"canon_policy_orchestration_capacity_trend_v1\"",
+            "\"record_type\":\"policy_orchestration_capacity_trend_smoke\"",
+            "\"baseline_hit_rate_bps\":5000",
+            "\"current_hit_rate_bps\":10000",
+            "\"hit_rate_delta_bps\":5000",
+            "\"baseline_estimated_avoided_llm_calls_per_full_batch\":4",
+            "\"current_estimated_avoided_llm_calls_per_full_batch\":8",
+            "\"avoided_llm_call_delta_per_full_batch\":4",
+            "\"trend_status\":\"pass\"",
+            "\"verdict\":\"pass\"",
+        ],
+    );
+}
+
+#[test]
+fn policy_orchestration_capacity_regression_smoke_exposes_controlled_negative_receipt() {
+    let receipt = ai::validation_harness::policy_orchestration_capacity_regression_smoke_receipt();
+
+    assert_eq!(
+        receipt.schema,
+        "canon_policy_orchestration_capacity_trend_v1"
+    );
+    assert_eq!(
+        receipt.record_type,
+        ai::validation_harness::POLICY_ORCHESTRATION_CAPACITY_REGRESSION_SMOKE_STEP
+    );
+    assert_eq!(receipt.batch_capacity_limit, 8);
+    assert_eq!(receipt.baseline_hit_rate_bps, 10_000);
+    assert_eq!(receipt.current_hit_rate_bps, 5_000);
+    assert_eq!(receipt.hit_rate_delta_bps, -5_000);
+    assert_eq!(
+        receipt.baseline_estimated_avoided_llm_calls_per_full_batch,
+        8
+    );
+    assert_eq!(
+        receipt.current_estimated_avoided_llm_calls_per_full_batch,
+        4
+    );
+    assert_eq!(receipt.avoided_llm_call_delta_per_full_batch, -4);
+    assert_eq!(receipt.baseline_policy_reuse_verdict, "pass");
+    assert_eq!(receipt.current_policy_reuse_verdict, "pass");
+    assert_eq!(receipt.baseline_capacity_status, "pass");
+    assert_eq!(receipt.current_capacity_status, "pass");
+    assert_eq!(receipt.trend_status, "regressed");
+    assert_eq!(receipt.verdict, "fail");
+    assert!(!receipt.passed());
+}
+
+#[test]
+fn root_validate_policy_orchestration_capacity_regression_smoke_mode_is_executable_contract() {
+    assert_root_validate_catalog_compact_mode_contract(
+        "--policy-orchestration-capacity-regression-smoke",
+        &[
+            "\"schema\":\"canon_policy_orchestration_capacity_trend_v1\"",
+            "\"record_type\":\"policy_orchestration_capacity_regression_smoke\"",
+            "\"baseline_hit_rate_bps\":10000",
+            "\"current_hit_rate_bps\":5000",
+            "\"hit_rate_delta_bps\":-5000",
+            "\"baseline_estimated_avoided_llm_calls_per_full_batch\":8",
+            "\"current_estimated_avoided_llm_calls_per_full_batch\":4",
+            "\"avoided_llm_call_delta_per_full_batch\":-4",
+            "\"baseline_capacity_status\":\"pass\"",
+            "\"current_capacity_status\":\"pass\"",
+            "\"trend_status\":\"regressed\"",
+            "\"verdict\":\"fail\"",
+        ],
+    );
+}
+
+#[test]
+fn policy_orchestration_capacity_trend_receipt_rejects_lower_batch_avoidance() {
+    let baseline = ai::validation_harness::policy_orchestration_capacity_smoke_receipt();
+    let mut current = baseline.clone();
+    current.hit_rate_bps = 2_500;
+    current.estimated_policy_hits_per_full_batch = 2;
+    current.estimated_llm_fallbacks_per_full_batch = 6;
+    current.estimated_avoided_llm_calls_per_full_batch = 2;
+
+    let receipt =
+        ai::validation_harness::compare_policy_orchestration_capacity_trend(&baseline, &current);
+
+    assert_eq!(receipt.baseline_hit_rate_bps, 5_000);
+    assert_eq!(receipt.current_hit_rate_bps, 2_500);
+    assert_eq!(receipt.hit_rate_delta_bps, -2_500);
+    assert_eq!(receipt.avoided_llm_call_delta_per_full_batch, -2);
+    assert_eq!(receipt.trend_status, "regressed");
+    assert_eq!(receipt.verdict, "fail");
+    assert!(!receipt.passed());
+}
+
+#[test]
+fn policy_orchestration_capacity_smoke_estimates_batch_level_llm_avoidance() {
+    let receipt = ai::validation_harness::policy_orchestration_capacity_smoke_receipt();
+
+    assert_eq!(receipt.schema, "canon_policy_orchestration_capacity_v1");
+    assert_eq!(
+        receipt.record_type,
+        ai::validation_harness::POLICY_ORCHESTRATION_CAPACITY_SMOKE_STEP
+    );
+    assert_eq!(
+        receipt.batch_capacity_limit,
+        ai::validation_harness::POLICY_ORCHESTRATION_CAPACITY_BATCH_LIMIT
+    );
+    assert_eq!(receipt.batch_capacity_limit, 8);
+    assert_eq!(receipt.retained_policy_record_count, 2);
+    assert_eq!(receipt.policy_hit_count, 1);
+    assert_eq!(receipt.policy_miss_count, 1);
+    assert_eq!(receipt.hit_rate_bps, 5_000);
+    assert_eq!(receipt.estimated_policy_hits_per_full_batch, 4);
+    assert_eq!(receipt.estimated_llm_fallbacks_per_full_batch, 4);
+    assert_eq!(receipt.estimated_avoided_llm_calls_per_full_batch, 4);
+    assert_eq!(receipt.retained_avoided_llm_call_count, 1);
+    assert_eq!(receipt.capacity_status, "pass");
+    assert_eq!(receipt.policy_reuse_verdict, "pass");
+    assert_eq!(receipt.verdict, "pass");
+    assert!(receipt.passed());
+}
+
+#[test]
+fn root_validate_policy_orchestration_capacity_smoke_mode_is_executable_contract() {
+    assert_root_validate_catalog_compact_mode_contract(
+        "--policy-orchestration-capacity-smoke",
+        &[
+            "\"schema\":\"canon_policy_orchestration_capacity_v1\"",
+            "\"record_type\":\"policy_orchestration_capacity_smoke\"",
+            "\"batch_capacity_limit\":8",
+            "\"hit_rate_bps\":5000",
+            "\"estimated_policy_hits_per_full_batch\":4",
+            "\"estimated_llm_fallbacks_per_full_batch\":4",
+            "\"estimated_avoided_llm_calls_per_full_batch\":4",
+            "\"capacity_status\":\"pass\"",
+            "\"policy_reuse_verdict\":\"pass\"",
+            "\"verdict\":\"pass\"",
+        ],
+    );
+}
+
+#[test]
+fn policy_orchestration_capacity_receipt_rejects_inconsistent_capacity_math() {
+    let mut receipt = ai::validation_harness::policy_orchestration_capacity_smoke_receipt();
+    assert!(receipt.passed());
+
+    receipt.estimated_avoided_llm_calls_per_full_batch += 1;
+    receipt.verdict = "fail";
+
+    assert_eq!(receipt.capacity_status, "pass");
+    assert_eq!(receipt.verdict, "fail");
+    assert!(!receipt.passed());
+}
+
+#[test]
+fn policy_orchestration_capacity_receipts_fixture_binds_expected_retained_receipts() {
+    let fixture = std::fs::read_to_string(POLICY_ORCHESTRATION_CAPACITY_RECEIPTS_FIXTURE)
+        .expect("policy orchestration capacity receipts fixture must be readable");
+    assert!(policy_orchestration_capacity_receipts_fixture_valid(
+        &fixture
+    ));
+}
+
+#[test]
+fn root_validate_policy_orchestration_capacity_fixture_mode_is_executable_contract() {
+    assert_root_validate_fixture_mode_contract(CompactFixtureModeContract {
+        arg: "--policy-orchestration-capacity-fixture",
+        marker: "canon_policy_orchestration_capacity_receipts_v1",
+        expected_fragments: &[
+            "schema=canon_policy_orchestration_capacity_receipts_v1",
+            "receipt_count=3",
+            "policy_orchestration_capacity_smoke.estimated_avoided_llm_calls_per_full_batch=4",
+            "policy_orchestration_capacity_trend_smoke.current_estimated_avoided_llm_calls_per_full_batch=8",
+            "policy_orchestration_capacity_regression_smoke.avoided_llm_call_delta_per_full_batch=-4",
+        ],
+    });
+}
+
+#[test]
+fn policy_orchestration_capacity_receipts_fixture_negative_contract_detects_drift() {
+    let fixture = std::fs::read_to_string(POLICY_ORCHESTRATION_CAPACITY_RECEIPTS_FIXTURE)
+        .expect("policy orchestration capacity receipts fixture must be readable");
+    let drifted = fixture.replace(
+        "policy_orchestration_capacity_regression_smoke.current_estimated_avoided_llm_calls_per_full_batch=4",
+        "policy_orchestration_capacity_regression_smoke.current_estimated_avoided_llm_calls_per_full_batch=8",
+    );
+    assert!(!policy_orchestration_capacity_receipts_fixture_valid(
+        &drifted
+    ));
+}
+
+fn policy_orchestration_capacity_receipts_fixture_valid(fixture: &str) -> bool {
+    if !ai::validation_harness::retained_fixture_header_valid(
+        fixture,
+        "canon_policy_orchestration_capacity_receipts_v1",
+        3,
+    ) {
+        return false;
+    }
+
+    let capacity = ai::validation_harness::policy_orchestration_capacity_smoke_receipt();
+    let trend = ai::validation_harness::policy_orchestration_capacity_trend_smoke_receipt();
+    let regression =
+        ai::validation_harness::policy_orchestration_capacity_regression_smoke_receipt();
+
+    let expected = [
+        format!("policy_orchestration_capacity_smoke.record_type={}", capacity.record_type),
+        format!("policy_orchestration_capacity_smoke.batch_capacity_limit={}", capacity.batch_capacity_limit),
+        format!("policy_orchestration_capacity_smoke.retained_policy_record_count={}", capacity.retained_policy_record_count),
+        format!("policy_orchestration_capacity_smoke.policy_hit_count={}", capacity.policy_hit_count),
+        format!("policy_orchestration_capacity_smoke.policy_miss_count={}", capacity.policy_miss_count),
+        format!("policy_orchestration_capacity_smoke.hit_rate_bps={}", capacity.hit_rate_bps),
+        format!("policy_orchestration_capacity_smoke.estimated_policy_hits_per_full_batch={}", capacity.estimated_policy_hits_per_full_batch),
+        format!("policy_orchestration_capacity_smoke.estimated_llm_fallbacks_per_full_batch={}", capacity.estimated_llm_fallbacks_per_full_batch),
+        format!("policy_orchestration_capacity_smoke.estimated_avoided_llm_calls_per_full_batch={}", capacity.estimated_avoided_llm_calls_per_full_batch),
+        format!("policy_orchestration_capacity_smoke.retained_avoided_llm_call_count={}", capacity.retained_avoided_llm_call_count),
+        format!("policy_orchestration_capacity_smoke.capacity_status={}", capacity.capacity_status),
+        format!("policy_orchestration_capacity_smoke.policy_reuse_verdict={}", capacity.policy_reuse_verdict),
+        format!("policy_orchestration_capacity_smoke.verdict={}", capacity.verdict),
+        format!("policy_orchestration_capacity_trend_smoke.record_type={}", trend.record_type),
+        format!("policy_orchestration_capacity_trend_smoke.batch_capacity_limit={}", trend.batch_capacity_limit),
+        format!("policy_orchestration_capacity_trend_smoke.baseline_hit_rate_bps={}", trend.baseline_hit_rate_bps),
+        format!("policy_orchestration_capacity_trend_smoke.current_hit_rate_bps={}", trend.current_hit_rate_bps),
+        format!("policy_orchestration_capacity_trend_smoke.hit_rate_delta_bps={}", trend.hit_rate_delta_bps),
+        format!("policy_orchestration_capacity_trend_smoke.baseline_estimated_avoided_llm_calls_per_full_batch={}", trend.baseline_estimated_avoided_llm_calls_per_full_batch),
+        format!("policy_orchestration_capacity_trend_smoke.current_estimated_avoided_llm_calls_per_full_batch={}", trend.current_estimated_avoided_llm_calls_per_full_batch),
+        format!("policy_orchestration_capacity_trend_smoke.avoided_llm_call_delta_per_full_batch={}", trend.avoided_llm_call_delta_per_full_batch),
+        format!("policy_orchestration_capacity_trend_smoke.baseline_policy_reuse_verdict={}", trend.baseline_policy_reuse_verdict),
+        format!("policy_orchestration_capacity_trend_smoke.current_policy_reuse_verdict={}", trend.current_policy_reuse_verdict),
+        format!("policy_orchestration_capacity_trend_smoke.baseline_capacity_status={}", trend.baseline_capacity_status),
+        format!("policy_orchestration_capacity_trend_smoke.current_capacity_status={}", trend.current_capacity_status),
+        format!("policy_orchestration_capacity_trend_smoke.trend_status={}", trend.trend_status),
+        format!("policy_orchestration_capacity_trend_smoke.verdict={}", trend.verdict),
+        format!("policy_orchestration_capacity_regression_smoke.record_type={}", regression.record_type),
+        format!("policy_orchestration_capacity_regression_smoke.batch_capacity_limit={}", regression.batch_capacity_limit),
+        format!("policy_orchestration_capacity_regression_smoke.baseline_hit_rate_bps={}", regression.baseline_hit_rate_bps),
+        format!("policy_orchestration_capacity_regression_smoke.current_hit_rate_bps={}", regression.current_hit_rate_bps),
+        format!("policy_orchestration_capacity_regression_smoke.hit_rate_delta_bps={}", regression.hit_rate_delta_bps),
+        format!("policy_orchestration_capacity_regression_smoke.baseline_estimated_avoided_llm_calls_per_full_batch={}", regression.baseline_estimated_avoided_llm_calls_per_full_batch),
+        format!("policy_orchestration_capacity_regression_smoke.current_estimated_avoided_llm_calls_per_full_batch={}", regression.current_estimated_avoided_llm_calls_per_full_batch),
+        format!("policy_orchestration_capacity_regression_smoke.avoided_llm_call_delta_per_full_batch={}", regression.avoided_llm_call_delta_per_full_batch),
+        format!("policy_orchestration_capacity_regression_smoke.baseline_policy_reuse_verdict={}", regression.baseline_policy_reuse_verdict),
+        format!("policy_orchestration_capacity_regression_smoke.current_policy_reuse_verdict={}", regression.current_policy_reuse_verdict),
+        format!("policy_orchestration_capacity_regression_smoke.baseline_capacity_status={}", regression.baseline_capacity_status),
+        format!("policy_orchestration_capacity_regression_smoke.current_capacity_status={}", regression.current_capacity_status),
+        format!("policy_orchestration_capacity_regression_smoke.trend_status={}", regression.trend_status),
+        format!("policy_orchestration_capacity_regression_smoke.verdict={}", regression.verdict),
+    ];
+
+    fixture_contains_expected_lines(fixture, &expected)
+        && fixture.contains("rule=capacity smoke estimates avoided LLM calls from retained policy reuse records and bounded batch limit")
+        && fixture.contains("rule=trend smoke passes only when batch-level hit rate and avoided LLM calls do not regress")
+        && fixture.contains("rule=regression smoke remains structurally valid but does not pass")
+        && capacity.passed()
+        && trend.passed()
+        && !regression.passed()
+        && regression.baseline_capacity_status == "pass"
+        && regression.current_capacity_status == "pass"
+}
+
+#[test]
+fn policy_validation_health_trend_smoke_compares_aggregate_health_and_capacity() {
+    let receipt = ai::validation_harness::policy_validation_health_trend_smoke_receipt();
+
+    assert_eq!(receipt.schema, "canon_policy_validation_health_trend_v1");
+    assert_eq!(
+        receipt.record_type,
+        ai::validation_harness::POLICY_VALIDATION_HEALTH_TREND_SMOKE_STEP
+    );
+    assert_eq!(receipt.baseline_policy_hit_rate_bps, 5_000);
+    assert_eq!(receipt.current_policy_hit_rate_bps, 10_000);
+    assert_eq!(receipt.policy_hit_rate_delta_bps, 5_000);
+    assert_eq!(receipt.baseline_avoided_llm_call_count, 1);
+    assert_eq!(receipt.current_avoided_llm_call_count, 2);
+    assert_eq!(receipt.avoided_llm_call_delta, 1);
+    assert_eq!(
+        receipt.baseline_capacity_avoided_llm_calls_per_full_batch,
+        4
+    );
+    assert_eq!(receipt.current_capacity_avoided_llm_calls_per_full_batch, 8);
+    assert_eq!(receipt.capacity_avoided_llm_call_delta_per_full_batch, 4);
+    assert_eq!(receipt.baseline_health_verdict, "pass");
+    assert_eq!(receipt.current_health_verdict, "pass");
+    assert_eq!(receipt.capacity_trend_status, "pass");
+    assert_eq!(receipt.validation_cost_verdict, "pass");
+    assert!(!receipt.dispatch_catalog_changed);
+    assert_eq!(receipt.trend_status, "pass");
+    assert_eq!(receipt.verdict, "pass");
+    assert!(receipt.passed());
+    assert!(receipt
+        .to_json()
+        .contains("\"schema\":\"canon_policy_validation_health_trend_v1\""));
+}
+
+#[test]
+fn root_validate_policy_validation_health_trend_smoke_mode_is_executable_contract() {
+    assert_root_validate_catalog_compact_mode_contract(
+        "--policy-validation-health-trend-smoke",
+        &[
+            "\"schema\":\"canon_policy_validation_health_trend_v1\"",
+            "\"record_type\":\"policy_validation_health_trend_smoke\"",
+            "\"policy_hit_rate_delta_bps\":5000",
+            "\"capacity_avoided_llm_call_delta_per_full_batch\":4",
+            "\"trend_status\":\"pass\"",
+            "\"verdict\":\"pass\"",
+        ],
+    );
+}
+
+#[test]
+fn policy_validation_health_trend_receipt_rejects_capacity_regression() {
+    let baseline = ai::validation_harness::policy_validation_health_smoke_receipt();
+    let current = ai::validation_harness::policy_validation_health_smoke_receipt();
+    let capacity_regression =
+        ai::validation_harness::policy_orchestration_capacity_regression_smoke_receipt();
+    let receipt = ai::validation_harness::compare_policy_validation_health_trend(
+        &baseline,
+        &current,
+        &capacity_regression,
+    );
+
+    assert_eq!(receipt.baseline_health_verdict, "pass");
+    assert_eq!(receipt.current_health_verdict, "pass");
+    assert_eq!(receipt.capacity_trend_status, "regressed");
+    assert_eq!(receipt.capacity_avoided_llm_call_delta_per_full_batch, -4);
+    assert_eq!(receipt.trend_status, "regressed");
+    assert_eq!(receipt.verdict, "fail");
+    assert!(!receipt.passed());
+}
+
+#[test]
+fn policy_validation_health_smoke_combines_policy_reuse_and_validation_cost() {
+    let receipt = ai::validation_harness::policy_validation_health_smoke_receipt();
+
+    assert_eq!(receipt.schema, "canon_policy_validation_health_v1");
+    assert_eq!(
+        receipt.record_type,
+        ai::validation_harness::POLICY_VALIDATION_HEALTH_SMOKE_STEP
+    );
+    assert_eq!(receipt.policy_hit_rate_bps, 5_000);
+    assert_eq!(receipt.avoided_llm_call_count, 1);
+    assert_eq!(receipt.policy_reuse_verdict, "pass");
+    assert_eq!(receipt.validation_budget_status, "pass");
+    assert_eq!(receipt.validation_trend_status, "pass");
+    assert_eq!(receipt.validation_footprint_status, "pass");
+    assert_eq!(receipt.validation_cost_verdict, "pass");
+    assert_eq!(
+        receipt.expected_count_guarded_tests,
+        VALIDATION_HARNESS_EXPECTED_TESTS + GRAPH_MUTATION_CLI_CONTRACT_EXPECTED_TESTS
+    );
+    assert_eq!(receipt.total_declared_steps, 7);
+    assert!(!receipt.command_set_changed);
+    assert_eq!(
+        receipt.baseline_dispatch_catalog_hash,
+        receipt.current_dispatch_catalog_hash
+    );
+    assert!(!receipt.dispatch_catalog_changed);
+    assert_eq!(receipt.verdict, "pass");
+    assert!(receipt.passed());
+    assert!(receipt
+        .to_json()
+        .contains("\"schema\":\"canon_policy_validation_health_v1\""));
+}
+
+#[test]
+fn root_validate_policy_validation_health_smoke_mode_is_executable_contract() {
+    assert_root_validate_catalog_compact_mode_contract(
+        "--policy-validation-health-smoke",
+        &[
+            "\"schema\":\"canon_policy_validation_health_v1\"",
+            "\"record_type\":\"policy_validation_health_smoke\"",
+            "\"policy_hit_rate_bps\":5000",
+            "\"avoided_llm_call_count\":1",
+            "\"policy_reuse_verdict\":\"pass\"",
+            "\"validation_budget_status\":\"pass\"",
+            "\"validation_trend_status\":\"pass\"",
+            "\"validation_footprint_status\":\"pass\"",
+            "\"validation_cost_verdict\":\"pass\"",
+            "\"command_set_changed\":false",
+            "\"baseline_dispatch_catalog_hash\":",
+            "\"current_dispatch_catalog_hash\":",
+            "\"dispatch_catalog_changed\":false",
+            "\"verdict\":\"pass\"",
+        ],
+    );
+}
+
+#[test]
+fn policy_validation_health_receipt_rejects_validation_cost_growth() {
+    let validation = ai::validation_harness::validation_cost_footprint_growth_smoke_receipt();
+    let receipt = ai::validation_harness::PolicyValidationHealthReceipt {
+        schema: "canon_policy_validation_health_v1",
+        record_type: ai::validation_harness::POLICY_VALIDATION_HEALTH_SMOKE_STEP,
+        policy_hit_rate_bps: 5_000,
+        avoided_llm_call_count: 1,
+        policy_reuse_verdict: "pass",
+        validation_budget_status: validation.budget_status,
+        validation_trend_status: validation.trend_status,
+        validation_footprint_status: validation.footprint_status,
+        validation_cost_verdict: validation.verdict,
+        expected_count_guarded_tests: validation.current_expected_count_guarded_tests,
+        total_declared_steps: validation.current_total_declared_steps,
+        command_set_changed: validation.command_set_changed,
+        baseline_dispatch_catalog_hash: validation.baseline_dispatch_catalog_hash,
+        current_dispatch_catalog_hash: validation.current_dispatch_catalog_hash,
+        dispatch_catalog_changed: validation.dispatch_catalog_changed,
+        verdict: "fail",
+    };
+
+    assert_eq!(receipt.validation_footprint_status, "fail");
+    assert_eq!(receipt.validation_cost_verdict, "fail");
+    assert!(receipt.command_set_changed);
+    assert_eq!(receipt.verdict, "fail");
+    assert!(!receipt.passed());
+}
+
+#[test]
+fn policy_validation_health_receipt_rejects_dispatch_catalog_drift() {
+    let policy = ai::validation_harness::policy_reuse_smoke_receipt();
+    let footprint = ai::validation_harness::validation_footprint_receipt();
+    let baseline_runtime = ai::validation_harness::runtime_performance_receipt(3_000);
+    let current_runtime = ai::validation_harness::runtime_performance_receipt(3_150);
+    let validation = ai::validation_harness::compare_validation_cost_footprint_with_dispatch_hashes(
+        &baseline_runtime,
+        &current_runtime,
+        &footprint,
+        &footprint,
+        500,
+        "dispatch-hash-v1",
+        "dispatch-hash-v2",
+    );
+
+    let receipt = ai::validation_harness::PolicyValidationHealthReceipt {
+        schema: "canon_policy_validation_health_v1",
+        record_type: ai::validation_harness::POLICY_VALIDATION_HEALTH_SMOKE_STEP,
+        policy_hit_rate_bps: policy.hit_rate_bps,
+        avoided_llm_call_count: policy.avoided_llm_call_count,
+        policy_reuse_verdict: policy.verdict,
+        validation_budget_status: validation.budget_status,
+        validation_trend_status: validation.trend_status,
+        validation_footprint_status: validation.footprint_status,
+        validation_cost_verdict: validation.verdict,
+        expected_count_guarded_tests: validation.current_expected_count_guarded_tests,
+        total_declared_steps: validation.current_total_declared_steps,
+        command_set_changed: validation.command_set_changed,
+        baseline_dispatch_catalog_hash: validation.baseline_dispatch_catalog_hash,
+        current_dispatch_catalog_hash: validation.current_dispatch_catalog_hash,
+        dispatch_catalog_changed: validation.dispatch_catalog_changed,
+        verdict: "fail",
+    };
+
+    assert_eq!(receipt.validation_budget_status, "pass");
+    assert_eq!(receipt.validation_trend_status, "pass");
+    assert_eq!(receipt.validation_footprint_status, "fail");
+    assert_eq!(receipt.validation_cost_verdict, "fail");
+    assert!(!receipt.command_set_changed);
+    assert!(receipt.dispatch_catalog_changed);
+    assert_eq!(receipt.baseline_dispatch_catalog_hash, "dispatch-hash-v1");
+    assert_eq!(receipt.current_dispatch_catalog_hash, "dispatch-hash-v2");
+    assert_eq!(receipt.verdict, "fail");
+    assert!(!receipt.passed());
+    assert!(receipt
+        .to_json()
+        .contains("\"dispatch_catalog_changed\":true"));
+}
+
+
+
+#[test]
+fn validation_command_footprint_receipts_fixture_binds_expected_retained_receipts() {
+    let fixture = std::fs::read_to_string(VALIDATION_COMMAND_FOOTPRINT_RECEIPTS_FIXTURE)
+        .expect("validation command footprint receipts fixture must be readable");
+    assert!(validation_command_footprint_receipts_fixture_valid(&fixture));
+}
+
+#[test]
+fn root_validate_validation_command_footprint_fixture_mode_is_executable_contract() {
+    assert_root_validate_fixture_mode_contract(CompactFixtureModeContract {
+        arg: "--validation-command-footprint-fixture",
+        marker: "canon_validation_command_footprint_receipts_v1",
+        expected_fragments: &[
+            "schema=canon_validation_command_footprint_receipts_v1",
+            "receipt_count=5",
+            "validation_command_footprint_planning.target_total_declared_steps=6",
+            "validation_command_footprint_planning.planning_status=action_required",
+            "validation_command_footprint_target_met_smoke.target_total_declared_steps=7",
+            "validation_command_footprint_target_met_smoke.planning_status=met",
+            "validation_command_footprint_unsafe_target_smoke.target_total_declared_steps=1",
+            "validation_command_footprint_unsafe_target_smoke.planning_status=unsafe_target",
+            "validation_command_footprint_trend_smoke.target_total_declared_step_delta=1",
+            "validation_command_footprint_trend_smoke.trend_status=pass",
+            "validation_command_footprint_regression_smoke.target_total_declared_step_delta=-1",
+            "validation_command_footprint_regression_smoke.trend_status=regressed",
+        ],
+    });
+}
+
+#[test]
+fn validation_command_footprint_receipts_fixture_negative_contract_detects_drift() {
+    let fixture = std::fs::read_to_string(VALIDATION_COMMAND_FOOTPRINT_RECEIPTS_FIXTURE)
+        .expect("validation command footprint receipts fixture must be readable");
+    let drifted = fixture.replace(
+        "validation_command_footprint_planning.command_reduction_target=1",
+        "validation_command_footprint_planning.command_reduction_target=0",
+    );
+    assert!(!validation_command_footprint_receipts_fixture_valid(&drifted));
+
+    let drifted_unsafe = fixture.replace(
+        "validation_command_footprint_unsafe_target_smoke.safety_status=fail",
+        "validation_command_footprint_unsafe_target_smoke.safety_status=pass",
+    );
+    assert!(!validation_command_footprint_receipts_fixture_valid(&drifted_unsafe));
+
+    let drifted_target_met = fixture.replace(
+        "validation_command_footprint_target_met_smoke.planning_status=met",
+        "validation_command_footprint_target_met_smoke.planning_status=action_required",
+    );
+    assert!(!validation_command_footprint_receipts_fixture_valid(&drifted_target_met));
+}
+
+#[test]
+fn validation_command_footprint_receipts_fixture_negative_contract_detects_trend_drift() {
+    let fixture = std::fs::read_to_string(VALIDATION_COMMAND_FOOTPRINT_RECEIPTS_FIXTURE)
+        .expect("validation command footprint receipts fixture must be readable");
+    let drifted_trend = fixture.replace(
+        "validation_command_footprint_trend_smoke.command_reduction_target_delta=-1",
+        "validation_command_footprint_trend_smoke.command_reduction_target_delta=0",
+    );
+    assert!(!validation_command_footprint_receipts_fixture_valid(&drifted_trend));
+
+    let drifted_regression = fixture.replace(
+        "validation_command_footprint_regression_smoke.trend_status=regressed",
+        "validation_command_footprint_regression_smoke.trend_status=pass",
+    );
+    assert!(!validation_command_footprint_receipts_fixture_valid(&drifted_regression));
+}
+
+#[test]
+fn validation_command_footprint_receipts_fixture_negative_contract_detects_header_drift() {
+    let fixture = std::fs::read_to_string(VALIDATION_COMMAND_FOOTPRINT_RECEIPTS_FIXTURE)
+        .expect("validation command footprint receipts fixture must be readable");
+
+    let drifted_count = fixture.replace("receipt_count=5", "receipt_count=30");
+    assert!(!validation_command_footprint_receipts_fixture_valid(&drifted_count));
+
+    let drifted_schema = fixture.replace(
+        "schema=canon_validation_command_footprint_receipts_v1",
+        "schema=canon_validation_command_footprint_receipts_v1_extra",
+    );
+    assert!(!validation_command_footprint_receipts_fixture_valid(&drifted_schema));
+}
+
+fn validation_command_footprint_receipts_fixture_valid(fixture: &str) -> bool {
+    if !ai::validation_harness::retained_fixture_header_valid(
+        fixture,
+        "canon_validation_command_footprint_receipts_v1",
+        5,
+    ) {
+        return false;
+    }
+
+    let planning = ai::validation_harness::validation_command_footprint_planning_smoke_receipt();
+    let target_met = ai::validation_harness::validation_command_footprint_target_met_smoke_receipt();
+    let unsafe_target = ai::validation_harness::validation_command_footprint_unsafe_target_smoke_receipt();
+    let trend = ai::validation_harness::validation_command_footprint_trend_smoke_receipt();
+    let regression = ai::validation_harness::validation_command_footprint_regression_smoke_receipt();
+    let mut expected = validation_command_footprint_expected_fixture_lines(&[
+        ("validation_command_footprint_planning", &planning),
+        ("validation_command_footprint_target_met_smoke", &target_met),
+        (
+            "validation_command_footprint_unsafe_target_smoke",
+            &unsafe_target,
+        ),
+    ]);
+    expected.extend(validation_command_footprint_trend_expected_fixture_lines(&[
+        ("validation_command_footprint_trend_smoke", &trend),
+        ("validation_command_footprint_regression_smoke", &regression),
+    ]));
+
+    fixture_contains_expected_lines(fixture, &expected)
+        && fixture.contains("rule=planning smoke passes only when footprint is passing and target keeps all expected-count guarded suites")
+        && fixture.contains("rule=target-met smoke passes when current command footprint already equals the retained target")
+        && fixture.contains("rule=unsafe-target smoke fails when the target declared step count is below expected-count guarded step count")
+        && fixture.contains("rule=trend smoke passes when the retained target is met without losing expected-count guarded coverage")
+        && fixture.contains("rule=regression smoke fails when retained command-footprint target coverage regresses")
+        && fixture.contains("rule=fixture binds retained semantic values rather than brittle receipt hashes")
+        && planning.passed()
+        && target_met.passed()
+        && !unsafe_target.passed()
+        && trend.passed()
+        && !regression.passed()
+        && planning.command_reduction_target > 0
+        && target_met.command_reduction_target == 0
+        && target_met.planning_status == "met"
+        && unsafe_target.target_total_declared_steps < unsafe_target.expected_count_guarded_steps
+        && trend.command_reduction_target_delta < 0
+        && regression.command_reduction_target_delta > 0
+}
+
+fn validation_command_footprint_expected_fixture_lines(
+    receipts: &[(&str, &ai::validation_harness::ValidationCommandFootprintPlanningReceipt)],
+) -> Vec<String> {
+    let mut expected = Vec::with_capacity(receipts.len() * 11);
+    for (prefix, receipt) in receipts {
+        expected.extend([
+            format!("{prefix}.record_type={}", receipt.record_type),
+            format!(
+                "{prefix}.current_total_declared_steps={}",
+                receipt.current_total_declared_steps
+            ),
+            format!(
+                "{prefix}.target_total_declared_steps={}",
+                receipt.target_total_declared_steps
+            ),
+            format!(
+                "{prefix}.command_reduction_target={}",
+                receipt.command_reduction_target
+            ),
+            format!(
+                "{prefix}.expected_count_guarded_steps={}",
+                receipt.expected_count_guarded_steps
+            ),
+            format!(
+                "{prefix}.expected_count_guarded_tests={}",
+                receipt.expected_count_guarded_tests
+            ),
+            format!(
+                "{prefix}.lockfile_compat_step_count={}",
+                receipt.lockfile_compat_step_count
+            ),
+            format!("{prefix}.footprint_verdict={}", receipt.footprint_verdict),
+            format!("{prefix}.safety_status={}", receipt.safety_status),
+            format!("{prefix}.planning_status={}", receipt.planning_status),
+            format!("{prefix}.verdict={}", receipt.verdict),
+        ]);
+    }
+    expected
+}
+fn validation_command_footprint_trend_expected_fixture_lines(
+    receipts: &[(&str, &ai::validation_harness::ValidationCommandFootprintTrendReceipt)],
+) -> Vec<String> {
+    let mut expected = Vec::with_capacity(receipts.len() * 13);
+    for (prefix, receipt) in receipts {
+        expected.extend([
+            format!("{prefix}.record_type={}", receipt.record_type),
+            format!(
+                "{prefix}.baseline_target_total_declared_steps={}",
+                receipt.baseline_target_total_declared_steps
+            ),
+            format!(
+                "{prefix}.current_target_total_declared_steps={}",
+                receipt.current_target_total_declared_steps
+            ),
+            format!(
+                "{prefix}.target_total_declared_step_delta={}",
+                receipt.target_total_declared_step_delta
+            ),
+            format!(
+                "{prefix}.baseline_command_reduction_target={}",
+                receipt.baseline_command_reduction_target
+            ),
+            format!(
+                "{prefix}.current_command_reduction_target={}",
+                receipt.current_command_reduction_target
+            ),
+            format!(
+                "{prefix}.command_reduction_target_delta={}",
+                receipt.command_reduction_target_delta
+            ),
+            format!(
+                "{prefix}.baseline_planning_status={}",
+                receipt.baseline_planning_status
+            ),
+            format!(
+                "{prefix}.current_planning_status={}",
+                receipt.current_planning_status
+            ),
+            format!("{prefix}.baseline_safety_status={}", receipt.baseline_safety_status),
+            format!("{prefix}.current_safety_status={}", receipt.current_safety_status),
+            format!("{prefix}.trend_status={}", receipt.trend_status),
+            format!("{prefix}.verdict={}", receipt.verdict),
+        ]);
+    }
+    expected
+}
+
+#[test]
+fn validation_duration_planning_receipts_fixture_binds_expected_retained_receipts() {
+    let fixture = std::fs::read_to_string(VALIDATION_DURATION_PLANNING_RECEIPTS_FIXTURE)
+        .expect("validation duration planning receipts fixture must be readable");
+    assert!(validation_duration_planning_receipts_fixture_valid(&fixture));
+}
+
+#[test]
+fn root_validate_validation_duration_planning_fixture_mode_is_executable_contract() {
+    assert_root_validate_fixture_mode_contract(CompactFixtureModeContract {
+        arg: "--validation-duration-planning-fixture",
+        marker: "canon_validation_duration_planning_receipts_v1",
+        expected_fragments: &[
+            "schema=canon_validation_duration_planning_receipts_v1",
+            "receipt_count=4",
+            "validation_duration_planning_summary.retained_budget_headroom_ms=6850",
+            "validation_duration_planning_summary.planning_status=pass",
+            "validation_duration_planning_budget_exhaustion_smoke.retained_budget_headroom_ms=-1",
+            "validation_duration_planning_budget_exhaustion_smoke.planning_status=fail",
+            "validation_duration_planning_trend_smoke.retained_duration_delta_ms=-150",
+            "validation_duration_planning_trend_smoke.trend_status=pass",
+            "validation_duration_planning_regression_smoke.retained_duration_delta_ms=151",
+            "validation_duration_planning_regression_smoke.trend_status=regressed",
+        ],
+    });
+}
+
+#[test]
+fn validation_duration_planning_receipts_fixture_negative_contract_detects_drift() {
+    let fixture = std::fs::read_to_string(VALIDATION_DURATION_PLANNING_RECEIPTS_FIXTURE)
+        .expect("validation duration planning receipts fixture must be readable");
+    let drifted = fixture.replace(
+        "validation_duration_planning_budget_exhaustion_smoke.retained_budget_headroom_ms=-1",
+        "validation_duration_planning_budget_exhaustion_smoke.retained_budget_headroom_ms=0",
+    );
+    assert!(!validation_duration_planning_receipts_fixture_valid(&drifted));
+}
+
+#[test]
+fn validation_duration_planning_receipts_fixture_negative_contract_detects_trend_drift() {
+    let fixture = std::fs::read_to_string(VALIDATION_DURATION_PLANNING_RECEIPTS_FIXTURE)
+        .expect("validation duration planning receipts fixture must be readable");
+
+    let drifted_trend = fixture.replace(
+        "validation_duration_planning_trend_smoke.retained_duration_delta_ms=-150",
+        "validation_duration_planning_trend_smoke.retained_duration_delta_ms=0",
+    );
+    assert!(!validation_duration_planning_receipts_fixture_valid(&drifted_trend));
+
+    let drifted_regression = fixture.replace(
+        "validation_duration_planning_regression_smoke.retained_budget_headroom_delta_ms=-151",
+        "validation_duration_planning_regression_smoke.retained_budget_headroom_delta_ms=0",
+    );
+    assert!(!validation_duration_planning_receipts_fixture_valid(&drifted_regression));
+}
+
+fn validation_duration_planning_receipts_fixture_valid(fixture: &str) -> bool {
+    if !ai::validation_harness::retained_fixture_header_valid(
+        fixture,
+        "canon_validation_duration_planning_receipts_v1",
+        4,
+    ) {
+        return false;
+    }
+
+    let summary = ai::validation_harness::validation_duration_planning_smoke_receipt();
+    let budget_exhaustion =
+        ai::validation_harness::validation_duration_planning_budget_exhaustion_smoke_receipt();
+    let trend = ai::validation_harness::validation_duration_planning_trend_smoke_receipt();
+    let regression =
+        ai::validation_harness::validation_duration_planning_regression_smoke_receipt();
+    let mut expected = validation_duration_planning_expected_fixture_lines(&[
+        ("validation_duration_planning_summary", &summary),
+        (
+            "validation_duration_planning_budget_exhaustion_smoke",
+            &budget_exhaustion,
+        ),
+    ]);
+    expected.extend(validation_duration_planning_trend_expected_fixture_lines(&[
+        ("validation_duration_planning_trend_smoke", &trend),
+        (
+            "validation_duration_planning_regression_smoke",
+            &regression,
+        ),
+    ]));
+
+    fixture_contains_expected_lines(fixture, &expected)
+        && fixture.contains("rule=duration planning summary passes only when retained runtime budget, validation footprint, positive step count, and positive guarded-test count pass")
+        && fixture.contains("rule=budget-exhaustion smoke fails through retained budget headroom while validation footprint remains passing")
+        && fixture.contains("rule=duration planning trend passes only when retained duration decreases, budget headroom increases, and guarded-test estimates do not grow")
+        && fixture.contains("rule=duration planning regression smoke fails when retained duration grows and budget headroom shrinks")
+        && fixture.contains("rule=fixture binds retained semantic values rather than brittle receipt hashes")
+        && summary.passed()
+        && !budget_exhaustion.passed()
+        && trend.passed()
+        && !regression.passed()
+        && budget_exhaustion.retained_budget_headroom_ms < 0
+        && trend.retained_duration_delta_ms < 0
+        && regression.retained_duration_delta_ms > 0
+}
+
+fn validation_duration_planning_expected_fixture_lines(
+    receipts: &[(&str, &ai::validation_harness::ValidationDurationPlanningReceipt)],
+) -> Vec<String> {
+    let mut expected = Vec::with_capacity(receipts.len() * 12);
+    for (prefix, receipt) in receipts {
+        expected.extend([
+            format!("{prefix}.record_type={}", receipt.record_type),
+            format!(
+                "{prefix}.retained_project_agent_elapsed_ms_p95={}",
+                receipt.retained_project_agent_elapsed_ms_p95
+            ),
+            format!(
+                "{prefix}.max_project_agent_elapsed_ms_p95={}",
+                receipt.max_project_agent_elapsed_ms_p95
+            ),
+            format!(
+                "{prefix}.retained_budget_headroom_ms={}",
+                receipt.retained_budget_headroom_ms
+            ),
+            format!("{prefix}.total_declared_steps={}", receipt.total_declared_steps),
+            format!(
+                "{prefix}.expected_count_guarded_tests={}",
+                receipt.expected_count_guarded_tests
+            ),
+            format!(
+                "{prefix}.estimated_ms_per_declared_step={}",
+                receipt.estimated_ms_per_declared_step
+            ),
+            format!(
+                "{prefix}.estimated_ms_per_guarded_test={}",
+                receipt.estimated_ms_per_guarded_test
+            ),
+            format!("{prefix}.runtime_budget_status={}", receipt.runtime_budget_status),
+            format!("{prefix}.footprint_verdict={}", receipt.footprint_verdict),
+            format!("{prefix}.planning_status={}", receipt.planning_status),
+            format!("{prefix}.verdict={}", receipt.verdict),
+        ]);
+    }
+    expected
+}
+
+
+fn validation_duration_planning_trend_expected_fixture_lines(
+    receipts: &[(&str, &ai::validation_harness::ValidationDurationPlanningTrendReceipt)],
+) -> Vec<String> {
+    let mut expected = Vec::with_capacity(receipts.len() * 15);
+    for (prefix, receipt) in receipts {
+        expected.extend([
+            format!("{prefix}.record_type={}", receipt.record_type),
+            format!(
+                "{prefix}.baseline_retained_project_agent_elapsed_ms_p95={}",
+                receipt.baseline_retained_project_agent_elapsed_ms_p95
+            ),
+            format!(
+                "{prefix}.current_retained_project_agent_elapsed_ms_p95={}",
+                receipt.current_retained_project_agent_elapsed_ms_p95
+            ),
+            format!(
+                "{prefix}.retained_duration_delta_ms={}",
+                receipt.retained_duration_delta_ms
+            ),
+            format!(
+                "{prefix}.baseline_retained_budget_headroom_ms={}",
+                receipt.baseline_retained_budget_headroom_ms
+            ),
+            format!(
+                "{prefix}.current_retained_budget_headroom_ms={}",
+                receipt.current_retained_budget_headroom_ms
+            ),
+            format!(
+                "{prefix}.retained_budget_headroom_delta_ms={}",
+                receipt.retained_budget_headroom_delta_ms
+            ),
+            format!(
+                "{prefix}.baseline_estimated_ms_per_guarded_test={}",
+                receipt.baseline_estimated_ms_per_guarded_test
+            ),
+            format!(
+                "{prefix}.current_estimated_ms_per_guarded_test={}",
+                receipt.current_estimated_ms_per_guarded_test
+            ),
+            format!(
+                "{prefix}.estimated_ms_per_guarded_test_delta={}",
+                receipt.estimated_ms_per_guarded_test_delta
+            ),
+            format!("{prefix}.baseline_planning_status={}", receipt.baseline_planning_status),
+            format!("{prefix}.current_planning_status={}", receipt.current_planning_status),
+            format!("{prefix}.trend_status={}", receipt.trend_status),
+            format!("{prefix}.verdict={}", receipt.verdict),
+        ]);
+    }
+    expected
+}
+
+#[test]
+fn policy_validation_health_receipts_fixture_binds_expected_retained_receipt() {
+    let fixture = std::fs::read_to_string(POLICY_VALIDATION_HEALTH_RECEIPTS_FIXTURE)
+        .expect("policy validation health receipts fixture must be readable");
+    assert!(policy_validation_health_receipts_fixture_valid(&fixture));
+}
+
+#[test]
+fn root_validate_policy_validation_health_fixture_mode_is_executable_contract() {
+    assert_root_validate_fixture_mode_contract(CompactFixtureModeContract {
+        arg: "--policy-validation-health-fixture",
+        marker: "canon_policy_validation_health_receipts_v1",
+        expected_fragments: &[
+            "schema=canon_policy_validation_health_receipts_v1",
+            "receipt_count=1",
+            "policy_validation_health_smoke.dispatch_catalog_changed=false",
+            "policy_validation_health_smoke.baseline_dispatch_catalog_hash=",
+            "policy_validation_health_smoke.current_dispatch_catalog_hash=",
+        ],
+    });
+}
+
+#[test]
+fn policy_validation_health_receipts_fixture_negative_contract_detects_drift() {
+    let fixture = std::fs::read_to_string(POLICY_VALIDATION_HEALTH_RECEIPTS_FIXTURE)
+        .expect("policy validation health receipts fixture must be readable");
+    let drifted = fixture.replace(
+        "policy_validation_health_smoke.dispatch_catalog_changed=false",
+        "policy_validation_health_smoke.dispatch_catalog_changed=true",
+    );
+    assert!(!policy_validation_health_receipts_fixture_valid(&drifted));
+}
+
+#[test]
+fn policy_validation_health_trend_receipts_fixture_binds_expected_retained_receipt() {
+    let fixture = std::fs::read_to_string(POLICY_VALIDATION_HEALTH_TREND_RECEIPTS_FIXTURE)
+        .expect("policy validation health trend receipts fixture must be readable");
+    assert!(policy_validation_health_trend_receipts_fixture_valid(
+        &fixture
+    ));
+}
+
+#[test]
+fn root_validate_policy_validation_health_trend_fixture_mode_is_executable_contract() {
+    assert_root_validate_fixture_mode_contract(CompactFixtureModeContract {
+        arg: "--policy-validation-health-trend-fixture",
+        marker: "canon_policy_validation_health_trend_receipts_v1",
+        expected_fragments: &[
+            "schema=canon_policy_validation_health_trend_receipts_v1",
+            "receipt_count=1",
+            "policy_validation_health_trend_smoke.policy_hit_rate_delta_bps=5000",
+            "policy_validation_health_trend_smoke.capacity_avoided_llm_call_delta_per_full_batch=4",
+            "policy_validation_health_trend_smoke.dispatch_catalog_changed=false",
+        ],
+    });
+}
+
+#[test]
+fn policy_validation_health_trend_receipts_fixture_negative_contract_detects_drift() {
+    let fixture = std::fs::read_to_string(POLICY_VALIDATION_HEALTH_TREND_RECEIPTS_FIXTURE)
+        .expect("policy validation health trend receipts fixture must be readable");
+    let drifted = fixture.replace(
+        "policy_validation_health_trend_smoke.capacity_avoided_llm_call_delta_per_full_batch=4",
+        "policy_validation_health_trend_smoke.capacity_avoided_llm_call_delta_per_full_batch=-4",
+    );
+    assert!(!policy_validation_health_trend_receipts_fixture_valid(
+        &drifted
+    ));
+}
+
+fn policy_validation_health_trend_receipts_fixture_valid(fixture: &str) -> bool {
+    if !ai::validation_harness::retained_fixture_header_valid(
+        fixture,
+        "canon_policy_validation_health_trend_receipts_v1",
+        1,
+    ) {
+        return false;
+    }
+
+    let receipt = ai::validation_harness::policy_validation_health_trend_smoke_receipt();
+    let expected = [
+        format!("policy_validation_health_trend_smoke.record_type={}", receipt.record_type),
+        format!("policy_validation_health_trend_smoke.baseline_policy_hit_rate_bps={}", receipt.baseline_policy_hit_rate_bps),
+        format!("policy_validation_health_trend_smoke.current_policy_hit_rate_bps={}", receipt.current_policy_hit_rate_bps),
+        format!("policy_validation_health_trend_smoke.policy_hit_rate_delta_bps={}", receipt.policy_hit_rate_delta_bps),
+        format!("policy_validation_health_trend_smoke.baseline_avoided_llm_call_count={}", receipt.baseline_avoided_llm_call_count),
+        format!("policy_validation_health_trend_smoke.current_avoided_llm_call_count={}", receipt.current_avoided_llm_call_count),
+        format!("policy_validation_health_trend_smoke.avoided_llm_call_delta={}", receipt.avoided_llm_call_delta),
+        format!("policy_validation_health_trend_smoke.baseline_capacity_avoided_llm_calls_per_full_batch={}", receipt.baseline_capacity_avoided_llm_calls_per_full_batch),
+        format!("policy_validation_health_trend_smoke.current_capacity_avoided_llm_calls_per_full_batch={}", receipt.current_capacity_avoided_llm_calls_per_full_batch),
+        format!("policy_validation_health_trend_smoke.capacity_avoided_llm_call_delta_per_full_batch={}", receipt.capacity_avoided_llm_call_delta_per_full_batch),
+        format!("policy_validation_health_trend_smoke.baseline_health_verdict={}", receipt.baseline_health_verdict),
+        format!("policy_validation_health_trend_smoke.current_health_verdict={}", receipt.current_health_verdict),
+        format!("policy_validation_health_trend_smoke.capacity_trend_status={}", receipt.capacity_trend_status),
+        format!("policy_validation_health_trend_smoke.validation_cost_verdict={}", receipt.validation_cost_verdict),
+        format!("policy_validation_health_trend_smoke.dispatch_catalog_changed={}", receipt.dispatch_catalog_changed),
+        format!("policy_validation_health_trend_smoke.trend_status={}", receipt.trend_status),
+        format!("policy_validation_health_trend_smoke.verdict={}", receipt.verdict),
+    ];
+
+    fixture_contains_expected_lines(fixture, &expected)
+        && fixture.contains("rule=health trend smoke passes only when aggregate health, policy reuse, validation cost, dispatch catalog, and capacity trend do not regress")
+        && fixture.contains("rule=capacity trend must preserve or improve avoided LLM calls per bounded full batch")
+        && fixture.contains("rule=fixture binds retained semantic values rather than brittle receipt hashes")
+        && receipt.passed()
+        && receipt.capacity_avoided_llm_call_delta_per_full_batch >= 0
+        && !receipt.dispatch_catalog_changed
+}
+
+fn policy_validation_health_receipts_fixture_valid(fixture: &str) -> bool {
+    if !ai::validation_harness::retained_fixture_header_valid(
+        fixture,
+        "canon_policy_validation_health_receipts_v1",
+        1,
+    ) {
+        return false;
+    }
+
+    let receipt = ai::validation_harness::policy_validation_health_smoke_receipt();
+    let expected = [
+        format!(
+            "policy_validation_health_smoke.record_type={}",
+            receipt.record_type
+        ),
+        format!(
+            "policy_validation_health_smoke.policy_hit_rate_bps={}",
+            receipt.policy_hit_rate_bps
+        ),
+        format!(
+            "policy_validation_health_smoke.avoided_llm_call_count={}",
+            receipt.avoided_llm_call_count
+        ),
+        format!(
+            "policy_validation_health_smoke.policy_reuse_verdict={}",
+            receipt.policy_reuse_verdict
+        ),
+        format!(
+            "policy_validation_health_smoke.validation_budget_status={}",
+            receipt.validation_budget_status
+        ),
+        format!(
+            "policy_validation_health_smoke.validation_trend_status={}",
+            receipt.validation_trend_status
+        ),
+        format!(
+            "policy_validation_health_smoke.validation_footprint_status={}",
+            receipt.validation_footprint_status
+        ),
+        format!(
+            "policy_validation_health_smoke.validation_cost_verdict={}",
+            receipt.validation_cost_verdict
+        ),
+        format!(
+            "policy_validation_health_smoke.expected_count_guarded_tests={}",
+            receipt.expected_count_guarded_tests
+        ),
+        format!(
+            "policy_validation_health_smoke.total_declared_steps={}",
+            receipt.total_declared_steps
+        ),
+        format!(
+            "policy_validation_health_smoke.command_set_changed={}",
+            receipt.command_set_changed
+        ),
+        format!(
+            "policy_validation_health_smoke.baseline_dispatch_catalog_hash={}",
+            receipt.baseline_dispatch_catalog_hash
+        ),
+        format!(
+            "policy_validation_health_smoke.current_dispatch_catalog_hash={}",
+            receipt.current_dispatch_catalog_hash
+        ),
+        format!(
+            "policy_validation_health_smoke.dispatch_catalog_changed={}",
+            receipt.dispatch_catalog_changed
+        ),
+        format!("policy_validation_health_smoke.verdict={}", receipt.verdict),
+    ];
+
+    fixture_contains_expected_lines(fixture, &expected)
+        && fixture.contains("rule=health smoke passes only when policy reuse, validation budget, runtime trend, validation footprint, validation cost, command-set drift, and dispatch-catalog drift all pass")
+        && fixture.contains("rule=dispatch catalog hashes must match for aggregate policy validation health to pass")
+        && fixture.contains("rule=fixture binds retained semantic values rather than brittle receipt hashes")
+        && receipt.passed()
+        && receipt.baseline_dispatch_catalog_hash == receipt.current_dispatch_catalog_hash
+        && !receipt.dispatch_catalog_changed
+}
+
+#[test]
+fn policy_reuse_smoke_receipt_counts_hits_without_llm_fallback() {
+    let receipt = ai::validation_harness::policy_reuse_smoke_receipt();
+
+    assert_eq!(receipt.schema_version, 1);
+    assert_eq!(
+        receipt.record_type,
+        ai::validation_harness::POLICY_REUSE_SMOKE_STEP
+    );
+    assert_eq!(receipt.retained_record_count, 2);
+    assert_eq!(receipt.policy_hit_count, 1);
+    assert_eq!(receipt.policy_miss_count, 1);
+    assert_eq!(receipt.avoided_llm_call_count, 1);
+    assert_eq!(receipt.hit_rate_bps, 5_000);
+    assert_eq!(receipt.verdict, "pass");
+    assert!(receipt.passed());
+    assert!(receipt
+        .to_json()
+        .contains("\"record_type\":\"policy_reuse_smoke\""));
+}
+
+#[test]
+fn root_validate_policy_reuse_smoke_mode_is_executable_contract() {
+    assert_root_validate_catalog_compact_mode_contract(
+        "--policy-reuse-smoke",
+        &[
+            "\"record_type\":\"policy_reuse_smoke\"",
+            "\"policy_hit_count\":1",
+            "\"policy_miss_count\":1",
+            "\"avoided_llm_call_count\":1",
+            "\"hit_rate_bps\":5000",
+            "\"verdict\":\"pass\"",
+        ],
+    );
+}
+
+#[test]
+fn policy_reuse_trend_smoke_receipt_proves_policy_hit_improvement() {
+    let receipt = ai::validation_harness::policy_reuse_trend_smoke_receipt();
+
+    assert_eq!(receipt.schema_version, 1);
+    assert_eq!(
+        receipt.record_type,
+        ai::validation_harness::POLICY_REUSE_TREND_SMOKE_STEP
+    );
+    assert_eq!(receipt.baseline_hit_rate_bps, 5_000);
+    assert_eq!(receipt.current_hit_rate_bps, 10_000);
+    assert_eq!(receipt.hit_rate_delta_bps, 5_000);
+    assert_eq!(receipt.avoided_llm_call_delta, 1);
+    assert_eq!(receipt.trend_status, "improved_or_stable");
+    assert_eq!(receipt.verdict, "pass");
+    assert!(receipt.passed());
+}
+
+#[test]
+fn root_validate_policy_reuse_trend_smoke_mode_is_executable_contract() {
+    assert_root_validate_catalog_compact_mode_contract(
+        "--policy-reuse-trend-smoke",
+        &[
+            "\"record_type\":\"policy_reuse_trend_smoke\"",
+            "\"baseline_hit_rate_bps\":5000",
+            "\"current_hit_rate_bps\":10000",
+            "\"avoided_llm_call_delta\":1",
+            "\"trend_status\":\"improved_or_stable\"",
+            "\"verdict\":\"pass\"",
+        ],
+    );
+}
+
+#[test]
+fn policy_reuse_regression_smoke_receipt_is_controlled_negative_contract() {
+    let receipt = ai::validation_harness::policy_reuse_regression_smoke_receipt();
+
+    assert_eq!(receipt.schema_version, 1);
+    assert_eq!(
+        receipt.record_type,
+        ai::validation_harness::POLICY_REUSE_REGRESSION_SMOKE_STEP
+    );
+    assert_eq!(receipt.baseline_hit_rate_bps, 10_000);
+    assert_eq!(receipt.current_hit_rate_bps, 5_000);
+    assert_eq!(receipt.hit_rate_delta_bps, -5_000);
+    assert_eq!(receipt.avoided_llm_call_delta, -1);
+    assert_eq!(receipt.trend_status, "regressed");
+    assert_eq!(receipt.verdict, "fail");
+    assert!(receipt.is_valid());
+    assert!(!receipt.passed());
+}
+
+#[test]
+fn root_validate_policy_reuse_regression_smoke_mode_is_executable_contract() {
+    assert_root_validate_catalog_compact_mode_contract(
+        "--policy-reuse-regression-smoke",
+        &[
+            "\"record_type\":\"policy_reuse_regression_smoke\"",
+            "\"baseline_hit_rate_bps\":10000",
+            "\"current_hit_rate_bps\":5000",
+            "\"avoided_llm_call_delta\":-1",
+            "\"trend_status\":\"regressed\"",
+            "\"verdict\":\"fail\"",
+        ],
+    );
+}
+
+#[test]
+fn policy_reuse_receipts_fixture_binds_expected_retained_receipts() {
+    let fixture = std::fs::read_to_string(POLICY_REUSE_RECEIPTS_FIXTURE)
+        .expect("policy reuse receipts fixture must be readable");
+    assert!(policy_reuse_receipts_fixture_valid(&fixture));
+}
+
+#[test]
+fn policy_reuse_receipts_fixture_negative_contract_detects_drift() {
+    let fixture = std::fs::read_to_string(POLICY_REUSE_RECEIPTS_FIXTURE)
+        .expect("policy reuse receipts fixture must be readable");
+    let drifted = fixture.replace(
+        "policy_reuse_smoke.avoided_llm_call_count=1",
+        "policy_reuse_smoke.avoided_llm_call_count=0",
+    );
+    assert!(!policy_reuse_receipts_fixture_valid(&drifted));
+}
+
+fn policy_reuse_receipts_fixture_valid(fixture: &str) -> bool {
+    if !ai::validation_harness::retained_fixture_header_valid(
+        fixture,
+        "canon_policy_reuse_receipts_v1",
+        3,
+    ) {
+        return false;
+    }
+
+    let reuse = ai::validation_harness::policy_reuse_smoke_receipt();
+    let trend = ai::validation_harness::policy_reuse_trend_smoke_receipt();
+    let regression = ai::validation_harness::policy_reuse_regression_smoke_receipt();
+
+    let expected = [
+        format!("policy_reuse_smoke.record_type={}", reuse.record_type),
+        format!(
+            "policy_reuse_smoke.retained_record_count={}",
+            reuse.retained_record_count
+        ),
+        format!(
+            "policy_reuse_smoke.policy_hit_count={}",
+            reuse.policy_hit_count
+        ),
+        format!(
+            "policy_reuse_smoke.policy_miss_count={}",
+            reuse.policy_miss_count
+        ),
+        format!(
+            "policy_reuse_smoke.avoided_llm_call_count={}",
+            reuse.avoided_llm_call_count
+        ),
+        format!("policy_reuse_smoke.hit_rate_bps={}", reuse.hit_rate_bps),
+        format!("policy_reuse_smoke.verdict={}", reuse.verdict),
+        format!("policy_reuse_trend_smoke.record_type={}", trend.record_type),
+        format!(
+            "policy_reuse_trend_smoke.baseline_retained_record_count={}",
+            trend.baseline_retained_record_count
+        ),
+        format!(
+            "policy_reuse_trend_smoke.current_retained_record_count={}",
+            trend.current_retained_record_count
+        ),
+        format!(
+            "policy_reuse_trend_smoke.baseline_hit_rate_bps={}",
+            trend.baseline_hit_rate_bps
+        ),
+        format!(
+            "policy_reuse_trend_smoke.current_hit_rate_bps={}",
+            trend.current_hit_rate_bps
+        ),
+        format!(
+            "policy_reuse_trend_smoke.hit_rate_delta_bps={}",
+            trend.hit_rate_delta_bps
+        ),
+        format!(
+            "policy_reuse_trend_smoke.avoided_llm_call_delta={}",
+            trend.avoided_llm_call_delta
+        ),
+        format!(
+            "policy_reuse_trend_smoke.trend_status={}",
+            trend.trend_status
+        ),
+        format!("policy_reuse_trend_smoke.verdict={}", trend.verdict),
+        format!(
+            "policy_reuse_regression_smoke.record_type={}",
+            regression.record_type
+        ),
+        format!(
+            "policy_reuse_regression_smoke.baseline_retained_record_count={}",
+            regression.baseline_retained_record_count
+        ),
+        format!(
+            "policy_reuse_regression_smoke.current_retained_record_count={}",
+            regression.current_retained_record_count
+        ),
+        format!(
+            "policy_reuse_regression_smoke.baseline_hit_rate_bps={}",
+            regression.baseline_hit_rate_bps
+        ),
+        format!(
+            "policy_reuse_regression_smoke.current_hit_rate_bps={}",
+            regression.current_hit_rate_bps
+        ),
+        format!(
+            "policy_reuse_regression_smoke.hit_rate_delta_bps={}",
+            regression.hit_rate_delta_bps
+        ),
+        format!(
+            "policy_reuse_regression_smoke.avoided_llm_call_delta={}",
+            regression.avoided_llm_call_delta
+        ),
+        format!(
+            "policy_reuse_regression_smoke.trend_status={}",
+            regression.trend_status
+        ),
+        format!(
+            "policy_reuse_regression_smoke.verdict={}",
+            regression.verdict
+        ),
+    ];
+
+    fixture_contains_expected_lines(fixture, &expected)
+        && fixture
+            .contains("rule=policy_hit_count equals avoided_llm_call_count for policy_reuse_smoke")
+        && fixture.contains(
+            "rule=trend smoke passes only when hit rate and avoided LLM calls do not regress",
+        )
+        && fixture.contains("rule=regression smoke remains valid but does not pass")
+        && reuse.avoided_llm_call_count == reuse.policy_hit_count
+        && trend.passed()
+        && regression.is_valid()
+        && !regression.passed()
+}
+
+#[test]
+fn root_validation_pass_status_includes_runtime_performance_budget() {
+    let mut receipt = ValidationReceipt {
+        cargo: "cargo".to_owned(),
+        cargo_version: "cargo 1.96.0-nightly".to_owned(),
+        steps: vec![StepReceipt {
+            name: VALIDATION_HARNESS_STEP,
+            command: "cargo -Znext-lockfile-bump test --test validation_harness_contract --locked -- --nocapture".to_owned(),
+            exit_code: Some(0),
+            stdout_bytes: 428,
+            stderr_bytes: 188,
+            skip_reason: None,
+            expected_test_count: Some(VALIDATION_HARNESS_EXPECTED_TESTS),
+            observed_test_count: Some(VALIDATION_HARNESS_EXPECTED_TESTS),
+        }],
+        graph_telemetry: GraphTelemetryReceipt {
+            crate_name: "semantic_scale_probe".to_owned(),
+            graph_path: "/tmp/canon-agent-graph-telemetry.json".to_owned(),
+            node_count: 64,
+            edge_count: 132,
+            semantic_fn_count: 64,
+            semantic_fn_coverage_bps: 10_000,
+            wrapper_hash: "wrapper-hash".to_owned(),
+            report_hash: "report-hash".to_owned(),
+        },
+        runtime_performance: RuntimePerformanceReceipt {
+            step: RUNTIME_PERFORMANCE_STEP,
+            runtime_performance_signal_present: true,
+            runtime_performance_budget_status: "pass",
+            project_agent_elapsed_ms_median: 1,
+            project_agent_elapsed_ms_p95: 1,
+            download_initial_get_ms_median: 0,
+            download_initial_get_ms_p95: 0,
+            download_follow_get_ms_median: 0,
+            download_follow_get_ms_p95: 0,
+            download_write_ms_median: 0,
+            download_write_ms_p95: 0,
+            validation_command_duration_ms: 1,
+            max_project_agent_elapsed_ms_p95: 10_000,
+            max_download_initial_get_ms_p95: 2_000,
+            max_download_follow_get_ms_p95: 2_000,
+            max_download_write_ms_p95: 1_000,
+        },
+    };
+    assert!(receipt.passed());
+
+    receipt.runtime_performance.max_project_agent_elapsed_ms_p95 = 0;
+    receipt
+        .runtime_performance
+        .runtime_performance_budget_status = "fail";
+
+    assert!(!receipt.passed());
+    assert!(receipt.to_json_line().contains("\"passed\":false"));
+}
+
+#[test]
+fn root_validation_json_receipt_records_graph_cli_test_surface() {
+    let receipt = ValidationReceipt {
+        cargo: "cargo".to_owned(),
+        cargo_version: "cargo 1.96.0-nightly".to_owned(),
+        steps: vec![
+            StepReceipt {
+                name: VALIDATION_HARNESS_STEP,
+                command: "cargo -Znext-lockfile-bump test --test validation_harness_contract --locked -- --nocapture".to_owned(),
+                exit_code: Some(0),
+                stdout_bytes: 428,
+                stderr_bytes: 188,
+                skip_reason: None,
+                expected_test_count: Some(VALIDATION_HARNESS_EXPECTED_TESTS),
+                observed_test_count: Some(VALIDATION_HARNESS_EXPECTED_TESTS),
+            },
+            StepReceipt {
+                name: GRAPH_MUTATION_CLI_CONTRACT_STEP,
+                command: "cargo -Znext-lockfile-bump test --test graph_mutation_cli_contract --locked -- --nocapture".to_owned(),
+                exit_code: Some(0),
+                stdout_bytes: 806,
+                stderr_bytes: 188,
+                skip_reason: None,
+                expected_test_count: Some(GRAPH_MUTATION_CLI_CONTRACT_EXPECTED_TESTS),
+                observed_test_count: Some(GRAPH_MUTATION_CLI_CONTRACT_EXPECTED_TESTS),
+            },
+        ],
+        graph_telemetry: GraphTelemetryReceipt {
+            crate_name: "semantic_scale_probe".to_owned(),
+            graph_path: "/tmp/canon-agent-graph-telemetry.json".to_owned(),
+            node_count: 64,
+            edge_count: 132,
+            semantic_fn_count: 64,
+            semantic_fn_coverage_bps: 10_000,
+            wrapper_hash: "wrapper-hash".to_owned(),
+            report_hash: "report-hash".to_owned(),
+        },
+        runtime_performance: RuntimePerformanceReceipt {
+            step: RUNTIME_PERFORMANCE_STEP,
+            runtime_performance_signal_present: true,
+            runtime_performance_budget_status: "pass",
+            project_agent_elapsed_ms_median: 1,
+            project_agent_elapsed_ms_p95: 1,
+            download_initial_get_ms_median: 0,
+            download_initial_get_ms_p95: 0,
+            download_follow_get_ms_median: 0,
+            download_follow_get_ms_p95: 0,
+            download_write_ms_median: 0,
+            download_write_ms_p95: 0,
+            validation_command_duration_ms: 1,
+            max_project_agent_elapsed_ms_p95: 10_000,
+            max_download_initial_get_ms_p95: 2_000,
+            max_download_follow_get_ms_p95: 2_000,
+            max_download_write_ms_p95: 1_000,
+        },
+    };
+
+    let json = receipt.to_json_line();
+    assert!(json.contains("\"name\":\"validation_harness_contract_tests\""));
+    assert!(json.contains(&format!(
+        "\"expected_test_count\":{VALIDATION_HARNESS_EXPECTED_TESTS}"
+    )));
+    assert!(json.contains(&format!(
+        "\"observed_test_count\":{VALIDATION_HARNESS_EXPECTED_TESTS}"
+    )));
+    assert!(json.contains("\"name\":\"graph_mutation_cli_contract_tests\""));
+    assert!(json.contains("\"expected_test_count\":10"));
+    assert!(json.contains("\"observed_test_count\":10"));
+    assert!(json.contains("\"passed\":true"));
 }

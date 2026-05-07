@@ -1,15 +1,17 @@
 //! Policy promotion and distillation payloads derived from TLog history.
 
-use std::path::Path;
+use std::fs::{self, File};
+use std::io::Write;
+use std::path::{Path, PathBuf};
 
-use crate::capability::{EvidenceProducer, EvidenceSubmission};
 use crate::capability::policy::{
-    PolicyEntry, PolicyStore, PolicyStoreError, POLICY_FEEDBACK_HASH,
-    POLICY_PROMOTION_SOURCE_SEQ,
+    PolicyEntry, PolicyStore, PolicyStoreError, POLICY_FEEDBACK_HASH, POLICY_PROMOTION_SOURCE_SEQ,
 };
+use crate::capability::{EvidenceProducer, EvidenceSubmission};
 use crate::kernel::{mix, ControlEvent, EventKind, Evidence, GateId, Phase};
 
 pub const DISTILLATION_ROW_SCHEMA_VERSION: u64 = 1;
+pub const DISTILLATION_ROW_RECORD: u64 = 0x4449_5354_3031_3031;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PolicyPromotion {
@@ -33,6 +35,36 @@ pub struct DistillationRow {
     pub proof_hash: u64,
     pub source_event: u64,
     pub row_hash: u64,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum DistillationExportError {
+    InvalidTlog,
+    NoVerifiedPromotion,
+    InvalidRow,
+    Io,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct DistillationExportInput {
+    pub promoted_policy_version: u64,
+    pub instruction_hash: u64,
+    pub input_state_hash: u64,
+    pub action_hash: u64,
+    pub output_hash: u64,
+    pub score: u64,
+    pub proof_hash: u64,
+    pub minimum_score: u64,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct DistillationExportReceipt {
+    pub schema_version: u64,
+    pub source_event: u64,
+    pub row_count: u64,
+    pub output_hash: u64,
+    pub proof_hash: u64,
+    pub receipt_hash: u64,
 }
 
 impl DistillationRow {
@@ -107,6 +139,55 @@ impl DistillationRow {
         h = mix(h, self.score);
         h = mix(h, self.proof_hash);
         h = mix(h, self.source_event);
+        Some(h.max(1))
+    }
+
+    pub fn encode_ndjson(&self) -> Option<String> {
+        self.expected_row_hash().and_then(|expected| {
+            (expected == self.row_hash).then(|| {
+                format!(
+                    "[{},{},{},{},{},{},{},{},{},{}]\n",
+                    self.schema_version,
+                    DISTILLATION_ROW_RECORD,
+                    self.instruction_hash,
+                    self.input_state_hash,
+                    self.action_hash,
+                    self.output_hash,
+                    self.score,
+                    self.proof_hash,
+                    self.source_event,
+                    self.row_hash,
+                )
+            })
+        })
+    }
+}
+
+impl DistillationExportReceipt {
+    pub fn is_valid_for(&self, row: &DistillationRow) -> bool {
+        self.schema_version == DISTILLATION_ROW_SCHEMA_VERSION
+            && self.source_event == row.source_event
+            && self.row_count == 1
+            && self.output_hash == row.row_hash
+            && self.proof_hash == row.proof_hash
+            && self.receipt_hash == self.expected_receipt_hash().unwrap_or(0)
+    }
+
+    pub fn expected_receipt_hash(&self) -> Option<u64> {
+        if self.schema_version != DISTILLATION_ROW_SCHEMA_VERSION
+            || self.source_event == 0
+            || self.row_count == 0
+            || self.output_hash == 0
+            || self.proof_hash == 0
+        {
+            return None;
+        }
+        let mut h = 0x4453_544c_584f_3031u64;
+        h = mix(h, self.schema_version);
+        h = mix(h, self.source_event);
+        h = mix(h, self.row_count);
+        h = mix(h, self.output_hash);
+        h = mix(h, self.proof_hash);
         Some(h.max(1))
     }
 }
@@ -256,6 +337,114 @@ impl PolicyStore {
             },
         )
     }
+}
+
+pub fn export_verified_distillation_row(
+    tlog: &[ControlEvent],
+    path: impl AsRef<Path>,
+    input: DistillationExportInput,
+) -> Result<DistillationExportReceipt, DistillationExportError> {
+    verify_distillation_export_input(&input)?;
+    crate::runtime::verify_tlog(tlog).map_err(|_| DistillationExportError::InvalidTlog)?;
+
+    let promotion = PolicyPromotion::from_tlog(tlog, input.promoted_policy_version)
+        .ok_or(DistillationExportError::NoVerifiedPromotion)?;
+    if input.score < input.minimum_score || input.proof_hash != promotion.promoted_policy_hash {
+        return Err(DistillationExportError::NoVerifiedPromotion);
+    }
+    let eval_event = tlog
+        .iter()
+        .find(|event| event.seq == promotion.eval_seq)
+        .ok_or(DistillationExportError::NoVerifiedPromotion)?;
+    if eval_event.evidence != Evidence::EvalScore
+        || eval_event.to != Phase::Persist
+        || eval_event.state_after.gates.eval.status != crate::kernel::GateStatus::Pass
+        || !eval_event.state_after.packet.objective_complete()
+        || !eval_event.state_after.packet.lineage_valid()
+    {
+        return Err(DistillationExportError::NoVerifiedPromotion);
+    }
+
+    let row = DistillationRow::from_policy_promotion(
+        &promotion,
+        input.instruction_hash,
+        input.input_state_hash,
+        input.action_hash,
+        input.output_hash,
+        input.score,
+        input.proof_hash,
+    )
+    .ok_or(DistillationExportError::InvalidRow)?;
+    let encoded = row
+        .encode_ndjson()
+        .ok_or(DistillationExportError::InvalidRow)?;
+    write_distillation_output(path.as_ref(), encoded.as_bytes())?;
+
+    let mut receipt = DistillationExportReceipt {
+        schema_version: DISTILLATION_ROW_SCHEMA_VERSION,
+        source_event: row.source_event,
+        row_count: 1,
+        output_hash: row.row_hash,
+        proof_hash: row.proof_hash,
+        receipt_hash: 0,
+    };
+    receipt.receipt_hash = receipt
+        .expected_receipt_hash()
+        .ok_or(DistillationExportError::InvalidRow)?;
+    receipt
+        .is_valid_for(&row)
+        .then_some(receipt)
+        .ok_or(DistillationExportError::InvalidRow)
+}
+
+fn verify_distillation_export_input(
+    input: &DistillationExportInput,
+) -> Result<(), DistillationExportError> {
+    if input.promoted_policy_version == 0
+        || input.instruction_hash == 0
+        || input.input_state_hash == 0
+        || input.action_hash == 0
+        || input.output_hash == 0
+        || input.score == 0
+        || input.proof_hash == 0
+        || input.minimum_score == 0
+    {
+        return Err(DistillationExportError::InvalidRow);
+    }
+    Ok(())
+}
+
+fn write_distillation_output(path: &Path, bytes: &[u8]) -> Result<(), DistillationExportError> {
+    let tmp_path = temporary_distillation_path(path);
+    {
+        let mut file = File::create(&tmp_path).map_err(|_| DistillationExportError::Io)?;
+        file.write_all(bytes)
+            .map_err(|_| DistillationExportError::Io)?;
+        file.sync_all().map_err(|_| DistillationExportError::Io)?;
+    }
+    fs::rename(&tmp_path, path).map_err(|_| DistillationExportError::Io)?;
+    sync_distillation_parent_dir(path)
+}
+
+fn temporary_distillation_path(path: &Path) -> PathBuf {
+    let mut tmp = path.to_path_buf();
+    let suffix = match path.extension().and_then(|v| v.to_str()) {
+        Some(ext) if !ext.is_empty() => format!("{ext}.tmp"),
+        _ => "tmp".to_string(),
+    };
+    tmp.set_extension(suffix);
+    tmp
+}
+
+fn sync_distillation_parent_dir(path: &Path) -> Result<(), DistillationExportError> {
+    let Some(parent) = path.parent() else {
+        return Ok(());
+    };
+    if parent.as_os_str().is_empty() {
+        return Ok(());
+    }
+    let dir = File::open(parent).map_err(|_| DistillationExportError::Io)?;
+    dir.sync_all().map_err(|_| DistillationExportError::Io)
 }
 
 fn promotion_hash(

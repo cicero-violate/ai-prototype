@@ -8,22 +8,22 @@
 //! VerificationRequest -> DeterministicSemanticVerifier -> SemanticVerificationReceipt -> EvidenceSubmission
 //! ```
 //!
-//! The verifier intentionally does not inspect real files yet. It gives the
-//! runtime a typed request/receipt seam that can later be backed by filesystem,
-//! diff, AST, test, or external semantic validators without changing the kernel
-//! evidence contract.
-
+//! The verifier keeps packet semantics deterministic and also exposes
+//! artifact-backed profiles that inspect concrete files without changing the
+//! kernel evidence contract.
 
 use crate::capability::{EvidenceProducer, EvidenceSubmission, PacketEffect};
 use crate::kernel::{mix, Evidence, GateId, Packet};
+use std::fs;
+use std::path::Path;
 
 pub use super::proof::{
     append_verification_proof_record_ndjson, decode_verification_proof_record_ndjson,
     encode_verification_proof_record_ndjson, load_verification_proof_records_ndjson,
     verify_verification_proof_record_bindings, verify_verification_proof_record_order_ndjson,
     verify_verification_proof_record_replay, verify_verification_proof_record_replay_ndjson,
-    verify_verification_proof_records, verify_verification_proof_records_ndjson,
-    ProofSubjectKind, VerificationProofBinding, VerificationProofError, VerificationProofRecord,
+    verify_verification_proof_records, verify_verification_proof_records_ndjson, ProofSubjectKind,
+    VerificationProofBinding, VerificationProofError, VerificationProofRecord,
     PROOF_FLAGS_REQUIRED, PROOF_FLAG_PHASE_VERIFIED, PROOF_FLAG_PROVENANCE_VERIFIED,
     PROOF_FLAG_RECEIPT_VERIFIED, PROOF_FLAG_TAMPER_REJECTED, VERIFICATION_PROOF_RECORD,
     VERIFICATION_PROOF_SCHEMA_VERSION,
@@ -33,6 +33,189 @@ const DEFECT_NONE: u64 = 0;
 const DEFECT_REQUEST_DENIED: u64 = 1 << 0;
 const DEFECT_PROFILE_STRUCTURAL: u64 = 1 << 1;
 const DEFECT_RECEIPT_MISMATCH: u64 = 1 << 2;
+const DEFECT_ARTIFACT_MISSING: u64 = 1 << 3;
+const DEFECT_ARTIFACT_EMPTY: u64 = 1 << 4;
+const DEFECT_ARTIFACT_HASH_MISMATCH: u64 = 1 << 5;
+const DEFECT_ARTIFACT_SEMANTICALLY_EMPTY: u64 = 1 << 6;
+
+pub const VERIFICATION_RECEIPT_SCHEMA_VERSION: u64 = 1;
+pub const VERIFICATION_RECEIPT_RECORD: u64 = 0x98a0_0001;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[repr(u8)]
+pub enum ArtifactVerificationProfileKind {
+    SourcePatch = 1,
+    CommandReceipt = 2,
+    TLogNdjson = 3,
+    PolicyRow = 4,
+    VerificationProofRow = 5,
+    DistillationRow = 6,
+}
+
+impl ArtifactVerificationProfileKind {
+    pub const fn required_token(self) -> &'static str {
+        match self {
+            Self::SourcePatch => "diff",
+            Self::CommandReceipt => "exit_code",
+            Self::TLogNdjson => "TLOG",
+            Self::PolicyRow => "policy",
+            Self::VerificationProofRow => "VERIFICATION_PROOF",
+            Self::DistillationRow => "distill",
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ArtifactBackedSemanticProfile {
+    pub kind: ArtifactVerificationProfileKind,
+    pub source_event: u64,
+    pub semantic_input_hash: u64,
+    pub observable_output_hash: u64,
+    pub expected_content_hash: u64,
+    pub expected_bytes: u64,
+    pub proof_hash: u64,
+}
+
+impl ArtifactBackedSemanticProfile {
+    pub fn new(
+        kind: ArtifactVerificationProfileKind,
+        source_event: u64,
+        semantic_input_hash: u64,
+        observable_output_hash: u64,
+        expected_content_hash: u64,
+        expected_bytes: u64,
+    ) -> Self {
+        let proof_hash = artifact_profile_proof_hash(
+            kind,
+            source_event,
+            semantic_input_hash,
+            observable_output_hash,
+            expected_content_hash,
+            expected_bytes,
+        );
+        Self {
+            kind,
+            source_event,
+            semantic_input_hash,
+            observable_output_hash,
+            expected_content_hash,
+            expected_bytes,
+            proof_hash,
+        }
+    }
+
+    pub fn is_structurally_valid(self) -> bool {
+        self.source_event != 0
+            && self.semantic_input_hash != 0
+            && self.observable_output_hash != 0
+            && self.expected_content_hash != 0
+            && self.expected_bytes != 0
+            && self.proof_hash
+                == artifact_profile_proof_hash(
+                    self.kind,
+                    self.source_event,
+                    self.semantic_input_hash,
+                    self.observable_output_hash,
+                    self.expected_content_hash,
+                    self.expected_bytes,
+                )
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ArtifactBackedSemanticReceipt {
+    pub profile: ArtifactBackedSemanticProfile,
+    pub observed_content_hash: u64,
+    pub observed_bytes: u64,
+    pub proof_hash: u64,
+    pub defect_mask: u64,
+}
+
+impl ArtifactBackedSemanticReceipt {
+    pub fn is_valid(&self) -> bool {
+        self.defect_mask == DEFECT_NONE
+            && self.profile.is_structurally_valid()
+            && self.observed_content_hash == self.profile.expected_content_hash
+            && self.observed_bytes == self.profile.expected_bytes
+            && self.proof_hash == self.profile.proof_hash
+    }
+}
+
+pub fn content_hash(bytes: &[u8]) -> u64 {
+    let mut h = 0xcbf29ce484222325u64;
+    for byte in bytes {
+        h = mix(h, *byte as u64);
+    }
+    h.max(1)
+}
+
+pub fn verify_artifact_backed_semantics(
+    path: impl AsRef<Path>,
+    profile: ArtifactBackedSemanticProfile,
+) -> ArtifactBackedSemanticReceipt {
+    let mut defect_mask = DEFECT_NONE;
+
+    if !profile.is_structurally_valid() {
+        defect_mask |= DEFECT_PROFILE_STRUCTURAL;
+    }
+
+    let bytes = match fs::read(path.as_ref()) {
+        Ok(bytes) => bytes,
+        Err(_) => {
+            return ArtifactBackedSemanticReceipt {
+                profile,
+                observed_content_hash: 0,
+                observed_bytes: 0,
+                proof_hash: profile.proof_hash,
+                defect_mask: defect_mask | DEFECT_ARTIFACT_MISSING,
+            };
+        }
+    };
+
+    let observed_bytes = bytes.len() as u64;
+    let observed_content_hash = content_hash(&bytes);
+
+    if observed_bytes == 0 {
+        defect_mask |= DEFECT_ARTIFACT_EMPTY;
+    }
+
+    if observed_bytes != profile.expected_bytes
+        || observed_content_hash != profile.expected_content_hash
+    {
+        defect_mask |= DEFECT_ARTIFACT_HASH_MISMATCH;
+    }
+
+    let text = String::from_utf8_lossy(&bytes);
+    if !text.contains(profile.kind.required_token()) {
+        defect_mask |= DEFECT_ARTIFACT_SEMANTICALLY_EMPTY;
+    }
+
+    ArtifactBackedSemanticReceipt {
+        profile,
+        observed_content_hash,
+        observed_bytes,
+        proof_hash: profile.proof_hash,
+        defect_mask,
+    }
+}
+
+fn artifact_profile_proof_hash(
+    kind: ArtifactVerificationProfileKind,
+    source_event: u64,
+    semantic_input_hash: u64,
+    observable_output_hash: u64,
+    expected_content_hash: u64,
+    expected_bytes: u64,
+) -> u64 {
+    let mut h = 0x6a09e667f3bcc909u64;
+    h = mix(h, kind as u64);
+    h = mix(h, source_event);
+    h = mix(h, semantic_input_hash);
+    h = mix(h, observable_output_hash);
+    h = mix(h, expected_content_hash);
+    h = mix(h, expected_bytes);
+    h.max(1)
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum VerificationDecision {
@@ -46,7 +229,6 @@ pub enum VerificationCheck {
     ArtifactSemantics = 1,
     Denied = 2,
 }
-
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ArtifactSemanticProfile {
@@ -254,6 +436,23 @@ pub struct VerificationRecord {
     pub semantic_check_hash: u64,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct VerificationReceipt {
+    pub schema_version: u64,
+    pub record_type: u64,
+    pub request_hash: u64,
+    pub artifact_id: u64,
+    pub receipt_hash: u64,
+    pub expected_receipt_hash: u64,
+    pub expected_lineage_hash: u64,
+    pub semantic_profile_hash: u64,
+    pub semantic_check_hash: u64,
+    pub defect_mask: u64,
+    pub payload_hash: u64,
+    pub verdict: VerificationDecision,
+    pub audit_hash: u64,
+}
+
 impl VerificationRecord {
     pub fn from_packet(packet: Packet) -> Self {
         Self::from_request(VerificationRequest::from_packet(packet))
@@ -309,6 +508,10 @@ impl VerificationRecord {
         self.is_valid() && self.semantic_profile.lineage_valid()
     }
 
+    pub fn receipt(&self) -> VerificationReceipt {
+        VerificationReceipt::from_record(self)
+    }
+
     pub fn submission(&self) -> EvidenceSubmission {
         let passed = self.decision() == VerificationDecision::Accepted;
         EvidenceSubmission::with_effect_payload(
@@ -322,6 +525,82 @@ impl VerificationRecord {
             },
             verification_payload_hash(self),
         )
+    }
+}
+
+impl VerificationReceipt {
+    pub fn from_record(record: &VerificationRecord) -> Self {
+        let mut receipt = Self {
+            schema_version: VERIFICATION_RECEIPT_SCHEMA_VERSION,
+            record_type: VERIFICATION_RECEIPT_RECORD,
+            request_hash: record.request.contract_hash(),
+            artifact_id: record.artifact_id,
+            receipt_hash: record.receipt_hash,
+            expected_receipt_hash: record.expected_receipt_hash,
+            expected_lineage_hash: record.expected_lineage_hash,
+            semantic_profile_hash: record.semantic_profile_hash,
+            semantic_check_hash: record.semantic_check_hash,
+            defect_mask: record.receipt.defect_mask,
+            payload_hash: verification_payload_hash(record),
+            verdict: record.decision(),
+            audit_hash: 0,
+        };
+        receipt.audit_hash = receipt.expected_audit_hash();
+        receipt
+    }
+
+    pub fn is_valid_for(self, record: &VerificationRecord) -> bool {
+        self == VerificationReceipt::from_record(record) && self.is_self_consistent()
+    }
+
+    pub fn is_self_consistent(self) -> bool {
+        self.schema_version == VERIFICATION_RECEIPT_SCHEMA_VERSION
+            && self.record_type == VERIFICATION_RECEIPT_RECORD
+            && self.request_hash != 0
+            && self.artifact_id != 0
+            && self.receipt_hash != 0
+            && self.expected_receipt_hash != 0
+            && self.expected_lineage_hash != 0
+            && self.semantic_profile_hash != 0
+            && self.semantic_check_hash != 0
+            && self.payload_hash != 0
+            && self.audit_hash == self.expected_audit_hash()
+            && match self.verdict {
+                VerificationDecision::Accepted => self.defect_mask == DEFECT_NONE,
+                VerificationDecision::Rejected => self.defect_mask != DEFECT_NONE,
+            }
+    }
+
+    pub fn submission(self) -> EvidenceSubmission {
+        let passed = self.is_self_consistent() && self.verdict == VerificationDecision::Accepted;
+        EvidenceSubmission::with_effect_payload(
+            GateId::Verification,
+            Evidence::LineageProof,
+            passed,
+            if passed {
+                PacketEffect::RepairLineage
+            } else {
+                PacketEffect::None
+            },
+            self.audit_hash,
+        )
+    }
+
+    pub fn expected_audit_hash(self) -> u64 {
+        let mut h = 0x98a0_0001_5eed_0001u64;
+        h = mix(h, self.schema_version);
+        h = mix(h, self.record_type);
+        h = mix(h, self.request_hash);
+        h = mix(h, self.artifact_id);
+        h = mix(h, self.receipt_hash);
+        h = mix(h, self.expected_receipt_hash);
+        h = mix(h, self.expected_lineage_hash);
+        h = mix(h, self.semantic_profile_hash);
+        h = mix(h, self.semantic_check_hash);
+        h = mix(h, self.defect_mask);
+        h = mix(h, self.payload_hash);
+        h = mix(h, self.verdict as u64);
+        h.max(1)
     }
 }
 
@@ -359,4 +638,70 @@ fn verification_hash(profile: ArtifactSemanticProfile) -> u64 {
     h = mix(h, profile.expected_lineage_hash());
     h = mix(h, profile.semantic_hash());
     h.max(1)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn valid_packet() -> Packet {
+        let mut packet = Packet::empty();
+        packet.objective_id = 42;
+        packet.objective_required_tasks = 2;
+        packet.objective_done_tasks = 1;
+        packet.ready_tasks = 1;
+        packet.active_task_id = 4202;
+        packet.artifact_id = 77;
+        packet.parent_artifact_id = 76;
+        packet.artifact_bytes = 128;
+        packet.revision = 5;
+
+        let profile = ArtifactSemanticProfile::from_packet(packet);
+        packet.artifact_receipt_hash = profile.expected_receipt_hash();
+        let profile = ArtifactSemanticProfile::from_packet(packet);
+        packet.artifact_lineage_hash = profile.expected_lineage_hash();
+        packet
+    }
+
+    #[test]
+    fn verification_receipt_binds_semantic_payload_and_verdict() {
+        let record = VerificationRecord::from_packet(valid_packet());
+        let receipt = record.receipt();
+
+        assert!(record.is_valid());
+        assert!(receipt.is_self_consistent());
+        assert!(receipt.is_valid_for(&record));
+        assert_eq!(receipt.verdict, VerificationDecision::Accepted);
+        assert_eq!(receipt.request_hash, record.request.contract_hash());
+        assert_eq!(receipt.payload_hash, verification_payload_hash(&record));
+        assert_eq!(receipt.submission().gate, GateId::Verification);
+        assert!(receipt.submission().passed);
+    }
+
+    #[test]
+    fn verification_receipt_rejects_tampered_payload() {
+        let record = VerificationRecord::from_packet(valid_packet());
+        let mut receipt = record.receipt();
+        receipt.semantic_check_hash ^= 1;
+
+        assert!(!receipt.is_self_consistent());
+        assert!(!receipt.is_valid_for(&record));
+        assert!(!receipt.submission().passed);
+    }
+
+    #[test]
+    fn verification_receipt_records_rejected_profiles_without_passing_gate() {
+        let mut packet = valid_packet();
+        packet.artifact_receipt_hash ^= 1;
+
+        let record = VerificationRecord::from_packet(packet);
+        let receipt = record.receipt();
+
+        assert_eq!(record.decision(), VerificationDecision::Rejected);
+        assert!(receipt.is_self_consistent());
+        assert!(receipt.is_valid_for(&record));
+        assert_eq!(receipt.verdict, VerificationDecision::Rejected);
+        assert_ne!(receipt.defect_mask, DEFECT_NONE);
+        assert!(!receipt.submission().passed);
+    }
 }

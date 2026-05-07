@@ -213,7 +213,11 @@ impl LiveSandboxProcessExecutor {
             .args(plan.args.iter().map(String::as_str))
             .current_dir(&plan.cwd)
             .env_clear()
-            .envs(self.locked_env.iter().map(|(k, v)| (k.as_str(), v.as_str())))
+            .envs(
+                self.locked_env
+                    .iter()
+                    .map(|(k, v)| (k.as_str(), v.as_str())),
+            )
             .stdin(Stdio::null())
             .stdout(Stdio::from(stdout_file))
             .stderr(Stdio::from(stderr_file))
@@ -223,10 +227,7 @@ impl LiveSandboxProcessExecutor {
         let started = Instant::now();
         let timeout = Duration::from_millis(self.timeout_ms);
         let (exit_status, timed_out) = loop {
-            if let Some(status) = child
-                .try_wait()
-                .map_err(|_| ToolSandboxError::SandboxIo)?
-            {
+            if let Some(status) = child.try_wait().map_err(|_| ToolSandboxError::SandboxIo)? {
                 break (status.code().unwrap_or(255) as u64, false);
             }
 
@@ -299,7 +300,11 @@ impl LiveSandboxProcessExecutor {
 
     fn validate_command(&self, command: &str) -> Result<(), ToolSandboxError> {
         ensure_process_token(command)?;
-        if self.allowed_commands.iter().any(|allowed| allowed == command) {
+        if self
+            .allowed_commands
+            .iter()
+            .any(|allowed| allowed == command)
+        {
             Ok(())
         } else {
             Err(ToolSandboxError::CommandDenied)
@@ -316,11 +321,7 @@ impl LiveSandboxProcessExecutor {
 
     fn validate_locked_env(&self) -> Result<(), ToolSandboxError> {
         for (key, value) in &self.locked_env {
-            if key.is_empty()
-                || key.contains('=')
-                || key.contains('\0')
-                || value.contains('\0')
-            {
+            if key.is_empty() || key.contains('=') || key.contains('\0') || value.contains('\0') {
                 return Err(ToolSandboxError::InvalidEnvironment);
             }
         }
@@ -331,7 +332,9 @@ impl LiveSandboxProcessExecutor {
         ensure_relative_process_path(cwd_relative)?;
         let cwd = root.join(cwd_relative);
         fs::create_dir_all(&cwd).map_err(|_| ToolSandboxError::SandboxIo)?;
-        let canonical = cwd.canonicalize().map_err(|_| ToolSandboxError::SandboxIo)?;
+        let canonical = cwd
+            .canonicalize()
+            .map_err(|_| ToolSandboxError::SandboxIo)?;
         if canonical.starts_with(root) {
             Ok(canonical)
         } else {

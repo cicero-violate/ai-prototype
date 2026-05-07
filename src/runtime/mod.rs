@@ -4,9 +4,8 @@
 //! the frozen kernel only carries the evidence token and gate state.
 
 use crate::kernel::{
-    Cause, Decision, EventKind, Evidence, FailureClass, GateId, GateSet, GateStatus,
-    Packet, Phase, RecoveryAction, RuntimeConfig, SemanticDelta,
-    State, TLog, GATE_ORDER, PHASES,
+    Cause, Decision, EventKind, Evidence, FailureClass, GateId, GateSet, GateStatus, Packet, Phase,
+    RecoveryAction, RuntimeConfig, SemanticDelta, State, TLog, GATE_ORDER, PHASES,
 };
 
 pub(crate) mod command_ledger;
@@ -18,14 +17,17 @@ pub(crate) mod transition_table;
 pub mod verify;
 pub(crate) mod writer;
 
-pub use crate::error::CanonError;
 pub use self::command_ledger::{CommandLedger, CommandReceipt};
 pub use self::diff::semantic_diff;
 pub use self::durable::{
     durable_replay_report, resume_durable_runtime, run_until_done_durable,
     run_until_done_durable_with_ledger, tick_durable, tick_durable_checked, DurableRuntimeState,
 };
-pub use self::verify::{legal_transition, replay_report_from, replay_report_ndjson, replay_tlog_ndjson, verify_tlog, verify_tlog_from, ReplayReport};
+pub use self::verify::{
+    legal_transition, replay_report_from, replay_report_ndjson, replay_tlog_ndjson, verify_tlog,
+    verify_tlog_from, ReplayReport,
+};
+pub use crate::error::CanonError;
 
 use self::recovery_policy::{evidence_for_gate, recovery_policy_coverage_count};
 pub(crate) use self::reducer::reduce;

@@ -29,8 +29,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!("llm_call phase=Judgment provider=ollama");
             let mut memory = MemoryIndex::default();
             let _inserted = memory.insert(MemoryFact::new(state.packet.objective_id, 0xfeed, 7, 1));
-            let lookup = memory.lookup(state.packet.objective_id, 8);
-            let context = ContextRecord::from_packet_memory(state.packet, 0xabc, &lookup);
+            let (lookup, memory_receipt) = memory.lookup_with_receipt(state.packet.objective_id, 8);
+            let context = ContextRecord::from_packet_memory_receipt(
+                state.packet,
+                0xabc,
+                &lookup,
+                Some(&memory_receipt),
+            );
             let call = client.call_from_context(&context, &policy)?;
 
             println!(

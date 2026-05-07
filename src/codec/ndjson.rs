@@ -6,18 +6,15 @@ use std::path::Path;
 
 use crate::error::CanonError;
 use crate::kernel::{
-    CapabilityRegistryProjection, Cause, ControlEvent, Decision, EventKind, Evidence,
-    FailureClass, Gate, GateId, GateSet, GateStatus, Packet, Phase, RecoveryAction,
-    RuntimeConfig, SemanticDelta, State, TLog, GATE_ORDER,
+    CapabilityRegistryProjection, Cause, ControlEvent, Decision, EventKind, Evidence, FailureClass,
+    Gate, GateId, GateSet, GateStatus, Packet, Phase, RecoveryAction, RuntimeConfig, SemanticDelta,
+    State, TLog, GATE_ORDER,
 };
 
 pub const TLOG_SCHEMA_VERSION: u64 = 5;
 pub const TLOG_RECORD_EVENT: u64 = 1;
 
-pub fn append_tlog_ndjson(
-    path: impl AsRef<Path>,
-    event: &ControlEvent,
-) -> Result<(), CanonError> {
+pub fn append_tlog_ndjson(path: impl AsRef<Path>, event: &ControlEvent) -> Result<(), CanonError> {
     let path = path.as_ref();
     {
         let mut file = OpenOptions::new()
@@ -38,7 +35,8 @@ pub fn write_tlog_ndjson(path: impl AsRef<Path>, tlog: &[ControlEvent]) -> Resul
     {
         let mut file = File::create(&tmp_path).map_err(|_| CanonError::TlogIo)?;
         for event in tlog {
-            writeln!(file, "{}", encode_control_event_ndjson(event)).map_err(|_| CanonError::TlogIo)?;
+            writeln!(file, "{}", encode_control_event_ndjson(event))
+                .map_err(|_| CanonError::TlogIo)?;
         }
         file.sync_all().map_err(|_| CanonError::TlogIo)?;
     }
@@ -114,10 +112,17 @@ pub fn decode_control_event_ndjson(line: &str) -> Result<ControlEvent, CanonErro
     let mut fields = Vec::new();
     if !body.trim().is_empty() {
         for raw in body.split(',') {
-            fields.push(raw.trim().parse::<u64>().map_err(|_| CanonError::InvalidTlogRecord)?);
+            fields.push(
+                raw.trim()
+                    .parse::<u64>()
+                    .map_err(|_| CanonError::InvalidTlogRecord)?,
+            );
         }
     }
-    let mut cursor = Cursor { fields: &fields, pos: 0 };
+    let mut cursor = Cursor {
+        fields: &fields,
+        pos: 0,
+    };
     if cursor.take()? != TLOG_SCHEMA_VERSION || cursor.take()? != TLOG_RECORD_EVENT {
         return Err(CanonError::InvalidTlogRecord);
     }
@@ -182,7 +187,10 @@ struct Cursor<'a> {
 
 impl Cursor<'_> {
     fn take(&mut self) -> Result<u64, CanonError> {
-        let value = *self.fields.get(self.pos).ok_or(CanonError::InvalidTlogRecord)?;
+        let value = *self
+            .fields
+            .get(self.pos)
+            .ok_or(CanonError::InvalidTlogRecord)?;
         self.pos += 1;
         Ok(value)
     }
@@ -364,15 +372,27 @@ fn opt_gate_to_u64(value: Option<GateId>) -> u64 {
 }
 
 fn opt_failure_from_u64(value: u64) -> Result<Option<FailureClass>, CanonError> {
-    if value == 0 { Ok(None) } else { failure_from_u64(value).map(Some) }
+    if value == 0 {
+        Ok(None)
+    } else {
+        failure_from_u64(value).map(Some)
+    }
 }
 
 fn opt_recovery_from_u64(value: u64) -> Result<Option<RecoveryAction>, CanonError> {
-    if value == 0 { Ok(None) } else { recovery_from_u64(value).map(Some) }
+    if value == 0 {
+        Ok(None)
+    } else {
+        recovery_from_u64(value).map(Some)
+    }
 }
 
 fn opt_gate_from_u64(value: u64) -> Result<Option<GateId>, CanonError> {
-    if value == 0 { Ok(None) } else { gate_id_from_u64(value).map(Some) }
+    if value == 0 {
+        Ok(None)
+    } else {
+        gate_id_from_u64(value).map(Some)
+    }
 }
 
 fn enum_from_u64<T: Copy>(value: u64, table: &[(u64, T)]) -> Result<T, CanonError> {

@@ -6,4 +6,7 @@
 
 pub mod record;
 
-pub use self::record::{ContextDecision, ContextRecord};
+pub use self::record::{
+    ContextAssemblyReceipt, ContextDecision, ContextRecord, CONTEXT_ASSEMBLY_RECEIPT_RECORD,
+    CONTEXT_ASSEMBLY_RECEIPT_SCHEMA_VERSION,
+};

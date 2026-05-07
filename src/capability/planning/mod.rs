@@ -6,4 +6,6 @@
 
 pub mod record;
 
-pub use self::record::{PlanDecision, PlanRecord};
+pub use self::record::{
+    PlanDecision, PlanReceipt, PlanRecord, PLAN_RECEIPT_RECORD, PLAN_RECEIPT_SCHEMA_VERSION,
+};

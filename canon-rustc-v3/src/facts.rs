@@ -1,7 +1,9 @@
 //! Canonical fact vocabulary and heuristic callee classification.
 
-pub const NODE_KINDS: &[&str] = &["fn", "trait", "impl"];
-pub const EDGE_RELATIONS: &[&str] = &["call", "impl", "mut", "io", "unsafe", "panic", "alloc"];
+pub const NODE_KINDS: &[&str] = &["fn", "trait", "impl", "struct", "enum", "ty_alias"];
+pub const EDGE_RELATIONS: &[&str] = &[
+    "call", "impl", "mut", "io", "unsafe", "panic", "alloc", "use",
+];
 pub const RISK_RELATIONS: &[&str] = &["mut", "io", "unsafe", "panic", "alloc"];
 
 pub fn allowed_relation(relation: &str) -> bool {
@@ -18,7 +20,14 @@ pub fn callee_relations(callee: &str) -> Vec<&'static str> {
 
     if contains_any(
         &lower,
-        &["::fs::", "::io::", "::file::", "read_to_string", "write_all", "std::process::"],
+        &[
+            "::fs::",
+            "::io::",
+            "::file::",
+            "read_to_string",
+            "write_all",
+            "std::process::",
+        ],
     ) {
         out.push("io");
     }
@@ -28,7 +37,10 @@ pub fn callee_relations(callee: &str) -> Vec<&'static str> {
     {
         out.push("panic");
     }
-    if contains_any(&lower, &["alloc", "exchange_malloc", "box_new", "vec::", "raw_vec"]) {
+    if contains_any(
+        &lower,
+        &["alloc", "exchange_malloc", "box_new", "vec::", "raw_vec"],
+    ) {
         out.push("alloc");
     }
 
@@ -46,8 +58,14 @@ mod tests {
     #[test]
     fn callee_classifier_marks_current_heuristics() {
         assert_eq!(callee_relations("std::fs::read_to_string"), vec!["io"]);
-        assert_eq!(callee_relations("core::option::Option::unwrap"), vec!["panic"]);
-        assert_eq!(callee_relations("alloc::raw_vec::RawVec::new"), vec!["alloc"]);
+        assert_eq!(
+            callee_relations("core::option::Option::unwrap"),
+            vec!["panic"]
+        );
+        assert_eq!(
+            callee_relations("alloc::raw_vec::RawVec::new"),
+            vec!["alloc"]
+        );
     }
 
     #[test]

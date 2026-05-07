@@ -116,13 +116,8 @@ fn append_convergence_failure_durable(
     cfg: RuntimeConfig,
 ) -> Result<(), CanonError> {
     let before = *state;
-    let event = CanonicalWriter::append_durable(
-        tlog,
-        tlog_path,
-        before,
-        convergence_outcome(before),
-        cfg,
-    )?;
+    let event =
+        CanonicalWriter::append_durable(tlog, tlog_path, before, convergence_outcome(before), cfg)?;
     *state = event.state_after;
     Ok(())
 }

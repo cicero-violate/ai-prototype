@@ -11,15 +11,18 @@ pub use self::proof::{
     encode_verification_proof_record_ndjson, load_verification_proof_records_ndjson,
     verify_verification_proof_record_bindings, verify_verification_proof_record_order_ndjson,
     verify_verification_proof_record_replay, verify_verification_proof_record_replay_ndjson,
-    verify_verification_proof_records, verify_verification_proof_records_ndjson,
-    CanonicalEffect, CanonicalEffectKind, CanonicalEffectProof, CanonicalEffectReceipt,
-    ProofSubjectKind, VerificationProofBinding, VerificationProofError, VerificationProofRecord,
+    verify_verification_proof_records, verify_verification_proof_records_ndjson, CanonicalEffect,
+    CanonicalEffectKind, CanonicalEffectProof, CanonicalEffectReceipt, ProofSubjectKind,
+    VerificationProofBinding, VerificationProofError, VerificationProofRecord,
     PROOF_FLAGS_REQUIRED, PROOF_FLAG_PHASE_VERIFIED, PROOF_FLAG_PROVENANCE_VERIFIED,
     PROOF_FLAG_RECEIPT_VERIFIED, PROOF_FLAG_TAMPER_REJECTED, VERIFICATION_PROOF_RECORD,
     VERIFICATION_PROOF_SCHEMA_VERSION,
 };
 
 pub use self::record::{
-    ArtifactSemanticProfile, DeterministicSemanticVerifier, SemanticVerificationReceipt,
-    VerificationCheck, VerificationDecision, VerificationRecord, VerificationRequest,
+    content_hash, verify_artifact_backed_semantics, ArtifactBackedSemanticProfile,
+    ArtifactBackedSemanticReceipt, ArtifactSemanticProfile, ArtifactVerificationProfileKind,
+    DeterministicSemanticVerifier, SemanticVerificationReceipt, VerificationCheck,
+    VerificationDecision, VerificationReceipt, VerificationRecord, VerificationRequest,
+    VERIFICATION_RECEIPT_RECORD, VERIFICATION_RECEIPT_SCHEMA_VERSION,
 };

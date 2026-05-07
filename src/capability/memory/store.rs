@@ -44,6 +44,58 @@ impl MemoryLookupRecord {
     }
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct MemoryLookupReceipt {
+    pub query_hash: u64,
+    pub requested_limit: u16,
+    pub returned_count: u16,
+    pub index_fingerprint: u64,
+    pub aggregate_hash: u64,
+    pub receipt_hash: u64,
+}
+
+impl MemoryLookupReceipt {
+    pub fn from_lookup(
+        query_hash: u64,
+        requested_limit: usize,
+        index_fingerprint: u64,
+        lookup: &MemoryLookupRecord,
+    ) -> Self {
+        let requested_limit = requested_limit.min(u16::MAX as usize) as u16;
+        let returned_count = lookup.matches.len().min(u16::MAX as usize) as u16;
+        let mut receipt = Self {
+            query_hash,
+            requested_limit,
+            returned_count,
+            index_fingerprint,
+            aggregate_hash: lookup.aggregate_hash,
+            receipt_hash: 0,
+        };
+        receipt.receipt_hash = receipt.expected_receipt_hash();
+        receipt
+    }
+
+    pub fn is_valid_for(&self, lookup: &MemoryLookupRecord) -> bool {
+        self.query_hash != 0
+            && self.index_fingerprint != 0
+            && lookup.is_valid()
+            && self.query_hash == lookup.query_hash
+            && self.returned_count == lookup.matches.len().min(u16::MAX as usize) as u16
+            && self.aggregate_hash == lookup.aggregate_hash
+            && self.receipt_hash == self.expected_receipt_hash()
+    }
+
+    pub fn expected_receipt_hash(&self) -> u64 {
+        let mut h = 0x4d45_4d4f_5259_5255u64;
+        h = mix(h, self.query_hash);
+        h = mix(h, u64::from(self.requested_limit));
+        h = mix(h, u64::from(self.returned_count));
+        h = mix(h, self.index_fingerprint);
+        h = mix(h, self.aggregate_hash);
+        h.max(1)
+    }
+}
+
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct MemoryIndex {
     facts: Vec<MemoryFact>,
@@ -92,6 +144,21 @@ impl MemoryIndex {
         }
     }
 
+    pub fn lookup_with_receipt(
+        &self,
+        query_hash: u64,
+        limit: usize,
+    ) -> (MemoryLookupRecord, MemoryLookupReceipt) {
+        let lookup = self.lookup(query_hash, limit);
+        let receipt =
+            MemoryLookupReceipt::from_lookup(query_hash, limit, self.fingerprint(), &lookup);
+        (lookup, receipt)
+    }
+
+    pub fn fingerprint(&self) -> u64 {
+        aggregate_index_hash(&self.facts)
+    }
+
     pub fn facts(&self) -> &[MemoryFact] {
         &self.facts
     }
@@ -116,4 +183,58 @@ fn aggregate_memory_hash(query_hash: u64, matches: &[MemoryFact]) -> u64 {
         h = mix(h, fact.source_seq);
     }
     h.max(1)
+}
+
+fn aggregate_index_hash(facts: &[MemoryFact]) -> u64 {
+    let mut h = 0x4d45_4d49_4e44_4558u64;
+    for fact in facts {
+        h = mix(h, fact.key);
+        h = mix(h, fact.value_hash);
+        h = mix(h, fact.weight as u64);
+        h = mix(h, fact.source_seq);
+    }
+    h.max(1)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn memory_lookup_receipt_binds_limit_index_and_result() {
+        let mut index = MemoryIndex::default();
+        assert!(index.insert(MemoryFact::new(7, 70, 2, 2)));
+        assert!(index.insert(MemoryFact::new(7, 90, 5, 1)));
+        assert!(index.insert(MemoryFact::new(8, 80, 9, 3)));
+
+        let (lookup, receipt) = index.lookup_with_receipt(7, 1);
+
+        assert_eq!(lookup.matches, vec![MemoryFact::new(7, 90, 5, 1)]);
+        assert_eq!(receipt.requested_limit, 1);
+        assert_eq!(receipt.returned_count, 1);
+        assert_eq!(receipt.index_fingerprint, index.fingerprint());
+        assert!(receipt.is_valid_for(&lookup));
+    }
+
+    #[test]
+    fn memory_lookup_receipt_rejects_tampered_result() {
+        let mut index = MemoryIndex::default();
+        assert!(index.insert(MemoryFact::new(11, 110, 4, 1)));
+        assert!(index.insert(MemoryFact::new(11, 111, 3, 2)));
+
+        let (mut lookup, receipt) = index.lookup_with_receipt(11, 2);
+        lookup.matches.pop();
+
+        assert!(!receipt.is_valid_for(&lookup));
+    }
+
+    #[test]
+    fn memory_fingerprint_changes_when_index_changes() {
+        let mut index = MemoryIndex::default();
+        assert!(index.insert(MemoryFact::new(5, 50, 1, 1)));
+        let before = index.fingerprint();
+        assert!(index.insert(MemoryFact::new(5, 51, 1, 2)));
+
+        assert_ne!(before, index.fingerprint());
+    }
 }

@@ -49,8 +49,10 @@ fn validate_event_transition(event: EventView) -> Result<(), CanonError> {
 }
 
 fn validate_event_failure_class(event: EventView) -> Result<(), CanonError> {
-    if matches!(event.kind, EventKind::Blocked | EventKind::Failed | EventKind::Recovered)
-        && event.failure.is_none()
+    if matches!(
+        event.kind,
+        EventKind::Blocked | EventKind::Failed | EventKind::Recovered
+    ) && event.failure.is_none()
     {
         return Err(CanonError::MissingFailureClass);
     }
@@ -71,8 +73,10 @@ fn validate_event_recovery_action(event: EventView) -> Result<(), CanonError> {
         return Err(CanonError::MissingRecoveryAction);
     }
 
-    if matches!(event.kind, EventKind::Advanced | EventKind::Completed | EventKind::Learned)
-        && event.recovery_action.is_some()
+    if matches!(
+        event.kind,
+        EventKind::Advanced | EventKind::Completed | EventKind::Learned
+    ) && event.recovery_action.is_some()
     {
         return Err(CanonError::UnexpectedRecoveryAction);
     }
@@ -99,8 +103,10 @@ fn validate_event_affected_gate(event: EventView) -> Result<(), CanonError> {
         }
     }
 
-    if matches!(event.kind, EventKind::Advanced | EventKind::Completed | EventKind::Recovered)
-        && event.affected_gate.is_some()
+    if matches!(
+        event.kind,
+        EventKind::Advanced | EventKind::Completed | EventKind::Recovered
+    ) && event.affected_gate.is_some()
     {
         return Err(CanonError::UnexpectedAffectedGate);
     }
@@ -147,9 +153,7 @@ fn validate_learned_event(event: EventView) -> Result<(), CanonError> {
 }
 
 fn validate_halt_decision(event: EventView) -> Result<(), CanonError> {
-    if event.decision == Decision::Halt
-        && event.recovery_action != Some(RecoveryAction::Escalate)
-    {
+    if event.decision == Decision::Halt && event.recovery_action != Some(RecoveryAction::Escalate) {
         return Err(CanonError::MissingRecoveryAction);
     }
 
@@ -256,7 +260,10 @@ pub fn replay_report_ndjson(
     replay_report_from(initial, &tlog)
 }
 
-pub fn replay_report_from(initial: State, tlog: &[ControlEvent]) -> Result<ReplayReport, CanonError> {
+pub fn replay_report_from(
+    initial: State,
+    tlog: &[ControlEvent],
+) -> Result<ReplayReport, CanonError> {
     let final_state = verify_tlog_from(initial, tlog)?;
     Ok(ReplayReport {
         initial_state: initial,
@@ -268,10 +275,7 @@ pub fn replay_report_from(initial: State, tlog: &[ControlEvent]) -> Result<Repla
     })
 }
 
-pub fn replay_tlog_ndjson(
-    initial: State,
-    path: impl AsRef<Path>,
-) -> Result<State, CanonError> {
+pub fn replay_tlog_ndjson(initial: State, path: impl AsRef<Path>) -> Result<State, CanonError> {
     let tlog = load_tlog_ndjson(path)?;
     verify_tlog_from(initial, &tlog)
 }
@@ -361,10 +365,7 @@ fn validate_replay_registry_projection(event: &ControlEvent) -> Result<(), Canon
     Ok(())
 }
 
-fn validate_replay_state_continuity(
-    event: &ControlEvent,
-    state: State,
-) -> Result<(), CanonError> {
+fn validate_replay_state_continuity(event: &ControlEvent, state: State) -> Result<(), CanonError> {
     if event.from != state.phase || event.state_before.phase != state.phase {
         return Err(CanonError::InvalidStateContinuity);
     }
@@ -554,7 +555,6 @@ fn packet_hash(packet: Packet) -> u64 {
     h = mix(h, packet.revision);
     h
 }
-
 
 fn mix_option_failure(h: u64, value: Option<FailureClass>) -> u64 {
     match value {

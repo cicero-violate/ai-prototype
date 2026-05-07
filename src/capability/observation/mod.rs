@@ -13,8 +13,8 @@ pub use self::record::{
 };
 pub use self::source::{
     decode_observation_cursor_ndjson, encode_observation_cursor_ndjson,
-    load_observation_cursor_ndjson, write_observation_cursor_ndjson,
-    BoundedLineObservationSource, ObservationIngressBatch, ObservationIngressConfig,
-    ObservationIngressDecision, OBSERVATION_CURSOR_RECORD,
-    OBSERVATION_CURSOR_SCHEMA_VERSION,
+    load_observation_cursor_ndjson, write_observation_cursor_ndjson, BoundedLineObservationSource,
+    ObservationIngressBatch, ObservationIngressConfig, ObservationIngressDecision,
+    ObservationIngressReceipt, OBSERVATION_CURSOR_RECORD, OBSERVATION_CURSOR_SCHEMA_VERSION,
+    OBSERVATION_INGRESS_RECEIPT_RECORD, OBSERVATION_INGRESS_RECEIPT_SCHEMA_VERSION,
 };

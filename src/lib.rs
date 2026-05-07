@@ -9,6 +9,7 @@ pub mod api;
 pub mod capability;
 pub mod codec;
 pub mod error;
+pub mod graph_mutation;
 pub mod kernel;
 pub mod recovery;
 pub mod runtime;
@@ -24,63 +25,77 @@ pub use crate::api::transport::{
     append_api_transport_receipt_ndjson, decode_api_transport_receipt_ndjson,
     encode_api_transport_receipt_ndjson, handle_transport_frame_once,
     load_api_transport_ledger_ndjson, load_api_transport_receipts_ndjson,
-    verify_api_transport_receipts,
-    ApiTransportDisposition, ApiTransportFrame, ApiTransportLedger, ApiTransportReceipt,
-    ApiTransportResponse, ApiTransportSession, API_TRANSPORT_RECEIPT_RECORD,
+    verify_api_transport_receipts, ApiTransportDisposition, ApiTransportFrame, ApiTransportLedger,
+    ApiTransportReceipt, ApiTransportResponse, ApiTransportSession, API_TRANSPORT_RECEIPT_RECORD,
     API_TRANSPORT_RECEIPT_SCHEMA_VERSION, API_TRANSPORT_ROUTE_COMMAND,
     API_TRANSPORT_SCHEMA_VERSION,
 };
-pub use crate::capability::context::{ContextDecision, ContextRecord};
-pub use crate::capability::eval::{EvalDecision, EvalDimension, EvalRecord};
+pub use crate::capability::context::{
+    ContextAssemblyReceipt, ContextDecision, ContextRecord, CONTEXT_ASSEMBLY_RECEIPT_RECORD,
+    CONTEXT_ASSEMBLY_RECEIPT_SCHEMA_VERSION,
+};
+pub use crate::capability::eval::{
+    encode_candidate_receipt_ndjson, CandidateReceipt, CandidateReceiptInput, CandidateVerdict,
+    EvalDecision, EvalDimension, EvalRecord, EvalScorecardReceipt, SelectionRecord,
+    EVAL_SCORECARD_RECORD, EVAL_SCORECARD_SCHEMA_VERSION, EVOLUTION_LEDGER_RECORD,
+    EVOLUTION_LEDGER_SCHEMA_VERSION,
+};
+pub use crate::capability::judgment::{
+    JudgmentRecord, PolicyJudgmentDecision, PolicyJudgmentRecord, PolicyReuseReceipt,
+    PolicyReuseTrendReceipt,
+};
 pub use crate::capability::learning::{
-    DistillationRow, PolicyPromotion, DISTILLATION_ROW_SCHEMA_VERSION,
+    export_verified_distillation_row, DistillationExportError, DistillationExportInput,
+    DistillationExportReceipt, DistillationRow, PolicyPromotion, DISTILLATION_ROW_RECORD,
+    DISTILLATION_ROW_SCHEMA_VERSION,
 };
 pub use crate::capability::llm::{
     append_ollama_judgment_proof_event_ndjson, append_ollama_llm_effect_receipt_ndjson,
+    append_openai_judgment_proof_event_ndjson, append_openai_llm_effect_receipt_ndjson,
     decode_ollama_judgment_proof_event_ndjson, decode_ollama_llm_effect_receipt_ndjson,
+    decode_openai_judgment_proof_event_ndjson, decode_openai_llm_effect_receipt_ndjson,
     encode_ollama_judgment_proof_event_ndjson, encode_ollama_llm_effect_receipt_ndjson,
+    encode_openai_judgment_proof_event_ndjson, encode_openai_llm_effect_receipt_ndjson,
     load_ollama_judgment_proof_events_ndjson, load_ollama_llm_effect_receipts_ndjson,
-    verify_ollama_judgment_proof_event_order_ndjson, verify_ollama_judgment_proof_events,
-    verify_ollama_judgment_proof_events_ndjson, verify_ollama_judgment_tlog_ndjson,
-    verify_ollama_llm_effect_receipts, LlmDecision, LlmPromptRecord, LlmRecord,
-    LlmResponseRecord, LlmStructuredAdapter, OllamaChatResponse, OllamaClient, OllamaConfig,
-    OllamaError, OllamaJudgmentProofEvent, OllamaLlmCall,
-    OllamaLlmEffectReceipt, OllamaMessage, OllamaRetryBudgetDecision,
-    OllamaRetryBudgetLedger, OllamaRetryBudgetPolicy, OLLAMA_JUDGMENT_PROOF_LINE,
-    OLLAMA_JUDGMENT_PROOF_RECORD, OLLAMA_JUDGMENT_PROOF_SCHEMA_VERSION,
-    OLLAMA_LLM_EFFECT_RECEIPT_RECORD, OLLAMA_LLM_EFFECT_RECEIPT_SCHEMA_VERSION,
-    OLLAMA_PROVIDER, append_openai_judgment_proof_event_ndjson,
-    append_openai_llm_effect_receipt_ndjson, decode_openai_judgment_proof_event_ndjson,
-    decode_openai_llm_effect_receipt_ndjson, encode_openai_judgment_proof_event_ndjson,
-    encode_openai_llm_effect_receipt_ndjson, load_openai_judgment_proof_events_ndjson,
-    load_openai_llm_effect_receipts_ndjson, openai_messages_from_context,
+    load_openai_judgment_proof_events_ndjson, load_openai_llm_effect_receipts_ndjson,
+    openai_messages_from_context, verify_ollama_judgment_proof_event_order_ndjson,
+    verify_ollama_judgment_proof_events, verify_ollama_judgment_proof_events_ndjson,
+    verify_ollama_judgment_tlog_ndjson, verify_ollama_llm_effect_receipts,
     verify_openai_judgment_proof_event_order_ndjson, verify_openai_judgment_proof_events,
     verify_openai_judgment_proof_events_ndjson, verify_openai_judgment_tlog_ndjson,
-    verify_openai_llm_effect_receipts, OpenAiChatRequest, OpenAiChatResponse, OpenAiClient,
-    OpenAiConfig, OpenAiError, OpenAiFunctionCall, OpenAiFunctionTool,
-    OpenAiJudgmentProofEvent, OpenAiLlmCall, OpenAiLlmEffectReceipt, OpenAiMessage,
-    OpenAiRetryBudgetDecision, OpenAiRetryBudgetLedger, OpenAiRetryBudgetPolicy, OpenAiTool,
-    OpenAiToolCall, OPENAI_COMPAT_PROVIDER, OPENAI_JUDGMENT_PROOF_LINE,
-    OPENAI_JUDGMENT_PROOF_RECORD, OPENAI_JUDGMENT_PROOF_SCHEMA_VERSION,
+    verify_openai_llm_effect_receipts, LlmDecision, LlmPromptRecord, LlmRecord, LlmResponseRecord,
+    LlmStructuredAdapter, OllamaChatResponse, OllamaClient, OllamaConfig, OllamaError,
+    OllamaJudgmentProofEvent, OllamaLlmCall, OllamaLlmEffectReceipt, OllamaMessage,
+    OllamaRetryBudgetDecision, OllamaRetryBudgetLedger, OllamaRetryBudgetPolicy, OpenAiChatRequest,
+    OpenAiChatResponse, OpenAiClient, OpenAiConfig, OpenAiError, OpenAiFunctionCall,
+    OpenAiFunctionTool, OpenAiJudgmentProofEvent, OpenAiLlmCall, OpenAiLlmEffectReceipt,
+    OpenAiMessage, OpenAiRetryBudgetDecision, OpenAiRetryBudgetLedger, OpenAiRetryBudgetPolicy,
+    OpenAiTool, OpenAiToolCall, OLLAMA_JUDGMENT_PROOF_LINE, OLLAMA_JUDGMENT_PROOF_RECORD,
+    OLLAMA_JUDGMENT_PROOF_SCHEMA_VERSION, OLLAMA_LLM_EFFECT_RECEIPT_RECORD,
+    OLLAMA_LLM_EFFECT_RECEIPT_SCHEMA_VERSION, OLLAMA_PROVIDER, OPENAI_COMPAT_PROVIDER,
+    OPENAI_JUDGMENT_PROOF_LINE, OPENAI_JUDGMENT_PROOF_RECORD, OPENAI_JUDGMENT_PROOF_SCHEMA_VERSION,
     OPENAI_LLM_EFFECT_RECEIPT_RECORD, OPENAI_LLM_EFFECT_RECEIPT_SCHEMA_VERSION,
 };
 pub use crate::capability::memory::{MemoryFact, MemoryIndex, MemoryLookupRecord};
 pub use crate::capability::observation::{
     decode_observation_cursor_ndjson, encode_observation_cursor_ndjson,
-    load_observation_cursor_ndjson, write_observation_cursor_ndjson,
-    BoundedLineObservationSource,
-    ObservationIngressBatch, ObservationIngressConfig, ObservationIngressDecision,
+    load_observation_cursor_ndjson, write_observation_cursor_ndjson, BoundedLineObservationSource,
     ObservationCursor, ObservationDecision, ObservationFrame, ObservationFrameKind,
-    ObservationRecord, MAX_OBSERVATION_PAYLOAD_BYTES, OBSERVATION_CURSOR_RECORD,
-    OBSERVATION_CURSOR_SCHEMA_VERSION,
+    ObservationIngressBatch, ObservationIngressConfig, ObservationIngressDecision,
+    ObservationIngressReceipt, ObservationRecord, MAX_OBSERVATION_PAYLOAD_BYTES,
+    OBSERVATION_CURSOR_RECORD, OBSERVATION_CURSOR_SCHEMA_VERSION,
+    OBSERVATION_INGRESS_RECEIPT_RECORD, OBSERVATION_INGRESS_RECEIPT_SCHEMA_VERSION,
 };
 pub use crate::capability::orchestration::{
-    CapabilityRoute, OrchestrationDecision, OrchestrationRecord,
+    CapabilityRoute, OrchestrationBatchDecision, OrchestrationBatchRecord, OrchestrationBudget,
+    OrchestrationDecision, OrchestrationRecord, SelectedCapabilityRoute,
 };
-pub use crate::capability::planning::{PlanDecision, PlanRecord};
+pub use crate::capability::planning::{
+    PlanDecision, PlanReceipt, PlanRecord, PLAN_RECEIPT_RECORD, PLAN_RECEIPT_SCHEMA_VERSION,
+};
 pub use crate::capability::policy::{
-    PolicyEntry, PolicyProofReceipt, PolicyStore, PolicyStoreError, POLICY_FEEDBACK_HASH,
-    POLICY_PROMOTION_SOURCE_SEQ,
+    PolicyEntry, PolicyLookupReceipt, PolicyProofReceipt, PolicyStore, PolicyStoreError,
+    POLICY_FEEDBACK_HASH, POLICY_PROMOTION_SOURCE_SEQ,
 };
 pub use crate::capability::tooling::{
     append_process_effect_receipt_ndjson, append_sandbox_process_receipt_ndjson,
@@ -98,12 +113,15 @@ pub use crate::capability::tooling::{
     TOOL_EFFECT_RECEIPT_RECORD, TOOL_EFFECT_RECEIPT_SCHEMA_VERSION,
 };
 pub use crate::capability::verification::{
-    ArtifactSemanticProfile, DeterministicSemanticVerifier, SemanticVerificationReceipt,
-    verify_verification_proof_record_bindings, verify_verification_proof_record_order_ndjson,
-    verify_verification_proof_record_replay, verify_verification_proof_record_replay_ndjson,
+    content_hash, verify_artifact_backed_semantics, verify_verification_proof_record_bindings,
+    verify_verification_proof_record_order_ndjson, verify_verification_proof_record_replay,
+    verify_verification_proof_record_replay_ndjson, ArtifactBackedSemanticProfile,
+    ArtifactBackedSemanticReceipt, ArtifactSemanticProfile, ArtifactVerificationProfileKind,
     CanonicalEffect, CanonicalEffectKind, CanonicalEffectProof, CanonicalEffectReceipt,
-    ProofSubjectKind, VerificationCheck, VerificationDecision,
-    VerificationProofBinding, VerificationProofRecord, VerificationRecord, VerificationRequest,
+    DeterministicSemanticVerifier, ProofSubjectKind, SemanticVerificationReceipt,
+    VerificationCheck, VerificationDecision, VerificationProofBinding, VerificationProofRecord,
+    VerificationReceipt, VerificationRecord, VerificationRequest, VERIFICATION_RECEIPT_RECORD,
+    VERIFICATION_RECEIPT_SCHEMA_VERSION,
 };
 pub use crate::capability::{
     evidence_allowed_for_gate, expected_evidence_for_gate, CapabilityEffectRoute, CapabilityId,
@@ -114,17 +132,34 @@ pub use crate::codec::ndjson::{
     encode_control_event_ndjson, encode_tlog_ndjson_string, load_tlog_ndjson, write_tlog_ndjson,
     TLOG_RECORD_EVENT, TLOG_SCHEMA_VERSION,
 };
+pub use crate::graph_mutation::{
+    append_graph_mutation_receipt_ndjson, append_graph_patch_receipt_ndjson,
+    decode_graph_mutation_op_row_ndjson, decode_graph_mutation_ops_ndjson,
+    decode_graph_mutation_receipt_ndjson, decode_graph_patch_receipt_ndjson,
+    decode_graph_snapshot_contract_ndjson, encode_graph_mutation_op_row_ndjson,
+    encode_graph_mutation_ops_ndjson, encode_graph_mutation_opset_receipt_ndjson,
+    encode_graph_mutation_receipt_ndjson, encode_graph_patch_receipt_ndjson,
+    encode_graph_receipt_ledger_receipt_ndjson, encode_graph_snapshot_contract_ndjson,
+    generate_graph_patch, load_graph_mutation_receipts_ndjson, load_graph_patch_receipts_ndjson,
+    load_graph_snapshot_contract_ndjson, verify_graph_mutation_landing,
+    verify_graph_mutation_ops_ndjson, verify_graph_receipt_ledger_files_ndjson,
+    verify_graph_receipt_ledgers_ndjson, GraphEdgeContract, GraphMutationOp, GraphMutationOpRow,
+    GraphMutationOpSetReceipt, GraphMutationReceipt, GraphMutationVerdict, GraphNodeContract,
+    GraphPatchError, GraphPatchPlan, GraphPatchReceipt, GraphReceiptLedgerReceipt,
+    GraphSnapshotContract, GraphSourceFile, GraphSourceSpan, GRAPH_JSON_SCHEMA_VERSION,
+    GRAPH_MUTATION_LEDGER_RECORD, GRAPH_MUTATION_OPSET_RECORD, GRAPH_MUTATION_RECEIPT_RECORD,
+    GRAPH_MUTATION_SCHEMA_VERSION, GRAPH_MUTATION_VERIFY_RECORD,
+};
 pub use crate::kernel::{
-    CapabilityRegistryProjection, Cause, ControlEvent, Decision, EventKind, Evidence,
-    FailureClass, Gate, GateId, GateSet, GateStatus, Packet, Phase, RecoveryAction,
-    RuntimeConfig, SemanticDelta, State, TLog, EXECUTION_GATE_ORDER, GATE_ORDER, PHASES,
+    CapabilityRegistryProjection, Cause, ControlEvent, Decision, EventKind, Evidence, FailureClass,
+    Gate, GateId, GateSet, GateStatus, Packet, Phase, RecoveryAction, RuntimeConfig, SemanticDelta,
+    State, TLog, EXECUTION_GATE_ORDER, GATE_ORDER, PHASES,
 };
 pub use crate::runtime::{
-    CanonError, CommandLedger, CommandReceipt,
     durable_replay_report, legal_transition, replay_report_from, replay_report_ndjson,
-    replay_tlog_ndjson, resume_durable_runtime, run_until_done,
-    run_until_done_durable, run_until_done_durable_with_ledger, semantic_diff, tick,
-    tick_durable, tick_durable_checked, touch_all_surfaces, verify_tlog, verify_tlog_from,
+    replay_tlog_ndjson, resume_durable_runtime, run_until_done, run_until_done_durable,
+    run_until_done_durable_with_ledger, semantic_diff, tick, tick_durable, tick_durable_checked,
+    touch_all_surfaces, verify_tlog, verify_tlog_from, CanonError, CommandLedger, CommandReceipt,
     DurableRuntimeState, ReplayReport,
 };
 
@@ -332,8 +367,7 @@ mod tests {
         let receipt_event = tlog
             .iter()
             .find(|event| {
-                event.cause == Cause::PolicyPromoted
-                    && event.evidence == Evidence::PolicyPromotion
+                event.cause == Cause::PolicyPromoted && event.evidence == Evidence::PolicyPromotion
             })
             .unwrap();
         let receipt = PolicyProofReceipt::new(
@@ -344,9 +378,8 @@ mod tests {
         )
         .unwrap();
         let proof_event_seq = tlog.last().unwrap().seq + 1;
-        let (canonical_receipt, effect_proof) = receipt
-            .to_canonical_effect_proof(proof_event_seq)
-            .unwrap();
+        let (canonical_receipt, effect_proof) =
+            receipt.to_canonical_effect_proof(proof_event_seq).unwrap();
         let proof_record = effect_proof.to_verification_proof_record().unwrap();
         let binding = effect_proof.verification_proof_binding().unwrap();
 
@@ -433,7 +466,10 @@ mod tests {
         assert_eq!(response.event.evidence, Evidence::EvalScore);
         assert_eq!(state.phase, Phase::Persist);
         assert_eq!(state.gates.eval.status, GateStatus::Pass);
-        assert_eq!(verify_tlog_from(tlog[0].state_before, &tlog).unwrap(), state);
+        assert_eq!(
+            verify_tlog_from(tlog[0].state_before, &tlog).unwrap(),
+            state
+        );
     }
 
     #[test]
@@ -634,17 +670,21 @@ mod tests {
             .unwrap()
             .unwrap();
         assert_eq!(loaded, second);
-        assert_eq!(std::fs::read_to_string(&cursor_path).unwrap().lines().count(), 1);
+        assert_eq!(
+            std::fs::read_to_string(&cursor_path)
+                .unwrap()
+                .lines()
+                .count(),
+            1
+        );
 
         std::fs::remove_file(&cursor_path).ok();
     }
 
     #[test]
     fn bounded_line_observation_source_persists_cursor_and_applies_backpressure() {
-        let stem = std::env::temp_dir().join(format!(
-            "ai-observation-ingress-{}",
-            std::process::id()
-        ));
+        let stem =
+            std::env::temp_dir().join(format!("ai-observation-ingress-{}", std::process::id()));
         let source_path = stem.with_extension("log");
         let cursor_path = stem.with_extension("cursor.ndjson");
         std::fs::remove_file(&source_path).ok();
@@ -662,7 +702,9 @@ mod tests {
         assert_eq!(pressured.decision, ObservationIngressDecision::Backpressure);
         assert_eq!(pressured.backlog_len, 3);
         assert!(pressured.records.is_empty());
-        assert!(load_observation_cursor_ndjson(&cursor_path).unwrap().is_none());
+        assert!(load_observation_cursor_ndjson(&cursor_path)
+            .unwrap()
+            .is_none());
 
         let source = BoundedLineObservationSource::new(
             source_path.clone(),
@@ -701,10 +743,8 @@ mod tests {
 
     #[test]
     fn observation_ingress_batch_routes_through_api_to_invariant_gate() {
-        let stem = std::env::temp_dir().join(format!(
-            "ai-observation-api-ingress-{}",
-            std::process::id()
-        ));
+        let stem =
+            std::env::temp_dir().join(format!("ai-observation-api-ingress-{}", std::process::id()));
         let source_path = stem.with_extension("log");
         let cursor_path = stem.with_extension("cursor.ndjson");
         std::fs::remove_file(&source_path).ok();
@@ -825,7 +865,8 @@ mod tests {
         let mut memory = MemoryIndex::default();
         assert!(memory.insert(MemoryFact::new(state.packet.objective_id, 0xfeed, 7, 1)));
         let lookup = memory.lookup(state.packet.objective_id, 8);
-        let context = ContextRecord::from_packet_memory(state.packet, observation.observed_hash, &lookup);
+        let context =
+            ContextRecord::from_packet_memory(state.packet, observation.observed_hash, &lookup);
 
         crate::api::routes::handle_command(
             &mut state,
@@ -878,10 +919,7 @@ mod tests {
     fn ollama_adapter_builds_openai_compatible_qwen_request() {
         let client = OllamaClient::new(OllamaConfig::default()).unwrap();
         let body = client
-            .request_json(&[
-                OllamaMessage::system("system"),
-                OllamaMessage::user("ping"),
-            ])
+            .request_json(&[OllamaMessage::system("system"), OllamaMessage::user("ping")])
             .unwrap();
 
         assert_eq!(
@@ -978,8 +1016,13 @@ mod tests {
         );
 
         let mut tlog = Vec::new();
-        crate::api::routes::handle_envelope(&mut state, &mut tlog, RuntimeConfig::default(), envelope.clone())
-            .unwrap();
+        crate::api::routes::handle_envelope(
+            &mut state,
+            &mut tlog,
+            RuntimeConfig::default(),
+            envelope.clone(),
+        )
+        .unwrap();
         let persisted_event = tlog
             .iter()
             .find(|event| {
@@ -995,7 +1038,10 @@ mod tests {
 
         assert!(receipt.is_valid());
         assert!(receipt.replay_verified(&tlog));
-        assert_eq!(receipt.provider_hash, crate::capability::llm::ollama::hash_text(OLLAMA_PROVIDER));
+        assert_eq!(
+            receipt.provider_hash,
+            crate::capability::llm::ollama::hash_text(OLLAMA_PROVIDER)
+        );
         assert_eq!(receipt.base_url_hash, client.config().base_url_id());
         assert_eq!(receipt.model_id, client.config().model_id());
         assert_eq!(receipt.request_hash, call.request_hash);
@@ -1039,7 +1085,6 @@ mod tests {
         assert!(!tampered.replay_verified(&loaded_tlog));
     }
 
-
     #[test]
     fn ollama_judgment_final_proof_persists_as_verification_event() {
         let mut state = State::default();
@@ -1066,8 +1111,13 @@ mod tests {
         );
 
         let mut tlog = Vec::new();
-        crate::api::routes::handle_envelope(&mut state, &mut tlog, RuntimeConfig::default(), envelope.clone())
-            .unwrap();
+        crate::api::routes::handle_envelope(
+            &mut state,
+            &mut tlog,
+            RuntimeConfig::default(),
+            envelope.clone(),
+        )
+        .unwrap();
         let persisted_event = tlog
             .iter()
             .find(|event| {
@@ -1153,8 +1203,13 @@ mod tests {
         );
 
         let mut tlog = Vec::new();
-        crate::api::routes::handle_envelope(&mut state, &mut tlog, RuntimeConfig::default(), envelope.clone())
-            .unwrap();
+        crate::api::routes::handle_envelope(
+            &mut state,
+            &mut tlog,
+            RuntimeConfig::default(),
+            envelope.clone(),
+        )
+        .unwrap();
         let persisted_event = tlog
             .iter()
             .find(|event| {
@@ -1209,7 +1264,10 @@ mod tests {
         );
         assert_eq!(canonical_receipt.replay_seq, receipt.event_seq);
         assert_eq!(canonical_receipt.replay_hash, receipt.event_hash);
-        assert_eq!(canonical_receipt.proof_event_seq, proof_event.proof_event_seq);
+        assert_eq!(
+            canonical_receipt.proof_event_seq,
+            proof_event.proof_event_seq
+        );
         assert!(canonical_receipt.is_bound_to_proof());
         assert!(effect_proof.is_valid());
 
@@ -1282,11 +1340,7 @@ mod tests {
         );
 
         write_tlog_ndjson(&missing_path, &tlog).unwrap();
-        assert!(verify_verification_proof_record_replay_ndjson(
-            &missing_path,
-            &[binding]
-        )
-        .is_err());
+        assert!(verify_verification_proof_record_replay_ndjson(&missing_path, &[binding]).is_err());
 
         write_tlog_ndjson(&duplicate_path, &tlog).unwrap();
         crate::capability::verification::append_verification_proof_record_ndjson(
@@ -1299,11 +1353,9 @@ mod tests {
             &proof_record,
         )
         .unwrap();
-        assert!(verify_verification_proof_record_replay_ndjson(
-            &duplicate_path,
-            &[binding]
-        )
-        .is_err());
+        assert!(
+            verify_verification_proof_record_replay_ndjson(&duplicate_path, &[binding]).is_err()
+        );
 
         write_tlog_ndjson(&displaced_path, &tlog).unwrap();
         {
@@ -1329,11 +1381,9 @@ mod tests {
         )
         .unwrap();
         assert!(verify_verification_proof_record_order_ndjson(&displaced_path).is_err());
-        assert!(verify_verification_proof_record_replay_ndjson(
-            &displaced_path,
-            &[binding]
-        )
-        .is_err());
+        assert!(
+            verify_verification_proof_record_replay_ndjson(&displaced_path, &[binding]).is_err()
+        );
 
         for path in [&valid_path, &missing_path, &duplicate_path, &displaced_path] {
             std::fs::remove_file(path).ok();
@@ -1366,8 +1416,13 @@ mod tests {
         );
 
         let mut tlog = Vec::new();
-        crate::api::routes::handle_envelope(&mut state, &mut tlog, RuntimeConfig::default(), envelope.clone())
-            .unwrap();
+        crate::api::routes::handle_envelope(
+            &mut state,
+            &mut tlog,
+            RuntimeConfig::default(),
+            envelope.clone(),
+        )
+        .unwrap();
         let persisted_event = tlog
             .iter()
             .find(|event| {
@@ -1412,7 +1467,6 @@ mod tests {
         assert!(!mismatched_proof.matches_receipt(receipt, &tlog));
     }
 
-
     #[test]
     fn ollama_receipt_hash_binds_proof_event_sequence_ordering() {
         let mut state = State::default();
@@ -1439,8 +1493,13 @@ mod tests {
         );
 
         let mut tlog = Vec::new();
-        crate::api::routes::handle_envelope(&mut state, &mut tlog, RuntimeConfig::default(), envelope.clone())
-            .unwrap();
+        crate::api::routes::handle_envelope(
+            &mut state,
+            &mut tlog,
+            RuntimeConfig::default(),
+            envelope.clone(),
+        )
+        .unwrap();
         let persisted_event = tlog
             .iter()
             .find(|event| {
@@ -1516,8 +1575,13 @@ mod tests {
         );
 
         let mut tlog = Vec::new();
-        crate::api::routes::handle_envelope(&mut state, &mut tlog, RuntimeConfig::default(), envelope.clone())
-            .unwrap();
+        crate::api::routes::handle_envelope(
+            &mut state,
+            &mut tlog,
+            RuntimeConfig::default(),
+            envelope.clone(),
+        )
+        .unwrap();
         let persisted_event = tlog
             .iter()
             .find(|event| {
@@ -1618,8 +1682,13 @@ mod tests {
         );
 
         let mut tlog = Vec::new();
-        crate::api::routes::handle_envelope(&mut state, &mut tlog, RuntimeConfig::default(), envelope.clone())
-            .unwrap();
+        crate::api::routes::handle_envelope(
+            &mut state,
+            &mut tlog,
+            RuntimeConfig::default(),
+            envelope.clone(),
+        )
+        .unwrap();
         let persisted_event = tlog
             .iter()
             .find(|event| {
@@ -1712,8 +1781,13 @@ mod tests {
         );
 
         let mut tlog = Vec::new();
-        crate::api::routes::handle_envelope(&mut state, &mut tlog, RuntimeConfig::default(), envelope.clone())
-            .unwrap();
+        crate::api::routes::handle_envelope(
+            &mut state,
+            &mut tlog,
+            RuntimeConfig::default(),
+            envelope.clone(),
+        )
+        .unwrap();
         let persisted_event = tlog
             .iter()
             .find(|event| {
@@ -1771,8 +1845,13 @@ mod tests {
         );
 
         let mut tlog = Vec::new();
-        crate::api::routes::handle_envelope(&mut state, &mut tlog, RuntimeConfig::default(), envelope.clone())
-            .unwrap();
+        crate::api::routes::handle_envelope(
+            &mut state,
+            &mut tlog,
+            RuntimeConfig::default(),
+            envelope.clone(),
+        )
+        .unwrap();
         let persisted_event = tlog
             .iter()
             .find(|event| {
@@ -1921,6 +2000,89 @@ mod tests {
     }
 
     #[test]
+    fn gated_distillation_export_writes_only_verified_passing_tlog_rows() {
+        let (_state, tlog) = run_until_done(State::ready(), RuntimeConfig::default()).unwrap();
+        let promotion = PolicyPromotion::from_tlog(&tlog, 1).unwrap();
+        let path = std::env::temp_dir().join(format!(
+            "ai-distill-export-{}-{}.jsonl",
+            std::process::id(),
+            promotion.promoted_policy_hash
+        ));
+        std::fs::remove_file(&path).ok();
+
+        let receipt = export_verified_distillation_row(
+            &tlog,
+            &path,
+            DistillationExportInput {
+                promoted_policy_version: 1,
+                instruction_hash: 0x1111,
+                input_state_hash: promotion.judgment_seq,
+                action_hash: promotion.eval_seq,
+                output_hash: promotion.completion_seq,
+                score: 100,
+                proof_hash: promotion.promoted_policy_hash,
+                minimum_score: 90,
+            },
+        )
+        .unwrap();
+        let output = std::fs::read_to_string(&path).unwrap();
+        std::fs::remove_file(&path).ok();
+
+        assert_eq!(receipt.schema_version, DISTILLATION_ROW_SCHEMA_VERSION);
+        assert_eq!(receipt.source_event, promotion.source_seq);
+        assert_eq!(receipt.row_count, 1);
+        assert_eq!(receipt.proof_hash, promotion.promoted_policy_hash);
+        assert_ne!(receipt.receipt_hash, 0);
+        assert!(output.starts_with(&format!(
+            "[{},{}",
+            DISTILLATION_ROW_SCHEMA_VERSION, DISTILLATION_ROW_RECORD
+        )));
+        assert!(output.ends_with('\n'));
+        assert!(output.contains(&format!(",{},", promotion.promoted_policy_hash)));
+    }
+
+    #[test]
+    fn gated_distillation_export_rejects_tamper_and_low_score() {
+        let (_state, tlog) = run_until_done(State::ready(), RuntimeConfig::default()).unwrap();
+        let promotion = PolicyPromotion::from_tlog(&tlog, 1).unwrap();
+        let path = std::env::temp_dir().join(format!(
+            "ai-distill-export-reject-{}-{}.jsonl",
+            std::process::id(),
+            promotion.promoted_policy_hash
+        ));
+        std::fs::remove_file(&path).ok();
+
+        let valid_input = DistillationExportInput {
+            promoted_policy_version: 1,
+            instruction_hash: 0x1111,
+            input_state_hash: promotion.judgment_seq,
+            action_hash: promotion.eval_seq,
+            output_hash: promotion.completion_seq,
+            score: 100,
+            proof_hash: promotion.promoted_policy_hash,
+            minimum_score: 90,
+        };
+        let mut tampered = tlog.clone();
+        tampered[0].self_hash ^= 1;
+        assert_eq!(
+            export_verified_distillation_row(&tampered, &path, valid_input.clone()),
+            Err(DistillationExportError::InvalidTlog)
+        );
+        assert_eq!(
+            export_verified_distillation_row(
+                &tlog,
+                &path,
+                DistillationExportInput {
+                    score: 89,
+                    ..valid_input
+                }
+            ),
+            Err(DistillationExportError::NoVerifiedPromotion)
+        );
+        assert!(!path.exists());
+    }
+
+    #[test]
     fn policy_feedback_changes_llm_prompt_and_judgment() {
         let packet = Packet::empty();
         let mut memory = MemoryIndex::default();
@@ -1935,12 +2097,19 @@ mod tests {
         let promotion = PolicyPromotion::from_tlog(&tlog, 1).unwrap();
         let mut feedback_policy = PolicyStore::default();
         feedback_policy.promote_feedback(promotion).unwrap();
-        let feedback_llm = LlmStructuredAdapter::record_from_context(&context, &feedback_policy, 11);
+        let feedback_llm =
+            LlmStructuredAdapter::record_from_context(&context, &feedback_policy, 11);
 
-        assert_eq!(base_llm.prompt.policy_version, feedback_llm.prompt.policy_version);
+        assert_eq!(
+            base_llm.prompt.policy_version,
+            feedback_llm.prompt.policy_version
+        );
         assert_ne!(base_llm.prompt.policy_hash, feedback_llm.prompt.policy_hash);
         assert_ne!(base_llm.prompt.prompt_hash, feedback_llm.prompt.prompt_hash);
-        assert_ne!(base_llm.response.response_hash, feedback_llm.response.response_hash);
+        assert_ne!(
+            base_llm.response.response_hash,
+            feedback_llm.response.response_hash
+        );
         assert_ne!(base_llm.judgment_record(), feedback_llm.judgment_record());
     }
 
@@ -2063,7 +2232,8 @@ mod tests {
         let mut memory = MemoryIndex::default();
         assert!(memory.insert(MemoryFact::new(state.packet.objective_id, 0xfeed, 7, 1)));
         let lookup = memory.lookup(state.packet.objective_id, 8);
-        let context = ContextRecord::from_packet_memory(state.packet, observation.observed_hash, &lookup);
+        let context =
+            ContextRecord::from_packet_memory(state.packet, observation.observed_hash, &lookup);
         crate::api::routes::handle_command(
             &mut state,
             &mut tlog,
@@ -2157,6 +2327,60 @@ mod tests {
     }
 
     #[test]
+    fn orchestration_batch_selects_bounded_parallel_routes() {
+        let high = OrchestrationRecord::from_state(State::default(), 9);
+        let low = OrchestrationRecord::from_state(State::default(), 3);
+        let budget = OrchestrationBudget::new(2, 4, 8);
+
+        let batch = OrchestrationBatchRecord::from_records(&[low.clone(), high.clone()], budget);
+
+        assert_eq!(batch.decision(), OrchestrationBatchDecision::Selected);
+        assert!(batch.is_valid());
+        assert_eq!(batch.candidate_count, 2);
+        assert_eq!(batch.selected.len(), 4);
+        assert!(batch.consumed_resource_units <= budget.resource_units);
+        assert_eq!(batch.selected[0].route.priority, 9);
+        assert_eq!(batch.selected[0].run_ordinal, 2);
+        assert_eq!(batch.selected[0].objective_id, high.objective_id);
+        assert_eq!(batch.ordered_submissions().len(), 4);
+    }
+
+    #[test]
+    fn orchestration_batch_enforces_parallel_run_budget() {
+        let first = OrchestrationRecord::from_state(State::default(), 5);
+        let second = OrchestrationRecord::from_state(State::default(), 5);
+        let batch = OrchestrationBatchRecord::from_records(
+            &[first, second],
+            OrchestrationBudget::new(1, 8, 32),
+        );
+
+        assert!(batch.is_valid());
+        assert_eq!(
+            batch
+                .selected
+                .iter()
+                .map(|route| route.run_ordinal)
+                .collect::<std::collections::BTreeSet<_>>()
+                .len(),
+            1
+        );
+    }
+
+    #[test]
+    fn orchestration_batch_rejects_tampered_merge_hash() {
+        let record = OrchestrationRecord::from_state(State::default(), 4);
+        let mut batch =
+            OrchestrationBatchRecord::from_records(&[record], OrchestrationBudget::new(1, 3, 8));
+        assert!(batch.is_valid());
+
+        batch.merge_hash ^= 1;
+
+        assert!(!batch.is_valid());
+        assert_eq!(batch.decision(), OrchestrationBatchDecision::Empty);
+        assert!(batch.ordered_submissions().is_empty());
+    }
+
+    #[test]
     fn empty_orchestration_batch_is_rejected() {
         let mut state = State::default();
         state.phase = Phase::Invariant;
@@ -2232,7 +2456,8 @@ mod tests {
         let mut state = State::default();
         let mut tlog = Vec::new();
         let observation = ObservationRecord::new(1, 1, 0xabc, 1);
-        let mut envelope = CommandEnvelope::new(7, Command::SubmitEvidence(observation.submission()));
+        let mut envelope =
+            CommandEnvelope::new(7, Command::SubmitEvidence(observation.submission()));
         envelope.command_hash = envelope.command_hash.saturating_add(1);
 
         let result = crate::api::routes::handle_envelope(
@@ -2256,8 +2481,8 @@ mod tests {
 
         let observation = ObservationRecord::new(1, 1, 0xabc, 1);
         let envelope = CommandEnvelope::new(1, Command::SubmitEvidence(observation.submission()));
-        let response = crate::api::routes::handle_envelope(&mut state, &mut tlog, cfg, envelope)
-            .unwrap();
+        let response =
+            crate::api::routes::handle_envelope(&mut state, &mut tlog, cfg, envelope).unwrap();
 
         assert_eq!(response.event.cause, Cause::GatePassed);
         assert_eq!(state.phase, Phase::Analysis);
@@ -2275,7 +2500,10 @@ mod tests {
         assert_eq!(first_submission.evidence, second_submission.evidence);
         assert_eq!(first_submission.passed, second_submission.passed);
         assert_eq!(first_submission.effect, second_submission.effect);
-        assert_ne!(first_submission.payload_hash, second_submission.payload_hash);
+        assert_ne!(
+            first_submission.payload_hash,
+            second_submission.payload_hash
+        );
 
         let first_envelope = CommandEnvelope::new(11, Command::SubmitEvidence(first_submission));
         let second_envelope = CommandEnvelope::new(11, Command::SubmitEvidence(second_submission));
@@ -2695,7 +2923,6 @@ mod tests {
         let _ = std::fs::remove_dir_all(&sandbox_root);
     }
 
-
     #[test]
     fn live_sandbox_process_runner_records_and_replays_receipt() {
         let sandbox_root = std::env::temp_dir().join(format!(
@@ -2748,7 +2975,6 @@ mod tests {
         let _ = std::fs::remove_dir_all(&sandbox_root);
     }
 
-
     #[test]
     fn process_receipt_enters_tlog_as_process_effect_without_artifact_leakage() {
         let sandbox_root = std::env::temp_dir().join(format!(
@@ -2797,10 +3023,14 @@ mod tests {
             .unwrap();
 
         assert_eq!(persisted.state_before.packet, persisted.state_after.packet);
-        assert_eq!(persisted.state_after.gates.execution.evidence, Evidence::ExecutionReceipt);
+        assert_eq!(
+            persisted.state_after.gates.execution.evidence,
+            Evidence::ExecutionReceipt
+        );
         assert_eq!(receipt.submission().effect, PacketEffect::None);
 
-        let effect_receipt = ProcessEffectReceipt::from_persisted_event(&receipt, persisted).unwrap();
+        let effect_receipt =
+            ProcessEffectReceipt::from_persisted_event(&receipt, persisted).unwrap();
         assert_eq!(effect_receipt.effect.kind, ToolEffectKind::Process);
         assert!(effect_receipt.replay_verified(&tlog));
 
@@ -2934,8 +3164,8 @@ mod tests {
         ));
         let _ = std::fs::remove_dir_all(&sandbox_root);
 
-        let executor = LiveSandboxProcessExecutor::new(&sandbox_root)
-            .with_allowed_command("printf");
+        let executor =
+            LiveSandboxProcessExecutor::new(&sandbox_root).with_allowed_command("printf");
 
         assert_eq!(
             executor.execute_process("sh", &["-c", "echo no"], ""),
@@ -2976,8 +3206,11 @@ mod tests {
         let effect_receipt = record.effect_receipt_for_event(persisted).unwrap();
 
         let mut tampered = tlog.clone();
-        tampered[0].state_after.packet.artifact_bytes =
-            tampered[0].state_after.packet.artifact_bytes.saturating_add(1);
+        tampered[0].state_after.packet.artifact_bytes = tampered[0]
+            .state_after
+            .packet
+            .artifact_bytes
+            .saturating_add(1);
 
         assert!(!effect_receipt.replay_verified(&tampered));
         assert!(!record.verifies_persisted_event(&tampered[0]));
@@ -3111,10 +3344,10 @@ mod tests {
             effect_receipt.registry_policy_hash,
             CapabilityRegistry::canonical().policy_hash()
         );
-        assert!(effect_receipt
-            .replay_verified_with_registry(&tlog, CapabilityRegistry::canonical()));
-        assert!(!effect_receipt
-            .replay_verified_with_registry(&tlog, CapabilityRegistry::empty()));
+        assert!(
+            effect_receipt.replay_verified_with_registry(&tlog, CapabilityRegistry::canonical())
+        );
+        assert!(!effect_receipt.replay_verified_with_registry(&tlog, CapabilityRegistry::empty()));
     }
 
     #[test]
@@ -3323,6 +3556,87 @@ mod tests {
     }
 
     #[test]
+    fn artifact_backed_semantic_verification_accepts_source_patch_file() {
+        let artifact = b"diff --git a/src/lib.rs b/src/lib.rs\n+semantic verification profile\n";
+        let path = std::env::temp_dir().join(format!(
+            "ai-artifact-semantic-source-patch-{}-{}.patch",
+            std::process::id(),
+            content_hash(artifact)
+        ));
+        std::fs::write(&path, artifact).unwrap();
+
+        let profile = ArtifactBackedSemanticProfile::new(
+            ArtifactVerificationProfileKind::SourcePatch,
+            41,
+            101,
+            202,
+            content_hash(artifact),
+            artifact.len() as u64,
+        );
+        let receipt = verify_artifact_backed_semantics(&path, profile);
+
+        assert!(profile.is_structurally_valid());
+        assert_eq!(receipt.observed_content_hash, profile.expected_content_hash);
+        assert_eq!(receipt.observed_bytes, profile.expected_bytes);
+        assert!(receipt.is_valid());
+        std::fs::remove_file(path).ok();
+    }
+
+    #[test]
+    fn artifact_backed_semantic_verification_rejects_missing_file() {
+        let artifact = b"TLOG event row";
+        let path = std::env::temp_dir().join(format!(
+            "ai-missing-artifact-semantic-{}-{}.ndjson",
+            std::process::id(),
+            content_hash(artifact)
+        ));
+        std::fs::remove_file(&path).ok();
+
+        let profile = ArtifactBackedSemanticProfile::new(
+            ArtifactVerificationProfileKind::TLogNdjson,
+            42,
+            303,
+            404,
+            content_hash(artifact),
+            artifact.len() as u64,
+        );
+        let receipt = verify_artifact_backed_semantics(&path, profile);
+
+        assert!(!receipt.is_valid());
+        assert_eq!(receipt.observed_bytes, 0);
+        assert_ne!(receipt.defect_mask, 0);
+    }
+
+    #[test]
+    fn artifact_backed_semantic_verification_rejects_hash_mismatch_and_empty_semantics() {
+        let expected =
+            b"distill instruction input_state action output score proof_hash source_event";
+        let actual = b"unrelated row without required token";
+        let path = std::env::temp_dir().join(format!(
+            "ai-artifact-semantic-distill-tamper-{}-{}.jsonl",
+            std::process::id(),
+            content_hash(expected)
+        ));
+        std::fs::write(&path, actual).unwrap();
+
+        let profile = ArtifactBackedSemanticProfile::new(
+            ArtifactVerificationProfileKind::DistillationRow,
+            43,
+            505,
+            606,
+            content_hash(expected),
+            expected.len() as u64,
+        );
+        let receipt = verify_artifact_backed_semantics(&path, profile);
+
+        assert!(!receipt.is_valid());
+        assert_ne!(receipt.observed_content_hash, profile.expected_content_hash);
+        assert_ne!(receipt.observed_bytes, profile.expected_bytes);
+        assert_ne!(receipt.defect_mask, 0);
+        std::fs::remove_file(path).ok();
+    }
+
+    #[test]
     fn invalid_semantic_verification_fails_without_repairing_lineage() {
         let mut state = State::default();
         state.phase = Phase::Verify;
@@ -3348,7 +3662,10 @@ mod tests {
 
         assert_eq!(response.event.from, Phase::Verify);
         assert_eq!(response.event.to, Phase::Recovery);
-        assert_eq!(response.event.failure, Some(FailureClass::VerificationFailed));
+        assert_eq!(
+            response.event.failure,
+            Some(FailureClass::VerificationFailed)
+        );
         assert_eq!(state.gates.verification.status, GateStatus::Fail);
         assert!(!state.packet.lineage_valid());
         verify_tlog(&tlog).unwrap();
@@ -3543,10 +3860,8 @@ mod tests {
 
     #[test]
     fn durable_runner_resumes_from_disk_tlog() {
-        let path = std::env::temp_dir().join(format!(
-            "ai-tlog-resume-{}.ndjson",
-            std::process::id()
-        ));
+        let path =
+            std::env::temp_dir().join(format!("ai-tlog-resume-{}.ndjson", std::process::id()));
         std::fs::remove_file(&path).ok();
 
         let mut partial_state = State::default();
@@ -3603,8 +3918,7 @@ mod tests {
         assert_eq!(resumed.tlog, tlog);
         assert_eq!(resumed.command_ledger.receipts(), ledger.receipts());
 
-        let completed =
-            run_until_done_durable_with_ledger(State::default(), cfg, &path).unwrap();
+        let completed = run_until_done_durable_with_ledger(State::default(), cfg, &path).unwrap();
         assert!(completed.state.is_success());
         assert_eq!(completed.command_ledger.receipts(), ledger.receipts());
 
@@ -3663,10 +3977,8 @@ mod tests {
     #[test]
     fn durable_tick_checked_rejects_memory_disk_drift() {
         let cfg = RuntimeConfig::default();
-        let path = std::env::temp_dir().join(format!(
-            "ai-durable-drift-{}.ndjson",
-            std::process::id()
-        ));
+        let path =
+            std::env::temp_dir().join(format!("ai-durable-drift-{}.ndjson", std::process::id()));
         std::fs::remove_file(&path).ok();
 
         let mut state = State::default();
@@ -3676,13 +3988,8 @@ mod tests {
         let mut drifted_tlog = tlog.clone();
         drifted_tlog.clear();
         let before = state;
-        let result = tick_durable_checked(
-            &mut state,
-            &mut drifted_tlog,
-            &path,
-            State::default(),
-            cfg,
-        );
+        let result =
+            tick_durable_checked(&mut state, &mut drifted_tlog, &path, State::default(), cfg);
 
         std::fs::remove_file(&path).ok();
         assert_eq!(result, Err(CanonError::InvalidReplay));
@@ -3704,13 +4011,8 @@ mod tests {
         tick_durable(&mut disk_state, &mut tlog, &path, cfg).unwrap();
 
         let mut drifted_state = State::default();
-        let result = tick_durable_checked(
-            &mut drifted_state,
-            &mut tlog,
-            &path,
-            State::default(),
-            cfg,
-        );
+        let result =
+            tick_durable_checked(&mut drifted_state, &mut tlog, &path, State::default(), cfg);
 
         std::fs::remove_file(&path).ok();
         assert_eq!(result, Err(CanonError::InvalidStateContinuity));
@@ -3877,7 +4179,10 @@ mod tests {
             api_command_hash: event.api_command_hash,
         });
 
-        assert_eq!(verify_tlog_from(initial, &[event]), Err(CanonError::InvalidReplay));
+        assert_eq!(
+            verify_tlog_from(initial, &[event]),
+            Err(CanonError::InvalidReplay)
+        );
     }
 
     #[test]
@@ -3909,7 +4214,10 @@ mod tests {
             affected_gate: Some(GateId::Eval),
         };
 
-        assert_eq!(validate_event(event), Err(CanonError::UnexpectedAffectedGate));
+        assert_eq!(
+            validate_event(event),
+            Err(CanonError::UnexpectedAffectedGate)
+        );
     }
 
     #[test]
@@ -3923,7 +4231,10 @@ mod tests {
         };
         let mut tlog = Vec::new();
 
-        assert_eq!(tick(&mut state, &mut tlog, cfg), Err(CanonError::InvalidStateInvariant));
+        assert_eq!(
+            tick(&mut state, &mut tlog, cfg),
+            Err(CanonError::InvalidStateInvariant)
+        );
         assert!(tlog.is_empty());
     }
 
@@ -3936,7 +4247,10 @@ mod tests {
         let mut state = State::ready();
         let mut tlog = Vec::new();
 
-        assert_eq!(tick(&mut state, &mut tlog, cfg), Err(CanonError::InvalidRuntimeConfig));
+        assert_eq!(
+            tick(&mut state, &mut tlog, cfg),
+            Err(CanonError::InvalidRuntimeConfig)
+        );
         assert!(tlog.is_empty());
     }
 
@@ -3999,5 +4313,4 @@ mod tests {
             definitions
         );
     }
-
 }

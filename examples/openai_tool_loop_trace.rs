@@ -111,8 +111,13 @@ fn submit_openai_judgment(
     println!("llm_call phase=Judgment provider=openai-compatible");
     let mut memory = MemoryIndex::default();
     let _inserted = memory.insert(MemoryFact::new(state.packet.objective_id, 0xfeed, 7, 1));
-    let lookup = memory.lookup(state.packet.objective_id, 8);
-    let context = ContextRecord::from_packet_memory(state.packet, 0xabc, &lookup);
+    let (lookup, memory_receipt) = memory.lookup_with_receipt(state.packet.objective_id, 8);
+    let context = ContextRecord::from_packet_memory_receipt(
+        state.packet,
+        0xabc,
+        &lookup,
+        Some(&memory_receipt),
+    );
     let call = client.call_from_context(&context, policy)?;
 
     println!(
@@ -135,10 +140,8 @@ fn submit_openai_tool_calls(
     cfg: RuntimeConfig,
     process_receipt_path: &Path,
 ) -> Result<usize, Box<dyn std::error::Error>> {
-    let sandbox_root = std::env::temp_dir().join(format!(
-        "canon-openai-tool-loop-{}",
-        std::process::id()
-    ));
+    let sandbox_root =
+        std::env::temp_dir().join(format!("canon-openai-tool-loop-{}", std::process::id()));
     let executor = LiveSandboxProcessExecutor::new(&sandbox_root)
         .with_allowed_command("/usr/bin/printf")
         .with_allowed_command("/usr/bin/pwd")
@@ -152,7 +155,9 @@ fn submit_openai_tool_calls(
     let mut receipts = Vec::new();
     for tool_call_index in 1..=TOOL_CALL_TARGET {
         let spec = tool_spec(tool_call_index)?;
-        println!("llm_tool_intent_call index={tool_call_index} phase=Execute provider=openai-compatible");
+        println!(
+            "llm_tool_intent_call index={tool_call_index} phase=Execute provider=openai-compatible"
+        );
         let request = tool_intent_request(tool_call_index, spec);
         let response = client.chat_with_request(&request)?;
         let normalized = response.content.trim().to_ascii_uppercase();
@@ -195,12 +200,11 @@ fn submit_openai_tool_calls(
 
     let batch_hash = receipts
         .iter()
-        .fold(0x5_7001_ca11_u64, |hash, receipt| hash ^ receipt.receipt_hash)
+        .fold(0x5_7001_ca11_u64, |hash, receipt| {
+            hash ^ receipt.receipt_hash
+        })
         .max(1);
-    let envelope = CommandEnvelope::new(
-        batch_hash,
-        Command::SubmitProcessReceiptBatch(receipts),
-    );
+    let envelope = CommandEnvelope::new(batch_hash, Command::SubmitProcessReceiptBatch(receipts));
     handle_envelope(state, tlog, cfg, envelope)?;
     Ok(TOOL_CALL_TARGET)
 }
@@ -335,9 +339,5 @@ fn tool_spec(index: usize) -> Result<ToolSpec, Box<dyn std::error::Error>> {
 }
 
 fn matches_tool_intent(normalized: &str, spec: ToolSpec) -> bool {
-    normalized.contains(spec.intent)
-        || spec
-            .aliases
-            .iter()
-            .any(|alias| normalized.contains(alias))
+    normalized.contains(spec.intent) || spec.aliases.iter().any(|alias| normalized.contains(alias))
 }

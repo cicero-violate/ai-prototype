@@ -6,8 +6,8 @@
 //! `LlmRecord -> Evidence::JudgmentRecord` path used by deterministic tests.
 
 use std::env;
-use std::fs::{self, File, OpenOptions};
 use std::fmt;
+use std::fs::{self, File, OpenOptions};
 use std::io::{BufRead, BufReader, Read, Write};
 use std::net::TcpStream;
 use std::path::Path;
@@ -15,8 +15,13 @@ use std::time::Duration;
 
 use crate::capability::context::ContextRecord;
 use crate::capability::llm::record::{
-    retry_budget_decision_receiptable, retry_budget_decision_valid,
-    retry_budget_exhausted, retry_budget_policy_valid, LlmRecord, LlmStructuredAdapter,
+    retry_budget_decision_receiptable, retry_budget_decision_valid, retry_budget_exhausted,
+    retry_budget_policy_valid, LlmRecord, LlmStructuredAdapter,
+};
+use crate::capability::llm::transport::{
+    chat_completions_path as shared_chat_completions_path, parse_local_http_endpoint,
+    provider_text_hash, request_identity_hash as shared_request_identity_hash,
+    retry_policy_hash as shared_retry_policy_hash, LocalEndpointError, LocalLlmEndpoint,
 };
 use crate::capability::policy::PolicyStore;
 use crate::capability::verification::{
@@ -91,20 +96,15 @@ impl OllamaConfig {
 
     pub fn chat_completions_path(&self) -> Result<String, OllamaError> {
         let endpoint = parse_local_endpoint(&self.base_url)?;
-        let prefix = endpoint.path_prefix.trim_end_matches('/');
-        if prefix.is_empty() {
-            Ok("/v1/chat/completions".to_string())
-        } else {
-            Ok(format!("{prefix}/chat/completions"))
-        }
+        Ok(shared_chat_completions_path(&endpoint.path_prefix))
     }
 
     pub fn model_id(&self) -> u64 {
-        hash_text(&self.model)
+        provider_text_hash(&self.model)
     }
 
     pub fn base_url_id(&self) -> u64 {
-        hash_text(&self.base_url)
+        provider_text_hash(&self.base_url)
     }
 }
 
@@ -136,11 +136,12 @@ impl OllamaRetryBudgetPolicy {
     }
 
     pub fn policy_hash(self) -> u64 {
-        let mut h = 0x5245_5452_5942_5544u64;
-        h = mix(h, self.timeout_ms);
-        h = mix(h, self.max_retries as u64);
-        h = mix(h, self.attempt_budget as u64);
-        h.max(1)
+        shared_retry_policy_hash(
+            0x5245_5452_5942_5544u64,
+            self.timeout_ms,
+            self.max_retries,
+            self.attempt_budget,
+        )
     }
 
     pub fn request_identity_hash(
@@ -150,12 +151,13 @@ impl OllamaRetryBudgetPolicy {
         model_id: u64,
         request_hash: u64,
     ) -> u64 {
-        let mut h = 0x4944_454d_504f_5445u64;
-        h = mix(h, provider_hash);
-        h = mix(h, base_url_hash);
-        h = mix(h, model_id);
-        h = mix(h, request_hash);
-        h.max(1)
+        shared_request_identity_hash(
+            0x4944_454d_504f_5445u64,
+            provider_hash,
+            base_url_hash,
+            model_id,
+            request_hash,
+        )
     }
 
     pub fn decision_for_attempt(
@@ -196,7 +198,14 @@ impl OllamaRetryBudgetPolicy {
         model_id: u64,
         request_hash: u64,
     ) -> Option<OllamaRetryBudgetDecision> {
-        self.decision_for_attempt(provider_hash, base_url_hash, model_id, request_hash, 0, false)
+        self.decision_for_attempt(
+            provider_hash,
+            base_url_hash,
+            model_id,
+            request_hash,
+            0,
+            false,
+        )
     }
 }
 
@@ -268,12 +277,9 @@ impl OllamaRetryBudgetLedger {
         model_id: u64,
         request_hash: u64,
     ) -> Result<OllamaRetryBudgetDecision, OllamaError> {
-        let request_identity_hash = self.policy.request_identity_hash(
-            provider_hash,
-            base_url_hash,
-            model_id,
-            request_hash,
-        );
+        let request_identity_hash =
+            self.policy
+                .request_identity_hash(provider_hash, base_url_hash, model_id, request_hash);
         let duplicate_request = self
             .seen_request_identity_hashes
             .contains(&request_identity_hash);
@@ -878,11 +884,10 @@ impl OllamaJudgmentProofEvent {
             proof_hash: 0,
         };
         event.proof_hash = event.expected_proof_hash();
-        let finalized_receipt = receipt.bind_proof_event(event.proof_event_seq, event.proof_hash)?;
+        let finalized_receipt =
+            receipt.bind_proof_event(event.proof_event_seq, event.proof_hash)?;
         event.receipt_hash = finalized_receipt.receipt_hash;
-        event
-            .is_valid()
-            .then_some((finalized_receipt, event))
+        event.is_valid().then_some((finalized_receipt, event))
     }
 
     pub fn is_valid(self) -> bool {
@@ -1121,7 +1126,9 @@ impl OllamaClient {
         retry_policy: OllamaRetryBudgetPolicy,
     ) -> Result<(OllamaChatResponse, OllamaRetryBudgetDecision), OllamaError> {
         if retry_policy.timeout_ms != self.config.timeout_ms {
-            return Err(OllamaError::InvalidConfig("retry timeout must match config"));
+            return Err(OllamaError::InvalidConfig(
+                "retry timeout must match config",
+            ));
         }
         let request_hash = self.request_hash(messages)?;
         let mut last_error = None;
@@ -1235,7 +1242,9 @@ impl OllamaClient {
         policy: &PolicyStore,
         response_body: &str,
     ) -> Result<LlmRecord, OllamaError> {
-        Ok(self.call_from_response_body(context, policy, response_body)?.record)
+        Ok(self
+            .call_from_response_body(context, policy, response_body)?
+            .record)
     }
 
     fn call_from_response_with_budget(
@@ -1278,7 +1287,9 @@ impl OllamaClient {
             response,
             retry_budget,
         );
-        call.is_valid().then_some(call).ok_or(OllamaError::InvalidResponse)
+        call.is_valid()
+            .then_some(call)
+            .ok_or(OllamaError::InvalidResponse)
     }
 }
 
@@ -1300,40 +1311,12 @@ pub fn messages_from_context(context: &ContextRecord, policy: &PolicyStore) -> V
     ]
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
-struct LocalEndpoint {
-    host: String,
-    port: u16,
-    path_prefix: String,
-}
-
-fn parse_local_endpoint(base_url: &str) -> Result<LocalEndpoint, OllamaError> {
-    let without_scheme = base_url
-        .trim()
-        .strip_prefix("http://")
-        .ok_or(OllamaError::InvalidUrl)?;
-    let (host_port, path) = without_scheme
-        .split_once('/')
-        .map_or((without_scheme, ""), |(host_port, path)| (host_port, path));
-    let (host, port) = host_port
-        .rsplit_once(':')
-        .ok_or(OllamaError::InvalidUrl)?;
-    if host != "127.0.0.1" && host != "localhost" {
-        return Err(OllamaError::InvalidConfig("ollama base url must be local"));
-    }
-    let port = port.parse::<u16>().map_err(|_| OllamaError::InvalidUrl)?;
-    if port == 0 {
-        return Err(OllamaError::InvalidUrl);
-    }
-    let path_prefix = if path.trim().is_empty() {
-        String::new()
-    } else {
-        format!("/{}", path.trim_matches('/'))
-    };
-    Ok(LocalEndpoint {
-        host: host.to_string(),
-        port,
-        path_prefix,
+fn parse_local_endpoint(base_url: &str) -> Result<LocalLlmEndpoint, OllamaError> {
+    parse_local_http_endpoint(base_url).map_err(|err| match err {
+        LocalEndpointError::InvalidUrl => OllamaError::InvalidUrl,
+        LocalEndpointError::NonLocalHost => {
+            OllamaError::InvalidConfig("ollama base url must be local")
+        }
     })
 }
 

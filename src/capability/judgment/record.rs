@@ -1,5 +1,7 @@
 //! Judgment payload owned outside the kernel.
 
+use crate::capability::context::ContextRecord;
+use crate::capability::policy::{PolicyLookupReceipt, PolicyStore, POLICY_FEEDBACK_HASH};
 use crate::capability::{EvidenceProducer, EvidenceSubmission};
 use crate::kernel::{mix, Evidence, GateId};
 
@@ -37,6 +39,301 @@ impl EvidenceProducer for JudgmentRecord {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum PolicyJudgmentDecision {
+    PolicyHit,
+    PolicyMiss,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PolicyJudgmentRecord {
+    pub context_hash: u64,
+    pub policy_version: u64,
+    pub policy_hash: u64,
+    pub policy_feedback_hash: u64,
+    pub policy_lookup_receipt_hash: u64,
+    pub decision_id: u64,
+    pub rationale_hash: u64,
+    pub record_hash: u64,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PolicyReuseReceipt {
+    pub schema_version: u64,
+    pub record_type: &'static str,
+    pub retained_record_count: usize,
+    pub policy_hit_count: usize,
+    pub policy_miss_count: usize,
+    pub avoided_llm_call_count: usize,
+    pub hit_rate_bps: u64,
+    pub record_set_hash: u64,
+    pub verdict: &'static str,
+    pub receipt_hash: u64,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PolicyReuseTrendReceipt {
+    pub schema_version: u64,
+    pub record_type: &'static str,
+    pub baseline_receipt_hash: u64,
+    pub current_receipt_hash: u64,
+    pub baseline_retained_record_count: usize,
+    pub current_retained_record_count: usize,
+    pub baseline_hit_rate_bps: u64,
+    pub current_hit_rate_bps: u64,
+    pub hit_rate_delta_bps: i64,
+    pub avoided_llm_call_delta: i64,
+    pub trend_status: &'static str,
+    pub verdict: &'static str,
+    pub receipt_hash: u64,
+}
+
+impl PolicyReuseTrendReceipt {
+    pub fn to_json(&self) -> String {
+        format!(
+            "{{\"schema_version\":{},\"record_type\":\"{}\",\"baseline_receipt_hash\":{},\"current_receipt_hash\":{},\"baseline_retained_record_count\":{},\"current_retained_record_count\":{},\"baseline_hit_rate_bps\":{},\"current_hit_rate_bps\":{},\"hit_rate_delta_bps\":{},\"avoided_llm_call_delta\":{},\"trend_status\":\"{}\",\"verdict\":\"{}\",\"receipt_hash\":{}}}",
+            self.schema_version,
+            self.record_type,
+            self.baseline_receipt_hash,
+            self.current_receipt_hash,
+            self.baseline_retained_record_count,
+            self.current_retained_record_count,
+            self.baseline_hit_rate_bps,
+            self.current_hit_rate_bps,
+            self.hit_rate_delta_bps,
+            self.avoided_llm_call_delta,
+            self.trend_status,
+            self.verdict,
+            self.receipt_hash,
+        )
+    }
+
+    pub fn compare(baseline: &PolicyReuseReceipt, current: &PolicyReuseReceipt) -> Self {
+        let inputs_valid = baseline.is_valid() && current.is_valid();
+        let hit_rate_delta_bps = current.hit_rate_bps as i64 - baseline.hit_rate_bps as i64;
+        let avoided_llm_call_delta =
+            current.avoided_llm_call_count as i64 - baseline.avoided_llm_call_count as i64;
+        let trend_status = if !inputs_valid {
+            "invalid"
+        } else if hit_rate_delta_bps >= 0 && avoided_llm_call_delta >= 0 {
+            "improved_or_stable"
+        } else {
+            "regressed"
+        };
+        let verdict = if trend_status == "improved_or_stable" {
+            "pass"
+        } else {
+            "fail"
+        };
+        let mut receipt = Self {
+            schema_version: 1,
+            record_type: "policy_reuse_trend",
+            baseline_receipt_hash: baseline.receipt_hash,
+            current_receipt_hash: current.receipt_hash,
+            baseline_retained_record_count: baseline.retained_record_count,
+            current_retained_record_count: current.retained_record_count,
+            baseline_hit_rate_bps: baseline.hit_rate_bps,
+            current_hit_rate_bps: current.hit_rate_bps,
+            hit_rate_delta_bps,
+            avoided_llm_call_delta,
+            trend_status,
+            verdict,
+            receipt_hash: 0,
+        };
+        receipt.receipt_hash = policy_reuse_trend_receipt_hash(&receipt);
+        receipt
+    }
+
+    pub fn is_valid(&self) -> bool {
+        self.schema_version == 1
+            && matches!(
+                self.record_type,
+                "policy_reuse_trend" | "policy_reuse_trend_smoke" | "policy_reuse_regression_smoke"
+            )
+            && self.baseline_receipt_hash != 0
+            && self.current_receipt_hash != 0
+            && self.baseline_hit_rate_bps <= 10_000
+            && self.current_hit_rate_bps <= 10_000
+            && self.hit_rate_delta_bps
+                == self.current_hit_rate_bps as i64 - self.baseline_hit_rate_bps as i64
+            && self.receipt_hash != 0
+            && self.receipt_hash == policy_reuse_trend_receipt_hash(self)
+    }
+
+    pub fn passed(&self) -> bool {
+        self.is_valid() && self.verdict == "pass" && self.trend_status == "improved_or_stable"
+    }
+}
+
+impl PolicyReuseReceipt {
+    pub fn to_json(&self) -> String {
+        format!(
+            "{{\"schema_version\":{},\"record_type\":\"{}\",\"retained_record_count\":{},\"policy_hit_count\":{},\"policy_miss_count\":{},\"avoided_llm_call_count\":{},\"hit_rate_bps\":{},\"record_set_hash\":{},\"verdict\":\"{}\",\"receipt_hash\":{}}}",
+            self.schema_version,
+            self.record_type,
+            self.retained_record_count,
+            self.policy_hit_count,
+            self.policy_miss_count,
+            self.avoided_llm_call_count,
+            self.hit_rate_bps,
+            self.record_set_hash,
+            self.verdict,
+            self.receipt_hash,
+        )
+    }
+
+    pub fn from_policy_judgments(records: &[PolicyJudgmentRecord]) -> Self {
+        let retained_record_count = records.len();
+        let policy_hit_count = records.iter().filter(|record| record.is_valid()).count();
+        let policy_miss_count = retained_record_count.saturating_sub(policy_hit_count);
+        let avoided_llm_call_count = policy_hit_count;
+        let hit_rate_bps = if retained_record_count == 0 {
+            0
+        } else {
+            ((policy_hit_count as u64) * 10_000) / retained_record_count as u64
+        };
+        let record_set_hash = policy_reuse_record_set_hash(records);
+        let verdict = if retained_record_count > 0 && policy_hit_count > 0 && record_set_hash != 0 {
+            "pass"
+        } else {
+            "fail"
+        };
+        let mut receipt = Self {
+            schema_version: 1,
+            record_type: "policy_reuse",
+            retained_record_count,
+            policy_hit_count,
+            policy_miss_count,
+            avoided_llm_call_count,
+            hit_rate_bps,
+            record_set_hash,
+            verdict,
+            receipt_hash: 0,
+        };
+        receipt.receipt_hash = policy_reuse_receipt_hash(&receipt);
+        receipt
+    }
+
+    pub fn is_valid(&self) -> bool {
+        self.schema_version == 1
+            && matches!(self.record_type, "policy_reuse" | "policy_reuse_smoke")
+            && self.retained_record_count == self.policy_hit_count + self.policy_miss_count
+            && self.avoided_llm_call_count == self.policy_hit_count
+            && self.hit_rate_bps <= 10_000
+            && self.record_set_hash != 0
+            && self.receipt_hash != 0
+            && self.receipt_hash == policy_reuse_receipt_hash(self)
+    }
+
+    pub fn passed(&self) -> bool {
+        self.is_valid() && self.verdict == "pass"
+    }
+}
+
+impl PolicyJudgmentRecord {
+    pub fn from_context_policy(context: &ContextRecord, policy: &PolicyStore) -> Self {
+        let (_, receipt) = policy.feedback_lookup_with_receipt();
+        Self::from_context_policy_lookup_receipt(context, policy, &receipt)
+    }
+
+    pub fn from_context_policy_lookup_receipt(
+        context: &ContextRecord,
+        policy: &PolicyStore,
+        policy_lookup_receipt: &PolicyLookupReceipt,
+    ) -> Self {
+        let policy_version = policy.latest_version();
+        let policy_hash = policy.fingerprint();
+        let lookup_valid = policy_lookup_receipt.is_valid_for(policy, POLICY_FEEDBACK_HASH);
+        let policy_feedback_hash = if lookup_valid {
+            policy_lookup_receipt.found_value
+        } else {
+            0
+        };
+        let policy_lookup_receipt_hash = if lookup_valid {
+            policy_lookup_receipt.receipt_hash
+        } else {
+            0
+        };
+        let decision_id = policy_decision_id(
+            context,
+            policy_version,
+            policy_hash,
+            policy_feedback_hash,
+            policy_lookup_receipt_hash,
+        );
+        let rationale_hash = policy_rationale_hash(
+            context,
+            decision_id,
+            policy_feedback_hash,
+            policy_lookup_receipt_hash,
+        );
+        let mut record = Self {
+            context_hash: context.context_hash,
+            policy_version,
+            policy_hash,
+            policy_feedback_hash,
+            policy_lookup_receipt_hash,
+            decision_id,
+            rationale_hash,
+            record_hash: 0,
+        };
+        record.record_hash = policy_judgment_record_hash(&record);
+        record
+    }
+
+    pub fn decision(&self) -> PolicyJudgmentDecision {
+        if self.is_valid() {
+            PolicyJudgmentDecision::PolicyHit
+        } else {
+            PolicyJudgmentDecision::PolicyMiss
+        }
+    }
+
+    pub fn is_valid(&self) -> bool {
+        self.context_hash != 0
+            && self.policy_version != 0
+            && self.policy_hash != 0
+            && self.policy_feedback_hash != 0
+            && self.policy_lookup_receipt_hash != 0
+            && self.decision_id != 0
+            && self.rationale_hash != 0
+            && self.record_hash != 0
+            && self.record_hash == policy_judgment_record_hash(self)
+    }
+
+    pub fn judgment_record(&self) -> JudgmentRecord {
+        if self.is_valid() {
+            JudgmentRecord {
+                decision_id: self.decision_id,
+                policy_version: self.policy_version,
+                rationale_hash: self.rationale_hash,
+            }
+        } else {
+            JudgmentRecord {
+                decision_id: 0,
+                policy_version: 0,
+                rationale_hash: 0,
+            }
+        }
+    }
+
+    pub fn submission(&self) -> EvidenceSubmission {
+        self.judgment_record().submission()
+    }
+}
+
+impl EvidenceProducer for PolicyJudgmentRecord {
+    type Record = PolicyJudgmentRecord;
+
+    fn record(&self) -> &Self::Record {
+        self
+    }
+
+    fn submission(&self) -> EvidenceSubmission {
+        PolicyJudgmentRecord::submission(self)
+    }
+}
+
 fn judgment_payload_hash(record: &JudgmentRecord) -> u64 {
     let mut h = 0xaf63_dc4c_8601_ec8cu64;
     h = mix(h, record.decision_id);
@@ -45,3 +342,330 @@ fn judgment_payload_hash(record: &JudgmentRecord) -> u64 {
     h.max(1)
 }
 
+fn policy_decision_id(
+    context: &ContextRecord,
+    policy_version: u64,
+    policy_hash: u64,
+    policy_feedback_hash: u64,
+    policy_lookup_receipt_hash: u64,
+) -> u64 {
+    if !context.is_valid()
+        || policy_version == 0
+        || policy_hash == 0
+        || policy_feedback_hash == 0
+        || policy_lookup_receipt_hash == 0
+    {
+        return 0;
+    }
+    let mut h = 0x4a55_4447_504f_4c48u64;
+    h = mix(h, context.objective_id);
+    h = mix(h, context.context_hash);
+    h = mix(h, context.memory_aggregate_hash);
+    h = mix(h, policy_version);
+    h = mix(h, policy_hash);
+    h = mix(h, policy_feedback_hash);
+    h = mix(h, policy_lookup_receipt_hash);
+    h.max(1)
+}
+
+fn policy_rationale_hash(
+    context: &ContextRecord,
+    decision_id: u64,
+    policy_feedback_hash: u64,
+    policy_lookup_receipt_hash: u64,
+) -> u64 {
+    if !context.is_valid()
+        || decision_id == 0
+        || policy_feedback_hash == 0
+        || policy_lookup_receipt_hash == 0
+    {
+        return 0;
+    }
+    let mut h = 0x5241_544c_504f_4c48u64;
+    h = mix(h, context.observation_hash);
+    h = mix(h, context.memory_receipt_hash);
+    h = mix(h, decision_id);
+    h = mix(h, policy_feedback_hash);
+    h = mix(h, policy_lookup_receipt_hash);
+    h.max(1)
+}
+
+fn policy_reuse_record_set_hash(records: &[PolicyJudgmentRecord]) -> u64 {
+    if records.is_empty() {
+        return 0;
+    }
+    let mut h = 0x504f_4c52_4555_5345u64;
+    for record in records {
+        h = mix(h, record.context_hash);
+        h = mix(h, record.policy_version);
+        h = mix(h, record.policy_hash);
+        h = mix(h, record.policy_feedback_hash);
+        h = mix(h, record.policy_lookup_receipt_hash);
+        h = mix(h, record.decision_id);
+        h = mix(h, record.rationale_hash);
+        h = mix(h, record.record_hash);
+        h = mix(h, u64::from(record.is_valid()));
+    }
+    h.max(1)
+}
+
+fn policy_reuse_trend_receipt_hash(receipt: &PolicyReuseTrendReceipt) -> u64 {
+    if receipt.schema_version == 0
+        || receipt.baseline_receipt_hash == 0
+        || receipt.current_receipt_hash == 0
+    {
+        return 0;
+    }
+    let trend_code = match receipt.trend_status {
+        "improved_or_stable" => 1,
+        "regressed" => 2,
+        "invalid" => 3,
+        _ => 0,
+    };
+    let verdict_code = match receipt.verdict {
+        "pass" => 1,
+        "fail" => 2,
+        _ => 0,
+    };
+    if trend_code == 0 || verdict_code == 0 {
+        return 0;
+    }
+    let mut h = 0x504f_4c52_5452_4e44u64;
+    h = mix(h, receipt.schema_version);
+    h = mix(h, receipt.baseline_receipt_hash);
+    h = mix(h, receipt.current_receipt_hash);
+    h = mix(h, receipt.baseline_retained_record_count as u64);
+    h = mix(h, receipt.current_retained_record_count as u64);
+    h = mix(h, receipt.baseline_hit_rate_bps);
+    h = mix(h, receipt.current_hit_rate_bps);
+    h = mix(h, receipt.hit_rate_delta_bps as u64);
+    h = mix(h, receipt.avoided_llm_call_delta as u64);
+    h = mix(h, trend_code);
+    h = mix(h, verdict_code);
+    h.max(1)
+}
+
+fn policy_reuse_receipt_hash(receipt: &PolicyReuseReceipt) -> u64 {
+    if receipt.schema_version == 0 || receipt.record_set_hash == 0 {
+        return 0;
+    }
+    let verdict_code = match receipt.verdict {
+        "pass" => 1,
+        "fail" => 2,
+        _ => 0,
+    };
+    if verdict_code == 0 {
+        return 0;
+    }
+    let mut h = 0x504f_4c52_4350_5448u64;
+    h = mix(h, receipt.schema_version);
+    h = mix(h, receipt.retained_record_count as u64);
+    h = mix(h, receipt.policy_hit_count as u64);
+    h = mix(h, receipt.policy_miss_count as u64);
+    h = mix(h, receipt.avoided_llm_call_count as u64);
+    h = mix(h, receipt.hit_rate_bps);
+    h = mix(h, receipt.record_set_hash);
+    h = mix(h, verdict_code);
+    h.max(1)
+}
+
+fn policy_judgment_record_hash(record: &PolicyJudgmentRecord) -> u64 {
+    if record.context_hash == 0
+        || record.policy_version == 0
+        || record.policy_hash == 0
+        || record.policy_feedback_hash == 0
+        || record.policy_lookup_receipt_hash == 0
+        || record.decision_id == 0
+        || record.rationale_hash == 0
+    {
+        return 0;
+    }
+    let mut h = 0x504f_4c4a_5544_4754u64;
+    h = mix(h, record.context_hash);
+    h = mix(h, record.policy_version);
+    h = mix(h, record.policy_hash);
+    h = mix(h, record.policy_feedback_hash);
+    h = mix(h, record.policy_lookup_receipt_hash);
+    h = mix(h, record.decision_id);
+    h = mix(h, record.rationale_hash);
+    h.max(1)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::capability::context::ContextRecord;
+    use crate::capability::learning::PolicyPromotion;
+    use crate::capability::memory::{MemoryFact, MemoryIndex};
+    use crate::kernel::RuntimeConfig;
+    use crate::runtime::run_until_done;
+
+    fn context() -> ContextRecord {
+        let packet = crate::kernel::Packet {
+            objective_id: 42,
+            objective_required_tasks: 2,
+            revision: 1,
+            ..crate::kernel::Packet::empty()
+        };
+        let mut memory = MemoryIndex::default();
+        assert!(memory.insert(MemoryFact::new(packet.objective_id, 0xfeed, 7, 1)));
+        let (lookup, receipt) = memory.lookup_with_receipt(packet.objective_id, 8);
+        ContextRecord::from_packet_memory_receipt(packet, 0xabc, &lookup, Some(&receipt))
+    }
+
+    fn promoted_policy() -> PolicyStore {
+        let (_state, tlog) =
+            run_until_done(crate::kernel::State::ready(), RuntimeConfig::default()).unwrap();
+        let promotion = PolicyPromotion::from_tlog(&tlog, 1).unwrap();
+        let mut policy = PolicyStore::default();
+        policy.promote_feedback(promotion).unwrap();
+        policy
+    }
+
+    #[test]
+    fn policy_judgment_hit_produces_kernel_judgment_without_llm_record() {
+        let context = context();
+        let policy = promoted_policy();
+
+        let record = PolicyJudgmentRecord::from_context_policy(&context, &policy);
+        let judgment = record.judgment_record();
+        let submission = record.submission();
+
+        assert_eq!(record.decision(), PolicyJudgmentDecision::PolicyHit);
+        assert!(record.is_valid());
+        assert_eq!(record.context_hash, context.context_hash);
+        assert_eq!(record.policy_hash, policy.fingerprint());
+        let (_, receipt) = policy.feedback_lookup_with_receipt();
+        assert_eq!(record.policy_feedback_hash, policy.feedback_hash());
+        assert_eq!(record.policy_lookup_receipt_hash, receipt.receipt_hash);
+        assert!(judgment.is_valid());
+        assert_eq!(judgment.policy_version, policy.latest_version());
+        assert_eq!(submission.gate, GateId::Judgment);
+        assert_eq!(submission.evidence, Evidence::JudgmentRecord);
+        assert!(submission.passed);
+    }
+
+    #[test]
+    fn empty_policy_is_policy_miss_and_does_not_pass_judgment() {
+        let context = context();
+        let policy = PolicyStore::default();
+
+        let record = PolicyJudgmentRecord::from_context_policy(&context, &policy);
+        let submission = record.submission();
+
+        assert_eq!(record.decision(), PolicyJudgmentDecision::PolicyMiss);
+        assert!(!record.is_valid());
+        assert_eq!(record.policy_feedback_hash, 0);
+        assert_ne!(record.policy_lookup_receipt_hash, 0);
+        assert_eq!(submission.gate, GateId::Judgment);
+        assert_eq!(submission.evidence, Evidence::JudgmentRecord);
+        assert!(!submission.passed);
+    }
+
+    #[test]
+    fn policy_judgment_rejects_record_hash_tampering() {
+        let context = context();
+        let policy = promoted_policy();
+        let mut record = PolicyJudgmentRecord::from_context_policy(&context, &policy);
+
+        record.record_hash ^= 1;
+
+        assert_eq!(record.decision(), PolicyJudgmentDecision::PolicyMiss);
+        assert!(!record.is_valid());
+        assert!(!record.submission().passed);
+    }
+
+    #[test]
+    fn policy_judgment_rejects_tampered_policy_lookup_receipt() {
+        let context = context();
+        let policy = promoted_policy();
+        let (_, mut receipt) = policy.feedback_lookup_with_receipt();
+        receipt.found_value ^= 1;
+
+        let record =
+            PolicyJudgmentRecord::from_context_policy_lookup_receipt(&context, &policy, &receipt);
+
+        assert_eq!(record.decision(), PolicyJudgmentDecision::PolicyMiss);
+        assert_eq!(record.policy_feedback_hash, 0);
+        assert_eq!(record.policy_lookup_receipt_hash, 0);
+        assert!(!record.submission().passed);
+    }
+
+    #[test]
+    fn policy_reuse_receipt_counts_policy_hits_as_avoided_llm_calls() {
+        let context = context();
+        let policy = promoted_policy();
+        let hit = PolicyJudgmentRecord::from_context_policy(&context, &policy);
+        let miss = PolicyJudgmentRecord::from_context_policy(&context, &PolicyStore::default());
+
+        let receipt = PolicyReuseReceipt::from_policy_judgments(&[hit, miss]);
+
+        assert_eq!(receipt.schema_version, 1);
+        assert_eq!(receipt.record_type, "policy_reuse");
+        assert_eq!(receipt.retained_record_count, 2);
+        assert_eq!(receipt.policy_hit_count, 1);
+        assert_eq!(receipt.policy_miss_count, 1);
+        assert_eq!(receipt.avoided_llm_call_count, 1);
+        assert_eq!(receipt.hit_rate_bps, 5_000);
+        assert_eq!(receipt.verdict, "pass");
+        assert!(receipt.passed());
+    }
+
+    #[test]
+    fn policy_reuse_receipt_rejects_empty_or_tampered_aggregates() {
+        let empty = PolicyReuseReceipt::from_policy_judgments(&[]);
+        assert_eq!(empty.retained_record_count, 0);
+        assert_eq!(empty.verdict, "fail");
+        assert!(!empty.passed());
+
+        let context = context();
+        let policy = promoted_policy();
+        let hit = PolicyJudgmentRecord::from_context_policy(&context, &policy);
+        let mut receipt = PolicyReuseReceipt::from_policy_judgments(&[hit]);
+        assert!(receipt.passed());
+
+        receipt.avoided_llm_call_count += 1;
+        assert!(!receipt.is_valid());
+        assert!(!receipt.passed());
+    }
+
+    #[test]
+    fn policy_reuse_trend_receipt_passes_when_policy_coverage_improves() {
+        let context = context();
+        let policy = promoted_policy();
+        let hit = PolicyJudgmentRecord::from_context_policy(&context, &policy);
+        let miss = PolicyJudgmentRecord::from_context_policy(&context, &PolicyStore::default());
+        let baseline = PolicyReuseReceipt::from_policy_judgments(&[hit.clone(), miss.clone()]);
+        let current = PolicyReuseReceipt::from_policy_judgments(&[hit.clone(), hit]);
+
+        let trend = PolicyReuseTrendReceipt::compare(&baseline, &current);
+
+        assert_eq!(trend.record_type, "policy_reuse_trend");
+        assert_eq!(trend.baseline_hit_rate_bps, 5_000);
+        assert_eq!(trend.current_hit_rate_bps, 10_000);
+        assert_eq!(trend.hit_rate_delta_bps, 5_000);
+        assert_eq!(trend.avoided_llm_call_delta, 1);
+        assert_eq!(trend.trend_status, "improved_or_stable");
+        assert!(trend.passed());
+    }
+
+    #[test]
+    fn policy_reuse_trend_receipt_rejects_regression_or_tampering() {
+        let context = context();
+        let policy = promoted_policy();
+        let hit = PolicyJudgmentRecord::from_context_policy(&context, &policy);
+        let miss = PolicyJudgmentRecord::from_context_policy(&context, &PolicyStore::default());
+        let baseline = PolicyReuseReceipt::from_policy_judgments(&[hit.clone(), hit.clone()]);
+        let current = PolicyReuseReceipt::from_policy_judgments(&[hit, miss]);
+
+        let mut trend = PolicyReuseTrendReceipt::compare(&baseline, &current);
+
+        assert_eq!(trend.trend_status, "regressed");
+        assert_eq!(trend.verdict, "fail");
+        assert!(!trend.passed());
+        assert!(trend.is_valid());
+
+        trend.current_hit_rate_bps += 1;
+        assert!(!trend.is_valid());
+    }
+}

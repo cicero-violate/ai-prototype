@@ -25,7 +25,10 @@ impl Command {
             Self::SubmitEvidenceBatch(submissions) => {
                 !submissions.is_empty()
                     && submissions.len() <= API_COMMAND_BATCH_LIMIT
-                    && submissions.iter().copied().all(EvidenceSubmission::is_contract_valid)
+                    && submissions
+                        .iter()
+                        .copied()
+                        .all(EvidenceSubmission::is_contract_valid)
                     && gates_are_unique(submissions)
             }
             Self::SubmitObservationIngress(batch) => {

@@ -70,7 +70,11 @@ pub(crate) fn artifact_relative_name(request: ToolRequest) -> String {
     )
 }
 
-pub(crate) fn sandbox_artifact_body(request: ToolRequest, before: Packet, after: Packet) -> Vec<u8> {
+pub(crate) fn sandbox_artifact_body(
+    request: ToolRequest,
+    before: Packet,
+    after: Packet,
+) -> Vec<u8> {
     format!(
         concat!(
             "canon-tool-artifact-v1\n",
@@ -102,7 +106,9 @@ pub(crate) fn sandbox_artifact_body(request: ToolRequest, before: Packet, after:
 
 pub(crate) fn ensure_relative_name(name: &str) -> Result<(), ToolSandboxError> {
     let path = Path::new(name);
-    if path.components().count() == 1 && !name.is_empty() && !name.contains(std::path::MAIN_SEPARATOR)
+    if path.components().count() == 1
+        && !name.is_empty()
+        && !name.contains(std::path::MAIN_SEPARATOR)
     {
         Ok(())
     } else {
@@ -140,7 +146,6 @@ pub(crate) fn bytes_hash(bytes: &[u8]) -> u64 {
 pub(crate) fn path_hash(path: impl AsRef<[u8]>) -> u64 {
     bytes_hash(path.as_ref())
 }
-
 
 pub(crate) fn string_hash(value: &str) -> u64 {
     bytes_hash(value.as_bytes())

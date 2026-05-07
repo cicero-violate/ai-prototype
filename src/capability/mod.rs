@@ -319,14 +319,16 @@ pub const fn evidence_allowed_for_gate(gate: GateId, evidence: Evidence) -> bool
         GateId::Judgment => matches!(evidence, Evidence::JudgmentRecord),
         GateId::Plan => matches!(evidence, Evidence::TaskReady),
         GateId::Execution => {
-            matches!(evidence, Evidence::ArtifactReceipt | Evidence::ExecutionReceipt)
+            matches!(
+                evidence,
+                Evidence::ArtifactReceipt | Evidence::ExecutionReceipt
+            )
         }
         GateId::Verification => matches!(evidence, Evidence::LineageProof),
         GateId::Eval => matches!(evidence, Evidence::EvalScore),
         GateId::Learning => matches!(evidence, Evidence::PolicyPromotion),
     }
 }
-
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct EvidenceSubmission {
@@ -437,7 +439,11 @@ const fn structural_payload_hash(
     h = h.wrapping_mul(0x100000001b3);
     h ^= effect as u64;
     h = h.wrapping_mul(0x100000001b3);
-    if h == 0 { 1 } else { h }
+    if h == 0 {
+        1
+    } else {
+        h
+    }
 }
 
 pub trait EvidenceProducer {

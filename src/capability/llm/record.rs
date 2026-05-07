@@ -220,9 +220,7 @@ pub(crate) fn retry_budget_policy_valid(
     max_retries: u32,
     attempt_budget: u32,
 ) -> bool {
-    timeout_ms != 0
-        && attempt_budget != 0
-        && attempt_budget <= max_retries.saturating_add(1)
+    timeout_ms != 0 && attempt_budget != 0 && attempt_budget <= max_retries.saturating_add(1)
 }
 
 pub(crate) fn retry_budget_exhausted(
@@ -248,9 +246,7 @@ pub(crate) fn retry_budget_decision_valid(
         && request_identity_hash != 0
         && retry_budget_hash != 0
         && (!allowed
-            || (!duplicate_request
-                && retry_count <= max_retries
-                && retry_count < attempt_budget))
+            || (!duplicate_request && retry_count <= max_retries && retry_count < attempt_budget))
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -342,4 +338,3 @@ fn token_count(context: &ContextRecord) -> u32 {
         .saturating_add(4)
         .saturating_add((context.context_hash.count_ones() % 32).max(1))
 }
-

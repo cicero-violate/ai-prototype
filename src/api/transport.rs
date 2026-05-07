@@ -165,9 +165,10 @@ impl ApiTransportLedger {
     }
 
     pub fn receipt_for(&self, frame: &ApiTransportFrame) -> Option<ApiTransportReceipt> {
-        self.receipts.iter().copied().find(|receipt| {
-            frame.matches_receipt(*receipt)
-        })
+        self.receipts
+            .iter()
+            .copied()
+            .find(|receipt| frame.matches_receipt(*receipt))
     }
 
     pub fn contains_request_id(&self, request_id: u64) -> bool {
@@ -345,7 +346,9 @@ pub fn handle_transport_frame_once(
     let request_id = frame.request_id;
     let command_id = frame.envelope.command_id;
     let command_hash = frame.envelope.command_hash;
-    let replayed = command_ledger.replayed_event(&frame.envelope, tlog).is_some();
+    let replayed = command_ledger
+        .replayed_event(&frame.envelope, tlog)
+        .is_some();
     let control = handle_envelope_once(state, tlog, cfg, command_ledger, frame.envelope.clone())?;
 
     let response = ApiTransportResponse {
@@ -392,9 +395,7 @@ pub fn encode_api_transport_receipt_ndjson(receipt: ApiTransportReceipt) -> Stri
     )
 }
 
-pub fn decode_api_transport_receipt_ndjson(
-    line: &str,
-) -> Result<ApiTransportReceipt, CanonError> {
+pub fn decode_api_transport_receipt_ndjson(line: &str) -> Result<ApiTransportReceipt, CanonError> {
     let trimmed = line.trim();
     let body = trimmed
         .strip_prefix('[')
@@ -480,9 +481,7 @@ pub fn verify_api_transport_receipts(
 ) -> Result<(), CanonError> {
     let mut seen_request_ids = Vec::new();
     for receipt in receipts {
-        if !receipt.is_contract_valid()
-            || request_id_seen(&seen_request_ids, receipt.request_id)
-        {
+        if !receipt.is_contract_valid() || request_id_seen(&seen_request_ids, receipt.request_id) {
             return Err(CanonError::InvalidApiCommand);
         }
         event_for_transport_receipt(tlog, *receipt)?;

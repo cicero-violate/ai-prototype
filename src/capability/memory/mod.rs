@@ -6,4 +6,4 @@
 
 pub mod store;
 
-pub use self::store::{MemoryFact, MemoryIndex, MemoryLookupRecord};
+pub use self::store::{MemoryFact, MemoryIndex, MemoryLookupReceipt, MemoryLookupRecord};

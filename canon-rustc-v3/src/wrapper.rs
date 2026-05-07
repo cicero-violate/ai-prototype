@@ -15,7 +15,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::path::PathBuf;
 use std::time::SystemTime;
 
-const GRAPH_SCHEMA_VERSION: u32 = 11;
+const GRAPH_SCHEMA_VERSION: u32 = 12;
 const RECEIPT_SCHEMA_VERSION: u32 = 1;
 
 pub struct AnalysisCallbacks {
@@ -58,7 +58,11 @@ impl Callbacks for AnalysisCallbacks {
         }
 
         let crate_name = self.crate_name.as_deref().unwrap_or("unknown");
-        let primary_type = self.crate_types.first().map(String::as_str).unwrap_or("lib");
+        let primary_type = self
+            .crate_types
+            .first()
+            .map(String::as_str)
+            .unwrap_or("lib");
         let output_key = if primary_type == "bin" {
             format!("{crate_name}__bin")
         } else {

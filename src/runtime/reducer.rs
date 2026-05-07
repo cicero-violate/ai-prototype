@@ -72,9 +72,12 @@ fn execute_step(input: State) -> Outcome {
     let gate = s.gates.execution;
 
     match gate.status {
-        GateStatus::Pass if s.packet.artifact_receipt_valid() => {
-            advance(&mut s, Phase::Verify, Cause::ExecutionFinished, gate.evidence)
-        }
+        GateStatus::Pass if s.packet.artifact_receipt_valid() => advance(
+            &mut s,
+            Phase::Verify,
+            Cause::ExecutionFinished,
+            gate.evidence,
+        ),
         GateStatus::Pass => raise_domain_failure(
             &mut s,
             FailureClass::TaskReceiptMissing,
@@ -93,9 +96,12 @@ fn verify_step(input: State) -> Outcome {
     let gate = s.gates.verification;
 
     match gate.status {
-        GateStatus::Pass if s.packet.lineage_valid() => {
-            advance(&mut s, Phase::Eval, Cause::VerificationPassed, gate.evidence)
-        }
+        GateStatus::Pass if s.packet.lineage_valid() => advance(
+            &mut s,
+            Phase::Eval,
+            Cause::VerificationPassed,
+            gate.evidence,
+        ),
         GateStatus::Pass => raise_domain_failure(
             &mut s,
             FailureClass::ArtifactLineageBroken,
@@ -126,7 +132,12 @@ fn eval_step(input: State) -> Outcome {
         );
     }
 
-    advance(&mut s, Phase::Persist, Cause::EvalPassed, Evidence::EvalScore)
+    advance(
+        &mut s,
+        Phase::Persist,
+        Cause::EvalPassed,
+        Evidence::EvalScore,
+    )
 }
 
 fn advance(s: &mut State, to: Phase, cause: Cause, evidence: Evidence) -> Outcome {
@@ -334,7 +345,8 @@ fn persist(input: State) -> Outcome {
 fn learn(input: State) -> Outcome {
     let mut s = input;
 
-    s.gates.set_pass(GateId::Learning, Evidence::PolicyPromotion);
+    s.gates
+        .set_pass(GateId::Learning, Evidence::PolicyPromotion);
     s.phase = Phase::Done;
     s.failure = None;
     s.recovery_action = None;

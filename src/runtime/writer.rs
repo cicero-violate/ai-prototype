@@ -149,14 +149,8 @@ impl CanonicalWriter {
         api_command_id: u64,
         api_command_hash: u64,
     ) -> Result<ControlEvent, CanonError> {
-        let event = Self::build_with_command(
-            tlog,
-            before,
-            outcome,
-            cfg,
-            api_command_id,
-            api_command_hash,
-        )?;
+        let event =
+            Self::build_with_command(tlog, before, outcome, cfg, api_command_id, api_command_hash)?;
         tlog.push(event);
         Ok(event)
     }

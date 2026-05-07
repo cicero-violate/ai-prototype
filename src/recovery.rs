@@ -43,7 +43,12 @@ pub struct ValidationReceipt {
 }
 
 impl ValidationReceipt {
-    pub fn new(classification: &'static str, exit_code: Option<i32>, stdout: &str, stderr: &str) -> Self {
+    pub fn new(
+        classification: &'static str,
+        exit_code: Option<i32>,
+        stdout: &str,
+        stderr: &str,
+    ) -> Self {
         Self {
             classification,
             exit_code,

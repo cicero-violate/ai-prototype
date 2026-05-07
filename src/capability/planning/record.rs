@@ -9,6 +9,8 @@ use crate::kernel::{mix, Evidence, GateId, Packet};
 
 const PLAN_SCHEMA_VERSION: u64 = 2;
 const MAX_PLAN_TASKS: u8 = 8;
+pub const PLAN_RECEIPT_SCHEMA_VERSION: u64 = 1;
+pub const PLAN_RECEIPT_RECORD: u64 = 0x91a0_0001;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PlanDecision {
@@ -56,6 +58,26 @@ pub struct PlanRecord {
     pub ready_set_hash: u64,
     pub lineage_hash: u64,
     pub tasks: Vec<PlanTask>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct PlanReceipt {
+    pub schema_version: u64,
+    pub record_type: u64,
+    pub objective_id: u64,
+    pub task_id: u64,
+    pub task_count: u64,
+    pub completed_tasks: u64,
+    pub ready_tasks: u64,
+    pub plan_version: u64,
+    pub plan_revision: u64,
+    pub objective_hash: u64,
+    pub dependency_hash: u64,
+    pub ready_set_hash: u64,
+    pub lineage_hash: u64,
+    pub payload_hash: u64,
+    pub verdict: PlanDecision,
+    pub receipt_hash: u64,
 }
 
 impl PlanRecord {
@@ -160,6 +182,94 @@ impl PlanRecord {
             plan_payload_hash(self),
         )
     }
+
+    pub fn receipt(&self) -> PlanReceipt {
+        PlanReceipt::from_record(self)
+    }
+}
+
+impl PlanReceipt {
+    pub fn from_record(record: &PlanRecord) -> Self {
+        let mut receipt = Self {
+            schema_version: PLAN_RECEIPT_SCHEMA_VERSION,
+            record_type: PLAN_RECEIPT_RECORD,
+            objective_id: record.objective_id,
+            task_id: record.task_id,
+            task_count: u64::from(record.task_count),
+            completed_tasks: u64::from(record.completed_tasks),
+            ready_tasks: u64::from(record.ready_tasks),
+            plan_version: record.plan_version,
+            plan_revision: record.plan_revision,
+            objective_hash: record.objective_hash,
+            dependency_hash: record.dependency_hash,
+            ready_set_hash: record.ready_set_hash,
+            lineage_hash: record.lineage_hash,
+            payload_hash: plan_payload_hash(record),
+            verdict: record.decision(),
+            receipt_hash: 0,
+        };
+        receipt.receipt_hash = receipt.expected_receipt_hash();
+        receipt
+    }
+
+    pub fn is_valid_for(self, record: &PlanRecord) -> bool {
+        self == PlanReceipt::from_record(record) && self.is_self_consistent()
+    }
+
+    pub fn is_self_consistent(self) -> bool {
+        self.schema_version == PLAN_RECEIPT_SCHEMA_VERSION
+            && self.record_type == PLAN_RECEIPT_RECORD
+            && self.objective_id != 0
+            && self.task_count != 0
+            && self.completed_tasks <= self.task_count
+            && self.plan_version == PLAN_SCHEMA_VERSION
+            && self.plan_revision != 0
+            && self.objective_hash != 0
+            && self.dependency_hash != 0
+            && self.ready_set_hash != 0
+            && self.lineage_hash != 0
+            && self.payload_hash != 0
+            && self.receipt_hash == self.expected_receipt_hash()
+            && match self.verdict {
+                PlanDecision::Ready => self.task_id != 0 && self.ready_tasks != 0,
+                PlanDecision::Blocked => self.ready_tasks == 0,
+            }
+    }
+
+    pub fn submission(self) -> EvidenceSubmission {
+        let passed = self.is_self_consistent() && self.verdict == PlanDecision::Ready;
+        EvidenceSubmission::with_effect_payload(
+            GateId::Plan,
+            Evidence::TaskReady,
+            passed,
+            if passed {
+                PacketEffect::BindReadyTask
+            } else {
+                PacketEffect::None
+            },
+            self.receipt_hash,
+        )
+    }
+
+    pub fn expected_receipt_hash(self) -> u64 {
+        let mut h = 0x91a0_0001_5eed_0001u64;
+        h = mix(h, self.schema_version);
+        h = mix(h, self.record_type);
+        h = mix(h, self.objective_id);
+        h = mix(h, self.task_id);
+        h = mix(h, self.task_count);
+        h = mix(h, self.completed_tasks);
+        h = mix(h, self.ready_tasks);
+        h = mix(h, self.plan_version);
+        h = mix(h, self.plan_revision);
+        h = mix(h, self.objective_hash);
+        h = mix(h, self.dependency_hash);
+        h = mix(h, self.ready_set_hash);
+        h = mix(h, self.lineage_hash);
+        h = mix(h, self.payload_hash);
+        h = mix(h, self.verdict as u64);
+        h.max(1)
+    }
 }
 
 impl EvidenceProducer for PlanRecord {
@@ -251,4 +361,58 @@ fn plan_payload_hash(record: &PlanRecord) -> u64 {
     h = mix(h, record.ready_set_hash);
     h = mix(h, record.lineage_hash);
     h.max(1)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::kernel::Packet;
+
+    fn packet(required: u8, completed: u8) -> Packet {
+        let mut packet = Packet::empty();
+        packet.objective_id = 42;
+        packet.objective_required_tasks = required;
+        packet.objective_done_tasks = completed;
+        packet.revision = 9;
+        packet
+    }
+
+    #[test]
+    fn plan_receipt_binds_lineage_and_payload() {
+        let record = PlanRecord::from_packet(packet(4, 1));
+        let receipt = record.receipt();
+
+        assert!(receipt.is_self_consistent());
+        assert!(receipt.is_valid_for(&record));
+        assert_eq!(receipt.verdict, PlanDecision::Ready);
+        assert_eq!(receipt.task_id, 4202);
+        assert_eq!(receipt.task_count, 4);
+        assert_eq!(receipt.completed_tasks, 1);
+        assert_eq!(receipt.ready_tasks, 1);
+        assert_eq!(receipt.payload_hash, plan_payload_hash(&record));
+        assert_eq!(receipt.submission().gate, GateId::Plan);
+        assert!(receipt.submission().passed);
+    }
+
+    #[test]
+    fn plan_receipt_rejects_tampered_lineage() {
+        let record = PlanRecord::from_packet(packet(3, 0));
+        let mut receipt = record.receipt();
+        receipt.lineage_hash ^= 1;
+
+        assert!(!receipt.is_self_consistent());
+        assert!(!receipt.is_valid_for(&record));
+        assert!(!receipt.submission().passed);
+    }
+
+    #[test]
+    fn plan_receipt_blocks_completed_plan() {
+        let record = PlanRecord::from_packet(packet(2, 2));
+        let receipt = record.receipt();
+
+        assert_eq!(receipt.verdict, PlanDecision::Blocked);
+        assert!(receipt.is_self_consistent());
+        assert!(receipt.is_valid_for(&record));
+        assert!(!receipt.submission().passed);
+    }
 }

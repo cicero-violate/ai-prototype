@@ -34,6 +34,16 @@ pub struct PolicyProofReceipt {
     pub receipt_hash: u64,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct PolicyLookupReceipt {
+    pub key_hash: u64,
+    pub requested_key_id: u64,
+    pub found_version: u64,
+    pub found_value: u64,
+    pub policy_store_hash: u64,
+    pub receipt_hash: u64,
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum PolicyStoreError {
     InvalidPromotion,
@@ -123,6 +133,19 @@ impl PolicyStore {
         self.latest_value(POLICY_FEEDBACK_HASH).unwrap_or(0)
     }
 
+    pub fn lookup_with_receipt(
+        &self,
+        key: &'static str,
+    ) -> (Option<PolicyEntry>, PolicyLookupReceipt) {
+        let entry = self.latest(key).copied();
+        let receipt = PolicyLookupReceipt::new(key, entry, self.fingerprint());
+        (entry, receipt)
+    }
+
+    pub fn feedback_lookup_with_receipt(&self) -> (Option<PolicyEntry>, PolicyLookupReceipt) {
+        self.lookup_with_receipt(POLICY_FEEDBACK_HASH)
+    }
+
     pub fn fingerprint(&self) -> u64 {
         let mut h = 0xcbf2_9ce4_8422_2325u64;
 
@@ -140,6 +163,58 @@ impl PolicyStore {
 
     pub fn entries(&self) -> &[PolicyEntry] {
         &self.entries
+    }
+}
+
+impl PolicyLookupReceipt {
+    pub fn new(key: &'static str, entry: Option<PolicyEntry>, policy_store_hash: u64) -> Self {
+        let requested_key_id = key_to_id(key).unwrap_or(0);
+        let key_hash = policy_lookup_key_hash(requested_key_id);
+        let (found_version, found_value) = entry
+            .filter(|entry| key_to_id(entry.key).ok() == Some(requested_key_id))
+            .map(|entry| (entry.version, entry.value))
+            .unwrap_or((0, 0));
+        let mut receipt = Self {
+            key_hash,
+            requested_key_id,
+            found_version,
+            found_value,
+            policy_store_hash,
+            receipt_hash: 0,
+        };
+        receipt.receipt_hash = receipt.expected_receipt_hash();
+        receipt
+    }
+
+    pub fn is_hit(self) -> bool {
+        self.is_valid() && self.found_version != 0 && self.found_value != 0
+    }
+
+    pub fn is_valid(self) -> bool {
+        self.requested_key_id != 0
+            && self.key_hash == policy_lookup_key_hash(self.requested_key_id)
+            && self.policy_store_hash != 0
+            && self.receipt_hash != 0
+            && self.receipt_hash == self.expected_receipt_hash()
+    }
+
+    pub fn is_valid_for(self, store: &PolicyStore, key: &'static str) -> bool {
+        let expected =
+            PolicyLookupReceipt::new(key, store.latest(key).copied(), store.fingerprint());
+        self == expected && self.is_valid()
+    }
+
+    pub fn expected_receipt_hash(self) -> u64 {
+        if self.requested_key_id == 0 || self.key_hash == 0 || self.policy_store_hash == 0 {
+            return 0;
+        }
+        let mut h = 0x504f_4c49_4359_4c4bu64;
+        h = mix(h, self.key_hash);
+        h = mix(h, self.requested_key_id);
+        h = mix(h, self.found_version);
+        h = mix(h, self.found_value);
+        h = mix(h, self.policy_store_hash);
+        h.max(1)
     }
 }
 
@@ -264,7 +339,11 @@ impl PolicyProofReceipt {
     }
 
     pub fn proof_line_hash(self, proof_event_seq: u64) -> Option<u64> {
-        Some(self.to_canonical_effect_proof(proof_event_seq)?.1.proof_line_hash)
+        Some(
+            self.to_canonical_effect_proof(proof_event_seq)?
+                .1
+                .proof_line_hash,
+        )
     }
 
     pub fn verification_proof_binding(
@@ -323,10 +402,7 @@ fn decode_policy_entry_ndjson(line: &str) -> Result<PolicyEntry, PolicyStoreErro
         })
         .collect::<Result<Vec<_>, _>>()?;
 
-    if fields.len() != 5
-        || fields[0] != POLICY_SCHEMA_VERSION
-        || fields[1] != POLICY_RECORD_ENTRY
-    {
+    if fields.len() != 5 || fields[0] != POLICY_SCHEMA_VERSION || fields[1] != POLICY_RECORD_ENTRY {
         return Err(PolicyStoreError::InvalidPolicyRecord);
     }
 
@@ -335,6 +411,15 @@ fn decode_policy_entry_ndjson(line: &str) -> Result<PolicyEntry, PolicyStoreErro
         key: key_from_id(fields[3])?,
         value: fields[4],
     })
+}
+
+fn policy_lookup_key_hash(key_id: u64) -> u64 {
+    if key_id == 0 {
+        return 0;
+    }
+    let mut h = 0x504f_4c49_4359_4b45u64;
+    h = mix(h, key_id);
+    h.max(1)
 }
 
 fn key_to_id(key: &str) -> Result<u64, PolicyStoreError> {
@@ -350,5 +435,69 @@ fn key_from_id(id: u64) -> Result<&'static str, PolicyStoreError> {
         POLICY_KEY_PROMOTION_SOURCE_SEQ => Ok(POLICY_PROMOTION_SOURCE_SEQ),
         POLICY_KEY_FEEDBACK_HASH => Ok(POLICY_FEEDBACK_HASH),
         _ => Err(PolicyStoreError::UnknownPolicyKey),
+    }
+}
+
+#[cfg(test)]
+mod lookup_receipt_tests {
+    use super::*;
+
+    fn store_with_feedback() -> PolicyStore {
+        let mut store = PolicyStore::default();
+        store
+            .try_append(PolicyEntry {
+                version: 1,
+                key: POLICY_FEEDBACK_HASH,
+                value: 0xfeed,
+            })
+            .unwrap();
+        store
+    }
+
+    #[test]
+    fn policy_lookup_receipt_binds_feedback_hit() {
+        let store = store_with_feedback();
+        let (entry, receipt) = store.feedback_lookup_with_receipt();
+
+        assert_eq!(entry.unwrap().value, 0xfeed);
+        assert_eq!(receipt.found_version, 1);
+        assert_eq!(receipt.found_value, 0xfeed);
+        assert_eq!(receipt.policy_store_hash, store.fingerprint());
+        assert!(receipt.is_hit());
+        assert!(receipt.is_valid_for(&store, POLICY_FEEDBACK_HASH));
+    }
+
+    #[test]
+    fn policy_lookup_receipt_records_deterministic_miss() {
+        let store = PolicyStore::default();
+        let (entry, receipt) = store.feedback_lookup_with_receipt();
+
+        assert!(entry.is_none());
+        assert_eq!(receipt.found_version, 0);
+        assert_eq!(receipt.found_value, 0);
+        assert!(receipt.is_valid());
+        assert!(!receipt.is_hit());
+        assert!(receipt.is_valid_for(&store, POLICY_FEEDBACK_HASH));
+    }
+
+    #[test]
+    fn policy_lookup_receipt_rejects_tampered_store_or_value() {
+        let store = store_with_feedback();
+        let (_, mut receipt) = store.feedback_lookup_with_receipt();
+        receipt.found_value ^= 1;
+
+        assert!(!receipt.is_valid());
+        assert!(!receipt.is_valid_for(&store, POLICY_FEEDBACK_HASH));
+
+        let mut changed_store = store.clone();
+        changed_store
+            .try_append(PolicyEntry {
+                version: 2,
+                key: POLICY_PROMOTION_SOURCE_SEQ,
+                value: 7,
+            })
+            .unwrap();
+        let (_, original_receipt) = store.feedback_lookup_with_receipt();
+        assert!(!original_receipt.is_valid_for(&changed_store, POLICY_FEEDBACK_HASH));
     }
 }

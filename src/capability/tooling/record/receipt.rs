@@ -2,11 +2,11 @@ use std::fs::{self, File, OpenOptions};
 use std::io::{BufRead, BufReader, Write};
 use std::path::Path;
 
-use crate::capability::{CapabilityId, CapabilityRegistry, EvidenceProducer, EvidenceSubmission};
 use crate::capability::verification::{
     CanonicalEffect, CanonicalEffectProof, CanonicalEffectReceipt, ProofSubjectKind,
     VerificationProofBinding, VerificationProofRecord, PROOF_FLAGS_REQUIRED,
 };
+use crate::capability::{CapabilityId, CapabilityRegistry, EvidenceProducer, EvidenceSubmission};
 use crate::kernel::{
     mix, Cause, ControlEvent, Decision, EventKind, Evidence, GateId, GateStatus, Phase, TLog,
 };
@@ -50,7 +50,8 @@ impl ToolEffectReceipt {
             return None;
         }
 
-        let effect_hash = tool_effect_output_hash(event.state_before.packet, event.state_after.packet);
+        let effect_hash =
+            tool_effect_output_hash(event.state_before.packet, event.state_after.packet);
         let effect = Effect::artifact(
             effect_hash,
             record.receipt.artifact_path_hash,
@@ -202,7 +203,11 @@ impl ToolEffectReceipt {
     }
 
     pub fn proof_line_hash(self, proof_event_seq: u64) -> Option<u64> {
-        Some(self.to_canonical_effect_proof(proof_event_seq)?.1.proof_line_hash)
+        Some(
+            self.to_canonical_effect_proof(proof_event_seq)?
+                .1
+                .proof_line_hash,
+        )
     }
 
     pub fn verification_proof_binding(
@@ -399,7 +404,6 @@ pub fn decode_tool_effect_receipt_ndjson(
     Ok(receipt)
 }
 
-
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ProcessEffectReceipt {
     pub capability: CapabilityId,
@@ -556,7 +560,11 @@ impl ProcessEffectReceipt {
     }
 
     pub fn proof_line_hash(self, proof_event_seq: u64) -> Option<u64> {
-        Some(self.to_canonical_effect_proof(proof_event_seq)?.1.proof_line_hash)
+        Some(
+            self.to_canonical_effect_proof(proof_event_seq)?
+                .1
+                .proof_line_hash,
+        )
     }
 
     pub fn verification_proof_binding(
@@ -613,7 +621,11 @@ pub(crate) fn persisted_process_execution_effect_is_valid(
     event.state_after == expected
         && event.state_after.gates.execution.evidence == Evidence::ExecutionReceipt
         && event.state_after.gates.execution.status
-            == if passed { GateStatus::Pass } else { GateStatus::Fail }
+            == if passed {
+                GateStatus::Pass
+            } else {
+                GateStatus::Fail
+            }
 }
 
 pub fn append_process_effect_receipt_ndjson(

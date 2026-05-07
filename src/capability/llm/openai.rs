@@ -5,8 +5,8 @@
 //! router still does not execute tools natively.
 
 use std::env;
-use std::fs::{self, File, OpenOptions};
 use std::fmt;
+use std::fs::{self, File, OpenOptions};
 use std::io::{BufRead, BufReader, Read, Write};
 use std::net::TcpStream;
 use std::path::Path;
@@ -14,8 +14,13 @@ use std::time::Duration;
 
 use crate::capability::context::ContextRecord;
 use crate::capability::llm::record::{
-    retry_budget_decision_receiptable, retry_budget_decision_valid,
-    retry_budget_exhausted, retry_budget_policy_valid, LlmRecord, LlmStructuredAdapter,
+    retry_budget_decision_receiptable, retry_budget_decision_valid, retry_budget_exhausted,
+    retry_budget_policy_valid, LlmRecord, LlmStructuredAdapter,
+};
+use crate::capability::llm::transport::{
+    chat_completions_path as shared_chat_completions_path, parse_local_http_endpoint,
+    provider_text_hash, request_identity_hash as shared_request_identity_hash,
+    retry_policy_hash as shared_retry_policy_hash, LocalEndpointError, LocalLlmEndpoint,
 };
 use crate::capability::policy::PolicyStore;
 use crate::capability::verification::{
@@ -89,20 +94,15 @@ impl OpenAiConfig {
 
     pub fn chat_completions_path(&self) -> Result<String, OpenAiError> {
         let endpoint = parse_local_endpoint(&self.base_url)?;
-        let prefix = endpoint.path_prefix.trim_end_matches('/');
-        if prefix.is_empty() {
-            Ok("/v1/chat/completions".to_string())
-        } else {
-            Ok(format!("{prefix}/chat/completions"))
-        }
+        Ok(shared_chat_completions_path(&endpoint.path_prefix))
     }
 
     pub fn model_id(&self) -> u64 {
-        hash_text(&self.model)
+        provider_text_hash(&self.model)
     }
 
     pub fn base_url_id(&self) -> u64 {
-        hash_text(&self.base_url)
+        provider_text_hash(&self.base_url)
     }
 }
 
@@ -134,11 +134,12 @@ impl OpenAiRetryBudgetPolicy {
     }
 
     pub fn policy_hash(self) -> u64 {
-        let mut h = 0x4f50_454e_4149_4255u64;
-        h = mix(h, self.timeout_ms);
-        h = mix(h, self.max_retries as u64);
-        h = mix(h, self.attempt_budget as u64);
-        h.max(1)
+        shared_retry_policy_hash(
+            0x4f50_454e_4149_4255u64,
+            self.timeout_ms,
+            self.max_retries,
+            self.attempt_budget,
+        )
     }
 
     pub fn request_identity_hash(
@@ -148,12 +149,13 @@ impl OpenAiRetryBudgetPolicy {
         model_id: u64,
         request_hash: u64,
     ) -> u64 {
-        let mut h = 0x4f50_454e_4149_4944u64;
-        h = mix(h, provider_hash);
-        h = mix(h, base_url_hash);
-        h = mix(h, model_id);
-        h = mix(h, request_hash);
-        h.max(1)
+        shared_request_identity_hash(
+            0x4f50_454e_4149_4944u64,
+            provider_hash,
+            base_url_hash,
+            model_id,
+            request_hash,
+        )
     }
 
     pub fn decision_for_attempt(
@@ -194,7 +196,14 @@ impl OpenAiRetryBudgetPolicy {
         model_id: u64,
         request_hash: u64,
     ) -> Option<OpenAiRetryBudgetDecision> {
-        self.decision_for_attempt(provider_hash, base_url_hash, model_id, request_hash, 0, false)
+        self.decision_for_attempt(
+            provider_hash,
+            base_url_hash,
+            model_id,
+            request_hash,
+            0,
+            false,
+        )
     }
 }
 
@@ -262,12 +271,9 @@ impl OpenAiRetryBudgetLedger {
         model_id: u64,
         request_hash: u64,
     ) -> Result<OpenAiRetryBudgetDecision, OpenAiError> {
-        let request_identity_hash = self.policy.request_identity_hash(
-            provider_hash,
-            base_url_hash,
-            model_id,
-            request_hash,
-        );
+        let request_identity_hash =
+            self.policy
+                .request_identity_hash(provider_hash, base_url_hash, model_id, request_hash);
         let duplicate_request = self
             .seen_request_identity_hashes
             .contains(&request_identity_hash);
@@ -288,7 +294,8 @@ impl OpenAiRetryBudgetLedger {
         if !decision.allowed {
             return Err(OpenAiError::BudgetExhausted);
         }
-        self.seen_request_identity_hashes.push(request_identity_hash);
+        self.seen_request_identity_hashes
+            .push(request_identity_hash);
         self.attempts_used = self.attempts_used.saturating_add(1);
         Ok(decision)
     }
@@ -901,7 +908,8 @@ impl OpenAiJudgmentProofEvent {
             proof_hash: 0,
         };
         event.proof_hash = event.expected_proof_hash();
-        let finalized_receipt = receipt.bind_proof_event(event.proof_event_seq, event.proof_hash)?;
+        let finalized_receipt =
+            receipt.bind_proof_event(event.proof_event_seq, event.proof_hash)?;
         event.receipt_hash = finalized_receipt.receipt_hash;
         event.is_valid().then_some((finalized_receipt, event))
     }
@@ -1057,14 +1065,23 @@ impl fmt::Display for OpenAiError {
         match self {
             Self::InvalidConfig(reason) => write!(f, "invalid openai-compatible config: {reason}"),
             Self::InvalidUrl => write!(f, "invalid local openai-compatible url"),
-            Self::HttpStatus(status) => write!(f, "openai-compatible endpoint returned HTTP {status}"),
+            Self::HttpStatus(status) => {
+                write!(f, "openai-compatible endpoint returned HTTP {status}")
+            }
             Self::Io(err) => write!(f, "openai-compatible io failed: {err}"),
             Self::InvalidResponse => write!(f, "openai-compatible response was not parseable"),
             Self::InvalidReceipt => write!(f, "openai-compatible effect receipt is invalid"),
-            Self::InvalidReceiptRecord => write!(f, "openai-compatible effect receipt record is invalid"),
-            Self::InvalidReplay => write!(f, "openai-compatible effect receipt failed replay verification"),
+            Self::InvalidReceiptRecord => {
+                write!(f, "openai-compatible effect receipt record is invalid")
+            }
+            Self::InvalidReplay => write!(
+                f,
+                "openai-compatible effect receipt failed replay verification"
+            ),
             Self::BudgetExhausted => write!(f, "openai-compatible retry budget exhausted"),
-            Self::DuplicateRequest => write!(f, "openai-compatible duplicate request identity rejected"),
+            Self::DuplicateRequest => {
+                write!(f, "openai-compatible duplicate request identity rejected")
+            }
         }
     }
 }
@@ -1163,7 +1180,9 @@ impl OpenAiClient {
         retry_policy: OpenAiRetryBudgetPolicy,
     ) -> Result<(OpenAiChatResponse, OpenAiRetryBudgetDecision), OpenAiError> {
         if retry_policy.timeout_ms != self.config.timeout_ms {
-            return Err(OpenAiError::InvalidConfig("retry timeout must match config"));
+            return Err(OpenAiError::InvalidConfig(
+                "retry timeout must match config",
+            ));
         }
         let request_hash = self.request_hash_for(request)?;
         let mut last_error = None;
@@ -1198,10 +1217,8 @@ impl OpenAiClient {
         let messages = messages_from_context(context, policy);
         let request = OpenAiChatRequest::new(messages);
         let request_hash = self.request_hash_for(&request)?;
-        let (response, retry_budget) = self.chat_with_retry_budget(
-            &request,
-            OpenAiRetryBudgetPolicy::from_config(&self.config),
-        )?;
+        let (response, retry_budget) = self
+            .chat_with_retry_budget(&request, OpenAiRetryBudgetPolicy::from_config(&self.config))?;
         self.call_from_response(context, policy, request_hash, response, retry_budget)
     }
 
@@ -1241,7 +1258,9 @@ impl OpenAiClient {
             response,
             retry_budget,
         );
-        call.is_valid().then_some(call).ok_or(OpenAiError::InvalidResponse)
+        call.is_valid()
+            .then_some(call)
+            .ok_or(OpenAiError::InvalidResponse)
     }
 
     fn chat_body(&self, body: &str) -> Result<OpenAiChatResponse, OpenAiError> {
@@ -1375,40 +1394,10 @@ fn push_tool_call_json(out: &mut String, tool_call: &OpenAiToolCall) {
     out.push_str("\"}}");
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
-struct LocalEndpoint {
-    host: String,
-    port: u16,
-    path_prefix: String,
-}
-
-fn parse_local_endpoint(base_url: &str) -> Result<LocalEndpoint, OpenAiError> {
-    let without_scheme = base_url
-        .trim()
-        .strip_prefix("http://")
-        .ok_or(OpenAiError::InvalidUrl)?;
-    let (host_port, path) = without_scheme
-        .split_once('/')
-        .map_or((without_scheme, ""), |(host_port, path)| (host_port, path));
-    let (host, port) = host_port
-        .rsplit_once(':')
-        .ok_or(OpenAiError::InvalidUrl)?;
-    if host != "127.0.0.1" && host != "localhost" {
-        return Err(OpenAiError::InvalidConfig("base url must be local"));
-    }
-    let port = port.parse::<u16>().map_err(|_| OpenAiError::InvalidUrl)?;
-    if port == 0 {
-        return Err(OpenAiError::InvalidUrl);
-    }
-    let path_prefix = if path.trim().is_empty() {
-        String::new()
-    } else {
-        format!("/{}", path.trim_matches('/'))
-    };
-    Ok(LocalEndpoint {
-        host: host.to_string(),
-        port,
-        path_prefix,
+fn parse_local_endpoint(base_url: &str) -> Result<LocalLlmEndpoint, OpenAiError> {
+    parse_local_http_endpoint(base_url).map_err(|err| match err {
+        LocalEndpointError::InvalidUrl => OpenAiError::InvalidUrl,
+        LocalEndpointError::NonLocalHost => OpenAiError::InvalidConfig("base url must be local"),
     })
 }
 
@@ -1633,7 +1622,11 @@ pub fn encode_openai_llm_effect_receipt_ndjson(receipt: OpenAiLlmEffectReceipt) 
     ];
     format!(
         "[{}]",
-        fields.iter().map(u64::to_string).collect::<Vec<_>>().join(",")
+        fields
+            .iter()
+            .map(u64::to_string)
+            .collect::<Vec<_>>()
+            .join(",")
     )
 }
 
@@ -1665,7 +1658,11 @@ pub fn encode_openai_judgment_proof_event_ndjson(event: OpenAiJudgmentProofEvent
     ];
     format!(
         "[{}]",
-        fields.iter().map(u64::to_string).collect::<Vec<_>>().join(",")
+        fields
+            .iter()
+            .map(u64::to_string)
+            .collect::<Vec<_>>()
+            .join(",")
     )
 }
 
