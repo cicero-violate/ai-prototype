@@ -75,15 +75,15 @@ graph.json
 
 ### Edge relation vocabulary
 
-| relation | source     | meaning |
-|---|---|---|
-| `call`   | HIR + MIR  | `from` calls `to` |
-| `impl`   | HIR        | `from` implements trait `to` |
-| `mut`    | HIR + MIR  | `from` performs mutation (assignment, SetDiscriminant) |
-| `io`     | MIR        | `from` calls a known I/O callee |
-| `panic`  | MIR        | `from` can panic (Assert, unwrap, expect) |
-| `unsafe` | HIR + MIR  | `from` contains an unsafe block or inline asm |
-| `alloc`  | MIR        | `from` performs heap allocation |
+| relation | source    | meaning                                                |
+|----------+-----------+--------------------------------------------------------|
+| `call`   | HIR + MIR | `from` calls `to`                                      |
+| `impl`   | HIR       | `from` implements trait `to`                           |
+| `mut`    | HIR + MIR | `from` performs mutation (assignment, SetDiscriminant) |
+| `io`     | MIR       | `from` calls a known I/O callee                        |
+| `panic`  | MIR       | `from` can panic (Assert, unwrap, expect)              |
+| `unsafe` | HIR + MIR | `from` contains an unsafe block or inline asm          |
+| `alloc`  | MIR       | `from` performs heap allocation                        |
 
 `fact::mut`, `fact::io`, etc. are virtual sentinel targets.  They appear only
 as edge targets, never as keys in `nodes`.
@@ -186,16 +186,16 @@ snippets; parameter names come from the function body's `Param::pat`.
 
 All 5 gaps are now implemented in schema_version 12.
 
-| Refactoring | schema 11 | schema 12 (now) |
-|---|:---:|:---:|
-| Remove dead function | ✓ | ✓ |
-| Add / remove attribute | ✓ | ✓ |
-| Reclassify intent | ✓ | ✓ |
-| Detect risk boundary | ✓ | ✓ |
-| Rename function (crate-internal) | — | ✓ |
-| Change function signature | — | partial |
-| Rename a type | — | ✓ |
-| Add / remove derive | — | ✓ |
-| Move item between modules | — | ✓ |
-| Inline a function | — | partial |
-| Extract a function | — | — |
+| Refactoring                      | schema 11 | schema 12 (now) |
+|----------------------------------+-----------+-----------------|
+| Remove dead function             | ✓         | ✓               |
+| Add / remove attribute           | ✓         | ✓               |
+| Reclassify intent                | ✓         | ✓               |
+| Detect risk boundary             | ✓         | ✓               |
+| Rename function (crate-internal) | —         | ✓               |
+| Change function signature        | —         | partial         |
+| Rename a type                    | —         | ✓               |
+| Add / remove derive              | —         | ✓               |
+| Move item between modules        | —         | ✓               |
+| Inline a function                | —         | partial         |
+| Extract a function               | —         | —               |
