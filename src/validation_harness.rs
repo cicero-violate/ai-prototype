@@ -17,7 +17,7 @@ pub const FAST_TEST_STEP: &str = "fast_score_contract_tests";
 pub const LIB_UNIT_STEP: &str = "lib_unit_contract_tests";
 pub const API_TRANSPORT_STEP: &str = "api_transport_contract_tests";
 pub const VALIDATION_HARNESS_STEP: &str = "validation_harness_contract_tests";
-pub const VALIDATION_HARNESS_EXPECTED_TESTS: usize = 188;
+pub const VALIDATION_HARNESS_EXPECTED_TESTS: usize = 192;
 pub const PLANNING_CONTRACT_STEP: &str = "planning_contract_tests";
 pub const GRAPH_MUTATION_CLI_CONTRACT_STEP: &str = "graph_mutation_cli_contract_tests";
 pub const GRAPH_MUTATION_CLI_CONTRACT_EXPECTED_TESTS: usize = 10;
@@ -115,6 +115,10 @@ pub const POLICY_REUSE_EVIDENCE_ROLLOUT_READINESS_SMOKE_STEP: &str =
     "policy_reuse_evidence_rollout_readiness_smoke";
 pub const POLICY_REUSE_EVIDENCE_ROLLOUT_READINESS_REGRESSION_SMOKE_STEP: &str =
     "policy_reuse_evidence_rollout_readiness_regression_smoke";
+pub const POLICY_REUSE_EVIDENCE_LEARNING_ADMISSION_SMOKE_STEP: &str =
+    "policy_reuse_evidence_learning_admission_smoke";
+pub const POLICY_REUSE_EVIDENCE_LEARNING_ADMISSION_REGRESSION_SMOKE_STEP: &str =
+    "policy_reuse_evidence_learning_admission_regression_smoke";
 pub const POLICY_VALIDATION_HEALTH_SMOKE_STEP: &str = "policy_validation_health_smoke";
 pub const POLICY_VALIDATION_HEALTH_TREND_SMOKE_STEP: &str = "policy_validation_health_trend_smoke";
 pub const POLICY_ORCHESTRATION_CAPACITY_SMOKE_STEP: &str = "policy_orchestration_capacity_smoke";
@@ -1862,6 +1866,87 @@ impl PolicyReuseEvidenceRolloutReadinessReceipt {
             self.readiness_status,
             self.not_ready_reason,
             self.readiness_hash,
+            self.receipt_hash,
+        )
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PolicyReuseEvidenceLearningAdmissionReceipt {
+    pub schema: &'static str,
+    pub record_type: &'static str,
+    pub admission_version: u64,
+    pub source_rollout_readiness_hash: u64,
+    pub source_validation_budget_hash: u64,
+    pub source_summary_hash: u64,
+    pub rollout_ready: bool,
+    pub validation_budget_passed: bool,
+    pub summary_status: &'static str,
+    pub external_evidence_required: bool,
+    pub learning_data_admissible: bool,
+    pub admission_status: &'static str,
+    pub not_admissible_reason: &'static str,
+    pub admission_hash: u64,
+    pub receipt_hash: u64,
+}
+
+impl PolicyReuseEvidenceLearningAdmissionReceipt {
+    pub fn passed(&self) -> bool {
+        self.is_valid() && self.learning_data_admissible && self.admission_status == "admissible"
+    }
+
+    pub fn is_valid(&self) -> bool {
+        self.schema == "canon_policy_reuse_evidence_learning_admission_v1"
+            && matches!(
+                self.record_type,
+                "policy_reuse_evidence_learning_admission"
+                    | POLICY_REUSE_EVIDENCE_LEARNING_ADMISSION_SMOKE_STEP
+                    | POLICY_REUSE_EVIDENCE_LEARNING_ADMISSION_REGRESSION_SMOKE_STEP
+            )
+            && self.admission_version == 1
+            && self.source_rollout_readiness_hash != 0
+            && self.source_validation_budget_hash != 0
+            && self.source_summary_hash != 0
+            && matches!(self.summary_status, "pass" | "fail")
+            && matches!(self.admission_status, "admissible" | "not_admissible")
+            && matches!(
+                self.not_admissible_reason,
+                "none"
+                    | "rollout_not_ready"
+                    | "validation_budget_failed"
+                    | "summary_failed"
+                    | "external_evidence_required"
+            )
+            && self.learning_data_admissible
+                == (self.rollout_ready
+                    && self.validation_budget_passed
+                    && self.summary_status == "pass"
+                    && !self.external_evidence_required
+                    && self.not_admissible_reason == "none")
+            && (self.admission_status == "admissible") == self.learning_data_admissible
+            && self.admission_hash != 0
+            && self.receipt_hash != 0
+            && self.admission_hash == policy_reuse_evidence_learning_admission_hash(self)
+            && self.receipt_hash == policy_reuse_evidence_learning_admission_receipt_hash(self)
+    }
+
+    pub fn to_json(&self) -> String {
+        format!(
+            "{{\"schema\":\"{}\",\"record_type\":\"{}\",\"admission_version\":{},\"source_rollout_readiness_hash\":{},\"source_validation_budget_hash\":{},\"source_summary_hash\":{},\"rollout_ready\":{},\"validation_budget_passed\":{},\"summary_status\":\"{}\",\"external_evidence_required\":{},\"learning_data_admissible\":{},\"admission_status\":\"{}\",\"not_admissible_reason\":\"{}\",\"admission_hash\":{},\"receipt_hash\":{}}}",
+            self.schema,
+            self.record_type,
+            self.admission_version,
+            self.source_rollout_readiness_hash,
+            self.source_validation_budget_hash,
+            self.source_summary_hash,
+            self.rollout_ready,
+            self.validation_budget_passed,
+            self.summary_status,
+            self.external_evidence_required,
+            self.learning_data_admissible,
+            self.admission_status,
+            self.not_admissible_reason,
+            self.admission_hash,
             self.receipt_hash,
         )
     }
@@ -4154,6 +4239,88 @@ fn finalize_policy_reuse_evidence_rollout_readiness(
     receipt.receipt_hash = policy_reuse_evidence_rollout_readiness_receipt_hash(receipt);
 }
 
+pub fn policy_reuse_evidence_learning_admission_smoke_receipt(
+) -> PolicyReuseEvidenceLearningAdmissionReceipt {
+    let rollout = policy_reuse_evidence_rollout_readiness_smoke_receipt();
+    let validation_budget = policy_reuse_evidence_validation_budget_smoke_receipt();
+    let summary = policy_reuse_evidence_summary_smoke_receipt();
+    let mut receipt = policy_reuse_evidence_learning_admission_from_sources(
+        POLICY_REUSE_EVIDENCE_LEARNING_ADMISSION_SMOKE_STEP,
+        &rollout,
+        &validation_budget,
+        &summary,
+        false,
+        "none",
+    );
+    finalize_policy_reuse_evidence_learning_admission(&mut receipt);
+    receipt
+}
+
+pub fn policy_reuse_evidence_learning_admission_regression_smoke_receipt(
+) -> PolicyReuseEvidenceLearningAdmissionReceipt {
+    let rollout = policy_reuse_evidence_rollout_readiness_regression_smoke_receipt();
+    let validation_budget = policy_reuse_evidence_validation_budget_regression_smoke_receipt();
+    let summary = policy_reuse_evidence_summary_smoke_receipt();
+    let mut receipt = policy_reuse_evidence_learning_admission_from_sources(
+        POLICY_REUSE_EVIDENCE_LEARNING_ADMISSION_REGRESSION_SMOKE_STEP,
+        &rollout,
+        &validation_budget,
+        &summary,
+        false,
+        "rollout_not_ready",
+    );
+    finalize_policy_reuse_evidence_learning_admission(&mut receipt);
+    receipt
+}
+
+fn policy_reuse_evidence_learning_admission_from_sources(
+    record_type: &'static str,
+    rollout: &PolicyReuseEvidenceRolloutReadinessReceipt,
+    validation_budget: &PolicyReuseEvidenceValidationBudgetReceipt,
+    summary: &PolicyReuseEvidenceSummaryReceipt,
+    external_evidence_required: bool,
+    not_admissible_reason: &'static str,
+) -> PolicyReuseEvidenceLearningAdmissionReceipt {
+    let rollout_ready = rollout.passed();
+    let validation_budget_passed = validation_budget.passed();
+    let learning_data_admissible = rollout_ready
+        && validation_budget_passed
+        && summary.summary_status == "pass"
+        && !external_evidence_required
+        && not_admissible_reason == "none";
+    let admission_status = if learning_data_admissible {
+        "admissible"
+    } else {
+        "not_admissible"
+    };
+    let mut receipt = PolicyReuseEvidenceLearningAdmissionReceipt {
+        schema: "canon_policy_reuse_evidence_learning_admission_v1",
+        record_type,
+        admission_version: 1,
+        source_rollout_readiness_hash: rollout.receipt_hash,
+        source_validation_budget_hash: validation_budget.receipt_hash,
+        source_summary_hash: summary.receipt_hash,
+        rollout_ready,
+        validation_budget_passed,
+        summary_status: summary.summary_status,
+        external_evidence_required,
+        learning_data_admissible,
+        admission_status,
+        not_admissible_reason,
+        admission_hash: 0,
+        receipt_hash: 0,
+    };
+    finalize_policy_reuse_evidence_learning_admission(&mut receipt);
+    receipt
+}
+
+fn finalize_policy_reuse_evidence_learning_admission(
+    receipt: &mut PolicyReuseEvidenceLearningAdmissionReceipt,
+) {
+    receipt.admission_hash = policy_reuse_evidence_learning_admission_hash(receipt);
+    receipt.receipt_hash = policy_reuse_evidence_learning_admission_receipt_hash(receipt);
+}
+
 #[allow(clippy::too_many_arguments)]
 fn policy_reuse_evidence_surface_index_from_sources(
     record_type: &'static str,
@@ -4580,6 +4747,64 @@ fn policy_reuse_evidence_rollout_readiness_receipt_hash(
         return 0;
     }
     (readiness_hash ^ 0x504f_4c52_4552_5252u64).max(1)
+}
+
+fn policy_reuse_evidence_learning_admission_hash(
+    receipt: &PolicyReuseEvidenceLearningAdmissionReceipt,
+) -> u64 {
+    if receipt.admission_version == 0
+        || receipt.source_rollout_readiness_hash == 0
+        || receipt.source_validation_budget_hash == 0
+        || receipt.source_summary_hash == 0
+    {
+        return 0;
+    }
+    let summary_status_code = match receipt.summary_status {
+        "pass" => 1,
+        "fail" => 2,
+        _ => 0,
+    };
+    let admission_status_code = match receipt.admission_status {
+        "admissible" => 1,
+        "not_admissible" => 2,
+        _ => 0,
+    };
+    let not_admissible_reason_code = match receipt.not_admissible_reason {
+        "none" => 1,
+        "rollout_not_ready" => 2,
+        "validation_budget_failed" => 3,
+        "summary_failed" => 4,
+        "external_evidence_required" => 5,
+        _ => 0,
+    };
+    if summary_status_code == 0 || admission_status_code == 0 || not_admissible_reason_code == 0 {
+        return 0;
+    }
+    let mut h = 0x504f_4c52_4c41_4448u64;
+    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.schema.as_bytes());
+    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.record_type.as_bytes());
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.admission_version;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_rollout_readiness_hash;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_validation_budget_hash;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_summary_hash;
+    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.rollout_ready);
+    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.validation_budget_passed);
+    h = h.wrapping_mul(0x100000001b3) ^ summary_status_code;
+    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.external_evidence_required);
+    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.learning_data_admissible);
+    h = h.wrapping_mul(0x100000001b3) ^ admission_status_code;
+    h = h.wrapping_mul(0x100000001b3) ^ not_admissible_reason_code;
+    h.max(1)
+}
+
+fn policy_reuse_evidence_learning_admission_receipt_hash(
+    receipt: &PolicyReuseEvidenceLearningAdmissionReceipt,
+) -> u64 {
+    let admission_hash = policy_reuse_evidence_learning_admission_hash(receipt);
+    if admission_hash == 0 || receipt.admission_hash != admission_hash {
+        return 0;
+    }
+    (admission_hash ^ 0x504f_4c52_4c41_4452u64).max(1)
 }
 
 fn policy_reuse_evidence_summary_hash(receipt: &PolicyReuseEvidenceSummaryReceipt) -> u64 {

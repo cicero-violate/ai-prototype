@@ -360,6 +360,16 @@ const COMPACT_MODES: &[CompactMode] = &[
         run: policy_reuse_evidence_rollout_readiness_regression_smoke_mode,
     },
     CompactMode {
+        arg: "--policy-reuse-evidence-learning-admission-smoke",
+        marker: "policy_reuse_evidence_learning_admission_smoke",
+        run: policy_reuse_evidence_learning_admission_smoke_mode,
+    },
+    CompactMode {
+        arg: "--policy-reuse-evidence-learning-admission-regression-smoke",
+        marker: "policy_reuse_evidence_learning_admission_regression_smoke",
+        run: policy_reuse_evidence_learning_admission_regression_smoke_mode,
+    },
+    CompactMode {
         arg: "--root-validate-dispatch-catalog",
         marker: "canon_root_validate_dispatch_catalog_v1",
         run: root_validate_dispatch_catalog_mode,
@@ -978,6 +988,31 @@ fn policy_reuse_evidence_rollout_readiness_regression_smoke_mode(
         && !receipt.rollout_ready
         && receipt.readiness_status == "not_ready"
         && receipt.not_ready_reason == "validation_budget_failed"
+        && !receipt.passed();
+    Ok(CompactModeOutcome::controlled_json(
+        receipt.to_json(),
+        passed,
+    ))
+}
+
+fn policy_reuse_evidence_learning_admission_smoke_mode() -> Result<CompactModeOutcome, String> {
+    let receipt = validation_harness::policy_reuse_evidence_learning_admission_smoke_receipt();
+    Ok(CompactModeOutcome::pass_json(
+        receipt.to_json(),
+        receipt.passed(),
+    ))
+}
+
+fn policy_reuse_evidence_learning_admission_regression_smoke_mode(
+) -> Result<CompactModeOutcome, String> {
+    let receipt =
+        validation_harness::policy_reuse_evidence_learning_admission_regression_smoke_receipt();
+    let passed = receipt.is_valid()
+        && !receipt.rollout_ready
+        && !receipt.validation_budget_passed
+        && !receipt.learning_data_admissible
+        && receipt.admission_status == "not_admissible"
+        && receipt.not_admissible_reason == "rollout_not_ready"
         && !receipt.passed();
     Ok(CompactModeOutcome::controlled_json(
         receipt.to_json(),
