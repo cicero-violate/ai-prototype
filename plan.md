@@ -1,6 +1,6 @@
 # Canon Agent Implementation Plan
 
-This plan tracks the current deterministic implementation slice from the repository state.
+This plan tracks the current deterministic implementation slice from the repository state. This turn is intentionally limited to planning and scoring.
 
 ## North Star
 
@@ -23,9 +23,10 @@ The repository already contains these meaningful surfaces:
 - graph-as-source-of-truth mutation contracts and CLI workflow tests;
 - local/Ollama and OpenAI-compatible LLM effect/proof receipt surfaces;
 - validation harness constants and observe-validation script contracts;
-- policy, learning, eval, judgment, verification, tooling, memory, observation, and orchestration modules exported as crate surfaces.
+- policy, learning, eval, judgment, verification, tooling, memory, observation, and orchestration modules exported as crate surfaces;
+- deterministic policy reuse ledger summary receipt in the judgment layer.
 
-Targeted validation run this turn:
+Most recent recorded targeted validation from the prior implementation turn:
 
 ```text
 RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test score_contract --test planning_contract --test validation_harness_contract --quiet
@@ -37,7 +38,7 @@ validation_harness_contract: 128 passed, 0 failed
 judgment::record unit tests: 12 passed, 0 failed
 ```
 
-Full-suite validation was not run in this implementation turn.
+No code validation was run in this planning/scoring turn.
 
 ## Evaluation Axes
 
@@ -67,41 +68,63 @@ arg max(G) = good
 
 ## Priority Judgment
 
-The weakest practical axis remains **Learning**, with **Structure** now tracked explicitly as its own score axis.
+The weakest practical axis remains **Learning**, with **Simplicity** close behind.
 
-Reason: many typed surfaces for policy, judgment, eval, receipts, and validation already exist, but the architecture goal depends on demonstrating measurable policy reuse over repeated runs. The next slice should make the cost-reduction loop more explicit without relaxing deterministic gates.
+Reason: the repository now has policy reuse, validation health, and judgment receipt surfaces, but the root validation/observe path still needs to expose the compact reuse-health signal directly. Until that signal is visible at the harness/catalog boundary, learning exists as typed internal evidence rather than as an obvious run-level improvement metric.
 
 ## Next Implementation Slice
 
-Implemented this turn: a minimal deterministic **policy reuse ledger summary** that answers:
+Promote `PolicyReuseLedgerSummaryReceipt` into the validation harness/catalog path so the root observe report can expose one compact policy-reuse/validation-health signal without requiring consumers to join multiple receipts.
+
+The slice should answer:
 
 ```text
-For a completed run set, how many eligible decisions were handled by policy, how many missed to LLM/tooling, and did reuse improve without validation regression?
+For a completed run set, how much work was handled by policy, how much fell back to LLM/tooling, and did validation health regress while reuse increased?
 ```
 
-Completed constraints:
+Required constraints:
 
 1. Keep the kernel untouched.
-2. Added a capability-layer judgment receipt only.
-3. Derived the summary from existing policy reuse receipts plus validation pass/fail counts.
-4. Made the summary deterministic and JSON-line encodable.
-5. Added unit tests for:
-   - empty ledger produces zero reuse and valid receipt;
-   - mixed policy-hit / policy-miss ledger computes stable counts;
-   - regression is flagged when reuse rises but validation health falls;
-   - receipt replay rejects tampered counts or source receipt binding.
+2. Do not add LLM authority or policy self-approval.
+3. Add harness/catalog exposure only after preserving deterministic receipt semantics.
+4. Prefer semantic assertions over brittle hash literals.
+5. Keep the public signal compact enough for observe/report consumers.
 
-## Next Implementation Slice
+Expected implementation tasks:
 
-Promote the new `PolicyReuseLedgerSummaryReceipt` into the validation harness/catalog path so the root observe report can expose one compact policy-reuse/validation-health signal without requiring consumers to join multiple receipts.
+1. Add a validation-harness fixture or smoke path for `PolicyReuseLedgerSummaryReceipt`.
+2. Register the summary signal in the dispatch/catalog evidence surface if it is not already present.
+3. Add contract assertions for both healthy reuse and validation-regression cases.
+4. Preserve replay/tamper coverage in judgment unit tests.
+5. Run targeted validation:
 
-Suggested constraints:
+```text
+RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test validation_harness_contract --quiet
+RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --lib capability::judgment::record --quiet
+RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test score_contract --test planning_contract --quiet
+```
 
-1. Keep the kernel untouched.
-2. Add a smoke fixture or harness function only if it binds retained semantic fields, not brittle hashes.
-3. Ensure the dispatch catalog includes the summary command/signal.
-4. Add validation-harness contract assertions for pass and regression cases.
-5. Run targeted validation harness tests and judgment tests.
+## Acceptance Criteria
+
+The next implementation turn should count as complete only if:
+
+- the validation harness exposes policy reuse summary evidence with these semantic fields:
+
+```text
+policy_hits
+policy_misses
+llm_fallbacks
+validation_passes
+validation_failures
+reuse_rate_bps
+regression_flag
+source_receipt_hash
+```
+
+- healthy reuse and regression cases are both represented;
+- targeted tests pass with wrappers cleared;
+- no kernel code changes are required;
+- `plan.md` and `score.md` are updated again with actual validation evidence.
 
 ## Deferred Work
 
@@ -109,6 +132,7 @@ Suggested constraints:
 - Graph telemetry still requires explicit wrapper capture.
 - Student-model training is intentionally deferred until verified distillation data is large and clean.
 - Orchestration scaling should wait until single-run reuse and validation health are proven.
+- Full-suite validation should be scheduled after the harness/catalog learning signal lands.
 
 ## Turn Protocol
 
