@@ -898,3 +898,48 @@ Planning-only validation note:
 ```text
 No source validation was rerun during this planning-only turn. The next implementation turn should run the validation commands listed in plan.md after adding the storage-write-preflight receipt and modes.
 ```
+
+## Implementation Step 1 Score Decision - Retrieval Example Storage Write Preflight Verification
+
+```text
+selected_axis = Learning
+score_change_this_turn = retained L at 1.00; retained G at approximately 0.966
+reason = retrieval-example storage-write-preflight support is present in tracked source and compile-verified as the next evidence-only learning boundary after storage-write-commit-intent
+source_changes_observed_but_not_owned = canon-rustc-v3/* modified and untracked files remain out of scope for this implementation turn
+commit_scope = plan.md and score.md only; tracked storage-write-preflight implementation files were already clean
+```
+
+Updated validation evidence:
+
+```text
+cargo fmt --check: attempted, connector returned 502 before output was available
+validation_harness_contract storage_write_preflight --no-run: pass
+focused executable validation_harness_contract storage_write_preflight tests: attempted, connector returned 502 before Rust output was available
+root_validate storage-write-preflight smoke execution: attempted, connector returned 502 before output was available
+root_validate storage-write-preflight regression smoke execution: attempted, connector returned 502 before output was available
+cargo check --quiet: pass
+planning_contract: pass
+score_contract: pass
+```
+
+Scoring stance after this verification:
+
+```text
+I  = 0.98  storage-write-commit-intent evidence can feed deterministic storage-write-preflight evidence
+E  = 0.97  write preflight remains evidence-only and forbids retrieval reads, writes, queries, runtime approval, promotion, batch execution, and training
+C  = 0.90  focused no-run compile, cargo check, planning contract, and score contract pass; formatting and executable checks were connector-blocked
+A  = 0.97  authority remains outside the LLM and outside the storage-write-preflight receipt
+R  = 0.96  healthy and controlled not-ready paths are present in the tracked contract surface
+P  = 0.95  no runtime retrieval, query, batch, or training cost is introduced
+S  = 0.98  the evidence chain now exposes a retrieval-example storage-write-preflight boundary before mutation authority exists
+D  = 0.97  receipts use fixed source hashes, booleans, status strings, reason strings, and deterministic hashes
+T  = 0.98  write-commit-intent and upstream learning, eligibility, admission, approval, materialization, write-approval, and write-admission evidence remain explicit
+Co = 0.95  plan and score hand off the next post-preflight retrieval-example storage-write authorization boundary
+Em = 0.95  root_validate consumers have healthy and regression compact modes for write-preflight evidence once connector execution is available
+B  = 0.97  external evaluators get deterministic write-preflight evidence before storage writes, runtime approval, promotion, or training
+L  = 1.00  write preflight advances the learning evidence chain toward externally gated retrieval-example storage writes
+St = 0.97  write preflight composes existing evidence without kernel or runtime authority drift
+Si = 0.97  one receipt represents the write-preflight boundary instead of scattered downstream checks
+F  = 0.98  write preflight prepares later retrieval/model-learning gates without committing to storage or training behavior
+G  ≈ 0.966
+```
