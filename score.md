@@ -465,3 +465,47 @@ Si = 0.97  one receipt represents the eligibility boundary instead of scattered 
 F  = 0.98  eligibility prepares later retrieval/model-learning gates without committing to storage or training behavior
 G  ≈ 0.967
 ```
+
+
+
+## Implementation Step 3 Score Decision - Retrieval Example Learning Admission
+
+```text
+selected_axis = Learning
+score_change_this_turn = retained L at 1.00
+reason = retrieval-example learning admission evidence adds a deterministic evidence-only gate after learning eligibility without retrieval storage operations, query execution, runtime result approval, policy promotion, batch execution, or student training
+source_changes_observed_but_not_owned = canon-rustc-v3/* modified and untracked files remain out of scope for this implementation turn
+commit_scope = retrieval-example learning admission implementation, tests, fixture, plan.md, score.md
+```
+
+Updated validation evidence:
+
+```text
+cargo fmt --check: initially failed on formatting-only drift, then passed after cargo fmt
+validation_harness_contract learning_admission --no-run: pass
+cargo check --quiet: pass
+planning_contract and score_contract: pass
+focused executable learning_admission tests: attempted twice, connector returned 502 before Rust output was available
+```
+
+Scoring stance after this implementation:
+
+```text
+I  = 0.98  eligible retrieval-example evidence can now become deterministic learning-admission evidence
+E  = 0.97  admission remains evidence-only and forbids retrieval reads, writes, queries, runtime approval, promotion, batch execution, and training
+C  = 0.91  formatting, focused no-run compile, cargo check, and planning/score tests pass; focused executable tests were connector-blocked
+A  = 0.97  authority remains outside the LLM and outside the admission receipt
+R  = 0.96  healthy and controlled not-admitted paths are covered by compiled contracts
+P  = 0.95  no runtime retrieval, query, batch, or training cost is introduced
+S  = 0.98  the evidence chain now exposes a retrieval-example learning admission boundary
+D  = 0.97  receipts use fixed source hashes, booleans, status strings, reason strings, and deterministic hashes
+T  = 0.98  eligibility source hash and upstream consumption/approval-admission/approval/readiness/admission hashes are explicit
+Co = 0.95  plan and score hand off the next retrieval-example materialization-plan gate
+Em = 0.95  root_validate consumers have healthy and regression compact modes for learning admission evidence
+B  = 0.97  external evaluators get deterministic admission evidence before storage, runtime approval, promotion, or training
+L  = 1.00  learning admission prepares a cleaner path toward retrieval-example learning materialization
+St = 0.97  admission composes existing evidence without kernel or runtime authority drift
+Si = 0.97  one receipt represents the admission boundary instead of scattered downstream checks
+F  = 0.98  admission prepares later retrieval/model-learning gates without committing to storage or training behavior
+G  ≈ 0.967
+```

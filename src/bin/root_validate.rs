@@ -690,6 +690,16 @@ const COMPACT_MODES: &[CompactMode] = &[
         run: policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_consumption_learning_eligibility_regression_smoke_mode,
     },
     CompactMode {
+        arg: "--policy-reuse-evidence-retrieval-result-use-summary-manifest-approval-admission-consumption-learning-admission-smoke",
+        marker: "policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_consumption_learning_admission_smoke",
+        run: policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_consumption_learning_admission_smoke_mode,
+    },
+    CompactMode {
+        arg: "--policy-reuse-evidence-retrieval-result-use-summary-manifest-approval-admission-consumption-learning-admission-regression-smoke",
+        marker: "policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_consumption_learning_admission_regression_smoke",
+        run: policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_consumption_learning_admission_regression_smoke_mode,
+    },
+    CompactMode {
         arg: "--root-validate-dispatch-catalog",
         marker: "canon_root_validate_dispatch_catalog_v1",
         run: root_validate_dispatch_catalog_mode,
@@ -1960,6 +1970,46 @@ fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admissio
         && receipt.retrieval_example_learning_eligibility_status
             == "retrieval_example_learning_not_eligible"
         && receipt.not_eligible_reason == "approval_admission_consumption_not_consumed"
+        && !receipt.passed();
+    Ok(CompactModeOutcome::controlled_json(
+        receipt.to_json(),
+        passed,
+    ))
+}
+
+fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_consumption_learning_admission_smoke_mode(
+) -> Result<CompactModeOutcome, String> {
+    let receipt = validation_harness::
+        policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_consumption_learning_admission_smoke_receipt();
+    Ok(CompactModeOutcome::pass_json(
+        receipt.to_json(),
+        receipt.passed(),
+    ))
+}
+
+fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_consumption_learning_admission_regression_smoke_mode(
+) -> Result<CompactModeOutcome, String> {
+    let receipt = validation_harness::
+        policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_consumption_learning_admission_regression_smoke_receipt();
+    let passed = receipt.is_valid()
+        && !receipt.retrieval_example_learning_eligible
+        && !receipt.retrieval_result_use_summary_manifest_approval_admission_consumed
+        && !receipt.retrieval_result_use_summary_manifest_approval_admitted
+        && !receipt.retrieval_result_use_summary_manifest_approved
+        && !receipt.retrieval_result_use_summary_manifest_ready_for_use
+        && !receipt.retrieval_result_use_summary_manifest_admitted
+        && !receipt.retrieval_read_performed
+        && !receipt.retrieval_write_performed
+        && !receipt.retrieval_query_executed
+        && !receipt.runtime_result_approval_performed
+        && !receipt.policy_promotion_performed
+        && !receipt.batch_execution_performed
+        && !receipt.student_training_performed
+        && receipt.external_result_evidence_present
+        && !receipt.retrieval_example_learning_admitted
+        && receipt.retrieval_example_learning_admission_status
+            == "retrieval_example_learning_not_admitted"
+        && receipt.not_admitted_reason == "retrieval_example_learning_not_eligible"
         && !receipt.passed();
     Ok(CompactModeOutcome::controlled_json(
         receipt.to_json(),

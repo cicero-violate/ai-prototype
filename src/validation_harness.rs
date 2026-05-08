@@ -247,6 +247,10 @@ pub const POLICY_REUSE_EVIDENCE_RETRIEVAL_RESULT_USE_SUMMARY_MANIFEST_APPROVAL_A
     &str = "policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_consumption_learning_eligibility_smoke";
 pub const POLICY_REUSE_EVIDENCE_RETRIEVAL_RESULT_USE_SUMMARY_MANIFEST_APPROVAL_ADMISSION_CONSUMPTION_LEARNING_ELIGIBILITY_REGRESSION_SMOKE_STEP:
     &str = "policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_consumption_learning_eligibility_regression_smoke";
+pub const POLICY_REUSE_EVIDENCE_RETRIEVAL_RESULT_USE_SUMMARY_MANIFEST_APPROVAL_ADMISSION_CONSUMPTION_LEARNING_ADMISSION_SMOKE_STEP:
+    &str = "policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_consumption_learning_admission_smoke";
+pub const POLICY_REUSE_EVIDENCE_RETRIEVAL_RESULT_USE_SUMMARY_MANIFEST_APPROVAL_ADMISSION_CONSUMPTION_LEARNING_ADMISSION_REGRESSION_SMOKE_STEP:
+    &str = "policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_consumption_learning_admission_regression_smoke";
 pub const POLICY_VALIDATION_HEALTH_SMOKE_STEP: &str = "policy_validation_health_smoke";
 pub const POLICY_VALIDATION_HEALTH_TREND_SMOKE_STEP: &str = "policy_validation_health_trend_smoke";
 pub const POLICY_ORCHESTRATION_CAPACITY_SMOKE_STEP: &str = "policy_orchestration_capacity_smoke";
@@ -5530,6 +5534,162 @@ impl PolicyReuseEvidenceRetrievalResultUseSummaryManifestApprovalAdmissionConsum
             self.retrieval_example_learning_eligibility_status,
             self.not_eligible_reason,
             self.retrieval_example_learning_eligibility_hash,
+            self.receipt_hash,
+        )
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PolicyReuseEvidenceRetrievalResultUseSummaryManifestApprovalAdmissionConsumptionLearningAdmissionReceipt
+{
+    pub schema: &'static str,
+    pub record_type: &'static str,
+    pub retrieval_result_use_summary_manifest_approval_admission_consumption_learning_admission_version:
+        u64,
+    pub source_retrieval_example_learning_eligibility_hash: u64,
+    pub source_retrieval_result_use_summary_manifest_approval_admission_consumption_hash: u64,
+    pub source_retrieval_result_use_summary_manifest_approval_admission_hash: u64,
+    pub source_retrieval_result_use_summary_manifest_approval_hash: u64,
+    pub source_retrieval_result_use_summary_manifest_readiness_hash: u64,
+    pub source_retrieval_result_use_summary_manifest_admission_hash: u64,
+    pub retrieval_example_learning_eligible: bool,
+    pub retrieval_result_use_summary_manifest_approval_admission_consumed: bool,
+    pub retrieval_result_use_summary_manifest_approval_admitted: bool,
+    pub retrieval_result_use_summary_manifest_approved: bool,
+    pub retrieval_result_use_summary_manifest_ready_for_use: bool,
+    pub retrieval_result_use_summary_manifest_admitted: bool,
+    pub retrieval_read_performed: bool,
+    pub retrieval_write_performed: bool,
+    pub retrieval_query_executed: bool,
+    pub runtime_result_approval_performed: bool,
+    pub policy_promotion_performed: bool,
+    pub batch_execution_performed: bool,
+    pub student_training_performed: bool,
+    pub external_result_evidence_present: bool,
+    pub retrieval_example_learning_admission_policy_reuse_examples: usize,
+    pub retrieval_example_learning_admission_llm_fallback_examples: usize,
+    pub retrieval_example_learning_admitted: bool,
+    pub retrieval_example_learning_admission_status: &'static str,
+    pub not_admitted_reason: &'static str,
+    pub retrieval_example_learning_admission_hash: u64,
+    pub receipt_hash: u64,
+}
+
+impl PolicyReuseEvidenceRetrievalResultUseSummaryManifestApprovalAdmissionConsumptionLearningAdmissionReceipt {
+    pub fn passed(&self) -> bool {
+        self.is_valid()
+            && self.retrieval_example_learning_admitted
+            && self.retrieval_example_learning_admission_status
+                == "retrieval_example_learning_admitted"
+    }
+
+    pub fn is_valid(&self) -> bool {
+        self.schema
+            == "canon_policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_consumption_learning_admission_v1"
+            && matches!(
+                self.record_type,
+                "policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_consumption_learning_admission"
+                    | POLICY_REUSE_EVIDENCE_RETRIEVAL_RESULT_USE_SUMMARY_MANIFEST_APPROVAL_ADMISSION_CONSUMPTION_LEARNING_ADMISSION_SMOKE_STEP
+                    | POLICY_REUSE_EVIDENCE_RETRIEVAL_RESULT_USE_SUMMARY_MANIFEST_APPROVAL_ADMISSION_CONSUMPTION_LEARNING_ADMISSION_REGRESSION_SMOKE_STEP
+            )
+            && self.retrieval_result_use_summary_manifest_approval_admission_consumption_learning_admission_version == 1
+            && self.source_retrieval_example_learning_eligibility_hash != 0
+            && self.source_retrieval_result_use_summary_manifest_approval_admission_consumption_hash != 0
+            && self.source_retrieval_result_use_summary_manifest_approval_admission_hash != 0
+            && self.source_retrieval_result_use_summary_manifest_approval_hash != 0
+            && self.source_retrieval_result_use_summary_manifest_readiness_hash != 0
+            && self.source_retrieval_result_use_summary_manifest_admission_hash != 0
+            && !self.retrieval_read_performed
+            && !self.retrieval_write_performed
+            && !self.retrieval_query_executed
+            && !self.runtime_result_approval_performed
+            && !self.policy_promotion_performed
+            && !self.batch_execution_performed
+            && !self.student_training_performed
+            && self.retrieval_example_learning_admission_policy_reuse_examples > 0
+            && matches!(
+                self.retrieval_example_learning_admission_status,
+                "retrieval_example_learning_admitted" | "retrieval_example_learning_not_admitted"
+            )
+            && matches!(
+                self.not_admitted_reason,
+                "none"
+                    | "retrieval_example_learning_not_eligible"
+                    | "approval_admission_consumption_not_consumed"
+                    | "summary_manifest_approval_admission_not_admitted"
+                    | "summary_manifest_not_approved"
+                    | "summary_manifest_not_ready_for_use"
+                    | "summary_manifest_not_admitted"
+                    | "missing_external_result_evidence"
+                    | "retrieval_read_attempted"
+                    | "retrieval_write_attempted"
+                    | "retrieval_query_executed"
+                    | "runtime_result_approval_attempted"
+                    | "policy_promotion_attempted"
+                    | "batch_execution_attempted"
+                    | "student_training_attempted"
+                    | "no_policy_reuse_examples"
+            )
+            && self.retrieval_example_learning_admitted
+                == (self.retrieval_example_learning_eligible
+                    && self.retrieval_result_use_summary_manifest_approval_admission_consumed
+                    && self.retrieval_result_use_summary_manifest_approval_admitted
+                    && self.retrieval_result_use_summary_manifest_approved
+                    && self.retrieval_result_use_summary_manifest_ready_for_use
+                    && self.retrieval_result_use_summary_manifest_admitted
+                    && self.external_result_evidence_present
+                    && !self.retrieval_read_performed
+                    && !self.retrieval_write_performed
+                    && !self.retrieval_query_executed
+                    && !self.runtime_result_approval_performed
+                    && !self.policy_promotion_performed
+                    && !self.batch_execution_performed
+                    && !self.student_training_performed
+                    && self.retrieval_example_learning_admission_policy_reuse_examples > 0
+                    && self.not_admitted_reason == "none")
+            && (self.retrieval_example_learning_admission_status
+                == "retrieval_example_learning_admitted")
+                == self.retrieval_example_learning_admitted
+            && self.retrieval_example_learning_admission_hash != 0
+            && self.receipt_hash != 0
+            && self.retrieval_example_learning_admission_hash
+                == policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_consumption_learning_admission_hash(self)
+            && self.receipt_hash
+                == policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_consumption_learning_admission_receipt_hash(self)
+    }
+
+    pub fn to_json(&self) -> String {
+        format!(
+            r#"{{\"schema\":\"{}\",\"record_type\":\"{}\",\"retrieval_result_use_summary_manifest_approval_admission_consumption_learning_admission_version\":{},\"source_retrieval_example_learning_eligibility_hash\":{},\"source_retrieval_result_use_summary_manifest_approval_admission_consumption_hash\":{},\"source_retrieval_result_use_summary_manifest_approval_admission_hash\":{},\"source_retrieval_result_use_summary_manifest_approval_hash\":{},\"source_retrieval_result_use_summary_manifest_readiness_hash\":{},\"source_retrieval_result_use_summary_manifest_admission_hash\":{},\"retrieval_example_learning_eligible\":{},\"retrieval_result_use_summary_manifest_approval_admission_consumed\":{},\"retrieval_result_use_summary_manifest_approval_admitted\":{},\"retrieval_result_use_summary_manifest_approved\":{},\"retrieval_result_use_summary_manifest_ready_for_use\":{},\"retrieval_result_use_summary_manifest_admitted\":{},\"retrieval_read_performed\":{},\"retrieval_write_performed\":{},\"retrieval_query_executed\":{},\"runtime_result_approval_performed\":{},\"policy_promotion_performed\":{},\"batch_execution_performed\":{},\"student_training_performed\":{},\"external_result_evidence_present\":{},\"retrieval_example_learning_admission_policy_reuse_examples\":{},\"retrieval_example_learning_admission_llm_fallback_examples\":{},\"retrieval_example_learning_admitted\":{},\"retrieval_example_learning_admission_status\":\"{}\",\"not_admitted_reason\":\"{}\",\"retrieval_example_learning_admission_hash\":{},\"receipt_hash\":{}}}"#,
+            self.schema,
+            self.record_type,
+            self.retrieval_result_use_summary_manifest_approval_admission_consumption_learning_admission_version,
+            self.source_retrieval_example_learning_eligibility_hash,
+            self.source_retrieval_result_use_summary_manifest_approval_admission_consumption_hash,
+            self.source_retrieval_result_use_summary_manifest_approval_admission_hash,
+            self.source_retrieval_result_use_summary_manifest_approval_hash,
+            self.source_retrieval_result_use_summary_manifest_readiness_hash,
+            self.source_retrieval_result_use_summary_manifest_admission_hash,
+            self.retrieval_example_learning_eligible,
+            self.retrieval_result_use_summary_manifest_approval_admission_consumed,
+            self.retrieval_result_use_summary_manifest_approval_admitted,
+            self.retrieval_result_use_summary_manifest_approved,
+            self.retrieval_result_use_summary_manifest_ready_for_use,
+            self.retrieval_result_use_summary_manifest_admitted,
+            self.retrieval_read_performed,
+            self.retrieval_write_performed,
+            self.retrieval_query_executed,
+            self.runtime_result_approval_performed,
+            self.policy_promotion_performed,
+            self.batch_execution_performed,
+            self.student_training_performed,
+            self.external_result_evidence_present,
+            self.retrieval_example_learning_admission_policy_reuse_examples,
+            self.retrieval_example_learning_admission_llm_fallback_examples,
+            self.retrieval_example_learning_admitted,
+            self.retrieval_example_learning_admission_status,
+            self.not_admitted_reason,
+            self.retrieval_example_learning_admission_hash,
             self.receipt_hash,
         )
     }
@@ -11141,6 +11301,147 @@ fn finalize_policy_reuse_evidence_retrieval_result_use_summary_manifest_approval
         );
 }
 
+
+pub fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_consumption_learning_admission_smoke_receipt(
+) -> PolicyReuseEvidenceRetrievalResultUseSummaryManifestApprovalAdmissionConsumptionLearningAdmissionReceipt{
+    let eligibility =
+        policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_consumption_learning_eligibility_smoke_receipt();
+    policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_consumption_learning_admission_from_source(
+        POLICY_REUSE_EVIDENCE_RETRIEVAL_RESULT_USE_SUMMARY_MANIFEST_APPROVAL_ADMISSION_CONSUMPTION_LEARNING_ADMISSION_SMOKE_STEP,
+        &eligibility,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        "none",
+    )
+}
+
+pub fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_consumption_learning_admission_regression_smoke_receipt(
+) -> PolicyReuseEvidenceRetrievalResultUseSummaryManifestApprovalAdmissionConsumptionLearningAdmissionReceipt{
+    let eligibility =
+        policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_consumption_learning_eligibility_regression_smoke_receipt();
+    policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_consumption_learning_admission_from_source(
+        POLICY_REUSE_EVIDENCE_RETRIEVAL_RESULT_USE_SUMMARY_MANIFEST_APPROVAL_ADMISSION_CONSUMPTION_LEARNING_ADMISSION_REGRESSION_SMOKE_STEP,
+        &eligibility,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        "retrieval_example_learning_not_eligible",
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_consumption_learning_admission_from_source(
+    record_type: &'static str,
+    eligibility: &PolicyReuseEvidenceRetrievalResultUseSummaryManifestApprovalAdmissionConsumptionLearningEligibilityReceipt,
+    retrieval_read_performed: bool,
+    retrieval_write_performed: bool,
+    retrieval_query_executed: bool,
+    runtime_result_approval_performed: bool,
+    policy_promotion_performed: bool,
+    batch_execution_performed: bool,
+    student_training_performed: bool,
+    not_admitted_reason: &'static str,
+) -> PolicyReuseEvidenceRetrievalResultUseSummaryManifestApprovalAdmissionConsumptionLearningAdmissionReceipt{
+    let retrieval_example_learning_eligible = eligibility.passed();
+    let retrieval_result_use_summary_manifest_approval_admission_consumed =
+        eligibility.retrieval_result_use_summary_manifest_approval_admission_consumed;
+    let retrieval_result_use_summary_manifest_approval_admitted =
+        eligibility.retrieval_result_use_summary_manifest_approval_admitted;
+    let retrieval_result_use_summary_manifest_approved =
+        eligibility.retrieval_result_use_summary_manifest_approved;
+    let retrieval_result_use_summary_manifest_ready_for_use =
+        eligibility.retrieval_result_use_summary_manifest_ready_for_use;
+    let retrieval_result_use_summary_manifest_admitted =
+        eligibility.retrieval_result_use_summary_manifest_admitted;
+    let external_result_evidence_present = eligibility.external_result_evidence_present;
+    let retrieval_example_learning_admission_policy_reuse_examples =
+        eligibility.retrieval_example_learning_eligibility_policy_reuse_examples;
+    let retrieval_example_learning_admission_llm_fallback_examples =
+        eligibility.retrieval_example_learning_eligibility_llm_fallback_examples;
+    let retrieval_example_learning_admitted = retrieval_example_learning_eligible
+        && retrieval_result_use_summary_manifest_approval_admission_consumed
+        && retrieval_result_use_summary_manifest_approval_admitted
+        && retrieval_result_use_summary_manifest_approved
+        && retrieval_result_use_summary_manifest_ready_for_use
+        && retrieval_result_use_summary_manifest_admitted
+        && external_result_evidence_present
+        && !retrieval_read_performed
+        && !retrieval_write_performed
+        && !retrieval_query_executed
+        && !runtime_result_approval_performed
+        && !policy_promotion_performed
+        && !batch_execution_performed
+        && !student_training_performed
+        && retrieval_example_learning_admission_policy_reuse_examples > 0
+        && not_admitted_reason == "none";
+    let retrieval_example_learning_admission_status = if retrieval_example_learning_admitted {
+        "retrieval_example_learning_admitted"
+    } else {
+        "retrieval_example_learning_not_admitted"
+    };
+    let mut receipt = PolicyReuseEvidenceRetrievalResultUseSummaryManifestApprovalAdmissionConsumptionLearningAdmissionReceipt {
+        schema: "canon_policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_consumption_learning_admission_v1",
+        record_type,
+        retrieval_result_use_summary_manifest_approval_admission_consumption_learning_admission_version: 1,
+        source_retrieval_example_learning_eligibility_hash: eligibility.receipt_hash,
+        source_retrieval_result_use_summary_manifest_approval_admission_consumption_hash: eligibility
+            .source_retrieval_result_use_summary_manifest_approval_admission_consumption_hash,
+        source_retrieval_result_use_summary_manifest_approval_admission_hash: eligibility
+            .source_retrieval_result_use_summary_manifest_approval_admission_hash,
+        source_retrieval_result_use_summary_manifest_approval_hash: eligibility
+            .source_retrieval_result_use_summary_manifest_approval_hash,
+        source_retrieval_result_use_summary_manifest_readiness_hash: eligibility
+            .source_retrieval_result_use_summary_manifest_readiness_hash,
+        source_retrieval_result_use_summary_manifest_admission_hash: eligibility
+            .source_retrieval_result_use_summary_manifest_admission_hash,
+        retrieval_example_learning_eligible,
+        retrieval_result_use_summary_manifest_approval_admission_consumed,
+        retrieval_result_use_summary_manifest_approval_admitted,
+        retrieval_result_use_summary_manifest_approved,
+        retrieval_result_use_summary_manifest_ready_for_use,
+        retrieval_result_use_summary_manifest_admitted,
+        retrieval_read_performed,
+        retrieval_write_performed,
+        retrieval_query_executed,
+        runtime_result_approval_performed,
+        policy_promotion_performed,
+        batch_execution_performed,
+        student_training_performed,
+        external_result_evidence_present,
+        retrieval_example_learning_admission_policy_reuse_examples,
+        retrieval_example_learning_admission_llm_fallback_examples,
+        retrieval_example_learning_admitted,
+        retrieval_example_learning_admission_status,
+        not_admitted_reason,
+        retrieval_example_learning_admission_hash: 0,
+        receipt_hash: 0,
+    };
+    finalize_policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_consumption_learning_admission(&mut receipt);
+    receipt
+}
+
+fn finalize_policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_consumption_learning_admission(
+    receipt: &mut PolicyReuseEvidenceRetrievalResultUseSummaryManifestApprovalAdmissionConsumptionLearningAdmissionReceipt,
+) {
+    receipt.retrieval_example_learning_admission_hash =
+        policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_consumption_learning_admission_hash(
+            receipt,
+        );
+    receipt.receipt_hash =
+        policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_consumption_learning_admission_receipt_hash(
+            receipt,
+        );
+}
+
 #[allow(clippy::too_many_arguments)]
 fn policy_reuse_evidence_surface_index_from_sources(
     record_type: &'static str,
@@ -13686,6 +13987,107 @@ fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admissio
         return 0;
     }
     (retrieval_example_learning_eligibility_hash ^ 0x504f_4c52_5553_4149u64).max(1)
+}
+
+fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_consumption_learning_admission_hash(
+    receipt: &PolicyReuseEvidenceRetrievalResultUseSummaryManifestApprovalAdmissionConsumptionLearningAdmissionReceipt,
+) -> u64 {
+    if receipt.retrieval_result_use_summary_manifest_approval_admission_consumption_learning_admission_version == 0
+        || receipt.source_retrieval_example_learning_eligibility_hash == 0
+        || receipt.source_retrieval_result_use_summary_manifest_approval_admission_consumption_hash == 0
+        || receipt.source_retrieval_result_use_summary_manifest_approval_admission_hash == 0
+        || receipt.source_retrieval_result_use_summary_manifest_approval_hash == 0
+        || receipt.source_retrieval_result_use_summary_manifest_readiness_hash == 0
+        || receipt.source_retrieval_result_use_summary_manifest_admission_hash == 0
+    {
+        return 0;
+    }
+    let status_code = match receipt.retrieval_example_learning_admission_status {
+        "retrieval_example_learning_admitted" => 1,
+        "retrieval_example_learning_not_admitted" => 2,
+        _ => 0,
+    };
+    let not_admitted_reason_code = match receipt.not_admitted_reason {
+        "none" => 1,
+        "retrieval_example_learning_not_eligible" => 2,
+        "approval_admission_consumption_not_consumed" => 3,
+        "summary_manifest_approval_admission_not_admitted" => 4,
+        "summary_manifest_not_approved" => 5,
+        "summary_manifest_not_ready_for_use" => 6,
+        "summary_manifest_not_admitted" => 7,
+        "missing_external_result_evidence" => 8,
+        "retrieval_read_attempted" => 9,
+        "retrieval_write_attempted" => 10,
+        "retrieval_query_executed" => 11,
+        "runtime_result_approval_attempted" => 12,
+        "policy_promotion_attempted" => 13,
+        "batch_execution_attempted" => 14,
+        "student_training_attempted" => 15,
+        "no_policy_reuse_examples" => 16,
+        _ => 0,
+    };
+    if status_code == 0 || not_admitted_reason_code == 0 {
+        return 0;
+    }
+    let mut h = 0x504f_4c52_5553_414au64;
+    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.schema.as_bytes());
+    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.record_type.as_bytes());
+    h = h.wrapping_mul(0x100000001b3)
+        ^ receipt.retrieval_result_use_summary_manifest_approval_admission_consumption_learning_admission_version;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_retrieval_example_learning_eligibility_hash;
+    h = h.wrapping_mul(0x100000001b3)
+        ^ receipt.source_retrieval_result_use_summary_manifest_approval_admission_consumption_hash;
+    h = h.wrapping_mul(0x100000001b3)
+        ^ receipt.source_retrieval_result_use_summary_manifest_approval_admission_hash;
+    h = h.wrapping_mul(0x100000001b3)
+        ^ receipt.source_retrieval_result_use_summary_manifest_approval_hash;
+    h = h.wrapping_mul(0x100000001b3)
+        ^ receipt.source_retrieval_result_use_summary_manifest_readiness_hash;
+    h = h.wrapping_mul(0x100000001b3)
+        ^ receipt.source_retrieval_result_use_summary_manifest_admission_hash;
+    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_example_learning_eligible);
+    h = h.wrapping_mul(0x100000001b3)
+        ^ u64::from(receipt.retrieval_result_use_summary_manifest_approval_admission_consumed);
+    h = h.wrapping_mul(0x100000001b3)
+        ^ u64::from(receipt.retrieval_result_use_summary_manifest_approval_admitted);
+    h = h.wrapping_mul(0x100000001b3)
+        ^ u64::from(receipt.retrieval_result_use_summary_manifest_approved);
+    h = h.wrapping_mul(0x100000001b3)
+        ^ u64::from(receipt.retrieval_result_use_summary_manifest_ready_for_use);
+    h = h.wrapping_mul(0x100000001b3)
+        ^ u64::from(receipt.retrieval_result_use_summary_manifest_admitted);
+    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_read_performed);
+    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_write_performed);
+    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_query_executed);
+    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.runtime_result_approval_performed);
+    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.policy_promotion_performed);
+    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.batch_execution_performed);
+    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.student_training_performed);
+    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.external_result_evidence_present);
+    h = h.wrapping_mul(0x100000001b3)
+        ^ receipt.retrieval_example_learning_admission_policy_reuse_examples as u64;
+    h = h.wrapping_mul(0x100000001b3)
+        ^ receipt.retrieval_example_learning_admission_llm_fallback_examples as u64;
+    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_example_learning_admitted);
+    h = h.wrapping_mul(0x100000001b3) ^ status_code;
+    h = h.wrapping_mul(0x100000001b3) ^ not_admitted_reason_code;
+    h.max(1)
+}
+
+fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_consumption_learning_admission_receipt_hash(
+    receipt: &PolicyReuseEvidenceRetrievalResultUseSummaryManifestApprovalAdmissionConsumptionLearningAdmissionReceipt,
+) -> u64 {
+    let retrieval_example_learning_admission_hash =
+        policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_consumption_learning_admission_hash(
+            receipt,
+        );
+    if retrieval_example_learning_admission_hash == 0
+        || receipt.retrieval_example_learning_admission_hash
+            != retrieval_example_learning_admission_hash
+    {
+        return 0;
+    }
+    (retrieval_example_learning_admission_hash ^ 0x504f_4c52_5553_414bu64).max(1)
 }
 
 fn policy_reuse_evidence_summary_hash(receipt: &PolicyReuseEvidenceSummaryReceipt) -> u64 {
