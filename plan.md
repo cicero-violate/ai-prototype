@@ -1,6 +1,6 @@
 # Canon Agent Implementation Plan
 
-This plan tracks the current deterministic implementation plan after implementation step 1 of the current agent loop.
+This plan tracks the current deterministic implementation plan for the planning/scoring turn after implementation step 1 of the current agent loop.
 
 ## North Star
 
@@ -38,104 +38,21 @@ The repository currently exposes these meaningful surfaces:
 - validation-harness/root-validate smoke exposure for healthy and controlled regression evaluator-savings evidence;
 - deterministic policy reuse scaling projection receipt in the validation harness;
 - validation-harness/root-validate smoke exposure for healthy and controlled regression scaling-projection evidence;
+- deterministic policy reuse distillation-readiness receipt in the validation harness;
+- validation-harness/root-validate smoke exposure for healthy and controlled regression distillation-readiness evidence;
 - retained fixtures for policy reuse, policy validation health, policy validation trend, orchestration capacity, policy capacity/cost, runtime performance trend, validation duration planning, validation command footprint, and external CLI mode evidence.
 
-## Completed Implementation Slice This Turn
+## Current Completed Implementation Baseline
 
-Implemented deterministic **policy reuse scaling projection** evidence in the validation-harness/root-validator layer, while retaining the evaluator-savings implementation already present at the start of the turn.
+The current working tree contains deterministic **policy reuse distillation readiness** evidence in the validation-harness/root-validator layer, while retaining the evaluator-savings and scaling-projection implementation slices already present in this loop.
 
 This slice answers:
 
 ```text
-Can an evaluator inspect one deterministic receipt that projects retained policy-reuse savings across configured orchestration batch capacity and binds that projection to evaluator-savings and capacity source evidence?
+Can an evaluator inspect one deterministic receipt that says whether verified policy reuse, catalog completeness, evaluator savings, scaling projection, and validation health are clean enough to become future distillation or policy-promotion data?
 ```
 
 Implemented surfaces:
-
-```text
-PolicyReuseScalingProjectionReceipt
-policy_reuse_scaling_projection_smoke_receipt()
-policy_reuse_scaling_projection_regression_smoke_receipt()
---policy-reuse-scaling-projection-smoke
---policy-reuse-scaling-projection-regression-smoke
-```
-
-Implemented fields:
-
-```text
-schema
-record_type
-projection_version
-source_evaluator_savings_hash
-source_orchestration_capacity_hash
-batch_capacity_limit
-retained_sample_runs
-retained_llm_calls_avoided
-retained_cost_units_avoided
-cost_units_per_llm_call
-projected_llm_calls_avoided_per_full_batch
-projected_reasoning_cost_units_avoided_per_full_batch
-projected_llm_fallbacks_per_full_batch
-projection_passed
-regression_reason
-projection_hash
-receipt_hash
-```
-
-Completed implementation tasks:
-
-1. Added `PolicyReuseScalingProjectionReceipt` with deterministic validation, JSON output, projection hash, and receipt hash.
-2. Added healthy and controlled evaluator-savings-failed regression smoke constructors.
-3. Added deterministic source capacity hashing for `PolicyOrchestrationCapacityReceipt` so projection receipts bind to capacity evidence without changing the capacity receipt schema.
-4. Added root validator compact modes for healthy and regression scaling-projection receipts.
-5. Added validation harness contracts for projection semantics, source binding, root-mode output, and controlled regression evidence.
-6. Updated external CLI mode fixture and root compact-mode counts for the two new public modes.
-7. Updated validation harness guarded-test count from 148 to 152.
-8. Updated retained guarded-test fixture values from 158 to 162 and refreshed the dependent duration-planning estimate.
-9. Kept kernel authority unchanged.
-
-Implemented deterministic semantics:
-
-- `projection_passed = true` only when evaluator-savings evidence passes, orchestration-capacity evidence passes, projected avoided calls are positive, projected avoided cost units are positive, fallback count is below full batch capacity, and `regression_reason = "none"`.
-- Regression evidence remains structurally valid while exposing `projection_passed = false` and `regression_reason = "evaluator_savings_failed"`.
-- Projection source hashes bind to evaluator-savings receipt hash and deterministic orchestration-capacity content hash.
-- Projection estimates use fixed integer math from retained cost-per-call units and configured batch capacity.
-- The new receipt is evidence-only and does not modify kernel transitions or policy-promotion authority.
-
-## Validation Evidence For This Implementation Turn
-
-```text
-cargo fmt --check
-RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --lib capability::judgment::record --quiet
-RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test validation_harness_contract --quiet
-RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test score_contract --test planning_contract --quiet
-
-cargo fmt --check: pass
-judgment::record unit tests: 20 passed, 0 failed
-validation_harness_contract: 152 passed, 0 failed
-planning_contract: 2 passed, 0 failed
-score_contract: 5 passed, 0 failed
-```
-
-Full-suite validation was not run in this implementation turn.
-
-## Next Implementation Slice
-
-The weakest remaining axis is **Learning**.
-
-Current gap:
-
-```text
-Scaling projection now shows retained and batch-level avoided LLM work, but the learning path still lacks a compact evaluator-facing distillation-readiness receipt that says whether verified reuse/savings/projection evidence is clean enough to become future policy or training data.
-```
-
-Recommended next slice:
-
-```text
-Add deterministic policy reuse distillation readiness evidence that summarizes verified reuse, evaluator savings, scaling projection, validation health, and catalog completeness into one non-authority-bearing receipt.
-```
-
-Recommended concrete surfaces:
 
 ```text
 PolicyReuseDistillationReadinessReceipt
@@ -145,14 +62,103 @@ policy_reuse_distillation_readiness_regression_smoke_receipt()
 --policy-reuse-distillation-readiness-regression-smoke
 ```
 
+Implemented fields:
+
+```text
+schema
+record_type
+readiness_version
+source_policy_reuse_hash
+source_cost_catalog_hash
+source_evaluator_savings_hash
+source_scaling_projection_hash
+source_validation_health_hash
+verified_policy_hits
+verified_llm_calls_avoided
+projected_llm_calls_avoided_per_full_batch
+projected_reasoning_cost_units_avoided_per_full_batch
+validation_guarded_test_count
+catalog_complete
+evaluator_savings_passed
+scaling_projection_passed
+validation_health_passed
+distillation_ready
+regression_reason
+readiness_hash
+receipt_hash
+```
+
+Completed implementation tasks:
+
+1. Added `PolicyReuseDistillationReadinessReceipt` with deterministic validation, JSON output, readiness hash, and receipt hash.
+2. Added healthy and controlled catalog-incomplete regression smoke constructors.
+3. Bound readiness evidence to policy reuse, cost catalog, evaluator-savings, scaling-projection, and validation-health source hashes.
+4. Added root validator compact modes for healthy and regression readiness receipts.
+5. Added validation harness contracts for readiness semantics, source binding, root-mode output, and controlled regression evidence.
+6. Updated external CLI mode fixture and root compact-mode counts for the two new public modes.
+7. Updated validation harness guarded-test count from 152 to 156.
+8. Updated retained guarded-test fixture values from 162 to 166 and refreshed dependent validation-duration estimates.
+9. Kept kernel authority unchanged and did not train a student model or promote policy.
+
+Implemented deterministic semantics:
+
+- `distillation_ready = true` only when catalog completeness, evaluator savings, scaling projection, validation health, and regression reason all pass.
+- Regression evidence remains structurally valid while exposing `distillation_ready = false` and `regression_reason = "catalog_incomplete"`.
+- Readiness source hashes bind to reuse, cost catalog, evaluator-savings, scaling projection, and validation-health evidence.
+- The readiness receipt is evidence-only; it records future learning suitability without granting policy authority.
+- The new receipt does not introduce live LLM, network, wall-clock, or environment-dependent measurement.
+
+## Validation Evidence Recorded For This Baseline
+
+```text
+cargo fmt --check
+RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --lib capability::judgment::record --quiet
+RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test validation_harness_contract --quiet
+RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test score_contract --test planning_contract --quiet
+
+cargo fmt --check: pass
+judgment::record unit tests: 20 passed, 0 failed
+validation_harness_contract: 156 passed, 0 failed
+planning_contract: 2 passed, 0 failed
+score_contract: 5 passed, 0 failed
+```
+
+Full-suite validation was not run before this planning/scoring update.
+
+## Planned Next Implementation Slice
+
+The weakest remaining axis is **Simplicity**.
+
+Current gap:
+
+```text
+The evidence surface now covers reuse, savings, projection, and distillation readiness, but public root modes and fixture-count churn are becoming a maintenance burden.
+```
+
+Recommended next slice:
+
+```text
+Add deterministic evidence-surface index or receipt-family catalog evidence that groups policy-reuse receipts by family, source dependencies, and root modes so evaluators can inspect the whole learning evidence surface without relying on scattered fixture/count knowledge.
+```
+
+Recommended concrete surfaces:
+
+```text
+PolicyReuseEvidenceSurfaceIndexReceipt
+policy_reuse_evidence_surface_index_smoke_receipt()
+policy_reuse_evidence_surface_index_regression_smoke_receipt()
+--policy-reuse-evidence-surface-index-smoke
+--policy-reuse-evidence-surface-index-regression-smoke
+```
+
 Recommended constraints:
 
 1. Keep the kernel untouched.
 2. Do not introduce live LLM, network, wall-clock, or environment-dependent measurement.
-3. Reuse policy reuse, cost catalog, evaluator-savings, scaling-projection, and validation-health receipts as source evidence.
-4. Keep the output audit/evaluator-facing, not authority-bearing.
-5. Include healthy and controlled regression/incomplete cases.
-6. Do not train or invoke a student model; readiness only records whether the evidence would be clean enough later.
+3. Summarize existing root modes and source dependencies instead of adding new authority.
+4. Prefer reducing evaluator ambiguity over adding more independent receipt semantics.
+5. Include healthy and controlled omitted-mode or dependency-missing regression cases.
+6. Keep student-model training deferred.
 
 ## Evaluation Axes
 
@@ -185,8 +191,8 @@ arg max(G) = good
 - Full live Ollama validation remains environment-dependent.
 - Graph telemetry still requires explicit wrapper capture.
 - Student-model training is intentionally deferred until verified distillation data is large and clean.
-- Parallel orchestration execution should wait until larger-batch reuse, validation health, retained validation/runtime cost, catalog completeness, evaluator savings, scaling projection, and distillation readiness are proven together.
-- Full-suite validation should run after the distillation-readiness slice if fixture or CLI mode churn is broader than expected.
+- Parallel orchestration execution should wait until larger-batch reuse, validation health, retained validation/runtime cost, catalog completeness, evaluator savings, scaling projection, distillation readiness, and evidence-surface indexing are proven together.
+- Full-suite validation should run after the evidence-surface index slice if fixture or CLI mode churn is broader than expected.
 
 ## Turn Protocol
 

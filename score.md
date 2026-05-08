@@ -1,6 +1,6 @@
 # Canon Agent Score
 
-This scorecard is the current implementation baseline at this planning/scoring turn. The working tree contains a deterministic policy reuse scaling-projection implementation slice; this turn records the current score and next target without expanding implementation scope.
+This scorecard records the current progress at the planning/scoring turn after implementation step 1 of the current agent loop. The working tree contains deterministic policy reuse evaluator-savings, scaling-projection, and distillation-readiness evidence.
 
 ## Validation Evidence
 
@@ -15,99 +15,83 @@ result  = pass
 
 cargo fmt --check: pass
 judgment::record unit tests: 20 passed, 0 failed
-validation_harness_contract: 152 passed, 0 failed
+validation_harness_contract: 156 passed, 0 failed
 planning_contract: 2 passed, 0 failed
 score_contract: 5 passed, 0 failed
 ```
 
-A root validation smoke run also passed in the current repository state:
-
-```text
-root_validate: pass
-root_cargo_check: pass
-score_contract: 5 passed
-lib_unit_contract_tests: 189 passed
-api_transport_contract_tests: 13 passed
-validation_harness_contract_tests: 152 passed
-planning_contract_tests: 2 passed
-graph_mutation_cli_contract_tests: 10 passed
-python_contract_tests: skipped because required validation scripts are absent from this checkout
-graph telemetry: pass, 64 semantic functions, 10000 bps semantic function coverage
-runtime performance budget: pass, validation command duration 1806 ms
-```
-
-Full Python validation was not available because required validation scripts are absent from this checkout.
+Full-suite validation was not run before this planning/scoring update.
 
 ## Axis Scores
 
 Scores are on a `0.00` to `1.00` scale and reflect the current repository evidence inspected and updated this turn.
 
 ```text
-I  Intelligence      = 0.72  reuse, savings, and projection receipts make learned policy value more directly evaluable
-E  Efficiency        = 0.72  avoided LLM calls and batch-level projected savings are now inspectable
-C  Correctness       = 0.86  targeted contracts and root validation smoke evidence pass in the current state
-A  Alignment         = 0.84  kernel authority remains unchanged; projection evidence is read-only and source-bound
-R  Robustness        = 0.80  healthy and controlled evaluator-savings-failed projection paths are covered
-P  Performance       = 0.70  retained and projected reasoning-cost savings are deterministic and compactly exposed
-S  Scalability       = 0.71  scaling projection now binds savings to batch capacity, but execution remains serial/conservative
-D  Determinism       = 0.87  projection uses fixed integer math and deterministic source hashes
-T  Transparency      = 0.88  source hashes, projected calls, projected costs, pass/fail status, and regression reason are visible
-Co Collaboration     = 0.78  plan and score hand off a concrete next learning-readiness slice
-Em Empowerment       = 0.74  root_validate consumers can inspect reuse, savings, and projection evidence directly
-B  Benefit           = 0.77  implementation helps evaluators judge whether reuse lowers future reasoning cost at batch scale
-L  Learning          = 0.69  verified evidence can feed later distillation, but readiness gating is still missing
-St Structure         = 0.79  projection is isolated to validation/judgment evidence surfaces with explicit contracts
-Si Simplicity        = 0.68  receipt semantics are compact, but public mode and fixture-count churn remain maintenance costs
-F  Future-Proofing   = 0.80  source-bound receipt pattern supports later distillation readiness and policy promotion gates
+I  Intelligence      = 0.74  readiness evidence makes verified learning data suitability explicit
+E  Efficiency        = 0.73  evaluator can inspect reuse, savings, projection, and readiness without ad hoc recomputation
+C  Correctness       = 0.87  targeted judgment, validation-harness, score, planning, and formatting checks pass
+A  Alignment         = 0.85  readiness remains evidence-only and does not promote policy or modify kernel authority
+R  Robustness        = 0.81  healthy and controlled catalog-incomplete readiness paths are covered
+P  Performance       = 0.71  projected savings remain visible and now feed a compact readiness gate
+S  Scalability       = 0.72  batch-level projection is retained and summarized into future-learning suitability
+D  Determinism       = 0.88  readiness uses fixed source hashes, booleans, and integer counts
+T  Transparency      = 0.89  readiness source hashes and pass/fail reasons expose the learning gate clearly
+Co Collaboration     = 0.79  plan and score hand off a concrete simplification/indexing slice
+Em Empowerment       = 0.75  root_validate consumers can inspect distillation readiness directly
+B  Benefit           = 0.78  evaluators can decide whether evidence is clean enough for future distillation data
+L  Learning          = 0.73  verified reuse/savings/projection/health evidence now has a readiness gate
+St Structure         = 0.80  readiness is isolated to validation-harness/root-validator evidence surfaces
+Si Simplicity        = 0.67  public modes and fixture/count churn are now the lowest axis
+F  Future-Proofing   = 0.81  readiness gate prepares for later retrieval examples, policy distillation, and student-model datasets
 ```
 
 Approximate geometric mean:
 
 ```text
-G ≈ 0.769
+G ≈ 0.781
 ```
 
 ## Current Judgment
 
 ```text
-turn_type = planning/scoring
-weakest_axis = Learning
-secondary_risk = Simplicity
-completed_action = added deterministic policy reuse scaling projection evidence
-current_gap = verified reuse/savings/projection evidence is not yet summarized into a distillation-readiness gate
-next_action = add deterministic policy reuse distillation readiness evidence
-scope = capability/validation-harness evidence only; kernel authority unchanged
-validation = targeted judgment/validation-harness/score/planning tests passed; root validation smoke passed with Python validation skipped because scripts are absent
+turn_type = planning_scoring_after_implementation_step_1
+weakest_axis = Simplicity
+secondary_risk = fixture/count churn
+completed_action = added deterministic policy reuse distillation-readiness evidence
+current_gap = the evidence surface is broad enough that evaluators need a compact index over receipt families and dependencies
+next_action = add deterministic policy reuse evidence-surface index evidence
+scope = validation-harness/root-validator evidence only; kernel authority unchanged
+validation = targeted judgment/validation-harness/score/planning tests passed; full suite not run this turn
 ```
 
-## Why Learning Is Now Weakest
+## Why Simplicity Is Now Weakest
 
-Scalability improved because projection evidence now estimates avoided LLM work across configured batch capacity and binds the estimate to evaluator-savings and orchestration-capacity source evidence. Learning is now the lowest product-critical axis because the system still lacks a compact evaluator-facing readiness receipt that decides whether verified reuse, cost, validation-health, and projection evidence is clean enough to become later distillation, retrieval, or policy-promotion data.
+Learning improved because distillation-readiness evidence now summarizes whether verified reuse, cost catalog, evaluator savings, scaling projection, and validation health are clean enough for future learning data. Simplicity is now the lowest axis because each new evaluator-facing evidence surface expands root modes and retained fixture counts, increasing maintenance cost unless a compact index groups receipt families and dependencies.
 
 ## Completed Score Improvement Target
 
-Raised `S` from `0.67` to `0.71` by adding deterministic policy reuse scaling projection evidence.
+Raised `L` from `0.69` to `0.73` by adding deterministic policy reuse distillation-readiness evidence.
 
 Completed scoring evidence:
 
-- healthy scaling-projection receipt exposed by the harness;
-- controlled evaluator-savings-failed scaling-projection regression receipt exposed by the harness;
-- source binding to evaluator-savings and orchestration-capacity evidence;
-- root validator modes for healthy and regression projection receipts;
-- contract tests asserting projection semantics, source binding, compact output, and controlled regression evidence;
+- healthy distillation-readiness receipt exposed by the harness;
+- controlled catalog-incomplete distillation-readiness regression receipt exposed by the harness;
+- source binding to policy reuse, cost catalog, evaluator-savings, scaling-projection, and validation-health evidence;
+- root validator modes for healthy and regression readiness receipts;
+- contract tests asserting readiness semantics, source binding, compact output, and controlled regression evidence;
 - updated retained root mode and guarded-test fixture counts;
-- no kernel authority expansion.
+- no kernel authority expansion, student-model training, or policy promotion.
 
 ## Next Score Improvement Target
 
-Raise `L` by adding a deterministic policy reuse distillation-readiness receipt.
+Raise `Si` by adding a deterministic policy reuse evidence-surface index receipt.
 
 Acceptance criteria for the next slice:
 
-1. A deterministic healthy distillation-readiness receipt exists and validates successfully.
-2. A deterministic regression distillation-readiness receipt exists and exposes a concrete `regression_reason`.
-3. Readiness evidence binds to reuse, cost catalog, evaluator-savings, scaling-projection, and validation-health source hashes.
-4. Root validator compact modes expose healthy and regression readiness receipts.
-5. Validation harness contract tests assert readiness semantics, source binding, and compact output.
+1. A deterministic healthy evidence-surface index receipt exists and validates successfully.
+2. A deterministic regression index receipt exists and exposes a concrete `regression_reason`.
+3. Index evidence lists or counts policy-reuse receipt families, healthy modes, regression modes, and source-dependency groups.
+4. Root validator compact modes expose healthy and regression index receipts.
+5. Validation harness contract tests assert index semantics, mode coverage, and compact output.
 6. Planning and score contract tests pass after documentation updates.
-7. The receipt remains evidence-only and does not train a student model, promote policy, or expand kernel authority.
+7. The receipt remains evidence-only and does not expand kernel authority.
