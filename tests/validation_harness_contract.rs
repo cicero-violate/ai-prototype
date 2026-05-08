@@ -3424,14 +3424,6 @@ fn policy_validation_health_trend_receipts_fixture_negative_contract_detects_dri
 }
 
 fn policy_validation_health_trend_receipts_fixture_valid(fixture: &str) -> bool {
-    if !ai::validation_harness::retained_fixture_header_valid(
-        fixture,
-        "canon_policy_validation_health_trend_receipts_v1",
-        1,
-    ) {
-        return false;
-    }
-
     let receipt = ai::validation_harness::policy_validation_health_trend_smoke_receipt();
     let expected = [
         format!("policy_validation_health_trend_smoke.record_type={}", receipt.record_type),
@@ -3452,25 +3444,25 @@ fn policy_validation_health_trend_receipts_fixture_valid(fixture: &str) -> bool 
         format!("policy_validation_health_trend_smoke.trend_status={}", receipt.trend_status),
         format!("policy_validation_health_trend_smoke.verdict={}", receipt.verdict),
     ];
+    let rules = [
+        "rule=health trend smoke passes only when aggregate health, policy reuse, validation cost, dispatch catalog, and capacity trend do not regress",
+        "rule=capacity trend must preserve or improve avoided LLM calls per bounded full batch",
+        "rule=fixture binds retained semantic values rather than brittle receipt hashes",
+    ];
 
-    fixture_contains_expected_lines(fixture, &expected)
-        && fixture.contains("rule=health trend smoke passes only when aggregate health, policy reuse, validation cost, dispatch catalog, and capacity trend do not regress")
-        && fixture.contains("rule=capacity trend must preserve or improve avoided LLM calls per bounded full batch")
-        && fixture.contains("rule=fixture binds retained semantic values rather than brittle receipt hashes")
+    retained_receipt_fixture_valid(
+        fixture,
+        "canon_policy_validation_health_trend_receipts_v1",
+        1,
+        &expected,
+        &rules,
+    )
         && receipt.passed()
         && receipt.capacity_avoided_llm_call_delta_per_full_batch >= 0
         && !receipt.dispatch_catalog_changed
 }
 
 fn policy_validation_health_receipts_fixture_valid(fixture: &str) -> bool {
-    if !ai::validation_harness::retained_fixture_header_valid(
-        fixture,
-        "canon_policy_validation_health_receipts_v1",
-        1,
-    ) {
-        return false;
-    }
-
     let receipt = ai::validation_harness::policy_validation_health_smoke_receipt();
     let expected = [
         format!(
@@ -3531,11 +3523,19 @@ fn policy_validation_health_receipts_fixture_valid(fixture: &str) -> bool {
         ),
         format!("policy_validation_health_smoke.verdict={}", receipt.verdict),
     ];
+    let rules = [
+        "rule=health smoke passes only when policy reuse, validation budget, runtime trend, validation footprint, validation cost, command-set drift, and dispatch-catalog drift all pass",
+        "rule=dispatch catalog hashes must match for aggregate policy validation health to pass",
+        "rule=fixture binds retained semantic values rather than brittle receipt hashes",
+    ];
 
-    fixture_contains_expected_lines(fixture, &expected)
-        && fixture.contains("rule=health smoke passes only when policy reuse, validation budget, runtime trend, validation footprint, validation cost, command-set drift, and dispatch-catalog drift all pass")
-        && fixture.contains("rule=dispatch catalog hashes must match for aggregate policy validation health to pass")
-        && fixture.contains("rule=fixture binds retained semantic values rather than brittle receipt hashes")
+    retained_receipt_fixture_valid(
+        fixture,
+        "canon_policy_validation_health_receipts_v1",
+        1,
+        &expected,
+        &rules,
+    )
         && receipt.passed()
         && receipt.baseline_dispatch_catalog_hash == receipt.current_dispatch_catalog_hash
         && !receipt.dispatch_catalog_changed

@@ -5736,3 +5736,68 @@ Next best work:
 ```text
 Target P/S improvement with retained policy-capacity or validation-cost comparison work; only continue fixture cleanup where the shared retained fixture helper can be applied without changing exact row/rule semantics or live receipt predicates.
 ```
+
+## Agent Step 1 Score Update: Policy Validation Health Fixture Helper Reuse
+
+```text
+validation = PASS: RUSTC_WRAPPER= cargo test -q --test validation_harness_contract policy_validation_health --locked
+policy_validation_health_filtered_tests = 13 passed
+validation = PASS: RUSTC_WRAPPER= cargo test -q --test validation_harness_contract --locked
+validation_harness_contract_tests = 128 passed
+validation = PASS: RUSTC_WRAPPER= cargo -Znext-lockfile-bump run --bin root_validate --locked
+root_validation_runtime_p95_ms = 1331
+root_validation_runtime_p95_budget_ms = 10000
+root_validation_expected_validation_harness_tests = 128
+root_validation_observed_validation_harness_tests = 128
+root_validation_expected_graph_mutation_cli_tests = 10
+root_validation_observed_graph_mutation_cli_tests = 10
+```
+
+Scoring impact:
+
+```text
+Si += small positive: removes duplicate retained-fixture validation structure.
+R  += small positive: keeps exact semantic row/rule drift coverage while sharing header/line/rule validation.
+E  += small positive: reduces future update surface for policy validation health retained fixtures.
+P/S unchanged materially: no runtime path or validation command footprint changed.
+```
+
+Updated scores:
+
+| Axis | Score |
+|------+-------|
+| I    |  8.60 |
+| E    |  8.54 |
+| C    |  9.12 |
+| A    |  9.10 |
+| R    |  9.39 |
+| P    |  7.94 |
+| S    |  8.18 |
+| D    |  9.24 |
+| T    | 10.00 |
+| Co   |  8.53 |
+| Em   |  8.43 |
+| B    |  8.56 |
+| L    |  8.58 |
+| Si   |  8.22 |
+| F    |  8.93 |
+
+```text
+G = 8.75
+```
+
+Weakest remaining axes:
+
+```text
+P  = 7.94
+S  = 8.18
+Si = 8.22
+Em = 8.43
+Co = 8.53
+```
+
+Next best work:
+
+```text
+Target P/S with retained policy-capacity or validation-cost comparison work; avoid additional fixture cleanup unless it is purely mechanical and preserves exact retained receipt drift coverage.
+```

@@ -2908,3 +2908,26 @@ Expected score emphasis:
 ```text
 P, S, Si, E, R
 ```
+
+## Agent Step 1 Execution Result: Policy Validation Health Fixture Helper Reuse
+
+- [x] Refactored two single-receipt retained fixture validators in `tests/validation_harness_contract.rs` through the shared `retained_receipt_fixture_valid` helper.
+- [x] Applied the helper to `policy_validation_health_receipts_fixture_valid` and `policy_validation_health_trend_receipts_fixture_valid` for exact header, expected-line, and rule-line checks.
+- [x] Preserved each validator's independent live receipt predicates, including pass status, dispatch catalog invariants, and capacity avoided-call non-regression checks.
+- [x] Changed no kernel, capability, runtime, fixture, generated, or production files.
+- [x] Focused validation passed: `RUSTC_WRAPPER= cargo test -q --test validation_harness_contract policy_validation_health --locked` with 13 tests.
+- [x] Full validation harness contract passed: `RUSTC_WRAPPER= cargo test -q --test validation_harness_contract --locked` with 128 tests.
+- [x] Root deterministic validation passed: `RUSTC_WRAPPER= cargo -Znext-lockfile-bump run --bin root_validate --locked`.
+
+## Validation For Agent Step 1
+
+- [x] Source changes are limited to validation harness test-helper reuse.
+- [x] Retained fixture schemas, receipt counts, expected semantic rows, and rule strings remain checked exactly through the shared helper.
+- [x] Root validation retained expected count guards: validation harness expected/observed 128 and graph mutation CLI expected/observed 10.
+- [x] Runtime performance receipt remained within budget: observed `project_agent_elapsed_ms_p95=1331` against `max_project_agent_elapsed_ms_p95=10000`.
+
+Next best work:
+
+```text
+Prefer a direct P/S improvement via retained policy-capacity or validation-cost comparison work. Continue fixture-helper reuse only if the remaining validator has the same header + expected lines + rule lines structure and preserving live predicates is mechanical.
+```
