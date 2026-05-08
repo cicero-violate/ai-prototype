@@ -2,14 +2,15 @@
 
 ## Planning Scorecard - 2026-05-08
 
-This turn is planning and scoring only. No implementation score increase is
-claimed. Existing uncommitted implementation and fixture changes remain
-unscored until a later turn validates and commits them deliberately.
+This turn completed implementation step 1 from the plan: resolve duplicate
+auto-refactor plan authority. No runtime implementation score increase is
+claimed. Existing uncommitted graph-editor, validation, and fixture changes
+remain unscored until a later turn validates and commits them deliberately.
 
 ```text
-turn_type = planning_scoring
+turn_type = implementation_step_1_plan_authority
 score_change_this_turn = none
-commit_scope = plan.md, score.md
+commit_scope = plan.md, score.md, plan-autorefactor.md, canon-rustc-v3/plan-autorefactor.md
 recommended_next_lane = auto_refactor_graph_evidence
 implementation_authority_change = none
 policy_authority_change = none
@@ -24,14 +25,29 @@ The repository has candidate implementation work in two apparent areas:
 1. deterministic auto-refactor graph evidence and operation planning;
 2. validation-harness expectation or fixture maintenance.
 
-Neither area is scored in this checkpoint because this turn did not validate or
-commit those implementation changes. The planning commit only records the
-handoff and the validation gates required for future score movement.
+Neither area is scored in this checkpoint because this turn validated only plan
+authority and planning/score contracts. The implementation commit records the
+single authoritative auto-refactor plan and the validation gates required for
+future score movement.
+
+## Step 1 Progress
+
+Completed:
+
+```text
+authoritative_auto_refactor_plan = plan-autorefactor.md
+nested_canon_plan_status = pointer only
+superseded_material = schema-v13 transitional plan text
+source_rewrite_authority_change = none
+```
+
+This improves handoff clarity and removes conflicting implementation guidance.
+It does not add runtime behavior, graph-editor behavior, TLog authority, policy
+authority, retrieval writes, or source rewrite capability.
 
 ## Observed Unscored Worktree Changes
 
 ```text
-modified: canon-rustc-v3/plan-autorefactor.md
 modified: graph-editor/Cargo.toml
 modified: graph-editor/src/graph.rs
 modified: graph-editor/src/lib.rs
@@ -43,7 +59,6 @@ untracked: canon-rustc-v3/validation/auto_refactor_ops.py
 untracked: canon-rustc-v3/validation/auto_refactor_ops_smoke.py
 untracked: graph-editor/src/autorefactor.rs
 untracked: graph-editor/src/bin/auto_refactor_plan.rs
-untracked: plan-autorefactor.md
 ```
 
 These changes may become score-relevant only after focused validation evidence
@@ -87,8 +102,8 @@ primary_next_axis = Structure
 secondary_next_axis = Efficiency
 guard_axis = Correctness
 current_gap = auto-refactor and validation-harness changes need focused validation and commit discipline
-next_action = validate deterministic advisory auto-refactor graph evidence or split off validation-harness repair
-score_freeze_reason = planning/scoring turn only; no focused implementation validation evidence added
+next_action = verify graph schema expectations in graph-editor/src/graph.rs
+score_freeze_reason = step 1 clarified plan authority only; no runtime implementation validation evidence added
 ```
 
 ## Conditions For Future Score Increase
@@ -150,4 +165,4 @@ no runtime authority, kernel, TLog, policy, retrieval, or learning change
 ## Non-Scored Planning Result
 
 This checkpoint improves handoff clarity only. It does not change the numeric
-score because it adds no new implementation validation evidence.
+score because it adds no new runtime implementation validation evidence.

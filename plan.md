@@ -2,16 +2,18 @@
 
 ## Planning Checkpoint - 2026-05-08
 
-This turn is planning and scoring only. It records the current repository state,
-selects the next implementation lane, and freezes score movement until focused
-validation evidence is produced. It does not approve or score the uncommitted
-implementation changes currently present in the worktree.
+Implementation step 1 resolved the duplicate auto-refactor plan authority. The
+root `plan-autorefactor.md` is now the single authoritative auto-refactor plan;
+`canon-rustc-v3/plan-autorefactor.md` is retained only as a pointer that marks
+the older schema-v13 guidance as superseded.
 
 Committed scope for this turn:
 
 ```text
 plan.md
 score.md
+plan-autorefactor.md
+canon-rustc-v3/plan-autorefactor.md
 ```
 
 ## Project Direction
@@ -46,12 +48,11 @@ transaction log, promote policy, or bypass validation.
 
 ## Current Worktree Evidence
 
-The current worktree contains uncommitted non-planning changes. They appear to
-target deterministic auto-refactor planning and validation-harness expectation
-maintenance:
+The current worktree still contains uncommitted non-planning changes from other
+lanes. They appear to target deterministic auto-refactor implementation and
+validation-harness expectation maintenance:
 
 ```text
-modified: canon-rustc-v3/plan-autorefactor.md
 modified: graph-editor/Cargo.toml
 modified: graph-editor/src/graph.rs
 modified: graph-editor/src/lib.rs
@@ -63,12 +64,29 @@ untracked: canon-rustc-v3/validation/auto_refactor_ops.py
 untracked: canon-rustc-v3/validation/auto_refactor_ops_smoke.py
 untracked: graph-editor/src/autorefactor.rs
 untracked: graph-editor/src/bin/auto_refactor_plan.rs
-untracked: plan-autorefactor.md
 ```
 
-These files are not included in this planning/scoring commit. The next
-implementation turn must either validate and commit them deliberately as one
-coherent lane, or defer/revert them before selecting a different lane.
+These files are not included in this step-1 commit. The next implementation
+turn must either validate and commit them deliberately as one coherent lane, or
+defer/revert them before selecting a different lane.
+
+## Step 1 Result: Plan Authority
+
+The duplicate plan decision is complete:
+
+```text
+authoritative_auto_refactor_plan = plan-autorefactor.md
+nested_canon_plan_status = pointer only
+superseded_material = schema-v13 transitional plan text
+current_schema_target = schema-v16 graph capture
+```
+
+Rationale:
+
+- The root plan reflects the current schema-v16 graph-editor integration.
+- The nested plan contained stale schema-v13/v16 transitional execution notes.
+- Keeping both as full plans created conflicting implementation authority.
+- A pointer preserves discoverability without duplicating guidance.
 
 ## Selected Next Lane
 
@@ -96,33 +114,30 @@ transitions.
 
 ## Implementation Plan For Next Turn
 
-1. Inspect the uncommitted auto-refactor files and decide whether the root
-   `plan-autorefactor.md` and `canon-rustc-v3/plan-autorefactor.md` are both
-   needed. Avoid duplicate authoritative plans.
-2. Verify the graph schema expectations in `graph-editor/src/graph.rs`, with
+1. Verify the graph schema expectations in `graph-editor/src/graph.rs`, with
    special attention to schema version, relation parsing, missing fields, and
    deterministic ordering.
-3. Validate `graph-editor/src/autorefactor.rs` as an advisory planner only:
+2. Validate `graph-editor/src/autorefactor.rs` as an advisory planner only:
    - consumes `call`, `phase`, `similar`, and `provider` relations;
    - emits stable `SplitFn`, `MergeFns`, and `ExtractTrait` operation specs;
    - sorts and deduplicates surfaces and operations;
    - carries stale-operation guards where source spans exist;
    - performs no source rewrite.
-4. Validate `graph-editor/src/bin/auto_refactor_plan.rs` as a deterministic CLI
+3. Validate `graph-editor/src/bin/auto_refactor_plan.rs` as a deterministic CLI
    surface over graph JSON.
-5. Validate `canon-rustc-v3/validation/auto_refactor_ops.py` and smoke coverage
+4. Validate `canon-rustc-v3/validation/auto_refactor_ops.py` and smoke coverage
    as planning/reporting tools only. They must not weaken semantic validation or
    create a mutation path.
-6. Separate validation-harness expectation drift from auto-refactor graph-editor
+5. Separate validation-harness expectation drift from auto-refactor graph-editor
    work if possible. Do not combine unrelated fixes unless the tests require a
    single coherent commit.
-7. Add or confirm focused tests for:
+6. Add or confirm focused tests for:
    - healthy graph input;
    - malformed or unsupported schema input;
    - stable repeated output;
    - advisory/non-mutating behavior;
    - operation-count consistency.
-8. Run focused validation before staging anything.
+7. Run focused validation before staging anything.
 
 ## Validation Gate Before Implementation Commit
 
