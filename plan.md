@@ -1,6 +1,6 @@
 # Canon Agent Implementation Plan
 
-This plan records the current implementation state after implementation step 1 of the current agent loop.
+This plan records the current implementation state after implementation step 2 of the current agent loop.
 
 ## North Star
 
@@ -98,97 +98,21 @@ The repository currently exposes these meaningful surfaces:
 - validation-harness/root-validate smoke exposure for healthy and controlled result-not-admitted retrieval-result-manifest evidence;
 - deterministic policy reuse evidence retrieval-result-use-admission receipt in the validation harness;
 - validation-harness/root-validate smoke exposure for healthy and controlled manifest-not-ready retrieval-result-use-admission evidence;
+- deterministic policy reuse evidence retrieval-result-use-manifest receipt in the validation harness;
+- validation-harness/root-validate smoke exposure for healthy and controlled use-not-admitted retrieval-result-use-manifest evidence;
 - retained fixtures for policy reuse, policy validation health, policy validation trend, orchestration capacity, policy capacity/cost, runtime performance trend, validation duration planning, validation command footprint, external CLI mode evidence, and evidence-surface index coverage.
 
 ## Latest Completed Slice
 
-The latest completed implementation slice is deterministic **policy reuse evidence retrieval-result-use-admission** evidence in the validation-harness/root-validator layer. It composes retrieval-result-manifest and retrieval-result-admission evidence into one result-use-admitted/not-admitted retrieval boundary using manifest-ready external result evidence only, without reading or writing retrieval storage, executing retrieval queries, approving runtime results, promoting policy, or training a model.
+The latest completed implementation slice is deterministic **policy reuse evidence retrieval-result-use-manifest** evidence in the validation-harness/root-validator layer. It composes retrieval-result-use-admission and retrieval-result-manifest evidence into one result-use-manifest-ready/not-ready retrieval boundary using admitted result-use evidence only, without reading or writing retrieval storage, executing retrieval queries, approving runtime results, promoting policy, or training a model.
 
 This slice answers:
 
 ```text
-Can an evaluator inspect one deterministic receipt that admits a ready retrieval result manifest for later retrieval use without reading or writing retrieval storage, executing a retrieval query, approving runtime results, promoting policy, training a model, executing batches, or changing kernel authority?
+Can an evaluator inspect one deterministic receipt that summarizes admitted retrieval result-use evidence into a manifest-ready boundary for later retrieval gates without reading or writing retrieval storage, executing a retrieval query, approving runtime results, promoting policy, training a model, executing batches, or changing kernel authority?
 ```
 
 Implemented surfaces:
-
-```text
-PolicyReuseEvidenceRetrievalResultUseAdmissionReceipt
-policy_reuse_evidence_retrieval_result_use_admission_smoke_receipt()
-policy_reuse_evidence_retrieval_result_use_admission_regression_smoke_receipt()
---policy-reuse-evidence-retrieval-result-use-admission-smoke
---policy-reuse-evidence-retrieval-result-use-admission-regression-smoke
-```
-
-Implemented fields:
-
-```text
-schema
-record_type
-retrieval_result_use_admission_version
-source_retrieval_result_manifest_hash
-source_retrieval_result_admission_hash
-retrieval_result_manifest_ready
-retrieval_result_admitted
-retrieval_read_performed
-retrieval_write_performed
-retrieval_query_executed
-runtime_result_approval_performed
-policy_promotion_performed
-student_training_performed
-external_result_evidence_present
-admitted_use_policy_reuse_examples
-admitted_use_llm_fallback_examples
-retrieval_result_use_admitted
-result_use_admission_status
-not_admitted_reason
-result_use_admission_hash
-receipt_hash
-```
-
-Completed semantics:
-
-- `retrieval_result_use_admitted = true` only when retrieval-result-manifest passed, retrieval-result-admission passed, external result evidence is present, retrieval storage was not read or written, retrieval query execution did not happen, runtime result approval did not happen, policy was not promoted, student training was not performed, admitted-use policy-reuse examples are positive, and `not_admitted_reason = "none"`.
-- Healthy evidence binds to retrieval-result-manifest and retrieval-result-admission receipt hashes, reports result use admission status `result_use_admitted`, and records `not_admitted_reason = "none"`.
-- Regression evidence remains structurally valid while exposing `retrieval_result_manifest_ready = false`, `retrieval_result_admitted = false`, result use admission status `result_use_not_admitted`, and `not_admitted_reason = "manifest_not_ready"`.
-- The receipt is evidence-only and does not execute batches, change kernel authority, promote policy, read/write retrieval storage, execute retrieval queries, approve runtime retrieval results, train models, or alter runtime behavior.
-- The receipt does not introduce live LLM, network, wall-clock, or environment-dependent measurement.
-
-## Validation Evidence For Latest Baseline
-
-```text
-cargo fmt --check
-RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test validation_harness_contract policy_reuse_evidence_retrieval_result_use_admission --no-run --quiet
-RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test validation_harness_contract root_validate_policy_reuse_evidence_retrieval_result_use_admission --no-run --quiet
-RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo check --quiet
-RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test planning_contract --test score_contract --quiet
-RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test validation_harness_contract retrieval_result_use_admission --quiet
-
-cargo fmt --check: pass
-validation_harness_contract policy_reuse_evidence_retrieval_result_use_admission --no-run: pass
-validation_harness_contract root_validate_policy_reuse_evidence_retrieval_result_use_admission --no-run: pass
-cargo check --quiet: pass
-planning_contract and score_contract: pass
-retrieval-result-use-admission focused executable tests: attempted, but connector returned 502 before a Rust result was available
-```
-
-## Current Planning Decision
-
-Keep the next implementation turn focused on **Learning**, moving from retrieval-result-use-admission evidence toward deterministic retrieval-result-use-manifest evidence.
-
-Current gap:
-
-```text
-Retrieval-result-use-admission evidence is now explicit, but the stack still lacks one deterministic retrieval-result-use-manifest receipt that summarizes admitted result-use evidence for later retrieval gates without reading or writing retrieval storage or approving runtime results.
-```
-
-Recommended next slice:
-
-```text
-Add a deterministic policy reuse evidence retrieval-result-use-manifest receipt that composes retrieval-result-use-admission and retrieval-result-manifest evidence into result-use-manifest-ready/not-ready evidence using admitted result-use evidence only.
-```
-
-Recommended concrete surfaces:
 
 ```text
 PolicyReuseEvidenceRetrievalResultUseManifestReceipt
@@ -198,20 +122,98 @@ policy_reuse_evidence_retrieval_result_use_manifest_regression_smoke_receipt()
 --policy-reuse-evidence-retrieval-result-use-manifest-regression-smoke
 ```
 
+Implemented fields:
+
+```text
+schema
+record_type
+retrieval_result_use_manifest_version
+source_retrieval_result_use_admission_hash
+source_retrieval_result_manifest_hash
+retrieval_result_use_admitted
+retrieval_result_manifest_ready
+retrieval_read_performed
+retrieval_write_performed
+retrieval_query_executed
+runtime_result_approval_performed
+policy_promotion_performed
+student_training_performed
+external_result_evidence_present
+use_manifest_policy_reuse_examples
+use_manifest_llm_fallback_examples
+retrieval_result_use_manifest_ready
+result_use_manifest_status
+not_ready_reason
+result_use_manifest_hash
+receipt_hash
+```
+
+Completed semantics:
+
+- `retrieval_result_use_manifest_ready = true` only when retrieval-result-use-admission passed, retrieval-result-manifest passed, external result evidence is present, retrieval storage was not read or written, retrieval query execution did not happen, runtime result approval did not happen, policy was not promoted, student training was not performed, use-manifest policy-reuse examples are positive, and `not_ready_reason = "none"`.
+- Healthy evidence binds to retrieval-result-use-admission and retrieval-result-manifest receipt hashes, reports result use manifest status `result_use_manifest_ready`, and records `not_ready_reason = "none"`.
+- Regression evidence remains structurally valid while exposing `retrieval_result_use_admitted = false`, `retrieval_result_manifest_ready = false`, result use manifest status `result_use_manifest_not_ready`, and `not_ready_reason = "use_not_admitted"`.
+- The receipt is evidence-only and does not execute batches, change kernel authority, promote policy, read/write retrieval storage, execute retrieval queries, approve runtime retrieval results, train models, or alter runtime behavior.
+- The receipt does not introduce live LLM, network, wall-clock, or environment-dependent measurement.
+
+## Validation Evidence For Latest Baseline
+
+```text
+cargo fmt --check
+RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test validation_harness_contract policy_reuse_evidence_retrieval_result_use_manifest --no-run --quiet
+RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test validation_harness_contract root_validate_policy_reuse_evidence_retrieval_result_use_manifest --no-run --quiet
+RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo check --quiet
+RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test planning_contract --test score_contract --quiet
+RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test validation_harness_contract retrieval_result_use_manifest --quiet
+
+cargo fmt --check: pass
+validation_harness_contract policy_reuse_evidence_retrieval_result_use_manifest --no-run: pass
+validation_harness_contract root_validate_policy_reuse_evidence_retrieval_result_use_manifest --no-run: pass
+cargo check --quiet: pass
+planning_contract and score_contract: pass
+retrieval-result-use-manifest focused executable tests: attempted, but connector returned 502 before a Rust result was available
+```
+
+## Current Planning Decision
+
+Keep the next implementation turn focused on **Learning**, moving from retrieval-result-use-manifest evidence toward deterministic retrieval-result-use-readiness evidence.
+
+Current gap:
+
+```text
+Retrieval-result-use-manifest evidence is now explicit, but the stack still lacks one deterministic retrieval-result-use-readiness receipt that summarizes ready result-use manifest evidence for later retrieval gates without reading or writing retrieval storage or approving runtime results.
+```
+
+Recommended next slice:
+
+```text
+Add a deterministic policy reuse evidence retrieval-result-use-readiness receipt that composes retrieval-result-use-manifest and retrieval-result-use-admission evidence into result-use-ready/not-ready evidence using ready result-use manifest evidence only.
+```
+
+Recommended concrete surfaces:
+
+```text
+PolicyReuseEvidenceRetrievalResultUseReadinessReceipt
+policy_reuse_evidence_retrieval_result_use_readiness_smoke_receipt()
+policy_reuse_evidence_retrieval_result_use_readiness_regression_smoke_receipt()
+--policy-reuse-evidence-retrieval-result-use-readiness-smoke
+--policy-reuse-evidence-retrieval-result-use-readiness-regression-smoke
+```
+
 Recommended constraints:
 
 1. Keep the kernel untouched.
 2. Do not introduce live LLM, network, wall-clock, or environment-dependent measurement.
-3. Reuse retrieval-result-use-admission and retrieval-result-manifest receipt hashes.
+3. Reuse retrieval-result-use-manifest and retrieval-result-use-admission receipt hashes.
 4. Keep the receipt evidence-only: no retrieval reads/writes, query execution, policy promotion, student training, or batch execution.
-5. Include healthy and controlled use-not-admitted regression cases.
+5. Include healthy and controlled manifest-not-ready regression cases.
 6. Keep actual retrieval storage and student-model training deferred.
 7. Update external CLI mode fixtures and guarded validation counts only if new public modes or tests are added.
 8. Keep unrelated `canon-rustc-v3/` working-tree changes out of this slice unless explicitly selected in a separate turn.
 
 ## Implementation Turn Commit Scope
 
-This turn implemented retrieval-result-use-admission. It should update and commit:
+This turn implemented retrieval-result-use-manifest. It should update and commit:
 
 ```text
 plan.md
@@ -226,11 +228,11 @@ Observed `canon-rustc-v3/` working-tree changes remain outside this turn unless 
 
 ## Acceptance Criteria For Next Implementation Turn
 
-1. A deterministic healthy retrieval-result-use-manifest receipt exists and validates successfully.
-2. A deterministic regression retrieval-result-use-manifest receipt exists and exposes a concrete use-not-admitted reason.
-3. Retrieval-result-use-manifest evidence references retrieval-result-use-admission and retrieval-result-manifest receipts instead of adding policy authority.
-4. Root validator compact modes expose healthy and regression retrieval-result-use-manifest receipts.
-5. Validation harness contract tests assert retrieval-result-use-manifest semantics, source binding, compact output, and controlled failing evidence.
+1. A deterministic healthy retrieval-result-use-readiness receipt exists and validates successfully.
+2. A deterministic regression retrieval-result-use-readiness receipt exists and exposes a concrete manifest-not-ready reason.
+3. Retrieval-result-use-readiness evidence references retrieval-result-use-manifest and retrieval-result-use-admission receipts instead of adding policy authority.
+4. Root validator compact modes expose healthy and regression retrieval-result-use-readiness receipts.
+5. Validation harness contract tests assert retrieval-result-use-readiness semantics, source binding, compact output, and controlled failing evidence.
 6. Planning and score contract tests pass after documentation updates.
 7. The receipt remains evidence-only and does not expand kernel authority, promote policy, execute batches, read/write retrieval storage, execute retrieval queries, or train a student model.
 

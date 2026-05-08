@@ -113,3 +113,5 @@ root_validate --policy-reuse-evidence-retrieval-result-manifest-smoke => policy_
 root_validate --policy-reuse-evidence-retrieval-result-manifest-regression-smoke => policy_reuse_evidence_retrieval_result_manifest_regression_smoke
 root_validate --policy-reuse-evidence-retrieval-result-use-admission-smoke => policy_reuse_evidence_retrieval_result_use_admission_smoke
 root_validate --policy-reuse-evidence-retrieval-result-use-admission-regression-smoke => policy_reuse_evidence_retrieval_result_use_admission_regression_smoke
+root_validate --policy-reuse-evidence-retrieval-result-use-manifest-smoke => policy_reuse_evidence_retrieval_result_use_manifest_smoke
+root_validate --policy-reuse-evidence-retrieval-result-use-manifest-regression-smoke => policy_reuse_evidence_retrieval_result_use_manifest_regression_smoke
