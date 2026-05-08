@@ -1,43 +1,44 @@
 # canon-rustc-v3 Scorecard
 
 Reviewed: 2026-05-08
-Stage: `implementation step 1`
-Base commit: `8bb9d75`
-Scope: schema/test hardening for `ai/canon-rustc-v3`; wrapper behavior unchanged.
+Stage: `implementation step 2`
+Base commit: `2873d7d`
+Scope: native fixture replay for `ai/canon-rustc-v3`; fixture isolation added, wrapper behavior unchanged.
 
 ## Validation Evidence
 
 | Check | Result | Judgment |
 |---|---:|---|
-| `cargo test --offline` | pass | 11 unit tests pass, including new schema/version/hash/vocabulary tests. |
-| `cargo check --offline --no-default-features` | pass | Pass-through/non-capture boundary still compiles. |
-| `git diff --check -- src/wrapper.rs src/facts.rs plan.md score.md` | pass | No whitespace errors in this turn's changed files. |
-| `PURPOSE.md` | pass | Still within the requested 10 LOC limit. |
+| `python3 validation/run_semantic_witness.py --require-cargo --report validation/reports/semantic-witness-step2.json` | pass | Baseline check, wrapper build, two wrapped fixture runs, graph replay comparison, and timing receipt completed. |
+| `python3 validation/semantic_preflight.py --artifact-root state/rustc-test-1 --compare-artifact-root state/rustc-test-2 --require-live-replay --report validation/reports/semantic-preflight-step2.json` | pass_with_skip | Live replay validation is true; only skipped signal is uninitialized `vendor/rust-source`. |
+| `cargo test --offline` | pass | 11 unit tests pass through the witness runner. |
+| `cargo check --offline --no-default-features` | pass | Previously verified pass-through/non-capture boundary remains part of the score. |
+| `validation/reports/semantic-witness-step2.md` | pass | Tracked replay evidence records the generated graph and receipt metrics while ignored raw JSON/state artifacts stay out of git. |
 
 ## Progress This Turn
 
-- Added schema contract coverage for `GRAPH_SCHEMA_VERSION = 16` and `RECEIPT_SCHEMA_VERSION = 1`.
-- Added complete relation vocabulary assertions for schema-16 node, edge, and risk relation lists.
-- Added allowed-edge filtering coverage for duplicate, unknown, and empty endpoint edges.
-- Added stable graph hash coverage for BTreeMap node ordering.
-- Added receipt hash sensitivity coverage for graph schema changes.
+- Fixed fixture replay by adding an empty `[workspace]` table to `validation/fixtures/witness_crate/Cargo.toml`.
+- Captured two native wrapped fixture runs with identical schema-16 graph fingerprints.
+- Recorded graph evidence: 1 graph, 11 nodes, 33 edges, graph hash `5e20cdb250bfedac3fda428f4043a0fda06e7e508d124b69f0efea61cdf15aa8`.
+- Recorded replay fingerprint `a800b88569f202127c0fafcc79009b57608c0451c37cdb2258e1544def8bf09e` for both wrapped runs.
+- Recorded timing evidence: baseline 139.385 ms, wrapped 188.694 ms, overhead ratio 1.354.
 
 ## Scores
 
 | Dimension | Score | Evidence-backed judgment |
 |---|---:|---|
-| Correctness | 7 | Contract tests improved; live fixture capture and receipt validation remain open. |
-| Determinism | 8 | Hash stability now has direct unit coverage. |
-| Alignment | 8 | Tests reinforce the current wrapper schema without changing capture behavior. |
-| Transparency | 8 | Plan and score now identify completed test hardening and remaining proof gaps. |
-| Performance | 5 | No wrapped-vs-unwrapped overhead measurement yet. |
-| Simplicity | 7 | Unit tests are local and avoid public API expansion. |
-| Future-proofing | 7 | Schema and receipt constants now have regression coverage. |
+| Correctness | 8 | Live fixture capture now passes and emits schema-16 graph evidence; full rust-source closure remains skipped. |
+| Determinism | 9 | Two wrapped runs produced identical graph hashes and replay fingerprints. |
+| Alignment | 8 | Fixture replay directly exercises the `RUSTC_WRAPPER` semantic witness use case. |
+| Transparency | 8 | Tracked markdown evidence records graph, timing, and receipt hashes while generated artifacts stay ignored. |
+| Performance | 6 | Timing evidence exists, but no thresholded performance gate is committed yet. |
+| Simplicity | 7 | Fixture isolation is minimal and wrapper behavior is unchanged. |
+| Future-proofing | 7 | Replay evidence strengthens regression confidence; schema prose still needs reconciliation. |
 
 ## Aggregate
 
-Average score: `7.00 / 10`.
+Average score: `7.43 / 10`.
 
 ## Next Proof Target
 
-Run the wrapper against a small fixture crate, archive the emitted `graph.json`, validate schema version 16 receipts, and then measure wrapper overhead against plain `cargo check`.
+Convert the replay timing measurement into a bounded performance gate with explicit acceptable overhead thresholds, then reconcile `GOAL.md` with schema version 16 and the current relation vocabulary.
