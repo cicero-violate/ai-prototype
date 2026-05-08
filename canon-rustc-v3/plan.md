@@ -1,8 +1,8 @@
 # canon-rustc-v3 Plan
 
-Base commit: `bcb7fae`
-Stage: `implementation step 3`
-Status: `bounded performance gate implemented`
+Base commit: `421d3ed`
+Stage: `implementation step 5`
+Status: `schema prose reconciled`
 
 ## Objective
 
@@ -15,7 +15,8 @@ Keep `canon-rustc-v3` focused on compiler-backed semantic witness capture: run a
 - `cargo test --offline` passes with 11 unit tests.
 - `cargo check --offline --no-default-features` passes, proving the pass-through boundary still compiles.
 - Native fixture replay passes on `validation/fixtures/witness_crate` and emits identical schema-16 graphs across wrapped runs.
-- `validation/performance_gate.py` now enforces explicit native overhead thresholds.
+- `validation/performance_gate.py` enforces explicit native overhead thresholds.
+- `GOAL.md` now describes schema version 16, current relation vocabulary, validation layers, and the advisory-only auto-refactor boundary.
 
 ## Executed In Step 1
 
@@ -41,14 +42,23 @@ Keep `canon-rustc-v3` focused on compiler-backed semantic witness capture: run a
 5. Verified a negative gate with `--max-overhead-ratio 0.5` fails with `native_overhead_ratio_exceeded`.
 6. Saved tracked performance evidence in `validation/reports/performance-step3.md`; raw JSON reports remain ignored.
 
+## Executed In Step 5
+
+1. Reconciled `GOAL.md` from stale schema 12 prose to the implemented schema 16 contract.
+2. Added `receipt_hash`, expanded node kinds, current edge relations, risk/advisory relation descriptions, and expanded intent values to the schema prose.
+3. Documented current validation layers: schema tests, native fixture replay, preflight, thresholded performance gate, and auto-refactor smoke tests.
+4. Clarified the auto-refactor boundary: `canon-rustc-v3` emits advisory `SplitFn`, `MergeFns`, and `ExtractTrait` operation specs and does not rewrite source.
+5. Removed stale claims that structs/enums/type aliases are not captured and that schema 12 is current.
+
 ## Remaining Implementation Plan
 
-1. Reconcile long-form `GOAL.md` schema prose with the current implementation, especially schema version 16 and relation additions.
-2. If fixture replay exposes graph or receipt drift in future runs, update tests before changing semantics.
-3. Consider raising fixture coverage only after the schema prose and current validation contract are aligned.
+1. If fixture replay exposes graph or receipt drift in future runs, update tests before changing semantics.
+2. Consider raising fixture coverage only after the current validation contract remains stable across additional agent turns.
+3. Keep `plan-autorefactor.md` as a pointer unless a new authoritative root auto-refactor plan is added.
 
 ## Non-Goals For This Turn
 
 - No schema rewrite.
 - No wrapper behavior change.
+- No source rewrite authority added.
 - No production-readiness claim without full toolchain-source closure.

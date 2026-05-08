@@ -33,15 +33,16 @@ like a logger and more like a semantic compiler witness: it exposes what
 changed, why it matters, what risk increased, and what proof or test is
 required next.
 
-## Graph Schema  (schema_version = 12)
+## Graph Schema  (schema_version = 16)
 
 ```
 graph.json
 ├── meta
 │   ├── crate_name         string
-│   ├── schema_version     u32
+│   ├── schema_version     u32      — current contract: 16
 │   ├── node_count / edge_count
-│   ├── captured_at_ms     u64
+│   ├── captured_at_ms     u64      — volatile capture time
+│   ├── receipt_hash       sha256   — receipt envelope hash
 │   ├── graph_hash         sha256   — hash of all node + edge content
 │   ├── intent_hash        sha256   — hash of intents map
 │   └── risk_hash          sha256   — hash of risk-relation edges
@@ -50,12 +51,12 @@ graph.json
 │   └── GraphNode
 │       ├── def_id         "crate_num:index"
 │       ├── path           fully-qualified Rust path
-│       ├── kind           "fn" | "impl" | "trait" | "struct" | "enum" | "ty_alias"
+│       ├── kind           "fn" | "trait" | "impl" | "struct" | "enum" | "ty_alias"
 │       ├── def?           SourceSpan — span including outer attributes + body
 │       │   ├── file       relative to workspace root
 │       │   ├── line / col
 │       │   ├── lo         byte offset of first attribute or item keyword
-│       │   └── hi         byte offset of closing }
+│       │   └── hi         byte offset of closing span
 │       ├── source_text?   verbatim UTF-8 bytes [lo .. hi] including attributes
 │       ├── sig?           FnSig — structured signature for "fn" nodes
 │       │   ├── params     [{name, ty}]
@@ -65,140 +66,131 @@ graph.json
 ├── edges                  list<GraphEdge>
 │   └── GraphEdge
 │       ├── relation       "call" | "impl" | "mut" | "io" | "panic"
-│       │                  | "unsafe" | "alloc" | "use"
+│       │                  | "unsafe" | "alloc" | "use" | "similar"
+│       │                  | "phase" | "provider"
 │       ├── from           caller / implementor / module path
-│       ├── to             callee / trait path  OR  fact::* sentinel
-│       └── span?          SourceSpan — call-site location for "call" edges
+│       ├── to             callee / trait path OR fact:: / phase:: / provider:: / similar:: sentinel
+│       └── span?          SourceSpan — populated for HIR call/use-site edges when available
 │
-└── intents                map<path, "pure" | "mutation">
+└── intents                map<path, "pure" | "mutation" | "io" | "unsafe"
+                              | "validation" | "orchestration" | "boundary">
 ```
 
 ### Edge relation vocabulary
 
-| relation | source    | meaning                                                |
-|----------+-----------+--------------------------------------------------------|
-| `call`   | HIR + MIR | `from` calls `to`                                      |
-| `impl`   | HIR       | `from` implements trait `to`                           |
-| `mut`    | HIR + MIR | `from` performs mutation (assignment, SetDiscriminant) |
-| `io`     | MIR       | `from` calls a known I/O callee                        |
-| `panic`  | MIR       | `from` can panic (Assert, unwrap, expect)              |
-| `unsafe` | HIR + MIR | `from` contains an unsafe block or inline asm          |
-| `alloc`  | MIR       | `from` performs heap allocation                        |
+| relation   | source    | risk | meaning                                                |
+|------------|-----------|------|--------------------------------------------------------|
+| `call`     | HIR + MIR | no   | `from` calls `to`                                      |
+| `impl`     | HIR       | no   | `from` implements trait `to`                           |
+| `mut`      | HIR + MIR | yes  | `from` performs mutation (assignment, SetDiscriminant) |
+| `io`       | HIR + MIR | yes  | `from` calls a known I/O callee                        |
+| `panic`    | HIR + MIR | yes  | `from` can panic (Assert, unwrap, expect)              |
+| `unsafe`   | HIR + MIR | yes  | `from` contains unsafe behavior or inline asm          |
+| `alloc`    | HIR + MIR | yes  | `from` performs heap allocation                        |
+| `use`      | HIR       | no   | enclosing module imports a resolved definition         |
+| `similar`  | MIR       | yes  | functions in the same module share high callee overlap |
+| `phase`    | MIR       | yes  | function participates in parse/validate/transform work |
+| `provider` | HIR       | no   | function source contains known provider sentinel text  |
 
-`fact::mut`, `fact::io`, etc. are virtual sentinel targets.  They appear only
-as edge targets, never as keys in `nodes`.
+`fact::mut`, `fact::io`, etc. are virtual risk targets. `phase::*`,
+`provider::*`, and `similar::*` are advisory targets used by validation and
+auto-refactor planners. They appear only as edge targets, never as keys in
+`nodes`.
 
 ### Captured node kinds
 
 Only locally-defined, non-automatically-derived, non-synthetic items:
 
 - **fn** — top-level functions and associated functions / methods
-- **impl** — impl blocks (inherent and trait)
-- **trait** — trait definitions
+- **trait** — trait definitions and trait methods
+- **impl** — impl blocks, inherent impls, and trait impls
+- **struct** — struct nodes with field names and field types where available
+- **enum** — enum nodes with variant names in `fields`
+- **ty_alias** — type-alias nodes with source span coverage
 
-Not captured: structs, enums, type aliases, constants, statics, use
-statements, mod declarations, attributes, doc comments, extern crate.
+Not captured as nodes: constants, statics, standalone use statements, mod
+declarations, attributes, doc comments, and extern crate declarations. Imports
+are represented as `use` edges, not nodes.
 
-### span coverage
+### Span coverage
 
-`def.lo` / `def.hi` are byte offsets of the full HIR item span.
-For `fn` items this covers the `pub`/`fn` keyword through the closing `}` of
-the function body.  For `impl` items this covers the full block including all
-methods — method spans are therefore nested inside their parent impl span.
-The graph-editor's overlap guard rejects ops that target both a container and
-a member simultaneously.
+`def.lo` / `def.hi` are byte offsets of the full HIR item span extended
+backward over outer attributes when a non-expansion source span is available.
+For `fn` items this covers the function item and body. For `impl` items this
+covers the full block including methods; method spans are nested inside their
+parent impl span. The graph-editor overlap guard rejects ops that target both a
+container and a member simultaneously.
 
-~44 % of nodes have no `def` / `source_text` (macro-generated, compiler-
-synthesised, or external-crate items).  This is correct.
+Some nodes can have no `def` / `source_text` when the compiler reports a
+macro-generated, synthesized, or otherwise non-local source span. That is
+accepted by the schema.
 
 ## Usage
 
 ```bash
-cd canon-rustc-v3 && cargo build   # requires nightly + rustc_private
+cd canon-rustc-v3 && cargo build
 
-# ad-hoc
 CANON_RUSTC_V3_ARTIFACT_DIR=state/rustc \
-RUSTC_WRAPPER="$PWD/canon-rustc-v3/target/debug/canon-rustc-v3" \
+RUSTC_WRAPPER="$PWD/target/debug/canon-rustc-v3" \
 cargo check
-
-# permanent via .cargo/config.toml
-[build]
-rustc-wrapper = "canon-rustc-v3/target/debug/canon-rustc-v3"
-[env]
-CANON_RUSTC_V3_ARTIFACT_DIR = "state/rustc"
 ```
 
 Output: `$CANON_RUSTC_V3_ARTIFACT_DIR/<crate_name>/graph.json`
 
-## What Is Still Missing for Automatic Refactoring
+The default feature set enables `rustc-driver` witness capture. The
+`--no-default-features` build remains a pass-through boundary for environments
+that need to compile without native witness capture.
 
-The graph enables patch-based structural edits today.  Full automatic
-refactoring requires the additions below, ranked by impact.
+## Current Validation Contract
 
-### Gap 1 — Call-site source locations  ★ highest impact  ✓ IMPLEMENTED
+The implementation is currently proven by these validation layers:
 
-`GraphEdge` now carries `span: Option<SourceSpan>` populated from `expr.span`
-for `ExprKind::Call` and `ExprKind::MethodCall` in `hir.rs`.  Every `call`
-edge now records the byte location of the call expression.
+1. Schema and relation unit tests for schema 16, receipt schema 1, allowed-edge
+   filtering, stable graph hashing, and receipt hash sensitivity.
+2. Native fixture replay on `validation/fixtures/witness_crate`, producing two
+   identical schema-16 graphs with 11 nodes and 33 edges.
+3. Semantic preflight with required live replay; current skipped signal is only
+   uninitialized `vendor/rust-source`.
+4. Thresholded performance gate with explicit native overhead bounds.
+5. Auto-refactor surface/op smoke tests that emit advisory specs only.
 
-**Unlocks**: safe mechanical rename of any fn within the crate.
+## Auto-Refactor Boundary
 
-### Gap 2 — Struct / enum / type alias nodes  ✓ IMPLEMENTED
+The graph enables deterministic planning for structural edits. The current
+auto-refactor implementation is advisory only:
 
-`allowed_node_kind` now returns `"struct"`, `"enum"`, `"ty_alias"` for the
-corresponding `DefKind` variants.  `visit_item` arms capture:
-- struct field names and types in `GraphNode.fields`
-- enum variant names in `GraphNode.fields` (ty left empty for variants)
-- type aliases: span only
+```
+graph.json → auto_refactor_surface.py → surface report → auto_refactor_ops.py → op specs
+```
 
-**Unlocks**: type-level refactoring, derive management.
+Implemented advisory operation specs:
 
-### Gap 3 — Attributes are outside item spans  ✓ IMPLEMENTED
+- **SplitFn** — suggests phase-based extraction for high fan-out functions.
+- **MergeFns** — suggests canonicalization for highly similar same-module functions.
+- **ExtractTrait** — suggests provider-boundary extraction for similar functions with different providers.
 
-`span_with_attrs(hir_id, item_span)` is called before every `upgrade_span`.
-It reads `tcx.hir().attrs(hir_id)` and extends `item_span.lo()` backwards to
-the earliest non-expansion attribute span.  `source_text` now covers
-`#[must_use]`, `#[cfg(test)]`, `#[derive(...)]` etc.
-
-**Unlocks**: safe removal that includes attributes, conditional compilation
-analysis.
-
-### Gap 4 — Use / import statement tracking  ✓ IMPLEMENTED
-
-`visit_item` now handles `ItemKind::Use`.  For each resolved `Res::Def` in
-`use_path.res`, a `"use"` edge is emitted: `from = enclosing module`,
-`to = imported path`, `span = use-statement span`.  `"use"` is added to
-`EDGE_RELATIONS` in `facts.rs`.
-
-**Unlocks**: safe rename of public symbols, move-item refactoring.
-
-### Gap 5 — Structured function signatures  ✓ IMPLEMENTED
-
-`GraphNode` now has `sig: Option<FnSig>` with `{params: [{name, ty}], return_ty}`.
-Populated for all `fn` nodes: top-level fns via `ItemKind::Fn { sig, body, .. }`,
-impl methods via `ImplItemKind::Fn(fn_sig, body_id)`, and trait methods (both
-provided and abstract) via `TraitItemKind::Fn`.  Types are verbatim source
-snippets; parameter names come from the function body's `Param::pat`.
-
-**Unlocks**: signature-aware refactoring, type-directed search.
+No component in `canon-rustc-v3` rewrites source. Any source edit must be
+performed by a separate editor that verifies spans, applies patches, reruns the
+wrapper, compares graphs, and rejects unsafe deltas.
 
 ## Capability Matrix
 
-All 5 gaps are now implemented in schema_version 12.
+All 5 original refactor-enabling gaps are implemented in schema_version 16.
 
-| Refactoring                      | schema 11 | schema 12 (now) |
-|----------------------------------+-----------+-----------------|
-| Remove dead function             | ✓         | ✓               |
-| Add / remove attribute           | ✓         | ✓               |
-| Reclassify intent                | ✓         | ✓               |
-| Detect risk boundary             | ✓         | ✓               |
-| Rename function (crate-internal) | —         | ✓               |
-| Change function signature        | —         | partial         |
-| Rename a type                    | —         | ✓               |
-| Add / remove derive              | —         | ✓               |
-| Move item between modules        | —         | ✓               |
-| Inline a function                | —         | partial         |
-| Extract a function               | —         | —               |
+| Refactoring / planning surface    | schema 11 | schema 16 (now) |
+|-----------------------------------+-----------+-----------------|
+| Remove dead function              | ✓         | ✓               |
+| Add / remove attribute            | ✓         | ✓               |
+| Reclassify intent                 | ✓         | ✓               |
+| Detect risk boundary              | ✓         | ✓               |
+| Rename function (crate-internal)  | —         | ✓               |
+| Change function signature         | —         | partial         |
+| Rename a type                     | —         | ✓               |
+| Add / remove derive               | —         | ✓               |
+| Move item between modules         | —         | ✓               |
+| Inline a function                 | —         | partial         |
+| Extract a function                | —         | advisory only   |
+| Plan split / merge / trait extract| —         | advisory only   |
 
 ## Reference
 
