@@ -1,8 +1,8 @@
 # Canon Agent Implementation Plan
 
-## Planning Checkpoint - 2026-05-08
+## Planning Checkpoint - 2026-05-08T12:05Z
 
-This turn is planning and scoring only. It does not adopt, validate, or score the implementation changes currently present outside the planning artifacts.
+This turn is planning and scoring only. It does not adopt, validate, or score the implementation changes currently present outside the planning artifacts. Its purpose is to keep the next implementation turn constrained to deterministic evidence production rather than opportunistic runtime expansion.
 
 Committed scope for this turn:
 
@@ -134,3 +134,32 @@ provider authorization or routing
 ## Current Decision
 
 No implementation progress is claimed in this planning turn. The next useful turn should either validate and commit the deterministic auto-refactor graph/reporting work as advisory evidence, or defer/revert that work and select the next evidence-only Learning boundary.
+
+## Handoff Checklist For Next Agent Turn
+
+Before modifying implementation files, the next agent should choose exactly one lane:
+
+```text
+lane = auto_refactor_graph_evidence | learning_evidence_boundary | cleanup_defer
+```
+
+Lane-specific entry criteria:
+
+```text
+auto_refactor_graph_evidence:
+  - inspect canon-rustc-v3/plan-autorefactor.md if present
+  - verify modified facts/hir/mir/wrapper files preserve read-only evidence semantics
+  - complete deterministic relation/report validation before commit
+
+learning_evidence_boundary:
+  - leave auto-refactor work untouched or explicitly defer it
+  - select one evidence-only receipt boundary
+  - keep retrieval writes, policy promotion, and model training disabled
+
+cleanup_defer:
+  - make no implementation changes
+  - document why observed worktree changes are deferred
+  - preserve existing score unless validation evidence is added later
+```
+
+The default recommendation is `auto_refactor_graph_evidence` because current uncommitted files already point at that lane and can be evaluated without granting new runtime authority.

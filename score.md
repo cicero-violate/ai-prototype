@@ -1,8 +1,8 @@
 # Canon Agent Score
 
-## Planning Scorecard - 2026-05-08
+## Planning Scorecard - 2026-05-08T12:05Z
 
-This turn is planning and scoring only. No implementation score increase is claimed.
+This turn is planning and scoring only. No implementation score increase is claimed. The score remains evidence-conservative because implementation changes are present but unvalidated by focused checks.
 
 ```text
 turn_type = planning_scoring
@@ -73,6 +73,8 @@ secondary_next_axis = Efficiency
 learning_boundary_status = retrieval-example storage-write-commit-intent remains the previous verified evidence-only handoff
 current_gap = observed auto-refactor relation/report work lacks focused validation and commit evidence
 next_action = validate and commit deterministic auto-refactor graph signals/reporting, or defer them and select the next evidence-only Learning boundary
+recommended_next_lane = auto_refactor_graph_evidence
+score_freeze_reason = planning turn only; no focused validation evidence added
 ```
 
 ## Evidence Required Before Any Score Increase
@@ -92,3 +94,16 @@ next_action = validate and commit deterministic auto-refactor graph signals/repo
 ## Non-Scored Items
 
 The current worktree may contain useful candidate implementation. It remains non-scored until an implementation turn supplies validation evidence and commits the implementation deliberately.
+
+## Scoring Rule For Next Turn
+
+Raise scores only if the next turn provides committed implementation evidence plus validation output. Suggested axis movement, if evidence is clean:
+
+```text
+Structure: +0.01 only for deterministic sorted/deduplicated relation evidence with advisory semantics
+Efficiency: +0.01 only if reporting reduces repeated manual inspection without adding runtime authority
+Correctness: +0.01 only if focused healthy and controlled-regression tests pass and prove non-authoritative behavior
+Learning: unchanged unless the selected lane is a verified evidence-only learning boundary
+```
+
+Do not raise any axis for uncommitted code, generated plans, unexecuted tests, live LLM output, or reports that can mutate runtime state.
