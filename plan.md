@@ -73,35 +73,23 @@ Completed implementation tasks:
    - `source_receipt_hash`
 6. Updated retained external CLI mode, validation command footprint, validation duration planning, and policy validation health fixtures for the new deterministic public modes and guarded-test count.
 
-## Current Planning Turn
+## Current Implementation Turn
 
-This turn is intentionally limited to planning and scoring. No source implementation changes are planned in this turn.
+Implemented this turn: deterministic **policy reuse performance-cost trend** evidence tying larger-batch avoided LLM calls to retained validation/runtime cost.
 
-Planning objective:
+The implemented slice keeps the kernel untouched and adds capability/validation-harness evidence only. It answers whether policy reuse can scale while retained validation/runtime cost remains within deterministic budget.
 
-```text
-Select the smallest next implementation slice that improves the weakest current axis without changing kernel authority.
-```
+## Completed Implementation Slice
 
-Current diagnosis:
+Added deterministic **policy reuse performance-cost trend** evidence that ties larger-batch avoided LLM calls to retained validation/runtime cost.
 
-- Weakest axis: **Performance**.
-- Secondary risk: **Simplicity**.
-- Adjacent risk: **Scalability**.
-
-Reason: larger-batch policy reuse evidence now exposes avoided LLM calls and validation health, but the repository still lacks one deterministic receipt that joins reuse-scale wins to retained validation/runtime cost. Consumers must infer cost safety by reading separate fixtures, which weakens performance scoring and increases audit friction.
-
-## Next Implementation Slice
-
-Add deterministic **policy reuse performance-cost trend** evidence that ties larger-batch avoided LLM calls to retained validation/runtime cost.
-
-The next slice should answer:
+The completed slice answers:
 
 ```text
 When policy reuse scales across retained batches, does avoided LLM work grow without increasing validation/runtime cost beyond budget?
 ```
 
-Implementation constraints:
+Completed constraints:
 
 1. Keep the kernel untouched.
 2. Use deterministic fixture or smoke evidence only.
@@ -111,27 +99,27 @@ Implementation constraints:
 6. Include healthy and controlled cost-regression cases.
 7. Preserve existing root validator and retained-fixture semantics unless a fixture must be extended for the new public evidence.
 
-Suggested receipt name:
+Implemented receipt:
 
 ```text
 PolicyReusePerformanceCostTrendReceipt
 ```
 
-Suggested constructors:
+Implemented constructors:
 
 ```text
 policy_reuse_performance_cost_trend_smoke_receipt()
 policy_reuse_performance_cost_trend_regression_smoke_receipt()
 ```
 
-Suggested root validator modes:
+Implemented root validator modes:
 
 ```text
 --policy-reuse-performance-cost-trend-smoke
 --policy-reuse-performance-cost-trend-regression-smoke
 ```
 
-Suggested exposed fields:
+Exposed fields:
 
 ```text
 batch_size
@@ -147,14 +135,23 @@ source_validation_duration_hash
 source_runtime_performance_hash
 ```
 
-Suggested deterministic semantics:
+Completed implementation tasks:
 
-- `cost_regression_flag = false` only when validation cost and runtime budget are both healthy.
-- `cost_regression_flag = true` when avoided LLM calls are visible but retained validation/runtime cost exceeds the deterministic budget.
-- Source hashes must bind the cost-trend receipt to the underlying scale trace and retained duration/performance evidence.
-- The receipt should make the healthy/regression distinction visible without requiring consumers to join unrelated receipts manually.
+1. Added `PolicyReusePerformanceCostTrendReceipt` with deterministic hash binding and validation.
+2. Exported the new receipt through judgment and crate public surfaces.
+3. Added deterministic healthy and controlled cost-regression smoke constructors.
+4. Added root validator compact modes for both performance-cost trend receipts.
+5. Extended validation harness contracts for healthy/regression semantic fields and source hashes.
+6. Updated external CLI mode fixture and retained guarded-test count from 146 to 150 after adding four harness tests.
 
-Suggested targeted validation for the next implementation turn:
+Implemented deterministic semantics:
+
+- `cost_regression_flag = false` only when the scale trace, validation duration, validation cost verdict, and runtime budget are healthy.
+- `cost_regression_flag = true` when avoided LLM calls are visible but retained validation/runtime cost evidence regresses.
+- Source hashes bind the cost-trend receipt to the underlying scale trace, validation duration planning trend, and runtime performance trend evidence.
+- The receipt makes the healthy/regression distinction visible without requiring consumers to join unrelated receipts manually.
+
+Targeted validation run this turn:
 
 ```text
 cargo fmt --check
@@ -163,17 +160,22 @@ RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test validation_harness
 RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test score_contract --test planning_contract --quiet
 ```
 
-## Validation Evidence For This Planning Turn
-
-No implementation validation was required for this planning-only turn.
-
-Planning/scoring file validation:
+## Validation Evidence For This Implementation Turn
 
 ```text
-files inspected = plan.md, score.md, repository file list, git status
-files changed   = plan.md, score.md
-source changes  = none planned
+cargo fmt --check
+RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --lib capability::judgment::record --quiet
+RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test validation_harness_contract --quiet
+RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test score_contract --test planning_contract --quiet
+
+cargo fmt --check: pass
+judgment::record unit tests: 16 passed, 0 failed
+validation_harness_contract: 140 passed, 0 failed
+planning_contract: 2 passed, 0 failed
+score_contract: 5 passed, 0 failed
 ```
+
+Full-suite validation was not run in this implementation turn.
 
 ## Evaluation Axes
 

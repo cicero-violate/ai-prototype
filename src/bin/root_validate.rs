@@ -230,6 +230,16 @@ const COMPACT_MODES: &[CompactMode] = &[
         run: policy_reuse_scale_trace_regression_smoke_mode,
     },
     CompactMode {
+        arg: "--policy-reuse-performance-cost-trend-smoke",
+        marker: "policy_reuse_performance_cost_trend_smoke",
+        run: policy_reuse_performance_cost_trend_smoke_mode,
+    },
+    CompactMode {
+        arg: "--policy-reuse-performance-cost-trend-regression-smoke",
+        marker: "policy_reuse_performance_cost_trend_regression_smoke",
+        run: policy_reuse_performance_cost_trend_regression_smoke_mode,
+    },
+    CompactMode {
         arg: "--root-validate-dispatch-catalog",
         marker: "canon_root_validate_dispatch_catalog_v1",
         run: root_validate_dispatch_catalog_mode,
@@ -580,6 +590,25 @@ fn policy_reuse_scale_trace_smoke_mode() -> Result<CompactModeOutcome, String> {
 fn policy_reuse_scale_trace_regression_smoke_mode() -> Result<CompactModeOutcome, String> {
     let receipt = validation_harness::policy_reuse_scale_trace_regression_smoke_receipt();
     let passed = receipt.is_valid() && receipt.regression_flag && !receipt.passed();
+    Ok(CompactModeOutcome::controlled_json(
+        receipt.to_json(),
+        passed,
+    ))
+}
+
+fn policy_reuse_performance_cost_trend_smoke_mode() -> Result<CompactModeOutcome, String> {
+    let receipt = validation_harness::policy_reuse_performance_cost_trend_smoke_receipt();
+    Ok(CompactModeOutcome::pass_json(
+        receipt.to_json(),
+        receipt.passed(),
+    ))
+}
+
+fn policy_reuse_performance_cost_trend_regression_smoke_mode() -> Result<CompactModeOutcome, String>
+{
+    let receipt =
+        validation_harness::policy_reuse_performance_cost_trend_regression_smoke_receipt();
+    let passed = receipt.is_valid() && receipt.cost_regression_flag && !receipt.passed();
     Ok(CompactModeOutcome::controlled_json(
         receipt.to_json(),
         passed,

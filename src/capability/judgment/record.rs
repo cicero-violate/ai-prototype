@@ -120,6 +120,24 @@ pub struct PolicyReuseScaleTraceReceipt {
     pub receipt_hash: u64,
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PolicyReusePerformanceCostTrendReceipt {
+    pub schema_version: u64,
+    pub record_type: &'static str,
+    pub batch_size: usize,
+    pub avoided_llm_calls_per_batch: usize,
+    pub reuse_rate_bps: u64,
+    pub validation_expected_count_guarded_tests: usize,
+    pub estimated_ms_per_guarded_test: u64,
+    pub runtime_budget_status: &'static str,
+    pub validation_cost_verdict: &'static str,
+    pub cost_regression_flag: bool,
+    pub source_scale_trace_hash: u64,
+    pub source_validation_duration_hash: u64,
+    pub source_runtime_performance_hash: u64,
+    pub receipt_hash: u64,
+}
+
 impl PolicyReuseLedgerSummaryReceipt {
     pub fn from_reuse_validation_counts(
         reuse: &PolicyReuseReceipt,
@@ -268,6 +286,86 @@ impl PolicyReuseScaleTraceReceipt {
 
     pub fn passed(&self) -> bool {
         self.is_valid() && !self.regression_flag
+    }
+}
+
+impl PolicyReusePerformanceCostTrendReceipt {
+    pub fn from_scale_and_cost_sources(
+        scale_trace: &PolicyReuseScaleTraceReceipt,
+        validation_expected_count_guarded_tests: usize,
+        estimated_ms_per_guarded_test: u64,
+        runtime_budget_status: &'static str,
+        validation_cost_verdict: &'static str,
+        source_validation_duration_hash: u64,
+        source_runtime_performance_hash: u64,
+    ) -> Self {
+        let cost_regression_flag = scale_trace.regression_flag
+            || !scale_trace.passed()
+            || runtime_budget_status != "pass"
+            || validation_cost_verdict != "pass";
+        let mut receipt = Self {
+            schema_version: 1,
+            record_type: "policy_reuse_performance_cost_trend",
+            batch_size: scale_trace.batch_size,
+            avoided_llm_calls_per_batch: scale_trace.avoided_llm_calls_per_batch,
+            reuse_rate_bps: scale_trace.reuse_rate_bps,
+            validation_expected_count_guarded_tests,
+            estimated_ms_per_guarded_test,
+            runtime_budget_status,
+            validation_cost_verdict,
+            cost_regression_flag,
+            source_scale_trace_hash: scale_trace.receipt_hash,
+            source_validation_duration_hash,
+            source_runtime_performance_hash,
+            receipt_hash: 0,
+        };
+        receipt.receipt_hash = policy_reuse_performance_cost_trend_receipt_hash(&receipt);
+        receipt
+    }
+
+    pub fn to_json(&self) -> String {
+        format!(
+            "{{\"schema_version\":{},\"record_type\":\"{}\",\"batch_size\":{},\"avoided_llm_calls_per_batch\":{},\"reuse_rate_bps\":{},\"validation_expected_count_guarded_tests\":{},\"estimated_ms_per_guarded_test\":{},\"runtime_budget_status\":\"{}\",\"validation_cost_verdict\":\"{}\",\"cost_regression_flag\":{},\"source_scale_trace_hash\":{},\"source_validation_duration_hash\":{},\"source_runtime_performance_hash\":{},\"receipt_hash\":{}}}",
+            self.schema_version,
+            self.record_type,
+            self.batch_size,
+            self.avoided_llm_calls_per_batch,
+            self.reuse_rate_bps,
+            self.validation_expected_count_guarded_tests,
+            self.estimated_ms_per_guarded_test,
+            self.runtime_budget_status,
+            self.validation_cost_verdict,
+            self.cost_regression_flag,
+            self.source_scale_trace_hash,
+            self.source_validation_duration_hash,
+            self.source_runtime_performance_hash,
+            self.receipt_hash,
+        )
+    }
+
+    pub fn is_valid(&self) -> bool {
+        self.schema_version == 1
+            && matches!(
+                self.record_type,
+                "policy_reuse_performance_cost_trend"
+                    | "policy_reuse_performance_cost_trend_smoke"
+                    | "policy_reuse_performance_cost_trend_regression_smoke"
+            )
+            && self.batch_size > 0
+            && self.avoided_llm_calls_per_batch <= self.batch_size
+            && self.reuse_rate_bps <= 10_000
+            && self.validation_expected_count_guarded_tests > 0
+            && matches!(self.runtime_budget_status, "pass" | "fail")
+            && matches!(self.validation_cost_verdict, "pass" | "fail")
+            && self.source_scale_trace_hash != 0
+            && self.source_validation_duration_hash != 0
+            && self.source_runtime_performance_hash != 0
+            && self.receipt_hash != 0
+            && self.receipt_hash == policy_reuse_performance_cost_trend_receipt_hash(self)
+    }
+
+    pub fn passed(&self) -> bool {
+        self.is_valid() && !self.cost_regression_flag
     }
 }
 
@@ -712,6 +810,56 @@ fn policy_reuse_scale_trace_receipt_hash(receipt: &PolicyReuseScaleTraceReceipt)
     h.max(1)
 }
 
+fn policy_reuse_performance_cost_trend_receipt_hash(
+    receipt: &PolicyReusePerformanceCostTrendReceipt,
+) -> u64 {
+    if receipt.schema_version == 0
+        || receipt.source_scale_trace_hash == 0
+        || receipt.source_validation_duration_hash == 0
+        || receipt.source_runtime_performance_hash == 0
+    {
+        return 0;
+    }
+    let record_type_code = match receipt.record_type {
+        "policy_reuse_performance_cost_trend"
+        | "policy_reuse_performance_cost_trend_smoke"
+        | "policy_reuse_performance_cost_trend_regression_smoke" => 1,
+        _ => 0,
+    };
+    let runtime_budget_code = match receipt.runtime_budget_status {
+        "pass" => 1,
+        "fail" => 2,
+        _ => 0,
+    };
+    let validation_cost_code = match receipt.validation_cost_verdict {
+        "pass" => 1,
+        "fail" => 2,
+        _ => 0,
+    };
+    if record_type_code == 0
+        || runtime_budget_code == 0
+        || validation_cost_code == 0
+        || receipt.reuse_rate_bps > 10_000
+    {
+        return 0;
+    }
+    let mut h = 0x504f_4c52_5045_5246u64;
+    h = mix(h, receipt.schema_version);
+    h = mix(h, record_type_code);
+    h = mix(h, receipt.batch_size as u64);
+    h = mix(h, receipt.avoided_llm_calls_per_batch as u64);
+    h = mix(h, receipt.reuse_rate_bps);
+    h = mix(h, receipt.validation_expected_count_guarded_tests as u64);
+    h = mix(h, receipt.estimated_ms_per_guarded_test);
+    h = mix(h, runtime_budget_code);
+    h = mix(h, validation_cost_code);
+    h = mix(h, u64::from(receipt.cost_regression_flag));
+    h = mix(h, receipt.source_scale_trace_hash);
+    h = mix(h, receipt.source_validation_duration_hash);
+    h = mix(h, receipt.source_runtime_performance_hash);
+    h.max(1)
+}
+
 fn policy_judgment_record_hash(record: &PolicyJudgmentRecord) -> u64 {
     if record.context_hash == 0
         || record.policy_version == 0
@@ -1032,5 +1180,59 @@ mod tests {
 
         trace.avoided_llm_calls_per_batch += 1;
         assert!(!trace.is_valid());
+    }
+
+    #[test]
+    fn policy_reuse_performance_cost_trend_binds_scale_and_cost_sources() {
+        let context = context();
+        let policy = promoted_policy();
+        let hit = PolicyJudgmentRecord::from_context_policy(&context, &policy);
+        let miss = PolicyJudgmentRecord::from_context_policy(&context, &PolicyStore::default());
+        let reuse = PolicyReuseReceipt::from_policy_judgments(&[
+            hit.clone(),
+            hit.clone(),
+            hit.clone(),
+            hit,
+            miss.clone(),
+            miss,
+        ]);
+        let scale = PolicyReuseScaleTraceReceipt::from_reuse_validation_counts(&reuse, 6, 6, 0);
+
+        let mut receipt = PolicyReusePerformanceCostTrendReceipt::from_scale_and_cost_sources(
+            &scale, 146, 20, "pass", "pass", 0x101, 0x202,
+        );
+
+        assert_eq!(receipt.record_type, "policy_reuse_performance_cost_trend");
+        assert_eq!(receipt.batch_size, 6);
+        assert_eq!(receipt.avoided_llm_calls_per_batch, 4);
+        assert_eq!(receipt.reuse_rate_bps, 6_666);
+        assert_eq!(receipt.validation_expected_count_guarded_tests, 146);
+        assert_eq!(receipt.estimated_ms_per_guarded_test, 20);
+        assert_eq!(receipt.runtime_budget_status, "pass");
+        assert_eq!(receipt.validation_cost_verdict, "pass");
+        assert!(!receipt.cost_regression_flag);
+        assert_eq!(receipt.source_scale_trace_hash, scale.receipt_hash);
+        assert!(receipt.passed());
+
+        receipt.source_runtime_performance_hash ^= 1;
+        assert!(!receipt.is_valid());
+    }
+
+    #[test]
+    fn policy_reuse_performance_cost_trend_flags_cost_regressions() {
+        let context = context();
+        let policy = promoted_policy();
+        let hit = PolicyJudgmentRecord::from_context_policy(&context, &policy);
+        let miss = PolicyJudgmentRecord::from_context_policy(&context, &PolicyStore::default());
+        let reuse = PolicyReuseReceipt::from_policy_judgments(&[hit.clone(), hit, miss]);
+        let scale = PolicyReuseScaleTraceReceipt::from_reuse_validation_counts(&reuse, 3, 3, 0);
+
+        let receipt = PolicyReusePerformanceCostTrendReceipt::from_scale_and_cost_sources(
+            &scale, 146, 22, "pass", "fail", 0x303, 0x404,
+        );
+
+        assert!(receipt.cost_regression_flag);
+        assert!(receipt.is_valid());
+        assert!(!receipt.passed());
     }
 }
