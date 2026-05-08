@@ -1,5 +1,5 @@
 schema=canon_external_agent_cli_modes_v1
-mode_count=99
+mode_count=101
 root_validate --validation-footprint => canon_validation_footprint_v1
 root_validate --validation-command-footprint-planning => canon_validation_command_footprint_planning_v1
 root_validate --validation-command-footprint-target-met-smoke => validation_command_footprint_target_met_smoke
@@ -99,3 +99,5 @@ root_validate --policy-reuse-evidence-retrieval-corpus-readiness-smoke => policy
 root_validate --policy-reuse-evidence-retrieval-corpus-readiness-regression-smoke => policy_reuse_evidence_retrieval_corpus_readiness_regression_smoke
 root_validate --policy-reuse-evidence-retrieval-corpus-admission-smoke => policy_reuse_evidence_retrieval_corpus_admission_smoke
 root_validate --policy-reuse-evidence-retrieval-corpus-admission-regression-smoke => policy_reuse_evidence_retrieval_corpus_admission_regression_smoke
+root_validate --policy-reuse-evidence-retrieval-use-approval-smoke => policy_reuse_evidence_retrieval_use_approval_smoke
+root_validate --policy-reuse-evidence-retrieval-use-approval-regression-smoke => policy_reuse_evidence_retrieval_use_approval_regression_smoke
