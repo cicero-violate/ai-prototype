@@ -17,7 +17,7 @@ pub const FAST_TEST_STEP: &str = "fast_score_contract_tests";
 pub const LIB_UNIT_STEP: &str = "lib_unit_contract_tests";
 pub const API_TRANSPORT_STEP: &str = "api_transport_contract_tests";
 pub const VALIDATION_HARNESS_STEP: &str = "validation_harness_contract_tests";
-pub const VALIDATION_HARNESS_EXPECTED_TESTS: usize = 232;
+pub const VALIDATION_HARNESS_EXPECTED_TESTS: usize = 236;
 pub const PLANNING_CONTRACT_STEP: &str = "planning_contract_tests";
 pub const GRAPH_MUTATION_CLI_CONTRACT_STEP: &str = "graph_mutation_cli_contract_tests";
 pub const GRAPH_MUTATION_CLI_CONTRACT_EXPECTED_TESTS: usize = 10;
@@ -159,6 +159,10 @@ pub const POLICY_REUSE_EVIDENCE_RETRIEVAL_EXAMPLE_ADMISSION_SMOKE_STEP: &str =
     "policy_reuse_evidence_retrieval_example_admission_smoke";
 pub const POLICY_REUSE_EVIDENCE_RETRIEVAL_EXAMPLE_ADMISSION_REGRESSION_SMOKE_STEP: &str =
     "policy_reuse_evidence_retrieval_example_admission_regression_smoke";
+pub const POLICY_REUSE_EVIDENCE_RETRIEVAL_EXAMPLE_INDEX_SMOKE_STEP: &str =
+    "policy_reuse_evidence_retrieval_example_index_smoke";
+pub const POLICY_REUSE_EVIDENCE_RETRIEVAL_EXAMPLE_INDEX_REGRESSION_SMOKE_STEP: &str =
+    "policy_reuse_evidence_retrieval_example_index_regression_smoke";
 pub const POLICY_VALIDATION_HEALTH_SMOKE_STEP: &str = "policy_validation_health_smoke";
 pub const POLICY_VALIDATION_HEALTH_TREND_SMOKE_STEP: &str = "policy_validation_health_trend_smoke";
 pub const POLICY_ORCHESTRATION_CAPACITY_SMOKE_STEP: &str = "policy_orchestration_capacity_smoke";
@@ -2901,6 +2905,97 @@ impl PolicyReuseEvidenceRetrievalExampleAdmissionReceipt {
             self.admission_status,
             self.not_admitted_reason,
             self.admission_hash,
+            self.receipt_hash,
+        )
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PolicyReuseEvidenceRetrievalExampleIndexReceipt {
+    pub schema: &'static str,
+    pub record_type: &'static str,
+    pub retrieval_example_index_version: u64,
+    pub source_retrieval_example_admission_hash: u64,
+    pub source_learning_data_admission_hash: u64,
+    pub retrieval_example_admitted: bool,
+    pub learning_data_admitted: bool,
+    pub retrieval_write_performed: bool,
+    pub policy_promotion_performed: bool,
+    pub student_training_performed: bool,
+    pub indexed_policy_reuse_examples: usize,
+    pub indexed_llm_fallback_examples: usize,
+    pub retrieval_example_indexed: bool,
+    pub index_status: &'static str,
+    pub not_indexed_reason: &'static str,
+    pub index_hash: u64,
+    pub receipt_hash: u64,
+}
+
+impl PolicyReuseEvidenceRetrievalExampleIndexReceipt {
+    pub fn passed(&self) -> bool {
+        self.is_valid() && self.retrieval_example_indexed && self.index_status == "indexed"
+    }
+
+    pub fn is_valid(&self) -> bool {
+        self.schema == "canon_policy_reuse_evidence_retrieval_example_index_v1"
+            && matches!(
+                self.record_type,
+                "policy_reuse_evidence_retrieval_example_index"
+                    | POLICY_REUSE_EVIDENCE_RETRIEVAL_EXAMPLE_INDEX_SMOKE_STEP
+                    | POLICY_REUSE_EVIDENCE_RETRIEVAL_EXAMPLE_INDEX_REGRESSION_SMOKE_STEP
+            )
+            && self.retrieval_example_index_version == 1
+            && self.source_retrieval_example_admission_hash != 0
+            && self.source_learning_data_admission_hash != 0
+            && !self.retrieval_write_performed
+            && !self.policy_promotion_performed
+            && !self.student_training_performed
+            && self.indexed_policy_reuse_examples > 0
+            && matches!(self.index_status, "indexed" | "not_indexed")
+            && matches!(
+                self.not_indexed_reason,
+                "none"
+                    | "example_not_admitted"
+                    | "data_not_admitted"
+                    | "retrieval_write_attempted"
+                    | "policy_promotion_attempted"
+                    | "student_training_attempted"
+                    | "no_policy_reuse_examples"
+            )
+            && self.retrieval_example_indexed
+                == (self.retrieval_example_admitted
+                    && self.learning_data_admitted
+                    && !self.retrieval_write_performed
+                    && !self.policy_promotion_performed
+                    && !self.student_training_performed
+                    && self.indexed_policy_reuse_examples > 0
+                    && self.not_indexed_reason == "none")
+            && (self.index_status == "indexed") == self.retrieval_example_indexed
+            && self.index_hash != 0
+            && self.receipt_hash != 0
+            && self.index_hash == policy_reuse_evidence_retrieval_example_index_hash(self)
+            && self.receipt_hash == policy_reuse_evidence_retrieval_example_index_receipt_hash(self)
+    }
+
+    pub fn to_json(&self) -> String {
+        format!(
+            r#"{{"schema":"{}","record_type":"{}","retrieval_example_index_version":{},"source_retrieval_example_admission_hash":{},"source_learning_data_admission_hash":{},"retrieval_example_admitted":{},"learning_data_admitted":{},"retrieval_write_performed":{},"policy_promotion_performed":{},"student_training_performed":{},"indexed_policy_reuse_examples":{},"indexed_llm_fallback_examples":{},"retrieval_example_indexed":{},"index_status":"{}","not_indexed_reason":"{}","index_hash":{},"receipt_hash":{}}}"#,
+            self.schema,
+            self.record_type,
+            self.retrieval_example_index_version,
+            self.source_retrieval_example_admission_hash,
+            self.source_learning_data_admission_hash,
+            self.retrieval_example_admitted,
+            self.learning_data_admitted,
+            self.retrieval_write_performed,
+            self.policy_promotion_performed,
+            self.student_training_performed,
+            self.indexed_policy_reuse_examples,
+            self.indexed_llm_fallback_examples,
+            self.retrieval_example_indexed,
+            self.index_status,
+            self.not_indexed_reason,
+            self.index_hash,
             self.receipt_hash,
         )
     }
@@ -6128,6 +6223,96 @@ fn finalize_policy_reuse_evidence_retrieval_example_admission(
     receipt.receipt_hash = policy_reuse_evidence_retrieval_example_admission_receipt_hash(receipt);
 }
 
+pub fn policy_reuse_evidence_retrieval_example_index_smoke_receipt(
+) -> PolicyReuseEvidenceRetrievalExampleIndexReceipt {
+    let example_admission = policy_reuse_evidence_retrieval_example_admission_smoke_receipt();
+    let data_admission = policy_reuse_evidence_learning_data_admission_smoke_receipt();
+    let mut receipt = policy_reuse_evidence_retrieval_example_index_from_sources(
+        POLICY_REUSE_EVIDENCE_RETRIEVAL_EXAMPLE_INDEX_SMOKE_STEP,
+        &example_admission,
+        &data_admission,
+        false,
+        false,
+        false,
+        "none",
+    );
+    finalize_policy_reuse_evidence_retrieval_example_index(&mut receipt);
+    receipt
+}
+
+pub fn policy_reuse_evidence_retrieval_example_index_regression_smoke_receipt(
+) -> PolicyReuseEvidenceRetrievalExampleIndexReceipt {
+    let example_admission =
+        policy_reuse_evidence_retrieval_example_admission_regression_smoke_receipt();
+    let data_admission = policy_reuse_evidence_learning_data_admission_regression_smoke_receipt();
+    let mut receipt = policy_reuse_evidence_retrieval_example_index_from_sources(
+        POLICY_REUSE_EVIDENCE_RETRIEVAL_EXAMPLE_INDEX_REGRESSION_SMOKE_STEP,
+        &example_admission,
+        &data_admission,
+        false,
+        false,
+        false,
+        "example_not_admitted",
+    );
+    finalize_policy_reuse_evidence_retrieval_example_index(&mut receipt);
+    receipt
+}
+
+fn policy_reuse_evidence_retrieval_example_index_from_sources(
+    record_type: &'static str,
+    example_admission: &PolicyReuseEvidenceRetrievalExampleAdmissionReceipt,
+    data_admission: &PolicyReuseEvidenceLearningDataAdmissionReceipt,
+    retrieval_write_performed: bool,
+    policy_promotion_performed: bool,
+    student_training_performed: bool,
+    not_indexed_reason: &'static str,
+) -> PolicyReuseEvidenceRetrievalExampleIndexReceipt {
+    let retrieval_example_admitted = example_admission.passed();
+    let learning_data_admitted = data_admission.passed();
+    let indexed_policy_reuse_examples = example_admission.example_policy_reuse_cases;
+    let indexed_llm_fallback_examples = example_admission.example_llm_fallback_cases;
+    let retrieval_example_indexed = retrieval_example_admitted
+        && learning_data_admitted
+        && !retrieval_write_performed
+        && !policy_promotion_performed
+        && !student_training_performed
+        && indexed_policy_reuse_examples > 0
+        && not_indexed_reason == "none";
+    let index_status = if retrieval_example_indexed {
+        "indexed"
+    } else {
+        "not_indexed"
+    };
+    let mut receipt = PolicyReuseEvidenceRetrievalExampleIndexReceipt {
+        schema: "canon_policy_reuse_evidence_retrieval_example_index_v1",
+        record_type,
+        retrieval_example_index_version: 1,
+        source_retrieval_example_admission_hash: example_admission.receipt_hash,
+        source_learning_data_admission_hash: data_admission.receipt_hash,
+        retrieval_example_admitted,
+        learning_data_admitted,
+        retrieval_write_performed,
+        policy_promotion_performed,
+        student_training_performed,
+        indexed_policy_reuse_examples,
+        indexed_llm_fallback_examples,
+        retrieval_example_indexed,
+        index_status,
+        not_indexed_reason,
+        index_hash: 0,
+        receipt_hash: 0,
+    };
+    finalize_policy_reuse_evidence_retrieval_example_index(&mut receipt);
+    receipt
+}
+
+fn finalize_policy_reuse_evidence_retrieval_example_index(
+    receipt: &mut PolicyReuseEvidenceRetrievalExampleIndexReceipt,
+) {
+    receipt.index_hash = policy_reuse_evidence_retrieval_example_index_hash(receipt);
+    receipt.receipt_hash = policy_reuse_evidence_retrieval_example_index_receipt_hash(receipt);
+}
+
 #[allow(clippy::too_many_arguments)]
 fn policy_reuse_evidence_surface_index_from_sources(
     record_type: &'static str,
@@ -7166,6 +7351,62 @@ fn policy_reuse_evidence_retrieval_example_admission_receipt_hash(
         return 0;
     }
     (admission_hash ^ 0x504f_4c52_5245_4152u64).max(1)
+}
+
+fn policy_reuse_evidence_retrieval_example_index_hash(
+    receipt: &PolicyReuseEvidenceRetrievalExampleIndexReceipt,
+) -> u64 {
+    if receipt.retrieval_example_index_version == 0
+        || receipt.source_retrieval_example_admission_hash == 0
+        || receipt.source_learning_data_admission_hash == 0
+    {
+        return 0;
+    }
+    let index_status_code = match receipt.index_status {
+        "indexed" => 1,
+        "not_indexed" => 2,
+        _ => 0,
+    };
+    let not_indexed_reason_code = match receipt.not_indexed_reason {
+        "none" => 1,
+        "example_not_admitted" => 2,
+        "data_not_admitted" => 3,
+        "retrieval_write_attempted" => 4,
+        "policy_promotion_attempted" => 5,
+        "student_training_attempted" => 6,
+        "no_policy_reuse_examples" => 7,
+        _ => 0,
+    };
+    if index_status_code == 0 || not_indexed_reason_code == 0 {
+        return 0;
+    }
+    let mut h = 0x504f_4c52_5249_5848u64;
+    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.schema.as_bytes());
+    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.record_type.as_bytes());
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.retrieval_example_index_version;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_retrieval_example_admission_hash;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_learning_data_admission_hash;
+    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_example_admitted);
+    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.learning_data_admitted);
+    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_write_performed);
+    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.policy_promotion_performed);
+    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.student_training_performed);
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.indexed_policy_reuse_examples as u64;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.indexed_llm_fallback_examples as u64;
+    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_example_indexed);
+    h = h.wrapping_mul(0x100000001b3) ^ index_status_code;
+    h = h.wrapping_mul(0x100000001b3) ^ not_indexed_reason_code;
+    h.max(1)
+}
+
+fn policy_reuse_evidence_retrieval_example_index_receipt_hash(
+    receipt: &PolicyReuseEvidenceRetrievalExampleIndexReceipt,
+) -> u64 {
+    let index_hash = policy_reuse_evidence_retrieval_example_index_hash(receipt);
+    if index_hash == 0 || receipt.index_hash != index_hash {
+        return 0;
+    }
+    (index_hash ^ 0x504f_4c52_5249_5852u64).max(1)
 }
 
 fn policy_reuse_evidence_summary_hash(receipt: &PolicyReuseEvidenceSummaryReceipt) -> u64 {
