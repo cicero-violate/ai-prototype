@@ -29,8 +29,8 @@ use ai::validation_harness::{
     VALIDATION_FOOTPRINT_STEP, VALIDATION_HARNESS_EXPECTED_TESTS, VALIDATION_HARNESS_STEP,
 };
 
-const EXPECTED_ROOT_VALIDATE_COMPACT_MODE_COUNT: usize = 62;
-const EXPECTED_EXTERNAL_AGENT_CLI_MODE_COUNT: usize = 67;
+const EXPECTED_ROOT_VALIDATE_COMPACT_MODE_COUNT: usize = 66;
+const EXPECTED_EXTERNAL_AGENT_CLI_MODE_COUNT: usize = 69;
 
 fn expected_guarded_test_count() -> usize {
     VALIDATION_HARNESS_EXPECTED_TESTS + GRAPH_MUTATION_CLI_CONTRACT_EXPECTED_TESTS
@@ -74,7 +74,7 @@ fn root_validation_runs_check_before_contract_suites() {
         steps[4].expected_test_count,
         Some(VALIDATION_HARNESS_EXPECTED_TESTS)
     );
-    assert_eq!(VALIDATION_HARNESS_EXPECTED_TESTS, 180);
+    assert_eq!(VALIDATION_HARNESS_EXPECTED_TESTS, 184);
     assert!(steps[5].args.contains(&"planning_contract"));
     assert!(steps[6].args.contains(&"graph_mutation_cli_contract"));
 }
@@ -588,6 +588,14 @@ fn external_agent_cli_modes_fixture_documents_all_public_modes() {
     assert!(catalog.contains(
         "root_validate --policy-reuse-evidence-manifest-regression-smoke",
         "policy_reuse_evidence_manifest_regression_smoke",
+    ));
+    assert!(catalog.contains(
+        "root_validate --policy-reuse-evidence-validation-budget-smoke",
+        "policy_reuse_evidence_validation_budget_smoke",
+    ));
+    assert!(catalog.contains(
+        "root_validate --policy-reuse-evidence-validation-budget-regression-smoke",
+        "policy_reuse_evidence_validation_budget_regression_smoke",
     ));
     assert!(catalog.contains(
         "root_validate --root-validate-dispatch-catalog",
@@ -3919,7 +3927,7 @@ fn policy_reuse_performance_cost_trend_smoke_exposes_cost_safe_reuse() {
     assert_eq!(receipt.batch_size, 6);
     assert_eq!(receipt.avoided_llm_calls_per_batch, 4);
     assert_eq!(receipt.reuse_rate_bps, 6_666);
-    assert_eq!(receipt.validation_expected_count_guarded_tests, 190);
+    assert_eq!(receipt.validation_expected_count_guarded_tests, 194);
     assert_eq!(receipt.estimated_ms_per_guarded_test, 15);
     assert_eq!(receipt.runtime_budget_status, "pass");
     assert_eq!(receipt.validation_cost_verdict, "pass");
@@ -3944,7 +3952,7 @@ fn policy_reuse_performance_cost_trend_regression_smoke_exposes_cost_failure() {
     assert_eq!(receipt.batch_size, 6);
     assert_eq!(receipt.avoided_llm_calls_per_batch, 4);
     assert_eq!(receipt.reuse_rate_bps, 6_666);
-    assert_eq!(receipt.validation_expected_count_guarded_tests, 190);
+    assert_eq!(receipt.validation_expected_count_guarded_tests, 194);
     assert_eq!(receipt.estimated_ms_per_guarded_test, 17);
     assert_eq!(receipt.runtime_budget_status, "pass");
     assert_eq!(receipt.validation_cost_verdict, "fail");
@@ -3962,7 +3970,7 @@ fn root_validate_policy_reuse_performance_cost_trend_smoke_mode_is_executable_co
             "\"batch_size\":6",
             "\"avoided_llm_calls_per_batch\":4",
             "\"reuse_rate_bps\":6666",
-            "\"validation_expected_count_guarded_tests\":190",
+            "\"validation_expected_count_guarded_tests\":194",
             "\"estimated_ms_per_guarded_test\":15",
             "\"runtime_budget_status\":\"pass\"",
             "\"validation_cost_verdict\":\"pass\"",
@@ -3985,7 +3993,7 @@ fn root_validate_policy_reuse_performance_cost_trend_regression_smoke_mode_is_ex
             "\"batch_size\":6",
             "\"avoided_llm_calls_per_batch\":4",
             "\"reuse_rate_bps\":6666",
-            "\"validation_expected_count_guarded_tests\":190",
+            "\"validation_expected_count_guarded_tests\":194",
             "\"estimated_ms_per_guarded_test\":17",
             "\"runtime_budget_status\":\"pass\"",
             "\"validation_cost_verdict\":\"fail\"",
@@ -4734,7 +4742,7 @@ fn root_validate_policy_reuse_evidence_quickcheck_smoke_mode_is_executable_contr
             "\"record_type\":\"policy_reuse_evidence_quickcheck_smoke\"",
             "\"quickcheck_version\":1",
             "\"source_bundle_hash\":",
-            "\"validation_harness_expected_tests\":180",
+            "\"validation_harness_expected_tests\":184",
             "\"required_command_count\":4",
             "\"observed_command_count\":4",
             "\"minimum_command_set_hash\":",
@@ -4756,7 +4764,7 @@ fn root_validate_policy_reuse_evidence_quickcheck_regression_smoke_mode_is_execu
             "\"schema\":\"canon_policy_reuse_evidence_quickcheck_v1\"",
             "\"record_type\":\"policy_reuse_evidence_quickcheck_regression_smoke\"",
             "\"quickcheck_version\":1",
-            "\"validation_harness_expected_tests\":180",
+            "\"validation_harness_expected_tests\":184",
             "\"required_command_count\":4",
             "\"observed_command_count\":3",
             "\"bundle_complete\":true",
@@ -5042,6 +5050,118 @@ fn root_validate_policy_reuse_evidence_manifest_regression_smoke_mode_is_executa
             "\"manifest_complete\":false",
             "\"missing_surface\":\"required_summary_modes\"",
             "\"manifest_hash\":",
+            "\"receipt_hash\":",
+        ],
+    );
+}
+
+#[test]
+fn policy_reuse_evidence_validation_budget_smoke_summarizes_minimum_target() {
+    let receipt = ai::validation_harness::policy_reuse_evidence_validation_budget_smoke_receipt();
+    let manifest = ai::validation_harness::policy_reuse_evidence_manifest_smoke_receipt();
+    let summary = ai::validation_harness::policy_reuse_evidence_summary_smoke_receipt();
+
+    assert_eq!(
+        receipt.schema,
+        "canon_policy_reuse_evidence_validation_budget_v1"
+    );
+    assert_eq!(
+        receipt.record_type,
+        ai::validation_harness::POLICY_REUSE_EVIDENCE_VALIDATION_BUDGET_SMOKE_STEP
+    );
+    assert_eq!(receipt.budget_version, 1);
+    assert_eq!(receipt.source_manifest_hash, manifest.receipt_hash);
+    assert_eq!(receipt.source_summary_hash, summary.receipt_hash);
+    assert_eq!(receipt.targeted_command_count, 2);
+    assert_eq!(receipt.targeted_test_count, 4);
+    assert_eq!(receipt.max_targeted_test_count, 4);
+    assert_eq!(
+        receipt.full_harness_test_count,
+        ai::validation_harness::VALIDATION_HARNESS_EXPECTED_TESTS
+    );
+    assert_eq!(
+        receipt.avoided_full_harness_tests,
+        ai::validation_harness::VALIDATION_HARNESS_EXPECTED_TESTS - 4
+    );
+    assert!(receipt.manifest_complete);
+    assert!(receipt.budget_within_limit);
+    assert_eq!(receipt.budget_status, "pass");
+    assert_eq!(receipt.regression_reason, "none");
+    assert_ne!(receipt.budget_hash, 0);
+    assert_ne!(receipt.receipt_hash, 0);
+    assert!(receipt.is_valid());
+    assert!(receipt.passed());
+}
+
+#[test]
+fn policy_reuse_evidence_validation_budget_regression_smoke_is_valid_failing_evidence() {
+    let receipt =
+        ai::validation_harness::policy_reuse_evidence_validation_budget_regression_smoke_receipt();
+    let manifest = ai::validation_harness::policy_reuse_evidence_manifest_smoke_receipt();
+    let summary = ai::validation_harness::policy_reuse_evidence_summary_smoke_receipt();
+
+    assert_eq!(
+        receipt.record_type,
+        ai::validation_harness::POLICY_REUSE_EVIDENCE_VALIDATION_BUDGET_REGRESSION_SMOKE_STEP
+    );
+    assert_eq!(receipt.source_manifest_hash, manifest.receipt_hash);
+    assert_eq!(receipt.source_summary_hash, summary.receipt_hash);
+    assert_eq!(receipt.targeted_command_count, 2);
+    assert_eq!(receipt.targeted_test_count, 12);
+    assert_eq!(receipt.max_targeted_test_count, 4);
+    assert_eq!(receipt.avoided_full_harness_tests, 172);
+    assert!(receipt.manifest_complete);
+    assert!(!receipt.budget_within_limit);
+    assert_eq!(receipt.budget_status, "fail");
+    assert_eq!(receipt.regression_reason, "budget_exceeded");
+    assert!(receipt.is_valid());
+    assert!(!receipt.passed());
+}
+
+#[test]
+fn root_validate_policy_reuse_evidence_validation_budget_smoke_mode_is_executable_contract() {
+    assert_root_validate_catalog_compact_mode_contract(
+        "--policy-reuse-evidence-validation-budget-smoke",
+        &[
+            "\"schema\":\"canon_policy_reuse_evidence_validation_budget_v1\"",
+            "\"record_type\":\"policy_reuse_evidence_validation_budget_smoke\"",
+            "\"budget_version\":1",
+            "\"source_manifest_hash\":",
+            "\"source_summary_hash\":",
+            "\"targeted_command_count\":2",
+            "\"targeted_test_count\":4",
+            "\"max_targeted_test_count\":4",
+            "\"full_harness_test_count\":184",
+            "\"avoided_full_harness_tests\":180",
+            "\"manifest_complete\":true",
+            "\"budget_within_limit\":true",
+            "\"budget_status\":\"pass\"",
+            "\"regression_reason\":\"none\"",
+            "\"budget_hash\":",
+            "\"receipt_hash\":",
+        ],
+    );
+}
+
+#[test]
+fn root_validate_policy_reuse_evidence_validation_budget_regression_smoke_mode_is_executable_contract(
+) {
+    assert_root_validate_catalog_compact_mode_contract(
+        "--policy-reuse-evidence-validation-budget-regression-smoke",
+        &[
+            "\"schema\":\"canon_policy_reuse_evidence_validation_budget_v1\"",
+            "\"record_type\":\"policy_reuse_evidence_validation_budget_regression_smoke\"",
+            "\"budget_version\":1",
+            "\"targeted_command_count\":2",
+            "\"targeted_test_count\":12",
+            "\"max_targeted_test_count\":4",
+            "\"full_harness_test_count\":184",
+            "\"avoided_full_harness_tests\":172",
+            "\"manifest_complete\":true",
+            "\"budget_within_limit\":false",
+            "\"budget_status\":\"fail\"",
+            "\"regression_reason\":\"budget_exceeded\"",
+            "\"budget_hash\":",
             "\"receipt_hash\":",
         ],
     );

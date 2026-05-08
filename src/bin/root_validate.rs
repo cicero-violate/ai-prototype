@@ -340,6 +340,26 @@ const COMPACT_MODES: &[CompactMode] = &[
         run: policy_reuse_evidence_manifest_regression_smoke_mode,
     },
     CompactMode {
+        arg: "--policy-reuse-evidence-validation-budget-smoke",
+        marker: "policy_reuse_evidence_validation_budget_smoke",
+        run: policy_reuse_evidence_validation_budget_smoke_mode,
+    },
+    CompactMode {
+        arg: "--policy-reuse-evidence-validation-budget-regression-smoke",
+        marker: "policy_reuse_evidence_validation_budget_regression_smoke",
+        run: policy_reuse_evidence_validation_budget_regression_smoke_mode,
+    },
+    CompactMode {
+        arg: "--policy-reuse-evidence-validation-budget-smoke",
+        marker: "policy_reuse_evidence_validation_budget_smoke",
+        run: policy_reuse_evidence_validation_budget_smoke_mode,
+    },
+    CompactMode {
+        arg: "--policy-reuse-evidence-validation-budget-regression-smoke",
+        marker: "policy_reuse_evidence_validation_budget_regression_smoke",
+        run: policy_reuse_evidence_validation_budget_regression_smoke_mode,
+    },
+    CompactMode {
         arg: "--root-validate-dispatch-catalog",
         marker: "canon_root_validate_dispatch_catalog_v1",
         run: root_validate_dispatch_catalog_mode,
@@ -911,6 +931,29 @@ fn policy_reuse_evidence_manifest_regression_smoke_mode() -> Result<CompactModeO
     let passed = receipt.is_valid()
         && !receipt.manifest_complete
         && receipt.missing_surface == "required_summary_modes"
+        && !receipt.passed();
+    Ok(CompactModeOutcome::controlled_json(
+        receipt.to_json(),
+        passed,
+    ))
+}
+
+fn policy_reuse_evidence_validation_budget_smoke_mode() -> Result<CompactModeOutcome, String> {
+    let receipt = validation_harness::policy_reuse_evidence_validation_budget_smoke_receipt();
+    Ok(CompactModeOutcome::pass_json(
+        receipt.to_json(),
+        receipt.passed(),
+    ))
+}
+
+fn policy_reuse_evidence_validation_budget_regression_smoke_mode(
+) -> Result<CompactModeOutcome, String> {
+    let receipt =
+        validation_harness::policy_reuse_evidence_validation_budget_regression_smoke_receipt();
+    let passed = receipt.is_valid()
+        && !receipt.budget_within_limit
+        && receipt.budget_status == "fail"
+        && receipt.regression_reason == "budget_exceeded"
         && !receipt.passed();
     Ok(CompactModeOutcome::controlled_json(
         receipt.to_json(),

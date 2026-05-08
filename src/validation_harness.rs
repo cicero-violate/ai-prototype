@@ -17,7 +17,7 @@ pub const FAST_TEST_STEP: &str = "fast_score_contract_tests";
 pub const LIB_UNIT_STEP: &str = "lib_unit_contract_tests";
 pub const API_TRANSPORT_STEP: &str = "api_transport_contract_tests";
 pub const VALIDATION_HARNESS_STEP: &str = "validation_harness_contract_tests";
-pub const VALIDATION_HARNESS_EXPECTED_TESTS: usize = 180;
+pub const VALIDATION_HARNESS_EXPECTED_TESTS: usize = 184;
 pub const PLANNING_CONTRACT_STEP: &str = "planning_contract_tests";
 pub const GRAPH_MUTATION_CLI_CONTRACT_STEP: &str = "graph_mutation_cli_contract_tests";
 pub const GRAPH_MUTATION_CLI_CONTRACT_EXPECTED_TESTS: usize = 10;
@@ -107,6 +107,10 @@ pub const POLICY_REUSE_EVIDENCE_SUMMARY_REGRESSION_SMOKE_STEP: &str =
 pub const POLICY_REUSE_EVIDENCE_MANIFEST_SMOKE_STEP: &str = "policy_reuse_evidence_manifest_smoke";
 pub const POLICY_REUSE_EVIDENCE_MANIFEST_REGRESSION_SMOKE_STEP: &str =
     "policy_reuse_evidence_manifest_regression_smoke";
+pub const POLICY_REUSE_EVIDENCE_VALIDATION_BUDGET_SMOKE_STEP: &str =
+    "policy_reuse_evidence_validation_budget_smoke";
+pub const POLICY_REUSE_EVIDENCE_VALIDATION_BUDGET_REGRESSION_SMOKE_STEP: &str =
+    "policy_reuse_evidence_validation_budget_regression_smoke";
 pub const POLICY_VALIDATION_HEALTH_SMOKE_STEP: &str = "policy_validation_health_smoke";
 pub const POLICY_VALIDATION_HEALTH_TREND_SMOKE_STEP: &str = "policy_validation_health_trend_smoke";
 pub const POLICY_ORCHESTRATION_CAPACITY_SMOKE_STEP: &str = "policy_orchestration_capacity_smoke";
@@ -1685,6 +1689,90 @@ impl PolicyReuseEvidenceManifestReceipt {
             self.manifest_complete,
             self.missing_surface,
             self.manifest_hash,
+            self.receipt_hash,
+        )
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PolicyReuseEvidenceValidationBudgetReceipt {
+    pub schema: &'static str,
+    pub record_type: &'static str,
+    pub budget_version: u64,
+    pub source_manifest_hash: u64,
+    pub source_summary_hash: u64,
+    pub targeted_command_count: usize,
+    pub targeted_test_count: usize,
+    pub max_targeted_test_count: usize,
+    pub full_harness_test_count: usize,
+    pub avoided_full_harness_tests: usize,
+    pub manifest_complete: bool,
+    pub budget_within_limit: bool,
+    pub budget_status: &'static str,
+    pub regression_reason: &'static str,
+    pub budget_hash: u64,
+    pub receipt_hash: u64,
+}
+
+impl PolicyReuseEvidenceValidationBudgetReceipt {
+    pub fn passed(&self) -> bool {
+        self.is_valid() && self.budget_status == "pass"
+    }
+
+    pub fn is_valid(&self) -> bool {
+        self.schema == "canon_policy_reuse_evidence_validation_budget_v1"
+            && matches!(
+                self.record_type,
+                "policy_reuse_evidence_validation_budget"
+                    | POLICY_REUSE_EVIDENCE_VALIDATION_BUDGET_SMOKE_STEP
+                    | POLICY_REUSE_EVIDENCE_VALIDATION_BUDGET_REGRESSION_SMOKE_STEP
+            )
+            && self.budget_version == 1
+            && self.source_manifest_hash != 0
+            && self.source_summary_hash != 0
+            && self.targeted_command_count == 2
+            && self.targeted_test_count > 0
+            && self.max_targeted_test_count > 0
+            && self.full_harness_test_count == VALIDATION_HARNESS_EXPECTED_TESTS
+            && self.avoided_full_harness_tests
+                == self
+                    .full_harness_test_count
+                    .saturating_sub(self.targeted_test_count)
+            && matches!(self.budget_status, "pass" | "fail")
+            && matches!(
+                self.regression_reason,
+                "none" | "budget_exceeded" | "manifest_incomplete"
+            )
+            && self.budget_within_limit
+                == (self.targeted_test_count <= self.max_targeted_test_count)
+            && (self.budget_status == "pass")
+                == (self.manifest_complete
+                    && self.budget_within_limit
+                    && self.regression_reason == "none")
+            && self.budget_hash != 0
+            && self.receipt_hash != 0
+            && self.budget_hash == policy_reuse_evidence_validation_budget_hash(self)
+            && self.receipt_hash == policy_reuse_evidence_validation_budget_receipt_hash(self)
+    }
+
+    pub fn to_json(&self) -> String {
+        format!(
+            "{{\"schema\":\"{}\",\"record_type\":\"{}\",\"budget_version\":{},\"source_manifest_hash\":{},\"source_summary_hash\":{},\"targeted_command_count\":{},\"targeted_test_count\":{},\"max_targeted_test_count\":{},\"full_harness_test_count\":{},\"avoided_full_harness_tests\":{},\"manifest_complete\":{},\"budget_within_limit\":{},\"budget_status\":\"{}\",\"regression_reason\":\"{}\",\"budget_hash\":{},\"receipt_hash\":{}}}",
+            self.schema,
+            self.record_type,
+            self.budget_version,
+            self.source_manifest_hash,
+            self.source_summary_hash,
+            self.targeted_command_count,
+            self.targeted_test_count,
+            self.max_targeted_test_count,
+            self.full_harness_test_count,
+            self.avoided_full_harness_tests,
+            self.manifest_complete,
+            self.budget_within_limit,
+            self.budget_status,
+            self.regression_reason,
+            self.budget_hash,
             self.receipt_hash,
         )
     }
@@ -3820,6 +3908,83 @@ fn finalize_policy_reuse_evidence_manifest(receipt: &mut PolicyReuseEvidenceMani
     receipt.receipt_hash = policy_reuse_evidence_manifest_receipt_hash(receipt);
 }
 
+pub fn policy_reuse_evidence_validation_budget_smoke_receipt(
+) -> PolicyReuseEvidenceValidationBudgetReceipt {
+    let manifest = policy_reuse_evidence_manifest_smoke_receipt();
+    let summary = policy_reuse_evidence_summary_smoke_receipt();
+    let mut receipt = policy_reuse_evidence_validation_budget_from_sources(
+        POLICY_REUSE_EVIDENCE_VALIDATION_BUDGET_SMOKE_STEP,
+        &manifest,
+        &summary,
+        4,
+        4,
+        "none",
+    );
+    finalize_policy_reuse_evidence_validation_budget(&mut receipt);
+    receipt
+}
+
+pub fn policy_reuse_evidence_validation_budget_regression_smoke_receipt(
+) -> PolicyReuseEvidenceValidationBudgetReceipt {
+    let manifest = policy_reuse_evidence_manifest_smoke_receipt();
+    let summary = policy_reuse_evidence_summary_smoke_receipt();
+    let mut receipt = policy_reuse_evidence_validation_budget_from_sources(
+        POLICY_REUSE_EVIDENCE_VALIDATION_BUDGET_REGRESSION_SMOKE_STEP,
+        &manifest,
+        &summary,
+        12,
+        4,
+        "budget_exceeded",
+    );
+    finalize_policy_reuse_evidence_validation_budget(&mut receipt);
+    receipt
+}
+
+fn policy_reuse_evidence_validation_budget_from_sources(
+    record_type: &'static str,
+    manifest: &PolicyReuseEvidenceManifestReceipt,
+    summary: &PolicyReuseEvidenceSummaryReceipt,
+    targeted_test_count: usize,
+    max_targeted_test_count: usize,
+    regression_reason: &'static str,
+) -> PolicyReuseEvidenceValidationBudgetReceipt {
+    let budget_within_limit = targeted_test_count <= max_targeted_test_count;
+    let budget_status =
+        if manifest.manifest_complete && budget_within_limit && regression_reason == "none" {
+            "pass"
+        } else {
+            "fail"
+        };
+    let mut receipt = PolicyReuseEvidenceValidationBudgetReceipt {
+        schema: "canon_policy_reuse_evidence_validation_budget_v1",
+        record_type,
+        budget_version: 1,
+        source_manifest_hash: manifest.receipt_hash,
+        source_summary_hash: summary.receipt_hash,
+        targeted_command_count: 2,
+        targeted_test_count,
+        max_targeted_test_count,
+        full_harness_test_count: VALIDATION_HARNESS_EXPECTED_TESTS,
+        avoided_full_harness_tests: VALIDATION_HARNESS_EXPECTED_TESTS
+            .saturating_sub(targeted_test_count),
+        manifest_complete: manifest.manifest_complete,
+        budget_within_limit,
+        budget_status,
+        regression_reason,
+        budget_hash: 0,
+        receipt_hash: 0,
+    };
+    finalize_policy_reuse_evidence_validation_budget(&mut receipt);
+    receipt
+}
+
+fn finalize_policy_reuse_evidence_validation_budget(
+    receipt: &mut PolicyReuseEvidenceValidationBudgetReceipt,
+) {
+    receipt.budget_hash = policy_reuse_evidence_validation_budget_hash(receipt);
+    receipt.receipt_hash = policy_reuse_evidence_validation_budget_receipt_hash(receipt);
+}
+
 #[allow(clippy::too_many_arguments)]
 fn policy_reuse_evidence_surface_index_from_sources(
     record_type: &'static str,
@@ -4126,6 +4291,57 @@ fn policy_reuse_evidence_manifest_receipt_hash(
         return 0;
     }
     (manifest_hash ^ 0x504f_4c52_4546_4d52u64).max(1)
+}
+
+fn policy_reuse_evidence_validation_budget_hash(
+    receipt: &PolicyReuseEvidenceValidationBudgetReceipt,
+) -> u64 {
+    if receipt.budget_version == 0
+        || receipt.source_manifest_hash == 0
+        || receipt.source_summary_hash == 0
+    {
+        return 0;
+    }
+    let budget_status_code = match receipt.budget_status {
+        "pass" => 1,
+        "fail" => 2,
+        _ => 0,
+    };
+    let regression_reason_code = match receipt.regression_reason {
+        "none" => 1,
+        "budget_exceeded" => 2,
+        "manifest_incomplete" => 3,
+        _ => 0,
+    };
+    if budget_status_code == 0 || regression_reason_code == 0 {
+        return 0;
+    }
+    let mut h = 0x504f_4c52_4556_4248u64;
+    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.schema.as_bytes());
+    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.record_type.as_bytes());
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.budget_version;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_manifest_hash;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_summary_hash;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.targeted_command_count as u64;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.targeted_test_count as u64;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.max_targeted_test_count as u64;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.full_harness_test_count as u64;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.avoided_full_harness_tests as u64;
+    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.manifest_complete);
+    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.budget_within_limit);
+    h = h.wrapping_mul(0x100000001b3) ^ budget_status_code;
+    h = h.wrapping_mul(0x100000001b3) ^ regression_reason_code;
+    h.max(1)
+}
+
+fn policy_reuse_evidence_validation_budget_receipt_hash(
+    receipt: &PolicyReuseEvidenceValidationBudgetReceipt,
+) -> u64 {
+    let budget_hash = policy_reuse_evidence_validation_budget_hash(receipt);
+    if budget_hash == 0 || receipt.budget_hash != budget_hash {
+        return 0;
+    }
+    (budget_hash ^ 0x504f_4c52_4556_4252u64).max(1)
 }
 
 fn policy_reuse_evidence_summary_hash(receipt: &PolicyReuseEvidenceSummaryReceipt) -> u64 {

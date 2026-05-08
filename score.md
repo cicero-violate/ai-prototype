@@ -1,6 +1,6 @@
 # Canon Agent Score
 
-This scorecard records the current progress at the planning/scoring turn before the next implementation slice of the current agent loop. The working tree contains deterministic policy reuse evaluator-savings, scaling-projection, distillation-readiness, evidence-surface index, evidence-bundle, evidence-quickcheck, evidence-maturity, and evidence-summary, and evidence-manifest evidence.
+This scorecard records current progress after implementation step 1 of the current agent loop. The working tree contains deterministic policy reuse evaluator-savings, scaling-projection, distillation-readiness, evidence-surface index, evidence-bundle, evidence-quickcheck, evidence-maturity, evidence-summary, evidence-manifest, and evidence validation-budget evidence.
 
 ## Validation Evidence
 
@@ -8,91 +8,90 @@ Targeted validation relevant to the current working tree:
 
 ```text
 command = cargo fmt --check
-command = RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test validation_harness_contract policy_reuse_evidence_manifest --quiet
+command = RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test validation_harness_contract policy_reuse_evidence_validation_budget --quiet
 command = RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test validation_harness_contract --quiet
 command = RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test score_contract --test planning_contract --quiet
 result  = pass
 
 cargo fmt --check: pass
-validation_harness_contract policy_reuse_evidence_manifest filter: 4 passed, 0 failed, 176 filtered out
-validation_harness_contract: 180 passed, 0 failed
+validation_harness_contract policy_reuse_evidence_validation_budget filter: 4 passed, 0 failed, 180 filtered out
+validation_harness_contract: 184 passed, 0 failed
 planning_contract: 2 passed, 0 failed
 score_contract: 5 passed, 0 failed
 ```
 
-Full-suite validation was not run before this planning/scoring update.
+Planning and score contract validation passed after this score update.
 
 ## Axis Scores
 
 Scores are on a `0.00` to `1.00` scale and reflect the current repository evidence inspected and updated this turn.
 
 ```text
-I  Intelligence      = 0.79  manifest evidence makes evaluator-facing coverage explicit for the learning evidence stack
-E  Efficiency        = 0.79  evaluators can inspect mode and fixture coverage without reconstructing retained files manually
-C  Correctness       = 0.91  formatting, focused manifest contracts, full validation-harness contracts, score, and planning checks pass
-A  Alignment         = 0.85  manifest remains evidence-only and does not promote policy or modify kernel authority
-R  Robustness        = 0.86  healthy and controlled missing-summary-mode manifest paths are covered
-P  Performance       = 0.77  manifest improves inspection speed but full harness validation is still routinely required
-S  Scalability       = 0.77  manifest coverage can grow with evaluator surfaces without changing the judgment shape
-D  Determinism       = 0.88  manifest uses fixed counts, source hashes, booleans, missing-surface strings, and hashes
-T  Transparency      = 0.91  mode coverage, fixture dependency coverage, missing surface, and source hashes are explicit
-Co Collaboration     = 0.83  plan and score now hand off a validation-budget slice
-Em Empowerment       = 0.81  root_validate consumers can inspect coverage completeness directly
-B  Benefit           = 0.84  evaluators get a single coverage manifest before future learning promotion checks
-L  Learning          = 0.78  verified evidence stack now has coverage manifest evidence
-St Structure         = 0.84  manifest composes existing evidence without kernel or capability authority drift
-Si Simplicity        = 0.78  manifest reduces scattered fixture/mode interpretation
-F  Future-Proofing   = 0.85  manifest prepares for validation-budget evidence, retrieval examples, and later clean datasets
+I  Intelligence      = 0.80  validation-budget evidence adds a compact evaluator view of minimum proof cost
+E  Efficiency        = 0.81  targeted validation cost is explicit instead of inferred from full harness execution
+C  Correctness       = 0.91  formatting, focused validation-budget contracts, and full validation-harness contracts pass
+A  Alignment         = 0.86  validation-budget remains evidence-only and does not promote policy or modify kernel authority
+R  Robustness        = 0.87  healthy and controlled budget-exceeded validation-budget paths are covered
+P  Performance       = 0.80  targeted command/test budget and avoided full-harness tests are now deterministic receipt fields
+S  Scalability       = 0.77  rollout readiness across the full evidence stack is still not summarized
+D  Determinism       = 0.89  budget receipt uses fixed counts, source hashes, booleans, status strings, and hashes
+T  Transparency      = 0.92  manifest/source hashes, targeted tests, full harness count, and avoided tests are explicit
+Co Collaboration     = 0.84  plan and score now hand off a rollout-readiness slice
+Em Empowerment       = 0.83  root_validate consumers can inspect minimum validation budget directly
+B  Benefit           = 0.85  evaluators get proof-cost evidence before future learning promotion checks
+L  Learning          = 0.79  verified evidence stack now includes validation-budget evidence for reuse learning
+St Structure         = 0.85  validation-budget composes existing evidence without kernel or capability authority drift
+Si Simplicity        = 0.79  the minimum validation path is represented by one receipt instead of scattered commands
+F  Future-Proofing   = 0.86  validation-budget prepares for rollout readiness, retrieval examples, and later clean datasets
 ```
 
 Approximate geometric mean:
 
 ```text
-G ≈ 0.828
+G ≈ 0.834
 ```
 
 ## Current Judgment
 
 ```text
-turn_type = planning_scoring_turn
-weakest_axis = Performance
-secondary_risk = full validation-harness execution remains the default confidence path
-completed_action = preserved deterministic policy reuse evidence-manifest baseline and selected validation-budget as the next slice
-current_gap = mode and fixture coverage are explicit, but the minimum validation budget for proving the stack is not summarized
-next_action = implement deterministic policy reuse evidence validation-budget evidence
+turn_type = implementation_step_1
+weakest_axis = Scalability
+secondary_risk = rollout readiness across the evidence stack is still implicit
+completed_action = added deterministic policy reuse evidence validation-budget evidence
+current_gap = targeted validation cost is explicit, but stack rollout readiness is not summarized
+next_action = add deterministic policy reuse evidence rollout-readiness evidence
 scope = validation-harness/root-validator evidence only; kernel authority unchanged
-validation = targeted formatting/manifest/full-validation-harness/score/planning tests passed; full suite not run this turn
+validation = targeted formatting/validation-budget/full-validation-harness/score/planning tests passed
 ```
 
-## Why Performance Is Now Weakest
+## Why Scalability Is Now Weakest
 
-Simplicity improved because manifest evidence lists evaluator-facing modes and fixture dependencies in one deterministic receipt. Performance is now the weakest axis because proving the evidence stack still leans on full validation-harness execution; a validation-budget receipt can make the minimum targeted validation path explicit.
+Performance improved because the evidence stack now has a deterministic receipt for targeted validation budget and avoided full-harness tests. Scalability is now weakest because the system still lacks one compact readiness verdict that composes budget, manifest, maturity, and summary evidence before broader rollout.
 
 ## Completed Score Improvement Target
 
-Raised `Si` from `0.76` to `0.78` by adding deterministic policy reuse evidence-manifest evidence.
+Raised `P` from `0.77` to `0.80` by adding deterministic policy reuse evidence validation-budget evidence.
 
 Completed scoring evidence:
 
-- healthy evidence-manifest receipt exposed by the harness;
-- controlled missing-summary-mode manifest regression receipt exposed by the harness;
-- source binding to the evidence summary and maturity receipts;
-- root validator modes for healthy and regression manifest receipts;
-- contract tests asserting manifest semantics, source binding, compact output, and controlled missing-summary-mode evidence;
+- healthy validation-budget receipt exposed by the harness;
+- controlled budget-exceeded validation-budget regression receipt exposed by the harness;
+- source binding to evidence-manifest and evidence-summary receipts;
+- root validator modes for healthy and regression validation-budget receipts;
+- contract tests asserting validation-budget semantics, source binding, compact output, and controlled budget-exceeded evidence;
 - updated retained root mode and guarded-test fixture counts;
 - no kernel authority expansion, student-model training, or policy promotion.
 
 ## Next Score Improvement Target
 
-Raise `P` from `0.77` by adding a deterministic policy reuse evidence validation-budget receipt.
+Raise `S` by adding a deterministic policy reuse evidence rollout-readiness receipt.
 
 Acceptance criteria for the next slice:
 
-1. A deterministic healthy validation-budget receipt exists and validates successfully.
-2. A deterministic regression validation-budget receipt exists and exposes a concrete budget or manifest-validation failure.
-3. Validation-budget evidence references manifest and summary receipts instead of adding policy authority.
-4. Root validator compact modes expose healthy and regression validation-budget receipts.
-5. Validation harness contract tests assert validation-budget semantics, source binding, and compact output.
+1. A deterministic healthy rollout-readiness receipt exists and validates successfully.
+2. A deterministic regression rollout-readiness receipt exists and exposes a concrete not-ready reason.
+3. Rollout-readiness evidence references validation-budget, manifest, maturity, and summary receipts instead of adding policy authority.
+4. Root validator compact modes expose healthy and regression rollout-readiness receipts.
+5. Validation harness contract tests assert rollout-readiness semantics, source binding, and compact output.
 6. Planning and score contract tests pass after documentation updates.
 7. The receipt remains evidence-only and does not expand kernel authority.
-8. Planning/scoring artifacts remain the only files changed in this planning turn.
