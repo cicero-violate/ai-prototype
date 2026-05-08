@@ -1,5 +1,5 @@
 schema=canon_external_agent_cli_modes_v1
-mode_count=107
+mode_count=111
 root_validate --validation-footprint => canon_validation_footprint_v1
 root_validate --validation-command-footprint-planning => canon_validation_command_footprint_planning_v1
 root_validate --validation-command-footprint-target-met-smoke => validation_command_footprint_target_met_smoke
@@ -107,3 +107,9 @@ root_validate --policy-reuse-evidence-retrieval-query-plan-smoke => policy_reuse
 root_validate --policy-reuse-evidence-retrieval-query-plan-regression-smoke => policy_reuse_evidence_retrieval_query_plan_regression_smoke
 root_validate --policy-reuse-evidence-retrieval-query-approval-smoke => policy_reuse_evidence_retrieval_query_approval_smoke
 root_validate --policy-reuse-evidence-retrieval-query-approval-regression-smoke => policy_reuse_evidence_retrieval_query_approval_regression_smoke
+root_validate --policy-reuse-evidence-retrieval-result-admission-smoke => policy_reuse_evidence_retrieval_result_admission_smoke
+root_validate --policy-reuse-evidence-retrieval-result-admission-regression-smoke => policy_reuse_evidence_retrieval_result_admission_regression_smoke
+root_validate --policy-reuse-evidence-retrieval-result-manifest-smoke => policy_reuse_evidence_retrieval_result_manifest_smoke
+root_validate --policy-reuse-evidence-retrieval-result-manifest-regression-smoke => policy_reuse_evidence_retrieval_result_manifest_regression_smoke
+root_validate --policy-reuse-evidence-retrieval-result-use-admission-smoke => policy_reuse_evidence_retrieval_result_use_admission_smoke
+root_validate --policy-reuse-evidence-retrieval-result-use-admission-regression-smoke => policy_reuse_evidence_retrieval_result_use_admission_regression_smoke

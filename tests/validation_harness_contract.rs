@@ -29,8 +29,8 @@ use ai::validation_harness::{
     VALIDATION_FOOTPRINT_STEP, VALIDATION_HARNESS_EXPECTED_TESTS, VALIDATION_HARNESS_STEP,
 };
 
-const EXPECTED_ROOT_VALIDATE_COMPACT_MODE_COUNT: usize = 82;
-const EXPECTED_EXTERNAL_AGENT_CLI_MODE_COUNT: usize = 101;
+const EXPECTED_ROOT_VALIDATE_COMPACT_MODE_COUNT: usize = 84;
+const EXPECTED_EXTERNAL_AGENT_CLI_MODE_COUNT: usize = 111;
 
 fn expected_guarded_test_count() -> usize {
     VALIDATION_HARNESS_EXPECTED_TESTS + GRAPH_MUTATION_CLI_CONTRACT_EXPECTED_TESTS
@@ -750,6 +750,30 @@ fn external_agent_cli_modes_fixture_documents_all_public_modes() {
         "policy_reuse_evidence_retrieval_query_approval_regression_smoke",
     ));
     assert!(catalog.contains(
+        "root_validate --policy-reuse-evidence-retrieval-result-admission-smoke",
+        "policy_reuse_evidence_retrieval_result_admission_smoke",
+    ));
+    assert!(catalog.contains(
+        "root_validate --policy-reuse-evidence-retrieval-result-admission-regression-smoke",
+        "policy_reuse_evidence_retrieval_result_admission_regression_smoke",
+    ));
+    assert!(catalog.contains(
+        "root_validate --policy-reuse-evidence-retrieval-result-manifest-smoke",
+        "policy_reuse_evidence_retrieval_result_manifest_smoke",
+    ));
+    assert!(catalog.contains(
+        "root_validate --policy-reuse-evidence-retrieval-result-manifest-regression-smoke",
+        "policy_reuse_evidence_retrieval_result_manifest_regression_smoke",
+    ));
+    assert!(catalog.contains(
+        "root_validate --policy-reuse-evidence-retrieval-result-use-admission-smoke",
+        "policy_reuse_evidence_retrieval_result_use_admission_smoke",
+    ));
+    assert!(catalog.contains(
+        "root_validate --policy-reuse-evidence-retrieval-result-use-admission-regression-smoke",
+        "policy_reuse_evidence_retrieval_result_use_admission_regression_smoke",
+    ));
+    assert!(catalog.contains(
         "root_validate --root-validate-dispatch-catalog",
         "canon_root_validate_dispatch_catalog_v1",
     ));
@@ -1031,7 +1055,7 @@ fn external_agent_cli_modes_catalog_valid(fixture: &str, graph_help: &str) -> bo
     if catalog.declared_mode_count != catalog.entries.len() || catalog.entries.is_empty() {
         return false;
     }
-    if catalog.root_validate_entries().len() != 56 || catalog.graph_mutation_entries().len() != 5 {
+    if catalog.root_validate_entries().len() != 106 || catalog.graph_mutation_entries().len() != 5 {
         return false;
     }
 
@@ -7772,6 +7796,460 @@ fn root_validate_policy_reuse_evidence_retrieval_query_approval_regression_smoke
             "\"query_approval_status\":\"query_not_approved\"",
             "\"not_approved_reason\":\"query_plan_not_ready\"",
             "\"query_approval_hash\":",
+            "\"receipt_hash\":",
+        ],
+    );
+}
+
+#[test]
+fn policy_reuse_evidence_retrieval_result_admission_smoke_composes_result_admission() {
+    let receipt =
+        ai::validation_harness::policy_reuse_evidence_retrieval_result_admission_smoke_receipt();
+    let query_approval =
+        ai::validation_harness::policy_reuse_evidence_retrieval_query_approval_smoke_receipt();
+    let query_plan =
+        ai::validation_harness::policy_reuse_evidence_retrieval_query_plan_smoke_receipt();
+
+    assert_eq!(
+        receipt.schema,
+        "canon_policy_reuse_evidence_retrieval_result_admission_v1"
+    );
+    assert_eq!(
+        receipt.record_type,
+        ai::validation_harness::POLICY_REUSE_EVIDENCE_RETRIEVAL_RESULT_ADMISSION_SMOKE_STEP
+    );
+    assert_eq!(receipt.retrieval_result_admission_version, 1);
+    assert_eq!(
+        receipt.source_retrieval_query_approval_hash,
+        query_approval.receipt_hash
+    );
+    assert_eq!(
+        receipt.source_retrieval_query_plan_hash,
+        query_plan.receipt_hash
+    );
+    assert!(receipt.retrieval_query_approved);
+    assert!(receipt.retrieval_query_plan_ready);
+    assert!(!receipt.retrieval_read_performed);
+    assert!(!receipt.retrieval_write_performed);
+    assert!(!receipt.retrieval_query_executed);
+    assert!(!receipt.runtime_result_approval_performed);
+    assert!(!receipt.policy_promotion_performed);
+    assert!(!receipt.student_training_performed);
+    assert!(receipt.external_result_evidence_present);
+    assert_eq!(
+        receipt.admitted_result_policy_reuse_examples,
+        query_approval.approved_query_policy_reuse_examples
+    );
+    assert_eq!(
+        receipt.admitted_result_llm_fallback_examples,
+        query_approval.approved_query_llm_fallback_examples
+    );
+    assert!(receipt.retrieval_result_admitted);
+    assert_eq!(receipt.result_admission_status, "result_admitted");
+    assert_eq!(receipt.not_admitted_reason, "none");
+    assert_ne!(receipt.result_admission_hash, 0);
+    assert_ne!(receipt.receipt_hash, 0);
+    assert!(receipt.is_valid());
+    assert!(receipt.passed());
+}
+
+#[test]
+fn policy_reuse_evidence_retrieval_result_admission_regression_smoke_is_valid_not_admitted_evidence(
+) {
+    let receipt = ai::validation_harness::
+        policy_reuse_evidence_retrieval_result_admission_regression_smoke_receipt();
+    let query_approval = ai::validation_harness::
+        policy_reuse_evidence_retrieval_query_approval_regression_smoke_receipt();
+    let query_plan =
+        ai::validation_harness::policy_reuse_evidence_retrieval_query_plan_regression_smoke_receipt(
+        );
+
+    assert_eq!(
+        receipt.record_type,
+        ai::validation_harness::POLICY_REUSE_EVIDENCE_RETRIEVAL_RESULT_ADMISSION_REGRESSION_SMOKE_STEP
+    );
+    assert_eq!(
+        receipt.source_retrieval_query_approval_hash,
+        query_approval.receipt_hash
+    );
+    assert_eq!(
+        receipt.source_retrieval_query_plan_hash,
+        query_plan.receipt_hash
+    );
+    assert!(!receipt.retrieval_query_approved);
+    assert!(!receipt.retrieval_query_plan_ready);
+    assert!(!receipt.retrieval_read_performed);
+    assert!(!receipt.retrieval_write_performed);
+    assert!(!receipt.retrieval_query_executed);
+    assert!(!receipt.runtime_result_approval_performed);
+    assert!(!receipt.policy_promotion_performed);
+    assert!(!receipt.student_training_performed);
+    assert!(receipt.external_result_evidence_present);
+    assert_eq!(
+        receipt.admitted_result_policy_reuse_examples,
+        query_approval.approved_query_policy_reuse_examples
+    );
+    assert!(!receipt.retrieval_result_admitted);
+    assert_eq!(receipt.result_admission_status, "result_not_admitted");
+    assert_eq!(receipt.not_admitted_reason, "query_not_approved");
+    assert!(receipt.is_valid());
+    assert!(!receipt.passed());
+}
+
+#[test]
+fn root_validate_policy_reuse_evidence_retrieval_result_admission_smoke_mode_is_executable_contract(
+) {
+    assert_root_validate_catalog_compact_mode_contract(
+        "--policy-reuse-evidence-retrieval-result-admission-smoke",
+        &[
+            "\"schema\":\"canon_policy_reuse_evidence_retrieval_result_admission_v1\"",
+            "\"record_type\":\"policy_reuse_evidence_retrieval_result_admission_smoke\"",
+            "\"retrieval_result_admission_version\":1",
+            "\"source_retrieval_query_approval_hash\":",
+            "\"source_retrieval_query_plan_hash\":",
+            "\"retrieval_query_approved\":true",
+            "\"retrieval_query_plan_ready\":true",
+            "\"retrieval_read_performed\":false",
+            "\"retrieval_write_performed\":false",
+            "\"retrieval_query_executed\":false",
+            "\"runtime_result_approval_performed\":false",
+            "\"policy_promotion_performed\":false",
+            "\"student_training_performed\":false",
+            "\"external_result_evidence_present\":true",
+            "\"retrieval_result_admitted\":true",
+            "\"result_admission_status\":\"result_admitted\"",
+            "\"not_admitted_reason\":\"none\"",
+            "\"result_admission_hash\":",
+            "\"receipt_hash\":",
+        ],
+    );
+}
+
+#[test]
+fn root_validate_policy_reuse_evidence_retrieval_result_admission_regression_smoke_mode_is_executable_contract(
+) {
+    assert_root_validate_catalog_compact_mode_contract(
+        "--policy-reuse-evidence-retrieval-result-admission-regression-smoke",
+        &[
+            "\"schema\":\"canon_policy_reuse_evidence_retrieval_result_admission_v1\"",
+            "\"record_type\":\"policy_reuse_evidence_retrieval_result_admission_regression_smoke\"",
+            "\"retrieval_result_admission_version\":1",
+            "\"retrieval_query_approved\":false",
+            "\"retrieval_query_plan_ready\":false",
+            "\"retrieval_read_performed\":false",
+            "\"retrieval_write_performed\":false",
+            "\"retrieval_query_executed\":false",
+            "\"runtime_result_approval_performed\":false",
+            "\"policy_promotion_performed\":false",
+            "\"student_training_performed\":false",
+            "\"external_result_evidence_present\":true",
+            "\"retrieval_result_admitted\":false",
+            "\"result_admission_status\":\"result_not_admitted\"",
+            "\"not_admitted_reason\":\"query_not_approved\"",
+            "\"result_admission_hash\":",
+            "\"receipt_hash\":",
+        ],
+    );
+}
+
+#[test]
+fn policy_reuse_evidence_retrieval_result_manifest_smoke_summarizes_admitted_result() {
+    let receipt =
+        ai::validation_harness::policy_reuse_evidence_retrieval_result_manifest_smoke_receipt();
+    let result_admission =
+        ai::validation_harness::policy_reuse_evidence_retrieval_result_admission_smoke_receipt();
+    let query_approval =
+        ai::validation_harness::policy_reuse_evidence_retrieval_query_approval_smoke_receipt();
+
+    assert_eq!(
+        receipt.schema,
+        "canon_policy_reuse_evidence_retrieval_result_manifest_v1"
+    );
+    assert_eq!(
+        receipt.record_type,
+        ai::validation_harness::POLICY_REUSE_EVIDENCE_RETRIEVAL_RESULT_MANIFEST_SMOKE_STEP
+    );
+    assert_eq!(receipt.retrieval_result_manifest_version, 1);
+    assert_eq!(
+        receipt.source_retrieval_result_admission_hash,
+        result_admission.receipt_hash
+    );
+    assert_eq!(
+        receipt.source_retrieval_query_approval_hash,
+        query_approval.receipt_hash
+    );
+    assert!(receipt.retrieval_result_admitted);
+    assert!(receipt.retrieval_query_approved);
+    assert!(!receipt.retrieval_read_performed);
+    assert!(!receipt.retrieval_write_performed);
+    assert!(!receipt.retrieval_query_executed);
+    assert!(!receipt.runtime_result_approval_performed);
+    assert!(!receipt.policy_promotion_performed);
+    assert!(!receipt.student_training_performed);
+    assert!(receipt.external_result_evidence_present);
+    assert_eq!(
+        receipt.manifest_policy_reuse_examples,
+        result_admission.admitted_result_policy_reuse_examples
+    );
+    assert_eq!(
+        receipt.manifest_llm_fallback_examples,
+        result_admission.admitted_result_llm_fallback_examples
+    );
+    assert!(receipt.retrieval_result_manifest_ready);
+    assert_eq!(receipt.result_manifest_status, "result_manifest_ready");
+    assert_eq!(receipt.not_ready_reason, "none");
+    assert_ne!(receipt.result_manifest_hash, 0);
+    assert_ne!(receipt.receipt_hash, 0);
+    assert!(receipt.is_valid());
+    assert!(receipt.passed());
+}
+
+#[test]
+fn policy_reuse_evidence_retrieval_result_manifest_regression_smoke_is_valid_not_ready_evidence() {
+    let receipt = ai::validation_harness::
+        policy_reuse_evidence_retrieval_result_manifest_regression_smoke_receipt();
+    let result_admission = ai::validation_harness::
+        policy_reuse_evidence_retrieval_result_admission_regression_smoke_receipt();
+    let query_approval = ai::validation_harness::
+        policy_reuse_evidence_retrieval_query_approval_regression_smoke_receipt();
+
+    assert_eq!(
+        receipt.record_type,
+        ai::validation_harness::POLICY_REUSE_EVIDENCE_RETRIEVAL_RESULT_MANIFEST_REGRESSION_SMOKE_STEP
+    );
+    assert_eq!(
+        receipt.source_retrieval_result_admission_hash,
+        result_admission.receipt_hash
+    );
+    assert_eq!(
+        receipt.source_retrieval_query_approval_hash,
+        query_approval.receipt_hash
+    );
+    assert!(!receipt.retrieval_result_admitted);
+    assert!(!receipt.retrieval_query_approved);
+    assert!(!receipt.retrieval_read_performed);
+    assert!(!receipt.retrieval_write_performed);
+    assert!(!receipt.retrieval_query_executed);
+    assert!(!receipt.runtime_result_approval_performed);
+    assert!(!receipt.policy_promotion_performed);
+    assert!(!receipt.student_training_performed);
+    assert!(receipt.external_result_evidence_present);
+    assert_eq!(
+        receipt.manifest_policy_reuse_examples,
+        result_admission.admitted_result_policy_reuse_examples
+    );
+    assert!(!receipt.retrieval_result_manifest_ready);
+    assert_eq!(receipt.result_manifest_status, "result_manifest_not_ready");
+    assert_eq!(receipt.not_ready_reason, "result_not_admitted");
+    assert!(receipt.is_valid());
+    assert!(!receipt.passed());
+}
+
+#[test]
+fn root_validate_policy_reuse_evidence_retrieval_result_manifest_smoke_mode_is_executable_contract()
+{
+    assert_root_validate_catalog_compact_mode_contract(
+        "--policy-reuse-evidence-retrieval-result-manifest-smoke",
+        &[
+            "\"schema\":\"canon_policy_reuse_evidence_retrieval_result_manifest_v1\"",
+            "\"record_type\":\"policy_reuse_evidence_retrieval_result_manifest_smoke\"",
+            "\"retrieval_result_manifest_version\":1",
+            "\"source_retrieval_result_admission_hash\":",
+            "\"source_retrieval_query_approval_hash\":",
+            "\"retrieval_result_admitted\":true",
+            "\"retrieval_query_approved\":true",
+            "\"retrieval_read_performed\":false",
+            "\"retrieval_write_performed\":false",
+            "\"retrieval_query_executed\":false",
+            "\"runtime_result_approval_performed\":false",
+            "\"policy_promotion_performed\":false",
+            "\"student_training_performed\":false",
+            "\"external_result_evidence_present\":true",
+            "\"retrieval_result_manifest_ready\":true",
+            "\"result_manifest_status\":\"result_manifest_ready\"",
+            "\"not_ready_reason\":\"none\"",
+            "\"result_manifest_hash\":",
+            "\"receipt_hash\":",
+        ],
+    );
+}
+
+#[test]
+fn root_validate_policy_reuse_evidence_retrieval_result_manifest_regression_smoke_mode_is_executable_contract(
+) {
+    assert_root_validate_catalog_compact_mode_contract(
+        "--policy-reuse-evidence-retrieval-result-manifest-regression-smoke",
+        &[
+            "\"schema\":\"canon_policy_reuse_evidence_retrieval_result_manifest_v1\"",
+            "\"record_type\":\"policy_reuse_evidence_retrieval_result_manifest_regression_smoke\"",
+            "\"retrieval_result_manifest_version\":1",
+            "\"retrieval_result_admitted\":false",
+            "\"retrieval_query_approved\":false",
+            "\"retrieval_read_performed\":false",
+            "\"retrieval_write_performed\":false",
+            "\"retrieval_query_executed\":false",
+            "\"runtime_result_approval_performed\":false",
+            "\"policy_promotion_performed\":false",
+            "\"student_training_performed\":false",
+            "\"external_result_evidence_present\":true",
+            "\"retrieval_result_manifest_ready\":false",
+            "\"result_manifest_status\":\"result_manifest_not_ready\"",
+            "\"not_ready_reason\":\"result_not_admitted\"",
+            "\"result_manifest_hash\":",
+            "\"receipt_hash\":",
+        ],
+    );
+}
+
+#[test]
+fn policy_reuse_evidence_retrieval_result_use_admission_smoke_admits_ready_manifest() {
+    let receipt =
+        ai::validation_harness::policy_reuse_evidence_retrieval_result_use_admission_smoke_receipt(
+        );
+    let result_manifest =
+        ai::validation_harness::policy_reuse_evidence_retrieval_result_manifest_smoke_receipt();
+    let result_admission =
+        ai::validation_harness::policy_reuse_evidence_retrieval_result_admission_smoke_receipt();
+
+    assert_eq!(
+        receipt.schema,
+        "canon_policy_reuse_evidence_retrieval_result_use_admission_v1"
+    );
+    assert_eq!(
+        receipt.record_type,
+        ai::validation_harness::POLICY_REUSE_EVIDENCE_RETRIEVAL_RESULT_USE_ADMISSION_SMOKE_STEP
+    );
+    assert_eq!(receipt.retrieval_result_use_admission_version, 1);
+    assert_eq!(
+        receipt.source_retrieval_result_manifest_hash,
+        result_manifest.receipt_hash
+    );
+    assert_eq!(
+        receipt.source_retrieval_result_admission_hash,
+        result_admission.receipt_hash
+    );
+    assert!(receipt.retrieval_result_manifest_ready);
+    assert!(receipt.retrieval_result_admitted);
+    assert!(!receipt.retrieval_read_performed);
+    assert!(!receipt.retrieval_write_performed);
+    assert!(!receipt.retrieval_query_executed);
+    assert!(!receipt.runtime_result_approval_performed);
+    assert!(!receipt.policy_promotion_performed);
+    assert!(!receipt.student_training_performed);
+    assert!(receipt.external_result_evidence_present);
+    assert_eq!(
+        receipt.admitted_use_policy_reuse_examples,
+        result_manifest.manifest_policy_reuse_examples
+    );
+    assert_eq!(
+        receipt.admitted_use_llm_fallback_examples,
+        result_manifest.manifest_llm_fallback_examples
+    );
+    assert!(receipt.retrieval_result_use_admitted);
+    assert_eq!(receipt.result_use_admission_status, "result_use_admitted");
+    assert_eq!(receipt.not_admitted_reason, "none");
+    assert_ne!(receipt.result_use_admission_hash, 0);
+    assert_ne!(receipt.receipt_hash, 0);
+    assert!(receipt.is_valid());
+    assert!(receipt.passed());
+}
+
+#[test]
+fn policy_reuse_evidence_retrieval_result_use_admission_regression_smoke_is_valid_not_admitted_evidence(
+) {
+    let receipt = ai::validation_harness::
+        policy_reuse_evidence_retrieval_result_use_admission_regression_smoke_receipt();
+    let result_manifest = ai::validation_harness::
+        policy_reuse_evidence_retrieval_result_manifest_regression_smoke_receipt();
+    let result_admission = ai::validation_harness::
+        policy_reuse_evidence_retrieval_result_admission_regression_smoke_receipt();
+
+    assert_eq!(
+        receipt.record_type,
+        ai::validation_harness::POLICY_REUSE_EVIDENCE_RETRIEVAL_RESULT_USE_ADMISSION_REGRESSION_SMOKE_STEP
+    );
+    assert_eq!(
+        receipt.source_retrieval_result_manifest_hash,
+        result_manifest.receipt_hash
+    );
+    assert_eq!(
+        receipt.source_retrieval_result_admission_hash,
+        result_admission.receipt_hash
+    );
+    assert!(!receipt.retrieval_result_manifest_ready);
+    assert!(!receipt.retrieval_result_admitted);
+    assert!(!receipt.retrieval_read_performed);
+    assert!(!receipt.retrieval_write_performed);
+    assert!(!receipt.retrieval_query_executed);
+    assert!(!receipt.runtime_result_approval_performed);
+    assert!(!receipt.policy_promotion_performed);
+    assert!(!receipt.student_training_performed);
+    assert!(receipt.external_result_evidence_present);
+    assert_eq!(
+        receipt.admitted_use_policy_reuse_examples,
+        result_manifest.manifest_policy_reuse_examples
+    );
+    assert!(!receipt.retrieval_result_use_admitted);
+    assert_eq!(
+        receipt.result_use_admission_status,
+        "result_use_not_admitted"
+    );
+    assert_eq!(receipt.not_admitted_reason, "manifest_not_ready");
+    assert!(receipt.is_valid());
+    assert!(!receipt.passed());
+}
+
+#[test]
+fn root_validate_policy_reuse_evidence_retrieval_result_use_admission_smoke_mode_is_executable_contract(
+) {
+    assert_root_validate_catalog_compact_mode_contract(
+        "--policy-reuse-evidence-retrieval-result-use-admission-smoke",
+        &[
+            "\"schema\":\"canon_policy_reuse_evidence_retrieval_result_use_admission_v1\"",
+            "\"record_type\":\"policy_reuse_evidence_retrieval_result_use_admission_smoke\"",
+            "\"retrieval_result_use_admission_version\":1",
+            "\"source_retrieval_result_manifest_hash\":",
+            "\"source_retrieval_result_admission_hash\":",
+            "\"retrieval_result_manifest_ready\":true",
+            "\"retrieval_result_admitted\":true",
+            "\"retrieval_read_performed\":false",
+            "\"retrieval_write_performed\":false",
+            "\"retrieval_query_executed\":false",
+            "\"runtime_result_approval_performed\":false",
+            "\"policy_promotion_performed\":false",
+            "\"student_training_performed\":false",
+            "\"external_result_evidence_present\":true",
+            "\"retrieval_result_use_admitted\":true",
+            "\"result_use_admission_status\":\"result_use_admitted\"",
+            "\"not_admitted_reason\":\"none\"",
+            "\"result_use_admission_hash\":",
+            "\"receipt_hash\":",
+        ],
+    );
+}
+
+#[test]
+fn root_validate_policy_reuse_evidence_retrieval_result_use_admission_regression_smoke_mode_is_executable_contract(
+) {
+    assert_root_validate_catalog_compact_mode_contract(
+        "--policy-reuse-evidence-retrieval-result-use-admission-regression-smoke",
+        &[
+            "\"schema\":\"canon_policy_reuse_evidence_retrieval_result_use_admission_v1\"",
+            "\"record_type\":\"policy_reuse_evidence_retrieval_result_use_admission_regression_smoke\"",
+            "\"retrieval_result_use_admission_version\":1",
+            "\"retrieval_result_manifest_ready\":false",
+            "\"retrieval_result_admitted\":false",
+            "\"retrieval_read_performed\":false",
+            "\"retrieval_write_performed\":false",
+            "\"retrieval_query_executed\":false",
+            "\"runtime_result_approval_performed\":false",
+            "\"policy_promotion_performed\":false",
+            "\"student_training_performed\":false",
+            "\"external_result_evidence_present\":true",
+            "\"retrieval_result_use_admitted\":false",
+            "\"result_use_admission_status\":\"result_use_not_admitted\"",
+            "\"not_admitted_reason\":\"manifest_not_ready\"",
+            "\"result_use_admission_hash\":",
             "\"receipt_hash\":",
         ],
     );
