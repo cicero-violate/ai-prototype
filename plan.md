@@ -1,6 +1,6 @@
 # Canon Agent Implementation Plan
 
-This plan records the current implementation state after implementation step 5 of the current agent loop.
+This plan records the current implementation state after the planning turn that follows implementation step 5 of the current agent loop.
 
 ## North Star
 
@@ -159,6 +159,8 @@ root_validate retrieval-use-approval focused executable tests: attempted, but co
 
 Keep the next implementation turn focused on **Learning**, moving from retrieval-use-approval evidence toward deterministic retrieval-use-manifest evidence.
 
+This planning turn does not select any implementation files. It narrows the next executable slice, preserves the existing retrieval-use-approval baseline, and keeps unrelated `canon-rustc-v3/` changes outside the Canon Agent planning/scoring commit.
+
 Current gap:
 
 ```text
@@ -201,6 +203,24 @@ Recommended constraints:
 5. Validation harness contract tests assert retrieval-use-manifest semantics, source binding, compact output, and controlled failing evidence.
 6. Planning and score contract tests pass after documentation updates.
 7. The receipt remains evidence-only and does not expand kernel authority, promote policy, execute batches, read/write retrieval storage, or train a student model.
+
+## Planning Turn Commit Scope
+
+```text
+selected_turn = planning_and_scoring_only
+implementation_files_selected = none
+owned_files = plan.md, score.md
+preserve_out_of_scope_changes = canon-rustc-v3/*
+next_implementation_axis = Learning
+next_implementation_slice = policy reuse evidence retrieval-use-manifest
+```
+
+Planning/scoring update requirements for this turn:
+
+1. Keep `plan.md` and `score.md` synchronized on the retrieval-use-manifest next slice.
+2. Do not modify validation harness, root validator, fixtures, kernel, runtime, or capability implementation files in this turn.
+3. Do not stage or commit unrelated modified/untracked `canon-rustc-v3/` files.
+4. Commit only planning/scoring changes.
 
 ## Evaluation Axes
 

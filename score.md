@@ -1,6 +1,6 @@
 # Canon Agent Score
 
-This scorecard records current progress after implementation step 5 of the current agent loop. The working tree contains deterministic policy reuse evaluator-savings, scaling-projection, distillation-readiness, evidence-surface index, evidence-bundle, evidence-quickcheck, evidence-maturity, evidence-summary, evidence-manifest, evidence validation-budget, evidence rollout-readiness, evidence learning-admission, evidence retrieval-readiness, evidence compact-validation, batch-readiness, batch-execution-plan, batch-evaluation-admission, batch-run-request, external-evaluator-result, learning-candidate, learning-data-admission, retrieval-example-admission, retrieval-example-index, retrieval-corpus-readiness, retrieval-corpus-admission, and retrieval-use-approval evidence.
+This scorecard records current progress after the planning turn that follows implementation step 5 of the current agent loop. The working tree contains deterministic policy reuse evaluator-savings, scaling-projection, distillation-readiness, evidence-surface index, evidence-bundle, evidence-quickcheck, evidence-maturity, evidence-summary, evidence-manifest, evidence validation-budget, evidence rollout-readiness, evidence learning-admission, evidence retrieval-readiness, evidence compact-validation, batch-readiness, batch-execution-plan, batch-evaluation-admission, batch-run-request, external-evaluator-result, learning-candidate, learning-data-admission, retrieval-example-admission, retrieval-example-index, retrieval-corpus-readiness, retrieval-corpus-admission, and retrieval-use-approval evidence.
 
 ## Validation Evidence
 
@@ -53,14 +53,16 @@ G ≈ 0.950
 ## Current Judgment
 
 ```text
-turn_type = implementation_step_5
+turn_type = planning_after_implementation_step_5
 weakest_axis = Learning
 secondary_risk = retrieval-use manifest boundary is not yet summarized
 completed_action = added deterministic policy reuse evidence retrieval-use-approval evidence
 current_gap = retrieval-use approval is explicit, but retrieval-use manifest evidence is not summarized
 next_action = add deterministic policy reuse evidence retrieval-use-manifest evidence
 scope = validation-harness/root-validator evidence only; kernel authority unchanged
-validation = formatting, cargo check, focused test no-run, and planning/score tests passed; direct root-mode execution attempted but connector returned 502
+planning_turn_scope = plan.md and score.md only
+implementation_files_selected = none
+validation = formatting, cargo check, focused test no-run, and planning/score tests passed in latest implementation baseline; this turn updates planning/scoring only
 ```
 
 ## Why Learning Is Still The Next Target
@@ -104,6 +106,18 @@ Acceptance criteria for the next slice:
 5. Validation harness contract tests assert retrieval-use-manifest semantics, source binding, compact output, and controlled failing evidence.
 6. Planning and score contract tests pass after documentation updates.
 7. The receipt remains evidence-only and does not expand kernel authority, promote policy, execute batches, read/write retrieval storage, or train a student model.
+
+## Planning Turn Score Decision
+
+```text
+selected_axis = Learning
+score_change_this_turn = none
+reason = planning turn only; no implementation evidence changed
+current_score_retained = G ≈ 0.950
+next_score_change_target = raise Learning after retrieval-use-manifest evidence lands
+commit_scope = plan.md, score.md
+out_of_scope_preserved = canon-rustc-v3/src/facts.rs, canon-rustc-v3/src/hir.rs, canon-rustc-v3/src/mir.rs, canon-rustc-v3/src/wrapper.rs, canon-rustc-v3/plan-autorefactor.md
+```
 
 ## Out-of-Scope Working Tree Notes
 
