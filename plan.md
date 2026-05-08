@@ -1,6 +1,6 @@
 # Canon Agent Implementation Plan
 
-This plan tracks the current deterministic implementation plan for the planning/scoring turn after implementation step 6 of the current agent loop.
+This plan tracks the current deterministic implementation plan for the planning/scoring turn after implementation step 7 of the current agent loop.
 
 ## North Star
 
@@ -50,100 +50,21 @@ The repository currently exposes these meaningful surfaces:
 - validation-harness/root-validate smoke exposure for healthy and controlled quickcheck-failed evidence-maturity evidence;
 - deterministic policy reuse evidence-summary receipt in the validation harness;
 - validation-harness/root-validate smoke exposure for healthy and controlled immature-maturity evidence-summary evidence;
+- deterministic policy reuse evidence-manifest receipt in the validation harness;
+- validation-harness/root-validate smoke exposure for healthy and controlled missing-summary-mode evidence-manifest evidence;
 - retained fixtures for policy reuse, policy validation health, policy validation trend, orchestration capacity, policy capacity/cost, runtime performance trend, validation duration planning, validation command footprint, external CLI mode evidence, and evidence-surface index coverage.
 
 ## Current Completed Implementation Baseline
 
-The current working tree contains deterministic **policy reuse evidence-summary** evidence in the validation-harness/root-validator layer, while retaining evaluator-savings, scaling-projection, distillation-readiness, evidence-surface index, evidence-bundle, evidence-quickcheck, and evidence-maturity evidence already present in this loop.
+The current working tree contains deterministic **policy reuse evidence-manifest** evidence in the validation-harness/root-validator layer, while retaining evaluator-savings, scaling-projection, distillation-readiness, evidence-surface index, evidence-bundle, evidence-quickcheck, evidence-maturity, and evidence-summary evidence already present in this loop.
 
 This slice answers:
 
 ```text
-Can an evaluator inspect one stable deterministic summary receipt that exposes the current healthy maturity result and key source hashes for the policy-reuse learning evidence stack?
+Can an evaluator inspect one deterministic manifest receipt that lists the stable evaluator-facing evidence modes and fixture dependencies for the policy-reuse learning evidence stack?
 ```
 
 Implemented surfaces:
-
-```text
-PolicyReuseEvidenceSummaryReceipt
-policy_reuse_evidence_summary_smoke_receipt()
-policy_reuse_evidence_summary_regression_smoke_receipt()
---policy-reuse-evidence-summary-smoke
---policy-reuse-evidence-summary-regression-smoke
-```
-
-Implemented fields:
-
-```text
-schema
-record_type
-summary_version
-source_maturity_hash
-source_quickcheck_hash
-source_bundle_hash
-maturity_stage
-promotion_eligible
-summary_status
-evaluator_action
-regression_reason
-summary_hash
-receipt_hash
-```
-
-Completed implementation tasks:
-
-1. Added `PolicyReuseEvidenceSummaryReceipt` with deterministic validation, JSON output, summary hash, and receipt hash.
-2. Added healthy and controlled immature-maturity regression smoke constructors.
-3. Bound summary evidence to the policy reuse evidence maturity, quickcheck, and bundle receipts.
-4. Added root validator compact modes for healthy and regression summary receipts.
-5. Added validation harness contracts for summary semantics, source binding, compact output, and controlled immature-maturity evidence.
-6. Updated external CLI mode fixture and root compact-mode counts for the two new public modes.
-7. Updated validation harness guarded-test count from 172 to 176.
-8. Updated retained guarded-test fixture values from 182 to 186 and refreshed dependent validation-duration estimates.
-9. Kept kernel authority unchanged and did not train a student model or promote policy.
-
-Implemented deterministic semantics:
-
-- `summary_status = "pass"` only when promotion eligibility is true, maturity stage is `candidate`, evaluator action is `accept_summary`, and `regression_reason = "none"`.
-- Regression evidence remains structurally valid while exposing `summary_status = "fail"`, `evaluator_action = "inspect_maturity"`, and `regression_reason = "maturity_immature"`.
-- Summary source evidence reuses maturity, quickcheck, and bundle receipt hashes instead of adding policy authority.
-- The summary receipt is evidence-only; it provides a stable evaluator-facing landing surface without granting policy authority.
-- The new receipt does not introduce live LLM, network, wall-clock, or environment-dependent measurement.
-
-## Validation Evidence Recorded For This Baseline
-
-```text
-cargo fmt --check
-RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test validation_harness_contract policy_reuse_evidence_summary --quiet
-RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test validation_harness_contract --quiet
-RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test score_contract --test planning_contract --quiet
-
-cargo fmt --check: pass
-validation_harness_contract policy_reuse_evidence_summary filter: 4 passed, 0 failed, 172 filtered out
-validation_harness_contract: 176 passed, 0 failed
-planning_contract: 2 passed, 0 failed
-score_contract: 5 passed, 0 failed
-```
-
-Full-suite validation was not run before this planning/scoring update.
-
-## Planned Next Implementation Slice
-
-The weakest remaining axis is **Simplicity**.
-
-Current gap:
-
-```text
-Policy-reuse learning evidence now has a stable summary receipt, but historical fixture/count churn still requires multiple retained files to be interpreted together.
-```
-
-Recommended next slice:
-
-```text
-Add a deterministic policy reuse evidence manifest receipt that lists the stable evaluator-facing evidence modes and fixture dependencies as one manifest.
-```
-
-Recommended concrete surfaces:
 
 ```text
 PolicyReuseEvidenceManifestReceipt
@@ -153,13 +74,94 @@ policy_reuse_evidence_manifest_regression_smoke_receipt()
 --policy-reuse-evidence-manifest-regression-smoke
 ```
 
+Implemented fields:
+
+```text
+schema
+record_type
+manifest_version
+source_summary_hash
+source_maturity_hash
+evaluator_mode_count
+fixture_dependency_count
+required_summary_modes_present
+required_fixture_dependencies_present
+manifest_complete
+missing_surface
+manifest_hash
+receipt_hash
+```
+
+Completed implementation tasks:
+
+1. Added `PolicyReuseEvidenceManifestReceipt` with deterministic validation, JSON output, manifest hash, and receipt hash.
+2. Added healthy and controlled missing-summary-mode regression smoke constructors.
+3. Bound manifest evidence to the policy reuse evidence summary and maturity receipts.
+4. Added root validator compact modes for healthy and regression manifest receipts.
+5. Added validation harness contracts for manifest semantics, source binding, compact output, and controlled missing-summary-mode evidence.
+6. Updated external CLI mode fixture and root compact-mode counts for the two new public modes.
+7. Updated validation harness guarded-test count from 176 to 180.
+8. Updated retained guarded-test fixture values from 186 to 190 and refreshed dependent validation-duration estimates.
+9. Kept kernel authority unchanged and did not train a student model or promote policy.
+
+Implemented deterministic semantics:
+
+- `manifest_complete = true` only when required summary modes are present, required fixture dependencies are present, evaluator mode count is 10, fixture dependency count is 4, and `missing_surface = "none"`.
+- Regression evidence remains structurally valid while exposing `manifest_complete = false` and `missing_surface = "required_summary_modes"`.
+- Manifest source evidence reuses summary and maturity receipt hashes instead of adding policy authority.
+- The manifest receipt is evidence-only; it lists evaluator-facing coverage without granting policy authority.
+- The new receipt does not introduce live LLM, network, wall-clock, or environment-dependent measurement.
+
+## Validation Evidence Recorded For This Baseline
+
+```text
+cargo fmt --check
+RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test validation_harness_contract policy_reuse_evidence_manifest --quiet
+RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test validation_harness_contract --quiet
+RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test score_contract --test planning_contract --quiet
+
+cargo fmt --check: pass
+validation_harness_contract policy_reuse_evidence_manifest filter: 4 passed, 0 failed, 176 filtered out
+validation_harness_contract: 180 passed, 0 failed
+planning_contract: 2 passed, 0 failed
+score_contract: 5 passed, 0 failed
+```
+
+Full-suite validation was not run before this planning/scoring update.
+
+## Planned Next Implementation Slice
+
+The weakest remaining axis is **Performance**.
+
+Current gap:
+
+```text
+Policy-reuse learning evidence now has summary and manifest coverage, but validation still requires running the full validation-harness contract to prove the evidence stack.
+```
+
+Recommended next slice:
+
+```text
+Add a deterministic policy reuse evidence validation-budget receipt that summarizes the minimum targeted validation budget for the summary/manifest stack.
+```
+
+Recommended concrete surfaces:
+
+```text
+PolicyReuseEvidenceValidationBudgetReceipt
+policy_reuse_evidence_validation_budget_smoke_receipt()
+policy_reuse_evidence_validation_budget_regression_smoke_receipt()
+--policy-reuse-evidence-validation-budget-smoke
+--policy-reuse-evidence-validation-budget-regression-smoke
+```
+
 Recommended constraints:
 
 1. Keep the kernel untouched.
 2. Do not introduce live LLM, network, wall-clock, or environment-dependent measurement.
-3. Reuse existing summary and maturity hashes.
-4. Prefer one manifest of evaluator-facing evidence surfaces over additional scattered fixture interpretation.
-5. Include healthy and controlled missing-summary-mode regression cases.
+3. Reuse existing manifest and summary hashes.
+4. Prefer reducing repeated validation burden over adding new policy semantics.
+5. Include healthy and controlled budget-exceeded or missing-manifest validation regression cases.
 6. Keep student-model training deferred.
 
 ## Evaluation Axes
@@ -193,8 +195,8 @@ arg max(G) = good
 - Full live Ollama validation remains environment-dependent.
 - Graph telemetry still requires explicit wrapper capture.
 - Student-model training is intentionally deferred until verified distillation data is large and clean.
-- Parallel orchestration execution should wait until larger-batch reuse, validation health, retained validation/runtime cost, catalog completeness, evaluator savings, scaling projection, distillation readiness, evidence-surface indexing, bundled evidence inspection, quickcheck validation, maturity staging, and stable summary evidence, and manifest coverage are proven together.
-- Full-suite validation should run after the manifest slice if fixture or CLI mode churn is broader than expected.
+- Parallel orchestration execution should wait until larger-batch reuse, validation health, retained validation/runtime cost, catalog completeness, evaluator savings, scaling projection, distillation readiness, evidence-surface indexing, bundled evidence inspection, quickcheck validation, maturity staging, and stable summary evidence, manifest coverage, and validation-budget evidence are proven together.
+- Full-suite validation should run after the validation-budget slice if fixture or CLI mode churn is broader than expected.
 
 ## Turn Protocol
 

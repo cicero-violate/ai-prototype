@@ -17,7 +17,7 @@ pub const FAST_TEST_STEP: &str = "fast_score_contract_tests";
 pub const LIB_UNIT_STEP: &str = "lib_unit_contract_tests";
 pub const API_TRANSPORT_STEP: &str = "api_transport_contract_tests";
 pub const VALIDATION_HARNESS_STEP: &str = "validation_harness_contract_tests";
-pub const VALIDATION_HARNESS_EXPECTED_TESTS: usize = 176;
+pub const VALIDATION_HARNESS_EXPECTED_TESTS: usize = 180;
 pub const PLANNING_CONTRACT_STEP: &str = "planning_contract_tests";
 pub const GRAPH_MUTATION_CLI_CONTRACT_STEP: &str = "graph_mutation_cli_contract_tests";
 pub const GRAPH_MUTATION_CLI_CONTRACT_EXPECTED_TESTS: usize = 10;
@@ -104,6 +104,9 @@ pub const POLICY_REUSE_EVIDENCE_MATURITY_REGRESSION_SMOKE_STEP: &str =
 pub const POLICY_REUSE_EVIDENCE_SUMMARY_SMOKE_STEP: &str = "policy_reuse_evidence_summary_smoke";
 pub const POLICY_REUSE_EVIDENCE_SUMMARY_REGRESSION_SMOKE_STEP: &str =
     "policy_reuse_evidence_summary_regression_smoke";
+pub const POLICY_REUSE_EVIDENCE_MANIFEST_SMOKE_STEP: &str = "policy_reuse_evidence_manifest_smoke";
+pub const POLICY_REUSE_EVIDENCE_MANIFEST_REGRESSION_SMOKE_STEP: &str =
+    "policy_reuse_evidence_manifest_regression_smoke";
 pub const POLICY_VALIDATION_HEALTH_SMOKE_STEP: &str = "policy_validation_health_smoke";
 pub const POLICY_VALIDATION_HEALTH_TREND_SMOKE_STEP: &str = "policy_validation_health_trend_smoke";
 pub const POLICY_ORCHESTRATION_CAPACITY_SMOKE_STEP: &str = "policy_orchestration_capacity_smoke";
@@ -1611,6 +1614,77 @@ impl PolicyReuseEvidenceSummaryReceipt {
             self.evaluator_action,
             self.regression_reason,
             self.summary_hash,
+            self.receipt_hash,
+        )
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PolicyReuseEvidenceManifestReceipt {
+    pub schema: &'static str,
+    pub record_type: &'static str,
+    pub manifest_version: u64,
+    pub source_summary_hash: u64,
+    pub source_maturity_hash: u64,
+    pub evaluator_mode_count: usize,
+    pub fixture_dependency_count: usize,
+    pub required_summary_modes_present: bool,
+    pub required_fixture_dependencies_present: bool,
+    pub manifest_complete: bool,
+    pub missing_surface: &'static str,
+    pub manifest_hash: u64,
+    pub receipt_hash: u64,
+}
+
+impl PolicyReuseEvidenceManifestReceipt {
+    pub fn passed(&self) -> bool {
+        self.is_valid() && self.manifest_complete
+    }
+
+    pub fn is_valid(&self) -> bool {
+        self.schema == "canon_policy_reuse_evidence_manifest_v1"
+            && matches!(
+                self.record_type,
+                "policy_reuse_evidence_manifest"
+                    | POLICY_REUSE_EVIDENCE_MANIFEST_SMOKE_STEP
+                    | POLICY_REUSE_EVIDENCE_MANIFEST_REGRESSION_SMOKE_STEP
+            )
+            && self.manifest_version == 1
+            && self.source_summary_hash != 0
+            && self.source_maturity_hash != 0
+            && self.evaluator_mode_count <= 10
+            && self.fixture_dependency_count <= 4
+            && matches!(
+                self.missing_surface,
+                "none" | "required_summary_modes" | "fixture_dependencies"
+            )
+            && self.manifest_complete
+                == (self.required_summary_modes_present
+                    && self.required_fixture_dependencies_present
+                    && self.evaluator_mode_count == 10
+                    && self.fixture_dependency_count == 4
+                    && self.missing_surface == "none")
+            && self.manifest_hash != 0
+            && self.receipt_hash != 0
+            && self.manifest_hash == policy_reuse_evidence_manifest_hash(self)
+            && self.receipt_hash == policy_reuse_evidence_manifest_receipt_hash(self)
+    }
+
+    pub fn to_json(&self) -> String {
+        format!(
+            "{{\"schema\":\"{}\",\"record_type\":\"{}\",\"manifest_version\":{},\"source_summary_hash\":{},\"source_maturity_hash\":{},\"evaluator_mode_count\":{},\"fixture_dependency_count\":{},\"required_summary_modes_present\":{},\"required_fixture_dependencies_present\":{},\"manifest_complete\":{},\"missing_surface\":\"{}\",\"manifest_hash\":{},\"receipt_hash\":{}}}",
+            self.schema,
+            self.record_type,
+            self.manifest_version,
+            self.source_summary_hash,
+            self.source_maturity_hash,
+            self.evaluator_mode_count,
+            self.fixture_dependency_count,
+            self.required_summary_modes_present,
+            self.required_fixture_dependencies_present,
+            self.manifest_complete,
+            self.missing_surface,
+            self.manifest_hash,
             self.receipt_hash,
         )
     }
@@ -3671,6 +3745,81 @@ fn finalize_policy_reuse_evidence_summary(receipt: &mut PolicyReuseEvidenceSumma
     receipt.receipt_hash = policy_reuse_evidence_summary_receipt_hash(receipt);
 }
 
+pub fn policy_reuse_evidence_manifest_smoke_receipt() -> PolicyReuseEvidenceManifestReceipt {
+    let summary = policy_reuse_evidence_summary_smoke_receipt();
+    let maturity = policy_reuse_evidence_maturity_smoke_receipt();
+    let mut receipt = policy_reuse_evidence_manifest_from_sources(
+        POLICY_REUSE_EVIDENCE_MANIFEST_SMOKE_STEP,
+        &summary,
+        &maturity,
+        10,
+        4,
+        true,
+        true,
+        "none",
+    );
+    finalize_policy_reuse_evidence_manifest(&mut receipt);
+    receipt
+}
+
+pub fn policy_reuse_evidence_manifest_regression_smoke_receipt(
+) -> PolicyReuseEvidenceManifestReceipt {
+    let summary = policy_reuse_evidence_summary_smoke_receipt();
+    let maturity = policy_reuse_evidence_maturity_smoke_receipt();
+    let mut receipt = policy_reuse_evidence_manifest_from_sources(
+        POLICY_REUSE_EVIDENCE_MANIFEST_REGRESSION_SMOKE_STEP,
+        &summary,
+        &maturity,
+        9,
+        4,
+        false,
+        true,
+        "required_summary_modes",
+    );
+    finalize_policy_reuse_evidence_manifest(&mut receipt);
+    receipt
+}
+
+#[allow(clippy::too_many_arguments)]
+fn policy_reuse_evidence_manifest_from_sources(
+    record_type: &'static str,
+    summary: &PolicyReuseEvidenceSummaryReceipt,
+    maturity: &PolicyReuseEvidenceMaturityReceipt,
+    evaluator_mode_count: usize,
+    fixture_dependency_count: usize,
+    required_summary_modes_present: bool,
+    required_fixture_dependencies_present: bool,
+    missing_surface: &'static str,
+) -> PolicyReuseEvidenceManifestReceipt {
+    let manifest_complete = required_summary_modes_present
+        && required_fixture_dependencies_present
+        && evaluator_mode_count == 10
+        && fixture_dependency_count == 4
+        && missing_surface == "none";
+    let mut receipt = PolicyReuseEvidenceManifestReceipt {
+        schema: "canon_policy_reuse_evidence_manifest_v1",
+        record_type,
+        manifest_version: 1,
+        source_summary_hash: summary.receipt_hash,
+        source_maturity_hash: maturity.receipt_hash,
+        evaluator_mode_count,
+        fixture_dependency_count,
+        required_summary_modes_present,
+        required_fixture_dependencies_present,
+        manifest_complete,
+        missing_surface,
+        manifest_hash: 0,
+        receipt_hash: 0,
+    };
+    finalize_policy_reuse_evidence_manifest(&mut receipt);
+    receipt
+}
+
+fn finalize_policy_reuse_evidence_manifest(receipt: &mut PolicyReuseEvidenceManifestReceipt) {
+    receipt.manifest_hash = policy_reuse_evidence_manifest_hash(receipt);
+    receipt.receipt_hash = policy_reuse_evidence_manifest_receipt_hash(receipt);
+}
+
 #[allow(clippy::too_many_arguments)]
 fn policy_reuse_evidence_surface_index_from_sources(
     record_type: &'static str,
@@ -3936,6 +4085,47 @@ fn policy_orchestration_capacity_hash(receipt: &PolicyOrchestrationCapacityRecei
     h = h.wrapping_mul(0x100000001b3) ^ policy_reuse_verdict_code;
     h = h.wrapping_mul(0x100000001b3) ^ verdict_code;
     h.max(1)
+}
+
+fn policy_reuse_evidence_manifest_hash(receipt: &PolicyReuseEvidenceManifestReceipt) -> u64 {
+    if receipt.manifest_version == 0
+        || receipt.source_summary_hash == 0
+        || receipt.source_maturity_hash == 0
+    {
+        return 0;
+    }
+    let missing_surface_code = match receipt.missing_surface {
+        "none" => 1,
+        "required_summary_modes" => 2,
+        "fixture_dependencies" => 3,
+        _ => 0,
+    };
+    if missing_surface_code == 0 {
+        return 0;
+    }
+    let mut h = 0x504f_4c52_4546_4d48u64;
+    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.schema.as_bytes());
+    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.record_type.as_bytes());
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.manifest_version;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_summary_hash;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_maturity_hash;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.evaluator_mode_count as u64;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.fixture_dependency_count as u64;
+    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.required_summary_modes_present);
+    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.required_fixture_dependencies_present);
+    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.manifest_complete);
+    h = h.wrapping_mul(0x100000001b3) ^ missing_surface_code;
+    h.max(1)
+}
+
+fn policy_reuse_evidence_manifest_receipt_hash(
+    receipt: &PolicyReuseEvidenceManifestReceipt,
+) -> u64 {
+    let manifest_hash = policy_reuse_evidence_manifest_hash(receipt);
+    if manifest_hash == 0 || receipt.manifest_hash != manifest_hash {
+        return 0;
+    }
+    (manifest_hash ^ 0x504f_4c52_4546_4d52u64).max(1)
 }
 
 fn policy_reuse_evidence_summary_hash(receipt: &PolicyReuseEvidenceSummaryReceipt) -> u64 {

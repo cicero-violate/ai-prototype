@@ -29,8 +29,8 @@ use ai::validation_harness::{
     VALIDATION_FOOTPRINT_STEP, VALIDATION_HARNESS_EXPECTED_TESTS, VALIDATION_HARNESS_STEP,
 };
 
-const EXPECTED_ROOT_VALIDATE_COMPACT_MODE_COUNT: usize = 60;
-const EXPECTED_EXTERNAL_AGENT_CLI_MODE_COUNT: usize = 65;
+const EXPECTED_ROOT_VALIDATE_COMPACT_MODE_COUNT: usize = 62;
+const EXPECTED_EXTERNAL_AGENT_CLI_MODE_COUNT: usize = 67;
 
 fn expected_guarded_test_count() -> usize {
     VALIDATION_HARNESS_EXPECTED_TESTS + GRAPH_MUTATION_CLI_CONTRACT_EXPECTED_TESTS
@@ -74,7 +74,7 @@ fn root_validation_runs_check_before_contract_suites() {
         steps[4].expected_test_count,
         Some(VALIDATION_HARNESS_EXPECTED_TESTS)
     );
-    assert_eq!(VALIDATION_HARNESS_EXPECTED_TESTS, 176);
+    assert_eq!(VALIDATION_HARNESS_EXPECTED_TESTS, 180);
     assert!(steps[5].args.contains(&"planning_contract"));
     assert!(steps[6].args.contains(&"graph_mutation_cli_contract"));
 }
@@ -580,6 +580,14 @@ fn external_agent_cli_modes_fixture_documents_all_public_modes() {
     assert!(catalog.contains(
         "root_validate --policy-reuse-evidence-summary-regression-smoke",
         "policy_reuse_evidence_summary_regression_smoke",
+    ));
+    assert!(catalog.contains(
+        "root_validate --policy-reuse-evidence-manifest-smoke",
+        "policy_reuse_evidence_manifest_smoke",
+    ));
+    assert!(catalog.contains(
+        "root_validate --policy-reuse-evidence-manifest-regression-smoke",
+        "policy_reuse_evidence_manifest_regression_smoke",
     ));
     assert!(catalog.contains(
         "root_validate --root-validate-dispatch-catalog",
@@ -3911,8 +3919,8 @@ fn policy_reuse_performance_cost_trend_smoke_exposes_cost_safe_reuse() {
     assert_eq!(receipt.batch_size, 6);
     assert_eq!(receipt.avoided_llm_calls_per_batch, 4);
     assert_eq!(receipt.reuse_rate_bps, 6_666);
-    assert_eq!(receipt.validation_expected_count_guarded_tests, 186);
-    assert_eq!(receipt.estimated_ms_per_guarded_test, 16);
+    assert_eq!(receipt.validation_expected_count_guarded_tests, 190);
+    assert_eq!(receipt.estimated_ms_per_guarded_test, 15);
     assert_eq!(receipt.runtime_budget_status, "pass");
     assert_eq!(receipt.validation_cost_verdict, "pass");
     assert!(!receipt.cost_regression_flag);
@@ -3936,7 +3944,7 @@ fn policy_reuse_performance_cost_trend_regression_smoke_exposes_cost_failure() {
     assert_eq!(receipt.batch_size, 6);
     assert_eq!(receipt.avoided_llm_calls_per_batch, 4);
     assert_eq!(receipt.reuse_rate_bps, 6_666);
-    assert_eq!(receipt.validation_expected_count_guarded_tests, 186);
+    assert_eq!(receipt.validation_expected_count_guarded_tests, 190);
     assert_eq!(receipt.estimated_ms_per_guarded_test, 17);
     assert_eq!(receipt.runtime_budget_status, "pass");
     assert_eq!(receipt.validation_cost_verdict, "fail");
@@ -3954,8 +3962,8 @@ fn root_validate_policy_reuse_performance_cost_trend_smoke_mode_is_executable_co
             "\"batch_size\":6",
             "\"avoided_llm_calls_per_batch\":4",
             "\"reuse_rate_bps\":6666",
-            "\"validation_expected_count_guarded_tests\":186",
-            "\"estimated_ms_per_guarded_test\":16",
+            "\"validation_expected_count_guarded_tests\":190",
+            "\"estimated_ms_per_guarded_test\":15",
             "\"runtime_budget_status\":\"pass\"",
             "\"validation_cost_verdict\":\"pass\"",
             "\"cost_regression_flag\":false",
@@ -3977,7 +3985,7 @@ fn root_validate_policy_reuse_performance_cost_trend_regression_smoke_mode_is_ex
             "\"batch_size\":6",
             "\"avoided_llm_calls_per_batch\":4",
             "\"reuse_rate_bps\":6666",
-            "\"validation_expected_count_guarded_tests\":186",
+            "\"validation_expected_count_guarded_tests\":190",
             "\"estimated_ms_per_guarded_test\":17",
             "\"runtime_budget_status\":\"pass\"",
             "\"validation_cost_verdict\":\"fail\"",
@@ -4726,7 +4734,7 @@ fn root_validate_policy_reuse_evidence_quickcheck_smoke_mode_is_executable_contr
             "\"record_type\":\"policy_reuse_evidence_quickcheck_smoke\"",
             "\"quickcheck_version\":1",
             "\"source_bundle_hash\":",
-            "\"validation_harness_expected_tests\":176",
+            "\"validation_harness_expected_tests\":180",
             "\"required_command_count\":4",
             "\"observed_command_count\":4",
             "\"minimum_command_set_hash\":",
@@ -4748,7 +4756,7 @@ fn root_validate_policy_reuse_evidence_quickcheck_regression_smoke_mode_is_execu
             "\"schema\":\"canon_policy_reuse_evidence_quickcheck_v1\"",
             "\"record_type\":\"policy_reuse_evidence_quickcheck_regression_smoke\"",
             "\"quickcheck_version\":1",
-            "\"validation_harness_expected_tests\":176",
+            "\"validation_harness_expected_tests\":180",
             "\"required_command_count\":4",
             "\"observed_command_count\":3",
             "\"bundle_complete\":true",
@@ -4944,6 +4952,96 @@ fn root_validate_policy_reuse_evidence_summary_regression_smoke_mode_is_executab
             "\"evaluator_action\":\"inspect_maturity\"",
             "\"regression_reason\":\"maturity_immature\"",
             "\"summary_hash\":",
+            "\"receipt_hash\":",
+        ],
+    );
+}
+
+#[test]
+fn policy_reuse_evidence_manifest_smoke_lists_evaluator_surface() {
+    let receipt = ai::validation_harness::policy_reuse_evidence_manifest_smoke_receipt();
+    let summary = ai::validation_harness::policy_reuse_evidence_summary_smoke_receipt();
+    let maturity = ai::validation_harness::policy_reuse_evidence_maturity_smoke_receipt();
+
+    assert_eq!(receipt.schema, "canon_policy_reuse_evidence_manifest_v1");
+    assert_eq!(
+        receipt.record_type,
+        ai::validation_harness::POLICY_REUSE_EVIDENCE_MANIFEST_SMOKE_STEP
+    );
+    assert_eq!(receipt.manifest_version, 1);
+    assert_eq!(receipt.source_summary_hash, summary.receipt_hash);
+    assert_eq!(receipt.source_maturity_hash, maturity.receipt_hash);
+    assert_eq!(receipt.evaluator_mode_count, 10);
+    assert_eq!(receipt.fixture_dependency_count, 4);
+    assert!(receipt.required_summary_modes_present);
+    assert!(receipt.required_fixture_dependencies_present);
+    assert!(receipt.manifest_complete);
+    assert_eq!(receipt.missing_surface, "none");
+    assert_ne!(receipt.manifest_hash, 0);
+    assert_ne!(receipt.receipt_hash, 0);
+    assert!(receipt.is_valid());
+    assert!(receipt.passed());
+}
+
+#[test]
+fn policy_reuse_evidence_manifest_regression_smoke_is_valid_failing_evidence() {
+    let receipt = ai::validation_harness::policy_reuse_evidence_manifest_regression_smoke_receipt();
+    let summary = ai::validation_harness::policy_reuse_evidence_summary_smoke_receipt();
+    let maturity = ai::validation_harness::policy_reuse_evidence_maturity_smoke_receipt();
+
+    assert_eq!(
+        receipt.record_type,
+        ai::validation_harness::POLICY_REUSE_EVIDENCE_MANIFEST_REGRESSION_SMOKE_STEP
+    );
+    assert_eq!(receipt.source_summary_hash, summary.receipt_hash);
+    assert_eq!(receipt.source_maturity_hash, maturity.receipt_hash);
+    assert_eq!(receipt.evaluator_mode_count, 9);
+    assert_eq!(receipt.fixture_dependency_count, 4);
+    assert!(!receipt.required_summary_modes_present);
+    assert!(receipt.required_fixture_dependencies_present);
+    assert!(!receipt.manifest_complete);
+    assert_eq!(receipt.missing_surface, "required_summary_modes");
+    assert!(receipt.is_valid());
+    assert!(!receipt.passed());
+}
+
+#[test]
+fn root_validate_policy_reuse_evidence_manifest_smoke_mode_is_executable_contract() {
+    assert_root_validate_catalog_compact_mode_contract(
+        "--policy-reuse-evidence-manifest-smoke",
+        &[
+            "\"schema\":\"canon_policy_reuse_evidence_manifest_v1\"",
+            "\"record_type\":\"policy_reuse_evidence_manifest_smoke\"",
+            "\"manifest_version\":1",
+            "\"source_summary_hash\":",
+            "\"source_maturity_hash\":",
+            "\"evaluator_mode_count\":10",
+            "\"fixture_dependency_count\":4",
+            "\"required_summary_modes_present\":true",
+            "\"required_fixture_dependencies_present\":true",
+            "\"manifest_complete\":true",
+            "\"missing_surface\":\"none\"",
+            "\"manifest_hash\":",
+            "\"receipt_hash\":",
+        ],
+    );
+}
+
+#[test]
+fn root_validate_policy_reuse_evidence_manifest_regression_smoke_mode_is_executable_contract() {
+    assert_root_validate_catalog_compact_mode_contract(
+        "--policy-reuse-evidence-manifest-regression-smoke",
+        &[
+            "\"schema\":\"canon_policy_reuse_evidence_manifest_v1\"",
+            "\"record_type\":\"policy_reuse_evidence_manifest_regression_smoke\"",
+            "\"manifest_version\":1",
+            "\"evaluator_mode_count\":9",
+            "\"fixture_dependency_count\":4",
+            "\"required_summary_modes_present\":false",
+            "\"required_fixture_dependencies_present\":true",
+            "\"manifest_complete\":false",
+            "\"missing_surface\":\"required_summary_modes\"",
+            "\"manifest_hash\":",
             "\"receipt_hash\":",
         ],
     );

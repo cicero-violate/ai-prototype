@@ -330,6 +330,16 @@ const COMPACT_MODES: &[CompactMode] = &[
         run: policy_reuse_evidence_summary_regression_smoke_mode,
     },
     CompactMode {
+        arg: "--policy-reuse-evidence-manifest-smoke",
+        marker: "policy_reuse_evidence_manifest_smoke",
+        run: policy_reuse_evidence_manifest_smoke_mode,
+    },
+    CompactMode {
+        arg: "--policy-reuse-evidence-manifest-regression-smoke",
+        marker: "policy_reuse_evidence_manifest_regression_smoke",
+        run: policy_reuse_evidence_manifest_regression_smoke_mode,
+    },
+    CompactMode {
         arg: "--root-validate-dispatch-catalog",
         marker: "canon_root_validate_dispatch_catalog_v1",
         run: root_validate_dispatch_catalog_mode,
@@ -881,6 +891,26 @@ fn policy_reuse_evidence_summary_regression_smoke_mode() -> Result<CompactModeOu
         && receipt.summary_status == "fail"
         && receipt.evaluator_action == "inspect_maturity"
         && receipt.regression_reason == "maturity_immature"
+        && !receipt.passed();
+    Ok(CompactModeOutcome::controlled_json(
+        receipt.to_json(),
+        passed,
+    ))
+}
+
+fn policy_reuse_evidence_manifest_smoke_mode() -> Result<CompactModeOutcome, String> {
+    let receipt = validation_harness::policy_reuse_evidence_manifest_smoke_receipt();
+    Ok(CompactModeOutcome::pass_json(
+        receipt.to_json(),
+        receipt.passed(),
+    ))
+}
+
+fn policy_reuse_evidence_manifest_regression_smoke_mode() -> Result<CompactModeOutcome, String> {
+    let receipt = validation_harness::policy_reuse_evidence_manifest_regression_smoke_receipt();
+    let passed = receipt.is_valid()
+        && !receipt.manifest_complete
+        && receipt.missing_surface == "required_summary_modes"
         && !receipt.passed();
     Ok(CompactModeOutcome::controlled_json(
         receipt.to_json(),
