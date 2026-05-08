@@ -17,7 +17,7 @@ pub const FAST_TEST_STEP: &str = "fast_score_contract_tests";
 pub const LIB_UNIT_STEP: &str = "lib_unit_contract_tests";
 pub const API_TRANSPORT_STEP: &str = "api_transport_contract_tests";
 pub const VALIDATION_HARNESS_STEP: &str = "validation_harness_contract_tests";
-pub const VALIDATION_HARNESS_EXPECTED_TESTS: usize = 228;
+pub const VALIDATION_HARNESS_EXPECTED_TESTS: usize = 232;
 pub const PLANNING_CONTRACT_STEP: &str = "planning_contract_tests";
 pub const GRAPH_MUTATION_CLI_CONTRACT_STEP: &str = "graph_mutation_cli_contract_tests";
 pub const GRAPH_MUTATION_CLI_CONTRACT_EXPECTED_TESTS: usize = 10;
@@ -155,6 +155,10 @@ pub const POLICY_REUSE_EVIDENCE_LEARNING_DATA_ADMISSION_SMOKE_STEP: &str =
     "policy_reuse_evidence_learning_data_admission_smoke";
 pub const POLICY_REUSE_EVIDENCE_LEARNING_DATA_ADMISSION_REGRESSION_SMOKE_STEP: &str =
     "policy_reuse_evidence_learning_data_admission_regression_smoke";
+pub const POLICY_REUSE_EVIDENCE_RETRIEVAL_EXAMPLE_ADMISSION_SMOKE_STEP: &str =
+    "policy_reuse_evidence_retrieval_example_admission_smoke";
+pub const POLICY_REUSE_EVIDENCE_RETRIEVAL_EXAMPLE_ADMISSION_REGRESSION_SMOKE_STEP: &str =
+    "policy_reuse_evidence_retrieval_example_admission_regression_smoke";
 pub const POLICY_VALIDATION_HEALTH_SMOKE_STEP: &str = "policy_validation_health_smoke";
 pub const POLICY_VALIDATION_HEALTH_TREND_SMOKE_STEP: &str = "policy_validation_health_trend_smoke";
 pub const POLICY_ORCHESTRATION_CAPACITY_SMOKE_STEP: &str = "policy_orchestration_capacity_smoke";
@@ -2802,6 +2806,98 @@ impl PolicyReuseEvidenceLearningDataAdmissionReceipt {
             self.admitted_policy_reuse_cases,
             self.admitted_llm_fallback_cases,
             self.learning_data_admitted,
+            self.admission_status,
+            self.not_admitted_reason,
+            self.admission_hash,
+            self.receipt_hash,
+        )
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PolicyReuseEvidenceRetrievalExampleAdmissionReceipt {
+    pub schema: &'static str,
+    pub record_type: &'static str,
+    pub retrieval_example_admission_version: u64,
+    pub source_learning_data_admission_hash: u64,
+    pub source_learning_candidate_hash: u64,
+    pub learning_data_admitted: bool,
+    pub learning_candidate_ready: bool,
+    pub retrieval_write_performed: bool,
+    pub policy_promotion_performed: bool,
+    pub student_training_performed: bool,
+    pub example_policy_reuse_cases: usize,
+    pub example_llm_fallback_cases: usize,
+    pub retrieval_example_admitted: bool,
+    pub admission_status: &'static str,
+    pub not_admitted_reason: &'static str,
+    pub admission_hash: u64,
+    pub receipt_hash: u64,
+}
+
+impl PolicyReuseEvidenceRetrievalExampleAdmissionReceipt {
+    pub fn passed(&self) -> bool {
+        self.is_valid() && self.retrieval_example_admitted && self.admission_status == "admitted"
+    }
+
+    pub fn is_valid(&self) -> bool {
+        self.schema == "canon_policy_reuse_evidence_retrieval_example_admission_v1"
+            && matches!(
+                self.record_type,
+                "policy_reuse_evidence_retrieval_example_admission"
+                    | POLICY_REUSE_EVIDENCE_RETRIEVAL_EXAMPLE_ADMISSION_SMOKE_STEP
+                    | POLICY_REUSE_EVIDENCE_RETRIEVAL_EXAMPLE_ADMISSION_REGRESSION_SMOKE_STEP
+            )
+            && self.retrieval_example_admission_version == 1
+            && self.source_learning_data_admission_hash != 0
+            && self.source_learning_candidate_hash != 0
+            && !self.retrieval_write_performed
+            && !self.policy_promotion_performed
+            && !self.student_training_performed
+            && self.example_policy_reuse_cases > 0
+            && matches!(self.admission_status, "admitted" | "not_admitted")
+            && matches!(
+                self.not_admitted_reason,
+                "none"
+                    | "data_not_admitted"
+                    | "candidate_not_ready"
+                    | "retrieval_write_attempted"
+                    | "policy_promotion_attempted"
+                    | "student_training_attempted"
+                    | "no_policy_reuse_cases"
+            )
+            && self.retrieval_example_admitted
+                == (self.learning_data_admitted
+                    && self.learning_candidate_ready
+                    && !self.retrieval_write_performed
+                    && !self.policy_promotion_performed
+                    && !self.student_training_performed
+                    && self.example_policy_reuse_cases > 0
+                    && self.not_admitted_reason == "none")
+            && (self.admission_status == "admitted") == self.retrieval_example_admitted
+            && self.admission_hash != 0
+            && self.receipt_hash != 0
+            && self.admission_hash == policy_reuse_evidence_retrieval_example_admission_hash(self)
+            && self.receipt_hash
+                == policy_reuse_evidence_retrieval_example_admission_receipt_hash(self)
+    }
+
+    pub fn to_json(&self) -> String {
+        format!(
+            r#"{{"schema":"{}","record_type":"{}","retrieval_example_admission_version":{},"source_learning_data_admission_hash":{},"source_learning_candidate_hash":{},"learning_data_admitted":{},"learning_candidate_ready":{},"retrieval_write_performed":{},"policy_promotion_performed":{},"student_training_performed":{},"example_policy_reuse_cases":{},"example_llm_fallback_cases":{},"retrieval_example_admitted":{},"admission_status":"{}","not_admitted_reason":"{}","admission_hash":{},"receipt_hash":{}}}"#,
+            self.schema,
+            self.record_type,
+            self.retrieval_example_admission_version,
+            self.source_learning_data_admission_hash,
+            self.source_learning_candidate_hash,
+            self.learning_data_admitted,
+            self.learning_candidate_ready,
+            self.retrieval_write_performed,
+            self.policy_promotion_performed,
+            self.student_training_performed,
+            self.example_policy_reuse_cases,
+            self.example_llm_fallback_cases,
+            self.retrieval_example_admitted,
             self.admission_status,
             self.not_admitted_reason,
             self.admission_hash,
@@ -5943,6 +6039,95 @@ fn finalize_policy_reuse_evidence_learning_data_admission(
     receipt.receipt_hash = policy_reuse_evidence_learning_data_admission_receipt_hash(receipt);
 }
 
+pub fn policy_reuse_evidence_retrieval_example_admission_smoke_receipt(
+) -> PolicyReuseEvidenceRetrievalExampleAdmissionReceipt {
+    let data_admission = policy_reuse_evidence_learning_data_admission_smoke_receipt();
+    let candidate = policy_reuse_evidence_learning_candidate_smoke_receipt();
+    let mut receipt = policy_reuse_evidence_retrieval_example_admission_from_sources(
+        POLICY_REUSE_EVIDENCE_RETRIEVAL_EXAMPLE_ADMISSION_SMOKE_STEP,
+        &data_admission,
+        &candidate,
+        false,
+        false,
+        false,
+        "none",
+    );
+    finalize_policy_reuse_evidence_retrieval_example_admission(&mut receipt);
+    receipt
+}
+
+pub fn policy_reuse_evidence_retrieval_example_admission_regression_smoke_receipt(
+) -> PolicyReuseEvidenceRetrievalExampleAdmissionReceipt {
+    let data_admission = policy_reuse_evidence_learning_data_admission_regression_smoke_receipt();
+    let candidate = policy_reuse_evidence_learning_candidate_regression_smoke_receipt();
+    let mut receipt = policy_reuse_evidence_retrieval_example_admission_from_sources(
+        POLICY_REUSE_EVIDENCE_RETRIEVAL_EXAMPLE_ADMISSION_REGRESSION_SMOKE_STEP,
+        &data_admission,
+        &candidate,
+        false,
+        false,
+        false,
+        "data_not_admitted",
+    );
+    finalize_policy_reuse_evidence_retrieval_example_admission(&mut receipt);
+    receipt
+}
+
+fn policy_reuse_evidence_retrieval_example_admission_from_sources(
+    record_type: &'static str,
+    data_admission: &PolicyReuseEvidenceLearningDataAdmissionReceipt,
+    candidate: &PolicyReuseEvidenceLearningCandidateReceipt,
+    retrieval_write_performed: bool,
+    policy_promotion_performed: bool,
+    student_training_performed: bool,
+    not_admitted_reason: &'static str,
+) -> PolicyReuseEvidenceRetrievalExampleAdmissionReceipt {
+    let learning_data_admitted = data_admission.passed();
+    let learning_candidate_ready = candidate.passed();
+    let example_policy_reuse_cases = data_admission.admitted_policy_reuse_cases;
+    let example_llm_fallback_cases = data_admission.admitted_llm_fallback_cases;
+    let retrieval_example_admitted = learning_data_admitted
+        && learning_candidate_ready
+        && !retrieval_write_performed
+        && !policy_promotion_performed
+        && !student_training_performed
+        && example_policy_reuse_cases > 0
+        && not_admitted_reason == "none";
+    let admission_status = if retrieval_example_admitted {
+        "admitted"
+    } else {
+        "not_admitted"
+    };
+    let mut receipt = PolicyReuseEvidenceRetrievalExampleAdmissionReceipt {
+        schema: "canon_policy_reuse_evidence_retrieval_example_admission_v1",
+        record_type,
+        retrieval_example_admission_version: 1,
+        source_learning_data_admission_hash: data_admission.receipt_hash,
+        source_learning_candidate_hash: candidate.receipt_hash,
+        learning_data_admitted,
+        learning_candidate_ready,
+        retrieval_write_performed,
+        policy_promotion_performed,
+        student_training_performed,
+        example_policy_reuse_cases,
+        example_llm_fallback_cases,
+        retrieval_example_admitted,
+        admission_status,
+        not_admitted_reason,
+        admission_hash: 0,
+        receipt_hash: 0,
+    };
+    finalize_policy_reuse_evidence_retrieval_example_admission(&mut receipt);
+    receipt
+}
+
+fn finalize_policy_reuse_evidence_retrieval_example_admission(
+    receipt: &mut PolicyReuseEvidenceRetrievalExampleAdmissionReceipt,
+) {
+    receipt.admission_hash = policy_reuse_evidence_retrieval_example_admission_hash(receipt);
+    receipt.receipt_hash = policy_reuse_evidence_retrieval_example_admission_receipt_hash(receipt);
+}
+
 #[allow(clippy::too_many_arguments)]
 fn policy_reuse_evidence_surface_index_from_sources(
     record_type: &'static str,
@@ -6925,6 +7110,62 @@ fn policy_reuse_evidence_learning_data_admission_receipt_hash(
         return 0;
     }
     (admission_hash ^ 0x504f_4c52_4c44_4152u64).max(1)
+}
+
+fn policy_reuse_evidence_retrieval_example_admission_hash(
+    receipt: &PolicyReuseEvidenceRetrievalExampleAdmissionReceipt,
+) -> u64 {
+    if receipt.retrieval_example_admission_version == 0
+        || receipt.source_learning_data_admission_hash == 0
+        || receipt.source_learning_candidate_hash == 0
+    {
+        return 0;
+    }
+    let admission_status_code = match receipt.admission_status {
+        "admitted" => 1,
+        "not_admitted" => 2,
+        _ => 0,
+    };
+    let not_admitted_reason_code = match receipt.not_admitted_reason {
+        "none" => 1,
+        "data_not_admitted" => 2,
+        "candidate_not_ready" => 3,
+        "retrieval_write_attempted" => 4,
+        "policy_promotion_attempted" => 5,
+        "student_training_attempted" => 6,
+        "no_policy_reuse_cases" => 7,
+        _ => 0,
+    };
+    if admission_status_code == 0 || not_admitted_reason_code == 0 {
+        return 0;
+    }
+    let mut h = 0x504f_4c52_5245_4148u64;
+    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.schema.as_bytes());
+    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.record_type.as_bytes());
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.retrieval_example_admission_version;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_learning_data_admission_hash;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_learning_candidate_hash;
+    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.learning_data_admitted);
+    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.learning_candidate_ready);
+    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_write_performed);
+    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.policy_promotion_performed);
+    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.student_training_performed);
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.example_policy_reuse_cases as u64;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.example_llm_fallback_cases as u64;
+    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_example_admitted);
+    h = h.wrapping_mul(0x100000001b3) ^ admission_status_code;
+    h = h.wrapping_mul(0x100000001b3) ^ not_admitted_reason_code;
+    h.max(1)
+}
+
+fn policy_reuse_evidence_retrieval_example_admission_receipt_hash(
+    receipt: &PolicyReuseEvidenceRetrievalExampleAdmissionReceipt,
+) -> u64 {
+    let admission_hash = policy_reuse_evidence_retrieval_example_admission_hash(receipt);
+    if admission_hash == 0 || receipt.admission_hash != admission_hash {
+        return 0;
+    }
+    (admission_hash ^ 0x504f_4c52_5245_4152u64).max(1)
 }
 
 fn policy_reuse_evidence_summary_hash(receipt: &PolicyReuseEvidenceSummaryReceipt) -> u64 {
