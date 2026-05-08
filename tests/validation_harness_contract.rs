@@ -74,7 +74,7 @@ fn root_validation_runs_check_before_contract_suites() {
         steps[4].expected_test_count,
         Some(VALIDATION_HARNESS_EXPECTED_TESTS)
     );
-    assert_eq!(VALIDATION_HARNESS_EXPECTED_TESTS, 200);
+    assert_eq!(VALIDATION_HARNESS_EXPECTED_TESTS, 204);
     assert!(steps[5].args.contains(&"planning_contract"));
     assert!(steps[6].args.contains(&"graph_mutation_cli_contract"));
 }
@@ -628,6 +628,14 @@ fn external_agent_cli_modes_fixture_documents_all_public_modes() {
     assert!(catalog.contains(
         "root_validate --policy-reuse-evidence-compact-validation-regression-smoke",
         "policy_reuse_evidence_compact_validation_regression_smoke",
+    ));
+    assert!(catalog.contains(
+        "root_validate --policy-reuse-evidence-batch-readiness-smoke",
+        "policy_reuse_evidence_batch_readiness_smoke",
+    ));
+    assert!(catalog.contains(
+        "root_validate --policy-reuse-evidence-batch-readiness-regression-smoke",
+        "policy_reuse_evidence_batch_readiness_regression_smoke",
     ));
     assert!(catalog.contains(
         "root_validate --root-validate-dispatch-catalog",
@@ -5163,7 +5171,7 @@ fn root_validate_policy_reuse_evidence_validation_budget_smoke_mode_is_executabl
             "\"targeted_command_count\":2",
             "\"targeted_test_count\":4",
             "\"max_targeted_test_count\":4",
-            "\"full_harness_test_count\":200",
+            "\"full_harness_test_count\":204",
             "\"avoided_full_harness_tests\":196",
             "\"manifest_complete\":true",
             "\"budget_within_limit\":true",
@@ -5187,7 +5195,7 @@ fn root_validate_policy_reuse_evidence_validation_budget_regression_smoke_mode_i
             "\"targeted_command_count\":2",
             "\"targeted_test_count\":12",
             "\"max_targeted_test_count\":4",
-            "\"full_harness_test_count\":200",
+            "\"full_harness_test_count\":204",
             "\"avoided_full_harness_tests\":188",
             "\"manifest_complete\":true",
             "\"budget_within_limit\":false",
@@ -5642,8 +5650,8 @@ fn root_validate_policy_reuse_evidence_compact_validation_smoke_mode_is_executab
             "\"targeted_command_count\":3",
             "\"targeted_test_count\":6",
             "\"max_targeted_test_count\":6",
-            "\"full_harness_test_count\":200",
-            "\"avoided_full_harness_tests\":194",
+            "\"full_harness_test_count\":204",
+            "\"avoided_full_harness_tests\":198",
             "\"compact_validation_passed\":true",
             "\"compact_validation_status\":\"pass\"",
             "\"failure_reason\":\"none\"",
@@ -5668,12 +5676,145 @@ fn root_validate_policy_reuse_evidence_compact_validation_regression_smoke_mode_
             "\"targeted_command_count\":3",
             "\"targeted_test_count\":14",
             "\"max_targeted_test_count\":6",
-            "\"full_harness_test_count\":200",
-            "\"avoided_full_harness_tests\":186",
+            "\"full_harness_test_count\":204",
+            "\"avoided_full_harness_tests\":190",
             "\"compact_validation_passed\":false",
             "\"compact_validation_status\":\"fail\"",
             "\"failure_reason\":\"retrieval_not_ready\"",
             "\"compact_hash\":",
+            "\"receipt_hash\":",
+        ],
+    );
+}
+
+#[test]
+fn policy_reuse_evidence_batch_readiness_smoke_composes_batch_chain() {
+    let receipt = ai::validation_harness::policy_reuse_evidence_batch_readiness_smoke_receipt();
+    let compact = ai::validation_harness::policy_reuse_evidence_compact_validation_smoke_receipt();
+    let retrieval =
+        ai::validation_harness::policy_reuse_evidence_retrieval_readiness_smoke_receipt();
+    let projection = ai::validation_harness::policy_reuse_scaling_projection_smoke_receipt();
+
+    assert_eq!(
+        receipt.schema,
+        "canon_policy_reuse_evidence_batch_readiness_v1"
+    );
+    assert_eq!(
+        receipt.record_type,
+        ai::validation_harness::POLICY_REUSE_EVIDENCE_BATCH_READINESS_SMOKE_STEP
+    );
+    assert_eq!(receipt.batch_readiness_version, 1);
+    assert_eq!(receipt.source_compact_validation_hash, compact.receipt_hash);
+    assert_eq!(
+        receipt.source_retrieval_readiness_hash,
+        retrieval.receipt_hash
+    );
+    assert_eq!(
+        receipt.source_scaling_projection_hash,
+        projection.receipt_hash
+    );
+    assert!(receipt.compact_validation_passed);
+    assert!(receipt.retrieval_ready);
+    assert!(receipt.scaling_projection_passed);
+    assert_eq!(
+        receipt.batch_capacity_limit,
+        projection.batch_capacity_limit
+    );
+    assert_eq!(
+        receipt.projected_llm_calls_avoided_per_full_batch,
+        projection.projected_llm_calls_avoided_per_full_batch
+    );
+    assert_eq!(
+        receipt.projected_llm_fallbacks_per_full_batch,
+        projection.projected_llm_fallbacks_per_full_batch
+    );
+    assert!(receipt.batch_ready);
+    assert_eq!(receipt.batch_readiness_status, "ready");
+    assert_eq!(receipt.not_ready_reason, "none");
+    assert_ne!(receipt.batch_hash, 0);
+    assert_ne!(receipt.receipt_hash, 0);
+    assert!(receipt.is_valid());
+    assert!(receipt.passed());
+}
+
+#[test]
+fn policy_reuse_evidence_batch_readiness_regression_smoke_is_valid_not_ready_evidence() {
+    let receipt =
+        ai::validation_harness::policy_reuse_evidence_batch_readiness_regression_smoke_receipt();
+    let compact =
+        ai::validation_harness::policy_reuse_evidence_compact_validation_regression_smoke_receipt();
+    let retrieval =
+        ai::validation_harness::policy_reuse_evidence_retrieval_readiness_regression_smoke_receipt(
+        );
+    let projection =
+        ai::validation_harness::policy_reuse_scaling_projection_regression_smoke_receipt();
+
+    assert_eq!(
+        receipt.record_type,
+        ai::validation_harness::POLICY_REUSE_EVIDENCE_BATCH_READINESS_REGRESSION_SMOKE_STEP
+    );
+    assert_eq!(receipt.source_compact_validation_hash, compact.receipt_hash);
+    assert_eq!(
+        receipt.source_retrieval_readiness_hash,
+        retrieval.receipt_hash
+    );
+    assert_eq!(
+        receipt.source_scaling_projection_hash,
+        projection.receipt_hash
+    );
+    assert!(!receipt.compact_validation_passed);
+    assert!(!receipt.retrieval_ready);
+    assert!(!receipt.scaling_projection_passed);
+    assert_eq!(
+        receipt.batch_capacity_limit,
+        projection.batch_capacity_limit
+    );
+    assert!(!receipt.batch_ready);
+    assert_eq!(receipt.batch_readiness_status, "not_ready");
+    assert_eq!(receipt.not_ready_reason, "compact_validation_failed");
+    assert!(receipt.is_valid());
+    assert!(!receipt.passed());
+}
+
+#[test]
+fn root_validate_policy_reuse_evidence_batch_readiness_smoke_mode_is_executable_contract() {
+    assert_root_validate_catalog_compact_mode_contract(
+        "--policy-reuse-evidence-batch-readiness-smoke",
+        &[
+            "\"schema\":\"canon_policy_reuse_evidence_batch_readiness_v1\"",
+            "\"record_type\":\"policy_reuse_evidence_batch_readiness_smoke\"",
+            "\"batch_readiness_version\":1",
+            "\"source_compact_validation_hash\":",
+            "\"source_retrieval_readiness_hash\":",
+            "\"source_scaling_projection_hash\":",
+            "\"compact_validation_passed\":true",
+            "\"retrieval_ready\":true",
+            "\"scaling_projection_passed\":true",
+            "\"batch_ready\":true",
+            "\"batch_readiness_status\":\"ready\"",
+            "\"not_ready_reason\":\"none\"",
+            "\"batch_hash\":",
+            "\"receipt_hash\":",
+        ],
+    );
+}
+
+#[test]
+fn root_validate_policy_reuse_evidence_batch_readiness_regression_smoke_mode_is_executable_contract(
+) {
+    assert_root_validate_catalog_compact_mode_contract(
+        "--policy-reuse-evidence-batch-readiness-regression-smoke",
+        &[
+            "\"schema\":\"canon_policy_reuse_evidence_batch_readiness_v1\"",
+            "\"record_type\":\"policy_reuse_evidence_batch_readiness_regression_smoke\"",
+            "\"batch_readiness_version\":1",
+            "\"compact_validation_passed\":false",
+            "\"retrieval_ready\":false",
+            "\"scaling_projection_passed\":false",
+            "\"batch_ready\":false",
+            "\"batch_readiness_status\":\"not_ready\"",
+            "\"not_ready_reason\":\"compact_validation_failed\"",
+            "\"batch_hash\":",
             "\"receipt_hash\":",
         ],
     );

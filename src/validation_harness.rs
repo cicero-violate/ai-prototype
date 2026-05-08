@@ -17,7 +17,7 @@ pub const FAST_TEST_STEP: &str = "fast_score_contract_tests";
 pub const LIB_UNIT_STEP: &str = "lib_unit_contract_tests";
 pub const API_TRANSPORT_STEP: &str = "api_transport_contract_tests";
 pub const VALIDATION_HARNESS_STEP: &str = "validation_harness_contract_tests";
-pub const VALIDATION_HARNESS_EXPECTED_TESTS: usize = 200;
+pub const VALIDATION_HARNESS_EXPECTED_TESTS: usize = 204;
 pub const PLANNING_CONTRACT_STEP: &str = "planning_contract_tests";
 pub const GRAPH_MUTATION_CLI_CONTRACT_STEP: &str = "graph_mutation_cli_contract_tests";
 pub const GRAPH_MUTATION_CLI_CONTRACT_EXPECTED_TESTS: usize = 10;
@@ -127,6 +127,10 @@ pub const POLICY_REUSE_EVIDENCE_COMPACT_VALIDATION_SMOKE_STEP: &str =
     "policy_reuse_evidence_compact_validation_smoke";
 pub const POLICY_REUSE_EVIDENCE_COMPACT_VALIDATION_REGRESSION_SMOKE_STEP: &str =
     "policy_reuse_evidence_compact_validation_regression_smoke";
+pub const POLICY_REUSE_EVIDENCE_BATCH_READINESS_SMOKE_STEP: &str =
+    "policy_reuse_evidence_batch_readiness_smoke";
+pub const POLICY_REUSE_EVIDENCE_BATCH_READINESS_REGRESSION_SMOKE_STEP: &str =
+    "policy_reuse_evidence_batch_readiness_regression_smoke";
 pub const POLICY_VALIDATION_HEALTH_SMOKE_STEP: &str = "policy_validation_health_smoke";
 pub const POLICY_VALIDATION_HEALTH_TREND_SMOKE_STEP: &str = "policy_validation_health_trend_smoke";
 pub const POLICY_ORCHESTRATION_CAPACITY_SMOKE_STEP: &str = "policy_orchestration_capacity_smoke";
@@ -2134,6 +2138,97 @@ impl PolicyReuseEvidenceCompactValidationReceipt {
             self.compact_validation_status,
             self.failure_reason,
             self.compact_hash,
+            self.receipt_hash,
+        )
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PolicyReuseEvidenceBatchReadinessReceipt {
+    pub schema: &'static str,
+    pub record_type: &'static str,
+    pub batch_readiness_version: u64,
+    pub source_compact_validation_hash: u64,
+    pub source_retrieval_readiness_hash: u64,
+    pub source_scaling_projection_hash: u64,
+    pub compact_validation_passed: bool,
+    pub retrieval_ready: bool,
+    pub scaling_projection_passed: bool,
+    pub batch_capacity_limit: usize,
+    pub projected_llm_calls_avoided_per_full_batch: usize,
+    pub projected_llm_fallbacks_per_full_batch: usize,
+    pub batch_ready: bool,
+    pub batch_readiness_status: &'static str,
+    pub not_ready_reason: &'static str,
+    pub batch_hash: u64,
+    pub receipt_hash: u64,
+}
+
+impl PolicyReuseEvidenceBatchReadinessReceipt {
+    pub fn passed(&self) -> bool {
+        self.is_valid() && self.batch_ready && self.batch_readiness_status == "ready"
+    }
+
+    pub fn is_valid(&self) -> bool {
+        self.schema == "canon_policy_reuse_evidence_batch_readiness_v1"
+            && matches!(
+                self.record_type,
+                "policy_reuse_evidence_batch_readiness"
+                    | POLICY_REUSE_EVIDENCE_BATCH_READINESS_SMOKE_STEP
+                    | POLICY_REUSE_EVIDENCE_BATCH_READINESS_REGRESSION_SMOKE_STEP
+            )
+            && self.batch_readiness_version == 1
+            && self.source_compact_validation_hash != 0
+            && self.source_retrieval_readiness_hash != 0
+            && self.source_scaling_projection_hash != 0
+            && self.batch_capacity_limit > 0
+            && self.projected_llm_calls_avoided_per_full_batch <= self.batch_capacity_limit
+            && self.projected_llm_fallbacks_per_full_batch <= self.batch_capacity_limit
+            && self.projected_llm_calls_avoided_per_full_batch
+                + self.projected_llm_fallbacks_per_full_batch
+                == self.batch_capacity_limit
+            && matches!(self.batch_readiness_status, "ready" | "not_ready")
+            && matches!(
+                self.not_ready_reason,
+                "none"
+                    | "compact_validation_failed"
+                    | "retrieval_not_ready"
+                    | "scaling_projection_failed"
+                    | "no_projected_batch_savings"
+            )
+            && self.batch_ready
+                == (self.compact_validation_passed
+                    && self.retrieval_ready
+                    && self.scaling_projection_passed
+                    && self.projected_llm_calls_avoided_per_full_batch > 0
+                    && self.projected_llm_fallbacks_per_full_batch < self.batch_capacity_limit
+                    && self.not_ready_reason == "none")
+            && (self.batch_readiness_status == "ready") == self.batch_ready
+            && self.batch_hash != 0
+            && self.receipt_hash != 0
+            && self.batch_hash == policy_reuse_evidence_batch_readiness_hash(self)
+            && self.receipt_hash == policy_reuse_evidence_batch_readiness_receipt_hash(self)
+    }
+
+    pub fn to_json(&self) -> String {
+        format!(
+            "{{\"schema\":\"{}\",\"record_type\":\"{}\",\"batch_readiness_version\":{},\"source_compact_validation_hash\":{},\"source_retrieval_readiness_hash\":{},\"source_scaling_projection_hash\":{},\"compact_validation_passed\":{},\"retrieval_ready\":{},\"scaling_projection_passed\":{},\"batch_capacity_limit\":{},\"projected_llm_calls_avoided_per_full_batch\":{},\"projected_llm_fallbacks_per_full_batch\":{},\"batch_ready\":{},\"batch_readiness_status\":\"{}\",\"not_ready_reason\":\"{}\",\"batch_hash\":{},\"receipt_hash\":{}}}",
+            self.schema,
+            self.record_type,
+            self.batch_readiness_version,
+            self.source_compact_validation_hash,
+            self.source_retrieval_readiness_hash,
+            self.source_scaling_projection_hash,
+            self.compact_validation_passed,
+            self.retrieval_ready,
+            self.scaling_projection_passed,
+            self.batch_capacity_limit,
+            self.projected_llm_calls_avoided_per_full_batch,
+            self.projected_llm_fallbacks_per_full_batch,
+            self.batch_ready,
+            self.batch_readiness_status,
+            self.not_ready_reason,
+            self.batch_hash,
             self.receipt_hash,
         )
     }
@@ -4681,6 +4776,86 @@ fn finalize_policy_reuse_evidence_compact_validation(
     receipt.receipt_hash = policy_reuse_evidence_compact_validation_receipt_hash(receipt);
 }
 
+pub fn policy_reuse_evidence_batch_readiness_smoke_receipt(
+) -> PolicyReuseEvidenceBatchReadinessReceipt {
+    let compact = policy_reuse_evidence_compact_validation_smoke_receipt();
+    let retrieval = policy_reuse_evidence_retrieval_readiness_smoke_receipt();
+    let projection = policy_reuse_scaling_projection_smoke_receipt();
+    let mut receipt = policy_reuse_evidence_batch_readiness_from_sources(
+        POLICY_REUSE_EVIDENCE_BATCH_READINESS_SMOKE_STEP,
+        &compact,
+        &retrieval,
+        &projection,
+        "none",
+    );
+    finalize_policy_reuse_evidence_batch_readiness(&mut receipt);
+    receipt
+}
+
+pub fn policy_reuse_evidence_batch_readiness_regression_smoke_receipt(
+) -> PolicyReuseEvidenceBatchReadinessReceipt {
+    let compact = policy_reuse_evidence_compact_validation_regression_smoke_receipt();
+    let retrieval = policy_reuse_evidence_retrieval_readiness_regression_smoke_receipt();
+    let projection = policy_reuse_scaling_projection_regression_smoke_receipt();
+    let mut receipt = policy_reuse_evidence_batch_readiness_from_sources(
+        POLICY_REUSE_EVIDENCE_BATCH_READINESS_REGRESSION_SMOKE_STEP,
+        &compact,
+        &retrieval,
+        &projection,
+        "compact_validation_failed",
+    );
+    finalize_policy_reuse_evidence_batch_readiness(&mut receipt);
+    receipt
+}
+
+fn policy_reuse_evidence_batch_readiness_from_sources(
+    record_type: &'static str,
+    compact: &PolicyReuseEvidenceCompactValidationReceipt,
+    retrieval: &PolicyReuseEvidenceRetrievalReadinessReceipt,
+    projection: &PolicyReuseScalingProjectionReceipt,
+    not_ready_reason: &'static str,
+) -> PolicyReuseEvidenceBatchReadinessReceipt {
+    let compact_validation_passed = compact.passed();
+    let retrieval_ready = retrieval.passed();
+    let scaling_projection_passed = projection.passed();
+    let batch_ready = compact_validation_passed
+        && retrieval_ready
+        && scaling_projection_passed
+        && projection.projected_llm_calls_avoided_per_full_batch > 0
+        && projection.projected_llm_fallbacks_per_full_batch < projection.batch_capacity_limit
+        && not_ready_reason == "none";
+    let batch_readiness_status = if batch_ready { "ready" } else { "not_ready" };
+    let mut receipt = PolicyReuseEvidenceBatchReadinessReceipt {
+        schema: "canon_policy_reuse_evidence_batch_readiness_v1",
+        record_type,
+        batch_readiness_version: 1,
+        source_compact_validation_hash: compact.receipt_hash,
+        source_retrieval_readiness_hash: retrieval.receipt_hash,
+        source_scaling_projection_hash: projection.receipt_hash,
+        compact_validation_passed,
+        retrieval_ready,
+        scaling_projection_passed,
+        batch_capacity_limit: projection.batch_capacity_limit,
+        projected_llm_calls_avoided_per_full_batch: projection
+            .projected_llm_calls_avoided_per_full_batch,
+        projected_llm_fallbacks_per_full_batch: projection.projected_llm_fallbacks_per_full_batch,
+        batch_ready,
+        batch_readiness_status,
+        not_ready_reason,
+        batch_hash: 0,
+        receipt_hash: 0,
+    };
+    finalize_policy_reuse_evidence_batch_readiness(&mut receipt);
+    receipt
+}
+
+fn finalize_policy_reuse_evidence_batch_readiness(
+    receipt: &mut PolicyReuseEvidenceBatchReadinessReceipt,
+) {
+    receipt.batch_hash = policy_reuse_evidence_batch_readiness_hash(receipt);
+    receipt.receipt_hash = policy_reuse_evidence_batch_readiness_receipt_hash(receipt);
+}
+
 #[allow(clippy::too_many_arguments)]
 fn policy_reuse_evidence_surface_index_from_sources(
     record_type: &'static str,
@@ -5280,6 +5455,61 @@ fn policy_reuse_evidence_compact_validation_receipt_hash(
         return 0;
     }
     (compact_hash ^ 0x504f_4c52_4356_4452u64).max(1)
+}
+
+fn policy_reuse_evidence_batch_readiness_hash(
+    receipt: &PolicyReuseEvidenceBatchReadinessReceipt,
+) -> u64 {
+    if receipt.batch_readiness_version == 0
+        || receipt.source_compact_validation_hash == 0
+        || receipt.source_retrieval_readiness_hash == 0
+        || receipt.source_scaling_projection_hash == 0
+    {
+        return 0;
+    }
+    let batch_status_code = match receipt.batch_readiness_status {
+        "ready" => 1,
+        "not_ready" => 2,
+        _ => 0,
+    };
+    let not_ready_reason_code = match receipt.not_ready_reason {
+        "none" => 1,
+        "compact_validation_failed" => 2,
+        "retrieval_not_ready" => 3,
+        "scaling_projection_failed" => 4,
+        "no_projected_batch_savings" => 5,
+        _ => 0,
+    };
+    if batch_status_code == 0 || not_ready_reason_code == 0 {
+        return 0;
+    }
+    let mut h = 0x504f_4c52_4252_4448u64;
+    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.schema.as_bytes());
+    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.record_type.as_bytes());
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.batch_readiness_version;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_compact_validation_hash;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_retrieval_readiness_hash;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_scaling_projection_hash;
+    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.compact_validation_passed);
+    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_ready);
+    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.scaling_projection_passed);
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.batch_capacity_limit as u64;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.projected_llm_calls_avoided_per_full_batch as u64;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.projected_llm_fallbacks_per_full_batch as u64;
+    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.batch_ready);
+    h = h.wrapping_mul(0x100000001b3) ^ batch_status_code;
+    h = h.wrapping_mul(0x100000001b3) ^ not_ready_reason_code;
+    h.max(1)
+}
+
+fn policy_reuse_evidence_batch_readiness_receipt_hash(
+    receipt: &PolicyReuseEvidenceBatchReadinessReceipt,
+) -> u64 {
+    let batch_hash = policy_reuse_evidence_batch_readiness_hash(receipt);
+    if batch_hash == 0 || receipt.batch_hash != batch_hash {
+        return 0;
+    }
+    (batch_hash ^ 0x504f_4c52_4252_4452u64).max(1)
 }
 
 fn policy_reuse_evidence_summary_hash(receipt: &PolicyReuseEvidenceSummaryReceipt) -> u64 {

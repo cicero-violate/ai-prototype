@@ -390,6 +390,16 @@ const COMPACT_MODES: &[CompactMode] = &[
         run: policy_reuse_evidence_compact_validation_regression_smoke_mode,
     },
     CompactMode {
+        arg: "--policy-reuse-evidence-batch-readiness-smoke",
+        marker: "policy_reuse_evidence_batch_readiness_smoke",
+        run: policy_reuse_evidence_batch_readiness_smoke_mode,
+    },
+    CompactMode {
+        arg: "--policy-reuse-evidence-batch-readiness-regression-smoke",
+        marker: "policy_reuse_evidence_batch_readiness_regression_smoke",
+        run: policy_reuse_evidence_batch_readiness_regression_smoke_mode,
+    },
+    CompactMode {
         arg: "--root-validate-dispatch-catalog",
         marker: "canon_root_validate_dispatch_catalog_v1",
         run: root_validate_dispatch_catalog_mode,
@@ -1174,4 +1184,30 @@ fn main() {
             std::process::exit(1);
         }
     }
+}
+
+fn policy_reuse_evidence_batch_readiness_smoke_mode() -> Result<CompactModeOutcome, String> {
+    let receipt = validation_harness::policy_reuse_evidence_batch_readiness_smoke_receipt();
+    Ok(CompactModeOutcome::pass_json(
+        receipt.to_json(),
+        receipt.passed(),
+    ))
+}
+
+fn policy_reuse_evidence_batch_readiness_regression_smoke_mode(
+) -> Result<CompactModeOutcome, String> {
+    let receipt =
+        validation_harness::policy_reuse_evidence_batch_readiness_regression_smoke_receipt();
+    let passed = receipt.is_valid()
+        && !receipt.compact_validation_passed
+        && !receipt.retrieval_ready
+        && !receipt.scaling_projection_passed
+        && !receipt.batch_ready
+        && receipt.batch_readiness_status == "not_ready"
+        && receipt.not_ready_reason == "compact_validation_failed"
+        && !receipt.passed();
+    Ok(CompactModeOutcome::controlled_json(
+        receipt.to_json(),
+        passed,
+    ))
 }

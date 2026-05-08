@@ -1,6 +1,6 @@
 # Canon Agent Implementation Plan
 
-This plan tracks the current deterministic implementation plan after planning step 6 of the current agent loop.
+This plan tracks the current deterministic implementation plan after implementation step 1 of the current agent loop.
 
 ## North Star
 
@@ -66,102 +66,15 @@ The repository currently exposes these meaningful surfaces:
 
 ## Current Completed Implementation Baseline
 
-The current working tree contains deterministic **policy reuse evidence compact-validation** evidence in the validation-harness/root-validator layer, while retaining evaluator-savings, scaling-projection, distillation-readiness, evidence-surface index, evidence-bundle, evidence-quickcheck, evidence-maturity, evidence-summary, evidence-manifest, validation-budget, rollout-readiness, learning-admission, and retrieval-readiness evidence already present in this loop. This planning turn does not change implementation code and intentionally preserves the existing source modifications in `canon-rustc-v3/src/graph.rs` and `canon-rustc-v3/src/hir.rs` for the implementation turn.
+The current working tree contains deterministic **policy reuse evidence compact-validation** evidence in the validation-harness/root-validator layer, while retaining evaluator-savings, scaling-projection, distillation-readiness, evidence-surface index, evidence-bundle, evidence-quickcheck, evidence-maturity, evidence-summary, evidence-manifest, validation-budget, rollout-readiness, learning-admission, and retrieval-readiness evidence already present in this loop. This implementation turn adds deterministic **policy reuse evidence batch-readiness** evidence in the validation-harness/root-validator layer while preserving the existing out-of-scope source modifications under `canon-rustc-v3/`.
 
 This completed slice answers:
 
 ```text
-Can an evaluator inspect one deterministic receipt that summarizes the compact targeted validation footprint for the retrieval/learning admission chain without executing validation or promoting policy?
+Can an evaluator inspect one deterministic receipt that summarizes whether the compact-validated retrieval/learning chain is ready for larger batch reuse evaluation without executing batches or promoting policy?
 ```
 
 Implemented surfaces:
-
-```text
-PolicyReuseEvidenceCompactValidationReceipt
-policy_reuse_evidence_compact_validation_smoke_receipt()
-policy_reuse_evidence_compact_validation_regression_smoke_receipt()
---policy-reuse-evidence-compact-validation-smoke
---policy-reuse-evidence-compact-validation-regression-smoke
-```
-
-Implemented fields:
-
-```text
-schema
-record_type
-compact_validation_version
-source_retrieval_readiness_hash
-source_learning_admission_hash
-source_validation_budget_hash
-retrieval_ready
-learning_data_admissible
-validation_budget_passed
-targeted_command_count
-targeted_test_count
-max_targeted_test_count
-full_harness_test_count
-avoided_full_harness_tests
-compact_validation_passed
-compact_validation_status
-failure_reason
-compact_hash
-receipt_hash
-```
-
-Completed implementation tasks:
-
-1. Added `PolicyReuseEvidenceCompactValidationReceipt` with deterministic validation, JSON output, compact hash, and receipt hash.
-2. Added healthy and controlled retrieval-not-ready regression smoke constructors.
-3. Bound compact-validation evidence to retrieval-readiness, learning-admission, and validation-budget receipt hashes.
-4. Added root validator compact modes for healthy and regression compact-validation receipts.
-5. Added validation harness contracts for compact-validation semantics, source binding, compact output, and controlled failing evidence.
-6. Updated external CLI mode fixture for the two compact-validation public modes.
-7. Updated validation harness expected test count from 196 to 200.
-8. Updated retained guarded-test fixture values from 206 to 210 and refreshed dependent validation-duration/performance-cost estimates.
-9. Kept kernel authority unchanged and did not execute validation, write retrieval storage, train a student model, or promote policy.
-
-Implemented deterministic semantics:
-
-- `compact_validation_passed = true` only when retrieval-readiness passed, learning-admission passed, validation-budget passed, targeted tests are within budget, and `failure_reason = "none"`.
-- Healthy evidence records three targeted commands, six targeted tests, a maximum targeted-test budget of six, full harness count of 200, 194 avoided full-harness tests, status `pass`, and `failure_reason = "none"`.
-- Regression evidence remains structurally valid while exposing `retrieval_ready = false`, `learning_data_admissible = false`, `validation_budget_passed = false`, targeted tests above budget, status `fail`, and `failure_reason = "retrieval_not_ready"`.
-- Compact-validation source evidence reuses retrieval-readiness, learning-admission, and validation-budget receipt hashes instead of adding policy authority.
-- The receipt is evidence-only; it summarizes targeted validation footprint without changing kernel authority, policy promotion, storage writes, model training, validation execution, or runtime behavior.
-- The new receipt does not introduce live LLM, network, wall-clock, or environment-dependent measurement.
-
-## Validation Evidence Recorded For This Baseline
-
-```text
-cargo fmt --check
-RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test validation_harness_contract policy_reuse_evidence_compact_validation --quiet
-RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test validation_harness_contract --quiet
-
-cargo fmt --check: pass
-validation_harness_contract policy_reuse_evidence_compact_validation filter: 4 passed, 0 failed, 196 filtered out
-validation_harness_contract: 200 passed, 0 failed
-planning_contract: 2 passed, 0 failed
-score_contract: 5 passed, 0 failed
-```
-
-Planning and score contract validation passed for the previous compact-validation document update. This planning-only turn updates the next-slice handoff and score without changing implementation code.
-
-## Planned Next Implementation Slice
-
-Planning decision for the next implementation turn: keep the slice focused on the weakest remaining axis, **Scalability**.
-
-Current gap:
-
-```text
-Compact validation is now explicit, but the evidence stack still lacks one deterministic batch-readiness receipt that summarizes whether the compact-validated retrieval/learning chain is ready for larger batch reuse evaluation.
-```
-
-Recommended next slice:
-
-```text
-Add a deterministic policy reuse evidence batch-readiness receipt that composes compact-validation, retrieval-readiness, and scaling-projection evidence into a batch-ready/not-ready verdict.
-```
-
-Recommended concrete surfaces:
 
 ```text
 PolicyReuseEvidenceBatchReadinessReceipt
@@ -171,13 +84,99 @@ policy_reuse_evidence_batch_readiness_regression_smoke_receipt()
 --policy-reuse-evidence-batch-readiness-regression-smoke
 ```
 
+Implemented fields:
+
+```text
+schema
+record_type
+batch_readiness_version
+source_compact_validation_hash
+source_retrieval_readiness_hash
+source_scaling_projection_hash
+compact_validation_passed
+retrieval_ready
+scaling_projection_passed
+batch_capacity_limit
+projected_llm_calls_avoided_per_full_batch
+projected_llm_fallbacks_per_full_batch
+batch_ready
+batch_readiness_status
+not_ready_reason
+batch_hash
+receipt_hash
+```
+
+Completed implementation tasks:
+
+1. Added `PolicyReuseEvidenceBatchReadinessReceipt` with deterministic validation, JSON output, batch hash, and receipt hash.
+2. Added healthy and controlled compact-validation-failed regression smoke constructors.
+3. Bound batch-readiness evidence to compact-validation, retrieval-readiness, and scaling-projection receipt hashes.
+4. Added root validator compact modes for healthy and regression batch-readiness receipts.
+5. Added validation harness contracts for batch-readiness semantics, source binding, compact output, and controlled failing evidence.
+6. Updated external CLI mode fixture for the two batch-readiness public modes and raised mode count from 77 to 79.
+7. Updated validation harness expected test count from 200 to 204.
+8. Kept kernel authority unchanged and did not execute batches, promote policy, write retrieval storage, train a student model, or alter live runtime behavior.
+
+Implemented deterministic semantics:
+
+- `batch_ready = true` only when compact-validation passed, retrieval-readiness passed, scaling-projection passed, projected batch savings are positive, projected fallbacks stay below capacity, and `not_ready_reason = "none"`.
+- Healthy evidence reuses compact-validation, retrieval-readiness, and scaling-projection receipt hashes, reports batch status `ready`, and records `not_ready_reason = "none"`.
+- Regression evidence remains structurally valid while exposing `compact_validation_passed = false`, `retrieval_ready = false`, `scaling_projection_passed = false`, batch status `not_ready`, and `not_ready_reason = "compact_validation_failed"`.
+- Batch-readiness source evidence reuses existing evidence receipt hashes instead of adding policy authority.
+- The receipt is evidence-only; it summarizes larger-batch readiness without executing batches, changing kernel authority, promoting policy, writing retrieval storage, training models, or altering runtime behavior.
+- The new receipt does not introduce live LLM, network, wall-clock, or environment-dependent measurement.
+
+## Validation Evidence Recorded For This Baseline
+
+```text
+cargo fmt --check
+RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test validation_harness_contract policy_reuse_evidence_batch_readiness --quiet
+RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test validation_harness_contract policy_reuse_evidence_compact_validation --quiet
+RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test planning_contract --test score_contract --quiet
+
+cargo fmt --check: pass
+validation_harness_contract policy_reuse_evidence_batch_readiness filter: 4 passed, 0 failed, 200 filtered out
+validation_harness_contract policy_reuse_evidence_compact_validation filter: 4 passed, 0 failed, 200 filtered out
+planning_contract: 2 passed, 0 failed
+score_contract: 5 passed, 0 failed
+full validation_harness_contract: attempted, but connector returned 502 before a Rust result was available
+```
+
+Batch-readiness focused validation, adjacent compact-validation validation, formatting, and planning/score contracts passed. Full validation-harness execution was attempted, but the connector returned 502 before reporting a Rust result.
+
+## Planned Next Implementation Slice
+
+Planning decision for the next implementation turn: keep the slice focused on the weakest remaining axis, **Scalability**, now from batch-readiness toward executable larger-batch reuse evidence.
+
+Current gap:
+
+```text
+Batch readiness is now explicit, but the evidence stack still lacks one deterministic larger-batch reuse execution-plan receipt that summarizes the next safe batch-evaluation boundary without executing autonomous batches.
+```
+
+Recommended next slice:
+
+```text
+Add a deterministic policy reuse evidence batch-execution-plan receipt that composes batch-readiness and compact-validation evidence into a no-execute batch evaluation plan.
+```
+
+Recommended concrete surfaces:
+
+```text
+PolicyReuseEvidenceBatchExecutionPlanReceipt
+policy_reuse_evidence_batch_execution_plan_smoke_receipt()
+policy_reuse_evidence_batch_execution_plan_regression_smoke_receipt()
+--policy-reuse-evidence-batch-execution-plan-smoke
+--policy-reuse-evidence-batch-execution-plan-regression-smoke
+```
+
 Recommended constraints:
 
 1. Keep the kernel untouched.
 2. Do not introduce live LLM, network, wall-clock, or environment-dependent measurement.
-3. Reuse compact-validation, retrieval-readiness, and scaling-projection receipt hashes.
-4. Keep the receipt evidence-only: it may state batch readiness, but it must not execute batches or promote policy.
-5. Include healthy and controlled not-ready regression cases.
+3. Reuse batch-readiness and compact-validation receipt hashes.
+4. Keep the receipt evidence-only: it may state a proposed batch execution plan, but it must not execute batches or promote policy.
+5. Include healthy and controlled not-plannable regression cases.
 6. Keep student-model training deferred.
 
 ## Evaluation Axes
@@ -220,13 +219,13 @@ arg max(G) = good
 turn_type = planning_step_6
 mode = planning_and_scoring_only
 selected_axis = Scalability
-selected_slice = deterministic policy reuse evidence batch-readiness receipt
-implementation_files_changed_this_turn = none
-existing_uncommitted_source_changes_observed = canon-rustc-v3/src/graph.rs, canon-rustc-v3/src/hir.rs
-commit_scope = plan.md and score.md only
+selected_slice = deterministic policy reuse evidence batch-readiness receipt completed
+implementation_files_changed_this_turn = src/validation_harness.rs, src/bin/root_validate.rs, tests/validation_harness_contract.rs, tests/fixtures/external_agent_cli_modes.txt
+existing_uncommitted_source_changes_observed = canon-rustc-v3/src/graph.rs, canon-rustc-v3/src/hir.rs, canon-rustc-v3/src/wrapper.rs
+commit_scope = batch-readiness implementation, tests, fixture, plan.md, score.md
 ```
 
-The next implementation turn should add batch-readiness evidence only after reconciling the existing uncommitted `canon-rustc-v3` source changes. Those source changes are not part of this planning commit and should not be overwritten by documentation-only work.
+This implementation turn completed batch-readiness evidence without intentionally modifying the existing `canon-rustc-v3` source changes. Those out-of-scope changes should still be reconciled separately and not overwritten by validation-harness work.
 
 ## Turn Protocol
 
