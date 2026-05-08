@@ -379,3 +379,46 @@ Si = unchanged at 0.97
 F  = unchanged at 0.98
 G  = unchanged at approximately 0.967
 ```
+
+
+## Implementation Step 1 Score Decision - Retrieval Result Use Summary Manifest Approval Admission Consumption
+
+```text
+selected_axis = Learning
+score_change_this_turn = retained L at 1.00
+reason = approval-admission-consumption evidence adds a deterministic evidence-only consumer gate after retrieval-result-use-summary-manifest-approval-admission without retrieval storage operations, query execution, runtime result approval, policy promotion, batch execution, or student training
+source_changes_observed_but_not_owned = canon-rustc-v3/* modified and untracked files remain out of scope for this implementation turn
+commit_scope = approval-admission prerequisite implementation, approval-admission-consumption implementation, tests, fixture, plan.md, score.md
+```
+
+Updated validation evidence:
+
+```text
+cargo fmt --check: initially failed on formatting-only drift, then passed after cargo fmt
+validation_harness_contract approval_admission_consumption --no-run: pass
+cargo check --quiet: pass
+planning_contract and score_contract: pass
+focused executable approval_admission_consumption tests: attempted twice, connector returned 502 before Rust output was available
+```
+
+Scoring stance after this implementation:
+
+```text
+I  = 0.98  consumed approval-admission evidence can now feed later retrieval/model-learning gates deterministically
+E  = 0.97  consumption remains evidence-only and forbids retrieval reads, writes, queries, runtime approval, promotion, batch execution, and training
+C  = 0.91  formatting, focused no-run compile, cargo check, and planning/score tests pass; focused executable tests were connector-blocked
+A  = 0.97  authority remains outside the LLM and outside the new consumption receipt
+R  = 0.96  healthy and controlled not-consumed paths are covered by compiled contracts
+P  = 0.95  no runtime retrieval, query, batch, or training cost is introduced
+S  = 0.98  the evidence chain now exposes a consumed approval-admission boundary
+D  = 0.97  receipts use fixed source hashes, booleans, status strings, reason strings, and deterministic hashes
+T  = 0.98  approval-admission source hash and upstream approval/readiness/admission source hashes are explicit
+Co = 0.95  plan and score hand off the next retrieval-example learning eligibility gate
+Em = 0.95  root_validate consumers have healthy and regression compact modes for approval-admission-consumption evidence
+B  = 0.97  external evaluators get deterministic consumed evidence before storage, runtime approval, promotion, or training
+L  = 1.00  consumed approval-admission evidence prepares a cleaner path toward retrieval-example learning data
+St = 0.97  consumption composes existing evidence without kernel or runtime authority drift
+Si = 0.97  one receipt represents the consumption boundary instead of scattered downstream checks
+F  = 0.98  consumption prepares later retrieval/model-learning gates without committing to storage or training behavior
+G  ≈ 0.967
+```

@@ -660,6 +660,26 @@ const COMPACT_MODES: &[CompactMode] = &[
         run: policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_regression_smoke_mode,
     },
     CompactMode {
+        arg: "--policy-reuse-evidence-retrieval-result-use-summary-manifest-approval-admission-smoke",
+        marker: "policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_smoke",
+        run: policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_smoke_mode,
+    },
+    CompactMode {
+        arg: "--policy-reuse-evidence-retrieval-result-use-summary-manifest-approval-admission-regression-smoke",
+        marker: "policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_regression_smoke",
+        run: policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_regression_smoke_mode,
+    },
+    CompactMode {
+        arg: "--policy-reuse-evidence-retrieval-result-use-summary-manifest-approval-admission-consumption-smoke",
+        marker: "policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_consumption_smoke",
+        run: policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_consumption_smoke_mode,
+    },
+    CompactMode {
+        arg: "--policy-reuse-evidence-retrieval-result-use-summary-manifest-approval-admission-consumption-regression-smoke",
+        marker: "policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_consumption_regression_smoke",
+        run: policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_consumption_regression_smoke_mode,
+    },
+    CompactMode {
         arg: "--root-validate-dispatch-catalog",
         marker: "canon_root_validate_dispatch_catalog_v1",
         run: root_validate_dispatch_catalog_mode,
@@ -1817,6 +1837,80 @@ fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_regressi
         && receipt.result_use_summary_manifest_approval_status
             == "result_use_summary_manifest_not_approved"
         && receipt.not_approved_reason == "summary_manifest_not_ready_for_use"
+        && !receipt.passed();
+    Ok(CompactModeOutcome::controlled_json(
+        receipt.to_json(),
+        passed,
+    ))
+}
+
+fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_smoke_mode(
+) -> Result<CompactModeOutcome, String> {
+    let receipt = validation_harness::
+        policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_smoke_receipt();
+    Ok(CompactModeOutcome::pass_json(
+        receipt.to_json(),
+        receipt.passed(),
+    ))
+}
+
+fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_regression_smoke_mode(
+) -> Result<CompactModeOutcome, String> {
+    let receipt = validation_harness::
+        policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_regression_smoke_receipt();
+    let passed = receipt.is_valid()
+        && !receipt.retrieval_result_use_summary_manifest_approved
+        && !receipt.retrieval_result_use_summary_manifest_ready_for_use
+        && !receipt.retrieval_result_use_summary_manifest_admitted
+        && !receipt.retrieval_read_performed
+        && !receipt.retrieval_write_performed
+        && !receipt.retrieval_query_executed
+        && !receipt.runtime_result_approval_performed
+        && !receipt.policy_promotion_performed
+        && !receipt.student_training_performed
+        && receipt.external_result_evidence_present
+        && !receipt.retrieval_result_use_summary_manifest_approval_admitted
+        && receipt.result_use_summary_manifest_approval_admission_status
+            == "result_use_summary_manifest_approval_not_admitted"
+        && receipt.not_admitted_reason == "summary_manifest_not_approved"
+        && !receipt.passed();
+    Ok(CompactModeOutcome::controlled_json(
+        receipt.to_json(),
+        passed,
+    ))
+}
+
+fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_consumption_smoke_mode(
+) -> Result<CompactModeOutcome, String> {
+    let receipt = validation_harness::
+        policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_consumption_smoke_receipt();
+    Ok(CompactModeOutcome::pass_json(
+        receipt.to_json(),
+        receipt.passed(),
+    ))
+}
+
+fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_consumption_regression_smoke_mode(
+) -> Result<CompactModeOutcome, String> {
+    let receipt = validation_harness::
+        policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_consumption_regression_smoke_receipt();
+    let passed = receipt.is_valid()
+        && !receipt.retrieval_result_use_summary_manifest_approval_admitted
+        && !receipt.retrieval_result_use_summary_manifest_approved
+        && !receipt.retrieval_result_use_summary_manifest_ready_for_use
+        && !receipt.retrieval_result_use_summary_manifest_admitted
+        && !receipt.retrieval_read_performed
+        && !receipt.retrieval_write_performed
+        && !receipt.retrieval_query_executed
+        && !receipt.runtime_result_approval_performed
+        && !receipt.policy_promotion_performed
+        && !receipt.batch_execution_performed
+        && !receipt.student_training_performed
+        && receipt.external_result_evidence_present
+        && !receipt.retrieval_result_use_summary_manifest_approval_admission_consumed
+        && receipt.result_use_summary_manifest_approval_admission_consumption_status
+            == "result_use_summary_manifest_approval_admission_not_consumed"
+        && receipt.not_consumed_reason == "summary_manifest_approval_admission_not_admitted"
         && !receipt.passed();
     Ok(CompactModeOutcome::controlled_json(
         receipt.to_json(),

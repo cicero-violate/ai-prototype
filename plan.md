@@ -461,3 +461,75 @@ Commit implementation/test/fixture files only if they belong to the new consumpt
 Do not include canon-rustc-v3 modified or untracked files.
 Do not include planning-only edits from this turn unless they are intentionally refreshed after implementation evidence is produced.
 ```
+
+
+## Implementation Step 1 - Retrieval Result Use Summary Manifest Approval Admission Consumption
+
+Completed this turn:
+
+```text
+PolicyReuseEvidenceRetrievalResultUseSummaryManifestApprovalAdmissionConsumptionReceipt
+policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_consumption_smoke_receipt()
+policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_consumption_regression_smoke_receipt()
+--policy-reuse-evidence-retrieval-result-use-summary-manifest-approval-admission-consumption-smoke
+--policy-reuse-evidence-retrieval-result-use-summary-manifest-approval-admission-consumption-regression-smoke
+```
+
+Completed semantics:
+
+- `retrieval_result_use_summary_manifest_approval_admission_consumed = true` only when approval-admission is admitted, upstream approval/readiness/admission booleans are true, external result evidence is present, retrieval storage was not read or written, retrieval query execution did not happen, runtime result approval did not happen, policy was not promoted, batch execution did not happen, student training was not performed, consumption policy-reuse examples are positive, and `not_consumed_reason = "none"`.
+- Healthy evidence binds to retrieval-result-use-summary-manifest-approval-admission receipt hash plus upstream approval, readiness, and admission source hashes, reports status `result_use_summary_manifest_approval_admission_consumed`, and records `not_consumed_reason = "none"`.
+- Regression evidence remains structurally valid while exposing `retrieval_result_use_summary_manifest_approval_admitted = false`, upstream approval/readiness/admission booleans false, consumption status `result_use_summary_manifest_approval_admission_not_consumed`, and `not_consumed_reason = "summary_manifest_approval_admission_not_admitted"`.
+- The receipt remains evidence-only: no retrieval reads/writes, no query execution, no runtime result approval, no policy promotion, no batch execution, no live LLM, no network call, no wall-clock dependency, and no student training.
+- The kernel, transition table, runtime reducer, durable writer, and command ledger were not changed.
+
+## Validation Evidence For Approval Admission Consumption
+
+```text
+cargo fmt --check: initially failed on formatting-only drift, then passed after cargo fmt
+RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test validation_harness_contract approval_admission_consumption --no-run --quiet: pass
+RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo check --quiet: pass
+RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test planning_contract --test score_contract --quiet: pass
+RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test validation_harness_contract approval_admission_consumption --quiet: attempted twice, but connector returned 502 before Rust test output was available
+```
+
+## Current Planning Decision After Approval Admission Consumption
+
+Keep the next implementation turn focused on **Learning**, moving from consumed approval-admission summary-manifest evidence toward the next deterministic retrieval/model-learning boundary that can evaluate whether consumed evidence should become retrieval example material without performing storage operations or training.
+
+Current gap:
+
+```text
+Approval-admission evidence can now be consumed by a deterministic evidence-only gate, but the stack still lacks the next admission boundary that decides whether consumed evidence is eligible to become retrieval-example learning material.
+```
+
+Recommended next slice:
+
+```text
+Add a deterministic policy reuse evidence receipt that consumes retrieval-result-use-summary-manifest-approval-admission-consumption evidence and emits an evidence-only retrieval-example learning eligibility gate.
+```
+
+Recommended constraints:
+
+1. Keep the kernel untouched.
+2. Do not introduce live LLM, network, wall-clock, or environment-dependent measurement.
+3. Reuse approval-admission-consumption receipt hashes rather than creating authority.
+4. Keep the receipt evidence-only: no retrieval storage reads/writes, no query execution, no policy promotion, no runtime result approval, no batch execution, and no student training.
+5. Include healthy and controlled regression cases.
+6. Update external CLI mode fixtures and guarded validation counts only if new public modes or tests are added.
+7. Keep unrelated `canon-rustc-v3/` working-tree changes out of this slice unless explicitly selected in a separate turn.
+
+## Implementation Step 1 Commit Scope - Approval Admission Consumption
+
+This turn should update and commit:
+
+```text
+plan.md
+score.md
+src/validation_harness.rs
+src/bin/root_validate.rs
+tests/validation_harness_contract.rs
+tests/fixtures/external_agent_cli_modes.txt
+```
+
+Observed `canon-rustc-v3/` working-tree changes remain outside this turn.

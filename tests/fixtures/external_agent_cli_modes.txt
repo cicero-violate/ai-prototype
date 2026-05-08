@@ -1,5 +1,5 @@
 schema=canon_external_agent_cli_modes_v1
-mode_count=111
+mode_count=113
 root_validate --validation-footprint => canon_validation_footprint_v1
 root_validate --validation-command-footprint-planning => canon_validation_command_footprint_planning_v1
 root_validate --validation-command-footprint-target-met-smoke => validation_command_footprint_target_met_smoke
@@ -131,3 +131,7 @@ root_validate --policy-reuse-evidence-retrieval-result-use-summary-manifest-read
 root_validate --policy-reuse-evidence-retrieval-result-use-summary-manifest-readiness-regression-smoke => policy_reuse_evidence_retrieval_result_use_summary_manifest_readiness_regression_smoke
 root_validate --policy-reuse-evidence-retrieval-result-use-summary-manifest-approval-smoke => policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_smoke
 root_validate --policy-reuse-evidence-retrieval-result-use-summary-manifest-approval-regression-smoke => policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_regression_smoke
+root_validate --policy-reuse-evidence-retrieval-result-use-summary-manifest-approval-admission-smoke => policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_smoke
+root_validate --policy-reuse-evidence-retrieval-result-use-summary-manifest-approval-admission-regression-smoke => policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_regression_smoke
+root_validate --policy-reuse-evidence-retrieval-result-use-summary-manifest-approval-admission-consumption-smoke => policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_consumption_smoke
+root_validate --policy-reuse-evidence-retrieval-result-use-summary-manifest-approval-admission-consumption-regression-smoke => policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_consumption_regression_smoke
