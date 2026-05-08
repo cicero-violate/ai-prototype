@@ -350,14 +350,14 @@ const COMPACT_MODES: &[CompactMode] = &[
         run: policy_reuse_evidence_validation_budget_regression_smoke_mode,
     },
     CompactMode {
-        arg: "--policy-reuse-evidence-validation-budget-smoke",
-        marker: "policy_reuse_evidence_validation_budget_smoke",
-        run: policy_reuse_evidence_validation_budget_smoke_mode,
+        arg: "--policy-reuse-evidence-rollout-readiness-smoke",
+        marker: "policy_reuse_evidence_rollout_readiness_smoke",
+        run: policy_reuse_evidence_rollout_readiness_smoke_mode,
     },
     CompactMode {
-        arg: "--policy-reuse-evidence-validation-budget-regression-smoke",
-        marker: "policy_reuse_evidence_validation_budget_regression_smoke",
-        run: policy_reuse_evidence_validation_budget_regression_smoke_mode,
+        arg: "--policy-reuse-evidence-rollout-readiness-regression-smoke",
+        marker: "policy_reuse_evidence_rollout_readiness_regression_smoke",
+        run: policy_reuse_evidence_rollout_readiness_regression_smoke_mode,
     },
     CompactMode {
         arg: "--root-validate-dispatch-catalog",
@@ -954,6 +954,30 @@ fn policy_reuse_evidence_validation_budget_regression_smoke_mode(
         && !receipt.budget_within_limit
         && receipt.budget_status == "fail"
         && receipt.regression_reason == "budget_exceeded"
+        && !receipt.passed();
+    Ok(CompactModeOutcome::controlled_json(
+        receipt.to_json(),
+        passed,
+    ))
+}
+
+fn policy_reuse_evidence_rollout_readiness_smoke_mode() -> Result<CompactModeOutcome, String> {
+    let receipt = validation_harness::policy_reuse_evidence_rollout_readiness_smoke_receipt();
+    Ok(CompactModeOutcome::pass_json(
+        receipt.to_json(),
+        receipt.passed(),
+    ))
+}
+
+fn policy_reuse_evidence_rollout_readiness_regression_smoke_mode(
+) -> Result<CompactModeOutcome, String> {
+    let receipt =
+        validation_harness::policy_reuse_evidence_rollout_readiness_regression_smoke_receipt();
+    let passed = receipt.is_valid()
+        && !receipt.validation_budget_passed
+        && !receipt.rollout_ready
+        && receipt.readiness_status == "not_ready"
+        && receipt.not_ready_reason == "validation_budget_failed"
         && !receipt.passed();
     Ok(CompactModeOutcome::controlled_json(
         receipt.to_json(),

@@ -17,7 +17,7 @@ pub const FAST_TEST_STEP: &str = "fast_score_contract_tests";
 pub const LIB_UNIT_STEP: &str = "lib_unit_contract_tests";
 pub const API_TRANSPORT_STEP: &str = "api_transport_contract_tests";
 pub const VALIDATION_HARNESS_STEP: &str = "validation_harness_contract_tests";
-pub const VALIDATION_HARNESS_EXPECTED_TESTS: usize = 184;
+pub const VALIDATION_HARNESS_EXPECTED_TESTS: usize = 188;
 pub const PLANNING_CONTRACT_STEP: &str = "planning_contract_tests";
 pub const GRAPH_MUTATION_CLI_CONTRACT_STEP: &str = "graph_mutation_cli_contract_tests";
 pub const GRAPH_MUTATION_CLI_CONTRACT_EXPECTED_TESTS: usize = 10;
@@ -111,6 +111,10 @@ pub const POLICY_REUSE_EVIDENCE_VALIDATION_BUDGET_SMOKE_STEP: &str =
     "policy_reuse_evidence_validation_budget_smoke";
 pub const POLICY_REUSE_EVIDENCE_VALIDATION_BUDGET_REGRESSION_SMOKE_STEP: &str =
     "policy_reuse_evidence_validation_budget_regression_smoke";
+pub const POLICY_REUSE_EVIDENCE_ROLLOUT_READINESS_SMOKE_STEP: &str =
+    "policy_reuse_evidence_rollout_readiness_smoke";
+pub const POLICY_REUSE_EVIDENCE_ROLLOUT_READINESS_REGRESSION_SMOKE_STEP: &str =
+    "policy_reuse_evidence_rollout_readiness_regression_smoke";
 pub const POLICY_VALIDATION_HEALTH_SMOKE_STEP: &str = "policy_validation_health_smoke";
 pub const POLICY_VALIDATION_HEALTH_TREND_SMOKE_STEP: &str = "policy_validation_health_trend_smoke";
 pub const POLICY_ORCHESTRATION_CAPACITY_SMOKE_STEP: &str = "policy_orchestration_capacity_smoke";
@@ -1773,6 +1777,91 @@ impl PolicyReuseEvidenceValidationBudgetReceipt {
             self.budget_status,
             self.regression_reason,
             self.budget_hash,
+            self.receipt_hash,
+        )
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PolicyReuseEvidenceRolloutReadinessReceipt {
+    pub schema: &'static str,
+    pub record_type: &'static str,
+    pub readiness_version: u64,
+    pub source_validation_budget_hash: u64,
+    pub source_manifest_hash: u64,
+    pub source_maturity_hash: u64,
+    pub source_summary_hash: u64,
+    pub validation_budget_passed: bool,
+    pub manifest_complete: bool,
+    pub maturity_stage: &'static str,
+    pub summary_status: &'static str,
+    pub rollout_ready: bool,
+    pub readiness_status: &'static str,
+    pub not_ready_reason: &'static str,
+    pub readiness_hash: u64,
+    pub receipt_hash: u64,
+}
+
+impl PolicyReuseEvidenceRolloutReadinessReceipt {
+    pub fn passed(&self) -> bool {
+        self.is_valid() && self.rollout_ready && self.readiness_status == "ready"
+    }
+
+    pub fn is_valid(&self) -> bool {
+        self.schema == "canon_policy_reuse_evidence_rollout_readiness_v1"
+            && matches!(
+                self.record_type,
+                "policy_reuse_evidence_rollout_readiness"
+                    | POLICY_REUSE_EVIDENCE_ROLLOUT_READINESS_SMOKE_STEP
+                    | POLICY_REUSE_EVIDENCE_ROLLOUT_READINESS_REGRESSION_SMOKE_STEP
+            )
+            && self.readiness_version == 1
+            && self.source_validation_budget_hash != 0
+            && self.source_manifest_hash != 0
+            && self.source_maturity_hash != 0
+            && self.source_summary_hash != 0
+            && matches!(self.maturity_stage, "candidate" | "immature")
+            && matches!(self.summary_status, "pass" | "fail")
+            && matches!(self.readiness_status, "ready" | "not_ready")
+            && matches!(
+                self.not_ready_reason,
+                "none"
+                    | "validation_budget_failed"
+                    | "manifest_incomplete"
+                    | "maturity_immature"
+                    | "summary_failed"
+            )
+            && self.rollout_ready
+                == (self.validation_budget_passed
+                    && self.manifest_complete
+                    && self.maturity_stage == "candidate"
+                    && self.summary_status == "pass"
+                    && self.not_ready_reason == "none")
+            && (self.readiness_status == "ready") == self.rollout_ready
+            && self.readiness_hash != 0
+            && self.receipt_hash != 0
+            && self.readiness_hash == policy_reuse_evidence_rollout_readiness_hash(self)
+            && self.receipt_hash == policy_reuse_evidence_rollout_readiness_receipt_hash(self)
+    }
+
+    pub fn to_json(&self) -> String {
+        format!(
+            "{{\"schema\":\"{}\",\"record_type\":\"{}\",\"readiness_version\":{},\"source_validation_budget_hash\":{},\"source_manifest_hash\":{},\"source_maturity_hash\":{},\"source_summary_hash\":{},\"validation_budget_passed\":{},\"manifest_complete\":{},\"maturity_stage\":\"{}\",\"summary_status\":\"{}\",\"rollout_ready\":{},\"readiness_status\":\"{}\",\"not_ready_reason\":\"{}\",\"readiness_hash\":{},\"receipt_hash\":{}}}",
+            self.schema,
+            self.record_type,
+            self.readiness_version,
+            self.source_validation_budget_hash,
+            self.source_manifest_hash,
+            self.source_maturity_hash,
+            self.source_summary_hash,
+            self.validation_budget_passed,
+            self.manifest_complete,
+            self.maturity_stage,
+            self.summary_status,
+            self.rollout_ready,
+            self.readiness_status,
+            self.not_ready_reason,
+            self.readiness_hash,
             self.receipt_hash,
         )
     }
@@ -3985,6 +4074,86 @@ fn finalize_policy_reuse_evidence_validation_budget(
     receipt.receipt_hash = policy_reuse_evidence_validation_budget_receipt_hash(receipt);
 }
 
+pub fn policy_reuse_evidence_rollout_readiness_smoke_receipt(
+) -> PolicyReuseEvidenceRolloutReadinessReceipt {
+    let validation_budget = policy_reuse_evidence_validation_budget_smoke_receipt();
+    let manifest = policy_reuse_evidence_manifest_smoke_receipt();
+    let maturity = policy_reuse_evidence_maturity_smoke_receipt();
+    let summary = policy_reuse_evidence_summary_smoke_receipt();
+    let mut receipt = policy_reuse_evidence_rollout_readiness_from_sources(
+        POLICY_REUSE_EVIDENCE_ROLLOUT_READINESS_SMOKE_STEP,
+        &validation_budget,
+        &manifest,
+        &maturity,
+        &summary,
+        "none",
+    );
+    finalize_policy_reuse_evidence_rollout_readiness(&mut receipt);
+    receipt
+}
+
+pub fn policy_reuse_evidence_rollout_readiness_regression_smoke_receipt(
+) -> PolicyReuseEvidenceRolloutReadinessReceipt {
+    let validation_budget = policy_reuse_evidence_validation_budget_regression_smoke_receipt();
+    let manifest = policy_reuse_evidence_manifest_smoke_receipt();
+    let maturity = policy_reuse_evidence_maturity_smoke_receipt();
+    let summary = policy_reuse_evidence_summary_smoke_receipt();
+    let mut receipt = policy_reuse_evidence_rollout_readiness_from_sources(
+        POLICY_REUSE_EVIDENCE_ROLLOUT_READINESS_REGRESSION_SMOKE_STEP,
+        &validation_budget,
+        &manifest,
+        &maturity,
+        &summary,
+        "validation_budget_failed",
+    );
+    finalize_policy_reuse_evidence_rollout_readiness(&mut receipt);
+    receipt
+}
+
+fn policy_reuse_evidence_rollout_readiness_from_sources(
+    record_type: &'static str,
+    validation_budget: &PolicyReuseEvidenceValidationBudgetReceipt,
+    manifest: &PolicyReuseEvidenceManifestReceipt,
+    maturity: &PolicyReuseEvidenceMaturityReceipt,
+    summary: &PolicyReuseEvidenceSummaryReceipt,
+    not_ready_reason: &'static str,
+) -> PolicyReuseEvidenceRolloutReadinessReceipt {
+    let validation_budget_passed = validation_budget.passed();
+    let rollout_ready = validation_budget_passed
+        && manifest.manifest_complete
+        && maturity.maturity_stage == "candidate"
+        && summary.summary_status == "pass"
+        && not_ready_reason == "none";
+    let readiness_status = if rollout_ready { "ready" } else { "not_ready" };
+    let mut receipt = PolicyReuseEvidenceRolloutReadinessReceipt {
+        schema: "canon_policy_reuse_evidence_rollout_readiness_v1",
+        record_type,
+        readiness_version: 1,
+        source_validation_budget_hash: validation_budget.receipt_hash,
+        source_manifest_hash: manifest.receipt_hash,
+        source_maturity_hash: maturity.receipt_hash,
+        source_summary_hash: summary.receipt_hash,
+        validation_budget_passed,
+        manifest_complete: manifest.manifest_complete,
+        maturity_stage: maturity.maturity_stage,
+        summary_status: summary.summary_status,
+        rollout_ready,
+        readiness_status,
+        not_ready_reason,
+        readiness_hash: 0,
+        receipt_hash: 0,
+    };
+    finalize_policy_reuse_evidence_rollout_readiness(&mut receipt);
+    receipt
+}
+
+fn finalize_policy_reuse_evidence_rollout_readiness(
+    receipt: &mut PolicyReuseEvidenceRolloutReadinessReceipt,
+) {
+    receipt.readiness_hash = policy_reuse_evidence_rollout_readiness_hash(receipt);
+    receipt.receipt_hash = policy_reuse_evidence_rollout_readiness_receipt_hash(receipt);
+}
+
 #[allow(clippy::too_many_arguments)]
 fn policy_reuse_evidence_surface_index_from_sources(
     record_type: &'static str,
@@ -4342,6 +4511,75 @@ fn policy_reuse_evidence_validation_budget_receipt_hash(
         return 0;
     }
     (budget_hash ^ 0x504f_4c52_4556_4252u64).max(1)
+}
+
+fn policy_reuse_evidence_rollout_readiness_hash(
+    receipt: &PolicyReuseEvidenceRolloutReadinessReceipt,
+) -> u64 {
+    if receipt.readiness_version == 0
+        || receipt.source_validation_budget_hash == 0
+        || receipt.source_manifest_hash == 0
+        || receipt.source_maturity_hash == 0
+        || receipt.source_summary_hash == 0
+    {
+        return 0;
+    }
+    let maturity_stage_code = match receipt.maturity_stage {
+        "candidate" => 1,
+        "immature" => 2,
+        _ => 0,
+    };
+    let summary_status_code = match receipt.summary_status {
+        "pass" => 1,
+        "fail" => 2,
+        _ => 0,
+    };
+    let readiness_status_code = match receipt.readiness_status {
+        "ready" => 1,
+        "not_ready" => 2,
+        _ => 0,
+    };
+    let not_ready_reason_code = match receipt.not_ready_reason {
+        "none" => 1,
+        "validation_budget_failed" => 2,
+        "manifest_incomplete" => 3,
+        "maturity_immature" => 4,
+        "summary_failed" => 5,
+        _ => 0,
+    };
+    if maturity_stage_code == 0
+        || summary_status_code == 0
+        || readiness_status_code == 0
+        || not_ready_reason_code == 0
+    {
+        return 0;
+    }
+    let mut h = 0x504f_4c52_4552_5248u64;
+    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.schema.as_bytes());
+    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.record_type.as_bytes());
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.readiness_version;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_validation_budget_hash;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_manifest_hash;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_maturity_hash;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_summary_hash;
+    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.validation_budget_passed);
+    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.manifest_complete);
+    h = h.wrapping_mul(0x100000001b3) ^ maturity_stage_code;
+    h = h.wrapping_mul(0x100000001b3) ^ summary_status_code;
+    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.rollout_ready);
+    h = h.wrapping_mul(0x100000001b3) ^ readiness_status_code;
+    h = h.wrapping_mul(0x100000001b3) ^ not_ready_reason_code;
+    h.max(1)
+}
+
+fn policy_reuse_evidence_rollout_readiness_receipt_hash(
+    receipt: &PolicyReuseEvidenceRolloutReadinessReceipt,
+) -> u64 {
+    let readiness_hash = policy_reuse_evidence_rollout_readiness_hash(receipt);
+    if readiness_hash == 0 || receipt.readiness_hash != readiness_hash {
+        return 0;
+    }
+    (readiness_hash ^ 0x504f_4c52_4552_5252u64).max(1)
 }
 
 fn policy_reuse_evidence_summary_hash(receipt: &PolicyReuseEvidenceSummaryReceipt) -> u64 {

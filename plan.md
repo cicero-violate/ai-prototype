@@ -1,6 +1,6 @@
 # Canon Agent Implementation Plan
 
-This plan tracks the current deterministic implementation plan after implementation step 1 of the current agent loop.
+This plan tracks the current deterministic implementation plan after implementation step 2 of the current agent loop.
 
 ## North Star
 
@@ -54,104 +54,21 @@ The repository currently exposes these meaningful surfaces:
 - validation-harness/root-validate smoke exposure for healthy and controlled missing-summary-mode evidence-manifest evidence;
 - deterministic policy reuse evidence validation-budget receipt in the validation harness;
 - validation-harness/root-validate smoke exposure for healthy and controlled budget-exceeded validation-budget evidence;
+- deterministic policy reuse evidence rollout-readiness receipt in the validation harness;
+- validation-harness/root-validate smoke exposure for healthy and controlled validation-budget-failed rollout-readiness evidence;
 - retained fixtures for policy reuse, policy validation health, policy validation trend, orchestration capacity, policy capacity/cost, runtime performance trend, validation duration planning, validation command footprint, external CLI mode evidence, and evidence-surface index coverage.
 
 ## Current Completed Implementation Baseline
 
-The current working tree contains deterministic **policy reuse evidence validation-budget** evidence in the validation-harness/root-validator layer, while retaining evaluator-savings, scaling-projection, distillation-readiness, evidence-surface index, evidence-bundle, evidence-quickcheck, evidence-maturity, evidence-summary, and evidence-manifest evidence already present in this loop.
+The current working tree contains deterministic **policy reuse evidence rollout-readiness** evidence in the validation-harness/root-validator layer, while retaining evaluator-savings, scaling-projection, distillation-readiness, evidence-surface index, evidence-bundle, evidence-quickcheck, evidence-maturity, evidence-summary, evidence-manifest, and validation-budget evidence already present in this loop.
 
 This slice answers:
 
 ```text
-Can an evaluator inspect a deterministic receipt that states the minimum targeted validation budget for proving the policy-reuse summary/manifest stack instead of defaulting to full validation-harness execution?
+Can an evaluator inspect one deterministic receipt that composes validation-budget, manifest, maturity, and summary evidence into a rollout-readiness verdict without granting policy authority?
 ```
 
 Implemented surfaces:
-
-```text
-PolicyReuseEvidenceValidationBudgetReceipt
-policy_reuse_evidence_validation_budget_smoke_receipt()
-policy_reuse_evidence_validation_budget_regression_smoke_receipt()
---policy-reuse-evidence-validation-budget-smoke
---policy-reuse-evidence-validation-budget-regression-smoke
-```
-
-Implemented fields:
-
-```text
-schema
-record_type
-budget_version
-source_manifest_hash
-source_summary_hash
-targeted_command_count
-targeted_test_count
-max_targeted_test_count
-full_harness_test_count
-avoided_full_harness_tests
-manifest_complete
-budget_within_limit
-budget_status
-regression_reason
-budget_hash
-receipt_hash
-```
-
-Completed implementation tasks:
-
-1. Added `PolicyReuseEvidenceValidationBudgetReceipt` with deterministic validation, JSON output, budget hash, and receipt hash.
-2. Added healthy and controlled budget-exceeded regression smoke constructors.
-3. Bound validation-budget evidence to evidence-manifest and evidence-summary receipt hashes.
-4. Added root validator compact modes for healthy and regression validation-budget receipts.
-5. Added validation harness contracts for validation-budget semantics, source binding, compact output, and controlled budget-exceeded evidence.
-6. Updated external CLI mode fixture and root compact-mode counts for the two new public modes.
-7. Updated validation harness expected test count from 180 to 184.
-8. Updated retained guarded-test fixture values from 190 to 194 and refreshed dependent validation-duration estimates.
-9. Kept kernel authority unchanged and did not train a student model or promote policy.
-
-Implemented deterministic semantics:
-
-- `budget_status = "pass"` only when the source manifest is complete, the targeted validation test count is within the deterministic limit, and `regression_reason = "none"`.
-- Healthy evidence records two targeted commands, four targeted tests, a maximum targeted-test budget of four, the full harness count of 184, and 180 avoided full-harness tests.
-- Regression evidence remains structurally valid while exposing `budget_status = "fail"`, `budget_within_limit = false`, and `regression_reason = "budget_exceeded"`.
-- Validation-budget source evidence reuses manifest and summary receipt hashes instead of adding policy authority.
-- The receipt is evidence-only; it summarizes validation cost without changing kernel authority, policy promotion, or runtime behavior.
-- The new receipt does not introduce live LLM, network, wall-clock, or environment-dependent measurement.
-
-## Validation Evidence Recorded For This Baseline
-
-```text
-cargo fmt --check
-RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test validation_harness_contract policy_reuse_evidence_validation_budget --quiet
-RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test validation_harness_contract --quiet
-RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test score_contract --test planning_contract --quiet
-
-cargo fmt --check: pass
-validation_harness_contract policy_reuse_evidence_validation_budget filter: 4 passed, 0 failed, 180 filtered out
-validation_harness_contract: 184 passed, 0 failed
-planning_contract: 2 passed, 0 failed
-score_contract: 5 passed, 0 failed
-```
-
-Planning and score contract validation passed after this document update.
-
-## Planned Next Implementation Slice
-
-Planning decision for the next turn: keep the next implementation slice focused on the weakest remaining axis, **Scalability**.
-
-Current gap:
-
-```text
-The evidence stack now exposes coverage, manifest completeness, maturity, quickcheck, summary, and validation budget, but it still lacks a compact deterministic rollout-readiness receipt that decides whether the stack is ready to scale beyond single targeted validation slices.
-```
-
-Recommended next slice:
-
-```text
-Add a deterministic policy reuse evidence rollout-readiness receipt that composes validation-budget, manifest, maturity, and summary evidence into one evaluator-facing readiness verdict.
-```
-
-Recommended concrete surfaces:
 
 ```text
 PolicyReuseEvidenceRolloutReadinessReceipt
@@ -161,13 +78,98 @@ policy_reuse_evidence_rollout_readiness_regression_smoke_receipt()
 --policy-reuse-evidence-rollout-readiness-regression-smoke
 ```
 
+Implemented fields:
+
+```text
+schema
+record_type
+readiness_version
+source_validation_budget_hash
+source_manifest_hash
+source_maturity_hash
+source_summary_hash
+validation_budget_passed
+manifest_complete
+maturity_stage
+summary_status
+rollout_ready
+readiness_status
+not_ready_reason
+readiness_hash
+receipt_hash
+```
+
+Completed implementation tasks:
+
+1. Added `PolicyReuseEvidenceRolloutReadinessReceipt` with deterministic validation, JSON output, readiness hash, and receipt hash.
+2. Added healthy and controlled validation-budget-failed regression smoke constructors.
+3. Bound rollout-readiness evidence to validation-budget, manifest, maturity, and summary receipt hashes.
+4. Added root validator compact modes for healthy and regression rollout-readiness receipts.
+5. Added validation harness contracts for rollout-readiness semantics, source binding, compact output, and controlled not-ready evidence.
+6. Removed duplicate validation-budget compact-mode registrations while preserving the public validation-budget modes.
+7. Updated external CLI mode fixture for the two rollout-readiness public modes.
+8. Updated validation harness expected test count from 184 to 188.
+9. Updated retained guarded-test fixture values from 194 to 198 and refreshed dependent validation-duration/performance-cost estimates.
+10. Kept kernel authority unchanged and did not train a student model or promote policy.
+
+Implemented deterministic semantics:
+
+- `rollout_ready = true` only when validation-budget passed, manifest is complete, maturity stage is `candidate`, summary status is `pass`, and `not_ready_reason = "none"`.
+- Healthy evidence records readiness status `ready` and `not_ready_reason = "none"`.
+- Regression evidence remains structurally valid while exposing `validation_budget_passed = false`, `rollout_ready = false`, `readiness_status = "not_ready"`, and `not_ready_reason = "validation_budget_failed"`.
+- Rollout-readiness source evidence reuses validation-budget, manifest, maturity, and summary receipt hashes instead of adding policy authority.
+- The receipt is evidence-only; it summarizes rollout readiness without changing kernel authority, policy promotion, or runtime behavior.
+- The new receipt does not introduce live LLM, network, wall-clock, or environment-dependent measurement.
+
+## Validation Evidence Recorded For This Baseline
+
+```text
+cargo fmt --check
+RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test validation_harness_contract policy_reuse_evidence_rollout_readiness --quiet
+RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test validation_harness_contract --quiet
+
+cargo fmt --check: pass
+validation_harness_contract policy_reuse_evidence_rollout_readiness filter: 4 passed, 0 failed, 184 filtered out
+validation_harness_contract: 188 passed, 0 failed
+planning_contract: 2 passed, 0 failed
+score_contract: 5 passed, 0 failed
+```
+
+Planning and score contract validation passed after this document update.
+
+## Planned Next Implementation Slice
+
+Planning decision for the next turn: keep the next implementation slice focused on the weakest remaining axis, **Learning**.
+
+Current gap:
+
+```text
+The evidence stack now exposes rollout readiness, but it still lacks a deterministic learning-admission receipt that says whether a ready rollout trace is admissible as learning data.
+```
+
+Recommended next slice:
+
+```text
+Add a deterministic policy reuse evidence learning-admission receipt that composes rollout-readiness, validation-budget, and summary evidence into an admissible/not-admissible learning-data verdict.
+```
+
+Recommended concrete surfaces:
+
+```text
+PolicyReuseEvidenceLearningAdmissionReceipt
+policy_reuse_evidence_learning_admission_smoke_receipt()
+policy_reuse_evidence_learning_admission_regression_smoke_receipt()
+--policy-reuse-evidence-learning-admission-smoke
+--policy-reuse-evidence-learning-admission-regression-smoke
+```
+
 Recommended constraints:
 
 1. Keep the kernel untouched.
 2. Do not introduce live LLM, network, wall-clock, or environment-dependent measurement.
-3. Reuse validation-budget, manifest, maturity, and summary receipt hashes.
-4. Keep the receipt evidence-only: it may state readiness, but it must not promote policy or grant authority.
-5. Include healthy and controlled not-ready regression cases.
+3. Reuse rollout-readiness, validation-budget, and summary receipt hashes.
+4. Keep the receipt evidence-only: it may state learning-data admissibility, but it must not promote policy or train a student model.
+5. Include healthy and controlled not-admissible regression cases.
 6. Keep student-model training deferred.
 
 ## Evaluation Axes
@@ -201,8 +203,8 @@ arg max(G) = good
 - Full live Ollama validation remains environment-dependent.
 - Graph telemetry still requires explicit wrapper capture.
 - Student-model training is intentionally deferred until verified distillation data is large and clean.
-- Parallel orchestration execution should wait until larger-batch reuse, validation health, retained validation/runtime cost, catalog completeness, evaluator savings, scaling projection, distillation readiness, evidence-surface indexing, bundled evidence inspection, quickcheck validation, maturity staging, stable summary evidence, manifest coverage, validation-budget evidence, and rollout-readiness evidence are proven together.
-- Full-suite validation should run after the rollout-readiness slice if fixture or CLI mode churn is broader than expected.
+- Parallel orchestration execution should wait until larger-batch reuse, validation health, retained validation/runtime cost, catalog completeness, evaluator savings, scaling projection, distillation readiness, evidence-surface indexing, bundled evidence inspection, quickcheck validation, maturity staging, stable summary evidence, manifest coverage, validation-budget evidence, rollout-readiness evidence, and learning-admission evidence are proven together.
+- Full-suite validation should run after the learning-admission slice if fixture or CLI mode churn is broader than expected.
 
 ## Turn Protocol
 

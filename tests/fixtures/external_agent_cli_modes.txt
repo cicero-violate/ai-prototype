@@ -1,5 +1,5 @@
 schema=canon_external_agent_cli_modes_v1
-mode_count=69
+mode_count=71
 root_validate --validation-footprint => canon_validation_footprint_v1
 root_validate --validation-command-footprint-planning => canon_validation_command_footprint_planning_v1
 root_validate --validation-command-footprint-target-met-smoke => validation_command_footprint_target_met_smoke
@@ -69,3 +69,5 @@ graph_mutation verify-landing <old-graph-contract.ndjson> <new-graph-contract.nd
 graph_mutation help => usage
 root_validate --policy-reuse-evidence-validation-budget-smoke => policy_reuse_evidence_validation_budget_smoke
 root_validate --policy-reuse-evidence-validation-budget-regression-smoke => policy_reuse_evidence_validation_budget_regression_smoke
+root_validate --policy-reuse-evidence-rollout-readiness-smoke => policy_reuse_evidence_rollout_readiness_smoke
+root_validate --policy-reuse-evidence-rollout-readiness-regression-smoke => policy_reuse_evidence_rollout_readiness_regression_smoke
