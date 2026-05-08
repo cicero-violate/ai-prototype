@@ -422,3 +422,46 @@ Si = 0.97  one receipt represents the consumption boundary instead of scattered 
 F  = 0.98  consumption prepares later retrieval/model-learning gates without committing to storage or training behavior
 G  ≈ 0.967
 ```
+
+
+## Implementation Step 2 Score Decision - Retrieval Example Learning Eligibility
+
+```text
+selected_axis = Learning
+score_change_this_turn = retained L at 1.00
+reason = retrieval-example learning eligibility evidence adds a deterministic evidence-only gate after approval-admission-consumption without retrieval storage operations, query execution, runtime result approval, policy promotion, batch execution, or student training
+source_changes_observed_but_not_owned = canon-rustc-v3/* modified and untracked files remain out of scope for this implementation turn
+commit_scope = retrieval-example learning eligibility implementation, tests, fixture, plan.md, score.md
+```
+
+Updated validation evidence:
+
+```text
+cargo fmt --check: initially failed on formatting-only drift, then passed after cargo fmt
+validation_harness_contract learning_eligibility --no-run: pass
+cargo check --quiet: pass
+planning_contract and score_contract: pass
+focused executable learning_eligibility tests: attempted twice, connector returned 502 before Rust output was available
+```
+
+Scoring stance after this implementation:
+
+```text
+I  = 0.98  consumed approval-admission evidence can now become deterministic retrieval-example learning eligibility evidence
+E  = 0.97  eligibility remains evidence-only and forbids retrieval reads, writes, queries, runtime approval, promotion, batch execution, and training
+C  = 0.91  formatting, focused no-run compile, cargo check, and planning/score tests pass; focused executable tests were connector-blocked
+A  = 0.97  authority remains outside the LLM and outside the eligibility receipt
+R  = 0.96  healthy and controlled not-eligible paths are covered by compiled contracts
+P  = 0.95  no runtime retrieval, query, batch, or training cost is introduced
+S  = 0.98  the evidence chain now exposes a retrieval-example learning eligibility boundary
+D  = 0.97  receipts use fixed source hashes, booleans, status strings, reason strings, and deterministic hashes
+T  = 0.98  consumption source hash and upstream approval-admission/approval/readiness/admission hashes are explicit
+Co = 0.95  plan and score hand off the next retrieval-example learning-admission gate
+Em = 0.95  root_validate consumers have healthy and regression compact modes for learning eligibility evidence
+B  = 0.97  external evaluators get deterministic eligibility evidence before storage, runtime approval, promotion, or training
+L  = 1.00  learning eligibility prepares a cleaner path toward retrieval-example learning data admission
+St = 0.97  eligibility composes existing evidence without kernel or runtime authority drift
+Si = 0.97  one receipt represents the eligibility boundary instead of scattered downstream checks
+F  = 0.98  eligibility prepares later retrieval/model-learning gates without committing to storage or training behavior
+G  ≈ 0.967
+```

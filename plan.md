@@ -533,3 +533,75 @@ tests/fixtures/external_agent_cli_modes.txt
 ```
 
 Observed `canon-rustc-v3/` working-tree changes remain outside this turn.
+
+
+## Implementation Step 2 - Retrieval Example Learning Eligibility
+
+Completed this turn:
+
+```text
+PolicyReuseEvidenceRetrievalResultUseSummaryManifestApprovalAdmissionConsumptionLearningEligibilityReceipt
+policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_consumption_learning_eligibility_smoke_receipt()
+policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_consumption_learning_eligibility_regression_smoke_receipt()
+--policy-reuse-evidence-retrieval-result-use-summary-manifest-approval-admission-consumption-learning-eligibility-smoke
+--policy-reuse-evidence-retrieval-result-use-summary-manifest-approval-admission-consumption-learning-eligibility-regression-smoke
+```
+
+Completed semantics:
+
+- `retrieval_example_learning_eligible = true` only when approval-admission-consumption evidence is consumed, approval-admission is admitted, upstream approval/readiness/admission booleans are true, external result evidence is present, retrieval storage was not read or written, retrieval query execution did not happen, runtime result approval did not happen, policy was not promoted, batch execution did not happen, student training was not performed, learning-eligibility policy-reuse examples are positive, and `not_eligible_reason = "none"`.
+- Healthy evidence binds to approval-admission-consumption receipt hash plus approval-admission, approval, readiness, and admission source hashes, reports status `retrieval_example_learning_eligible`, and records `not_eligible_reason = "none"`.
+- Regression evidence remains structurally valid while exposing `retrieval_result_use_summary_manifest_approval_admission_consumed = false`, upstream booleans false, eligibility status `retrieval_example_learning_not_eligible`, and `not_eligible_reason = "approval_admission_consumption_not_consumed"`.
+- The receipt remains evidence-only: no retrieval reads/writes, no query execution, no runtime result approval, no policy promotion, no batch execution, no live LLM, no network call, no wall-clock dependency, and no student training.
+- The kernel, transition table, runtime reducer, durable writer, and command ledger were not changed.
+
+## Validation Evidence For Retrieval Example Learning Eligibility
+
+```text
+cargo fmt --check: initially failed on formatting-only drift, then passed after cargo fmt
+RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test validation_harness_contract learning_eligibility --no-run --quiet: pass
+RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo check --quiet: pass
+RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test planning_contract --test score_contract --quiet: pass
+RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test validation_harness_contract learning_eligibility --quiet: attempted twice, but connector returned 502 before Rust test output was available
+```
+
+## Current Planning Decision After Retrieval Example Learning Eligibility
+
+Keep the next implementation turn focused on **Learning**, moving from eligibility evidence toward a deterministic retrieval-example learning-admission boundary that can admit eligible evidence as learning material without writing retrieval storage or training a model.
+
+Current gap:
+
+```text
+Consumed approval-admission evidence can now be marked eligible for retrieval-example learning, but the stack still lacks an evidence-only admission receipt that accepts eligible evidence as learning material while forbidding storage writes and training.
+```
+
+Recommended next slice:
+
+```text
+Add a deterministic policy reuse evidence receipt that consumes retrieval-example learning eligibility evidence and emits a retrieval-example learning-admission boundary without performing retrieval storage operations, query execution, policy promotion, runtime result approval, batch execution, or student training.
+```
+
+Recommended constraints:
+
+1. Keep the kernel untouched.
+2. Do not introduce live LLM, network, wall-clock, or environment-dependent measurement.
+3. Reuse retrieval-example learning eligibility receipt hashes rather than creating authority.
+4. Keep the receipt evidence-only: no retrieval storage reads/writes, no query execution, no policy promotion, no runtime result approval, no batch execution, and no student training.
+5. Include healthy and controlled regression cases.
+6. Update external CLI mode fixtures and guarded validation counts only if new public modes or tests are added.
+7. Keep unrelated `canon-rustc-v3/` working-tree changes out of this slice unless explicitly selected in a separate turn.
+
+## Implementation Step 2 Commit Scope - Retrieval Example Learning Eligibility
+
+This turn should update and commit:
+
+```text
+plan.md
+score.md
+src/validation_harness.rs
+src/bin/root_validate.rs
+tests/validation_harness_contract.rs
+tests/fixtures/external_agent_cli_modes.txt
+```
+
+Observed `canon-rustc-v3/` working-tree changes remain outside this turn.
