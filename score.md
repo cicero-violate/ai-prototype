@@ -1359,3 +1359,72 @@ score.md update: completed
 implementation validation: not run; out of scope for planning-only turn
 commit target: plan.md score.md
 ```
+
+## Planning Turn Score Update - 2026-05-08T11:22:51Z - Auto-Refactor Evidence Hardening
+
+```text
+turn_type = planning
+score_change_this_turn = none
+selected_next_axes = Structure, Efficiency
+commit_scope = plan.md and score.md only
+implementation_files_owned_this_turn = none
+implementation_validation_run = none
+```
+
+This turn retains the previous score stance. It records a narrower evidence-hardening gate for the active candidate graph/refactor work, but it does not claim implementation progress because implementation validation was not run and the implementation files remain unowned by this planning turn.
+
+Current unowned worktree changes remain:
+
+```text
+modified: canon-rustc-v3/src/facts.rs
+modified: canon-rustc-v3/src/hir.rs
+modified: canon-rustc-v3/src/mir.rs
+modified: canon-rustc-v3/src/wrapper.rs
+modified: canon-rustc-v3/validation/semantic_preflight.py
+modified: canon-rustc-v3/validation/semantic_scale_probe.py
+modified: src/validation_harness.rs
+modified: tests/validation_harness_contract.rs
+untracked: canon-rustc-v3/plan-autorefactor.md
+untracked: canon-rustc-v3/validation/auto_refactor_surface.py
+untracked: canon-rustc-v3/validation/auto_refactor_surface_smoke.py
+```
+
+Scoring rationale:
+
+- `Structure` remains the leading axis because the next work should make graph relations and auto-refactor reports deterministic, typed, and auditable.
+- `Efficiency` remains paired because validated refactor surfaces can reduce repeated manual or LLM-based inspection of duplicated code paths.
+- `Correctness` is retained rather than increased because relation semantics, fixtures, and deterministic report validation still require executable proof.
+- `Transparency` is retained by documenting the exact ownership boundary and by refusing to score unvalidated implementation changes.
+- `Stability` is retained by keeping the next plan outside kernel authority, transition tables, durable writing, policy promotion, retrieval storage, live network/LLM behavior, and student-model training.
+
+Score retention:
+
+```text
+I  = 0.98 retained
+E  = 0.97 retained; candidate efficiency gain still requires validation
+C  = 0.90 retained; no new validation evidence claimed
+A  = 0.97 retained
+R  = 0.96 retained
+P  = 0.95 retained
+S  = 0.98 retained
+D  = 0.97 retained
+T  = 0.98 retained; ownership boundary recorded
+Co = 0.95 retained
+Em = 0.95 retained
+B  = 0.97 retained
+L  = 1.00 retained
+St = 0.97 retained; implementation authority unchanged
+Si = 0.97 retained
+F  = 0.98 retained
+G  ≈ 0.966 retained
+```
+
+Validation status for this planning/scoring turn:
+
+```text
+repository inspection: completed
+plan.md update: completed
+score.md update: completed
+implementation validation: not run; out of scope for planning-only turn
+commit target: plan.md score.md
+```
