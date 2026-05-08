@@ -1,46 +1,65 @@
 # Canon Agent Score
 
-## Planning Scorecard - 2026-05-08
+## Implementation Step 1 Scorecard - 2026-05-08
 
-This planning turn reviewed the current `ai` crate and updated the active implementation
-plan toward supervisor/worker/MCP integration. No runtime implementation score increase is
-claimed. Existing uncommitted implementation changes outside `plan.md` and `score.md` remain
-unscored and intentionally untouched.
+This turn implemented Step 1 of the supervisor/worker/MCP integration plan: dependency and
+binary-target wiring. Runtime behavior is intentionally limited to minimal compiling stubs;
+worker HTTP serving, supervisor lifecycle management, and MCP receipt execution remain planned
+future steps.
 
 ```text
-turn_type = planning_supervisor_worker_mcp
-score_change_this_turn = none
-commit_scope = plan.md, score.md
-recommended_next_lane = supervisor_worker_mcp_integration
+turn_type = implementation_step_1_cargo_targets
+score_change_this_turn = limited_structure_credit
+commit_scope = Cargo.toml, Cargo.lock, src/bin/supervisor.rs, src/bin/worker.rs, plan.md, score.md
+recommended_next_lane = mcp_receipt_types_codecs_tests
 implementation_authority_change = none
 policy_authority_change = none
 retrieval_write_change = none
 runtime_mutation_change = none
 ```
 
-## Current Evidence Posture
-
-The project already contains a deterministic API transport boundary:
+## Completed This Turn
 
 ```text
-src/api/transport.rs      ApiTransportSession::handle_frame
-src/api/routes.rs         command envelope handling and evidence submission
-src/capability/tooling    sandbox process receipts and deterministic effect records
+Cargo.toml dependencies added:
+  axum
+  reqwest with blocking/json and default features disabled
+  serde with derive
+  serde_json
+  tokio with runtime/network/signal/time/io features
+
+Cargo.toml binary targets added:
+  supervisor -> src/bin/supervisor.rs
+  worker     -> src/bin/worker.rs
+
+New binary stubs:
+  src/bin/supervisor.rs
+  src/bin/worker.rs
 ```
 
-The selected next implementation should be additive:
+The stubs provide `--help` output and explicit placeholder messages only. They do not expose
+HTTP endpoints, spawn workers, mutate runtime state, write TLogs, call MCP tools, or change
+kernel behavior.
 
-1. add a reloadable worker HTTP surface around the existing transport session;
-2. add a stable supervisor that manages worker lifecycle and reloads;
-3. add an MCP tool-call receipt/executor modeled on existing sandbox process receipts;
-4. preserve kernel authority, hash-chain determinism, and typed evidence boundaries.
+## Validation Evidence
 
-No score movement is recorded because this turn updated planning/scoring documents only.
+```text
+CARGO_BUILD_RUSTC_WRAPPER= cargo fmt --check                  pass
+CARGO_BUILD_RUSTC_WRAPPER= cargo check --all-targets --quiet  pass
+CARGO_BUILD_RUSTC_WRAPPER= cargo test --test planning_contract --test score_contract --quiet  pass
+```
+
+Planning/score contract result:
+
+```text
+planning_contract: 2 passed
+score_contract:    5 passed
+```
 
 ## Observed Unscored Worktree Changes
 
-The worktree contains unrelated pre-existing implementation changes that were not modified by
-this turn and should not be scored here:
+The repository still contains unrelated pre-existing/unscored worktree changes outside this
+turn's implementation scope:
 
 ```text
 modified: graph-editor/Cargo.toml
@@ -54,15 +73,17 @@ untracked: canon-rustc-v3/validation/auto_refactor_ops.py
 untracked: canon-rustc-v3/validation/auto_refactor_ops_smoke.py
 untracked: graph-editor/src/autorefactor.rs
 untracked: graph-editor/src/bin/auto_refactor_plan.rs
+untracked: src/domain/
 untracked: teacher-student.md
 ```
 
-These changes may become score-relevant only after focused validation evidence and a separate
-implementation commit. They are out of scope for the supervisor/worker/MCP planning commit.
+These are not scored here and should remain outside the Step 1 commit.
 
 ## Current Axis Scores
 
-Scores remain unchanged for this planning checkpoint.
+A small Structure increase is justified because the planned binary boundaries now exist and
+compile under all-target checks. No Correctness, Robustness, Runtime, Learning, or Determinism
+increase is claimed beyond compile-time target validity.
 
 ```text
 I  Intelligence      = 0.98
@@ -78,7 +99,7 @@ Co Collaboration     = 0.95
 Em Empowerment       = 0.95
 B  Benefit           = 0.97
 L  Learning          = 1.00
-St Structure         = 0.97
+St Structure         = 0.98
 Si Simplicity        = 0.97
 F  Future-Proofing   = 0.98
 ```
@@ -86,72 +107,34 @@ F  Future-Proofing   = 0.98
 Approximate geometric mean:
 
 ```text
-G ≈ 0.966
+G ≈ 0.967
 ```
 
 ## Current Judgment
 
 ```text
 weakest_axis = Correctness
-weakest_axis_reason = no supervisor, worker, or MCP implementation has been validated in this turn
-primary_next_axis = Structure
-secondary_next_axis = Robustness
-guard_axis = Correctness
-current_gap = live HTTP lifecycle and MCP receipt surfaces are planned but not implemented
-next_action = implement Step 1 dependency/bin declarations and Step 2 MCP receipt types/codecs/tests
-score_freeze_reason = planning-only checkpoint; no new runtime validation evidence added
+weakest_axis_reason = Step 1 adds compile-time surfaces only; no functional lifecycle or MCP execution tests yet
+primary_next_axis = Correctness
+secondary_next_axis = Determinism
+guard_axis = Structure
+current_gap = MCP receipt contract, normalized effect hashing, and NDJSON roundtrip tests are not implemented
+next_action = implement Step 2 MCP call request/receipt types, codecs, and focused receipt tests
+score_freeze_reason = only Structure moved; runtime behavior remains placeholder-only
 ```
 
-## Conditions For Future Score Increase
+## Conditions For Next Score Increase
 
-Score increases are allowed only after committed implementation evidence and clean validation
-output.
-
-Suggested movement if supervisor/worker/MCP integration is implemented and validated:
+The next implementation should not increase scores unless it adds committed MCP receipt code and
+focused tests proving:
 
 ```text
-Structure: +0.01 if supervisor, worker, API server, and MCP receipt code are separated cleanly
-Robustness: +0.01 if worker reload, health checks, dead-worker handling, and timeout paths are tested
-Correctness: +0.01 only if focused contract tests prove receipt normalization and transport replay
-Determinism: +0.01 only if MCP receipt encode/decode and hash roundtrips are byte-stable
-Scalability: +0.01 only if lifecycle management avoids coupling the kernel to HTTP or async state
+McpCallRequest::contract_hash is deterministic and non-zero for valid inputs
+McpCallReceipt normalizes Effect::process(response_hash, 0, response_bytes, 0, exit_status, timed_out)
+encode/decode roundtrip preserves receipt_hash
+invalid hashes or malformed NDJSON are rejected
+executor allowlist denial is represented without bypassing ToolSandboxError policy
 ```
 
-Do not raise any score for:
-
-```text
-uncommitted implementation
-unexecuted tests
-generated plans without validation
-live LLM output
-HTTP endpoints that bypass ApiTransportSession
-MCP calls that do not produce typed receipts
-policy promotion without external validation
-retrieval writes without explicit storage authority
-```
-
-## Validation Required For Next Scored Turn
-
-Minimum baseline:
-
-```text
-CARGO_BUILD_RUSTC_WRAPPER= cargo fmt --check
-CARGO_BUILD_RUSTC_WRAPPER= cargo check --quiet
-CARGO_BUILD_RUSTC_WRAPPER= cargo test --test planning_contract --test score_contract --quiet
-```
-
-Supervisor/worker/MCP-specific validation:
-
-```text
-CARGO_BUILD_RUSTC_WRAPPER= cargo test --test api_transport_contract --quiet
-CARGO_BUILD_RUSTC_WRAPPER= cargo test --test mcp_receipt_contract --quiet
-CARGO_BUILD_RUSTC_WRAPPER= cargo run --bin worker -- --help or equivalent startup smoke
-CARGO_BUILD_RUSTC_WRAPPER= cargo run --bin supervisor -- --help or equivalent startup smoke
-manual or scripted reload smoke: supervisor /health -> /reload -> new worker /health/worker
-MCP receipt roundtrip: encode -> decode -> same receipt_hash and normalized Effect::process
-```
-
-## Non-Scored Planning Result
-
-This checkpoint improves handoff clarity for the current implementation objective. It does not
-change the numeric score because it adds no runtime implementation or validation evidence.
+Do not raise Correctness or Robustness for HTTP worker/supervisor behavior until the actual
+server lifecycle, health, reload, and shutdown paths exist and have validation evidence.

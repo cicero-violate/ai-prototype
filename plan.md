@@ -44,10 +44,14 @@ src/lib.rs                              re-export new public surface
 
 ---
 
-## Step 1 — Cargo.toml
+## Step 1 — Cargo.toml — completed 2026-05-08
 
-Add dependencies. All new deps are used only by the two new binaries and `mcp.rs`. The
-library crate itself gets no new deps beyond what it already has.
+Status: implemented in this turn. `Cargo.toml` now declares the planned HTTP/MCP
+dependencies and the `supervisor` / `worker` binary targets. Minimal compiling binary
+stubs exist so later turns can replace placeholder behavior with lifecycle and HTTP
+server implementations while keeping `cargo check --all-targets` green.
+
+Added dependencies. All new deps are intended for the two new binaries and future `mcp.rs`.
 
 ```toml
 [dependencies]
