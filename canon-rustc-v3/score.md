@@ -1,44 +1,47 @@
 # canon-rustc-v3 Scorecard
 
 Reviewed: 2026-05-08
-Stage: `implementation step 2`
-Base commit: `2873d7d`
-Scope: native fixture replay for `ai/canon-rustc-v3`; fixture isolation added, wrapper behavior unchanged.
+Stage: `implementation step 3`
+Base commit: `bcb7fae`
+Scope: thresholded performance validation for `ai/canon-rustc-v3`; wrapper behavior unchanged.
 
 ## Validation Evidence
 
 | Check | Result | Judgment |
 |---|---:|---|
-| `python3 validation/run_semantic_witness.py --require-cargo --report validation/reports/semantic-witness-step2.json` | pass | Baseline check, wrapper build, two wrapped fixture runs, graph replay comparison, and timing receipt completed. |
-| `python3 validation/semantic_preflight.py --artifact-root state/rustc-test-1 --compare-artifact-root state/rustc-test-2 --require-live-replay --report validation/reports/semantic-preflight-step2.json` | pass_with_skip | Live replay validation is true; only skipped signal is uninitialized `vendor/rust-source`. |
-| `cargo test --offline` | pass | 11 unit tests pass through the witness runner. |
-| `cargo check --offline --no-default-features` | pass | Previously verified pass-through/non-capture boundary remains part of the score. |
-| `validation/reports/semantic-witness-step2.md` | pass | Tracked replay evidence records the generated graph and receipt metrics while ignored raw JSON/state artifacts stay out of git. |
+| `python3 validation/semantic_scale_probe.py --nodes 5000 --fanout 2 --risk-additions 100 --threshold-ms 2000 --report validation/reports/semantic-scale-step3.json` | pass | Scale probe completed in 29.31 ms under 2000 ms. |
+| `python3 validation/run_semantic_witness.py --require-cargo --report validation/reports/semantic-witness-step3.json` | pass | Fixture replay completed and emitted identical schema-16 graph hashes across wrapped runs. |
+| `python3 validation/performance_gate.py --scale-report validation/reports/semantic-scale-step3.json --native-overhead-report validation/reports/semantic-witness-step3.json --require-native-overhead --max-overhead-ratio 3.0 --max-wrapped-ms 1000 --report validation/reports/performance-step3.json` | pass | Native overhead ratio 0.985 and wrapped check 201.617 ms are below thresholds. |
+| Negative threshold probe with `--max-overhead-ratio 0.5` | fail_expected | Gate failed with `native_overhead_ratio_exceeded`, proving threshold enforcement. |
+| `python3 -m py_compile validation/performance_gate.py validation/semantic_scale_probe.py validation/run_semantic_witness.py` | pass | Python validation scripts compile. |
+| `cargo test --offline` | pass | 11 Rust unit tests pass. |
+| `cargo check --offline --no-default-features` | pass | Pass-through/non-capture boundary still compiles. |
 
 ## Progress This Turn
 
-- Fixed fixture replay by adding an empty `[workspace]` table to `validation/fixtures/witness_crate/Cargo.toml`.
-- Captured two native wrapped fixture runs with identical schema-16 graph fingerprints.
-- Recorded graph evidence: 1 graph, 11 nodes, 33 edges, graph hash `5e20cdb250bfedac3fda428f4043a0fda06e7e508d124b69f0efea61cdf15aa8`.
-- Recorded replay fingerprint `a800b88569f202127c0fafcc79009b57608c0451c37cdb2258e1544def8bf09e` for both wrapped runs.
-- Recorded timing evidence: baseline 139.385 ms, wrapped 188.694 ms, overhead ratio 1.354.
+- Added explicit native overhead thresholds to `validation/performance_gate.py`.
+- Added failure modes for overhead ratio and absolute wrapped-time violations.
+- Ran the full scale + witness + performance gate path with required native overhead evidence.
+- Recorded passing metrics: scale elapsed `29.31 ms`, baseline `204.609 ms`, wrapped `201.617 ms`, overhead ratio `0.985`.
+- Verified the gate fails when the configured overhead ratio threshold is too low.
+- Added tracked evidence in `validation/reports/performance-step3.md`.
 
 ## Scores
 
 | Dimension | Score | Evidence-backed judgment |
 |---|---:|---|
-| Correctness | 8 | Live fixture capture now passes and emits schema-16 graph evidence; full rust-source closure remains skipped. |
-| Determinism | 9 | Two wrapped runs produced identical graph hashes and replay fingerprints. |
-| Alignment | 8 | Fixture replay directly exercises the `RUSTC_WRAPPER` semantic witness use case. |
-| Transparency | 8 | Tracked markdown evidence records graph, timing, and receipt hashes while generated artifacts stay ignored. |
-| Performance | 6 | Timing evidence exists, but no thresholded performance gate is committed yet. |
-| Simplicity | 7 | Fixture isolation is minimal and wrapper behavior is unchanged. |
-| Future-proofing | 7 | Replay evidence strengthens regression confidence; schema prose still needs reconciliation. |
+| Correctness | 8 | Live replay and thresholded performance validation pass; full rust-source closure remains skipped. |
+| Determinism | 9 | Fixture replay continues to produce identical graph hashes and fingerprints. |
+| Alignment | 8 | Performance gate now measures the wrapper use case rather than only synthetic scale. |
+| Transparency | 9 | Positive and negative gate evidence records thresholds, observed metrics, and receipt hashes. |
+| Performance | 8 | Native overhead is now bounded by explicit thresholds and enforcement is tested. |
+| Simplicity | 7 | Gate changes are local CLI additions without changing wrapper behavior. |
+| Future-proofing | 8 | Future regressions can fail on ratio or absolute wrapped-time thresholds. |
 
 ## Aggregate
 
-Average score: `7.43 / 10`.
+Average score: `8.00 / 10`.
 
 ## Next Proof Target
 
-Convert the replay timing measurement into a bounded performance gate with explicit acceptable overhead thresholds, then reconcile `GOAL.md` with schema version 16 and the current relation vocabulary.
+Reconcile `GOAL.md` with schema version 16 and the current relation vocabulary so project prose, implementation, tests, and validation evidence describe the same contract.

@@ -1,8 +1,8 @@
 # canon-rustc-v3 Plan
 
-Base commit: `2873d7d`
-Stage: `implementation step 2`
-Status: `fixture replay implemented`
+Base commit: `bcb7fae`
+Stage: `implementation step 3`
+Status: `bounded performance gate implemented`
 
 ## Objective
 
@@ -14,7 +14,8 @@ Keep `canon-rustc-v3` focused on compiler-backed semantic witness capture: run a
 - `Cargo.toml` currently defaults to `rustc-driver`, so native witness capture is the default path.
 - `cargo test --offline` passes with 11 unit tests.
 - `cargo check --offline --no-default-features` passes, proving the pass-through boundary still compiles.
-- Native fixture replay now passes on `validation/fixtures/witness_crate` after isolating that fixture from the parent workspace.
+- Native fixture replay passes on `validation/fixtures/witness_crate` and emits identical schema-16 graphs across wrapped runs.
+- `validation/performance_gate.py` now enforces explicit native overhead thresholds.
 
 ## Executed In Step 1
 
@@ -31,13 +32,23 @@ Keep `canon-rustc-v3` focused on compiler-backed semantic witness capture: run a
 4. Ran `python3 validation/semantic_preflight.py --artifact-root state/rustc-test-1 --compare-artifact-root state/rustc-test-2 --require-live-replay --report validation/reports/semantic-preflight-step2.json`; live replay validation is true, with only `vendor/rust-source is not initialized` skipped.
 5. Saved tracked replay evidence in `validation/reports/semantic-witness-step2.md`; raw JSON reports and `state/rustc-test-*` graph artifacts remain ignored.
 
+## Executed In Step 3
+
+1. Added `--max-overhead-ratio` and `--max-wrapped-ms` to `validation/performance_gate.py`.
+2. Enforced native overhead failure kinds: `native_overhead_ratio_exceeded` and `native_wrapped_time_exceeded`.
+3. Ran scale, replay, and performance gate with thresholds: max overhead ratio `3.0`, max wrapped check `1000 ms`, scale threshold `2000 ms`.
+4. Observed passing metrics: scale elapsed `29.31 ms`, baseline `204.609 ms`, wrapped `201.617 ms`, overhead ratio `0.985`.
+5. Verified a negative gate with `--max-overhead-ratio 0.5` fails with `native_overhead_ratio_exceeded`.
+6. Saved tracked performance evidence in `validation/reports/performance-step3.md`; raw JSON reports remain ignored.
+
 ## Remaining Implementation Plan
 
-1. Convert the ad hoc timing evidence into a bounded performance gate with explicit thresholds.
-2. Reconcile long-form `GOAL.md` schema prose with the current implementation, especially schema version and relation additions.
-3. If fixture replay exposes graph or receipt drift in future runs, update tests before changing semantics.
+1. Reconcile long-form `GOAL.md` schema prose with the current implementation, especially schema version 16 and relation additions.
+2. If fixture replay exposes graph or receipt drift in future runs, update tests before changing semantics.
+3. Consider raising fixture coverage only after the schema prose and current validation contract are aligned.
 
 ## Non-Goals For This Turn
 
 - No schema rewrite.
-- No production-readiness claim without a committed performance threshold and full toolchain-source closure.
+- No wrapper behavior change.
+- No production-readiness claim without full toolchain-source closure.

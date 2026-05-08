@@ -67,7 +67,12 @@ def scale_state(scale: dict[str, Any] | None) -> dict[str, Any]:
     }
 
 
-def native_state(native: dict[str, Any] | None, required: bool) -> dict[str, Any]:
+def native_state(
+    native: dict[str, Any] | None,
+    required: bool,
+    max_overhead_ratio: float | None,
+    max_wrapped_ms: float | None,
+) -> dict[str, Any]:
     baseline = metric(native or {}, "baseline_ms")
     wrapped = metric(native or {}, "wrapped_ms")
     ratio = metric(native or {}, "overhead_ratio")
@@ -82,12 +87,19 @@ def native_state(native: dict[str, Any] | None, required: bool) -> dict[str, Any
         "wrapped_ms": wrapped,
         "overhead_ratio": ratio,
         "computed_overhead_ratio": computed,
+        "max_overhead_ratio": max_overhead_ratio,
+        "max_wrapped_ms": max_wrapped_ms,
     }
 
 
 def build_report(args: argparse.Namespace) -> dict[str, Any]:
     scale = scale_state(read_json(args.scale_report))
-    native = native_state(read_json(args.native_overhead_report), args.require_native_overhead)
+    native = native_state(
+        read_json(args.native_overhead_report),
+        args.require_native_overhead,
+        args.max_overhead_ratio,
+        args.max_wrapped_ms,
+    )
     missing: list[dict[str, str]] = []
     failures: list[dict[str, str]] = []
 
@@ -124,6 +136,23 @@ def build_report(args: argparse.Namespace) -> dict[str, Any]:
             failures.append(issue("native_overhead_ratio_mismatch", "overhead_ratio must equal wrapped_ms / baseline_ms"))
         if native["status"] not in {"pass", "pass_with_skip", None}:
             failures.append(issue("native_overhead_status_not_pass", "native overhead report did not pass"))
+        max_ratio = native["max_overhead_ratio"]
+        if isinstance(max_ratio, float) and isinstance(ratio, float) and ratio > max_ratio:
+            failures.append(
+                issue(
+                    "native_overhead_ratio_exceeded",
+                    f"native overhead ratio {ratio:.3f} exceeds threshold {max_ratio:.3f}",
+                )
+            )
+        max_wrapped_ms = native["max_wrapped_ms"]
+        wrapped_ms = native["wrapped_ms"]
+        if isinstance(max_wrapped_ms, float) and isinstance(wrapped_ms, float) and wrapped_ms > max_wrapped_ms:
+            failures.append(
+                issue(
+                    "native_wrapped_time_exceeded",
+                    f"wrapped check {wrapped_ms:.3f} ms exceeds threshold {max_wrapped_ms:.3f} ms",
+                )
+            )
 
     report: dict[str, Any] = {
         "schema_version": 1,
@@ -143,6 +172,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--scale-report", type=pathlib.Path, required=True)
     parser.add_argument("--native-overhead-report", type=pathlib.Path)
     parser.add_argument("--require-native-overhead", action="store_true")
+    parser.add_argument("--max-overhead-ratio", type=float)
+    parser.add_argument("--max-wrapped-ms", type=float)
     parser.add_argument("--report", type=pathlib.Path, default=pathlib.Path("validation/performance_report.eval.json"))
     return parser.parse_args()
 
