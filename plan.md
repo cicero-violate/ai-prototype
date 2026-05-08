@@ -149,6 +149,29 @@ provider authorization or routing
 
 No implementation progress is claimed in this planning turn. The next useful turn should either validate and commit the deterministic auto-refactor graph/reporting work as advisory evidence, or defer/revert that work and select the next evidence-only Learning boundary.
 
+
+## Current Turn Addendum: External Agent CLI Mode Catalog Repair
+
+The immediate execution lane changed from planning-only to a focused maintenance repair after four external-agent CLI mode-contract tests failed. The fix is deliberately narrow:
+
+```text
+- align tests/fixtures/external_agent_cli_modes.txt declared mode_count with observed fixture entries
+- align EXPECTED_EXTERNAL_AGENT_CLI_MODE_COUNT with the same catalog size
+- align external_agent_cli_modes_catalog_valid root/graph split with the observed fixture split
+- normalize external-agent compact JSON expectations to match actual root_validate stdout
+```
+
+Validation evidence collected in this turn:
+
+```text
+CARGO_BUILD_RUSTC_WRAPPER= cargo test --test validation_harness_contract external_agent_cli -- --nocapture
+result: 6 passed; 0 failed; 0 ignored; 0 measured; 346 filtered out
+```
+
+The root Cargo config currently forces a stale `canon-rustc-v3/target/debug/canon-rustc-v3` rustc wrapper that cannot load `librustc_driver-61971b66f7da0581.so`. The validation command therefore overrides only `CARGO_BUILD_RUSTC_WRAPPER=`. This does not change runtime authority, kernel semantics, policy promotion, retrieval, or learning behavior.
+
+Unrelated existing `canon-rustc-v3` modifications remain out of scope for this commit and should not be staged as part of the CLI catalog repair.
+
 ## Handoff Checklist For Next Agent Turn
 
 Before modifying implementation files, the next agent should choose exactly one lane:

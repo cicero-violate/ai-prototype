@@ -1,5 +1,5 @@
 schema=canon_external_agent_cli_modes_v1
-mode_count=113
+mode_count=153
 root_validate --validation-footprint => canon_validation_footprint_v1
 root_validate --validation-command-footprint-planning => canon_validation_command_footprint_planning_v1
 root_validate --validation-command-footprint-target-met-smoke => validation_command_footprint_target_met_smoke

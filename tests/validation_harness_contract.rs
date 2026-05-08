@@ -30,7 +30,7 @@ use ai::validation_harness::{
 };
 
 const EXPECTED_ROOT_VALIDATE_COMPACT_MODE_COUNT: usize = 86;
-const EXPECTED_EXTERNAL_AGENT_CLI_MODE_COUNT: usize = 121;
+const EXPECTED_EXTERNAL_AGENT_CLI_MODE_COUNT: usize = 153;
 
 fn expected_guarded_test_count() -> usize {
     VALIDATION_HARNESS_EXPECTED_TESTS + GRAPH_MUTATION_CLI_CONTRACT_EXPECTED_TESTS
@@ -988,28 +988,28 @@ fn external_agent_cli_modes_fixture_matches_executable_help_surfaces() {
         (
             "--validation-footprint",
             vec![
-                "\"schema\":\"canon_validation_footprint_v1\\",
-                "\"record_type\":\"validation_footprint_summary\\",
+                "\"schema\":\"canon_validation_footprint_v1\"",
+                "\"record_type\":\"validation_footprint_summary\"",
             ],
         ),
         (
             "--runtime-budget-smoke",
             vec![
-                "\"step\":\"runtime_performance_budget_smoke\\",
+                "\"step\":\"runtime_performance_budget_smoke\"",
                 "\"controlled_failure_observed\":true",
             ],
         ),
         (
             "--policy-reuse-smoke",
             vec![
-                "\"record_type\":\"policy_reuse_smoke\\",
+                "\"record_type\":\"policy_reuse_smoke\"",
                 "\"avoided_llm_call_count\":1",
             ],
         ),
         (
             "--root-validate-dispatch-catalog",
             vec![
-                "\"schema\":\"canon_root_validate_dispatch_catalog_v1\\",
+                "\"schema\":\"canon_root_validate_dispatch_catalog_v1\"",
                 "\"dispatch_catalog_hash\":",
             ],
         ),
@@ -1215,7 +1215,7 @@ fn external_agent_cli_modes_catalog_valid(fixture: &str, graph_help: &str) -> bo
     if catalog.declared_mode_count != catalog.entries.len() || catalog.entries.is_empty() {
         return false;
     }
-    if catalog.root_validate_entries().len() != 106 || catalog.graph_mutation_entries().len() != 5 {
+    if catalog.root_validate_entries().len() != 148 || catalog.graph_mutation_entries().len() != 5 {
         return false;
     }
 
@@ -1345,26 +1345,26 @@ fn external_agent_cli_catalog_helper_executes_documented_root_modes() {
         &catalog,
         "--validation-footprint",
         &[
-            "\"record_type\":\"validation_footprint_summary\\",
-            "\"verdict\":\"pass\\",
+            "\"record_type\":\"validation_footprint_summary\"",
+            "\"verdict\":\"pass\"",
         ],
     );
     root_validate_catalog_entry_contract(
         &catalog,
         "--policy-reuse-smoke",
         &[
-            "\"record_type\":\"policy_reuse_smoke\\",
+            "\"record_type\":\"policy_reuse_smoke\"",
             "\"avoided_llm_call_count\":1",
-            "\"verdict\":\"pass\\",
+            "\"verdict\":\"pass\"",
         ],
     );
     root_validate_catalog_entry_contract(
         &catalog,
         "--root-validate-dispatch-catalog",
         &[
-            "\"record_type\":\"root_validate_dispatch_catalog\\",
+            "\"record_type\":\"root_validate_dispatch_catalog\"",
             "\"dispatch_catalog_hash\":",
-            "\"verdict\":\"pass\\",
+            "\"verdict\":\"pass\"",
         ],
     );
 }

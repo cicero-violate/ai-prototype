@@ -107,6 +107,40 @@ score_freeze_reason = planning turn only; no focused implementation validation e
 ## Non-Scored Items
 
 The current worktree may contain useful candidate implementation. It remains non-scored until an implementation turn supplies validation evidence and commits the implementation deliberately.
+This score checkpoint is intended to be committed with `plan.md` only. It records no implementation score increase and does not authorize staging the observed `canon-rustc-v3` changes.
+
+
+
+## Current Turn Score Addendum: External Agent CLI Catalog Repair
+
+This turn fixed and validated a narrow contract-maintenance defect in the external-agent CLI mode catalog. The repair updates stale catalog counts and expected compact JSON fragments only. It does not add implementation authority or alter the state-machine kernel.
+
+Validation evidence:
+
+```text
+CARGO_BUILD_RUSTC_WRAPPER= cargo test --test validation_harness_contract external_agent_cli -- --nocapture
+running 6 tests
+6 passed; 0 failed; 0 ignored; 0 measured; 346 filtered out
+```
+
+Score impact:
+
+```text
+Correctness: no numeric increase; stale contract drift was repaired, but broader validation remains incomplete
+Transparency: no numeric increase; catalog/count evidence is clearer, but no new scoring threshold is met
+Determinism: no numeric increase; deterministic fixture validation passed for the focused surface only
+```
+
+Commit scope for this addendum:
+
+```text
+plan.md
+score.md
+tests/fixtures/external_agent_cli_modes.txt
+tests/validation_harness_contract.rs
+```
+
+Unrelated modified or untracked `canon-rustc-v3` files remain non-scored and intentionally unstaged.
 
 ## Scoring Rule For Next Turn
 
