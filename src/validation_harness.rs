@@ -17,7 +17,7 @@ pub const FAST_TEST_STEP: &str = "fast_score_contract_tests";
 pub const LIB_UNIT_STEP: &str = "lib_unit_contract_tests";
 pub const API_TRANSPORT_STEP: &str = "api_transport_contract_tests";
 pub const VALIDATION_HARNESS_STEP: &str = "validation_harness_contract_tests";
-pub const VALIDATION_HARNESS_EXPECTED_TESTS: usize = 144;
+pub const VALIDATION_HARNESS_EXPECTED_TESTS: usize = 164;
 pub const PLANNING_CONTRACT_STEP: &str = "planning_contract_tests";
 pub const GRAPH_MUTATION_CLI_CONTRACT_STEP: &str = "graph_mutation_cli_contract_tests";
 pub const GRAPH_MUTATION_CLI_CONTRACT_EXPECTED_TESTS: usize = 10;
@@ -76,6 +76,24 @@ pub const POLICY_REUSE_PERFORMANCE_COST_TREND_REGRESSION_SMOKE_STEP: &str =
 pub const POLICY_REUSE_COST_CATALOG_SMOKE_STEP: &str = "policy_reuse_cost_catalog_smoke";
 pub const POLICY_REUSE_COST_CATALOG_INCOMPLETE_SMOKE_STEP: &str =
     "policy_reuse_cost_catalog_incomplete_smoke";
+pub const POLICY_REUSE_EVALUATOR_SAVINGS_SMOKE_STEP: &str = "policy_reuse_evaluator_savings_smoke";
+pub const POLICY_REUSE_EVALUATOR_SAVINGS_REGRESSION_SMOKE_STEP: &str =
+    "policy_reuse_evaluator_savings_regression_smoke";
+pub const POLICY_REUSE_SCALING_PROJECTION_SMOKE_STEP: &str =
+    "policy_reuse_scaling_projection_smoke";
+pub const POLICY_REUSE_SCALING_PROJECTION_REGRESSION_SMOKE_STEP: &str =
+    "policy_reuse_scaling_projection_regression_smoke";
+pub const POLICY_REUSE_DISTILLATION_READINESS_SMOKE_STEP: &str =
+    "policy_reuse_distillation_readiness_smoke";
+pub const POLICY_REUSE_DISTILLATION_READINESS_REGRESSION_SMOKE_STEP: &str =
+    "policy_reuse_distillation_readiness_regression_smoke";
+pub const POLICY_REUSE_EVIDENCE_SURFACE_INDEX_SMOKE_STEP: &str =
+    "policy_reuse_evidence_surface_index_smoke";
+pub const POLICY_REUSE_EVIDENCE_SURFACE_INDEX_REGRESSION_SMOKE_STEP: &str =
+    "policy_reuse_evidence_surface_index_regression_smoke";
+pub const POLICY_REUSE_EVIDENCE_BUNDLE_SMOKE_STEP: &str = "policy_reuse_evidence_bundle_smoke";
+pub const POLICY_REUSE_EVIDENCE_BUNDLE_REGRESSION_SMOKE_STEP: &str =
+    "policy_reuse_evidence_bundle_regression_smoke";
 pub const POLICY_VALIDATION_HEALTH_SMOKE_STEP: &str = "policy_validation_health_smoke";
 pub const POLICY_VALIDATION_HEALTH_TREND_SMOKE_STEP: &str = "policy_validation_health_trend_smoke";
 pub const POLICY_ORCHESTRATION_CAPACITY_SMOKE_STEP: &str = "policy_orchestration_capacity_smoke";
@@ -964,6 +982,192 @@ pub struct PolicyOrchestrationCapacityTrendReceipt {
     pub verdict: &'static str,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PolicyReuseScalingProjectionReceipt {
+    pub schema: &'static str,
+    pub record_type: &'static str,
+    pub projection_version: u64,
+    pub source_evaluator_savings_hash: u64,
+    pub source_orchestration_capacity_hash: u64,
+    pub batch_capacity_limit: usize,
+    pub retained_sample_runs: usize,
+    pub retained_llm_calls_avoided: usize,
+    pub retained_cost_units_avoided: u64,
+    pub cost_units_per_llm_call: u64,
+    pub projected_llm_calls_avoided_per_full_batch: usize,
+    pub projected_reasoning_cost_units_avoided_per_full_batch: u64,
+    pub projected_llm_fallbacks_per_full_batch: usize,
+    pub projection_passed: bool,
+    pub regression_reason: &'static str,
+    pub projection_hash: u64,
+    pub receipt_hash: u64,
+}
+
+impl PolicyReuseScalingProjectionReceipt {
+    pub fn passed(&self) -> bool {
+        self.is_valid() && self.projection_passed
+    }
+
+    pub fn is_valid(&self) -> bool {
+        self.schema == "canon_policy_reuse_scaling_projection_v1"
+            && matches!(
+                self.record_type,
+                "policy_reuse_scaling_projection"
+                    | POLICY_REUSE_SCALING_PROJECTION_SMOKE_STEP
+                    | POLICY_REUSE_SCALING_PROJECTION_REGRESSION_SMOKE_STEP
+            )
+            && self.projection_version == 1
+            && self.source_evaluator_savings_hash != 0
+            && self.source_orchestration_capacity_hash != 0
+            && self.batch_capacity_limit > 0
+            && self.retained_sample_runs > 0
+            && self.retained_llm_calls_avoided <= self.retained_sample_runs
+            && self.cost_units_per_llm_call > 0
+            && self.retained_cost_units_avoided
+                == self.retained_llm_calls_avoided as u64 * self.cost_units_per_llm_call
+            && self.projected_llm_calls_avoided_per_full_batch <= self.batch_capacity_limit
+            && self.projected_llm_fallbacks_per_full_batch
+                + self.projected_llm_calls_avoided_per_full_batch
+                == self.batch_capacity_limit
+            && self.projected_reasoning_cost_units_avoided_per_full_batch
+                == self.projected_llm_calls_avoided_per_full_batch as u64
+                    * self.cost_units_per_llm_call
+            && matches!(
+                self.regression_reason,
+                "none" | "evaluator_savings_failed" | "capacity_failed" | "no_projected_savings"
+            )
+            && self.projection_passed
+                == (self.projected_llm_calls_avoided_per_full_batch > 0
+                    && self.projected_reasoning_cost_units_avoided_per_full_batch > 0
+                    && self.projected_llm_fallbacks_per_full_batch < self.batch_capacity_limit
+                    && self.regression_reason == "none")
+            && self.projection_hash != 0
+            && self.receipt_hash != 0
+            && self.projection_hash == policy_reuse_scaling_projection_hash(self)
+            && self.receipt_hash == policy_reuse_scaling_projection_receipt_hash(self)
+    }
+
+    pub fn to_json(&self) -> String {
+        format!(
+            "{{\"schema\":\"{}\",\"record_type\":\"{}\",\"projection_version\":{},\"source_evaluator_savings_hash\":{},\"source_orchestration_capacity_hash\":{},\"batch_capacity_limit\":{},\"retained_sample_runs\":{},\"retained_llm_calls_avoided\":{},\"retained_cost_units_avoided\":{},\"cost_units_per_llm_call\":{},\"projected_llm_calls_avoided_per_full_batch\":{},\"projected_reasoning_cost_units_avoided_per_full_batch\":{},\"projected_llm_fallbacks_per_full_batch\":{},\"projection_passed\":{},\"regression_reason\":\"{}\",\"projection_hash\":{},\"receipt_hash\":{}}}",
+            self.schema,
+            self.record_type,
+            self.projection_version,
+            self.source_evaluator_savings_hash,
+            self.source_orchestration_capacity_hash,
+            self.batch_capacity_limit,
+            self.retained_sample_runs,
+            self.retained_llm_calls_avoided,
+            self.retained_cost_units_avoided,
+            self.cost_units_per_llm_call,
+            self.projected_llm_calls_avoided_per_full_batch,
+            self.projected_reasoning_cost_units_avoided_per_full_batch,
+            self.projected_llm_fallbacks_per_full_batch,
+            self.projection_passed,
+            self.regression_reason,
+            self.projection_hash,
+            self.receipt_hash,
+        )
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PolicyReuseDistillationReadinessReceipt {
+    pub schema: &'static str,
+    pub record_type: &'static str,
+    pub readiness_version: u64,
+    pub source_policy_reuse_hash: u64,
+    pub source_cost_catalog_hash: u64,
+    pub source_evaluator_savings_hash: u64,
+    pub source_scaling_projection_hash: u64,
+    pub source_validation_health_hash: u64,
+    pub verified_policy_hits: usize,
+    pub verified_llm_calls_avoided: usize,
+    pub projected_llm_calls_avoided_per_full_batch: usize,
+    pub projected_reasoning_cost_units_avoided_per_full_batch: u64,
+    pub validation_guarded_test_count: usize,
+    pub catalog_complete: bool,
+    pub evaluator_savings_passed: bool,
+    pub scaling_projection_passed: bool,
+    pub validation_health_passed: bool,
+    pub distillation_ready: bool,
+    pub regression_reason: &'static str,
+    pub readiness_hash: u64,
+    pub receipt_hash: u64,
+}
+
+impl PolicyReuseDistillationReadinessReceipt {
+    pub fn passed(&self) -> bool {
+        self.is_valid() && self.distillation_ready
+    }
+
+    pub fn is_valid(&self) -> bool {
+        self.schema == "canon_policy_reuse_distillation_readiness_v1"
+            && matches!(
+                self.record_type,
+                "policy_reuse_distillation_readiness"
+                    | POLICY_REUSE_DISTILLATION_READINESS_SMOKE_STEP
+                    | POLICY_REUSE_DISTILLATION_READINESS_REGRESSION_SMOKE_STEP
+            )
+            && self.readiness_version == 1
+            && self.source_policy_reuse_hash != 0
+            && self.source_cost_catalog_hash != 0
+            && self.source_evaluator_savings_hash != 0
+            && self.source_scaling_projection_hash != 0
+            && self.source_validation_health_hash != 0
+            && self.verified_policy_hits > 0
+            && self.verified_llm_calls_avoided > 0
+            && self.projected_llm_calls_avoided_per_full_batch > 0
+            && self.projected_reasoning_cost_units_avoided_per_full_batch > 0
+            && self.validation_guarded_test_count > 0
+            && matches!(
+                self.regression_reason,
+                "none"
+                    | "catalog_incomplete"
+                    | "evaluator_savings_failed"
+                    | "scaling_projection_failed"
+                    | "validation_health_failed"
+            )
+            && self.distillation_ready
+                == (self.catalog_complete
+                    && self.evaluator_savings_passed
+                    && self.scaling_projection_passed
+                    && self.validation_health_passed
+                    && self.regression_reason == "none")
+            && self.readiness_hash != 0
+            && self.receipt_hash != 0
+            && self.readiness_hash == policy_reuse_distillation_readiness_hash(self)
+            && self.receipt_hash == policy_reuse_distillation_readiness_receipt_hash(self)
+    }
+
+    pub fn to_json(&self) -> String {
+        format!(
+            "{{\"schema\":\"{}\",\"record_type\":\"{}\",\"readiness_version\":{},\"source_policy_reuse_hash\":{},\"source_cost_catalog_hash\":{},\"source_evaluator_savings_hash\":{},\"source_scaling_projection_hash\":{},\"source_validation_health_hash\":{},\"verified_policy_hits\":{},\"verified_llm_calls_avoided\":{},\"projected_llm_calls_avoided_per_full_batch\":{},\"projected_reasoning_cost_units_avoided_per_full_batch\":{},\"validation_guarded_test_count\":{},\"catalog_complete\":{},\"evaluator_savings_passed\":{},\"scaling_projection_passed\":{},\"validation_health_passed\":{},\"distillation_ready\":{},\"regression_reason\":\"{}\",\"readiness_hash\":{},\"receipt_hash\":{}}}",
+            self.schema,
+            self.record_type,
+            self.readiness_version,
+            self.source_policy_reuse_hash,
+            self.source_cost_catalog_hash,
+            self.source_evaluator_savings_hash,
+            self.source_scaling_projection_hash,
+            self.source_validation_health_hash,
+            self.verified_policy_hits,
+            self.verified_llm_calls_avoided,
+            self.projected_llm_calls_avoided_per_full_batch,
+            self.projected_reasoning_cost_units_avoided_per_full_batch,
+            self.validation_guarded_test_count,
+            self.catalog_complete,
+            self.evaluator_savings_passed,
+            self.scaling_projection_passed,
+            self.validation_health_passed,
+            self.distillation_ready,
+            self.regression_reason,
+            self.readiness_hash,
+            self.receipt_hash,
+        )
+    }
+}
+
 impl PolicyOrchestrationCapacityTrendReceipt {
     pub fn passed(&self) -> bool {
         self.verdict == "pass"
@@ -994,6 +1198,192 @@ impl PolicyOrchestrationCapacityTrendReceipt {
             self.current_capacity_status,
             self.trend_status,
             self.verdict,
+        )
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PolicyReuseEvidenceSurfaceIndexReceipt {
+    pub schema: &'static str,
+    pub record_type: &'static str,
+    pub index_version: u64,
+    pub evidence_family_count: usize,
+    pub healthy_mode_count: usize,
+    pub regression_mode_count: usize,
+    pub dependency_group_count: usize,
+    pub indexed_root_mode_count: usize,
+    pub source_policy_reuse_hash: u64,
+    pub source_cost_catalog_hash: u64,
+    pub source_evaluator_savings_hash: u64,
+    pub source_scaling_projection_hash: u64,
+    pub source_distillation_readiness_hash: u64,
+    pub required_healthy_modes_present: bool,
+    pub required_regression_modes_present: bool,
+    pub required_dependency_groups_present: bool,
+    pub index_complete: bool,
+    pub missing_surface: &'static str,
+    pub surface_hash: u64,
+    pub receipt_hash: u64,
+}
+
+impl PolicyReuseEvidenceSurfaceIndexReceipt {
+    pub fn passed(&self) -> bool {
+        self.is_valid() && self.index_complete
+    }
+
+    pub fn is_valid(&self) -> bool {
+        self.schema == "canon_policy_reuse_evidence_surface_index_v1"
+            && matches!(
+                self.record_type,
+                "policy_reuse_evidence_surface_index"
+                    | POLICY_REUSE_EVIDENCE_SURFACE_INDEX_SMOKE_STEP
+                    | POLICY_REUSE_EVIDENCE_SURFACE_INDEX_REGRESSION_SMOKE_STEP
+            )
+            && self.index_version == 1
+            && self.evidence_family_count == 7
+            && self.healthy_mode_count <= self.indexed_root_mode_count
+            && self.regression_mode_count <= self.indexed_root_mode_count
+            && self.dependency_group_count > 0
+            && self.indexed_root_mode_count == self.healthy_mode_count + self.regression_mode_count
+            && self.source_policy_reuse_hash != 0
+            && self.source_cost_catalog_hash != 0
+            && self.source_evaluator_savings_hash != 0
+            && self.source_scaling_projection_hash != 0
+            && self.source_distillation_readiness_hash != 0
+            && matches!(
+                self.missing_surface,
+                "none"
+                    | "required_healthy_modes"
+                    | "required_regression_modes"
+                    | "required_dependency_groups"
+            )
+            && self.index_complete
+                == (self.required_healthy_modes_present
+                    && self.required_regression_modes_present
+                    && self.required_dependency_groups_present
+                    && self.missing_surface == "none")
+            && self.surface_hash != 0
+            && self.receipt_hash != 0
+            && self.surface_hash == policy_reuse_evidence_surface_index_hash(self)
+            && self.receipt_hash == policy_reuse_evidence_surface_index_receipt_hash(self)
+    }
+
+    pub fn to_json(&self) -> String {
+        format!(
+            "{{\"schema\":\"{}\",\"record_type\":\"{}\",\"index_version\":{},\"evidence_family_count\":{},\"healthy_mode_count\":{},\"regression_mode_count\":{},\"dependency_group_count\":{},\"indexed_root_mode_count\":{},\"source_policy_reuse_hash\":{},\"source_cost_catalog_hash\":{},\"source_evaluator_savings_hash\":{},\"source_scaling_projection_hash\":{},\"source_distillation_readiness_hash\":{},\"required_healthy_modes_present\":{},\"required_regression_modes_present\":{},\"required_dependency_groups_present\":{},\"index_complete\":{},\"missing_surface\":\"{}\",\"surface_hash\":{},\"receipt_hash\":{}}}",
+            self.schema,
+            self.record_type,
+            self.index_version,
+            self.evidence_family_count,
+            self.healthy_mode_count,
+            self.regression_mode_count,
+            self.dependency_group_count,
+            self.indexed_root_mode_count,
+            self.source_policy_reuse_hash,
+            self.source_cost_catalog_hash,
+            self.source_evaluator_savings_hash,
+            self.source_scaling_projection_hash,
+            self.source_distillation_readiness_hash,
+            self.required_healthy_modes_present,
+            self.required_regression_modes_present,
+            self.required_dependency_groups_present,
+            self.index_complete,
+            self.missing_surface,
+            self.surface_hash,
+            self.receipt_hash,
+        )
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PolicyReuseEvidenceBundleReceipt {
+    pub schema: &'static str,
+    pub record_type: &'static str,
+    pub bundle_version: u64,
+    pub source_surface_index_hash: u64,
+    pub source_policy_reuse_hash: u64,
+    pub source_cost_catalog_hash: u64,
+    pub source_evaluator_savings_hash: u64,
+    pub source_scaling_projection_hash: u64,
+    pub source_distillation_readiness_hash: u64,
+    pub bundled_evidence_family_count: usize,
+    pub bundled_root_mode_count: usize,
+    pub bundled_dependency_group_count: usize,
+    pub surface_index_complete: bool,
+    pub source_hashes_complete: bool,
+    pub bundle_complete: bool,
+    pub regression_reason: &'static str,
+    pub bundle_hash: u64,
+    pub receipt_hash: u64,
+}
+
+impl PolicyReuseEvidenceBundleReceipt {
+    pub fn passed(&self) -> bool {
+        self.is_valid() && self.bundle_complete
+    }
+
+    pub fn is_valid(&self) -> bool {
+        self.schema == "canon_policy_reuse_evidence_bundle_v1"
+            && matches!(
+                self.record_type,
+                "policy_reuse_evidence_bundle"
+                    | POLICY_REUSE_EVIDENCE_BUNDLE_SMOKE_STEP
+                    | POLICY_REUSE_EVIDENCE_BUNDLE_REGRESSION_SMOKE_STEP
+            )
+            && self.bundle_version == 1
+            && self.source_surface_index_hash != 0
+            && self.source_policy_reuse_hash != 0
+            && self.source_cost_catalog_hash != 0
+            && self.source_evaluator_savings_hash != 0
+            && self.source_scaling_projection_hash != 0
+            && self.source_distillation_readiness_hash != 0
+            && self.bundled_evidence_family_count == 7
+            && self.bundled_root_mode_count <= 14
+            && self.bundled_dependency_group_count <= 5
+            && matches!(
+                self.regression_reason,
+                "none" | "surface_index_incomplete" | "source_hashes_incomplete"
+            )
+            && self.source_hashes_complete
+                == (self.source_surface_index_hash != 0
+                    && self.source_policy_reuse_hash != 0
+                    && self.source_cost_catalog_hash != 0
+                    && self.source_evaluator_savings_hash != 0
+                    && self.source_scaling_projection_hash != 0
+                    && self.source_distillation_readiness_hash != 0)
+            && self.bundle_complete
+                == (self.surface_index_complete
+                    && self.source_hashes_complete
+                    && self.bundled_root_mode_count == 14
+                    && self.bundled_dependency_group_count == 5
+                    && self.regression_reason == "none")
+            && self.bundle_hash != 0
+            && self.receipt_hash != 0
+            && self.bundle_hash == policy_reuse_evidence_bundle_hash(self)
+            && self.receipt_hash == policy_reuse_evidence_bundle_receipt_hash(self)
+    }
+
+    pub fn to_json(&self) -> String {
+        format!(
+            "{{\"schema\":\"{}\",\"record_type\":\"{}\",\"bundle_version\":{},\"source_surface_index_hash\":{},\"source_policy_reuse_hash\":{},\"source_cost_catalog_hash\":{},\"source_evaluator_savings_hash\":{},\"source_scaling_projection_hash\":{},\"source_distillation_readiness_hash\":{},\"bundled_evidence_family_count\":{},\"bundled_root_mode_count\":{},\"bundled_dependency_group_count\":{},\"surface_index_complete\":{},\"source_hashes_complete\":{},\"bundle_complete\":{},\"regression_reason\":\"{}\",\"bundle_hash\":{},\"receipt_hash\":{}}}",
+            self.schema,
+            self.record_type,
+            self.bundle_version,
+            self.source_surface_index_hash,
+            self.source_policy_reuse_hash,
+            self.source_cost_catalog_hash,
+            self.source_evaluator_savings_hash,
+            self.source_scaling_projection_hash,
+            self.source_distillation_readiness_hash,
+            self.bundled_evidence_family_count,
+            self.bundled_root_mode_count,
+            self.bundled_dependency_group_count,
+            self.surface_index_complete,
+            self.source_hashes_complete,
+            self.bundle_complete,
+            self.regression_reason,
+            self.bundle_hash,
+            self.receipt_hash,
         )
     }
 }
@@ -2689,6 +3079,642 @@ pub fn policy_reuse_cost_catalog_incomplete_smoke_receipt(
         )
         .receipt_hash;
     receipt
+}
+
+pub fn policy_reuse_evaluator_savings_smoke_receipt(
+) -> crate::capability::judgment::PolicyReuseEvaluatorSavingsReceipt {
+    let catalog = policy_reuse_cost_catalog_smoke_receipt();
+    let performance_cost = policy_reuse_performance_cost_trend_smoke_receipt();
+    let policy_reuse = policy_reuse_smoke_receipt();
+    let mut receipt = crate::capability::judgment::PolicyReuseEvaluatorSavingsReceipt::from_sources(
+        &catalog,
+        &performance_cost,
+        &policy_reuse,
+        100,
+        "none",
+    );
+    receipt.record_type = POLICY_REUSE_EVALUATOR_SAVINGS_SMOKE_STEP;
+    let canonical = crate::capability::judgment::PolicyReuseEvaluatorSavingsReceipt::from_sources(
+        &catalog,
+        &performance_cost,
+        &policy_reuse,
+        100,
+        "none",
+    );
+    receipt.savings_hash = canonical.savings_hash;
+    receipt.receipt_hash = canonical.receipt_hash;
+    receipt
+}
+
+pub fn policy_reuse_evaluator_savings_regression_smoke_receipt(
+) -> crate::capability::judgment::PolicyReuseEvaluatorSavingsReceipt {
+    let catalog = policy_reuse_cost_catalog_incomplete_smoke_receipt();
+    let performance_cost = policy_reuse_performance_cost_trend_smoke_receipt();
+    let policy_reuse = policy_reuse_smoke_receipt();
+    let mut receipt = crate::capability::judgment::PolicyReuseEvaluatorSavingsReceipt::from_sources(
+        &catalog,
+        &performance_cost,
+        &policy_reuse,
+        100,
+        "catalog_incomplete",
+    );
+    receipt.record_type = POLICY_REUSE_EVALUATOR_SAVINGS_REGRESSION_SMOKE_STEP;
+    let canonical = crate::capability::judgment::PolicyReuseEvaluatorSavingsReceipt::from_sources(
+        &catalog,
+        &performance_cost,
+        &policy_reuse,
+        100,
+        "catalog_incomplete",
+    );
+    receipt.savings_hash = canonical.savings_hash;
+    receipt.receipt_hash = canonical.receipt_hash;
+    receipt
+}
+
+pub fn policy_reuse_evidence_surface_index_smoke_receipt() -> PolicyReuseEvidenceSurfaceIndexReceipt
+{
+    let reuse = policy_reuse_smoke_receipt();
+    let catalog = policy_reuse_cost_catalog_smoke_receipt();
+    let savings = policy_reuse_evaluator_savings_smoke_receipt();
+    let projection = policy_reuse_scaling_projection_smoke_receipt();
+    let readiness = policy_reuse_distillation_readiness_smoke_receipt();
+    let mut receipt = policy_reuse_evidence_surface_index_from_sources(
+        POLICY_REUSE_EVIDENCE_SURFACE_INDEX_SMOKE_STEP,
+        &reuse,
+        &catalog,
+        &savings,
+        &projection,
+        &readiness,
+        7,
+        7,
+        5,
+        "none",
+    );
+    finalize_policy_reuse_evidence_surface_index(&mut receipt);
+    receipt
+}
+
+pub fn policy_reuse_evidence_surface_index_regression_smoke_receipt(
+) -> PolicyReuseEvidenceSurfaceIndexReceipt {
+    let reuse = policy_reuse_smoke_receipt();
+    let catalog = policy_reuse_cost_catalog_smoke_receipt();
+    let savings = policy_reuse_evaluator_savings_smoke_receipt();
+    let projection = policy_reuse_scaling_projection_smoke_receipt();
+    let readiness = policy_reuse_distillation_readiness_smoke_receipt();
+    let mut receipt = policy_reuse_evidence_surface_index_from_sources(
+        POLICY_REUSE_EVIDENCE_SURFACE_INDEX_REGRESSION_SMOKE_STEP,
+        &reuse,
+        &catalog,
+        &savings,
+        &projection,
+        &readiness,
+        7,
+        6,
+        5,
+        "required_regression_modes",
+    );
+    finalize_policy_reuse_evidence_surface_index(&mut receipt);
+    receipt
+}
+
+pub fn policy_reuse_evidence_bundle_smoke_receipt() -> PolicyReuseEvidenceBundleReceipt {
+    let surface_index = policy_reuse_evidence_surface_index_smoke_receipt();
+    let mut receipt = policy_reuse_evidence_bundle_from_surface_index(
+        POLICY_REUSE_EVIDENCE_BUNDLE_SMOKE_STEP,
+        &surface_index,
+        "none",
+    );
+    finalize_policy_reuse_evidence_bundle(&mut receipt);
+    receipt
+}
+
+pub fn policy_reuse_evidence_bundle_regression_smoke_receipt() -> PolicyReuseEvidenceBundleReceipt {
+    let surface_index = policy_reuse_evidence_surface_index_regression_smoke_receipt();
+    let mut receipt = policy_reuse_evidence_bundle_from_surface_index(
+        POLICY_REUSE_EVIDENCE_BUNDLE_REGRESSION_SMOKE_STEP,
+        &surface_index,
+        "surface_index_incomplete",
+    );
+    finalize_policy_reuse_evidence_bundle(&mut receipt);
+    receipt
+}
+
+fn policy_reuse_evidence_bundle_from_surface_index(
+    record_type: &'static str,
+    surface_index: &PolicyReuseEvidenceSurfaceIndexReceipt,
+    regression_reason: &'static str,
+) -> PolicyReuseEvidenceBundleReceipt {
+    let source_hashes_complete = surface_index.receipt_hash != 0
+        && surface_index.source_policy_reuse_hash != 0
+        && surface_index.source_cost_catalog_hash != 0
+        && surface_index.source_evaluator_savings_hash != 0
+        && surface_index.source_scaling_projection_hash != 0
+        && surface_index.source_distillation_readiness_hash != 0;
+    let bundle_complete = surface_index.index_complete
+        && source_hashes_complete
+        && surface_index.indexed_root_mode_count == 14
+        && surface_index.dependency_group_count == 5
+        && regression_reason == "none";
+    let mut receipt = PolicyReuseEvidenceBundleReceipt {
+        schema: "canon_policy_reuse_evidence_bundle_v1",
+        record_type,
+        bundle_version: 1,
+        source_surface_index_hash: surface_index.receipt_hash,
+        source_policy_reuse_hash: surface_index.source_policy_reuse_hash,
+        source_cost_catalog_hash: surface_index.source_cost_catalog_hash,
+        source_evaluator_savings_hash: surface_index.source_evaluator_savings_hash,
+        source_scaling_projection_hash: surface_index.source_scaling_projection_hash,
+        source_distillation_readiness_hash: surface_index.source_distillation_readiness_hash,
+        bundled_evidence_family_count: surface_index.evidence_family_count,
+        bundled_root_mode_count: surface_index.indexed_root_mode_count,
+        bundled_dependency_group_count: surface_index.dependency_group_count,
+        surface_index_complete: surface_index.index_complete,
+        source_hashes_complete,
+        bundle_complete,
+        regression_reason,
+        bundle_hash: 0,
+        receipt_hash: 0,
+    };
+    finalize_policy_reuse_evidence_bundle(&mut receipt);
+    receipt
+}
+
+fn finalize_policy_reuse_evidence_bundle(receipt: &mut PolicyReuseEvidenceBundleReceipt) {
+    receipt.bundle_hash = policy_reuse_evidence_bundle_hash(receipt);
+    receipt.receipt_hash = policy_reuse_evidence_bundle_receipt_hash(receipt);
+}
+
+#[allow(clippy::too_many_arguments)]
+fn policy_reuse_evidence_surface_index_from_sources(
+    record_type: &'static str,
+    policy_reuse: &crate::capability::judgment::PolicyReuseReceipt,
+    catalog: &crate::capability::judgment::PolicyReuseCostCatalogReceipt,
+    savings: &crate::capability::judgment::PolicyReuseEvaluatorSavingsReceipt,
+    projection: &PolicyReuseScalingProjectionReceipt,
+    readiness: &PolicyReuseDistillationReadinessReceipt,
+    healthy_mode_count: usize,
+    regression_mode_count: usize,
+    dependency_group_count: usize,
+    missing_surface: &'static str,
+) -> PolicyReuseEvidenceSurfaceIndexReceipt {
+    let required_healthy_modes_present = healthy_mode_count == 7;
+    let required_regression_modes_present = regression_mode_count == 7;
+    let required_dependency_groups_present = dependency_group_count == 5;
+    let index_complete = required_healthy_modes_present
+        && required_regression_modes_present
+        && required_dependency_groups_present
+        && missing_surface == "none";
+    let mut receipt = PolicyReuseEvidenceSurfaceIndexReceipt {
+        schema: "canon_policy_reuse_evidence_surface_index_v1",
+        record_type,
+        index_version: 1,
+        evidence_family_count: 7,
+        healthy_mode_count,
+        regression_mode_count,
+        dependency_group_count,
+        indexed_root_mode_count: healthy_mode_count + regression_mode_count,
+        source_policy_reuse_hash: policy_reuse.receipt_hash,
+        source_cost_catalog_hash: catalog.receipt_hash,
+        source_evaluator_savings_hash: savings.receipt_hash,
+        source_scaling_projection_hash: projection.receipt_hash,
+        source_distillation_readiness_hash: readiness.receipt_hash,
+        required_healthy_modes_present,
+        required_regression_modes_present,
+        required_dependency_groups_present,
+        index_complete,
+        missing_surface,
+        surface_hash: 0,
+        receipt_hash: 0,
+    };
+    finalize_policy_reuse_evidence_surface_index(&mut receipt);
+    receipt
+}
+
+fn finalize_policy_reuse_evidence_surface_index(
+    receipt: &mut PolicyReuseEvidenceSurfaceIndexReceipt,
+) {
+    receipt.surface_hash = policy_reuse_evidence_surface_index_hash(receipt);
+    receipt.receipt_hash = policy_reuse_evidence_surface_index_receipt_hash(receipt);
+}
+
+pub fn policy_reuse_scaling_projection_smoke_receipt() -> PolicyReuseScalingProjectionReceipt {
+    let savings = policy_reuse_evaluator_savings_smoke_receipt();
+    let capacity = policy_orchestration_capacity_smoke_receipt();
+    let mut receipt = policy_reuse_scaling_projection_from_sources(
+        POLICY_REUSE_SCALING_PROJECTION_SMOKE_STEP,
+        &savings,
+        &capacity,
+        "none",
+    );
+    finalize_policy_reuse_scaling_projection(&mut receipt);
+    receipt
+}
+
+pub fn policy_reuse_scaling_projection_regression_smoke_receipt(
+) -> PolicyReuseScalingProjectionReceipt {
+    let savings = policy_reuse_evaluator_savings_regression_smoke_receipt();
+    let capacity = policy_orchestration_capacity_smoke_receipt();
+    let mut receipt = policy_reuse_scaling_projection_from_sources(
+        POLICY_REUSE_SCALING_PROJECTION_REGRESSION_SMOKE_STEP,
+        &savings,
+        &capacity,
+        "evaluator_savings_failed",
+    );
+    finalize_policy_reuse_scaling_projection(&mut receipt);
+    receipt
+}
+
+pub fn policy_reuse_distillation_readiness_smoke_receipt() -> PolicyReuseDistillationReadinessReceipt
+{
+    let policy_reuse = policy_reuse_smoke_receipt();
+    let catalog = policy_reuse_cost_catalog_smoke_receipt();
+    let savings = policy_reuse_evaluator_savings_smoke_receipt();
+    let projection = policy_reuse_scaling_projection_smoke_receipt();
+    let validation_health = policy_validation_health_smoke_receipt();
+    let mut receipt = policy_reuse_distillation_readiness_from_sources(
+        POLICY_REUSE_DISTILLATION_READINESS_SMOKE_STEP,
+        &policy_reuse,
+        &catalog,
+        &savings,
+        &projection,
+        &validation_health,
+        "none",
+    );
+    finalize_policy_reuse_distillation_readiness(&mut receipt);
+    receipt
+}
+
+pub fn policy_reuse_distillation_readiness_regression_smoke_receipt(
+) -> PolicyReuseDistillationReadinessReceipt {
+    let policy_reuse = policy_reuse_smoke_receipt();
+    let catalog = policy_reuse_cost_catalog_incomplete_smoke_receipt();
+    let savings = policy_reuse_evaluator_savings_regression_smoke_receipt();
+    let projection = policy_reuse_scaling_projection_regression_smoke_receipt();
+    let validation_health = policy_validation_health_smoke_receipt();
+    let mut receipt = policy_reuse_distillation_readiness_from_sources(
+        POLICY_REUSE_DISTILLATION_READINESS_REGRESSION_SMOKE_STEP,
+        &policy_reuse,
+        &catalog,
+        &savings,
+        &projection,
+        &validation_health,
+        "catalog_incomplete",
+    );
+    finalize_policy_reuse_distillation_readiness(&mut receipt);
+    receipt
+}
+
+#[allow(clippy::too_many_arguments)]
+fn policy_reuse_distillation_readiness_from_sources(
+    record_type: &'static str,
+    policy_reuse: &crate::capability::judgment::PolicyReuseReceipt,
+    catalog: &crate::capability::judgment::PolicyReuseCostCatalogReceipt,
+    savings: &crate::capability::judgment::PolicyReuseEvaluatorSavingsReceipt,
+    projection: &PolicyReuseScalingProjectionReceipt,
+    validation_health: &PolicyValidationHealthReceipt,
+    regression_reason: &'static str,
+) -> PolicyReuseDistillationReadinessReceipt {
+    let catalog_complete = catalog.passed();
+    let evaluator_savings_passed = savings.passed();
+    let scaling_projection_passed = projection.passed();
+    let validation_health_passed = validation_health.passed();
+    let distillation_ready = policy_reuse.passed()
+        && catalog_complete
+        && evaluator_savings_passed
+        && scaling_projection_passed
+        && validation_health_passed
+        && regression_reason == "none";
+    let mut receipt = PolicyReuseDistillationReadinessReceipt {
+        schema: "canon_policy_reuse_distillation_readiness_v1",
+        record_type,
+        readiness_version: 1,
+        source_policy_reuse_hash: policy_reuse.receipt_hash,
+        source_cost_catalog_hash: catalog.receipt_hash,
+        source_evaluator_savings_hash: savings.receipt_hash,
+        source_scaling_projection_hash: projection.receipt_hash,
+        source_validation_health_hash: stable_hash64(validation_health.to_json().as_bytes()),
+        verified_policy_hits: policy_reuse.policy_hit_count,
+        verified_llm_calls_avoided: policy_reuse.avoided_llm_call_count,
+        projected_llm_calls_avoided_per_full_batch: projection
+            .projected_llm_calls_avoided_per_full_batch,
+        projected_reasoning_cost_units_avoided_per_full_batch: projection
+            .projected_reasoning_cost_units_avoided_per_full_batch,
+        validation_guarded_test_count: validation_health.expected_count_guarded_tests,
+        catalog_complete,
+        evaluator_savings_passed,
+        scaling_projection_passed,
+        validation_health_passed,
+        distillation_ready,
+        regression_reason,
+        readiness_hash: 0,
+        receipt_hash: 0,
+    };
+    finalize_policy_reuse_distillation_readiness(&mut receipt);
+    receipt
+}
+
+fn finalize_policy_reuse_distillation_readiness(
+    receipt: &mut PolicyReuseDistillationReadinessReceipt,
+) {
+    receipt.readiness_hash = policy_reuse_distillation_readiness_hash(receipt);
+    receipt.receipt_hash = policy_reuse_distillation_readiness_receipt_hash(receipt);
+}
+
+fn policy_reuse_scaling_projection_from_sources(
+    record_type: &'static str,
+    savings: &crate::capability::judgment::PolicyReuseEvaluatorSavingsReceipt,
+    capacity: &PolicyOrchestrationCapacityReceipt,
+    regression_reason: &'static str,
+) -> PolicyReuseScalingProjectionReceipt {
+    let cost_units_per_llm_call = if savings.llm_calls_avoided == 0 {
+        0
+    } else {
+        savings.estimated_reasoning_cost_units_avoided / savings.llm_calls_avoided as u64
+    };
+    let projected_llm_calls_avoided_per_full_batch =
+        capacity.estimated_avoided_llm_calls_per_full_batch;
+    let projected_llm_fallbacks_per_full_batch = capacity.estimated_llm_fallbacks_per_full_batch;
+    let projected_reasoning_cost_units_avoided_per_full_batch =
+        projected_llm_calls_avoided_per_full_batch as u64 * cost_units_per_llm_call;
+    let projection_passed = savings.passed()
+        && capacity.passed()
+        && projected_llm_calls_avoided_per_full_batch > 0
+        && projected_reasoning_cost_units_avoided_per_full_batch > 0
+        && projected_llm_fallbacks_per_full_batch < capacity.batch_capacity_limit
+        && regression_reason == "none";
+
+    let mut receipt = PolicyReuseScalingProjectionReceipt {
+        schema: "canon_policy_reuse_scaling_projection_v1",
+        record_type,
+        projection_version: 1,
+        source_evaluator_savings_hash: savings.receipt_hash,
+        source_orchestration_capacity_hash: policy_orchestration_capacity_hash(capacity),
+        batch_capacity_limit: capacity.batch_capacity_limit,
+        retained_sample_runs: savings.sample_runs,
+        retained_llm_calls_avoided: savings.llm_calls_avoided,
+        retained_cost_units_avoided: savings.estimated_reasoning_cost_units_avoided,
+        cost_units_per_llm_call,
+        projected_llm_calls_avoided_per_full_batch,
+        projected_reasoning_cost_units_avoided_per_full_batch,
+        projected_llm_fallbacks_per_full_batch,
+        projection_passed,
+        regression_reason,
+        projection_hash: 0,
+        receipt_hash: 0,
+    };
+    finalize_policy_reuse_scaling_projection(&mut receipt);
+    receipt
+}
+
+fn finalize_policy_reuse_scaling_projection(receipt: &mut PolicyReuseScalingProjectionReceipt) {
+    receipt.projection_hash = policy_reuse_scaling_projection_hash(receipt);
+    receipt.receipt_hash = policy_reuse_scaling_projection_receipt_hash(receipt);
+}
+
+fn policy_orchestration_capacity_hash(receipt: &PolicyOrchestrationCapacityReceipt) -> u64 {
+    if receipt.batch_capacity_limit == 0 {
+        return 0;
+    }
+    let capacity_status_code = match receipt.capacity_status {
+        "pass" => 1,
+        "fail" => 2,
+        _ => 0,
+    };
+    let policy_reuse_verdict_code = match receipt.policy_reuse_verdict {
+        "pass" => 1,
+        "fail" => 2,
+        _ => 0,
+    };
+    let verdict_code = match receipt.verdict {
+        "pass" => 1,
+        "fail" => 2,
+        _ => 0,
+    };
+    if capacity_status_code == 0 || policy_reuse_verdict_code == 0 || verdict_code == 0 {
+        return 0;
+    }
+    let mut h = 0x504f_4c4f_4341_5041u64;
+    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.schema.as_bytes());
+    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.record_type.as_bytes());
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.batch_capacity_limit as u64;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.retained_policy_record_count as u64;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.policy_hit_count as u64;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.policy_miss_count as u64;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.hit_rate_bps;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.estimated_policy_hits_per_full_batch as u64;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.estimated_llm_fallbacks_per_full_batch as u64;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.estimated_avoided_llm_calls_per_full_batch as u64;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.retained_avoided_llm_call_count as u64;
+    h = h.wrapping_mul(0x100000001b3) ^ capacity_status_code;
+    h = h.wrapping_mul(0x100000001b3) ^ policy_reuse_verdict_code;
+    h = h.wrapping_mul(0x100000001b3) ^ verdict_code;
+    h.max(1)
+}
+
+fn policy_reuse_evidence_bundle_hash(receipt: &PolicyReuseEvidenceBundleReceipt) -> u64 {
+    if receipt.bundle_version == 0
+        || receipt.source_surface_index_hash == 0
+        || receipt.source_policy_reuse_hash == 0
+        || receipt.source_cost_catalog_hash == 0
+        || receipt.source_evaluator_savings_hash == 0
+        || receipt.source_scaling_projection_hash == 0
+        || receipt.source_distillation_readiness_hash == 0
+    {
+        return 0;
+    }
+    let regression_reason_code = match receipt.regression_reason {
+        "none" => 1,
+        "surface_index_incomplete" => 2,
+        "source_hashes_incomplete" => 3,
+        _ => 0,
+    };
+    if regression_reason_code == 0 {
+        return 0;
+    }
+    let mut h = 0x504f_4c52_4542_5548u64;
+    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.schema.as_bytes());
+    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.record_type.as_bytes());
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.bundle_version;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_surface_index_hash;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_policy_reuse_hash;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_cost_catalog_hash;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_evaluator_savings_hash;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_scaling_projection_hash;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_distillation_readiness_hash;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.bundled_evidence_family_count as u64;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.bundled_root_mode_count as u64;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.bundled_dependency_group_count as u64;
+    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.surface_index_complete);
+    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.source_hashes_complete);
+    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.bundle_complete);
+    h = h.wrapping_mul(0x100000001b3) ^ regression_reason_code;
+    h.max(1)
+}
+
+fn policy_reuse_evidence_bundle_receipt_hash(receipt: &PolicyReuseEvidenceBundleReceipt) -> u64 {
+    let bundle_hash = policy_reuse_evidence_bundle_hash(receipt);
+    if bundle_hash == 0 || receipt.bundle_hash != bundle_hash {
+        return 0;
+    }
+    (bundle_hash ^ 0x504f_4c52_4542_5552u64).max(1)
+}
+
+fn policy_reuse_evidence_surface_index_hash(
+    receipt: &PolicyReuseEvidenceSurfaceIndexReceipt,
+) -> u64 {
+    if receipt.index_version == 0
+        || receipt.source_policy_reuse_hash == 0
+        || receipt.source_cost_catalog_hash == 0
+        || receipt.source_evaluator_savings_hash == 0
+        || receipt.source_scaling_projection_hash == 0
+        || receipt.source_distillation_readiness_hash == 0
+    {
+        return 0;
+    }
+    let missing_surface_code = match receipt.missing_surface {
+        "none" => 1,
+        "required_healthy_modes" => 2,
+        "required_regression_modes" => 3,
+        "required_dependency_groups" => 4,
+        _ => 0,
+    };
+    if missing_surface_code == 0 {
+        return 0;
+    }
+    let mut h = 0x504f_4c52_4553_4948u64;
+    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.schema.as_bytes());
+    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.record_type.as_bytes());
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.index_version;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.evidence_family_count as u64;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.healthy_mode_count as u64;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.regression_mode_count as u64;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.dependency_group_count as u64;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.indexed_root_mode_count as u64;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_policy_reuse_hash;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_cost_catalog_hash;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_evaluator_savings_hash;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_scaling_projection_hash;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_distillation_readiness_hash;
+    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.required_healthy_modes_present);
+    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.required_regression_modes_present);
+    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.required_dependency_groups_present);
+    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.index_complete);
+    h = h.wrapping_mul(0x100000001b3) ^ missing_surface_code;
+    h.max(1)
+}
+
+fn policy_reuse_evidence_surface_index_receipt_hash(
+    receipt: &PolicyReuseEvidenceSurfaceIndexReceipt,
+) -> u64 {
+    let surface_hash = policy_reuse_evidence_surface_index_hash(receipt);
+    if surface_hash == 0 || receipt.surface_hash != surface_hash {
+        return 0;
+    }
+    (surface_hash ^ 0x504f_4c52_4553_4952u64).max(1)
+}
+
+fn policy_reuse_scaling_projection_hash(receipt: &PolicyReuseScalingProjectionReceipt) -> u64 {
+    if receipt.projection_version == 0
+        || receipt.source_evaluator_savings_hash == 0
+        || receipt.source_orchestration_capacity_hash == 0
+    {
+        return 0;
+    }
+    let regression_reason_code = match receipt.regression_reason {
+        "none" => 1,
+        "evaluator_savings_failed" => 2,
+        "capacity_failed" => 3,
+        "no_projected_savings" => 4,
+        _ => 0,
+    };
+    if regression_reason_code == 0 {
+        return 0;
+    }
+    let mut h = 0x504f_4c52_5350_4a48u64;
+    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.schema.as_bytes());
+    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.record_type.as_bytes());
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.projection_version;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_evaluator_savings_hash;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_orchestration_capacity_hash;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.batch_capacity_limit as u64;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.retained_sample_runs as u64;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.retained_llm_calls_avoided as u64;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.retained_cost_units_avoided;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.cost_units_per_llm_call;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.projected_llm_calls_avoided_per_full_batch as u64;
+    h = h.wrapping_mul(0x100000001b3)
+        ^ receipt.projected_reasoning_cost_units_avoided_per_full_batch;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.projected_llm_fallbacks_per_full_batch as u64;
+    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.projection_passed);
+    h = h.wrapping_mul(0x100000001b3) ^ regression_reason_code;
+    h.max(1)
+}
+
+fn policy_reuse_scaling_projection_receipt_hash(
+    receipt: &PolicyReuseScalingProjectionReceipt,
+) -> u64 {
+    let projection_hash = policy_reuse_scaling_projection_hash(receipt);
+    if projection_hash == 0 || receipt.projection_hash != projection_hash {
+        return 0;
+    }
+    (projection_hash ^ 0x504f_4c52_5350_4a52u64).max(1)
+}
+
+fn policy_reuse_distillation_readiness_hash(
+    receipt: &PolicyReuseDistillationReadinessReceipt,
+) -> u64 {
+    if receipt.readiness_version == 0
+        || receipt.source_policy_reuse_hash == 0
+        || receipt.source_cost_catalog_hash == 0
+        || receipt.source_evaluator_savings_hash == 0
+        || receipt.source_scaling_projection_hash == 0
+        || receipt.source_validation_health_hash == 0
+    {
+        return 0;
+    }
+    let regression_reason_code = match receipt.regression_reason {
+        "none" => 1,
+        "catalog_incomplete" => 2,
+        "evaluator_savings_failed" => 3,
+        "scaling_projection_failed" => 4,
+        "validation_health_failed" => 5,
+        _ => 0,
+    };
+    if regression_reason_code == 0 {
+        return 0;
+    }
+    let mut h = 0x504f_4c52_4452_4459u64;
+    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.schema.as_bytes());
+    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.record_type.as_bytes());
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.readiness_version;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_policy_reuse_hash;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_cost_catalog_hash;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_evaluator_savings_hash;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_scaling_projection_hash;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_validation_health_hash;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.verified_policy_hits as u64;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.verified_llm_calls_avoided as u64;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.projected_llm_calls_avoided_per_full_batch as u64;
+    h = h.wrapping_mul(0x100000001b3)
+        ^ receipt.projected_reasoning_cost_units_avoided_per_full_batch;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.validation_guarded_test_count as u64;
+    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.catalog_complete);
+    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.evaluator_savings_passed);
+    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.scaling_projection_passed);
+    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.validation_health_passed);
+    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.distillation_ready);
+    h = h.wrapping_mul(0x100000001b3) ^ regression_reason_code;
+    h.max(1)
+}
+
+fn policy_reuse_distillation_readiness_receipt_hash(
+    receipt: &PolicyReuseDistillationReadinessReceipt,
+) -> u64 {
+    let readiness_hash = policy_reuse_distillation_readiness_hash(receipt);
+    if readiness_hash == 0 || receipt.readiness_hash != readiness_hash {
+        return 0;
+    }
+    (readiness_hash ^ 0x504f_4c52_4452_4452u64).max(1)
 }
 
 fn policy_reuse_smoke_records_array() -> [crate::capability::judgment::PolicyJudgmentRecord; 2] {

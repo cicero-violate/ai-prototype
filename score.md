@@ -1,6 +1,6 @@
 # Canon Agent Score
 
-This scorecard records the current progress at the planning/scoring turn after implementation step 2 of the current agent loop. The working tree contains deterministic policy reuse evaluator-savings, scaling-projection, distillation-readiness, and evidence-surface index evidence.
+This scorecard records the current progress at the planning/scoring turn after implementation step 3 of the current agent loop. The working tree contains deterministic policy reuse evaluator-savings, scaling-projection, distillation-readiness, evidence-surface index, and evidence-bundle evidence.
 
 ## Validation Evidence
 
@@ -8,12 +8,14 @@ Targeted validation relevant to the current working tree:
 
 ```text
 command = cargo fmt --check
-command = RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test validation_harness_contract policy_reuse_evidence_surface_index --quiet
+command = RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test validation_harness_contract policy_reuse_evidence_bundle --quiet
+command = RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test validation_harness_contract --quiet
 command = RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test score_contract --test planning_contract --quiet
 result  = pass
 
 cargo fmt --check: pass
-validation_harness_contract policy_reuse_evidence_surface_index filter: 4 passed, 0 failed, 156 filtered out
+validation_harness_contract policy_reuse_evidence_bundle filter: 4 passed, 0 failed, 160 filtered out
+validation_harness_contract: 164 passed, 0 failed
 planning_contract: 2 passed, 0 failed
 score_contract: 5 passed, 0 failed
 ```
@@ -25,71 +27,71 @@ Full-suite validation was not run before this planning/scoring update.
 Scores are on a `0.00` to `1.00` scale and reflect the current repository evidence inspected and updated this turn.
 
 ```text
-I  Intelligence      = 0.75  indexed evidence makes the reusable learning surface easier to inspect and reason about
-E  Efficiency        = 0.74  evaluators can inspect family/mode/dependency coverage without ad hoc fixture reconstruction
-C  Correctness       = 0.87  formatting, filtered evidence-surface contracts, score contracts, and planning contracts pass
-A  Alignment         = 0.85  index remains evidence-only and does not promote policy or modify kernel authority
-R  Robustness        = 0.82  healthy and controlled required-regression-modes-missing index paths are covered
-P  Performance       = 0.71  inspection still requires multiple public modes before any future bundle collapses the surface
-S  Scalability       = 0.73  evidence-surface family and dependency counts help keep reuse validation extensible
-D  Determinism       = 0.88  index uses fixed counts, source hashes, booleans, and enumerated missing-surface values
-T  Transparency      = 0.90  source hashes and explicit coverage booleans expose receipt-family completeness clearly
-Co Collaboration     = 0.80  plan and score now hand off a focused bundled-inspection slice
-Em Empowerment       = 0.76  root_validate consumers can inspect indexed learning evidence coverage directly
-B  Benefit           = 0.79  evaluators can detect incomplete evidence-surface coverage before future learning promotion
-L  Learning          = 0.74  verified reuse/readiness evidence now has a surface-level coverage gate
-St Structure         = 0.81  index receipt groups related policy-reuse evidence without changing kernel or capability authority
-Si Simplicity        = 0.71  evidence families are indexed, reducing prior fixture/count ambiguity
-F  Future-Proofing   = 0.82  surface indexing prepares for bundled receipts, retrieval examples, and later clean datasets
+I  Intelligence      = 0.76  bundled evidence makes policy-reuse learning state easier to consume as one verdict
+E  Efficiency        = 0.75  evaluators can inspect bundled source hashes and completeness without reconstructing the surface
+C  Correctness       = 0.88  formatting, focused bundle contracts, full validation-harness contracts, score, and planning checks pass
+A  Alignment         = 0.85  bundle remains evidence-only and does not promote policy or modify kernel authority
+R  Robustness        = 0.83  healthy and controlled surface-index-incomplete bundle paths are covered
+P  Performance       = 0.74  bundle reduces evaluator inspection overhead, though repeated command execution remains
+S  Scalability       = 0.74  bundled family/mode/dependency counts make larger evidence surfaces easier to summarize
+D  Determinism       = 0.88  bundle uses fixed source hashes, counts, booleans, and enumerated regression reasons
+T  Transparency      = 0.90  source hashes and bundle completeness fields expose evidence health clearly
+Co Collaboration     = 0.81  plan and score now hand off a focused quickcheck validation slice
+Em Empowerment       = 0.77  root_validate consumers can inspect bundled learning evidence directly
+B  Benefit           = 0.80  evaluators get one compact verdict for the indexed policy-reuse evidence surface
+L  Learning          = 0.75  verified reuse/readiness/index evidence now has a bundle-level promotion gate
+St Structure         = 0.82  bundle receipt composes existing evidence without kernel or capability authority drift
+Si Simplicity        = 0.72  bundle reduces scattered mode interpretation but adds two public modes
+F  Future-Proofing   = 0.83  bundle prepares for quickchecks, retrieval examples, and later clean datasets
 ```
 
 Approximate geometric mean:
 
 ```text
-G ≈ 0.789
+G ≈ 0.800
 ```
 
 ## Current Judgment
 
 ```text
-turn_type = planning_scoring_after_implementation_step_2
+turn_type = implementation_step_1
 weakest_axis = Performance
-secondary_risk = evaluator overhead from many compact root modes
-completed_action = added deterministic policy reuse evidence-surface index evidence
-current_gap = indexed learning evidence is inspectable, but still not bundled into one evaluator-facing receipt
-next_action = add deterministic policy reuse evidence bundle evidence
+secondary_risk = repeated validation command overhead
+completed_action = added deterministic policy reuse evidence-bundle evidence
+current_gap = bundled learning evidence is inspectable, but the minimum validation command set is not yet summarized by one quickcheck receipt
+next_action = add deterministic policy reuse evidence quickcheck evidence
 scope = validation-harness/root-validator evidence only; kernel authority unchanged
-validation = targeted formatting/evidence-surface/score/planning tests passed; full suite not run this turn
+validation = targeted formatting/bundle/full-validation-harness/score/planning tests passed; full suite not run this turn
 ```
 
-## Why Performance Is Now Weakest
+## Why Performance Is Still Weakest
 
-Simplicity improved because the evidence-surface index groups receipt families, healthy modes, regression modes, and dependency groups into one deterministic coverage receipt. Performance is now the lowest axis because evaluator inspection still requires invoking and correlating several compact root modes instead of reading one bundled evidence verdict.
+Performance improved because the evidence bundle collapses the indexed policy-reuse learning surface into one compact root-validator verdict. Performance remains the lowest axis because the turn still depends on multiple validation commands to establish confidence; a deterministic quickcheck receipt can summarize the minimal command set and stale-bundle risks.
 
 ## Completed Score Improvement Target
 
-Raised `Si` from `0.67` to `0.71` by adding deterministic policy reuse evidence-surface index evidence.
+Raised `P` from `0.71` to `0.74` by adding deterministic policy reuse evidence-bundle evidence.
 
 Completed scoring evidence:
 
-- healthy evidence-surface index receipt exposed by the harness;
-- controlled required-regression-modes-missing index regression receipt exposed by the harness;
-- source binding to policy reuse, cost catalog, evaluator-savings, scaling-projection, and distillation-readiness evidence;
-- root validator modes for healthy and regression index receipts;
-- contract tests asserting index semantics, source binding, compact output, and controlled regression evidence;
+- healthy evidence-bundle receipt exposed by the harness;
+- controlled surface-index-incomplete bundle regression receipt exposed by the harness;
+- source binding to the evidence-surface index plus policy reuse, cost catalog, evaluator-savings, scaling-projection, and distillation-readiness evidence;
+- root validator modes for healthy and regression bundle receipts;
+- contract tests asserting bundle semantics, source binding, compact output, and controlled regression evidence;
 - updated retained root mode and guarded-test fixture counts;
 - no kernel authority expansion, student-model training, or policy promotion.
 
 ## Next Score Improvement Target
 
-Raise `P` by adding a deterministic policy reuse evidence bundle receipt.
+Raise `P` again by adding a deterministic policy reuse evidence quickcheck receipt.
 
 Acceptance criteria for the next slice:
 
-1. A deterministic healthy evidence-bundle receipt exists and validates successfully.
-2. A deterministic regression bundle receipt exists and exposes a concrete `regression_reason` or `missing_surface`.
-3. Bundle evidence references the surface index and major policy-reuse evidence source hashes instead of recomputing independent authority.
-4. Root validator compact modes expose healthy and regression bundle receipts.
-5. Validation harness contract tests assert bundle semantics, source binding, and compact output.
+1. A deterministic healthy quickcheck receipt exists and validates successfully.
+2. A deterministic regression quickcheck receipt exists and exposes a concrete `regression_reason` or `missing_command`.
+3. Quickcheck evidence references the evidence bundle and minimum validation command set instead of adding policy authority.
+4. Root validator compact modes expose healthy and regression quickcheck receipts.
+5. Validation harness contract tests assert quickcheck semantics, source binding, and compact output.
 6. Planning and score contract tests pass after documentation updates.
 7. The receipt remains evidence-only and does not expand kernel authority.

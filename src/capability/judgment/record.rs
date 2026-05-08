@@ -161,6 +161,27 @@ pub struct PolicyReuseCostCatalogReceipt {
     pub receipt_hash: u64,
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PolicyReuseEvaluatorSavingsReceipt {
+    pub schema_version: u64,
+    pub record_type: &'static str,
+    pub savings_version: u64,
+    pub source_catalog_hash: u64,
+    pub source_performance_cost_trend_hash: u64,
+    pub source_policy_reuse_hash: u64,
+    pub sample_runs: usize,
+    pub policy_hits: usize,
+    pub llm_calls_avoided: usize,
+    pub estimated_reasoning_cost_units_avoided: u64,
+    pub baseline_llm_calls: usize,
+    pub actual_llm_calls: usize,
+    pub llm_call_reduction_ratio_bps: u64,
+    pub validation_passed: bool,
+    pub regression_reason: &'static str,
+    pub savings_hash: u64,
+    pub receipt_hash: u64,
+}
+
 impl PolicyReuseLedgerSummaryReceipt {
     pub fn from_reuse_validation_counts(
         reuse: &PolicyReuseReceipt,
@@ -494,6 +515,121 @@ impl PolicyReuseCostCatalogReceipt {
 
     pub fn passed(&self) -> bool {
         self.is_valid() && self.summary_complete
+    }
+}
+
+impl PolicyReuseEvaluatorSavingsReceipt {
+    #[allow(clippy::too_many_arguments)]
+    pub fn from_sources(
+        catalog: &PolicyReuseCostCatalogReceipt,
+        performance_cost: &PolicyReusePerformanceCostTrendReceipt,
+        policy_reuse: &PolicyReuseReceipt,
+        estimated_reasoning_cost_units_per_llm_call: u64,
+        regression_reason: &'static str,
+    ) -> Self {
+        let sample_runs = policy_reuse.retained_record_count;
+        let policy_hits = policy_reuse.policy_hit_count;
+        let llm_calls_avoided = policy_reuse.avoided_llm_call_count;
+        let baseline_llm_calls = policy_reuse.retained_record_count;
+        let actual_llm_calls = policy_reuse.policy_miss_count;
+        let estimated_reasoning_cost_units_avoided =
+            llm_calls_avoided as u64 * estimated_reasoning_cost_units_per_llm_call;
+        let llm_call_reduction_ratio_bps = if baseline_llm_calls == 0 {
+            0
+        } else {
+            ((llm_calls_avoided as u64) * 10_000) / baseline_llm_calls as u64
+        };
+        let validation_passed = catalog.passed()
+            && performance_cost.passed()
+            && policy_reuse.passed()
+            && llm_calls_avoided > 0
+            && estimated_reasoning_cost_units_avoided > 0
+            && actual_llm_calls < baseline_llm_calls
+            && regression_reason == "none";
+        let mut receipt = Self {
+            schema_version: 1,
+            record_type: "policy_reuse_evaluator_savings",
+            savings_version: 1,
+            source_catalog_hash: catalog.receipt_hash,
+            source_performance_cost_trend_hash: performance_cost.receipt_hash,
+            source_policy_reuse_hash: policy_reuse.receipt_hash,
+            sample_runs,
+            policy_hits,
+            llm_calls_avoided,
+            estimated_reasoning_cost_units_avoided,
+            baseline_llm_calls,
+            actual_llm_calls,
+            llm_call_reduction_ratio_bps,
+            validation_passed,
+            regression_reason,
+            savings_hash: 0,
+            receipt_hash: 0,
+        };
+        receipt.savings_hash = policy_reuse_evaluator_savings_content_hash(&receipt);
+        receipt.receipt_hash = policy_reuse_evaluator_savings_receipt_hash(&receipt);
+        receipt
+    }
+
+    pub fn to_json(&self) -> String {
+        format!(
+            "{{\"schema_version\":{},\"record_type\":\"{}\",\"savings_version\":{},\"source_catalog_hash\":{},\"source_performance_cost_trend_hash\":{},\"source_policy_reuse_hash\":{},\"sample_runs\":{},\"policy_hits\":{},\"llm_calls_avoided\":{},\"estimated_reasoning_cost_units_avoided\":{},\"baseline_llm_calls\":{},\"actual_llm_calls\":{},\"llm_call_reduction_ratio_bps\":{},\"validation_passed\":{},\"regression_reason\":\"{}\",\"savings_hash\":{},\"receipt_hash\":{}}}",
+            self.schema_version,
+            self.record_type,
+            self.savings_version,
+            self.source_catalog_hash,
+            self.source_performance_cost_trend_hash,
+            self.source_policy_reuse_hash,
+            self.sample_runs,
+            self.policy_hits,
+            self.llm_calls_avoided,
+            self.estimated_reasoning_cost_units_avoided,
+            self.baseline_llm_calls,
+            self.actual_llm_calls,
+            self.llm_call_reduction_ratio_bps,
+            self.validation_passed,
+            self.regression_reason,
+            self.savings_hash,
+            self.receipt_hash,
+        )
+    }
+
+    pub fn is_valid(&self) -> bool {
+        self.schema_version == 1
+            && self.savings_version == 1
+            && matches!(
+                self.record_type,
+                "policy_reuse_evaluator_savings"
+                    | "policy_reuse_evaluator_savings_smoke"
+                    | "policy_reuse_evaluator_savings_regression_smoke"
+            )
+            && self.source_catalog_hash != 0
+            && self.source_performance_cost_trend_hash != 0
+            && self.source_policy_reuse_hash != 0
+            && self.sample_runs > 0
+            && self.policy_hits <= self.sample_runs
+            && self.llm_calls_avoided == self.policy_hits
+            && self.baseline_llm_calls == self.sample_runs
+            && self.actual_llm_calls == self.sample_runs.saturating_sub(self.policy_hits)
+            && self.llm_call_reduction_ratio_bps <= 10_000
+            && self.llm_call_reduction_ratio_bps
+                == ((self.llm_calls_avoided as u64) * 10_000) / self.baseline_llm_calls as u64
+            && matches!(
+                self.regression_reason,
+                "none" | "catalog_incomplete" | "no_positive_savings" | "cost_regression"
+            )
+            && self.validation_passed
+                == (self.llm_calls_avoided > 0
+                    && self.estimated_reasoning_cost_units_avoided > 0
+                    && self.actual_llm_calls < self.baseline_llm_calls
+                    && self.regression_reason == "none")
+            && self.savings_hash != 0
+            && self.receipt_hash != 0
+            && self.savings_hash == policy_reuse_evaluator_savings_content_hash(self)
+            && self.receipt_hash == policy_reuse_evaluator_savings_receipt_hash(self)
+    }
+
+    pub fn passed(&self) -> bool {
+        self.is_valid() && self.validation_passed
     }
 }
 
@@ -1045,6 +1181,62 @@ fn policy_reuse_cost_catalog_receipt_hash(receipt: &PolicyReuseCostCatalogReceip
     mix(0x504f_4c52_4341_5452u64, catalog_hash).max(1)
 }
 
+fn policy_reuse_evaluator_savings_content_hash(
+    receipt: &PolicyReuseEvaluatorSavingsReceipt,
+) -> u64 {
+    if receipt.schema_version == 0
+        || receipt.savings_version == 0
+        || receipt.source_catalog_hash == 0
+        || receipt.source_performance_cost_trend_hash == 0
+        || receipt.source_policy_reuse_hash == 0
+    {
+        return 0;
+    }
+    let record_type_code = match receipt.record_type {
+        "policy_reuse_evaluator_savings"
+        | "policy_reuse_evaluator_savings_smoke"
+        | "policy_reuse_evaluator_savings_regression_smoke" => 1,
+        _ => 0,
+    };
+    let regression_reason_code = match receipt.regression_reason {
+        "none" => 1,
+        "catalog_incomplete" => 2,
+        "no_positive_savings" => 3,
+        "cost_regression" => 4,
+        _ => 0,
+    };
+    if record_type_code == 0 || regression_reason_code == 0 {
+        return 0;
+    }
+    let mut h = 0x504f_4c52_4556_5341u64;
+    h = mix(h, receipt.schema_version);
+    h = mix(h, record_type_code);
+    h = mix(h, receipt.savings_version);
+    h = mix(h, receipt.source_catalog_hash);
+    h = mix(h, receipt.source_performance_cost_trend_hash);
+    h = mix(h, receipt.source_policy_reuse_hash);
+    h = mix(h, receipt.sample_runs as u64);
+    h = mix(h, receipt.policy_hits as u64);
+    h = mix(h, receipt.llm_calls_avoided as u64);
+    h = mix(h, receipt.estimated_reasoning_cost_units_avoided);
+    h = mix(h, receipt.baseline_llm_calls as u64);
+    h = mix(h, receipt.actual_llm_calls as u64);
+    h = mix(h, receipt.llm_call_reduction_ratio_bps);
+    h = mix(h, u64::from(receipt.validation_passed));
+    h = mix(h, regression_reason_code);
+    h.max(1)
+}
+
+fn policy_reuse_evaluator_savings_receipt_hash(
+    receipt: &PolicyReuseEvaluatorSavingsReceipt,
+) -> u64 {
+    let savings_hash = policy_reuse_evaluator_savings_content_hash(receipt);
+    if savings_hash == 0 || receipt.savings_hash != savings_hash {
+        return 0;
+    }
+    mix(0x504f_4c52_4556_5352u64, savings_hash).max(1)
+}
+
 fn policy_judgment_record_hash(record: &PolicyJudgmentRecord) -> u64 {
     if record.context_hash == 0
         || record.policy_version == 0
@@ -1468,5 +1660,105 @@ mod tests {
         assert!(!receipt.required_regression_modes_present);
         assert_eq!(receipt.missing_required_modes, "required_regression_modes");
         assert!(!receipt.passed());
+    }
+
+    #[test]
+    fn policy_reuse_evaluator_savings_binds_sources_and_quantifies_avoided_calls() {
+        let context = context();
+        let policy = promoted_policy();
+        let hit = PolicyJudgmentRecord::from_context_policy(&context, &policy);
+        let miss = PolicyJudgmentRecord::from_context_policy(&context, &PolicyStore::default());
+        let reuse = PolicyReuseReceipt::from_policy_judgments(&[hit.clone(), hit, miss]);
+        let scale = PolicyReuseScaleTraceReceipt::from_reuse_validation_counts(&reuse, 3, 3, 0);
+        let performance = PolicyReusePerformanceCostTrendReceipt::from_scale_and_cost_sources(
+            &scale, 148, 19, "pass", "pass", 0x707, 0x808,
+        );
+        let catalog = PolicyReuseCostCatalogReceipt::from_source_hashes(
+            6,
+            4,
+            4,
+            6,
+            true,
+            true,
+            "none",
+            reuse.receipt_hash,
+            scale.receipt_hash,
+            performance.receipt_hash,
+            0x909,
+            0xa0a,
+            0xb0b,
+        );
+
+        let receipt = PolicyReuseEvaluatorSavingsReceipt::from_sources(
+            &catalog,
+            &performance,
+            &reuse,
+            100,
+            "none",
+        );
+
+        assert_eq!(receipt.record_type, "policy_reuse_evaluator_savings");
+        assert_eq!(receipt.savings_version, 1);
+        assert_eq!(receipt.source_catalog_hash, catalog.receipt_hash);
+        assert_eq!(
+            receipt.source_performance_cost_trend_hash,
+            performance.receipt_hash
+        );
+        assert_eq!(receipt.source_policy_reuse_hash, reuse.receipt_hash);
+        assert_eq!(receipt.sample_runs, 3);
+        assert_eq!(receipt.policy_hits, 2);
+        assert_eq!(receipt.llm_calls_avoided, 2);
+        assert_eq!(receipt.estimated_reasoning_cost_units_avoided, 200);
+        assert_eq!(receipt.baseline_llm_calls, 3);
+        assert_eq!(receipt.actual_llm_calls, 1);
+        assert_eq!(receipt.llm_call_reduction_ratio_bps, 6_666);
+        assert!(receipt.validation_passed);
+        assert_eq!(receipt.regression_reason, "none");
+        assert_ne!(receipt.savings_hash, 0);
+        assert!(receipt.passed());
+    }
+
+    #[test]
+    fn policy_reuse_evaluator_savings_keeps_structural_regression_evidence_valid() {
+        let context = context();
+        let policy = promoted_policy();
+        let hit = PolicyJudgmentRecord::from_context_policy(&context, &policy);
+        let miss = PolicyJudgmentRecord::from_context_policy(&context, &PolicyStore::default());
+        let reuse = PolicyReuseReceipt::from_policy_judgments(&[hit, miss]);
+        let scale = PolicyReuseScaleTraceReceipt::from_reuse_validation_counts(&reuse, 2, 2, 0);
+        let performance = PolicyReusePerformanceCostTrendReceipt::from_scale_and_cost_sources(
+            &scale, 148, 19, "pass", "pass", 0x111, 0x222,
+        );
+        let catalog = PolicyReuseCostCatalogReceipt::from_source_hashes(
+            6,
+            4,
+            3,
+            6,
+            true,
+            false,
+            "required_regression_modes",
+            reuse.receipt_hash,
+            scale.receipt_hash,
+            performance.receipt_hash,
+            0x333,
+            0x444,
+            0x555,
+        );
+
+        let mut receipt = PolicyReuseEvaluatorSavingsReceipt::from_sources(
+            &catalog,
+            &performance,
+            &reuse,
+            100,
+            "catalog_incomplete",
+        );
+
+        assert!(receipt.is_valid());
+        assert!(!receipt.validation_passed);
+        assert_eq!(receipt.regression_reason, "catalog_incomplete");
+        assert!(!receipt.passed());
+
+        receipt.actual_llm_calls = receipt.baseline_llm_calls;
+        assert!(!receipt.is_valid());
     }
 }

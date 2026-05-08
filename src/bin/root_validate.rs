@@ -250,6 +250,56 @@ const COMPACT_MODES: &[CompactMode] = &[
         run: policy_reuse_cost_catalog_incomplete_smoke_mode,
     },
     CompactMode {
+        arg: "--policy-reuse-evaluator-savings-smoke",
+        marker: "policy_reuse_evaluator_savings_smoke",
+        run: policy_reuse_evaluator_savings_smoke_mode,
+    },
+    CompactMode {
+        arg: "--policy-reuse-evaluator-savings-regression-smoke",
+        marker: "policy_reuse_evaluator_savings_regression_smoke",
+        run: policy_reuse_evaluator_savings_regression_smoke_mode,
+    },
+    CompactMode {
+        arg: "--policy-reuse-scaling-projection-smoke",
+        marker: "policy_reuse_scaling_projection_smoke",
+        run: policy_reuse_scaling_projection_smoke_mode,
+    },
+    CompactMode {
+        arg: "--policy-reuse-scaling-projection-regression-smoke",
+        marker: "policy_reuse_scaling_projection_regression_smoke",
+        run: policy_reuse_scaling_projection_regression_smoke_mode,
+    },
+    CompactMode {
+        arg: "--policy-reuse-distillation-readiness-smoke",
+        marker: "policy_reuse_distillation_readiness_smoke",
+        run: policy_reuse_distillation_readiness_smoke_mode,
+    },
+    CompactMode {
+        arg: "--policy-reuse-distillation-readiness-regression-smoke",
+        marker: "policy_reuse_distillation_readiness_regression_smoke",
+        run: policy_reuse_distillation_readiness_regression_smoke_mode,
+    },
+    CompactMode {
+        arg: "--policy-reuse-evidence-surface-index-smoke",
+        marker: "policy_reuse_evidence_surface_index_smoke",
+        run: policy_reuse_evidence_surface_index_smoke_mode,
+    },
+    CompactMode {
+        arg: "--policy-reuse-evidence-surface-index-regression-smoke",
+        marker: "policy_reuse_evidence_surface_index_regression_smoke",
+        run: policy_reuse_evidence_surface_index_regression_smoke_mode,
+    },
+    CompactMode {
+        arg: "--policy-reuse-evidence-bundle-smoke",
+        marker: "policy_reuse_evidence_bundle_smoke",
+        run: policy_reuse_evidence_bundle_smoke_mode,
+    },
+    CompactMode {
+        arg: "--policy-reuse-evidence-bundle-regression-smoke",
+        marker: "policy_reuse_evidence_bundle_regression_smoke",
+        run: policy_reuse_evidence_bundle_regression_smoke_mode,
+    },
+    CompactMode {
         arg: "--root-validate-dispatch-catalog",
         marker: "canon_root_validate_dispatch_catalog_v1",
         run: root_validate_dispatch_catalog_mode,
@@ -636,6 +686,110 @@ fn policy_reuse_cost_catalog_smoke_mode() -> Result<CompactModeOutcome, String> 
 fn policy_reuse_cost_catalog_incomplete_smoke_mode() -> Result<CompactModeOutcome, String> {
     let receipt = validation_harness::policy_reuse_cost_catalog_incomplete_smoke_receipt();
     let passed = receipt.is_valid() && !receipt.summary_complete && !receipt.passed();
+    Ok(CompactModeOutcome::controlled_json(
+        receipt.to_json(),
+        passed,
+    ))
+}
+
+fn policy_reuse_evaluator_savings_smoke_mode() -> Result<CompactModeOutcome, String> {
+    let receipt = validation_harness::policy_reuse_evaluator_savings_smoke_receipt();
+    Ok(CompactModeOutcome::pass_json(
+        receipt.to_json(),
+        receipt.passed(),
+    ))
+}
+
+fn policy_reuse_evaluator_savings_regression_smoke_mode() -> Result<CompactModeOutcome, String> {
+    let receipt = validation_harness::policy_reuse_evaluator_savings_regression_smoke_receipt();
+    let passed = receipt.is_valid()
+        && !receipt.validation_passed
+        && receipt.regression_reason == "catalog_incomplete"
+        && !receipt.passed();
+    Ok(CompactModeOutcome::controlled_json(
+        receipt.to_json(),
+        passed,
+    ))
+}
+
+fn policy_reuse_scaling_projection_smoke_mode() -> Result<CompactModeOutcome, String> {
+    let receipt = validation_harness::policy_reuse_scaling_projection_smoke_receipt();
+    Ok(CompactModeOutcome::pass_json(
+        receipt.to_json(),
+        receipt.passed(),
+    ))
+}
+
+fn policy_reuse_scaling_projection_regression_smoke_mode() -> Result<CompactModeOutcome, String> {
+    let receipt = validation_harness::policy_reuse_scaling_projection_regression_smoke_receipt();
+    let passed = receipt.is_valid()
+        && !receipt.projection_passed
+        && receipt.regression_reason == "evaluator_savings_failed"
+        && !receipt.passed();
+    Ok(CompactModeOutcome::controlled_json(
+        receipt.to_json(),
+        passed,
+    ))
+}
+
+fn policy_reuse_distillation_readiness_smoke_mode() -> Result<CompactModeOutcome, String> {
+    let receipt = validation_harness::policy_reuse_distillation_readiness_smoke_receipt();
+    Ok(CompactModeOutcome::pass_json(
+        receipt.to_json(),
+        receipt.passed(),
+    ))
+}
+
+fn policy_reuse_distillation_readiness_regression_smoke_mode() -> Result<CompactModeOutcome, String>
+{
+    let receipt =
+        validation_harness::policy_reuse_distillation_readiness_regression_smoke_receipt();
+    let passed = receipt.is_valid()
+        && !receipt.distillation_ready
+        && receipt.regression_reason == "catalog_incomplete"
+        && !receipt.passed();
+    Ok(CompactModeOutcome::controlled_json(
+        receipt.to_json(),
+        passed,
+    ))
+}
+
+fn policy_reuse_evidence_surface_index_smoke_mode() -> Result<CompactModeOutcome, String> {
+    let receipt = validation_harness::policy_reuse_evidence_surface_index_smoke_receipt();
+    Ok(CompactModeOutcome::pass_json(
+        receipt.to_json(),
+        receipt.passed(),
+    ))
+}
+
+fn policy_reuse_evidence_surface_index_regression_smoke_mode() -> Result<CompactModeOutcome, String>
+{
+    let receipt =
+        validation_harness::policy_reuse_evidence_surface_index_regression_smoke_receipt();
+    let passed = receipt.is_valid()
+        && !receipt.index_complete
+        && receipt.missing_surface == "required_regression_modes"
+        && !receipt.passed();
+    Ok(CompactModeOutcome::controlled_json(
+        receipt.to_json(),
+        passed,
+    ))
+}
+
+fn policy_reuse_evidence_bundle_smoke_mode() -> Result<CompactModeOutcome, String> {
+    let receipt = validation_harness::policy_reuse_evidence_bundle_smoke_receipt();
+    Ok(CompactModeOutcome::pass_json(
+        receipt.to_json(),
+        receipt.passed(),
+    ))
+}
+
+fn policy_reuse_evidence_bundle_regression_smoke_mode() -> Result<CompactModeOutcome, String> {
+    let receipt = validation_harness::policy_reuse_evidence_bundle_regression_smoke_receipt();
+    let passed = receipt.is_valid()
+        && !receipt.bundle_complete
+        && receipt.regression_reason == "surface_index_incomplete"
+        && !receipt.passed();
     Ok(CompactModeOutcome::controlled_json(
         receipt.to_json(),
         passed,
