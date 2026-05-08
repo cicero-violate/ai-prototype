@@ -88,6 +88,96 @@ pub struct PolicyReuseTrendReceipt {
     pub receipt_hash: u64,
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PolicyReuseLedgerSummaryReceipt {
+    pub schema_version: u64,
+    pub record_type: &'static str,
+    pub policy_hits: usize,
+    pub policy_misses: usize,
+    pub llm_fallbacks: usize,
+    pub validation_passes: usize,
+    pub validation_failures: usize,
+    pub reuse_rate_bps: u64,
+    pub regression_flag: bool,
+    pub source_receipt_hash: u64,
+    pub receipt_hash: u64,
+}
+
+impl PolicyReuseLedgerSummaryReceipt {
+    pub fn from_reuse_validation_counts(
+        reuse: &PolicyReuseReceipt,
+        validation_passes: usize,
+        validation_failures: usize,
+    ) -> Self {
+        let llm_fallbacks = reuse.policy_miss_count;
+        let regression_flag = validation_failures > 0 || !reuse.passed();
+        let mut receipt = Self {
+            schema_version: 1,
+            record_type: "policy_reuse_ledger_summary",
+            policy_hits: reuse.policy_hit_count,
+            policy_misses: reuse.policy_miss_count,
+            llm_fallbacks,
+            validation_passes,
+            validation_failures,
+            reuse_rate_bps: reuse.hit_rate_bps,
+            regression_flag,
+            source_receipt_hash: reuse.receipt_hash,
+            receipt_hash: 0,
+        };
+        receipt.receipt_hash = policy_reuse_ledger_summary_receipt_hash(&receipt);
+        receipt
+    }
+
+    pub fn empty() -> Self {
+        let mut receipt = Self {
+            schema_version: 1,
+            record_type: "policy_reuse_ledger_summary",
+            policy_hits: 0,
+            policy_misses: 0,
+            llm_fallbacks: 0,
+            validation_passes: 0,
+            validation_failures: 0,
+            reuse_rate_bps: 0,
+            regression_flag: false,
+            source_receipt_hash: policy_reuse_empty_source_hash(),
+            receipt_hash: 0,
+        };
+        receipt.receipt_hash = policy_reuse_ledger_summary_receipt_hash(&receipt);
+        receipt
+    }
+
+    pub fn to_json(&self) -> String {
+        format!(
+            "{{\"schema_version\":{},\"record_type\":\"{}\",\"policy_hits\":{},\"policy_misses\":{},\"llm_fallbacks\":{},\"validation_passes\":{},\"validation_failures\":{},\"reuse_rate_bps\":{},\"regression_flag\":{},\"source_receipt_hash\":{},\"receipt_hash\":{}}}",
+            self.schema_version,
+            self.record_type,
+            self.policy_hits,
+            self.policy_misses,
+            self.llm_fallbacks,
+            self.validation_passes,
+            self.validation_failures,
+            self.reuse_rate_bps,
+            self.regression_flag,
+            self.source_receipt_hash,
+            self.receipt_hash,
+        )
+    }
+
+    pub fn is_valid(&self) -> bool {
+        self.schema_version == 1
+            && self.record_type == "policy_reuse_ledger_summary"
+            && self.llm_fallbacks == self.policy_misses
+            && self.reuse_rate_bps <= 10_000
+            && self.source_receipt_hash != 0
+            && self.receipt_hash != 0
+            && self.receipt_hash == policy_reuse_ledger_summary_receipt_hash(self)
+    }
+
+    pub fn passed(&self) -> bool {
+        self.is_valid() && !self.regression_flag
+    }
+}
+
 impl PolicyReuseTrendReceipt {
     pub fn to_json(&self) -> String {
         format!(
@@ -469,6 +559,35 @@ fn policy_reuse_receipt_hash(receipt: &PolicyReuseReceipt) -> u64 {
     h.max(1)
 }
 
+fn policy_reuse_empty_source_hash() -> u64 {
+    0x504f_4c52_454d_5054u64
+}
+
+fn policy_reuse_ledger_summary_receipt_hash(receipt: &PolicyReuseLedgerSummaryReceipt) -> u64 {
+    if receipt.schema_version == 0 || receipt.source_receipt_hash == 0 {
+        return 0;
+    }
+    let record_type_code = match receipt.record_type {
+        "policy_reuse_ledger_summary" => 1,
+        _ => 0,
+    };
+    if record_type_code == 0 || receipt.reuse_rate_bps > 10_000 {
+        return 0;
+    }
+    let mut h = 0x504f_4c52_4c45_4447u64;
+    h = mix(h, receipt.schema_version);
+    h = mix(h, record_type_code);
+    h = mix(h, receipt.policy_hits as u64);
+    h = mix(h, receipt.policy_misses as u64);
+    h = mix(h, receipt.llm_fallbacks as u64);
+    h = mix(h, receipt.validation_passes as u64);
+    h = mix(h, receipt.validation_failures as u64);
+    h = mix(h, receipt.reuse_rate_bps);
+    h = mix(h, u64::from(receipt.regression_flag));
+    h = mix(h, receipt.source_receipt_hash);
+    h.max(1)
+}
+
 fn policy_judgment_record_hash(record: &PolicyJudgmentRecord) -> u64 {
     if record.context_hash == 0
         || record.policy_version == 0
@@ -667,5 +786,81 @@ mod tests {
 
         trend.current_hit_rate_bps += 1;
         assert!(!trend.is_valid());
+    }
+
+    #[test]
+    fn policy_reuse_ledger_summary_accepts_empty_zero_baseline() {
+        let summary = PolicyReuseLedgerSummaryReceipt::empty();
+
+        assert_eq!(summary.policy_hits, 0);
+        assert_eq!(summary.policy_misses, 0);
+        assert_eq!(summary.llm_fallbacks, 0);
+        assert_eq!(summary.validation_passes, 0);
+        assert_eq!(summary.validation_failures, 0);
+        assert_eq!(summary.reuse_rate_bps, 0);
+        assert!(!summary.regression_flag);
+        assert!(summary.is_valid());
+        assert!(summary.passed());
+        assert!(summary.to_json().contains("policy_reuse_ledger_summary"));
+    }
+
+    #[test]
+    fn policy_reuse_ledger_summary_counts_mixed_hit_miss_ledger() {
+        let context = context();
+        let policy = promoted_policy();
+        let hit = PolicyJudgmentRecord::from_context_policy(&context, &policy);
+        let miss = PolicyJudgmentRecord::from_context_policy(&context, &PolicyStore::default());
+        let reuse = PolicyReuseReceipt::from_policy_judgments(&[hit, miss]);
+
+        let summary = PolicyReuseLedgerSummaryReceipt::from_reuse_validation_counts(&reuse, 3, 0);
+
+        assert_eq!(summary.policy_hits, 1);
+        assert_eq!(summary.policy_misses, 1);
+        assert_eq!(summary.llm_fallbacks, 1);
+        assert_eq!(summary.validation_passes, 3);
+        assert_eq!(summary.validation_failures, 0);
+        assert_eq!(summary.reuse_rate_bps, 5_000);
+        assert_eq!(summary.source_receipt_hash, reuse.receipt_hash);
+        assert!(!summary.regression_flag);
+        assert!(summary.passed());
+    }
+
+    #[test]
+    fn policy_reuse_ledger_summary_flags_validation_regression() {
+        let context = context();
+        let policy = promoted_policy();
+        let hit = PolicyJudgmentRecord::from_context_policy(&context, &policy);
+        let reuse = PolicyReuseReceipt::from_policy_judgments(&[hit]);
+
+        let summary = PolicyReuseLedgerSummaryReceipt::from_reuse_validation_counts(&reuse, 2, 1);
+
+        assert_eq!(summary.policy_hits, 1);
+        assert_eq!(summary.policy_misses, 0);
+        assert_eq!(summary.llm_fallbacks, 0);
+        assert_eq!(summary.validation_passes, 2);
+        assert_eq!(summary.validation_failures, 1);
+        assert_eq!(summary.reuse_rate_bps, 10_000);
+        assert!(summary.regression_flag);
+        assert!(summary.is_valid());
+        assert!(!summary.passed());
+    }
+
+    #[test]
+    fn policy_reuse_ledger_summary_rejects_tampered_counts_or_sequence_binding() {
+        let context = context();
+        let policy = promoted_policy();
+        let hit = PolicyJudgmentRecord::from_context_policy(&context, &policy);
+        let reuse = PolicyReuseReceipt::from_policy_judgments(&[hit]);
+        let mut summary =
+            PolicyReuseLedgerSummaryReceipt::from_reuse_validation_counts(&reuse, 1, 0);
+        assert!(summary.passed());
+
+        summary.llm_fallbacks += 1;
+        assert!(!summary.is_valid());
+
+        let mut rebound =
+            PolicyReuseLedgerSummaryReceipt::from_reuse_validation_counts(&reuse, 1, 0);
+        rebound.source_receipt_hash ^= 1;
+        assert!(!rebound.is_valid());
     }
 }

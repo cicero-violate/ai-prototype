@@ -41,8 +41,8 @@ pub use crate::capability::eval::{
     EVOLUTION_LEDGER_SCHEMA_VERSION,
 };
 pub use crate::capability::judgment::{
-    JudgmentRecord, PolicyJudgmentDecision, PolicyJudgmentRecord, PolicyReuseReceipt,
-    PolicyReuseTrendReceipt,
+    JudgmentRecord, PolicyJudgmentDecision, PolicyJudgmentRecord, PolicyReuseLedgerSummaryReceipt,
+    PolicyReuseReceipt, PolicyReuseTrendReceipt,
 };
 pub use crate::capability::learning::{
     export_verified_distillation_row, DistillationExportError, DistillationExportInput,

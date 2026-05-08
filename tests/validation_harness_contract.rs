@@ -4,9 +4,9 @@ use ai::validation_harness::{
     RuntimePerformanceReceipt, StepReceipt, StepRunner, ValidationReceipt, ValidationStep,
     API_TRANSPORT_STEP, CHECK_STEP, EXPECTED_COMMAND_FIXTURE_COUNT,
     EXPECTED_RETAINED_RECEIPT_FIXTURE_COUNT, EXPECTED_VALIDATION_FIXTURE_COUNT,
-    EXTERNAL_AGENT_CLI_MODES_FIXTURE, FAST_TEST_STEP,
-    GRAPH_MUTATION_CLI_CONTRACT_EXPECTED_TESTS, GRAPH_MUTATION_CLI_CONTRACT_STEP, LIB_UNIT_STEP,
-    LOCKFILE_COMPAT_FLAG, PLANNING_CONTRACT_STEP, POLICY_CAPACITY_COST_SUMMARY_RECEIPTS_FIXTURE,
+    EXTERNAL_AGENT_CLI_MODES_FIXTURE, FAST_TEST_STEP, GRAPH_MUTATION_CLI_CONTRACT_EXPECTED_TESTS,
+    GRAPH_MUTATION_CLI_CONTRACT_STEP, LIB_UNIT_STEP, LOCKFILE_COMPAT_FLAG, PLANNING_CONTRACT_STEP,
+    POLICY_CAPACITY_COST_SUMMARY_RECEIPTS_FIXTURE,
     POLICY_CAPACITY_COST_SUMMARY_REGRESSION_SMOKE_STEP, POLICY_CAPACITY_COST_SUMMARY_SMOKE_STEP,
     POLICY_CAPACITY_COST_SUMMARY_TREND_SMOKE_STEP, POLICY_ORCHESTRATION_CAPACITY_RECEIPTS_FIXTURE,
     POLICY_REUSE_RECEIPTS_FIXTURE, POLICY_VALIDATION_HEALTH_RECEIPTS_FIXTURE,
@@ -3456,8 +3456,7 @@ fn policy_validation_health_trend_receipts_fixture_valid(fixture: &str) -> bool 
         1,
         &expected,
         &rules,
-    )
-        && receipt.passed()
+    ) && receipt.passed()
         && receipt.capacity_avoided_llm_call_delta_per_full_batch >= 0
         && !receipt.dispatch_catalog_changed
 }
@@ -3535,8 +3534,7 @@ fn policy_validation_health_receipts_fixture_valid(fixture: &str) -> bool {
         1,
         &expected,
         &rules,
-    )
-        && receipt.passed()
+    ) && receipt.passed()
         && receipt.baseline_dispatch_catalog_hash == receipt.current_dispatch_catalog_hash
         && !receipt.dispatch_catalog_changed
 }

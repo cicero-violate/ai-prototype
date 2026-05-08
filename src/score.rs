@@ -13,12 +13,13 @@ pub struct ScoreVector {
     pub empowerment: f64,
     pub benefit: f64,
     pub learning: f64,
+    pub structure: f64,
     pub simplicity: f64,
     pub future_proofing: f64,
 }
 
 impl ScoreVector {
-    pub fn values(self) -> [f64; 15] {
+    pub fn values(self) -> [f64; 16] {
         [
             self.intelligence,
             self.efficiency,
@@ -33,6 +34,7 @@ impl ScoreVector {
             self.empowerment,
             self.benefit,
             self.learning,
+            self.structure,
             self.simplicity,
             self.future_proofing,
         ]

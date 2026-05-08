@@ -1,6 +1,6 @@
 # Canon Agent Implementation Plan
 
-This planning turn keeps implementation work out of scope and sets the next deterministic slice from the current repository state.
+This plan tracks the current deterministic implementation slice from the repository state.
 
 ## North Star
 
@@ -28,13 +28,16 @@ The repository already contains these meaningful surfaces:
 Targeted validation run this turn:
 
 ```text
-RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test score_contract --test planning_contract --quiet
+RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test score_contract --test planning_contract --test validation_harness_contract --quiet
+RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --lib capability::judgment::record --quiet
 
 planning_contract: 2 passed, 0 failed
 score_contract:    5 passed, 0 failed
+validation_harness_contract: 128 passed, 0 failed
+judgment::record unit tests: 12 passed, 0 failed
 ```
 
-Full-suite validation was not run in this planning turn.
+Full-suite validation was not run in this implementation turn.
 
 ## Evaluation Axes
 
@@ -52,41 +55,53 @@ Co = Collaboration
 Em = Empowerment
 B  = Benefit
 L  = Learning
+St = Structure
 Si = Simplicity
 F  = Future-Proofing
 ```
 
 ```text
-G = (I*E*C*A*R*P*S*D*T*Co*Em*B*L*Si*F)^(1/15)
+G = (I*E*C*A*R*P*S*D*T*Co*Em*B*L*St*Si*F)^(1/16)
 arg max(G) = good
 ```
 
 ## Priority Judgment
 
-The weakest practical axis is now **Learning**.
+The weakest practical axis remains **Learning**, with **Structure** now tracked explicitly as its own score axis.
 
 Reason: many typed surfaces for policy, judgment, eval, receipts, and validation already exist, but the architecture goal depends on demonstrating measurable policy reuse over repeated runs. The next slice should make the cost-reduction loop more explicit without relaxing deterministic gates.
 
 ## Next Implementation Slice
 
-Implement a minimal deterministic **policy reuse ledger summary** that answers:
+Implemented this turn: a minimal deterministic **policy reuse ledger summary** that answers:
 
 ```text
 For a completed run set, how many eligible decisions were handled by policy, how many missed to LLM/tooling, and did reuse improve without validation regression?
 ```
 
-Suggested constraints:
+Completed constraints:
 
 1. Keep the kernel untouched.
-2. Add or extend a capability-layer receipt only.
-3. Derive the summary from existing policy/judgment/eval receipts where possible.
-4. Make the summary deterministic and NDJSON-encodable.
-5. Add contract tests for:
+2. Added a capability-layer judgment receipt only.
+3. Derived the summary from existing policy reuse receipts plus validation pass/fail counts.
+4. Made the summary deterministic and JSON-line encodable.
+5. Added unit tests for:
    - empty ledger produces zero reuse and valid receipt;
    - mixed policy-hit / policy-miss ledger computes stable counts;
    - regression is flagged when reuse rises but validation health falls;
-   - receipt replay rejects tampered counts or sequence order.
-6. Run the narrow tests first, then `cargo test --all-targets` if toolchain time allows.
+   - receipt replay rejects tampered counts or source receipt binding.
+
+## Next Implementation Slice
+
+Promote the new `PolicyReuseLedgerSummaryReceipt` into the validation harness/catalog path so the root observe report can expose one compact policy-reuse/validation-health signal without requiring consumers to join multiple receipts.
+
+Suggested constraints:
+
+1. Keep the kernel untouched.
+2. Add a smoke fixture or harness function only if it binds retained semantic fields, not brittle hashes.
+3. Ensure the dispatch catalog includes the summary command/signal.
+4. Add validation-harness contract assertions for pass and regression cases.
+5. Run targeted validation harness tests and judgment tests.
 
 ## Deferred Work
 

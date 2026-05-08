@@ -36,10 +36,11 @@ fn score_values_preserve_all_goodness_axes() {
         empowerment: 0.9,
         benefit: 0.8,
         learning: 0.7,
+        structure: 0.65,
         simplicity: 0.6,
         future_proofing: 0.5,
     };
-    assert_eq!(s.values().len(), 15);
+    assert_eq!(s.values().len(), 16);
     assert!(s.geometric_mean().unwrap() < 1.0);
 }
 
