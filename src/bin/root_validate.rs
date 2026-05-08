@@ -590,6 +590,16 @@ const COMPACT_MODES: &[CompactMode] = &[
         run: policy_reuse_evidence_retrieval_result_use_readiness_regression_smoke_mode,
     },
     CompactMode {
+        arg: "--policy-reuse-evidence-retrieval-result-use-approval-smoke",
+        marker: "policy_reuse_evidence_retrieval_result_use_approval_smoke",
+        run: policy_reuse_evidence_retrieval_result_use_approval_smoke_mode,
+    },
+    CompactMode {
+        arg: "--policy-reuse-evidence-retrieval-result-use-approval-regression-smoke",
+        marker: "policy_reuse_evidence_retrieval_result_use_approval_regression_smoke",
+        run: policy_reuse_evidence_retrieval_result_use_approval_regression_smoke_mode,
+    },
+    CompactMode {
         arg: "--root-validate-dispatch-catalog",
         marker: "canon_root_validate_dispatch_catalog_v1",
         run: root_validate_dispatch_catalog_mode,
@@ -1506,6 +1516,40 @@ fn policy_reuse_evidence_retrieval_result_use_readiness_regression_smoke_mode(
         && !receipt.retrieval_result_use_ready
         && receipt.result_use_readiness_status == "result_use_not_ready"
         && receipt.not_ready_reason == "manifest_not_ready"
+        && !receipt.passed();
+    Ok(CompactModeOutcome::controlled_json(
+        receipt.to_json(),
+        passed,
+    ))
+}
+
+fn policy_reuse_evidence_retrieval_result_use_approval_smoke_mode(
+) -> Result<CompactModeOutcome, String> {
+    let receipt =
+        validation_harness::policy_reuse_evidence_retrieval_result_use_approval_smoke_receipt();
+    Ok(CompactModeOutcome::pass_json(
+        receipt.to_json(),
+        receipt.passed(),
+    ))
+}
+
+fn policy_reuse_evidence_retrieval_result_use_approval_regression_smoke_mode(
+) -> Result<CompactModeOutcome, String> {
+    let receipt = validation_harness::
+        policy_reuse_evidence_retrieval_result_use_approval_regression_smoke_receipt();
+    let passed = receipt.is_valid()
+        && !receipt.retrieval_result_use_ready
+        && !receipt.retrieval_result_use_manifest_ready
+        && !receipt.retrieval_read_performed
+        && !receipt.retrieval_write_performed
+        && !receipt.retrieval_query_executed
+        && !receipt.runtime_result_approval_performed
+        && !receipt.policy_promotion_performed
+        && !receipt.student_training_performed
+        && receipt.external_result_evidence_present
+        && !receipt.retrieval_result_use_approved
+        && receipt.result_use_approval_status == "result_use_not_approved"
+        && receipt.not_approved_reason == "readiness_not_ready"
         && !receipt.passed();
     Ok(CompactModeOutcome::controlled_json(
         receipt.to_json(),
