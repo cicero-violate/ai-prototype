@@ -685,3 +685,45 @@ F  = 0.98  commit intent prepares later retrieval/model-learning gates without c
 G  ≈ 0.967
 ```
 
+## Planning Turn Score Decision - Retrieval Example Storage Write Preflight
+
+```text
+selected_axis = Learning
+turn_type = planning_and_scoring_only
+score_change_this_turn = retained L at 1.00 and G at approximately 0.967
+reason = the next planned slice introduces a deterministic storage-write-preflight boundary after storage-commit-intent while still forbidding actual retrieval storage mutation, query execution, runtime result approval, policy promotion, batch execution, and student training
+source_changes_observed_but_not_owned = src/validation_harness.rs contains uncommitted storage-write-preflight work; canon-rustc-v3/* modified and untracked files remain out of scope for this planning turn
+commit_scope = plan.md, score.md
+```
+
+Planning validation evidence:
+
+```text
+git status --short: observed unowned src/validation_harness.rs and canon-rustc-v3 changes; no implementation files selected for this planning turn
+grep storage_commit_intent/storage_write_preflight: confirmed committed handoff reaches storage-commit-intent and current working tree is moving toward storage-write-preflight
+planning_contract: attempted twice, but connector returned 502 before Rust output was available
+score_contract: attempted twice, but connector returned 502 before Rust output was available
+```
+
+Scoring stance for the next implementation slice:
+
+```text
+I  = 0.98  storage-commit-intent evidence is ready to feed a deterministic storage-write-preflight boundary
+E  = 0.97  planned write preflight remains evidence-only and forbids retrieval reads, writes, queries, runtime approval, promotion, batch execution, and training
+C  = 0.91  current confidence is based on committed commit-intent validation plus this planning inspection; implementation validation is deferred to the next coding turn
+A  = 0.97  authority remains outside the LLM and outside the planned storage-write-preflight receipt
+R  = 0.96  planned healthy and controlled not-ready paths preserve regression coverage discipline
+P  = 0.95  no runtime retrieval, query, batch, or training cost is planned
+S  = 0.98  the next boundary will make storage-write preflight explicit before mutation authority exists
+D  = 0.97  planned receipts should use fixed source hashes, booleans, status strings, reason strings, and deterministic hashes
+T  = 0.98  storage-commit-intent and upstream source hashes will remain explicit
+Co = 0.95  plan and score now hand off the next storage-write-preflight gate
+Em = 0.95  planned root_validate modes will expose healthy and regression compact evidence
+B  = 0.97  external evaluators will receive deterministic write-preflight evidence before storage writes, runtime approval, promotion, or training
+L  = 1.00  the storage-write-preflight boundary continues the learning path toward safe retrieval-example persistence
+St = 0.97  planned work composes existing evidence without kernel or runtime authority drift
+Si = 0.97  one receipt should represent the write-preflight boundary instead of scattered downstream checks
+F  = 0.98  write preflight prepares later externally validated storage-write gates without committing to mutation behavior now
+G  ≈ 0.967
+```
+

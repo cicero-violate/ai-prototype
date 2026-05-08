@@ -973,3 +973,78 @@ tests/fixtures/external_agent_cli_modes.txt
 
 Observed `canon-rustc-v3/` working-tree changes remain outside this turn.
 
+## Planning Turn - Retrieval Example Storage Write Preflight
+
+Scope for this planning turn:
+
+```text
+selected_axis = Learning
+turn_type = planning_and_scoring_only
+implementation_target = retrieval-example storage-write-preflight evidence boundary
+owned_files_this_turn = plan.md, score.md
+out_of_scope = kernel changes, runtime reducer changes, durable writer changes, retrieval storage mutation, query execution, runtime result approval, policy promotion, batch execution, student training, live LLM calls, network calls, wall-clock-dependent scoring
+observed_unowned_changes = src/validation_harness.rs contains uncommitted storage-write-preflight work; canon-rustc-v3/* modified and untracked files remain outside this planning turn
+```
+
+Current state:
+
+- The committed evidence chain reaches retrieval-example storage-commit-intent.
+- The working tree already contains uncommitted validation-harness changes for retrieval-example storage-write-preflight, but this planning turn does not own or validate those source edits.
+- Storage commit intent is deterministic and evidence-only.
+- The next required boundary is an explicit storage-write-preflight receipt that checks commit intent and upstream learning/materialization/admission evidence before any future storage mutation authority exists.
+- Actual retrieval storage writes must remain forbidden in this slice.
+
+Planned implementation slice:
+
+```text
+Add or finish a deterministic policy reuse evidence receipt that consumes retrieval-example storage-commit-intent evidence and emits retrieval-example storage-write-preflight evidence.
+```
+
+Required healthy-path semantics:
+
+- `retrieval_example_storage_write_preflight_ready = true` only when storage-commit-intent evidence passed, retrieval-example storage was admitted, materialization-plan evidence was ready, learning admission and eligibility evidence passed, approval-admission-consumption evidence was consumed, approval-admission is admitted, upstream approval/readiness/admission booleans are true, external result evidence is present, no retrieval/runtime/promotion/batch/training side effects were performed, and storage-write-preflight policy-reuse examples are positive.
+- The receipt must bind to storage-commit-intent, materialization-plan, learning-admission, learning-eligibility, approval-admission-consumption, approval-admission, approval, readiness, and admission source hashes.
+- Healthy status should be `retrieval_example_storage_write_preflight_ready` with `not_ready_reason = "none"`.
+
+Required regression semantics:
+
+- Add a controlled not-ready case sourced from storage-commit-intent regression evidence.
+- Regression evidence should remain structurally valid while reporting `retrieval_example_storage_write_preflight_ready = false`, status `retrieval_example_storage_write_preflight_not_ready`, and `not_ready_reason = "retrieval_example_storage_commit_intent_not_ready"` or the most specific upstream commit-intent reason exposed by the source receipt.
+- The regression case must keep retrieval storage reads/writes, query execution, runtime result approval, policy promotion, batch execution, and student training false.
+
+Implementation notes for the next coding turn:
+
+1. Complete `src/validation_harness.rs` storage-write-preflight receipt constructors, deterministic hash helpers, JSON serialization, `passed()` and structural validation checks, healthy smoke receipt, and regression smoke receipt.
+2. Extend `src/bin/root_validate.rs` with compact healthy and regression modes for storage-write-preflight.
+3. Extend `tests/validation_harness_contract.rs` with direct receipt tests and executable CLI contract tests.
+4. Extend `tests/fixtures/external_agent_cli_modes.txt` only if new public root-validate modes are added.
+5. Keep `plan.md` and `score.md` updated with validation evidence after implementation.
+
+Validation plan for next coding turn:
+
+```text
+cargo fmt --check
+RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test validation_harness_contract storage_write_preflight --no-run --quiet
+RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test validation_harness_contract storage_write_preflight --quiet
+RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo check --quiet
+RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test planning_contract --quiet
+RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test score_contract --quiet
+```
+
+Planning decision:
+
+```text
+Proceed with retrieval-example storage-write-preflight as the next Learning slice. Do not perform actual retrieval storage writes. Do not modify the kernel, transition table, reducer, durable writer, or command ledger.
+```
+
+## Planning Turn Commit Scope - Retrieval Example Storage Write Preflight
+
+This planning turn should update and commit only:
+
+```text
+plan.md
+score.md
+```
+
+Existing uncommitted implementation/source changes remain outside this planning turn unless separately committed by their owning implementation turn.
+
