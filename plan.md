@@ -1,6 +1,6 @@
 # Canon Agent Implementation Plan
 
-This plan tracks the current deterministic implementation plan for the planning/scoring turn after implementation step 1 of the current agent loop.
+This plan tracks the current deterministic implementation plan for the planning/scoring turn after implementation step 2 of the current agent loop.
 
 ## North Star
 
@@ -40,108 +40,21 @@ The repository currently exposes these meaningful surfaces:
 - validation-harness/root-validate smoke exposure for healthy and controlled regression scaling-projection evidence;
 - deterministic policy reuse distillation-readiness receipt in the validation harness;
 - validation-harness/root-validate smoke exposure for healthy and controlled regression distillation-readiness evidence;
-- retained fixtures for policy reuse, policy validation health, policy validation trend, orchestration capacity, policy capacity/cost, runtime performance trend, validation duration planning, validation command footprint, and external CLI mode evidence.
+- deterministic policy reuse evidence-surface index receipt in the validation harness;
+- validation-harness/root-validate smoke exposure for healthy and controlled regression evidence-surface index evidence;
+- retained fixtures for policy reuse, policy validation health, policy validation trend, orchestration capacity, policy capacity/cost, runtime performance trend, validation duration planning, validation command footprint, external CLI mode evidence, and evidence-surface index coverage.
 
 ## Current Completed Implementation Baseline
 
-The current working tree contains deterministic **policy reuse distillation readiness** evidence in the validation-harness/root-validator layer, while retaining the evaluator-savings and scaling-projection implementation slices already present in this loop.
+The current working tree contains deterministic **policy reuse evidence-surface index** evidence in the validation-harness/root-validator layer, while retaining evaluator-savings, scaling-projection, and distillation-readiness evidence already present in this loop.
 
 This slice answers:
 
 ```text
-Can an evaluator inspect one deterministic receipt that says whether verified policy reuse, catalog completeness, evaluator savings, scaling projection, and validation health are clean enough to become future distillation or policy-promotion data?
+Can an evaluator inspect one deterministic receipt that says whether the policy-reuse learning evidence surface has the required receipt families, healthy root modes, regression root modes, and dependency groups?
 ```
 
 Implemented surfaces:
-
-```text
-PolicyReuseDistillationReadinessReceipt
-policy_reuse_distillation_readiness_smoke_receipt()
-policy_reuse_distillation_readiness_regression_smoke_receipt()
---policy-reuse-distillation-readiness-smoke
---policy-reuse-distillation-readiness-regression-smoke
-```
-
-Implemented fields:
-
-```text
-schema
-record_type
-readiness_version
-source_policy_reuse_hash
-source_cost_catalog_hash
-source_evaluator_savings_hash
-source_scaling_projection_hash
-source_validation_health_hash
-verified_policy_hits
-verified_llm_calls_avoided
-projected_llm_calls_avoided_per_full_batch
-projected_reasoning_cost_units_avoided_per_full_batch
-validation_guarded_test_count
-catalog_complete
-evaluator_savings_passed
-scaling_projection_passed
-validation_health_passed
-distillation_ready
-regression_reason
-readiness_hash
-receipt_hash
-```
-
-Completed implementation tasks:
-
-1. Added `PolicyReuseDistillationReadinessReceipt` with deterministic validation, JSON output, readiness hash, and receipt hash.
-2. Added healthy and controlled catalog-incomplete regression smoke constructors.
-3. Bound readiness evidence to policy reuse, cost catalog, evaluator-savings, scaling-projection, and validation-health source hashes.
-4. Added root validator compact modes for healthy and regression readiness receipts.
-5. Added validation harness contracts for readiness semantics, source binding, root-mode output, and controlled regression evidence.
-6. Updated external CLI mode fixture and root compact-mode counts for the two new public modes.
-7. Updated validation harness guarded-test count from 152 to 156.
-8. Updated retained guarded-test fixture values from 162 to 166 and refreshed dependent validation-duration estimates.
-9. Kept kernel authority unchanged and did not train a student model or promote policy.
-
-Implemented deterministic semantics:
-
-- `distillation_ready = true` only when catalog completeness, evaluator savings, scaling projection, validation health, and regression reason all pass.
-- Regression evidence remains structurally valid while exposing `distillation_ready = false` and `regression_reason = "catalog_incomplete"`.
-- Readiness source hashes bind to reuse, cost catalog, evaluator-savings, scaling projection, and validation-health evidence.
-- The readiness receipt is evidence-only; it records future learning suitability without granting policy authority.
-- The new receipt does not introduce live LLM, network, wall-clock, or environment-dependent measurement.
-
-## Validation Evidence Recorded For This Baseline
-
-```text
-cargo fmt --check
-RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --lib capability::judgment::record --quiet
-RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test validation_harness_contract --quiet
-RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test score_contract --test planning_contract --quiet
-
-cargo fmt --check: pass
-judgment::record unit tests: 20 passed, 0 failed
-validation_harness_contract: 156 passed, 0 failed
-planning_contract: 2 passed, 0 failed
-score_contract: 5 passed, 0 failed
-```
-
-Full-suite validation was not run before this planning/scoring update.
-
-## Planned Next Implementation Slice
-
-The weakest remaining axis is **Simplicity**.
-
-Current gap:
-
-```text
-The evidence surface now covers reuse, savings, projection, and distillation readiness, but public root modes and fixture-count churn are becoming a maintenance burden.
-```
-
-Recommended next slice:
-
-```text
-Add deterministic evidence-surface index or receipt-family catalog evidence that groups policy-reuse receipts by family, source dependencies, and root modes so evaluators can inspect the whole learning evidence surface without relying on scattered fixture/count knowledge.
-```
-
-Recommended concrete surfaces:
 
 ```text
 PolicyReuseEvidenceSurfaceIndexReceipt
@@ -151,13 +64,99 @@ policy_reuse_evidence_surface_index_regression_smoke_receipt()
 --policy-reuse-evidence-surface-index-regression-smoke
 ```
 
+Implemented fields:
+
+```text
+schema
+record_type
+index_version
+evidence_family_count
+healthy_mode_count
+regression_mode_count
+dependency_group_count
+indexed_root_mode_count
+source_policy_reuse_hash
+source_cost_catalog_hash
+source_evaluator_savings_hash
+source_scaling_projection_hash
+source_distillation_readiness_hash
+required_healthy_modes_present
+required_regression_modes_present
+required_dependency_groups_present
+index_complete
+missing_surface
+surface_hash
+receipt_hash
+```
+
+Completed implementation tasks:
+
+1. Added `PolicyReuseEvidenceSurfaceIndexReceipt` with deterministic validation, JSON output, surface hash, and receipt hash.
+2. Added healthy and controlled required-regression-modes-missing smoke constructors.
+3. Bound index evidence to policy reuse, cost catalog, evaluator-savings, scaling-projection, and distillation-readiness source hashes.
+4. Added root validator compact modes for healthy and regression index receipts.
+5. Added validation harness contracts for index semantics, source binding, mode counts, compact output, and controlled regression evidence.
+6. Updated external CLI mode fixture and root compact-mode counts for the two new public modes.
+7. Updated validation harness guarded-test count from 156 to 160.
+8. Updated retained guarded-test fixture values from 166 to 170 and refreshed dependent validation-duration estimates.
+9. Kept kernel authority unchanged and did not train a student model or promote policy.
+
+Implemented deterministic semantics:
+
+- `index_complete = true` only when required healthy modes, required regression modes, required dependency groups, and `missing_surface = "none"` all hold.
+- Regression evidence remains structurally valid while exposing `index_complete = false` and `missing_surface = "required_regression_modes"`.
+- Index source hashes bind to policy reuse, cost catalog, evaluator-savings, scaling-projection, and distillation-readiness evidence.
+- The index receipt is evidence-only; it summarizes evaluator-facing learning evidence without granting policy authority.
+- The new receipt does not introduce live LLM, network, wall-clock, or environment-dependent measurement.
+
+## Validation Evidence Recorded For This Baseline
+
+```text
+cargo fmt --check
+RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test validation_harness_contract policy_reuse_evidence_surface_index --quiet
+RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test score_contract --test planning_contract --quiet
+
+cargo fmt --check: pass
+validation_harness_contract policy_reuse_evidence_surface_index filter: 4 passed, 0 failed, 156 filtered out
+planning_contract: 2 passed, 0 failed
+score_contract: 5 passed, 0 failed
+```
+
+Full-suite validation was not run before this planning/scoring update.
+
+## Planned Next Implementation Slice
+
+The weakest remaining axis is **Performance**.
+
+Current gap:
+
+```text
+The evidence surface now indexes learning receipts and dependencies, but root validation still exposes many compact modes that must be invoked one at a time to inspect the learning evidence surface.
+```
+
+Recommended next slice:
+
+```text
+Add a deterministic policy reuse evidence bundle receipt that rolls up the indexed policy-reuse evidence surface into one compact root mode for evaluator inspection.
+```
+
+Recommended concrete surfaces:
+
+```text
+PolicyReuseEvidenceBundleReceipt
+policy_reuse_evidence_bundle_smoke_receipt()
+policy_reuse_evidence_bundle_regression_smoke_receipt()
+--policy-reuse-evidence-bundle-smoke
+--policy-reuse-evidence-bundle-regression-smoke
+```
+
 Recommended constraints:
 
 1. Keep the kernel untouched.
 2. Do not introduce live LLM, network, wall-clock, or environment-dependent measurement.
-3. Summarize existing root modes and source dependencies instead of adding new authority.
-4. Prefer reducing evaluator ambiguity over adding more independent receipt semantics.
-5. Include healthy and controlled omitted-mode or dependency-missing regression cases.
+3. Reuse existing receipt hashes instead of recomputing independent semantics.
+4. Prefer one evaluator-facing bundle verdict over additional scattered root-mode interpretation.
+5. Include healthy and controlled incomplete-index or dependency-mismatch regression cases.
 6. Keep student-model training deferred.
 
 ## Evaluation Axes
@@ -191,8 +190,8 @@ arg max(G) = good
 - Full live Ollama validation remains environment-dependent.
 - Graph telemetry still requires explicit wrapper capture.
 - Student-model training is intentionally deferred until verified distillation data is large and clean.
-- Parallel orchestration execution should wait until larger-batch reuse, validation health, retained validation/runtime cost, catalog completeness, evaluator savings, scaling projection, distillation readiness, and evidence-surface indexing are proven together.
-- Full-suite validation should run after the evidence-surface index slice if fixture or CLI mode churn is broader than expected.
+- Parallel orchestration execution should wait until larger-batch reuse, validation health, retained validation/runtime cost, catalog completeness, evaluator savings, scaling projection, distillation readiness, evidence-surface indexing, and bundled evidence inspection are proven together.
+- Full-suite validation should run after the evidence-bundle slice if fixture or CLI mode churn is broader than expected.
 
 ## Turn Protocol
 
