@@ -1,6 +1,6 @@
 # Canon Agent Score
 
-This scorecard records current progress after implementation step 2 of the current agent loop. The working tree contains deterministic policy reuse evaluator-savings, scaling-projection, distillation-readiness, evidence-surface index, evidence-bundle, evidence-quickcheck, evidence-maturity, evidence-summary, evidence-manifest, evidence validation-budget, evidence rollout-readiness, evidence learning-admission, evidence retrieval-readiness, evidence compact-validation, batch-readiness, batch-execution-plan, batch-evaluation-admission, batch-run-request, external-evaluator-result, learning-candidate, learning-data-admission, retrieval-example-admission, retrieval-example-index, retrieval-corpus-readiness, retrieval-corpus-admission, retrieval-use-approval, retrieval-use-manifest, retrieval-query-plan, retrieval-query-approval, retrieval-result-admission, retrieval-result-manifest, retrieval-result-use-admission, retrieval-result-use-manifest, retrieval-result-use-readiness, retrieval-result-use-approval, retrieval-result-use-manifest-admission, retrieval-result-use-summary, and retrieval-result-use-summary-manifest evidence.
+This scorecard records current progress after implementation step 3 of the current agent loop. The working tree contains deterministic policy reuse evaluator-savings, scaling-projection, distillation-readiness, evidence-surface index, evidence-bundle, evidence-quickcheck, evidence-maturity, evidence-summary, evidence-manifest, evidence validation-budget, evidence rollout-readiness, evidence learning-admission, evidence retrieval-readiness, evidence compact-validation, batch-readiness, batch-execution-plan, batch-evaluation-admission, batch-run-request, external-evaluator-result, learning-candidate, learning-data-admission, retrieval-example-admission, retrieval-example-index, retrieval-corpus-readiness, retrieval-corpus-admission, retrieval-use-approval, retrieval-use-manifest, retrieval-query-plan, retrieval-query-approval, retrieval-result-admission, retrieval-result-manifest, retrieval-result-use-admission, retrieval-result-use-manifest, retrieval-result-use-readiness, retrieval-result-use-approval, retrieval-result-use-manifest-admission, retrieval-result-use-summary, retrieval-result-use-summary-manifest, and retrieval-result-use-summary-manifest-admission evidence.
 
 ## Validation Evidence
 
@@ -8,17 +8,17 @@ Targeted validation relevant to the current implemented baseline:
 
 ```text
 command = cargo fmt --check
-command = RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test validation_harness_contract retrieval_result_use_summary_manifest --no-run --quiet
+command = RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test validation_harness_contract retrieval_result_use_summary_manifest_admission --no-run --quiet
 command = RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo check --quiet
 command = RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test planning_contract --test score_contract --quiet
-command = RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test validation_harness_contract retrieval_result_use_summary_manifest --quiet
-result  = partial pass; focused executable result-use-summary-manifest tests blocked by connector 502
+command = RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test validation_harness_contract retrieval_result_use_summary_manifest_admission --quiet
+result  = partial pass; focused executable result-use-summary-manifest-admission tests blocked by connector 502
 
 cargo fmt --check: pass
-validation_harness_contract retrieval_result_use_summary_manifest --no-run: pass
+validation_harness_contract retrieval_result_use_summary_manifest_admission --no-run: pass
 cargo check --quiet: pass
 planning_contract and score_contract: pass
-retrieval-result-use-summary-manifest focused executable tests: attempted, connector returned 502 before a Rust result was available
+retrieval-result-use-summary-manifest-admission focused executable tests: attempted, connector returned 502 before a Rust result was available
 ```
 
 ## Axis Scores
@@ -26,22 +26,22 @@ retrieval-result-use-summary-manifest focused executable tests: attempted, conne
 Scores are on a `0.00` to `1.00` scale and reflect the current repository evidence inspected and updated this turn.
 
 ```text
-I  Intelligence      = 0.98  summary-ready result-use evidence can now be packaged through deterministic summary-manifest evidence
-E  Efficiency        = 0.97  result-use summary manifest is produced without retrieval reads, writes, query execution, or runtime result approval
-C  Correctness       = 0.90  formatting, cargo check, focused summary-manifest no-run, and planning/score tests pass; connector blocked focused executable result-use-summary-manifest tests
-A  Alignment         = 0.97  summary-manifest evidence forbids retrieval reads/writes, policy promotion, and student training
-R  Robustness        = 0.96  healthy and controlled summary-not-ready summary-manifest paths are covered by compiled contracts
-P  Performance       = 0.95  evidence-only result-use summary manifest avoids runtime retrieval storage operations, query execution, and result approval
-S  Scalability       = 0.98  retrieval-result-use-summary-manifest evidence extends the chain toward manifest admission and later retrieval gates
-D  Determinism       = 0.97  summary-manifest receipts use fixed source hashes, counts, booleans, status strings, and hashes
-T  Transparency      = 0.98  source hashes, external result evidence, summary-manifest counts, readiness status, and not-ready reason are explicit
-Co Collaboration     = 0.95  plan and score now hand off a retrieval-result-use-summary-manifest-admission slice
-Em Empowerment       = 0.95  root_validate consumers have direct modes for retrieval-result-use-summary-manifest evidence once connector execution is available
-B  Benefit           = 0.97  evaluators get deterministic retrieval-result-use-summary-manifest evidence before storage, query execution, runtime result approval, or model training
-L  Learning          = 1.00  summary-ready result-use evidence can now become packaged manifest evidence without storage operations
-St Structure         = 0.97  retrieval-result-use-summary-manifest composes existing evidence without kernel or authority drift
-Si Simplicity        = 0.97  the retrieval-result-use-summary-manifest boundary is represented by one receipt instead of scattered checks
-F  Future-Proofing   = 0.98  retrieval-result-use-summary-manifest evidence prepares for manifest admission and later retrieval/model gates
+I  Intelligence      = 0.98  packaged summary-manifest evidence can now be admitted through deterministic admission evidence
+E  Efficiency        = 0.97  result-use summary manifest admission is produced without retrieval reads, writes, query execution, or runtime result approval
+C  Correctness       = 0.90  formatting, cargo check, focused admission no-run, and planning/score tests pass; connector blocked focused executable result-use-summary-manifest-admission tests
+A  Alignment         = 0.97  summary-manifest admission evidence forbids retrieval reads/writes, policy promotion, and student training
+R  Robustness        = 0.96  healthy and controlled summary-manifest-not-ready admission paths are covered by compiled contracts
+P  Performance       = 0.95  evidence-only result-use summary manifest admission avoids runtime retrieval storage operations, query execution, and result approval
+S  Scalability       = 0.98  retrieval-result-use-summary-manifest-admission evidence extends the chain toward readiness and later retrieval gates
+D  Determinism       = 0.97  summary-manifest-admission receipts use fixed source hashes, counts, booleans, status strings, and hashes
+T  Transparency      = 0.98  source hashes, external result evidence, admission counts, admission status, and not-admitted reason are explicit
+Co Collaboration     = 0.95  plan and score now hand off a retrieval-result-use-summary-manifest-readiness slice
+Em Empowerment       = 0.95  root_validate consumers have direct modes for retrieval-result-use-summary-manifest-admission evidence once connector execution is available
+B  Benefit           = 0.97  evaluators get deterministic retrieval-result-use-summary-manifest-admission evidence before storage, query execution, runtime result approval, or model training
+L  Learning          = 1.00  packaged summary-manifest evidence can now become admitted evidence without storage operations
+St Structure         = 0.97  retrieval-result-use-summary-manifest-admission composes existing evidence without kernel or authority drift
+Si Simplicity        = 0.97  the retrieval-result-use-summary-manifest-admission boundary is represented by one receipt instead of scattered checks
+F  Future-Proofing   = 0.98  retrieval-result-use-summary-manifest-admission evidence prepares for readiness and later retrieval/model gates
 ```
 
 Approximate geometric mean:
@@ -53,42 +53,42 @@ G ≈ 0.966
 ## Current Judgment
 
 ```text
-turn_type = implementation_step_2
+turn_type = implementation_step_3
 weakest_axis = Learning
-secondary_risk = retrieval-result-use summary-manifest admission boundary is not yet admitted
-completed_action = added deterministic policy reuse evidence retrieval-result-use-summary-manifest evidence
-current_gap = retrieval-result-use-summary-manifest is explicit, but retrieval-result-use-summary-manifest-admission evidence is not admitted
-next_action = add deterministic policy reuse evidence retrieval-result-use-summary-manifest-admission evidence
+secondary_risk = retrieval-result-use summary-manifest readiness boundary is not yet confirmed
+completed_action = added deterministic policy reuse evidence retrieval-result-use-summary-manifest-admission evidence
+current_gap = retrieval-result-use-summary-manifest-admission is explicit, but retrieval-result-use-summary-manifest-readiness evidence is not confirmed
+next_action = add deterministic policy reuse evidence retrieval-result-use-summary-manifest-readiness evidence
 scope = validation-harness/root-validator evidence only; kernel authority unchanged
-validation = formatting, focused result-use-summary-manifest no-run, cargo check, and planning/score tests passed; focused executable result-use-summary-manifest tests attempted but connector returned 502
+validation = formatting, focused result-use-summary-manifest-admission no-run, cargo check, and planning/score tests passed; focused executable result-use-summary-manifest-admission tests attempted but connector returned 502
 ```
 
 ## Why Learning Is Still The Next Target
 
-Learning improved because summary-ready result-use evidence can now become packaged summary-manifest evidence without promoting policy, reading/writing retrieval storage, executing retrieval queries, approving runtime results, or training a model. Learning remains the next target because the stack still lacks retrieval-result-use-summary-manifest-admission evidence that admits packaged summary-manifest evidence without giving the runtime authority over retrieval storage or result approval.
+Learning improved because packaged summary-manifest evidence can now become admitted evidence without promoting policy, reading/writing retrieval storage, executing retrieval queries, approving runtime results, or training a model. Learning remains the next target because the stack still lacks retrieval-result-use-summary-manifest-readiness evidence that confirms admitted summary-manifest evidence without giving the runtime authority over retrieval storage or result approval.
 
 ## Next Score Improvement Target
 
-Raise `L` by adding a deterministic policy reuse evidence retrieval-result-use-summary-manifest-admission receipt.
+Raise `L` by adding a deterministic policy reuse evidence retrieval-result-use-summary-manifest-readiness receipt.
 
 Acceptance criteria for the next slice:
 
-1. A deterministic healthy retrieval-result-use-summary-manifest-admission receipt exists and validates successfully.
-2. A deterministic regression retrieval-result-use-summary-manifest-admission receipt exists and exposes a concrete summary-manifest-not-ready reason.
-3. Retrieval-result-use-summary-manifest-admission evidence references retrieval-result-use-summary-manifest and retrieval-result-use-summary receipts instead of adding policy authority.
-4. Root validator compact modes expose healthy and regression retrieval-result-use-summary-manifest-admission receipts.
-5. Validation harness contract tests assert retrieval-result-use-summary-manifest-admission semantics, source binding, compact output, and controlled failing evidence.
+1. A deterministic healthy retrieval-result-use-summary-manifest-readiness receipt exists and validates successfully.
+2. A deterministic regression retrieval-result-use-summary-manifest-readiness receipt exists and exposes a concrete summary-manifest-not-admitted reason.
+3. Retrieval-result-use-summary-manifest-readiness evidence references retrieval-result-use-summary-manifest-admission and retrieval-result-use-summary-manifest receipts instead of adding policy authority.
+4. Root validator compact modes expose healthy and regression retrieval-result-use-summary-manifest-readiness receipts.
+5. Validation harness contract tests assert retrieval-result-use-summary-manifest-readiness semantics, source binding, compact output, and controlled failing evidence.
 6. Planning and score contract tests pass after documentation updates.
 7. The receipt remains evidence-only and does not expand kernel authority, promote policy, execute batches, read/write retrieval storage, execute retrieval queries, or train a student model.
 
-## Implementation Step 2 Score Decision - Retrieval Result Use Summary Manifest
+## Implementation Step 3 Score Decision - Retrieval Result Use Summary Manifest Admission
 
 ```text
 selected_axis = Learning
 score_change_this_turn = retained L at 1.00
-reason = retrieval-result-use-summary-manifest evidence composes retrieval-result-use-summary and retrieval-result-use-manifest-admission into one deterministic result-use-summary-manifest-ready boundary without retrieval storage operations, query execution, runtime result approval, promotion, or student training
+reason = retrieval-result-use-summary-manifest-admission evidence composes retrieval-result-use-summary-manifest and retrieval-result-use-summary into one deterministic result-use-summary-manifest-admitted boundary without retrieval storage operations, query execution, runtime result approval, promotion, or student training
 source_changes_observed_but_not_owned = canon-rustc-v3/* modified and untracked files remain out of scope for this implementation turn
-commit_scope = retrieval-result-use-summary-manifest implementation, tests, fixture, plan.md, score.md
+commit_scope = retrieval-result-use-summary-manifest-admission implementation, tests, fixture, plan.md, score.md
 ```
 
 ## Completed Score Improvement Target
