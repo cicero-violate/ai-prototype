@@ -250,7 +250,9 @@ pub fn build_router(state: WorkerAppState) -> axum::Router {
 
 ---
 
-## Step 4 — `src/bin/worker.rs`
+## Step 4 — `src/bin/worker.rs` — completed 2026-05-08
+
+Status: implemented in this turn. The worker binary now reads `PORT` and `AI_TLOG_DIR`, initializes or resumes durable runtime state, builds `WorkerAppState`, serves `build_router(state)` on `127.0.0.1:PORT`, and shuts down through Tokio signal handling. It still does not run an autonomous tick loop; state advances only through HTTP command ingress.
 
 Runs when `AI_WORKER_MODE=1`. Short main:
 

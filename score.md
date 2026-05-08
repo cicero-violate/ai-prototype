@@ -1,87 +1,66 @@
 # Canon Agent Score
 
-## Implementation Step 3 Scorecard - 2026-05-08
+## Implementation Step 4 Scorecard - 2026-05-08
 
-This turn implemented Step 3 of the supervisor/worker/MCP integration plan: the worker HTTP
-adapter in `src/api/server.rs`. The server exposes `/health/worker`, `/v1/state`, and
-`/v1/command` while keeping command mutation behind `ApiTransportSession::handle_frame`.
+This turn implemented Step 4 of the supervisor/worker/MCP integration plan: the reloadable
+worker binary startup path. The worker now starts an HTTP server on `127.0.0.1:PORT`, initializes
+or resumes durable runtime state under `AI_TLOG_DIR`, wraps it in `WorkerAppState`, serves the
+Step 3 API router, and supports signal-based graceful shutdown through Tokio.
 
 ```text
-turn_type = implementation_step_3_worker_api_server
-score_change_this_turn = robustness_correctness_structure_credit
-commit_scope = Cargo.toml, Cargo.lock, src/api/server.rs, src/api/mod.rs, src/lib.rs, tests/api_server_contract.rs, plan.md, score.md
-recommended_next_lane = worker_binary_runtime_startup
-implementation_authority_change = HTTP adapter added; kernel and transport authority unchanged
+turn_type = implementation_step_4_worker_binary_runtime
+score_change_this_turn = robustness_scalability_correctness_credit
+commit_scope = src/bin/worker.rs, tests/worker_binary_contract.rs, plan.md, score.md
+recommended_next_lane = supervisor_lifecycle_reload
+implementation_authority_change = worker process can now serve validated API router; kernel authority unchanged
 policy_authority_change = none
 retrieval_write_change = none
-runtime_mutation_change = command route delegates to existing ApiTransportSession only
+runtime_mutation_change = worker initializes one durable runtime event only when TLog is empty; command mutation remains API-only
 ```
 
 ## Completed This Turn
 
 ```text
-new file: src/api/server.rs
-new file: tests/api_server_contract.rs
-modified: Cargo.toml
-modified: Cargo.lock
-modified: src/api/mod.rs
-modified: src/lib.rs
+modified: src/bin/worker.rs
+new file: tests/worker_binary_contract.rs
 modified: plan.md
 modified: score.md
 ```
 
-Implemented surfaces:
+Implemented worker behavior:
 
 ```text
-WorkerAppState
-WorkerSession
-CommandEnvelopeDto
-CommandResponseDto
-StateDto
-EvidenceSubmissionDto
-ErrorDto
-ServerError
-build_router
-health
-get_state
-post_command
+worker --help exits successfully without required environment
+PORT is required for normal startup
+AI_TLOG_DIR defaults to tlog
+TLog path = AI_TLOG_DIR/worker-tlog.ndjson
+missing TLog directory is created
+empty durable runtime is initialized with one canonical tick
+existing durable runtime is resumed through resume_durable_runtime
+WorkerAppState wraps ApiTransportSession::from_parts
+worker binds 127.0.0.1:PORT
+worker serves build_router(state)
+worker handles SIGINT/SIGTERM through graceful shutdown
 ```
 
-Current command DTO support is deliberately narrow and deterministic:
-
-```text
-supported payload_tag = SubmitEvidence
-supported payload_tag = SubmitEvidenceBatch
-unsupported payload_tag = 400 Bad Request
-invalid payload shape = 400 Bad Request
-invalid command hash/contract = 400 Bad Request
-transport replay conflict = 409 Conflict
-```
-
-The route boundary preserves the existing architecture:
-
-```text
-HTTP DTO -> CommandEnvelope -> ApiTransportFrame -> ApiTransportSession::handle_frame -> TLog write
-```
-
-No route mutates kernel state directly. `/v1/state` is read-only. `/health/worker` has no state
-dependency and returns `ok`.
+The worker still does not run an autonomous tick loop. After startup initialization, state
+advances through the existing HTTP command route only.
 
 ## Validation Evidence
 
 ```text
 CARGO_BUILD_RUSTC_WRAPPER= cargo fmt --check                                      pass
 CARGO_BUILD_RUSTC_WRAPPER= cargo check --all-targets --quiet                       pass
+CARGO_BUILD_RUSTC_WRAPPER= cargo test --test worker_binary_contract --quiet        pass
 CARGO_BUILD_RUSTC_WRAPPER= cargo test --test api_server_contract --quiet           pass
-CARGO_BUILD_RUSTC_WRAPPER= cargo test --test api_transport_contract --quiet        pass
 CARGO_BUILD_RUSTC_WRAPPER= cargo test --test planning_contract --test score_contract --quiet  pass
 ```
 
 Focused contract result:
 
 ```text
+worker_binary_contract: 2 passed
 api_server_contract:    4 passed
-api_transport_contract: 13 passed
 planning_contract:      2 passed
 score_contract:         5 passed
 ```
@@ -89,15 +68,12 @@ score_contract:         5 passed
 ## Contract Coverage Added
 
 ```text
-worker_health_route_returns_ok
-state_route_is_read_only
-command_route_uses_transport_session_and_persists_tlog
-invalid_command_does_not_mutate_state
+worker_help_does_not_require_environment
+worker_process_serves_health_and_initializes_tlog
 ```
 
-These tests prove that health is stable, state reads do not mutate the session, command ingress
-routes through a tick-initialized `ApiTransportSession` and persists the TLog, and invalid command
-DTOs leave state unchanged and do not write a TLog file.
+These tests prove that the binary help path is non-mutating and environment-independent, and that
+a real spawned worker process serves `/health/worker` and creates a durable worker TLog.
 
 ## Observed Unscored Worktree Changes
 
@@ -120,23 +96,22 @@ untracked: src/domain/
 untracked: teacher-student.md
 ```
 
-These are not scored here and should remain outside the Step 3 commit.
+These are not scored here and should remain outside the Step 4 commit.
 
 ## Current Axis Scores
 
-A small increase is justified for Correctness, Robustness, and Structure because the worker API
-server now exists, preserves the transport boundary, rejects invalid DTOs without mutation, and
-has focused route-level tests. No Scalability increase is claimed until the actual worker binary
-loads runtime state and serves the router.
+A small increase is justified for Correctness, Robustness, and Scalability because the worker
+binary now serves the validated API router in a real process and has a startup/health/TLog smoke
+test. Structure remains capped at 1.00 from the previous step.
 
 ```text
 I  Intelligence      = 0.98
 E  Efficiency        = 0.97
-C  Correctness       = 0.92
+C  Correctness       = 0.93
 A  Alignment         = 0.97
-R  Robustness        = 0.97
+R  Robustness        = 0.98
 P  Performance       = 0.95
-S  Scalability       = 0.98
+S  Scalability       = 0.99
 D  Determinism       = 0.98
 T  Transparency      = 0.98
 Co Collaboration     = 0.95
@@ -151,32 +126,32 @@ F  Future-Proofing   = 0.98
 Approximate geometric mean:
 
 ```text
-G ≈ 0.971
+G ≈ 0.973
 ```
 
 ## Current Judgment
 
 ```text
 weakest_axis = Correctness
-weakest_axis_reason = worker API is validated, but the worker binary still does not bind/serve it or load durable runtime state
+weakest_axis_reason = worker binary is live, but supervisor reload lifecycle and retired-worker handling are not implemented
 primary_next_axis = Robustness
 secondary_next_axis = Scalability
 guard_axis = Correctness
-current_gap = src/bin/worker.rs remains a placeholder and does not run the HTTP server
-next_action = implement Step 4 worker binary startup, environment parsing, router binding, and graceful shutdown
-score_freeze_reason = no live worker process startup smoke or graceful shutdown evidence yet
+current_gap = src/bin/supervisor.rs remains a placeholder and cannot spawn or reload workers
+next_action = implement Step 5 supervisor lifecycle, health, reload, dynamic port allocation, and retired-worker drain
+score_freeze_reason = no supervisor process management, reload, dead-worker, or drain evidence yet
 ```
 
 ## Conditions For Next Score Increase
 
 The next implementation should not increase Robustness or Scalability unless it adds committed
-worker binary runtime code and focused evidence proving:
+supervisor lifecycle code and focused evidence proving:
 
 ```text
-worker reads PORT and AI_TLOG_DIR from environment
-worker initializes or loads an ApiTransportSession-compatible runtime state
-worker binds 127.0.0.1:PORT and serves build_router(state)
-worker handles SIGTERM/SIGINT graceful shutdown path
-worker --help/startup smoke does not mutate runtime state
-health endpoint works from the binary process, not only from in-process router tests
+supervisor reads SUPERVISOR_PORT, AI_TLOG_DIR, AI_WORKER_BIN, and AI_MCP_WORKER_URL
+supervisor allocates a local worker port and spawns worker
+GET /health reports active generation and worker port
+POST /reload starts a new worker before retiring the old worker
+retired workers are killed after a bounded drain window
+supervisor handles missing/dead worker without panic
 ```
