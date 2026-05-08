@@ -17,7 +17,7 @@ pub const FAST_TEST_STEP: &str = "fast_score_contract_tests";
 pub const LIB_UNIT_STEP: &str = "lib_unit_contract_tests";
 pub const API_TRANSPORT_STEP: &str = "api_transport_contract_tests";
 pub const VALIDATION_HARNESS_STEP: &str = "validation_harness_contract_tests";
-pub const VALIDATION_HARNESS_EXPECTED_TESTS: usize = 164;
+pub const VALIDATION_HARNESS_EXPECTED_TESTS: usize = 168;
 pub const PLANNING_CONTRACT_STEP: &str = "planning_contract_tests";
 pub const GRAPH_MUTATION_CLI_CONTRACT_STEP: &str = "graph_mutation_cli_contract_tests";
 pub const GRAPH_MUTATION_CLI_CONTRACT_EXPECTED_TESTS: usize = 10;
@@ -94,6 +94,10 @@ pub const POLICY_REUSE_EVIDENCE_SURFACE_INDEX_REGRESSION_SMOKE_STEP: &str =
 pub const POLICY_REUSE_EVIDENCE_BUNDLE_SMOKE_STEP: &str = "policy_reuse_evidence_bundle_smoke";
 pub const POLICY_REUSE_EVIDENCE_BUNDLE_REGRESSION_SMOKE_STEP: &str =
     "policy_reuse_evidence_bundle_regression_smoke";
+pub const POLICY_REUSE_EVIDENCE_QUICKCHECK_SMOKE_STEP: &str =
+    "policy_reuse_evidence_quickcheck_smoke";
+pub const POLICY_REUSE_EVIDENCE_QUICKCHECK_REGRESSION_SMOKE_STEP: &str =
+    "policy_reuse_evidence_quickcheck_regression_smoke";
 pub const POLICY_VALIDATION_HEALTH_SMOKE_STEP: &str = "policy_validation_health_smoke";
 pub const POLICY_VALIDATION_HEALTH_TREND_SMOKE_STEP: &str = "policy_validation_health_trend_smoke";
 pub const POLICY_ORCHESTRATION_CAPACITY_SMOKE_STEP: &str = "policy_orchestration_capacity_smoke";
@@ -1383,6 +1387,81 @@ impl PolicyReuseEvidenceBundleReceipt {
             self.bundle_complete,
             self.regression_reason,
             self.bundle_hash,
+            self.receipt_hash,
+        )
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PolicyReuseEvidenceQuickcheckReceipt {
+    pub schema: &'static str,
+    pub record_type: &'static str,
+    pub quickcheck_version: u64,
+    pub source_bundle_hash: u64,
+    pub validation_harness_expected_tests: usize,
+    pub required_command_count: usize,
+    pub observed_command_count: usize,
+    pub minimum_command_set_hash: u64,
+    pub bundle_complete: bool,
+    pub commands_complete: bool,
+    pub quickcheck_passed: bool,
+    pub missing_command: &'static str,
+    pub quickcheck_hash: u64,
+    pub receipt_hash: u64,
+}
+
+impl PolicyReuseEvidenceQuickcheckReceipt {
+    pub fn passed(&self) -> bool {
+        self.is_valid() && self.quickcheck_passed
+    }
+
+    pub fn is_valid(&self) -> bool {
+        self.schema == "canon_policy_reuse_evidence_quickcheck_v1"
+            && matches!(
+                self.record_type,
+                "policy_reuse_evidence_quickcheck"
+                    | POLICY_REUSE_EVIDENCE_QUICKCHECK_SMOKE_STEP
+                    | POLICY_REUSE_EVIDENCE_QUICKCHECK_REGRESSION_SMOKE_STEP
+            )
+            && self.quickcheck_version == 1
+            && self.source_bundle_hash != 0
+            && self.validation_harness_expected_tests == VALIDATION_HARNESS_EXPECTED_TESTS
+            && self.required_command_count == 4
+            && self.observed_command_count <= self.required_command_count
+            && self.minimum_command_set_hash == policy_reuse_evidence_quickcheck_command_set_hash()
+            && matches!(
+                self.missing_command,
+                "none" | "validation_harness_contract" | "planning_score_contracts" | "cargo_fmt"
+            )
+            && self.commands_complete
+                == (self.observed_command_count == self.required_command_count
+                    && self.missing_command == "none")
+            && self.quickcheck_passed
+                == (self.bundle_complete
+                    && self.commands_complete
+                    && self.missing_command == "none")
+            && self.quickcheck_hash != 0
+            && self.receipt_hash != 0
+            && self.quickcheck_hash == policy_reuse_evidence_quickcheck_hash(self)
+            && self.receipt_hash == policy_reuse_evidence_quickcheck_receipt_hash(self)
+    }
+
+    pub fn to_json(&self) -> String {
+        format!(
+            "{{\"schema\":\"{}\",\"record_type\":\"{}\",\"quickcheck_version\":{},\"source_bundle_hash\":{},\"validation_harness_expected_tests\":{},\"required_command_count\":{},\"observed_command_count\":{},\"minimum_command_set_hash\":{},\"bundle_complete\":{},\"commands_complete\":{},\"quickcheck_passed\":{},\"missing_command\":\"{}\",\"quickcheck_hash\":{},\"receipt_hash\":{}}}",
+            self.schema,
+            self.record_type,
+            self.quickcheck_version,
+            self.source_bundle_hash,
+            self.validation_harness_expected_tests,
+            self.required_command_count,
+            self.observed_command_count,
+            self.minimum_command_set_hash,
+            self.bundle_complete,
+            self.commands_complete,
+            self.quickcheck_passed,
+            self.missing_command,
+            self.quickcheck_hash,
             self.receipt_hash,
         )
     }
@@ -3244,6 +3323,67 @@ fn finalize_policy_reuse_evidence_bundle(receipt: &mut PolicyReuseEvidenceBundle
     receipt.receipt_hash = policy_reuse_evidence_bundle_receipt_hash(receipt);
 }
 
+pub fn policy_reuse_evidence_quickcheck_smoke_receipt() -> PolicyReuseEvidenceQuickcheckReceipt {
+    let bundle = policy_reuse_evidence_bundle_smoke_receipt();
+    let mut receipt = policy_reuse_evidence_quickcheck_from_bundle(
+        POLICY_REUSE_EVIDENCE_QUICKCHECK_SMOKE_STEP,
+        &bundle,
+        4,
+        "none",
+    );
+    finalize_policy_reuse_evidence_quickcheck(&mut receipt);
+    receipt
+}
+
+pub fn policy_reuse_evidence_quickcheck_regression_smoke_receipt(
+) -> PolicyReuseEvidenceQuickcheckReceipt {
+    let bundle = policy_reuse_evidence_bundle_smoke_receipt();
+    let mut receipt = policy_reuse_evidence_quickcheck_from_bundle(
+        POLICY_REUSE_EVIDENCE_QUICKCHECK_REGRESSION_SMOKE_STEP,
+        &bundle,
+        3,
+        "validation_harness_contract",
+    );
+    finalize_policy_reuse_evidence_quickcheck(&mut receipt);
+    receipt
+}
+
+fn policy_reuse_evidence_quickcheck_from_bundle(
+    record_type: &'static str,
+    bundle: &PolicyReuseEvidenceBundleReceipt,
+    observed_command_count: usize,
+    missing_command: &'static str,
+) -> PolicyReuseEvidenceQuickcheckReceipt {
+    let required_command_count = 4;
+    let commands_complete =
+        observed_command_count == required_command_count && missing_command == "none";
+    let bundle_complete = bundle.bundle_complete;
+    let quickcheck_passed = bundle_complete && commands_complete && missing_command == "none";
+    let mut receipt = PolicyReuseEvidenceQuickcheckReceipt {
+        schema: "canon_policy_reuse_evidence_quickcheck_v1",
+        record_type,
+        quickcheck_version: 1,
+        source_bundle_hash: bundle.receipt_hash,
+        validation_harness_expected_tests: VALIDATION_HARNESS_EXPECTED_TESTS,
+        required_command_count,
+        observed_command_count,
+        minimum_command_set_hash: policy_reuse_evidence_quickcheck_command_set_hash(),
+        bundle_complete,
+        commands_complete,
+        quickcheck_passed,
+        missing_command,
+        quickcheck_hash: 0,
+        receipt_hash: 0,
+    };
+    finalize_policy_reuse_evidence_quickcheck(&mut receipt);
+    receipt
+}
+
+fn finalize_policy_reuse_evidence_quickcheck(receipt: &mut PolicyReuseEvidenceQuickcheckReceipt) {
+    receipt.quickcheck_hash = policy_reuse_evidence_quickcheck_hash(receipt);
+    receipt.receipt_hash = policy_reuse_evidence_quickcheck_receipt_hash(receipt);
+}
+
 #[allow(clippy::too_many_arguments)]
 fn policy_reuse_evidence_surface_index_from_sources(
     record_type: &'static str,
@@ -3509,6 +3649,62 @@ fn policy_orchestration_capacity_hash(receipt: &PolicyOrchestrationCapacityRecei
     h = h.wrapping_mul(0x100000001b3) ^ policy_reuse_verdict_code;
     h = h.wrapping_mul(0x100000001b3) ^ verdict_code;
     h.max(1)
+}
+
+fn policy_reuse_evidence_quickcheck_command_set_hash() -> u64 {
+    let mut h = 0x504f_4c52_4551_4348u64;
+    for command in [
+        "cargo fmt --check",
+        "cargo test --test validation_harness_contract policy_reuse_evidence_quickcheck",
+        "cargo test --test validation_harness_contract",
+        "cargo test --test score_contract --test planning_contract",
+    ] {
+        h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(command.as_bytes());
+    }
+    h.max(1)
+}
+
+fn policy_reuse_evidence_quickcheck_hash(receipt: &PolicyReuseEvidenceQuickcheckReceipt) -> u64 {
+    if receipt.quickcheck_version == 0
+        || receipt.source_bundle_hash == 0
+        || receipt.minimum_command_set_hash == 0
+    {
+        return 0;
+    }
+    let missing_command_code = match receipt.missing_command {
+        "none" => 1,
+        "validation_harness_contract" => 2,
+        "planning_score_contracts" => 3,
+        "cargo_fmt" => 4,
+        _ => 0,
+    };
+    if missing_command_code == 0 {
+        return 0;
+    }
+    let mut h = 0x504f_4c52_4551_5548u64;
+    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.schema.as_bytes());
+    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.record_type.as_bytes());
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.quickcheck_version;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_bundle_hash;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.validation_harness_expected_tests as u64;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.required_command_count as u64;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.observed_command_count as u64;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.minimum_command_set_hash;
+    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.bundle_complete);
+    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.commands_complete);
+    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.quickcheck_passed);
+    h = h.wrapping_mul(0x100000001b3) ^ missing_command_code;
+    h.max(1)
+}
+
+fn policy_reuse_evidence_quickcheck_receipt_hash(
+    receipt: &PolicyReuseEvidenceQuickcheckReceipt,
+) -> u64 {
+    let quickcheck_hash = policy_reuse_evidence_quickcheck_hash(receipt);
+    if quickcheck_hash == 0 || receipt.quickcheck_hash != quickcheck_hash {
+        return 0;
+    }
+    (quickcheck_hash ^ 0x504f_4c52_4551_5552u64).max(1)
 }
 
 fn policy_reuse_evidence_bundle_hash(receipt: &PolicyReuseEvidenceBundleReceipt) -> u64 {
