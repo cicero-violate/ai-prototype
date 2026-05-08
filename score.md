@@ -1,55 +1,57 @@
 # Canon Agent Score
 
-## Planning Scorecard - 2026-05-08T12:10Z
+## Planning Scorecard - 2026-05-08
 
-This turn is planning and scoring only. No implementation score increase is claimed. The score remains evidence-conservative because implementation changes are present but unvalidated by focused checks.
+This turn is planning and scoring only. No implementation score increase is
+claimed. Existing uncommitted implementation and fixture changes remain
+unscored until a later turn validates and commits them deliberately.
 
 ```text
 turn_type = planning_scoring
 score_change_this_turn = none
 commit_scope = plan.md, score.md
-primary_handoff = deterministic auto-refactor graph evidence and read-only report surface
-secondary_handoff = next evidence-only learning boundary after retrieval-example storage-write-commit-intent
+recommended_next_lane = auto_refactor_graph_evidence
 implementation_authority_change = none
+policy_authority_change = none
+retrieval_write_change = none
+runtime_mutation_change = none
 ```
-
-## Validation Evidence For This Planning Turn
-
-The root planning and score contracts passed:
-
-```text
-RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test planning_contract --test score_contract --quiet
-
-planning_contract: pass, 2 tests
-score_contract: pass, 5 tests
-```
-
-This validation supports the planning/scoring update only. It is not evidence that the uncommitted `canon-rustc-v3` implementation changes are correct.
 
 ## Current Evidence Posture
 
-The current plan preserves two candidate implementation directions:
+The repository has candidate implementation work in two apparent areas:
 
-1. **Structure/Efficiency:** deterministic `similar`, `phase`, and `provider` graph relations plus a read-only auto-refactor reporting surface.
-2. **Learning:** a next evidence-only boundary after retrieval-example storage-write-commit-intent, without retrieval storage mutation or policy authority expansion.
+1. deterministic auto-refactor graph evidence and operation planning;
+2. validation-harness expectation or fixture maintenance.
 
-Observed non-planning worktree changes are not counted as completed implementation evidence:
+Neither area is scored in this checkpoint because this turn did not validate or
+commit those implementation changes. The planning commit only records the
+handoff and the validation gates required for future score movement.
+
+## Observed Unscored Worktree Changes
 
 ```text
-modified: canon-rustc-v3/src/facts.rs
-modified: canon-rustc-v3/src/hir.rs
-modified: canon-rustc-v3/src/mir.rs
-modified: canon-rustc-v3/src/wrapper.rs
-modified: canon-rustc-v3/validation/semantic_preflight.py
-modified: canon-rustc-v3/validation/semantic_scale_probe.py
-untracked: canon-rustc-v3/plan-autorefactor.md
-untracked: canon-rustc-v3/validation/auto_refactor_surface.py
-untracked: canon-rustc-v3/validation/auto_refactor_surface_smoke.py
+modified: canon-rustc-v3/plan-autorefactor.md
+modified: graph-editor/Cargo.toml
+modified: graph-editor/src/graph.rs
+modified: graph-editor/src/lib.rs
+modified: src/validation_harness.rs
+modified: tests/fixtures/validation_command_footprint_receipts.txt
+modified: tests/fixtures/validation_duration_planning_receipts.txt
+modified: tests/validation_harness_contract.rs
+untracked: canon-rustc-v3/validation/auto_refactor_ops.py
+untracked: canon-rustc-v3/validation/auto_refactor_ops_smoke.py
+untracked: graph-editor/src/autorefactor.rs
+untracked: graph-editor/src/bin/auto_refactor_plan.rs
+untracked: plan-autorefactor.md
 ```
+
+These changes may become score-relevant only after focused validation evidence
+is produced and the selected implementation scope is committed.
 
 ## Current Axis Scores
 
-Scores remain unchanged in this planning turn.
+Scores remain unchanged for this planning checkpoint.
 
 ```text
 I  Intelligence      = 0.98
@@ -80,138 +82,72 @@ G ≈ 0.966
 
 ```text
 weakest_axis = Correctness
-weakest_axis_reason = candidate auto-refactor implementation is present but not validated or committed as evidence
+weakest_axis_reason = implementation changes are present but not validated in this planning turn
 primary_next_axis = Structure
 secondary_next_axis = Efficiency
-learning_boundary_status = retrieval-example storage-write-commit-intent remains the previous verified evidence-only handoff
-current_gap = observed auto-refactor relation/report work lacks focused validation and commit evidence
-next_action = validate and commit deterministic auto-refactor graph signals/reporting, or defer them and select the next evidence-only Learning boundary
-recommended_next_lane = auto_refactor_graph_evidence
-score_freeze_reason = planning turn only; no focused implementation validation evidence added
+guard_axis = Correctness
+current_gap = auto-refactor and validation-harness changes need focused validation and commit discipline
+next_action = validate deterministic advisory auto-refactor graph evidence or split off validation-harness repair
+score_freeze_reason = planning/scoring turn only; no focused implementation validation evidence added
 ```
 
-## Evidence Required Before Any Score Increase
+## Conditions For Future Score Increase
+
+Score increases are allowed only after committed implementation evidence and
+clean validation output.
+
+Suggested movement if the auto-refactor lane is validated:
 
 ```text
-- focused implementation scope selected and documented
-- deterministic output across repeated runs
-- healthy and controlled-regression coverage where public modes or receipts are added
-- advisory/non-authoritative semantics proven for any new graph/report evidence
-- cargo fmt --check passes
-- RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo check --quiet passes
-- RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test planning_contract --test score_contract --quiet passes
-- focused Rust contract tests pass for touched implementation paths
-- relevant Python smoke tests pass for semantic/reporting surfaces
+Structure: +0.01 if graph relations produce typed, sorted, deduplicated advisory operation specs
+Efficiency: +0.01 if the planner reduces manual refactor-surface inspection without adding runtime authority
+Correctness: +0.01 only if focused healthy and controlled-regression tests prove non-mutating behavior
+Determinism: +0.01 only if repeated generation is byte-stable under the same inputs
+Learning: unchanged unless a separate evidence-only learning boundary is selected and validated
 ```
 
-## Non-Scored Items
-
-The current worktree may contain useful candidate implementation. It remains non-scored until an implementation turn supplies validation evidence and commits the implementation deliberately.
-This score checkpoint is intended to be committed with `plan.md` only. It records no implementation score increase and does not authorize staging the observed `canon-rustc-v3` changes.
-
-
-
-## Current Turn Score Addendum: External Agent CLI Catalog Repair
-
-This turn fixed and validated a narrow contract-maintenance defect in the external-agent CLI mode catalog. The repair updates stale catalog counts and expected compact JSON fragments only. It does not add implementation authority or alter the state-machine kernel.
-
-Validation evidence:
+Do not raise any score for:
 
 ```text
-CARGO_BUILD_RUSTC_WRAPPER= cargo test --test validation_harness_contract external_agent_cli -- --nocapture
-running 6 tests
-6 passed; 0 failed; 0 ignored; 0 measured; 346 filtered out
+uncommitted implementation
+unexecuted tests
+generated plans without validation
+live LLM output
+reports that can mutate runtime state
+policy promotion without external validation
+retrieval writes without explicit storage authority
 ```
 
-Score impact:
+## Validation Required For Next Scored Turn
 
-```text
-Correctness: no numeric increase; stale contract drift was repaired, but broader validation remains incomplete
-Transparency: no numeric increase; catalog/count evidence is clearer, but no new scoring threshold is met
-Determinism: no numeric increase; deterministic fixture validation passed for the focused surface only
-```
-
-Commit scope for this addendum:
-
-```text
-plan.md
-score.md
-tests/fixtures/external_agent_cli_modes.txt
-tests/validation_harness_contract.rs
-```
-
-Unrelated modified or untracked `canon-rustc-v3` files remain non-scored and intentionally unstaged.
-
-
-## Current Turn Score Addendum: Retrieval Evidence Test Runtime Repair
-
-This turn repairs a focused performance defect in retrieval evidence smoke receipt construction. The originally slow exact receipt tests now pass individually below 9 seconds after caching deterministic upstream smoke receipts and removing duplicate finalization calls.
-
-Validation evidence:
-
-```text
-CARGO_BUILD_RUSTC_WRAPPER= cargo check --quiet
-CARGO_BUILD_RUSTC_WRAPPER= cargo fmt --check
-8 originally slow exact receipt tests passed
-max observed exact-test runtime = 8.29s
-```
-
-Score impact:
-
-```text
-Performance: eligible for +0.01 in the next scoring cycle if the committed change remains stable under broader validation
-Correctness: unchanged; behavior is intended to be semantically identical and focused exact tests passed
-Determinism: unchanged; cached receipts are immutable deterministic smoke receipts
-```
-
-Commit scope for this addendum:
-
-```text
-plan.md
-score.md
-src/validation_harness.rs
-tests/validation_harness_contract.rs
-```
-
-
-## Current Turn Score Addendum: Validation Harness Drift Repair
-
-This turn repaired a broad validation-harness expectation drift represented by the uploaded failure list. The work is test/fixture-only: it aligns contract expectations with current compact JSON output and current harness-count totals.
-
-Validation evidence:
+Minimum baseline:
 
 ```text
 CARGO_BUILD_RUSTC_WRAPPER= cargo fmt --check
 CARGO_BUILD_RUSTC_WRAPPER= cargo check --quiet
-11 focused exact tests passed from the uploaded failure surface
+CARGO_BUILD_RUSTC_WRAPPER= cargo test --test planning_contract --test score_contract --quiet
 ```
 
-Score impact:
+Auto-refactor-specific scoring evidence:
 
 ```text
-Correctness: unchanged numerically; focused residual failures are fixed, but full-suite validation was blocked by connector/duplicate-process instability
-Transparency: unchanged numerically; fixture/count expectations are clearer and current
-Determinism: unchanged; no runtime state-machine, TLog, policy-promotion, retrieval-write, or learning authority changed
+cd graph-editor && CARGO_BUILD_RUSTC_WRAPPER= cargo fmt --check
+cd graph-editor && CARGO_BUILD_RUSTC_WRAPPER= cargo check --quiet
+cd graph-editor && CARGO_BUILD_RUSTC_WRAPPER= cargo test --quiet
+python3 canon-rustc-v3/validation/auto_refactor_ops_smoke.py
+byte-for-byte identical repeated auto-refactor output for the same graph input
+explicit proof that generated operations are advisory specs and not applied edits
 ```
 
-Commit scope for this addendum:
+Validation-harness maintenance scoring evidence, if selected instead:
 
 ```text
-plan.md
-score.md
-tests/fixtures/policy_validation_health_receipts.txt
-tests/validation_harness_contract.rs
+focused validation_harness_contract filters for each touched fixture surface
+clear explanation of expected-current-output alignment
+no runtime authority, kernel, TLog, policy, retrieval, or learning change
 ```
 
-## Scoring Rule For Next Turn
+## Non-Scored Planning Result
 
-Raise scores only if the next turn provides committed implementation evidence plus validation output. Suggested axis movement, if evidence is clean:
-
-```text
-Structure: +0.01 only for deterministic sorted/deduplicated relation evidence with advisory semantics
-Efficiency: +0.01 only if reporting reduces repeated manual inspection without adding runtime authority
-Correctness: +0.01 only if focused healthy and controlled-regression tests pass and prove non-authoritative behavior
-Learning: unchanged unless the selected lane is a verified evidence-only learning boundary
-```
-
-Do not raise any axis for uncommitted code, generated plans, unexecuted tests, live LLM output, or reports that can mutate runtime state.
+This checkpoint improves handoff clarity only. It does not change the numeric
+score because it adds no new implementation validation evidence.

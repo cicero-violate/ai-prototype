@@ -1,8 +1,11 @@
 # Canon Agent Implementation Plan
 
-## Planning Checkpoint - 2026-05-08T12:10Z
+## Planning Checkpoint - 2026-05-08
 
-This turn is planning and scoring only. It does not adopt, validate, or score the implementation changes currently present outside `plan.md` and `score.md`. Its purpose is to keep the next implementation turn constrained to deterministic evidence production rather than opportunistic runtime expansion.
+This turn is planning and scoring only. It records the current repository state,
+selects the next implementation lane, and freezes score movement until focused
+validation evidence is produced. It does not approve or score the uncommitted
+implementation changes currently present in the worktree.
 
 Committed scope for this turn:
 
@@ -11,238 +14,188 @@ plan.md
 score.md
 ```
 
-The active project direction remains Canon Agent as a deterministic, evidence-backed, self-improving runtime where the state-machine kernel governs correctness and the capability layer accumulates intelligence without gaining authority over the kernel.
+## Project Direction
 
-## Boundary To Preserve
+Canon Agent remains a deterministic, self-improving agent runtime governed by a
+formally verifiable state-machine kernel. The kernel owns correctness and
+transition authority. The capability layer may propose, evaluate, report, and
+learn from evidence, but it must not gain authority over the kernel.
 
-The next implementation work must preserve these design boundaries:
+The target architecture is still:
 
-1. The kernel owns transition authority and correctness enforcement.
-2. The transaction log records structured, typed, hash-chained evidence.
-3. The capability layer may propose, evaluate, summarize, and learn from evidence.
-4. LLM output is proposal evidence only; it is never approval authority.
+```text
+kernel correctness -> typed evidence -> external validation -> policy/retrieval learning
+```
+
+The LLM remains a proposal source only. It does not approve itself, mutate the
+transaction log, promote policy, or bypass validation.
+
+## Invariants To Preserve
+
+1. The state-machine kernel governs all authoritative transitions.
+2. The TLog records structured, typed, hash-chained evidence.
+3. Capability outputs are evidence inputs, not authority.
+4. LLM output is proposal evidence only.
 5. Policy promotion requires external validation evidence.
-6. Retrieval examples remain evidence-bound and non-mutating until an explicit storage authority boundary is validated.
-7. Student-model training remains out of scope until the dataset is large, clean, and externally validated.
+6. Retrieval examples remain evidence-bound and non-authoritative unless a
+   separate storage authority boundary is explicitly validated.
+7. Student-model training remains out of scope until the dataset is large,
+   clean, and externally validated.
+8. Planning/reporting surfaces must be deterministic, sorted where practical,
+   and free of live network or live LLM dependencies.
 
 ## Current Worktree Evidence
 
-Observed non-planning implementation changes remain present in the worktree:
+The current worktree contains uncommitted non-planning changes. They appear to
+target deterministic auto-refactor planning and validation-harness expectation
+maintenance:
 
 ```text
-modified: canon-rustc-v3/src/facts.rs
-modified: canon-rustc-v3/src/hir.rs
-modified: canon-rustc-v3/src/mir.rs
-modified: canon-rustc-v3/src/wrapper.rs
-modified: canon-rustc-v3/validation/semantic_preflight.py
-modified: canon-rustc-v3/validation/semantic_scale_probe.py
-untracked: canon-rustc-v3/plan-autorefactor.md
-untracked: canon-rustc-v3/validation/auto_refactor_surface.py
-untracked: canon-rustc-v3/validation/auto_refactor_surface_smoke.py
+modified: canon-rustc-v3/plan-autorefactor.md
+modified: graph-editor/Cargo.toml
+modified: graph-editor/src/graph.rs
+modified: graph-editor/src/lib.rs
+modified: src/validation_harness.rs
+modified: tests/fixtures/validation_command_footprint_receipts.txt
+modified: tests/fixtures/validation_duration_planning_receipts.txt
+modified: tests/validation_harness_contract.rs
+untracked: canon-rustc-v3/validation/auto_refactor_ops.py
+untracked: canon-rustc-v3/validation/auto_refactor_ops_smoke.py
+untracked: graph-editor/src/autorefactor.rs
+untracked: graph-editor/src/bin/auto_refactor_plan.rs
+untracked: plan-autorefactor.md
 ```
 
-These files appear to target graph-guided auto-refactor relation evidence and read-only semantic/reporting surfaces. They are not scored in this planning turn. The next implementation turn must either validate and commit them deliberately, or defer/revert them before selecting another lane.
+These files are not included in this planning/scoring commit. The next
+implementation turn must either validate and commit them deliberately as one
+coherent lane, or defer/revert them before selecting a different lane.
 
-## Root Validation Evidence For Planning Artifacts
+## Selected Next Lane
 
-The existing root planning and score contracts were run after inspecting the current planning artifacts:
+Recommended next lane:
 
 ```text
-RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test planning_contract --test score_contract --quiet
-
-planning_contract: pass, 2 tests
-score_contract: pass, 5 tests
+lane = auto_refactor_graph_evidence
+primary_axis = Structure
+secondary_axis = Efficiency
+guard_axis = Correctness
 ```
-
-This validates the root planning/scoring contract files only. It does not validate the uncommitted `canon-rustc-v3` implementation changes.
-
-## Primary Next Slice: Deterministic Auto-Refactor Graph Evidence
-
-The recommended next implementation turn should focus on **Structure** first and **Efficiency** second.
 
 Target outcome:
 
 ```text
-similar, phase, and provider relations are emitted as deterministic graph metadata and consumed only by read-only advisory reporting surfaces.
+schema-v16 graph relations are consumed by deterministic advisory
+auto-refactor planners that emit typed operation specifications without
+rewriting source or changing runtime authority.
 ```
 
-Implementation steps:
+The auto-refactor lane is valuable only if it remains advisory. It may identify
+split, merge, and provider-boundary candidates. It must not mutate source,
+authorize runtime behavior, promote policy, approve candidates, or alter kernel
+transitions.
 
-1. Inspect `canon-rustc-v3/plan-autorefactor.md` and decide whether it is the authoritative lane plan or only a draft.
-2. Confirm the relation vocabulary for `similar`, `phase`, and `provider` in the graph/facts layer.
-3. Ensure relation extraction and serialization are stable, sorted, and deduplicated across repeated runs.
-4. Define relation semantics explicitly:
-   - `similar` = heuristic duplicate or merge signal only;
-   - `phase` = split-boundary or refactor-stage guidance only;
-   - `provider` = provenance or boundary metadata only.
-5. Prove that these relations cannot alter kernel transitions, reducer behavior, authorization, retry behavior, provider routing, policy promotion, retrieval writes, or model training.
-6. Finish `canon-rustc-v3/validation/auto_refactor_surface.py` as a read-only report generator over graph JSON.
-7. Make report output deterministic: sorted objects, stable grouping, no mutation path, no network dependency, and no live LLM dependency.
-8. Finish `canon-rustc-v3/validation/auto_refactor_surface_smoke.py` with deterministic fixture coverage for healthy and controlled edge cases.
-9. Explain any changes to `semantic_preflight.py` and `semantic_scale_probe.py` as validation/reporting coverage, not weakened risk handling.
-10. Commit implementation only after focused validation evidence is clean.
+## Implementation Plan For Next Turn
 
-## Secondary Next Slice: Learning Evidence Boundary
+1. Inspect the uncommitted auto-refactor files and decide whether the root
+   `plan-autorefactor.md` and `canon-rustc-v3/plan-autorefactor.md` are both
+   needed. Avoid duplicate authoritative plans.
+2. Verify the graph schema expectations in `graph-editor/src/graph.rs`, with
+   special attention to schema version, relation parsing, missing fields, and
+   deterministic ordering.
+3. Validate `graph-editor/src/autorefactor.rs` as an advisory planner only:
+   - consumes `call`, `phase`, `similar`, and `provider` relations;
+   - emits stable `SplitFn`, `MergeFns`, and `ExtractTrait` operation specs;
+   - sorts and deduplicates surfaces and operations;
+   - carries stale-operation guards where source spans exist;
+   - performs no source rewrite.
+4. Validate `graph-editor/src/bin/auto_refactor_plan.rs` as a deterministic CLI
+   surface over graph JSON.
+5. Validate `canon-rustc-v3/validation/auto_refactor_ops.py` and smoke coverage
+   as planning/reporting tools only. They must not weaken semantic validation or
+   create a mutation path.
+6. Separate validation-harness expectation drift from auto-refactor graph-editor
+   work if possible. Do not combine unrelated fixes unless the tests require a
+   single coherent commit.
+7. Add or confirm focused tests for:
+   - healthy graph input;
+   - malformed or unsupported schema input;
+   - stable repeated output;
+   - advisory/non-mutating behavior;
+   - operation-count consistency.
+8. Run focused validation before staging anything.
 
-If the next turn selects Learning instead of auto-refactor evidence, inspect the tracked evidence chain after retrieval-example storage-write-commit-intent and choose the next deterministic evidence-only handoff.
+## Validation Gate Before Implementation Commit
 
-Constraints for any Learning continuation:
-
-```text
-- no retrieval storage mutation
-- no retrieval query execution
-- no runtime result approval
-- no policy promotion authority
-- no batch execution
-- no live LLM or network call
-- no wall-clock-dependent measurement
-- no student-model training
-```
-
-Any new public validation mode must include healthy evidence, controlled-regression evidence, and explicit upstream receipt-hash binding.
-
-## Validation Gate Before Any Implementation Score Increase
-
-Minimum evidence before raising the implementation score:
-
-```text
-cargo fmt --check
-RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo check --quiet
-RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test planning_contract --test score_contract --quiet
-focused Rust contract tests for touched evidence paths
-relevant Python smoke tests for semantic/reporting surfaces
-stable repeated output evidence for graph/report generation
-explicit proof that new evidence remains advisory and non-authoritative
-```
-
-Additional gate if the auto-refactor slice is selected:
-
-```text
-- relation vocabulary includes similar, phase, and provider with deterministic serialization
-- graph extraction emits sorted, deduplicated relation evidence across repeated runs
-- auto_refactor_surface.py reads graph JSON and writes stable sorted JSON only
-- auto_refactor_surface_smoke.py covers healthy and controlled edge cases
-- semantic_preflight.py accepts the new relation vocabulary without weakening checks
-- semantic_scale_probe.py reports the new surface without hiding risk or scale regressions
-```
-
-## Explicit Non-Goals
-
-Do not incidentally add or alter:
-
-```text
-state-machine kernel authority
-transition table semantics
-runtime reducer behavior
-durable writer behavior
-hash-chain transaction log semantics
-policy promotion authority
-retrieval storage mutation
-retrieval query execution
-runtime result approval
-live LLM or network behavior
-student-model training
-provider authorization or routing
-```
-
-## Current Decision
-
-No implementation progress is claimed in this planning turn. The next useful turn should either validate and commit the deterministic auto-refactor graph/reporting work as advisory evidence, or defer/revert that work and select the next evidence-only Learning boundary.
-
-
-## Current Turn Addendum: External Agent CLI Mode Catalog Repair
-
-The immediate execution lane changed from planning-only to a focused maintenance repair after four external-agent CLI mode-contract tests failed. The fix is deliberately narrow:
-
-```text
-- align tests/fixtures/external_agent_cli_modes.txt declared mode_count with observed fixture entries
-- align EXPECTED_EXTERNAL_AGENT_CLI_MODE_COUNT with the same catalog size
-- align external_agent_cli_modes_catalog_valid root/graph split with the observed fixture split
-- normalize external-agent compact JSON expectations to match actual root_validate stdout
-```
-
-Validation evidence collected in this turn:
-
-```text
-CARGO_BUILD_RUSTC_WRAPPER= cargo test --test validation_harness_contract external_agent_cli -- --nocapture
-result: 6 passed; 0 failed; 0 ignored; 0 measured; 346 filtered out
-```
-
-The root Cargo config currently forces a stale `canon-rustc-v3/target/debug/canon-rustc-v3` rustc wrapper that cannot load `librustc_driver-61971b66f7da0581.so`. The validation command therefore overrides only `CARGO_BUILD_RUSTC_WRAPPER=`. This does not change runtime authority, kernel semantics, policy promotion, retrieval, or learning behavior.
-
-Unrelated existing `canon-rustc-v3` modifications remain out of scope for this commit and should not be staged as part of the CLI catalog repair.
-
-
-## Current Turn Addendum: Retrieval Evidence Test Runtime Repair
-
-The execution lane shifted to a focused performance repair after retrieval evidence receipt tests exceeded 60 seconds. The fix keeps receipt semantics unchanged while removing repeated deterministic recomposition:
-
-```text
-- cache immutable upstream policy-reuse smoke receipts with std::sync::OnceLock
-- return cloned cached receipts to preserve caller ownership and immutability
-- remove duplicate public-builder finalization where from_sources already finalizes
-- normalize retrieval example/corpus executable-contract compact JSON fragments
-```
-
-Validation evidence collected in this turn:
-
-```text
-CARGO_BUILD_RUSTC_WRAPPER= cargo check --quiet
-CARGO_BUILD_RUSTC_WRAPPER= cargo fmt --check
-original slow exact receipt tests: 8/8 passed
-observed per-test times: 4.50s, 4.62s, 4.81s, 4.99s, 7.23s, 7.42s, 8.16s, 8.29s
-```
-
-The broader `policy_reuse_evidence_retrieval_` filter also includes unrelated later root_validate executable-contract tests with stale compact-JSON fragment expectations. Those are out of scope for this repair unless selected explicitly in a later turn.
-
-
-## Current Turn Addendum: Validation Harness Drift Repair
-
-The uploaded failure list showed broad validation-harness drift after the public compact JSON surface moved from escaped string fragments to plain compact JSON and the retained harness counts increased. This turn repaired the focused drift without changing runtime authority:
-
-```text
-- normalize root_validate stdout assertions for plain compact JSON string terminators
-- map legacy retained harness-count fragments to current VALIDATION_HARNESS_EXPECTED_TESTS-derived values
-- update dispatch catalog fixture matching and payload extraction for plain JSON
-- update retained policy validation health fixture count from 210 to 274
-- refresh direct policy reuse, validation health, cost trend, and validation budget expectations
-```
-
-Validation evidence collected in this turn:
+Minimum validation for the next implementation turn:
 
 ```text
 CARGO_BUILD_RUSTC_WRAPPER= cargo fmt --check
 CARGO_BUILD_RUSTC_WRAPPER= cargo check --quiet
-11 focused exact tests from the uploaded failure surface passed
+CARGO_BUILD_RUSTC_WRAPPER= cargo test --test planning_contract --test score_contract --quiet
 ```
 
-Full `validation_harness_contract` runs repeatedly triggered connector-side 502s and duplicate/stale background processes. After cleaning those up, the focused failure surface passed exactly; a complete full-suite pass should be retried by the next turn with a stable runner and no duplicate background jobs.
-
-## Handoff Checklist For Next Agent Turn
-
-Before modifying implementation files, the next agent should choose exactly one lane:
+Additional validation for the auto-refactor lane:
 
 ```text
-lane = auto_refactor_graph_evidence | learning_evidence_boundary | cleanup_defer
+cd graph-editor && CARGO_BUILD_RUSTC_WRAPPER= cargo fmt --check
+cd graph-editor && CARGO_BUILD_RUSTC_WRAPPER= cargo check --quiet
+cd graph-editor && CARGO_BUILD_RUSTC_WRAPPER= cargo test --quiet
+python3 canon-rustc-v3/validation/auto_refactor_ops_smoke.py
+repeat auto-refactor plan generation twice and compare byte-for-byte output
 ```
 
-Lane-specific entry criteria:
+If validation-harness files remain part of the selected implementation scope,
+also run focused `validation_harness_contract` tests for the touched fixture
+surfaces and record the exact filters used.
+
+## Commit Discipline
+
+The next implementation commit should include only files required for the chosen
+lane. Candidate commit scopes:
 
 ```text
 auto_refactor_graph_evidence:
-  - inspect canon-rustc-v3/plan-autorefactor.md if present
-  - verify modified facts/hir/mir/wrapper files preserve read-only evidence semantics
-  - complete deterministic relation/report validation before commit
+  graph-editor/Cargo.toml
+  graph-editor/src/graph.rs
+  graph-editor/src/lib.rs
+  graph-editor/src/autorefactor.rs
+  graph-editor/src/bin/auto_refactor_plan.rs
+  canon-rustc-v3/validation/auto_refactor_ops.py
+  canon-rustc-v3/validation/auto_refactor_ops_smoke.py
+  exactly one authoritative auto-refactor plan document, if needed
 
-learning_evidence_boundary:
-  - leave auto-refactor work untouched or explicitly defer it
-  - select one evidence-only receipt boundary
-  - keep retrieval writes, policy promotion, and model training disabled
-
-cleanup_defer:
-  - make no implementation changes
-  - document why observed worktree changes are deferred
-  - preserve existing score unless validation evidence is added later
+validation_harness_expectation_repair:
+  src/validation_harness.rs
+  tests/fixtures/validation_command_footprint_receipts.txt
+  tests/fixtures/validation_duration_planning_receipts.txt
+  tests/validation_harness_contract.rs
 ```
 
-The default recommendation is `auto_refactor_graph_evidence` because current uncommitted files already point at that lane and can be evaluated without granting new runtime authority.
+Do not stage both scopes together unless the next turn proves they are coupled
+by tests and documents that coupling.
+
+## Explicit Non-Goals
+
+Do not add or alter:
+
+```text
+state-machine transition authority
+kernel reducer behavior
+durable TLog writer semantics
+hash-chain semantics
+policy promotion authority
+retrieval storage mutation
+retrieval query execution
+runtime candidate approval
+live LLM or network behavior
+student-model training
+provider authorization or routing
+automatic source rewrite application
+```
+
+## Handoff Decision
+
+Proceed with `auto_refactor_graph_evidence` only after focused validation proves
+that the new surfaces are deterministic, advisory, non-mutating, and sorted. If
+that evidence cannot be produced cleanly, defer the auto-refactor work and repair
+only the validation-harness expectation drift as a separate maintenance lane.
