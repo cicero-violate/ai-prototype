@@ -272,7 +272,9 @@ The worker does NOT run its own tick loop. State advances only in response to
 
 ---
 
-## Step 5 — `src/bin/supervisor.rs`
+## Step 5 — `src/bin/supervisor.rs` — completed 2026-05-08
+
+Status: implemented in this turn. The supervisor binary now reads supervisor/worker environment settings, spawns a local worker on a dynamically allocated port, exposes `/health` and `/reload`, starts a replacement worker before retiring the old one, drains retired workers, and shuts down active/retired workers on supervisor shutdown.
 
 Models on `chatgpt-mcp-connector/src/worker.rs`. Stable — never reloads itself.
 

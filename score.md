@@ -1,56 +1,60 @@
 # Canon Agent Score
 
-## Implementation Step 4 Scorecard - 2026-05-08
+## Implementation Step 5 Scorecard - 2026-05-08
 
-This turn implemented Step 4 of the supervisor/worker/MCP integration plan: the reloadable
-worker binary startup path. The worker now starts an HTTP server on `127.0.0.1:PORT`, initializes
-or resumes durable runtime state under `AI_TLOG_DIR`, wraps it in `WorkerAppState`, serves the
-Step 3 API router, and supports signal-based graceful shutdown through Tokio.
+This turn implemented Step 5 of the supervisor/worker/MCP integration plan: the stable
+supervisor binary. The supervisor now owns worker lifecycle, starts a worker on boot, exposes
+`GET /health`, supports `POST /reload`, starts a replacement worker before retiring the old one,
+and kills active/retired workers on shutdown.
 
 ```text
-turn_type = implementation_step_4_worker_binary_runtime
+turn_type = implementation_step_5_supervisor_lifecycle_reload
 score_change_this_turn = robustness_scalability_correctness_credit
-commit_scope = src/bin/worker.rs, tests/worker_binary_contract.rs, plan.md, score.md
-recommended_next_lane = supervisor_lifecycle_reload
-implementation_authority_change = worker process can now serve validated API router; kernel authority unchanged
+commit_scope = Cargo.toml, Cargo.lock, src/bin/supervisor.rs, tests/supervisor_binary_contract.rs, plan.md, score.md
+recommended_next_lane = example_trace_or_plan_reconciliation
+implementation_authority_change = supervisor can spawn/reload worker processes; kernel and API authority unchanged
 policy_authority_change = none
 retrieval_write_change = none
-runtime_mutation_change = worker initializes one durable runtime event only when TLog is empty; command mutation remains API-only
+runtime_mutation_change = none; supervisor never proxies /v1/command or mutates kernel state
 ```
 
 ## Completed This Turn
 
 ```text
-modified: src/bin/worker.rs
-new file: tests/worker_binary_contract.rs
+modified: Cargo.toml
+modified: Cargo.lock
+modified: src/bin/supervisor.rs
+new file: tests/supervisor_binary_contract.rs
 modified: plan.md
 modified: score.md
 ```
 
-Implemented worker behavior:
+Implemented supervisor behavior:
 
 ```text
-worker --help exits successfully without required environment
-PORT is required for normal startup
+supervisor --help exits successfully without required environment
+SUPERVISOR_PORT defaults to 9100
 AI_TLOG_DIR defaults to tlog
-TLog path = AI_TLOG_DIR/worker-tlog.ndjson
-missing TLog directory is created
-empty durable runtime is initialized with one canonical tick
-existing durable runtime is resumed through resume_durable_runtime
-WorkerAppState wraps ApiTransportSession::from_parts
-worker binds 127.0.0.1:PORT
-worker serves build_router(state)
-worker handles SIGINT/SIGTERM through graceful shutdown
+AI_WORKER_BIN defaults to worker binary next to supervisor
+AI_MCP_WORKER_URL defaults to http://127.0.0.1:38469/mcp_worker
+supervisor allocates worker port from 127.0.0.1:0
+supervisor spawns worker with AI_WORKER_MODE, PORT, AI_TLOG_DIR, AI_MCP_WORKER_URL, AI_WORKER_GENERATION
+supervisor waits for worker /health/worker before publishing active generation
+GET /health reports ok, generation, and worker_port
+POST /reload starts new worker before retiring old worker
+retired workers are killed after bounded drain window
+shutdown kills active and retired workers
 ```
 
-The worker still does not run an autonomous tick loop. After startup initialization, state
-advances through the existing HTTP command route only.
+The supervisor intentionally does not expose `/v1/command` or `/v1/state`. Command/state routes
+remain worker-only, preserving the existing API transport boundary.
 
 ## Validation Evidence
 
 ```text
 CARGO_BUILD_RUSTC_WRAPPER= cargo fmt --check                                      pass
 CARGO_BUILD_RUSTC_WRAPPER= cargo check --all-targets --quiet                       pass
+CARGO_BUILD_RUSTC_WRAPPER= cargo test --test supervisor_binary_contract --quiet    pass
 CARGO_BUILD_RUSTC_WRAPPER= cargo test --test worker_binary_contract --quiet        pass
 CARGO_BUILD_RUSTC_WRAPPER= cargo test --test api_server_contract --quiet           pass
 CARGO_BUILD_RUSTC_WRAPPER= cargo test --test planning_contract --test score_contract --quiet  pass
@@ -59,21 +63,23 @@ CARGO_BUILD_RUSTC_WRAPPER= cargo test --test planning_contract --test score_cont
 Focused contract result:
 
 ```text
-worker_binary_contract: 2 passed
-api_server_contract:    4 passed
-planning_contract:      2 passed
-score_contract:         5 passed
+supervisor_binary_contract: 2 passed
+worker_binary_contract:     2 passed
+api_server_contract:        4 passed
+planning_contract:          2 passed
+score_contract:             5 passed
 ```
 
 ## Contract Coverage Added
 
 ```text
-worker_help_does_not_require_environment
-worker_process_serves_health_and_initializes_tlog
+supervisor_help_does_not_require_environment
+supervisor_spawns_worker_and_reloads_generation
 ```
 
-These tests prove that the binary help path is non-mutating and environment-independent, and that
-a real spawned worker process serves `/health/worker` and creates a durable worker TLog.
+These tests prove that the supervisor help path is non-mutating and environment-independent, and
+that a real supervisor process starts generation 1 worker, reports health, reloads to generation
+2 on a different worker port, and exposes the replacement worker's `/health/worker` endpoint.
 
 ## Observed Unscored Worktree Changes
 
@@ -96,22 +102,22 @@ untracked: src/domain/
 untracked: teacher-student.md
 ```
 
-These are not scored here and should remain outside the Step 4 commit.
+These are not scored here and should remain outside the Step 5 commit.
 
 ## Current Axis Scores
 
-A small increase is justified for Correctness, Robustness, and Scalability because the worker
-binary now serves the validated API router in a real process and has a startup/health/TLog smoke
-test. Structure remains capped at 1.00 from the previous step.
+A small increase is justified for Correctness, Robustness, and Scalability because supervisor
+process management, worker spawning, worker health waiting, reload, and real process smoke tests
+now exist. No Learning or policy score movement is claimed.
 
 ```text
 I  Intelligence      = 0.98
 E  Efficiency        = 0.97
-C  Correctness       = 0.93
+C  Correctness       = 0.94
 A  Alignment         = 0.97
-R  Robustness        = 0.98
+R  Robustness        = 0.99
 P  Performance       = 0.95
-S  Scalability       = 0.99
+S  Scalability       = 1.00
 D  Determinism       = 0.98
 T  Transparency      = 0.98
 Co Collaboration     = 0.95
@@ -126,32 +132,29 @@ F  Future-Proofing   = 0.98
 Approximate geometric mean:
 
 ```text
-G ≈ 0.973
+G ≈ 0.975
 ```
 
 ## Current Judgment
 
 ```text
 weakest_axis = Correctness
-weakest_axis_reason = worker binary is live, but supervisor reload lifecycle and retired-worker handling are not implemented
-primary_next_axis = Robustness
-secondary_next_axis = Scalability
-guard_axis = Correctness
-current_gap = src/bin/supervisor.rs remains a placeholder and cannot spawn or reload workers
-next_action = implement Step 5 supervisor lifecycle, health, reload, dynamic port allocation, and retired-worker drain
-score_freeze_reason = no supervisor process management, reload, dead-worker, or drain evidence yet
+weakest_axis_reason = supervisor and worker lifecycle are live, but end-to-end command submission through a supervised worker is not yet covered
+primary_next_axis = Correctness
+secondary_next_axis = Transparency
+guard_axis = Robustness
+current_gap = no example trace or supervised command-ingress smoke validates the full supervisor -> worker -> ApiTransportSession path
+next_action = implement Step 7 example trace or add an end-to-end supervised worker command smoke before declaring integration complete
+score_freeze_reason = MCP receipt executor, worker server, and supervisor lifecycle are implemented, but no full MCP/tool-loop example has been committed
 ```
 
 ## Conditions For Next Score Increase
 
-The next implementation should not increase Robustness or Scalability unless it adds committed
-supervisor lifecycle code and focused evidence proving:
+The next implementation should not increase Correctness or Transparency unless it adds committed
+evidence proving one of:
 
 ```text
-supervisor reads SUPERVISOR_PORT, AI_TLOG_DIR, AI_WORKER_BIN, and AI_MCP_WORKER_URL
-supervisor allocates a local worker port and spawns worker
-GET /health reports active generation and worker port
-POST /reload starts a new worker before retiring the old worker
-retired workers are killed after a bounded drain window
-supervisor handles missing/dead worker without panic
+an example trace exercises LiveMcpCallExecutor and records MCP receipts
+or a supervised-worker command smoke submits /v1/command to the worker port discovered from supervisor /health
+or plan reconciliation marks Step 6 already satisfied and defines the next concrete integration gap
 ```
