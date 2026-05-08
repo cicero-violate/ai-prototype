@@ -380,6 +380,16 @@ const COMPACT_MODES: &[CompactMode] = &[
         run: policy_reuse_evidence_retrieval_readiness_regression_smoke_mode,
     },
     CompactMode {
+        arg: "--policy-reuse-evidence-compact-validation-smoke",
+        marker: "policy_reuse_evidence_compact_validation_smoke",
+        run: policy_reuse_evidence_compact_validation_smoke_mode,
+    },
+    CompactMode {
+        arg: "--policy-reuse-evidence-compact-validation-regression-smoke",
+        marker: "policy_reuse_evidence_compact_validation_regression_smoke",
+        run: policy_reuse_evidence_compact_validation_regression_smoke_mode,
+    },
+    CompactMode {
         arg: "--root-validate-dispatch-catalog",
         marker: "canon_root_validate_dispatch_catalog_v1",
         run: root_validate_dispatch_catalog_mode,
@@ -1049,6 +1059,33 @@ fn policy_reuse_evidence_retrieval_readiness_regression_smoke_mode(
         && !receipt.retrieval_example_ready
         && receipt.retrieval_status == "not_ready"
         && receipt.not_ready_reason == "learning_not_admissible"
+        && !receipt.passed();
+    Ok(CompactModeOutcome::controlled_json(
+        receipt.to_json(),
+        passed,
+    ))
+}
+
+fn policy_reuse_evidence_compact_validation_smoke_mode() -> Result<CompactModeOutcome, String> {
+    let receipt = validation_harness::policy_reuse_evidence_compact_validation_smoke_receipt();
+    Ok(CompactModeOutcome::pass_json(
+        receipt.to_json(),
+        receipt.passed(),
+    ))
+}
+
+fn policy_reuse_evidence_compact_validation_regression_smoke_mode(
+) -> Result<CompactModeOutcome, String> {
+    let receipt =
+        validation_harness::policy_reuse_evidence_compact_validation_regression_smoke_receipt();
+    let passed = receipt.is_valid()
+        && !receipt.retrieval_ready
+        && !receipt.learning_data_admissible
+        && !receipt.validation_budget_passed
+        && receipt.targeted_test_count > receipt.max_targeted_test_count
+        && !receipt.compact_validation_passed
+        && receipt.compact_validation_status == "fail"
+        && receipt.failure_reason == "retrieval_not_ready"
         && !receipt.passed();
     Ok(CompactModeOutcome::controlled_json(
         receipt.to_json(),

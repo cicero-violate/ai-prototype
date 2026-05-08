@@ -17,7 +17,7 @@ pub const FAST_TEST_STEP: &str = "fast_score_contract_tests";
 pub const LIB_UNIT_STEP: &str = "lib_unit_contract_tests";
 pub const API_TRANSPORT_STEP: &str = "api_transport_contract_tests";
 pub const VALIDATION_HARNESS_STEP: &str = "validation_harness_contract_tests";
-pub const VALIDATION_HARNESS_EXPECTED_TESTS: usize = 196;
+pub const VALIDATION_HARNESS_EXPECTED_TESTS: usize = 200;
 pub const PLANNING_CONTRACT_STEP: &str = "planning_contract_tests";
 pub const GRAPH_MUTATION_CLI_CONTRACT_STEP: &str = "graph_mutation_cli_contract_tests";
 pub const GRAPH_MUTATION_CLI_CONTRACT_EXPECTED_TESTS: usize = 10;
@@ -123,6 +123,10 @@ pub const POLICY_REUSE_EVIDENCE_RETRIEVAL_READINESS_SMOKE_STEP: &str =
     "policy_reuse_evidence_retrieval_readiness_smoke";
 pub const POLICY_REUSE_EVIDENCE_RETRIEVAL_READINESS_REGRESSION_SMOKE_STEP: &str =
     "policy_reuse_evidence_retrieval_readiness_regression_smoke";
+pub const POLICY_REUSE_EVIDENCE_COMPACT_VALIDATION_SMOKE_STEP: &str =
+    "policy_reuse_evidence_compact_validation_smoke";
+pub const POLICY_REUSE_EVIDENCE_COMPACT_VALIDATION_REGRESSION_SMOKE_STEP: &str =
+    "policy_reuse_evidence_compact_validation_regression_smoke";
 pub const POLICY_VALIDATION_HEALTH_SMOKE_STEP: &str = "policy_validation_health_smoke";
 pub const POLICY_VALIDATION_HEALTH_TREND_SMOKE_STEP: &str = "policy_validation_health_trend_smoke";
 pub const POLICY_ORCHESTRATION_CAPACITY_SMOKE_STEP: &str = "policy_orchestration_capacity_smoke";
@@ -2032,6 +2036,104 @@ impl PolicyReuseEvidenceRetrievalReadinessReceipt {
             self.retrieval_status,
             self.not_ready_reason,
             self.retrieval_hash,
+            self.receipt_hash,
+        )
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PolicyReuseEvidenceCompactValidationReceipt {
+    pub schema: &'static str,
+    pub record_type: &'static str,
+    pub compact_validation_version: u64,
+    pub source_retrieval_readiness_hash: u64,
+    pub source_learning_admission_hash: u64,
+    pub source_validation_budget_hash: u64,
+    pub retrieval_ready: bool,
+    pub learning_data_admissible: bool,
+    pub validation_budget_passed: bool,
+    pub targeted_command_count: usize,
+    pub targeted_test_count: usize,
+    pub max_targeted_test_count: usize,
+    pub full_harness_test_count: usize,
+    pub avoided_full_harness_tests: usize,
+    pub compact_validation_passed: bool,
+    pub compact_validation_status: &'static str,
+    pub failure_reason: &'static str,
+    pub compact_hash: u64,
+    pub receipt_hash: u64,
+}
+
+impl PolicyReuseEvidenceCompactValidationReceipt {
+    pub fn passed(&self) -> bool {
+        self.is_valid()
+            && self.compact_validation_passed
+            && self.compact_validation_status == "pass"
+    }
+
+    pub fn is_valid(&self) -> bool {
+        self.schema == "canon_policy_reuse_evidence_compact_validation_v1"
+            && matches!(
+                self.record_type,
+                "policy_reuse_evidence_compact_validation"
+                    | POLICY_REUSE_EVIDENCE_COMPACT_VALIDATION_SMOKE_STEP
+                    | POLICY_REUSE_EVIDENCE_COMPACT_VALIDATION_REGRESSION_SMOKE_STEP
+            )
+            && self.compact_validation_version == 1
+            && self.source_retrieval_readiness_hash != 0
+            && self.source_learning_admission_hash != 0
+            && self.source_validation_budget_hash != 0
+            && self.targeted_command_count == 3
+            && self.targeted_test_count > 0
+            && self.max_targeted_test_count > 0
+            && self.full_harness_test_count == VALIDATION_HARNESS_EXPECTED_TESTS
+            && self.avoided_full_harness_tests
+                == self
+                    .full_harness_test_count
+                    .saturating_sub(self.targeted_test_count)
+            && matches!(self.compact_validation_status, "pass" | "fail")
+            && matches!(
+                self.failure_reason,
+                "none"
+                    | "retrieval_not_ready"
+                    | "learning_not_admissible"
+                    | "validation_budget_failed"
+                    | "targeted_budget_exceeded"
+            )
+            && self.compact_validation_passed
+                == (self.retrieval_ready
+                    && self.learning_data_admissible
+                    && self.validation_budget_passed
+                    && self.targeted_test_count <= self.max_targeted_test_count
+                    && self.failure_reason == "none")
+            && (self.compact_validation_status == "pass") == self.compact_validation_passed
+            && self.compact_hash != 0
+            && self.receipt_hash != 0
+            && self.compact_hash == policy_reuse_evidence_compact_validation_hash(self)
+            && self.receipt_hash == policy_reuse_evidence_compact_validation_receipt_hash(self)
+    }
+
+    pub fn to_json(&self) -> String {
+        format!(
+            "{{\"schema\":\"{}\",\"record_type\":\"{}\",\"compact_validation_version\":{},\"source_retrieval_readiness_hash\":{},\"source_learning_admission_hash\":{},\"source_validation_budget_hash\":{},\"retrieval_ready\":{},\"learning_data_admissible\":{},\"validation_budget_passed\":{},\"targeted_command_count\":{},\"targeted_test_count\":{},\"max_targeted_test_count\":{},\"full_harness_test_count\":{},\"avoided_full_harness_tests\":{},\"compact_validation_passed\":{},\"compact_validation_status\":\"{}\",\"failure_reason\":\"{}\",\"compact_hash\":{},\"receipt_hash\":{}}}",
+            self.schema,
+            self.record_type,
+            self.compact_validation_version,
+            self.source_retrieval_readiness_hash,
+            self.source_learning_admission_hash,
+            self.source_validation_budget_hash,
+            self.retrieval_ready,
+            self.learning_data_admissible,
+            self.validation_budget_passed,
+            self.targeted_command_count,
+            self.targeted_test_count,
+            self.max_targeted_test_count,
+            self.full_harness_test_count,
+            self.avoided_full_harness_tests,
+            self.compact_validation_passed,
+            self.compact_validation_status,
+            self.failure_reason,
+            self.compact_hash,
             self.receipt_hash,
         )
     }
@@ -4488,6 +4590,97 @@ fn finalize_policy_reuse_evidence_retrieval_readiness(
     receipt.receipt_hash = policy_reuse_evidence_retrieval_readiness_receipt_hash(receipt);
 }
 
+pub fn policy_reuse_evidence_compact_validation_smoke_receipt(
+) -> PolicyReuseEvidenceCompactValidationReceipt {
+    let retrieval = policy_reuse_evidence_retrieval_readiness_smoke_receipt();
+    let admission = policy_reuse_evidence_learning_admission_smoke_receipt();
+    let budget = policy_reuse_evidence_validation_budget_smoke_receipt();
+    let mut receipt = policy_reuse_evidence_compact_validation_from_sources(
+        POLICY_REUSE_EVIDENCE_COMPACT_VALIDATION_SMOKE_STEP,
+        &retrieval,
+        &admission,
+        &budget,
+        6,
+        6,
+        "none",
+    );
+    finalize_policy_reuse_evidence_compact_validation(&mut receipt);
+    receipt
+}
+
+pub fn policy_reuse_evidence_compact_validation_regression_smoke_receipt(
+) -> PolicyReuseEvidenceCompactValidationReceipt {
+    let retrieval = policy_reuse_evidence_retrieval_readiness_regression_smoke_receipt();
+    let admission = policy_reuse_evidence_learning_admission_regression_smoke_receipt();
+    let budget = policy_reuse_evidence_validation_budget_regression_smoke_receipt();
+    let mut receipt = policy_reuse_evidence_compact_validation_from_sources(
+        POLICY_REUSE_EVIDENCE_COMPACT_VALIDATION_REGRESSION_SMOKE_STEP,
+        &retrieval,
+        &admission,
+        &budget,
+        14,
+        6,
+        "retrieval_not_ready",
+    );
+    finalize_policy_reuse_evidence_compact_validation(&mut receipt);
+    receipt
+}
+
+fn policy_reuse_evidence_compact_validation_from_sources(
+    record_type: &'static str,
+    retrieval: &PolicyReuseEvidenceRetrievalReadinessReceipt,
+    admission: &PolicyReuseEvidenceLearningAdmissionReceipt,
+    budget: &PolicyReuseEvidenceValidationBudgetReceipt,
+    targeted_test_count: usize,
+    max_targeted_test_count: usize,
+    failure_reason: &'static str,
+) -> PolicyReuseEvidenceCompactValidationReceipt {
+    let retrieval_ready = retrieval.passed();
+    let learning_data_admissible = admission.passed();
+    let validation_budget_passed = budget.passed();
+    let compact_validation_passed = retrieval_ready
+        && learning_data_admissible
+        && validation_budget_passed
+        && targeted_test_count <= max_targeted_test_count
+        && failure_reason == "none";
+    let compact_validation_status = if compact_validation_passed {
+        "pass"
+    } else {
+        "fail"
+    };
+    let mut receipt = PolicyReuseEvidenceCompactValidationReceipt {
+        schema: "canon_policy_reuse_evidence_compact_validation_v1",
+        record_type,
+        compact_validation_version: 1,
+        source_retrieval_readiness_hash: retrieval.receipt_hash,
+        source_learning_admission_hash: admission.receipt_hash,
+        source_validation_budget_hash: budget.receipt_hash,
+        retrieval_ready,
+        learning_data_admissible,
+        validation_budget_passed,
+        targeted_command_count: 3,
+        targeted_test_count,
+        max_targeted_test_count,
+        full_harness_test_count: VALIDATION_HARNESS_EXPECTED_TESTS,
+        avoided_full_harness_tests: VALIDATION_HARNESS_EXPECTED_TESTS
+            .saturating_sub(targeted_test_count),
+        compact_validation_passed,
+        compact_validation_status,
+        failure_reason,
+        compact_hash: 0,
+        receipt_hash: 0,
+    };
+    finalize_policy_reuse_evidence_compact_validation(&mut receipt);
+    receipt
+}
+
+fn finalize_policy_reuse_evidence_compact_validation(
+    receipt: &mut PolicyReuseEvidenceCompactValidationReceipt,
+) {
+    receipt.compact_hash = policy_reuse_evidence_compact_validation_hash(receipt);
+    receipt.receipt_hash = policy_reuse_evidence_compact_validation_receipt_hash(receipt);
+}
+
 #[allow(clippy::too_many_arguments)]
 fn policy_reuse_evidence_surface_index_from_sources(
     record_type: &'static str,
@@ -5030,6 +5223,63 @@ fn policy_reuse_evidence_retrieval_readiness_receipt_hash(
         return 0;
     }
     (retrieval_hash ^ 0x504f_4c52_5252_4452u64).max(1)
+}
+
+fn policy_reuse_evidence_compact_validation_hash(
+    receipt: &PolicyReuseEvidenceCompactValidationReceipt,
+) -> u64 {
+    if receipt.compact_validation_version == 0
+        || receipt.source_retrieval_readiness_hash == 0
+        || receipt.source_learning_admission_hash == 0
+        || receipt.source_validation_budget_hash == 0
+    {
+        return 0;
+    }
+    let compact_status_code = match receipt.compact_validation_status {
+        "pass" => 1,
+        "fail" => 2,
+        _ => 0,
+    };
+    let failure_reason_code = match receipt.failure_reason {
+        "none" => 1,
+        "retrieval_not_ready" => 2,
+        "learning_not_admissible" => 3,
+        "validation_budget_failed" => 4,
+        "targeted_budget_exceeded" => 5,
+        _ => 0,
+    };
+    if compact_status_code == 0 || failure_reason_code == 0 {
+        return 0;
+    }
+    let mut h = 0x504f_4c52_4356_4448u64;
+    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.schema.as_bytes());
+    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.record_type.as_bytes());
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.compact_validation_version;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_retrieval_readiness_hash;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_learning_admission_hash;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_validation_budget_hash;
+    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_ready);
+    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.learning_data_admissible);
+    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.validation_budget_passed);
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.targeted_command_count as u64;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.targeted_test_count as u64;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.max_targeted_test_count as u64;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.full_harness_test_count as u64;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.avoided_full_harness_tests as u64;
+    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.compact_validation_passed);
+    h = h.wrapping_mul(0x100000001b3) ^ compact_status_code;
+    h = h.wrapping_mul(0x100000001b3) ^ failure_reason_code;
+    h.max(1)
+}
+
+fn policy_reuse_evidence_compact_validation_receipt_hash(
+    receipt: &PolicyReuseEvidenceCompactValidationReceipt,
+) -> u64 {
+    let compact_hash = policy_reuse_evidence_compact_validation_hash(receipt);
+    if compact_hash == 0 || receipt.compact_hash != compact_hash {
+        return 0;
+    }
+    (compact_hash ^ 0x504f_4c52_4356_4452u64).max(1)
 }
 
 fn policy_reuse_evidence_summary_hash(receipt: &PolicyReuseEvidenceSummaryReceipt) -> u64 {
