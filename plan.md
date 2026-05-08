@@ -195,6 +195,29 @@ observed per-test times: 4.50s, 4.62s, 4.81s, 4.99s, 7.23s, 7.42s, 8.16s, 8.29s
 
 The broader `policy_reuse_evidence_retrieval_` filter also includes unrelated later root_validate executable-contract tests with stale compact-JSON fragment expectations. Those are out of scope for this repair unless selected explicitly in a later turn.
 
+
+## Current Turn Addendum: Validation Harness Drift Repair
+
+The uploaded failure list showed broad validation-harness drift after the public compact JSON surface moved from escaped string fragments to plain compact JSON and the retained harness counts increased. This turn repaired the focused drift without changing runtime authority:
+
+```text
+- normalize root_validate stdout assertions for plain compact JSON string terminators
+- map legacy retained harness-count fragments to current VALIDATION_HARNESS_EXPECTED_TESTS-derived values
+- update dispatch catalog fixture matching and payload extraction for plain JSON
+- update retained policy validation health fixture count from 210 to 274
+- refresh direct policy reuse, validation health, cost trend, and validation budget expectations
+```
+
+Validation evidence collected in this turn:
+
+```text
+CARGO_BUILD_RUSTC_WRAPPER= cargo fmt --check
+CARGO_BUILD_RUSTC_WRAPPER= cargo check --quiet
+11 focused exact tests from the uploaded failure surface passed
+```
+
+Full `validation_harness_contract` runs repeatedly triggered connector-side 502s and duplicate/stale background processes. After cleaning those up, the focused failure surface passed exactly; a complete full-suite pass should be retried by the next turn with a stable runner and no duplicate background jobs.
+
 ## Handoff Checklist For Next Agent Turn
 
 Before modifying implementation files, the next agent should choose exactly one lane:

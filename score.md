@@ -173,6 +173,36 @@ src/validation_harness.rs
 tests/validation_harness_contract.rs
 ```
 
+
+## Current Turn Score Addendum: Validation Harness Drift Repair
+
+This turn repaired a broad validation-harness expectation drift represented by the uploaded failure list. The work is test/fixture-only: it aligns contract expectations with current compact JSON output and current harness-count totals.
+
+Validation evidence:
+
+```text
+CARGO_BUILD_RUSTC_WRAPPER= cargo fmt --check
+CARGO_BUILD_RUSTC_WRAPPER= cargo check --quiet
+11 focused exact tests passed from the uploaded failure surface
+```
+
+Score impact:
+
+```text
+Correctness: unchanged numerically; focused residual failures are fixed, but full-suite validation was blocked by connector/duplicate-process instability
+Transparency: unchanged numerically; fixture/count expectations are clearer and current
+Determinism: unchanged; no runtime state-machine, TLog, policy-promotion, retrieval-write, or learning authority changed
+```
+
+Commit scope for this addendum:
+
+```text
+plan.md
+score.md
+tests/fixtures/policy_validation_health_receipts.txt
+tests/validation_harness_contract.rs
+```
+
 ## Scoring Rule For Next Turn
 
 Raise scores only if the next turn provides committed implementation evidence plus validation output. Suggested axis movement, if evidence is clean:
