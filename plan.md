@@ -1,6 +1,6 @@
 # Canon Agent Implementation Plan
 
-This plan tracks the current deterministic implementation plan for the planning/scoring turn after implementation step 4 of the current agent loop.
+This plan tracks the current deterministic implementation plan for the planning/scoring turn after implementation step 5 of the current agent loop.
 
 ## North Star
 
@@ -46,26 +46,28 @@ The repository currently exposes these meaningful surfaces:
 - validation-harness/root-validate smoke exposure for healthy and controlled regression evidence-bundle evidence;
 - deterministic policy reuse evidence-quickcheck receipt in the validation harness;
 - validation-harness/root-validate smoke exposure for healthy and controlled missing-command evidence-quickcheck evidence;
+- deterministic policy reuse evidence-maturity receipt in the validation harness;
+- validation-harness/root-validate smoke exposure for healthy and controlled quickcheck-failed evidence-maturity evidence;
 - retained fixtures for policy reuse, policy validation health, policy validation trend, orchestration capacity, policy capacity/cost, runtime performance trend, validation duration planning, validation command footprint, external CLI mode evidence, and evidence-surface index coverage.
 
 ## Current Completed Implementation Baseline
 
-The current working tree contains deterministic **policy reuse evidence-quickcheck** evidence in the validation-harness/root-validator layer, while retaining evaluator-savings, scaling-projection, distillation-readiness, evidence-surface index, and evidence-bundle evidence already present in this loop.
+The current working tree contains deterministic **policy reuse evidence-maturity** evidence in the validation-harness/root-validator layer, while retaining evaluator-savings, scaling-projection, distillation-readiness, evidence-surface index, evidence-bundle, and evidence-quickcheck evidence already present in this loop.
 
 This slice answers:
 
 ```text
-Can an evaluator inspect one deterministic receipt that says whether the bundled policy-reuse learning evidence surface has the minimum validation command coverage needed for this turn?
+Can an evaluator inspect one deterministic receipt that summarizes the reuse/readiness/index/bundle/quickcheck evidence stack into a staged maturity level?
 ```
 
 Implemented surfaces:
 
 ```text
-PolicyReuseEvidenceQuickcheckReceipt
-policy_reuse_evidence_quickcheck_smoke_receipt()
-policy_reuse_evidence_quickcheck_regression_smoke_receipt()
---policy-reuse-evidence-quickcheck-smoke
---policy-reuse-evidence-quickcheck-regression-smoke
+PolicyReuseEvidenceMaturityReceipt
+policy_reuse_evidence_maturity_smoke_receipt()
+policy_reuse_evidence_maturity_regression_smoke_receipt()
+--policy-reuse-evidence-maturity-smoke
+--policy-reuse-evidence-maturity-regression-smoke
 ```
 
 Implemented fields:
@@ -73,51 +75,51 @@ Implemented fields:
 ```text
 schema
 record_type
-quickcheck_version
+maturity_version
+source_quickcheck_hash
 source_bundle_hash
-validation_harness_expected_tests
-required_command_count
-observed_command_count
-minimum_command_set_hash
-bundle_complete
-commands_complete
+validated_layer_count
+required_layer_count
+maturity_stage
 quickcheck_passed
-missing_command
-quickcheck_hash
+bundle_complete
+promotion_eligible
+regression_reason
+maturity_hash
 receipt_hash
 ```
 
 Completed implementation tasks:
 
-1. Added `PolicyReuseEvidenceQuickcheckReceipt` with deterministic validation, JSON output, quickcheck hash, and receipt hash.
-2. Added healthy and controlled missing-validation-harness-command regression smoke constructors.
-3. Bound quickcheck evidence to the policy reuse evidence bundle receipt and a deterministic minimum validation command-set hash.
-4. Added root validator compact modes for healthy and regression quickcheck receipts.
-5. Added validation harness contracts for quickcheck semantics, source binding, compact output, and controlled missing-command evidence.
+1. Added `PolicyReuseEvidenceMaturityReceipt` with deterministic validation, JSON output, maturity hash, and receipt hash.
+2. Added healthy and controlled quickcheck-failed regression smoke constructors.
+3. Bound maturity evidence to the policy reuse evidence quickcheck and bundle receipts.
+4. Added root validator compact modes for healthy and regression maturity receipts.
+5. Added validation harness contracts for maturity semantics, source binding, compact output, and controlled immature-stage evidence.
 6. Updated external CLI mode fixture and root compact-mode counts for the two new public modes.
-7. Updated validation harness guarded-test count from 164 to 168.
-8. Updated retained guarded-test fixture values from 174 to 178 and refreshed dependent validation-duration estimates.
+7. Updated validation harness guarded-test count from 168 to 172.
+8. Updated retained guarded-test fixture values from 178 to 182 and refreshed dependent validation-duration estimates.
 9. Kept kernel authority unchanged and did not train a student model or promote policy.
 
 Implemented deterministic semantics:
 
-- `quickcheck_passed = true` only when the evidence bundle is complete, required command coverage is complete, and `missing_command = "none"`.
-- Regression evidence remains structurally valid while exposing `quickcheck_passed = false` and `missing_command = "validation_harness_contract"`.
-- Quickcheck source evidence reuses the bundle receipt hash and fixed validation command names instead of adding policy authority.
-- The quickcheck receipt is evidence-only; it summarizes validation coverage without granting policy authority.
+- `promotion_eligible = true` only when all five evidence layers are validated, quickcheck passes, bundle is complete, maturity stage is `candidate`, and `regression_reason = "none"`.
+- Regression evidence remains structurally valid while exposing `promotion_eligible = false`, `maturity_stage = "immature"`, and `regression_reason = "quickcheck_failed"`.
+- Maturity source evidence reuses quickcheck and bundle receipt hashes instead of adding policy authority.
+- The maturity receipt is evidence-only; it summarizes learning-evidence maturity without granting policy authority.
 - The new receipt does not introduce live LLM, network, wall-clock, or environment-dependent measurement.
 
 ## Validation Evidence Recorded For This Baseline
 
 ```text
 cargo fmt --check
-RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test validation_harness_contract policy_reuse_evidence_quickcheck --quiet
+RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test validation_harness_contract policy_reuse_evidence_maturity --quiet
 RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test validation_harness_contract --quiet
 RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test score_contract --test planning_contract --quiet
 
 cargo fmt --check: pass
-validation_harness_contract policy_reuse_evidence_quickcheck filter: 4 passed, 0 failed, 164 filtered out
-validation_harness_contract: 168 passed, 0 failed
+validation_harness_contract policy_reuse_evidence_maturity filter: 4 passed, 0 failed, 168 filtered out
+validation_harness_contract: 172 passed, 0 failed
 planning_contract: 2 passed, 0 failed
 score_contract: 5 passed, 0 failed
 ```
@@ -131,32 +133,32 @@ The weakest remaining axis is **Simplicity**.
 Current gap:
 
 ```text
-Policy-reuse learning evidence is now indexed, bundled, and quickchecked, but each added receipt still expands the root-mode and fixture-count surface.
+Policy-reuse learning evidence now has maturity staging, but the evaluator-facing root-mode surface still grows by two modes per evidence layer.
 ```
 
 Recommended next slice:
 
 ```text
-Add a deterministic policy reuse evidence maturity receipt that summarizes the reuse/readiness/index/bundle/quickcheck stack into one staged maturity level for evaluators.
+Add a deterministic policy reuse evidence summary receipt that exposes the current healthy maturity result and key source hashes through one stable summary mode.
 ```
 
 Recommended concrete surfaces:
 
 ```text
-PolicyReuseEvidenceMaturityReceipt
-policy_reuse_evidence_maturity_smoke_receipt()
-policy_reuse_evidence_maturity_regression_smoke_receipt()
---policy-reuse-evidence-maturity-smoke
---policy-reuse-evidence-maturity-regression-smoke
+PolicyReuseEvidenceSummaryReceipt
+policy_reuse_evidence_summary_smoke_receipt()
+policy_reuse_evidence_summary_regression_smoke_receipt()
+--policy-reuse-evidence-summary-smoke
+--policy-reuse-evidence-summary-regression-smoke
 ```
 
 Recommended constraints:
 
 1. Keep the kernel untouched.
 2. Do not introduce live LLM, network, wall-clock, or environment-dependent measurement.
-3. Reuse existing quickcheck and bundle hashes.
-4. Prefer one maturity level over additional scattered receipt interpretation.
-5. Include healthy and controlled quickcheck-failed or immature-stage regression cases.
+3. Reuse existing maturity, quickcheck, and bundle hashes.
+4. Prefer one stable summary over additional scattered root-mode interpretation.
+5. Include healthy and controlled immature-maturity regression cases.
 6. Keep student-model training deferred.
 
 ## Evaluation Axes
@@ -190,8 +192,8 @@ arg max(G) = good
 - Full live Ollama validation remains environment-dependent.
 - Graph telemetry still requires explicit wrapper capture.
 - Student-model training is intentionally deferred until verified distillation data is large and clean.
-- Parallel orchestration execution should wait until larger-batch reuse, validation health, retained validation/runtime cost, catalog completeness, evaluator savings, scaling projection, distillation readiness, evidence-surface indexing, bundled evidence inspection, quickcheck validation, and maturity staging are proven together.
-- Full-suite validation should run after the maturity slice if fixture or CLI mode churn is broader than expected.
+- Parallel orchestration execution should wait until larger-batch reuse, validation health, retained validation/runtime cost, catalog completeness, evaluator savings, scaling projection, distillation readiness, evidence-surface indexing, bundled evidence inspection, quickcheck validation, maturity staging, and stable summary evidence are proven together.
+- Full-suite validation should run after the summary slice if fixture or CLI mode churn is broader than expected.
 
 ## Turn Protocol
 
