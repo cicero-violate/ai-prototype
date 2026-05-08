@@ -1,6 +1,6 @@
 # Canon Agent Score
 
-## Planning Scorecard - 2026-05-08T12:05Z
+## Planning Scorecard - 2026-05-08T12:10Z
 
 This turn is planning and scoring only. No implementation score increase is claimed. The score remains evidence-conservative because implementation changes are present but unvalidated by focused checks.
 
@@ -12,6 +12,19 @@ primary_handoff = deterministic auto-refactor graph evidence and read-only repor
 secondary_handoff = next evidence-only learning boundary after retrieval-example storage-write-commit-intent
 implementation_authority_change = none
 ```
+
+## Validation Evidence For This Planning Turn
+
+The root planning and score contracts passed:
+
+```text
+RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test planning_contract --test score_contract --quiet
+
+planning_contract: pass, 2 tests
+score_contract: pass, 5 tests
+```
+
+This validation supports the planning/scoring update only. It is not evidence that the uncommitted `canon-rustc-v3` implementation changes are correct.
 
 ## Current Evidence Posture
 
@@ -74,7 +87,7 @@ learning_boundary_status = retrieval-example storage-write-commit-intent remains
 current_gap = observed auto-refactor relation/report work lacks focused validation and commit evidence
 next_action = validate and commit deterministic auto-refactor graph signals/reporting, or defer them and select the next evidence-only Learning boundary
 recommended_next_lane = auto_refactor_graph_evidence
-score_freeze_reason = planning turn only; no focused validation evidence added
+score_freeze_reason = planning turn only; no focused implementation validation evidence added
 ```
 
 ## Evidence Required Before Any Score Increase

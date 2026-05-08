@@ -1,8 +1,8 @@
 # Canon Agent Implementation Plan
 
-## Planning Checkpoint - 2026-05-08T12:05Z
+## Planning Checkpoint - 2026-05-08T12:10Z
 
-This turn is planning and scoring only. It does not adopt, validate, or score the implementation changes currently present outside the planning artifacts. Its purpose is to keep the next implementation turn constrained to deterministic evidence production rather than opportunistic runtime expansion.
+This turn is planning and scoring only. It does not adopt, validate, or score the implementation changes currently present outside `plan.md` and `score.md`. Its purpose is to keep the next implementation turn constrained to deterministic evidence production rather than opportunistic runtime expansion.
 
 Committed scope for this turn:
 
@@ -41,7 +41,20 @@ untracked: canon-rustc-v3/validation/auto_refactor_surface.py
 untracked: canon-rustc-v3/validation/auto_refactor_surface_smoke.py
 ```
 
-These appear to target graph-guided auto-refactor relation evidence and read-only semantic/reporting surfaces. They are not scored until an implementation turn validates them and commits them deliberately.
+These files appear to target graph-guided auto-refactor relation evidence and read-only semantic/reporting surfaces. They are not scored in this planning turn. The next implementation turn must either validate and commit them deliberately, or defer/revert them before selecting another lane.
+
+## Root Validation Evidence For Planning Artifacts
+
+The existing root planning and score contracts were run after inspecting the current planning artifacts:
+
+```text
+RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test planning_contract --test score_contract --quiet
+
+planning_contract: pass, 2 tests
+score_contract: pass, 5 tests
+```
+
+This validates the root planning/scoring contract files only. It does not validate the uncommitted `canon-rustc-v3` implementation changes.
 
 ## Primary Next Slice: Deterministic Auto-Refactor Graph Evidence
 
@@ -55,18 +68,19 @@ similar, phase, and provider relations are emitted as deterministic graph metada
 
 Implementation steps:
 
-1. Confirm the relation vocabulary for `similar`, `phase`, and `provider` in the graph/facts layer.
-2. Ensure relation extraction and serialization are stable, sorted, and deduplicated across repeated runs.
-3. Define relation semantics explicitly:
+1. Inspect `canon-rustc-v3/plan-autorefactor.md` and decide whether it is the authoritative lane plan or only a draft.
+2. Confirm the relation vocabulary for `similar`, `phase`, and `provider` in the graph/facts layer.
+3. Ensure relation extraction and serialization are stable, sorted, and deduplicated across repeated runs.
+4. Define relation semantics explicitly:
    - `similar` = heuristic duplicate or merge signal only;
    - `phase` = split-boundary or refactor-stage guidance only;
    - `provider` = provenance or boundary metadata only.
-4. Prove that these relations cannot alter kernel transitions, reducer behavior, authorization, retry behavior, provider routing, policy promotion, retrieval writes, or model training.
-5. Finish `canon-rustc-v3/validation/auto_refactor_surface.py` as a read-only report generator over graph JSON.
-6. Make report output deterministic: sorted objects, stable grouping, no mutation path, no network dependency, and no live LLM dependency.
-7. Finish `canon-rustc-v3/validation/auto_refactor_surface_smoke.py` with deterministic fixture coverage for healthy and controlled edge cases.
-8. Explain any changes to `semantic_preflight.py` and `semantic_scale_probe.py` as validation/reporting coverage, not weakened risk handling.
-9. Commit implementation only after focused validation evidence is clean.
+5. Prove that these relations cannot alter kernel transitions, reducer behavior, authorization, retry behavior, provider routing, policy promotion, retrieval writes, or model training.
+6. Finish `canon-rustc-v3/validation/auto_refactor_surface.py` as a read-only report generator over graph JSON.
+7. Make report output deterministic: sorted objects, stable grouping, no mutation path, no network dependency, and no live LLM dependency.
+8. Finish `canon-rustc-v3/validation/auto_refactor_surface_smoke.py` with deterministic fixture coverage for healthy and controlled edge cases.
+9. Explain any changes to `semantic_preflight.py` and `semantic_scale_probe.py` as validation/reporting coverage, not weakened risk handling.
+10. Commit implementation only after focused validation evidence is clean.
 
 ## Secondary Next Slice: Learning Evidence Boundary
 
@@ -87,7 +101,7 @@ Constraints for any Learning continuation:
 
 Any new public validation mode must include healthy evidence, controlled-regression evidence, and explicit upstream receipt-hash binding.
 
-## Validation Gate Before Any Score Increase
+## Validation Gate Before Any Implementation Score Increase
 
 Minimum evidence before raising the implementation score:
 
