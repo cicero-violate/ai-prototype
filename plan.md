@@ -1,6 +1,6 @@
 # Canon Agent Implementation Plan
 
-This plan records the current implementation state after implementation step 5 of the current agent loop.
+This plan records the current implementation state after the planning turn following implementation step 5 of the current agent loop.
 
 ## North Star
 
@@ -275,3 +275,50 @@ F  = Future-Proofing
 G = (I*E*C*A*R*P*S*D*T*Co*Em*B*L*St*Si*F)^(1/16)
 arg max(G) = good
 ```
+
+
+## Planning Turn Handoff - Retrieval Result Use Summary Manifest Approval Admission
+
+```text
+turn_type = planning_only
+selected_axis = Learning
+implementation_baseline = retrieval-result-use-summary-manifest-approval evidence is present at commit 6beaaea
+current_gap = approved result-use summary-manifest evidence is not yet admitted for later retrieval gates
+next_action = implement retrieval-result-use-summary-manifest-approval-admission evidence in the validation harness and root validator
+commit_scope = plan.md and score.md only
+out_of_scope_changes_preserved = existing canon-rustc-v3 working-tree changes remain unowned by this planning turn
+```
+
+Recommended next implementation slice:
+
+```text
+Add deterministic policy reuse evidence retrieval-result-use-summary-manifest-approval-admission receipts that admit approved summary-manifest evidence for later gates while remaining evidence-only.
+```
+
+Concrete implementation targets:
+
+```text
+PolicyReuseEvidenceRetrievalResultUseSummaryManifestApprovalAdmissionReceipt
+policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_smoke_receipt()
+policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_regression_smoke_receipt()
+--policy-reuse-evidence-retrieval-result-use-summary-manifest-approval-admission-smoke
+--policy-reuse-evidence-retrieval-result-use-summary-manifest-approval-admission-regression-smoke
+```
+
+Required semantics:
+
+1. Healthy evidence reports `retrieval_result_use_summary_manifest_approval_admitted = true` only when retrieval-result-use-summary-manifest-approval is approved and the source readiness/admission evidence remains valid.
+2. Regression evidence remains structurally valid but reports not admitted when the approval evidence is not approved, with a concrete reason such as `summary_manifest_not_approved`.
+3. Evidence binds to retrieval-result-use-summary-manifest-approval, retrieval-result-use-summary-manifest-readiness, and retrieval-result-use-summary-manifest-admission receipt hashes.
+4. The receipt must not execute retrieval queries, read or write retrieval storage, approve runtime retrieval results, promote policy, execute batches, call an LLM, use network/wall-clock/environment measurements, or train a student model.
+5. Root validator compact modes and validation harness contracts must cover healthy and regression evidence.
+6. Update guarded CLI-mode fixtures only if public root-validate modes are added.
+7. Keep unrelated `canon-rustc-v3/` modifications out of the implementation slice unless explicitly selected later.
+
+Acceptance criteria for the next implementation turn:
+
+1. Healthy approval-admission receipt exists and passes focused validation.
+2. Regression approval-admission receipt exists and exposes `summary_manifest_not_approved` or an equally explicit non-admission reason.
+3. Contract tests assert source-hash binding, booleans, status strings, compact output, and controlled failing evidence.
+4. `cargo fmt --check`, `cargo check --quiet`, planning/score contracts, and focused validation harness tests pass or any connector failure is recorded precisely.
+5. Kernel authority and runtime retrieval behavior remain unchanged.

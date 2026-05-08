@@ -1,6 +1,6 @@
 # Canon Agent Score
 
-This scorecard records current progress after implementation step 5 of the current agent loop. The working tree contains deterministic policy reuse evaluator-savings, scaling-projection, distillation-readiness, evidence-surface index, evidence-bundle, evidence-quickcheck, evidence-maturity, evidence-summary, evidence-manifest, evidence validation-budget, evidence rollout-readiness, evidence learning-admission, evidence retrieval-readiness, evidence compact-validation, batch-readiness, batch-execution-plan, batch-evaluation-admission, batch-run-request, external-evaluator-result, learning-candidate, learning-data-admission, retrieval-example-admission, retrieval-example-index, retrieval-corpus-readiness, retrieval-corpus-admission, retrieval-use-approval, retrieval-use-manifest, retrieval-query-plan, retrieval-query-approval, retrieval-result-admission, retrieval-result-manifest, retrieval-result-use-admission, retrieval-result-use-manifest, retrieval-result-use-readiness, retrieval-result-use-approval, retrieval-result-use-manifest-admission, retrieval-result-use-summary, retrieval-result-use-summary-manifest, retrieval-result-use-summary-manifest-admission, retrieval-result-use-summary-manifest-readiness, and retrieval-result-use-summary-manifest-approval evidence.
+This scorecard records current progress after the planning turn following implementation step 5 of the current agent loop. The working tree contains deterministic policy reuse evaluator-savings, scaling-projection, distillation-readiness, evidence-surface index, evidence-bundle, evidence-quickcheck, evidence-maturity, evidence-summary, evidence-manifest, evidence validation-budget, evidence rollout-readiness, evidence learning-admission, evidence retrieval-readiness, evidence compact-validation, batch-readiness, batch-execution-plan, batch-evaluation-admission, batch-run-request, external-evaluator-result, learning-candidate, learning-data-admission, retrieval-example-admission, retrieval-example-index, retrieval-corpus-readiness, retrieval-corpus-admission, retrieval-use-approval, retrieval-use-manifest, retrieval-query-plan, retrieval-query-approval, retrieval-result-admission, retrieval-result-manifest, retrieval-result-use-admission, retrieval-result-use-manifest, retrieval-result-use-readiness, retrieval-result-use-approval, retrieval-result-use-manifest-admission, retrieval-result-use-summary, retrieval-result-use-summary-manifest, retrieval-result-use-summary-manifest-admission, retrieval-result-use-summary-manifest-readiness, and retrieval-result-use-summary-manifest-approval evidence.
 
 ## Validation Evidence
 
@@ -264,3 +264,39 @@ untracked = canon-rustc-v3/plan-autorefactor.md
 ```
 
 These files were observed during implementation and intentionally left untouched.
+
+
+## Planning Turn Score Decision - Retrieval Result Use Summary Manifest Approval Admission
+
+```text
+turn_type = planning_only
+selected_axis = Learning
+score_change_this_turn = no score increase; planning/scoring only
+reason = refreshed the handoff from retrieval-result-use-summary-manifest-approval to retrieval-result-use-summary-manifest-approval-admission without claiming new implementation evidence
+current_gap = approved result-use summary-manifest evidence is not yet admitted for later retrieval gates
+next_action = add deterministic policy reuse evidence retrieval-result-use-summary-manifest-approval-admission receipts with healthy and controlled not-approved paths
+commit_scope = plan.md, score.md only
+out_of_scope_changes_preserved = existing canon-rustc-v3 modified and untracked files remain unowned by this planning turn
+```
+
+Planning-only scoring stance:
+
+```text
+I  = unchanged at 0.98
+E  = unchanged at 0.97
+C  = unchanged at 0.90
+A  = unchanged at 0.97
+R  = unchanged at 0.96
+P  = unchanged at 0.95
+S  = unchanged at 0.98
+D  = unchanged at 0.97
+T  = unchanged at 0.98
+Co = unchanged at 0.95
+Em = unchanged at 0.95
+B  = unchanged at 0.97
+L  = unchanged at 1.00
+St = unchanged at 0.97
+Si = unchanged at 0.97
+F  = unchanged at 0.98
+G  = unchanged at approximately 0.966
+```
