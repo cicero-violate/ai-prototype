@@ -530,6 +530,16 @@ const COMPACT_MODES: &[CompactMode] = &[
         run: policy_reuse_evidence_retrieval_query_plan_regression_smoke_mode,
     },
     CompactMode {
+        arg: "--policy-reuse-evidence-retrieval-query-approval-smoke",
+        marker: "policy_reuse_evidence_retrieval_query_approval_smoke",
+        run: policy_reuse_evidence_retrieval_query_approval_smoke_mode,
+    },
+    CompactMode {
+        arg: "--policy-reuse-evidence-retrieval-query-approval-regression-smoke",
+        marker: "policy_reuse_evidence_retrieval_query_approval_regression_smoke",
+        run: policy_reuse_evidence_retrieval_query_approval_regression_smoke_mode,
+    },
+    CompactMode {
         arg: "--root-validate-dispatch-catalog",
         marker: "canon_root_validate_dispatch_catalog_v1",
         run: root_validate_dispatch_catalog_mode,
@@ -1248,6 +1258,39 @@ fn root_validate_dispatch_catalog_payload() -> String {
         .map(|mode| format!("{}=>{}", mode.arg, mode.marker))
         .collect::<Vec<_>>()
         .join("\n")
+}
+
+fn policy_reuse_evidence_retrieval_query_approval_smoke_mode() -> Result<CompactModeOutcome, String>
+{
+    let receipt =
+        validation_harness::policy_reuse_evidence_retrieval_query_approval_smoke_receipt();
+    Ok(CompactModeOutcome::pass_json(
+        receipt.to_json(),
+        receipt.passed(),
+    ))
+}
+
+fn policy_reuse_evidence_retrieval_query_approval_regression_smoke_mode(
+) -> Result<CompactModeOutcome, String> {
+    let receipt =
+        validation_harness::policy_reuse_evidence_retrieval_query_approval_regression_smoke_receipt(
+        );
+    let passed = receipt.is_valid()
+        && !receipt.retrieval_query_plan_ready
+        && !receipt.retrieval_use_manifest_ready
+        && !receipt.retrieval_read_performed
+        && !receipt.retrieval_write_performed
+        && !receipt.retrieval_query_executed
+        && !receipt.policy_promotion_performed
+        && !receipt.student_training_performed
+        && !receipt.retrieval_query_approved
+        && receipt.query_approval_status == "query_not_approved"
+        && receipt.not_approved_reason == "query_plan_not_ready"
+        && !receipt.passed();
+    Ok(CompactModeOutcome::controlled_json(
+        receipt.to_json(),
+        passed,
+    ))
 }
 
 fn root_validate_dispatch_catalog_mode() -> Result<CompactModeOutcome, String> {
