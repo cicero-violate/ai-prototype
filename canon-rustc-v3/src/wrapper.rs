@@ -272,3 +272,88 @@ fn is_workspace_crate(tcx: TyCtxt<'_>, workspace_root: &PathBuf) -> bool {
         abs.starts_with(&workspace_root)
     })
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::graph::{GraphEdge, GraphNode};
+
+    fn sample_node(path: &str) -> GraphNode {
+        GraphNode {
+            def_id: "0:1".to_string(),
+            path: path.to_string(),
+            kind: "fn".to_string(),
+            def: None,
+            source_text: None,
+            sig: None,
+            fields: Vec::new(),
+        }
+    }
+
+    fn edge(relation: &str, from: &str, to: &str) -> GraphEdge {
+        GraphEdge {
+            relation: relation.to_string(),
+            from: from.to_string(),
+            to: to.to_string(),
+            span: None,
+        }
+    }
+
+    #[test]
+    fn schema_and_receipt_versions_are_current_contract() {
+        assert_eq!(GRAPH_SCHEMA_VERSION, 16);
+        assert_eq!(RECEIPT_SCHEMA_VERSION, 1);
+    }
+
+    #[test]
+    fn dedup_allowed_edges_filters_unknown_and_empty_edges() {
+        let edges = vec![
+            edge("call", "crate::a", "crate::b"),
+            edge("call", "crate::a", "crate::b"),
+            edge("unknown", "crate::a", "crate::b"),
+            edge("mut", "", "fact::mut"),
+            edge("io", "crate::a", ""),
+        ];
+
+        let kept = dedup_allowed_edges(edges.into_iter());
+
+        assert_eq!(kept, vec![edge("call", "crate::a", "crate::b")]);
+    }
+
+    #[test]
+    fn graph_hash_is_stable_for_btree_ordered_inputs() {
+        let edge_ab = edge("call", "crate::a", "crate::b");
+        let edge_mut = edge("mut", "crate::b", "fact::mut");
+
+        let mut nodes_a = BTreeMap::new();
+        nodes_a.insert("crate::b".to_string(), sample_node("crate::b"));
+        nodes_a.insert("crate::a".to_string(), sample_node("crate::a"));
+
+        let mut nodes_b = BTreeMap::new();
+        nodes_b.insert("crate::a".to_string(), sample_node("crate::a"));
+        nodes_b.insert("crate::b".to_string(), sample_node("crate::b"));
+
+        let edges = vec![edge_ab, edge_mut];
+
+        assert_eq!(graph_hash(&nodes_a, &edges), graph_hash(&nodes_b, &edges));
+    }
+
+    #[test]
+    fn receipt_hash_changes_when_graph_schema_changes() {
+        let baseline = receipt_hash("demo", 1, 1, "graph", "intent", "risk");
+
+        let envelope = ReceiptEnvelope {
+            schema_version: RECEIPT_SCHEMA_VERSION,
+            graph_schema_version: GRAPH_SCHEMA_VERSION + 1,
+            crate_name: "demo",
+            node_count: 1,
+            edge_count: 1,
+            graph_hash: "graph",
+            intent_hash: "intent",
+            risk_hash: "risk",
+        };
+        let changed = stable_hash(&stable_json_bytes(&envelope, "test receipt envelope"));
+
+        assert_ne!(baseline, changed);
+    }
+}

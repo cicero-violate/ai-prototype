@@ -1,8 +1,8 @@
 # canon-rustc-v3 Plan
 
-Base commit: `3486120`
-Stage: `planning / scoring turn`
-Status: `reviewed; next implementation not started`
+Base commit: `8bb9d75`
+Stage: `implementation step 1`
+Status: `schema/test hardening implemented`
 
 ## Objective
 
@@ -10,22 +10,28 @@ Keep `canon-rustc-v3` focused on compiler-backed semantic witness capture: run a
 
 ## Current Findings
 
-- `PURPOSE.md` was empty and has been filled with a 7-line purpose statement.
+- `PURPOSE.md` is filled and remains within the requested 10 LOC limit.
 - `Cargo.toml` currently defaults to `rustc-driver`, so native witness capture is the default path.
-- `cargo check --offline` passes in this workspace.
-- `cargo check --offline --no-default-features` also passes, proving the pass-through boundary still compiles.
-- Source-code `TODO`/`FIXME` scan found no implementation markers outside planning docs.
+- `cargo test --offline` passes with 11 unit tests.
+- `cargo check --offline --no-default-features` passes, proving the pass-through boundary still compiles.
+- Source-code `TODO`/`FIXME` scan previously found no implementation markers outside planning docs.
 
-## Implementation Plan
+## Executed In Step 1
 
-1. Preserve the working default `rustc-driver` build and avoid changing capture behavior during this planning turn.
-2. Add or tighten tests around graph schema version 16, relation vocabulary, and stable hash inputs.
-3. Re-run native wrapper capture on a small fixture crate and save the emitted `graph.json` as validation evidence.
-4. Add a bounded performance check comparing wrapped and unwrapped `cargo check` on the same fixture.
-5. Reconcile long-form `GOAL.md` schema prose with the current implementation, especially schema version and relation additions.
+1. Preserved default `rustc-driver` capture behavior; no wrapper execution semantics were changed.
+2. Tightened schema-16 relation vocabulary tests in `src/facts.rs`.
+3. Added wrapper unit tests for graph schema version 16, receipt schema version 1, allowed-edge filtering, BTreeMap-backed graph hash stability, and receipt hash sensitivity to schema changes.
+4. Ran targeted validation: `cargo test --offline`, `cargo check --offline --no-default-features`, and `git diff --check`.
+
+## Remaining Implementation Plan
+
+1. Re-run native wrapper capture on a small fixture crate and save the emitted `graph.json` as validation evidence.
+2. Add a bounded performance check comparing wrapped and unwrapped `cargo check` on the same fixture.
+3. Reconcile long-form `GOAL.md` schema prose with the current implementation, especially schema version and relation additions.
+4. If fixture replay exposes graph or receipt drift, update tests before changing semantics.
 
 ## Non-Goals For This Turn
 
-- No source-code implementation changes.
 - No schema rewrite.
-- No claim of production readiness without fixture replay, receipt validation, and overhead evidence.
+- No fixture replay claim yet.
+- No production-readiness claim without wrapper replay, receipt validation, and overhead evidence.

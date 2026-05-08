@@ -76,6 +76,25 @@ mod tests {
     }
 
     #[test]
+    fn relation_vocabularies_match_schema_16_contract() {
+        assert_eq!(
+            NODE_KINDS,
+            &["fn", "trait", "impl", "struct", "enum", "ty_alias"]
+        );
+        assert_eq!(
+            EDGE_RELATIONS,
+            &[
+                "call", "impl", "mut", "io", "unsafe", "panic", "alloc", "use", "similar",
+                "phase", "provider",
+            ]
+        );
+        assert_eq!(
+            RISK_RELATIONS,
+            &["mut", "io", "unsafe", "panic", "alloc", "similar", "phase"]
+        );
+    }
+
+    #[test]
     fn auto_refactor_relations_are_canonical_edges() {
         assert!(allowed_relation("similar"));
         assert!(allowed_relation("phase"));

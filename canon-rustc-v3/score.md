@@ -1,35 +1,43 @@
 # canon-rustc-v3 Scorecard
 
 Reviewed: 2026-05-08
-Stage: `planning / scoring turn`
-Base commit: `3486120`
-Scope: repository review of `ai/canon-rustc-v3` with planning artifacts updated only.
+Stage: `implementation step 1`
+Base commit: `8bb9d75`
+Scope: schema/test hardening for `ai/canon-rustc-v3`; wrapper behavior unchanged.
 
 ## Validation Evidence
 
 | Check | Result | Judgment |
 |---|---:|---|
-| `cargo check --offline` | pass | Default `rustc-driver` build compiles in this workspace. |
-| `cargo check --offline --no-default-features` | pass | Pass-through/non-capture boundary compiles. |
-| `rg -n "TODO|FIXME" . --glob '!target/**' --glob '!vendor/**'` | pass | No source-code TODO/FIXME markers found; only planning-doc self-references. |
-| `PURPOSE.md` | pass | Filled with 7 LOC, within the requested 10 LOC limit. |
+| `cargo test --offline` | pass | 11 unit tests pass, including new schema/version/hash/vocabulary tests. |
+| `cargo check --offline --no-default-features` | pass | Pass-through/non-capture boundary still compiles. |
+| `git diff --check -- src/wrapper.rs src/facts.rs plan.md score.md` | pass | No whitespace errors in this turn's changed files. |
+| `PURPOSE.md` | pass | Still within the requested 10 LOC limit. |
+
+## Progress This Turn
+
+- Added schema contract coverage for `GRAPH_SCHEMA_VERSION = 16` and `RECEIPT_SCHEMA_VERSION = 1`.
+- Added complete relation vocabulary assertions for schema-16 node, edge, and risk relation lists.
+- Added allowed-edge filtering coverage for duplicate, unknown, and empty endpoint edges.
+- Added stable graph hash coverage for BTreeMap node ordering.
+- Added receipt hash sensitivity coverage for graph schema changes.
 
 ## Scores
 
 | Dimension | Score | Evidence-backed judgment |
 |---|---:|---|
-| Correctness | 7 | Builds pass, but live fixture capture and receipt validation are still needed. |
-| Determinism | 8 | Ordered graph structures, hashes, and atomic writes are implemented. |
-| Alignment | 8 | The wrapper/graph design matches the project purpose and refactor-agent use case. |
-| Transparency | 7 | Plan and score expose remaining proof gaps instead of hiding them. |
-| Performance | 5 | No current wrapped-vs-unwrapped overhead measurement. |
-| Simplicity | 7 | Purpose and plan are concise; GOAL.md remains much larger than implementation status. |
-| Future-proofing | 6 | Feature boundary exists, but native toolchain and schema docs need reconciliation. |
+| Correctness | 7 | Contract tests improved; live fixture capture and receipt validation remain open. |
+| Determinism | 8 | Hash stability now has direct unit coverage. |
+| Alignment | 8 | Tests reinforce the current wrapper schema without changing capture behavior. |
+| Transparency | 8 | Plan and score now identify completed test hardening and remaining proof gaps. |
+| Performance | 5 | No wrapped-vs-unwrapped overhead measurement yet. |
+| Simplicity | 7 | Unit tests are local and avoid public API expansion. |
+| Future-proofing | 7 | Schema and receipt constants now have regression coverage. |
 
 ## Aggregate
 
-Average score: `6.86 / 10`.
+Average score: `7.00 / 10`.
 
 ## Next Proof Target
 
-Run the wrapper against a small fixture crate, archive the emitted `graph.json`, validate schema version 16 receipts, and measure wrapper overhead against plain `cargo check`.
+Run the wrapper against a small fixture crate, archive the emitted `graph.json`, validate schema version 16 receipts, and then measure wrapper overhead against plain `cargo check`.
