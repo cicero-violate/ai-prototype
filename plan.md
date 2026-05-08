@@ -1868,3 +1868,50 @@ Acceptance criteria for the next implementation turn:
 ```
 
 Planning decision: no score increase is claimed in this turn. The next implementation turn should resolve the existing unowned graph/refactor work into validated, committed Structure/Efficiency progress or remove it.
+
+## Planning Turn Update - 2026-05-08T11:09:51Z - Structure/Efficiency Validation Gate
+
+This planning/scoring turn keeps ownership restricted to `plan.md` and `score.md`. It does not adopt or validate the active implementation edits already present in the worktree. Those edits remain candidate implementation work for a later implementation turn.
+
+Observed current worktree evidence:
+
+```text
+modified: canon-rustc-v3/src/facts.rs
+modified: canon-rustc-v3/src/hir.rs
+modified: canon-rustc-v3/src/mir.rs
+modified: canon-rustc-v3/src/wrapper.rs
+modified: canon-rustc-v3/validation/semantic_preflight.py
+modified: canon-rustc-v3/validation/semantic_scale_probe.py
+modified: src/validation_harness.rs
+modified: tests/validation_harness_contract.rs
+untracked: canon-rustc-v3/plan-autorefactor.md
+untracked: canon-rustc-v3/validation/auto_refactor_surface.py
+untracked: canon-rustc-v3/validation/auto_refactor_surface_smoke.py
+```
+
+Current implementation plan:
+
+1. Keep the next implementation turn focused on **Structure** first and **Efficiency** second.
+2. Treat `similar`, `phase`, and `provider` graph relations as deterministic evidence channels only.
+3. Confirm that `similar` and `phase` evidence is explicitly heuristic and cannot become semantic proof or reducer authority.
+4. Confirm that `provider` evidence is provenance or boundary metadata and cannot change provider behavior.
+5. Complete or harden `auto_refactor_surface.py` as a read-only report that emits stable, sorted JSON from graph evidence.
+6. Complete the smoke check for the auto-refactor report against a deterministic fixture or generated graph snapshot.
+7. Re-run focused validation across Rust graph extraction, validation harness contracts, semantic preflight, semantic scale probe, planning contract, and score contract.
+8. In the next implementation turn, commit validated implementation changes only after the validation evidence is clean, or roll back the candidate changes if the evidence fails.
+
+Validation gate for the next implementation turn:
+
+```text
+- deterministic relation allowlist/serialization includes similar, phase, and provider
+- graph evidence is stable and deduplicated across repeated extraction runs
+- similar/phase risk semantics are heuristic-only
+- provider evidence is boundary metadata only
+- auto_refactor_surface.py is read-only and deterministic
+- auto_refactor_surface.py emits sorted fixture-testable JSON
+- auto_refactor_surface_smoke.py or equivalent validation passes
+- cargo fmt/check/test and relevant Python validation commands pass, or exact blockers are recorded
+- no state-machine kernel, transition authority, durable writer, retrieval storage, policy promotion, live LLM, network, or student-training scope is added incidentally
+```
+
+Planning decision: no score increase is claimed. The next useful work is to convert the present candidate graph/refactor surface into validated Structure/Efficiency progress with clear evidence, not to broaden scope.
