@@ -2,9 +2,9 @@
 
 pub const NODE_KINDS: &[&str] = &["fn", "trait", "impl", "struct", "enum", "ty_alias"];
 pub const EDGE_RELATIONS: &[&str] = &[
-    "call", "impl", "mut", "io", "unsafe", "panic", "alloc", "use",
+    "call", "impl", "mut", "io", "unsafe", "panic", "alloc", "use", "similar", "phase", "provider",
 ];
-pub const RISK_RELATIONS: &[&str] = &["mut", "io", "unsafe", "panic", "alloc"];
+pub const RISK_RELATIONS: &[&str] = &["mut", "io", "unsafe", "panic", "alloc", "similar", "phase"];
 
 pub fn allowed_relation(relation: &str) -> bool {
     EDGE_RELATIONS.contains(&relation)
@@ -73,5 +73,15 @@ mod tests {
         for relation in RISK_RELATIONS {
             assert!(allowed_relation(relation));
         }
+    }
+
+    #[test]
+    fn auto_refactor_relations_are_canonical_edges() {
+        assert!(allowed_relation("similar"));
+        assert!(allowed_relation("phase"));
+        assert!(allowed_relation("provider"));
+        assert!(risk_relation("similar"));
+        assert!(risk_relation("phase"));
+        assert!(!risk_relation("provider"));
     }
 }

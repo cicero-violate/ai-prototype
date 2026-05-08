@@ -202,6 +202,33 @@ impl<'a, 'tcx> HirVisitor<'a, 'tcx> {
         self.current_fn = saved;
     }
 
+    fn emit_provider_edges_for_source(&mut self, def_id: rustc_hir::def_id::DefId, span: Span) {
+        let Some(source) = span_snippet(self.source_map, span) else {
+            return;
+        };
+        let path = self.resolve(def_id);
+        if contains_any_provider_sentinel(
+            &source,
+            &[
+                "OPENAI_COMPAT_PROVIDER",
+                "OPENAI_JUDGMENT_PROOF_LINE",
+                "openai_provider_hash",
+            ],
+        ) {
+            self.emit("provider", path.clone(), "provider::openai");
+        }
+        if contains_any_provider_sentinel(
+            &source,
+            &[
+                "OLLAMA_JUDGMENT_PROOF_LINE",
+                "ollama_provider_hash",
+                "OLLAMA_PROVIDER",
+            ],
+        ) {
+            self.emit("provider", path, "provider::ollama");
+        }
+    }
+
     /// Extract a structured function signature from a HIR `FnDecl` and
     /// the corresponding body's parameter list (Gap 5).
     fn extract_fn_sig(
@@ -306,6 +333,7 @@ impl<'a, 'tcx> Visitor<'tcx> for HirVisitor<'a, 'tcx> {
             }
             rustc_hir::ItemKind::Fn { .. } => {
                 self.upgrade_span(def_id, full_span);
+                self.emit_provider_edges_for_source(def_id, full_span);
                 // Gap 5: extract structured signature
                 if let rustc_hir::ItemKind::Fn { sig, body, .. } = &item.kind {
                     if let Some(fn_sig) = self.extract_fn_sig(sig.decl, *body) {
@@ -381,6 +409,7 @@ impl<'a, 'tcx> Visitor<'tcx> for HirVisitor<'a, 'tcx> {
         let def_id = item.owner_id.to_def_id();
         let full_span = self.span_with_attrs(item.hir_id(), item.span);
         self.upgrade_span(def_id, full_span);
+        self.emit_provider_edges_for_source(def_id, full_span);
 
         let is_fn = matches!(&item.kind, rustc_hir::ImplItemKind::Fn(..));
         // Gap 5: extract structured signature for impl methods
@@ -407,6 +436,7 @@ impl<'a, 'tcx> Visitor<'tcx> for HirVisitor<'a, 'tcx> {
         let def_id = item.owner_id.to_def_id();
         let full_span = self.span_with_attrs(item.hir_id(), item.span);
         self.upgrade_span(def_id, full_span);
+        self.emit_provider_edges_for_source(def_id, full_span);
 
         let is_fn = matches!(&item.kind, rustc_hir::TraitItemKind::Fn(..));
         // Gap 5: extract structured signature for trait methods
@@ -518,4 +548,8 @@ fn span_snippet(source_map: &SourceMap, span: Span) -> Option<String> {
         return None;
     }
     source_map.span_to_snippet(span).ok()
+}
+
+fn contains_any_provider_sentinel(source: &str, sentinels: &[&str]) -> bool {
+    sentinels.iter().any(|sentinel| source.contains(sentinel))
 }

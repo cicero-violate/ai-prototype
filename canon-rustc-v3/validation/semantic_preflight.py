@@ -15,10 +15,10 @@ from typing import Any
 
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
-RISK_RELATIONS = {"mut", "io", "unsafe", "panic", "alloc"}
+RISK_RELATIONS = {"mut", "io", "unsafe", "panic", "alloc", "similar", "phase"}
 HASH_FIELDS = {"graph_hash", "intent_hash", "risk_hash", "receipt_hash"}
 VOLATILE_FIELDS = ["meta.captured_at_ms"]
-GRAPH_SCHEMA_VERSION = 11
+GRAPH_SCHEMA_VERSION = 16
 RECEIPT_SCHEMA_VERSION = 1
 
 

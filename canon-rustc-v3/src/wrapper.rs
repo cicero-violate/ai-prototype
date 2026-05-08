@@ -15,7 +15,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::path::PathBuf;
 use std::time::SystemTime;
 
-const GRAPH_SCHEMA_VERSION: u32 = 12;
+const GRAPH_SCHEMA_VERSION: u32 = 16;
 const RECEIPT_SCHEMA_VERSION: u32 = 1;
 
 pub struct AnalysisCallbacks {

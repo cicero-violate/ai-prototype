@@ -13,7 +13,7 @@ import semantic_delta
 
 
 RISK_TARGET = "core::ptr::write"
-GRAPH_SCHEMA_VERSION = 11
+GRAPH_SCHEMA_VERSION = 16
 RECEIPT_SCHEMA_VERSION = 1
 
 
