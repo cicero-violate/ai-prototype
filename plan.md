@@ -1349,28 +1349,6 @@ score.md
 
 Tracked implementation files for storage-write-preflight were already clean at the start of this turn. Observed `canon-rustc-v3/` working-tree changes remain outside this turn.
 
-## Implementation Step 1 Commit Scope - Retrieval Example Storage Write Preflight Verification
-
-This turn updates and commits:
-
-```text
-plan.md
-score.md
-```
-
-Tracked implementation files for storage-write-preflight were already clean at the start of this turn. Observed `canon-rustc-v3/` working-tree changes remain outside this turn.
-
-## Implementation Step 1 Commit Scope - Retrieval Example Storage Write Preflight Verification
-
-This turn updates and commits:
-
-```text
-plan.md
-score.md
-```
-
-Tracked implementation files for storage-write-preflight were already clean at the start of this turn. Observed `canon-rustc-v3/` working-tree changes remain outside this turn.
-
 ## Implementation Step 1 - Retrieval Example Storage Write Preflight Verification
 
 Completed this turn:
@@ -1433,7 +1411,69 @@ Recommended constraints:
 6. Update external CLI mode fixtures and guarded validation counts only if new public modes or tests are added.
 7. Keep unrelated `canon-rustc-v3/` working-tree changes out of this slice unless explicitly selected in a separate turn.
 
-## Implementation Step 1 Commit Scope - Retrieval Example Storage Write Preflight Verification
+## Implementation Step 2 - Retrieval Example Storage Write Approval Verification
+
+Completed this turn:
+
+```text
+Verified that the first post-preflight retrieval-example storage-write authorization boundary is already present in the tracked implementation surface:
+
+PolicyReuseEvidenceRetrievalResultUseSummaryManifestApprovalAdmissionConsumptionLearningStorageWriteApprovalReceipt
+policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_consumption_learning_storage_write_approval_smoke_receipt()
+policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_consumption_learning_storage_write_approval_regression_smoke_receipt()
+--policy-reuse-evidence-retrieval-result-use-summary-manifest-approval-admission-consumption-learning-storage-write-approval-smoke
+--policy-reuse-evidence-retrieval-result-use-summary-manifest-approval-admission-consumption-learning-storage-write-approval-regression-smoke
+```
+
+Observed implementation semantics:
+
+- The storage-write-approval receipt consumes storage-write-preflight evidence and remains deterministic and evidence-only.
+- Healthy evidence exposes `retrieval_example_storage_write_approved = true`, status `retrieval_example_storage_write_approved`, and `not_approved_reason = "none"` only when storage-write-preflight and upstream learning/materialization/admission evidence are ready and positive.
+- Regression evidence remains structurally valid while reporting `retrieval_example_storage_write_approved = false`, status `retrieval_example_storage_write_not_approved`, and `not_approved_reason = "retrieval_example_storage_write_preflight_not_ready"` for the controlled preflight regression path.
+- The approval receipt binds to storage-write-preflight, storage-commit-intent, materialization-plan, learning-admission, learning-eligibility, approval-admission-consumption, approval-admission, approval, readiness, and admission source hashes.
+- The receipt keeps retrieval storage reads/writes, query execution, runtime result approval, policy promotion, batch execution, live LLM calls, network calls, wall-clock-dependent measurement, and student training outside this boundary.
+- Public root validation modes and fixture entries for healthy and regression storage-write-approval evidence are already present.
+- The kernel, transition table, runtime reducer, durable writer, and command ledger were not changed this turn.
+
+Validation evidence for this implementation verification:
+
+```text
+RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test validation_harness_contract storage_write_approval --no-run --quiet: pass
+RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test validation_harness_contract storage_write_approval --quiet: attempted, connector returned 502 before Rust test output was available
+RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo run --quiet --bin root_validate -- --policy-reuse-evidence-retrieval-result-use-summary-manifest-approval-admission-consumption-learning-storage-write-approval-smoke: attempted, connector returned 502 before output was available
+RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo run --quiet --bin root_validate -- --policy-reuse-evidence-retrieval-result-use-summary-manifest-approval-admission-consumption-learning-storage-write-approval-regression-smoke: attempted, connector returned 502 before output was available
+RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo check --quiet: pass
+RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test planning_contract --quiet: pass
+RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test score_contract --quiet: pass
+```
+
+Current planning decision after storage-write-approval verification:
+
+Keep the next implementation turn focused on **Learning**, moving from storage-write-approval evidence to the existing retrieval-example storage-write-admission boundary while still avoiding actual retrieval storage mutation.
+
+Current gap:
+
+```text
+Retrieval-example storage-write approval evidence is present and compile-verified, but the next handoff should verify or complete the downstream storage-write-admission receipt that consumes approval evidence before any actual retrieval-example storage mutation authority exists.
+```
+
+Recommended next slice:
+
+```text
+Verify or complete the deterministic policy reuse evidence receipt that consumes retrieval-example storage-write-approval evidence and emits retrieval-example storage-write-admission evidence without performing retrieval storage reads/writes, query execution, runtime result approval, policy promotion, batch execution, live LLM calls, network calls, wall-clock-dependent measurement, or student training.
+```
+
+Recommended constraints:
+
+1. Keep the kernel, transition table, runtime reducer, durable writer, and command ledger untouched.
+2. Do not introduce live LLM, network, wall-clock, or environment-dependent measurement.
+3. Reuse storage-write-approval receipt hashes rather than creating mutation authority.
+4. Keep the receipt evidence-only: no retrieval storage reads/writes, no query execution, no policy promotion, no runtime result approval, no batch execution, and no student training.
+5. Include healthy and controlled regression cases.
+6. Update external CLI mode fixtures and guarded validation counts only if new public modes or tests are added.
+7. Keep unrelated `canon-rustc-v3/` working-tree changes out of this slice unless explicitly selected in a separate turn.
+
+## Implementation Step 2 Commit Scope - Retrieval Example Storage Write Approval Verification
 
 This turn updates and commits:
 
@@ -1442,4 +1482,4 @@ plan.md
 score.md
 ```
 
-Tracked implementation files for storage-write-preflight were already clean at the start of this turn. Observed `canon-rustc-v3/` working-tree changes remain outside this turn.
+Tracked implementation files for storage-write-approval were already clean at the start of this turn. Observed `canon-rustc-v3/` working-tree changes remain outside this turn.
