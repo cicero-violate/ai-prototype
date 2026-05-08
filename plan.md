@@ -1,6 +1,6 @@
 # Canon Agent Implementation Plan
 
-This plan tracks the current deterministic implementation plan for the planning/scoring turn after implementation step 7 of the current agent loop.
+This plan tracks the current deterministic implementation plan for the planning/scoring turn before the next implementation slice of the current agent loop.
 
 ## North Star
 
@@ -131,7 +131,7 @@ Full-suite validation was not run before this planning/scoring update.
 
 ## Planned Next Implementation Slice
 
-The weakest remaining axis is **Performance**.
+Planning decision for this turn: keep the next implementation slice focused on the weakest remaining axis, **Performance**.
 
 Current gap:
 
@@ -139,13 +139,13 @@ Current gap:
 Policy-reuse learning evidence now has summary and manifest coverage, but validation still requires running the full validation-harness contract to prove the evidence stack.
 ```
 
-Recommended next slice:
+Selected next slice:
 
 ```text
 Add a deterministic policy reuse evidence validation-budget receipt that summarizes the minimum targeted validation budget for the summary/manifest stack.
 ```
 
-Recommended concrete surfaces:
+Selected concrete surfaces:
 
 ```text
 PolicyReuseEvidenceValidationBudgetReceipt
@@ -155,7 +155,7 @@ policy_reuse_evidence_validation_budget_regression_smoke_receipt()
 --policy-reuse-evidence-validation-budget-regression-smoke
 ```
 
-Recommended constraints:
+Planning constraints for the next implementation turn:
 
 1. Keep the kernel untouched.
 2. Do not introduce live LLM, network, wall-clock, or environment-dependent measurement.
@@ -202,7 +202,7 @@ arg max(G) = good
 
 1. Plan and score first.
 2. Choose the smallest implementation slice improving the weakest axis.
-3. Implement in capability/runtime-adjacent code without kernel authority drift.
+3. During implementation, work in validation-harness/root-validator evidence only unless a stricter dependency is discovered.
 4. Add deterministic contract tests.
 5. Run targeted validation and record results.
 6. Update `plan.md` and `score.md`.

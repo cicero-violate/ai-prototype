@@ -1,6 +1,6 @@
 # Canon Agent Score
 
-This scorecard records the current progress at the planning/scoring turn after implementation step 7 of the current agent loop. The working tree contains deterministic policy reuse evaluator-savings, scaling-projection, distillation-readiness, evidence-surface index, evidence-bundle, evidence-quickcheck, evidence-maturity, and evidence-summary, and evidence-manifest evidence.
+This scorecard records the current progress at the planning/scoring turn before the next implementation slice of the current agent loop. The working tree contains deterministic policy reuse evaluator-savings, scaling-projection, distillation-readiness, evidence-surface index, evidence-bundle, evidence-quickcheck, evidence-maturity, and evidence-summary, and evidence-manifest evidence.
 
 ## Validation Evidence
 
@@ -54,12 +54,12 @@ G ≈ 0.828
 ## Current Judgment
 
 ```text
-turn_type = implementation_step_5
+turn_type = planning_scoring_turn
 weakest_axis = Performance
 secondary_risk = full validation-harness execution remains the default confidence path
-completed_action = added deterministic policy reuse evidence-manifest evidence
+completed_action = preserved deterministic policy reuse evidence-manifest baseline and selected validation-budget as the next slice
 current_gap = mode and fixture coverage are explicit, but the minimum validation budget for proving the stack is not summarized
-next_action = add deterministic policy reuse evidence validation-budget evidence
+next_action = implement deterministic policy reuse evidence validation-budget evidence
 scope = validation-harness/root-validator evidence only; kernel authority unchanged
 validation = targeted formatting/manifest/full-validation-harness/score/planning tests passed; full suite not run this turn
 ```
@@ -84,7 +84,7 @@ Completed scoring evidence:
 
 ## Next Score Improvement Target
 
-Raise `P` by adding a deterministic policy reuse evidence validation-budget receipt.
+Raise `P` from `0.77` by adding a deterministic policy reuse evidence validation-budget receipt.
 
 Acceptance criteria for the next slice:
 
@@ -95,3 +95,4 @@ Acceptance criteria for the next slice:
 5. Validation harness contract tests assert validation-budget semantics, source binding, and compact output.
 6. Planning and score contract tests pass after documentation updates.
 7. The receipt remains evidence-only and does not expand kernel authority.
+8. Planning/scoring artifacts remain the only files changed in this planning turn.
