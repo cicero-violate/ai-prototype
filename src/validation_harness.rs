@@ -175,6 +175,10 @@ pub const POLICY_REUSE_EVIDENCE_RETRIEVAL_USE_APPROVAL_SMOKE_STEP: &str =
     "policy_reuse_evidence_retrieval_use_approval_smoke";
 pub const POLICY_REUSE_EVIDENCE_RETRIEVAL_USE_APPROVAL_REGRESSION_SMOKE_STEP: &str =
     "policy_reuse_evidence_retrieval_use_approval_regression_smoke";
+pub const POLICY_REUSE_EVIDENCE_RETRIEVAL_USE_MANIFEST_SMOKE_STEP: &str =
+    "policy_reuse_evidence_retrieval_use_manifest_smoke";
+pub const POLICY_REUSE_EVIDENCE_RETRIEVAL_USE_MANIFEST_REGRESSION_SMOKE_STEP: &str =
+    "policy_reuse_evidence_retrieval_use_manifest_regression_smoke";
 pub const POLICY_VALIDATION_HEALTH_SMOKE_STEP: &str = "policy_validation_health_smoke";
 pub const POLICY_VALIDATION_HEALTH_TREND_SMOKE_STEP: &str = "policy_validation_health_trend_smoke";
 pub const POLICY_ORCHESTRATION_CAPACITY_SMOKE_STEP: &str = "policy_orchestration_capacity_smoke";
@@ -3298,6 +3302,107 @@ impl PolicyReuseEvidenceRetrievalUseApprovalReceipt {
             self.approval_status,
             self.not_approved_reason,
             self.approval_hash,
+            self.receipt_hash,
+        )
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PolicyReuseEvidenceRetrievalUseManifestReceipt {
+    pub schema: &'static str,
+    pub record_type: &'static str,
+    pub retrieval_use_manifest_version: u64,
+    pub source_retrieval_use_approval_hash: u64,
+    pub source_retrieval_corpus_admission_hash: u64,
+    pub retrieval_use_approved: bool,
+    pub retrieval_corpus_admitted: bool,
+    pub retrieval_read_performed: bool,
+    pub retrieval_write_performed: bool,
+    pub policy_promotion_performed: bool,
+    pub student_training_performed: bool,
+    pub manifest_policy_reuse_examples: usize,
+    pub manifest_llm_fallback_examples: usize,
+    pub retrieval_use_manifest_ready: bool,
+    pub manifest_status: &'static str,
+    pub not_ready_reason: &'static str,
+    pub manifest_hash: u64,
+    pub receipt_hash: u64,
+}
+
+impl PolicyReuseEvidenceRetrievalUseManifestReceipt {
+    pub fn passed(&self) -> bool {
+        self.is_valid()
+            && self.retrieval_use_manifest_ready
+            && self.manifest_status == "manifest_ready"
+    }
+
+    pub fn is_valid(&self) -> bool {
+        self.schema == "canon_policy_reuse_evidence_retrieval_use_manifest_v1"
+            && matches!(
+                self.record_type,
+                "policy_reuse_evidence_retrieval_use_manifest"
+                    | POLICY_REUSE_EVIDENCE_RETRIEVAL_USE_MANIFEST_SMOKE_STEP
+                    | POLICY_REUSE_EVIDENCE_RETRIEVAL_USE_MANIFEST_REGRESSION_SMOKE_STEP
+            )
+            && self.retrieval_use_manifest_version == 1
+            && self.source_retrieval_use_approval_hash != 0
+            && self.source_retrieval_corpus_admission_hash != 0
+            && !self.retrieval_read_performed
+            && !self.retrieval_write_performed
+            && !self.policy_promotion_performed
+            && !self.student_training_performed
+            && self.manifest_policy_reuse_examples > 0
+            && matches!(
+                self.manifest_status,
+                "manifest_ready" | "manifest_not_ready"
+            )
+            && matches!(
+                self.not_ready_reason,
+                "none"
+                    | "use_not_approved"
+                    | "corpus_not_admitted"
+                    | "retrieval_read_attempted"
+                    | "retrieval_write_attempted"
+                    | "policy_promotion_attempted"
+                    | "student_training_attempted"
+                    | "no_policy_reuse_examples"
+            )
+            && self.retrieval_use_manifest_ready
+                == (self.retrieval_use_approved
+                    && self.retrieval_corpus_admitted
+                    && !self.retrieval_read_performed
+                    && !self.retrieval_write_performed
+                    && !self.policy_promotion_performed
+                    && !self.student_training_performed
+                    && self.manifest_policy_reuse_examples > 0
+                    && self.not_ready_reason == "none")
+            && (self.manifest_status == "manifest_ready") == self.retrieval_use_manifest_ready
+            && self.manifest_hash != 0
+            && self.receipt_hash != 0
+            && self.manifest_hash == policy_reuse_evidence_retrieval_use_manifest_hash(self)
+            && self.receipt_hash == policy_reuse_evidence_retrieval_use_manifest_receipt_hash(self)
+    }
+
+    pub fn to_json(&self) -> String {
+        format!(
+            r#"{{"schema":"{}","record_type":"{}","retrieval_use_manifest_version":{},"source_retrieval_use_approval_hash":{},"source_retrieval_corpus_admission_hash":{},"retrieval_use_approved":{},"retrieval_corpus_admitted":{},"retrieval_read_performed":{},"retrieval_write_performed":{},"policy_promotion_performed":{},"student_training_performed":{},"manifest_policy_reuse_examples":{},"manifest_llm_fallback_examples":{},"retrieval_use_manifest_ready":{},"manifest_status":"{}","not_ready_reason":"{}","manifest_hash":{},"receipt_hash":{}}}"#,
+            self.schema,
+            self.record_type,
+            self.retrieval_use_manifest_version,
+            self.source_retrieval_use_approval_hash,
+            self.source_retrieval_corpus_admission_hash,
+            self.retrieval_use_approved,
+            self.retrieval_corpus_admitted,
+            self.retrieval_read_performed,
+            self.retrieval_write_performed,
+            self.policy_promotion_performed,
+            self.student_training_performed,
+            self.manifest_policy_reuse_examples,
+            self.manifest_llm_fallback_examples,
+            self.retrieval_use_manifest_ready,
+            self.manifest_status,
+            self.not_ready_reason,
+            self.manifest_hash,
             self.receipt_hash,
         )
     }
@@ -6904,6 +7009,98 @@ fn finalize_policy_reuse_evidence_retrieval_use_approval(
     receipt.receipt_hash = policy_reuse_evidence_retrieval_use_approval_receipt_hash(receipt);
 }
 
+pub fn policy_reuse_evidence_retrieval_use_manifest_smoke_receipt(
+) -> PolicyReuseEvidenceRetrievalUseManifestReceipt {
+    let use_approval = policy_reuse_evidence_retrieval_use_approval_smoke_receipt();
+    let corpus_admission = policy_reuse_evidence_retrieval_corpus_admission_smoke_receipt();
+    policy_reuse_evidence_retrieval_use_manifest_from_sources(
+        POLICY_REUSE_EVIDENCE_RETRIEVAL_USE_MANIFEST_SMOKE_STEP,
+        &use_approval,
+        &corpus_admission,
+        false,
+        false,
+        false,
+        false,
+        "none",
+    )
+}
+
+pub fn policy_reuse_evidence_retrieval_use_manifest_regression_smoke_receipt(
+) -> PolicyReuseEvidenceRetrievalUseManifestReceipt {
+    let use_approval = policy_reuse_evidence_retrieval_use_approval_regression_smoke_receipt();
+    let corpus_admission =
+        policy_reuse_evidence_retrieval_corpus_admission_regression_smoke_receipt();
+    policy_reuse_evidence_retrieval_use_manifest_from_sources(
+        POLICY_REUSE_EVIDENCE_RETRIEVAL_USE_MANIFEST_REGRESSION_SMOKE_STEP,
+        &use_approval,
+        &corpus_admission,
+        false,
+        false,
+        false,
+        false,
+        "use_not_approved",
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn policy_reuse_evidence_retrieval_use_manifest_from_sources(
+    record_type: &'static str,
+    use_approval: &PolicyReuseEvidenceRetrievalUseApprovalReceipt,
+    corpus_admission: &PolicyReuseEvidenceRetrievalCorpusAdmissionReceipt,
+    retrieval_read_performed: bool,
+    retrieval_write_performed: bool,
+    policy_promotion_performed: bool,
+    student_training_performed: bool,
+    not_ready_reason: &'static str,
+) -> PolicyReuseEvidenceRetrievalUseManifestReceipt {
+    let retrieval_use_approved = use_approval.passed();
+    let retrieval_corpus_admitted = corpus_admission.passed();
+    let manifest_policy_reuse_examples = use_approval.approved_policy_reuse_examples;
+    let manifest_llm_fallback_examples = use_approval.approved_llm_fallback_examples;
+    let retrieval_use_manifest_ready = retrieval_use_approved
+        && retrieval_corpus_admitted
+        && !retrieval_read_performed
+        && !retrieval_write_performed
+        && !policy_promotion_performed
+        && !student_training_performed
+        && manifest_policy_reuse_examples > 0
+        && not_ready_reason == "none";
+    let manifest_status = if retrieval_use_manifest_ready {
+        "manifest_ready"
+    } else {
+        "manifest_not_ready"
+    };
+    let mut receipt = PolicyReuseEvidenceRetrievalUseManifestReceipt {
+        schema: "canon_policy_reuse_evidence_retrieval_use_manifest_v1",
+        record_type,
+        retrieval_use_manifest_version: 1,
+        source_retrieval_use_approval_hash: use_approval.receipt_hash,
+        source_retrieval_corpus_admission_hash: corpus_admission.receipt_hash,
+        retrieval_use_approved,
+        retrieval_corpus_admitted,
+        retrieval_read_performed,
+        retrieval_write_performed,
+        policy_promotion_performed,
+        student_training_performed,
+        manifest_policy_reuse_examples,
+        manifest_llm_fallback_examples,
+        retrieval_use_manifest_ready,
+        manifest_status,
+        not_ready_reason,
+        manifest_hash: 0,
+        receipt_hash: 0,
+    };
+    finalize_policy_reuse_evidence_retrieval_use_manifest(&mut receipt);
+    receipt
+}
+
+fn finalize_policy_reuse_evidence_retrieval_use_manifest(
+    receipt: &mut PolicyReuseEvidenceRetrievalUseManifestReceipt,
+) {
+    receipt.manifest_hash = policy_reuse_evidence_retrieval_use_manifest_hash(receipt);
+    receipt.receipt_hash = policy_reuse_evidence_retrieval_use_manifest_receipt_hash(receipt);
+}
+
 #[allow(clippy::too_many_arguments)]
 fn policy_reuse_evidence_surface_index_from_sources(
     record_type: &'static str,
@@ -8172,6 +8369,64 @@ fn policy_reuse_evidence_retrieval_use_approval_receipt_hash(
         return 0;
     }
     (approval_hash ^ 0x504f_4c52_5255_4152u64).max(1)
+}
+
+fn policy_reuse_evidence_retrieval_use_manifest_hash(
+    receipt: &PolicyReuseEvidenceRetrievalUseManifestReceipt,
+) -> u64 {
+    if receipt.retrieval_use_manifest_version == 0
+        || receipt.source_retrieval_use_approval_hash == 0
+        || receipt.source_retrieval_corpus_admission_hash == 0
+    {
+        return 0;
+    }
+    let manifest_status_code = match receipt.manifest_status {
+        "manifest_ready" => 1,
+        "manifest_not_ready" => 2,
+        _ => 0,
+    };
+    let not_ready_reason_code = match receipt.not_ready_reason {
+        "none" => 1,
+        "use_not_approved" => 2,
+        "corpus_not_admitted" => 3,
+        "retrieval_read_attempted" => 4,
+        "retrieval_write_attempted" => 5,
+        "policy_promotion_attempted" => 6,
+        "student_training_attempted" => 7,
+        "no_policy_reuse_examples" => 8,
+        _ => 0,
+    };
+    if manifest_status_code == 0 || not_ready_reason_code == 0 {
+        return 0;
+    }
+    let mut h = 0x504f_4c52_5255_4d48u64;
+    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.schema.as_bytes());
+    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.record_type.as_bytes());
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.retrieval_use_manifest_version;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_retrieval_use_approval_hash;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_retrieval_corpus_admission_hash;
+    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_use_approved);
+    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_corpus_admitted);
+    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_read_performed);
+    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_write_performed);
+    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.policy_promotion_performed);
+    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.student_training_performed);
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.manifest_policy_reuse_examples as u64;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.manifest_llm_fallback_examples as u64;
+    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_use_manifest_ready);
+    h = h.wrapping_mul(0x100000001b3) ^ manifest_status_code;
+    h = h.wrapping_mul(0x100000001b3) ^ not_ready_reason_code;
+    h.max(1)
+}
+
+fn policy_reuse_evidence_retrieval_use_manifest_receipt_hash(
+    receipt: &PolicyReuseEvidenceRetrievalUseManifestReceipt,
+) -> u64 {
+    let manifest_hash = policy_reuse_evidence_retrieval_use_manifest_hash(receipt);
+    if manifest_hash == 0 || receipt.manifest_hash != manifest_hash {
+        return 0;
+    }
+    (manifest_hash ^ 0x504f_4c52_5255_4d52u64).max(1)
 }
 
 fn policy_reuse_evidence_summary_hash(receipt: &PolicyReuseEvidenceSummaryReceipt) -> u64 {
