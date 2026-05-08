@@ -1,6 +1,6 @@
 # Canon Agent Implementation Plan
 
-This plan tracks the current deterministic implementation plan from the repository state after implementation step 1 of the current agent loop.
+This plan tracks the current deterministic implementation plan from the repository state at the planning/scoring turn after implementation slice `d4cebb6` (`Add policy reuse cost catalog evidence`).
 
 ## North Star
 
@@ -36,17 +36,19 @@ The repository currently exposes these meaningful surfaces:
 - validation-harness/root-validate smoke exposure for complete and incomplete reuse/cost catalog evidence;
 - retained fixtures for policy reuse, policy validation health, policy validation trend, orchestration capacity, policy capacity/cost, runtime performance trend, validation duration planning, validation command footprint, and external CLI mode evidence.
 
-## Completed Implementation Slice This Turn
+## Current Planning/Scoring Turn
 
-Implemented deterministic **policy reuse cost catalog summary** evidence in the judgment/capability and validation-harness layers.
+No implementation code was changed in this turn. This turn refreshed the plan and score after inspecting the current repository state and prior commit history.
 
-This slice answers:
+The most recent implementation slice added deterministic **policy reuse cost catalog summary** evidence in the judgment/capability and validation-harness layers.
+
+That completed slice answers:
 
 ```text
 Can an auditor inspect one deterministic summary to see which retained policy reuse/cost evidence exists, which modes expose it, and whether the healthy/regression coverage is complete?
 ```
 
-Implemented surfaces:
+Implemented surfaces already present:
 
 ```text
 PolicyReuseCostCatalogReceipt
@@ -56,7 +58,7 @@ policy_reuse_cost_catalog_incomplete_smoke_receipt()
 --policy-reuse-cost-catalog-incomplete-smoke
 ```
 
-Implemented fields:
+Implemented fields already present:
 
 ```text
 catalog_version
@@ -78,26 +80,18 @@ catalog_hash
 receipt_hash
 ```
 
-Completed implementation tasks:
+Completed implementation properties:
 
-1. Added `PolicyReuseCostCatalogReceipt` with deterministic hash binding and validation.
-2. Exported the new receipt through judgment and crate public surfaces.
-3. Added deterministic healthy and controlled incomplete catalog smoke constructors.
-4. Added root validator compact modes for both catalog receipts.
-5. Extended `validation_harness_contract` with catalog completeness, missing-mode, source-hash, and root-mode assertions.
-6. Updated external CLI mode fixture and compact-mode counts for the two new root validator modes.
-7. Updated validation harness guarded-test count from 140 to 144.
-8. Updated retained guarded-test fixture values from 150 to 154 and refreshed dependent deterministic validation-duration estimates.
-9. Kept kernel authority unchanged.
+1. `PolicyReuseCostCatalogReceipt` has deterministic hash binding and validation.
+2. Healthy and controlled incomplete catalog smoke constructors are exposed.
+3. Root validator compact modes expose both catalog receipts.
+4. Validation harness contracts assert catalog completeness, missing-mode, source-hash, and root-mode semantics.
+5. External CLI mode and retained guarded-test fixtures were updated for the new public modes.
+6. Kernel authority remained unchanged.
 
-Implemented deterministic semantics:
+## Validation Evidence Carried Forward
 
-- `summary_complete = true` only when required healthy modes, required regression modes, and `missing_required_modes = "none"` agree.
-- Incomplete catalog evidence remains valid but does not pass.
-- Source hashes bind the catalog to the existing policy reuse, scale trace, performance-cost trend, validation health, validation duration, and runtime performance evidence.
-- Catalog evidence reduces audit joins without duplicating the source receipt semantics.
-
-## Validation Evidence For This Implementation Turn
+Last targeted validation from the completed implementation slice:
 
 ```text
 cargo fmt --check
@@ -112,7 +106,7 @@ planning_contract: 2 passed, 0 failed
 score_contract: 5 passed, 0 failed
 ```
 
-Full-suite validation was not run in this implementation turn.
+No validation suite was run in this planning/scoring-only turn.
 
 ## Next Implementation Slice
 
@@ -127,17 +121,60 @@ Reuse/cost evidence is now easier to audit through a catalog, but performance re
 Recommended next slice:
 
 ```text
-Add deterministic policy reuse evaluator savings evidence that summarizes avoided LLM calls, estimated avoided reasoning cost, and validation pass/fail status from the cataloged reuse/cost evidence.
+Add deterministic policy reuse evaluator savings evidence that summarizes avoided LLM calls, estimated avoided reasoning cost, validation pass/fail status, and source catalog binding from the existing reuse/cost catalog and performance-cost trend receipts.
 ```
 
-Recommended constraints:
+Recommended concrete surfaces:
 
-1. Keep the kernel untouched.
-2. Do not introduce live LLM, network, wall-clock, or environment-dependent measurement.
-3. Reuse the cost catalog and performance-cost trend receipts as source evidence.
-4. Keep the output audit/evaluator-facing, not authority-bearing.
-5. Include healthy and controlled regression/incomplete cases.
-6. Avoid broad fixture churn unless public root modes or retained counts must change.
+```text
+PolicyReuseEvaluatorSavingsReceipt
+policy_reuse_evaluator_savings_smoke_receipt()
+policy_reuse_evaluator_savings_regression_smoke_receipt()
+--policy-reuse-evaluator-savings-smoke
+--policy-reuse-evaluator-savings-regression-smoke
+```
+
+Recommended fields:
+
+```text
+savings_version
+source_catalog_hash
+source_performance_cost_trend_hash
+source_policy_reuse_hash
+sample_runs
+policy_hits
+llm_calls_avoided
+estimated_reasoning_cost_units_avoided
+baseline_llm_calls
+actual_llm_calls
+llm_call_reduction_ratio_bps
+validation_passed
+regression_reason
+savings_hash
+receipt_hash
+```
+
+Recommended deterministic semantics:
+
+1. `validation_passed = true` only when the source catalog is complete, avoided calls are positive, estimated savings are positive, and actual LLM calls are less than baseline LLM calls.
+2. Regression evidence should remain structurally valid while exposing an explicit failure reason.
+3. Hashes should bind the evaluator-savings receipt to the existing catalog, performance-cost trend, and policy-reuse source receipts.
+4. The receipt must be evidence-only. It must not drive kernel transitions or approve policy promotion.
+5. Estimates must be fixed deterministic units, not live cost, wall-clock, network, model-pricing, or environment-derived measurements.
+
+Recommended validation tasks:
+
+1. Add unit tests for healthy and regression evaluator savings receipts.
+2. Add validation harness contract tests for compact root output and hash binding.
+3. Update CLI mode fixture and guarded-test count only if new public root modes are added.
+4. Run targeted validation:
+
+```text
+cargo fmt --check
+RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --lib capability::judgment::record --quiet
+RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test validation_harness_contract --quiet
+RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test score_contract --test planning_contract --quiet
+```
 
 ## Evaluation Axes
 
@@ -171,7 +208,7 @@ arg max(G) = good
 - Graph telemetry still requires explicit wrapper capture.
 - Student-model training is intentionally deferred until verified distillation data is large and clean.
 - Parallel orchestration scaling should wait until larger-batch reuse, validation health, retained validation/runtime cost, catalog completeness, and evaluator savings are proven together.
-- Full-suite validation should be scheduled after the next evaluator-savings slice if fixture or CLI mode churn is broader than expected.
+- Full-suite validation should run after the evaluator-savings slice if fixture or CLI mode churn is broader than expected.
 
 ## Turn Protocol
 
