@@ -26,22 +26,71 @@ The repository currently exposes these meaningful surfaces:
 - policy, learning, eval, judgment, verification, tooling, memory, observation, and orchestration modules exported as crate surfaces;
 - deterministic policy reuse ledger summary receipt in the judgment layer;
 - validation-harness/root-validate smoke exposure for policy reuse ledger summary evidence, including a controlled validation-regression case;
-- retained fixtures for policy reuse, policy validation health, policy validation trend, orchestration capacity, policy capacity/cost, runtime performance trend, validation duration planning, and validation command footprint evidence.
+- deterministic policy reuse scale trace receipt in the judgment layer;
+- validation-harness/root-validate smoke exposure for larger-batch policy reuse scale evidence, including a controlled validation-regression case;
+- retained fixtures for policy reuse, policy validation health, policy validation trend, orchestration capacity, policy capacity/cost, runtime performance trend, validation duration planning, validation command footprint, and external CLI mode evidence.
 
-No implementation code was changed in this planning turn. The previous targeted validation evidence remains the most recent recorded test evidence in these planning artifacts:
+## Completed Implementation Slice
+
+Implemented this turn: added deterministic **policy reuse scale trace** evidence in the judgment/capability and validation-harness layers.
+
+The implemented slice answers:
 
 ```text
-RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test validation_harness_contract --quiet
-RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --lib capability::judgment::record --quiet
-RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test score_contract --test planning_contract --quiet
-
-planning_contract: 2 passed, 0 failed
-score_contract:    5 passed, 0 failed
-validation_harness_contract: 132 passed, 0 failed
-judgment::record unit tests: 12 passed, 0 failed
+When policy reuse is evaluated over a larger deterministic batch, does the system preserve validation health while increasing avoided LLM calls per batch?
 ```
 
-Full-suite validation was not run in this planning turn.
+Completed constraints:
+
+1. Kept the kernel untouched.
+2. Used deterministic generated smoke records only.
+3. Avoided live LLM, network, wall-clock, or environment-dependent calls.
+4. Reused existing judgment, validation-harness, root-validate, and retained-fixture surfaces.
+5. Preserved compact policy reuse ledger summary semantics.
+6. Added a larger-batch healthy case and a larger-batch validation-regression case.
+7. Made scale evidence readable without joining unrelated receipts.
+
+Completed implementation tasks:
+
+1. Added `PolicyReuseScaleTraceReceipt` with deterministic hash binding and validation.
+2. Exported the new receipt through judgment and crate public surfaces.
+3. Added deterministic constructors:
+   - `policy_reuse_scale_trace_smoke_receipt()`
+   - `policy_reuse_scale_trace_regression_smoke_receipt()`
+4. Added root validator compact modes:
+   - `--policy-reuse-scale-trace-smoke`
+   - `--policy-reuse-scale-trace-regression-smoke`
+5. Extended `validation_harness_contract` with semantic assertions for:
+   - `batch_size`
+   - `policy_hits`
+   - `policy_misses`
+   - `llm_fallbacks`
+   - `validation_passes`
+   - `validation_failures`
+   - `reuse_rate_bps`
+   - `regression_flag`
+   - `avoided_llm_calls_per_batch`
+   - `source_receipt_hash`
+6. Updated retained external CLI mode, validation command footprint, validation duration planning, and policy validation health fixtures for the new deterministic public modes and guarded-test count.
+
+## Validation Evidence
+
+Targeted validation run this turn:
+
+```text
+cargo fmt --check
+RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --lib capability::judgment::record --quiet
+RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test validation_harness_contract --quiet
+RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test score_contract --test planning_contract --quiet
+
+cargo fmt --check: pass
+judgment::record unit tests: 14 passed, 0 failed
+validation_harness_contract: 136 passed, 0 failed
+planning_contract: 2 passed, 0 failed
+score_contract: 5 passed, 0 failed
+```
+
+Full-suite validation was not run in this implementation turn.
 
 ## Evaluation Axes
 
@@ -71,62 +120,43 @@ arg max(G) = good
 
 ## Priority Judgment
 
-The weakest practical axis remains **Scalability**, with **Performance** and **Simplicity** close behind.
+The weakest practical axis is now **Performance**, with **Simplicity** and **Scalability** close behind.
 
-Reason: compact policy reuse and validation-health evidence is now visible at the harness/root-validator boundary, but the repository still lacks a deterministic larger-batch trace proving that avoided LLM calls scale without hiding validation regressions or inflating validation cost.
-
-## Current Planning Decision
-
-Do not expand kernel authority. The next implementation turn should add a deterministic **policy reuse scale trace** in the capability/validation-harness layer.
-
-The planned slice should answer:
-
-```text
-When policy reuse is evaluated over a larger deterministic batch, does the system preserve validation health while increasing avoided LLM calls per batch?
-```
+Reason: the new scale trace demonstrates larger-batch reuse and avoided LLM calls with validation health visible, but there is still no fresh benchmark proving the added validation/catalog evidence does not increase runtime or validation cost beyond retained budgets.
 
 ## Next Implementation Slice
 
-Add retained larger-batch evidence for policy reuse scaling.
+Add deterministic **policy reuse performance-cost trend** evidence that ties larger-batch avoided LLM calls to retained validation/runtime cost.
 
-Required properties:
+The next slice should answer:
+
+```text
+When policy reuse scales across retained batches, does avoided LLM work grow without increasing validation/runtime cost beyond budget?
+```
+
+Suggested constraints:
 
 1. Keep the kernel untouched.
-2. Use deterministic fixtures or generated smoke records only.
-3. Avoid live LLM, network, wall-clock, or environment-dependent calls.
-4. Reuse existing judgment, validation-harness, root-validate, and retained-fixture surfaces where possible.
-5. Preserve existing compact policy reuse ledger summary semantics.
-6. Add a larger-batch healthy case and a larger-batch regression/cost-growth case.
-7. Make the evidence readable without joining unrelated receipts.
+2. Use deterministic fixture or smoke evidence only.
+3. Reuse existing runtime performance, validation duration, policy capacity/cost, and scale-trace surfaces.
+4. Avoid live LLM, network, or wall-clock measurements.
+5. Expose cost trend fields in one compact receipt where possible.
+6. Include healthy and controlled cost-regression cases.
 
-Expected exposed fields:
+Suggested exposed fields:
 
 ```text
 batch_size
-policy_hits
-policy_misses
-llm_fallbacks
-validation_passes
-validation_failures
-reuse_rate_bps
-regression_flag
 avoided_llm_calls_per_batch
-source_receipt_hash
+reuse_rate_bps
+validation_expected_count_guarded_tests
+estimated_ms_per_guarded_test
+runtime_budget_status
+validation_cost_verdict
+cost_regression_flag
+source_scale_trace_hash
+source_validation_duration_hash
 ```
-
-Candidate implementation tasks:
-
-1. Add a `PolicyReuseScaleTraceReceipt` or equivalent compact receipt type in the judgment/capability evidence layer.
-2. Add deterministic fixture constructors for:
-   - healthy larger-batch reuse;
-   - larger-batch validation regression;
-   - larger-batch reuse with excessive fallback/cost growth, if distinct from regression.
-3. Add root validator modes for the new compact trace, for example:
-   - `--policy-reuse-scale-trace-smoke`
-   - `--policy-reuse-scale-trace-regression-smoke`
-4. Extend `validation_harness_contract` with semantic assertions for all exposed fields.
-5. Add or update retained fixture files only when they make the trace easier to audit.
-6. Keep planning and scoring contracts synchronized with the new score target.
 
 Suggested targeted validation for the next implementation turn:
 
@@ -136,25 +166,13 @@ RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --lib capability::judgmen
 RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test score_contract --test planning_contract --quiet
 ```
 
-## Acceptance Criteria For Next Turn
-
-The next implementation slice should be considered complete only if:
-
-- a larger deterministic batch exposes policy-hit and fallback totals;
-- avoided LLM calls per batch is explicit;
-- validation failures and regression flags remain explicit;
-- healthy and unhealthy paths are both covered;
-- targeted validation passes;
-- `plan.md` and `score.md` record the exact commands and results;
-- the kernel remains unchanged unless a separate proof obligation is added.
-
 ## Deferred Work
 
 - Full live Ollama validation remains environment-dependent.
 - Graph telemetry still requires explicit wrapper capture.
 - Student-model training is intentionally deferred until verified distillation data is large and clean.
-- Parallel orchestration scaling should wait until larger-batch reuse and validation health are proven.
-- Full-suite validation should be scheduled after the scale-trace learning signal lands.
+- Parallel orchestration scaling should wait until larger-batch reuse, validation health, and retained validation/runtime cost are proven together.
+- Full-suite validation should be scheduled after the performance-cost learning signal lands.
 
 ## Turn Protocol
 

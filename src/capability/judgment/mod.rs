@@ -4,5 +4,5 @@ pub mod record;
 
 pub use self::record::{
     JudgmentRecord, PolicyJudgmentDecision, PolicyJudgmentRecord, PolicyReuseLedgerSummaryReceipt,
-    PolicyReuseReceipt, PolicyReuseTrendReceipt,
+    PolicyReuseReceipt, PolicyReuseScaleTraceReceipt, PolicyReuseTrendReceipt,
 };

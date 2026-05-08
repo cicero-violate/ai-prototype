@@ -10,7 +10,8 @@ use ai::validation_harness::{
     POLICY_CAPACITY_COST_SUMMARY_REGRESSION_SMOKE_STEP, POLICY_CAPACITY_COST_SUMMARY_SMOKE_STEP,
     POLICY_CAPACITY_COST_SUMMARY_TREND_SMOKE_STEP, POLICY_ORCHESTRATION_CAPACITY_RECEIPTS_FIXTURE,
     POLICY_REUSE_LEDGER_SUMMARY_REGRESSION_SMOKE_STEP, POLICY_REUSE_LEDGER_SUMMARY_SMOKE_STEP,
-    POLICY_REUSE_RECEIPTS_FIXTURE, POLICY_VALIDATION_HEALTH_RECEIPTS_FIXTURE,
+    POLICY_REUSE_RECEIPTS_FIXTURE, POLICY_REUSE_SCALE_TRACE_REGRESSION_SMOKE_STEP,
+    POLICY_REUSE_SCALE_TRACE_SMOKE_STEP, POLICY_VALIDATION_HEALTH_RECEIPTS_FIXTURE,
     POLICY_VALIDATION_HEALTH_TREND_RECEIPTS_FIXTURE, RUNTIME_PERFORMANCE_BUDGET_SMOKE_STEP,
     RUNTIME_PERFORMANCE_STEP, RUNTIME_PERFORMANCE_THRESHOLDS_FIXTURE,
     RUNTIME_PERFORMANCE_TREND_FIXTURE, RUNTIME_PERFORMANCE_TREND_REGRESSION_SMOKE_STEP,
@@ -28,8 +29,8 @@ use ai::validation_harness::{
     VALIDATION_FOOTPRINT_STEP, VALIDATION_HARNESS_EXPECTED_TESTS, VALIDATION_HARNESS_STEP,
 };
 
-const EXPECTED_ROOT_VALIDATE_COMPACT_MODE_COUNT: usize = 38;
-const EXPECTED_EXTERNAL_AGENT_CLI_MODE_COUNT: usize = 43;
+const EXPECTED_ROOT_VALIDATE_COMPACT_MODE_COUNT: usize = 40;
+const EXPECTED_EXTERNAL_AGENT_CLI_MODE_COUNT: usize = 45;
 
 fn expected_guarded_test_count() -> usize {
     VALIDATION_HARNESS_EXPECTED_TESTS + GRAPH_MUTATION_CLI_CONTRACT_EXPECTED_TESTS
@@ -73,7 +74,7 @@ fn root_validation_runs_check_before_contract_suites() {
         steps[4].expected_test_count,
         Some(VALIDATION_HARNESS_EXPECTED_TESTS)
     );
-    assert_eq!(VALIDATION_HARNESS_EXPECTED_TESTS, 132);
+    assert_eq!(VALIDATION_HARNESS_EXPECTED_TESTS, 136);
     assert!(steps[5].args.contains(&"planning_contract"));
     assert!(steps[6].args.contains(&"graph_mutation_cli_contract"));
 }
@@ -491,6 +492,14 @@ fn external_agent_cli_modes_fixture_documents_all_public_modes() {
     assert!(catalog.contains(
         "root_validate --policy-reuse-ledger-summary-regression-smoke",
         "policy_reuse_ledger_summary_regression_smoke",
+    ));
+    assert!(catalog.contains(
+        "root_validate --policy-reuse-scale-trace-smoke",
+        "policy_reuse_scale_trace_smoke",
+    ));
+    assert!(catalog.contains(
+        "root_validate --policy-reuse-scale-trace-regression-smoke",
+        "policy_reuse_scale_trace_regression_smoke",
     ));
     assert!(catalog.contains(
         "root_validate --root-validate-dispatch-catalog",
@@ -3728,6 +3737,90 @@ fn root_validate_policy_reuse_ledger_summary_regression_smoke_mode_is_executable
 }
 
 #[test]
+fn policy_reuse_scale_trace_smoke_exposes_larger_batch_reuse() {
+    let receipt = ai::validation_harness::policy_reuse_scale_trace_smoke_receipt();
+
+    assert_eq!(receipt.schema_version, 1);
+    assert_eq!(receipt.record_type, POLICY_REUSE_SCALE_TRACE_SMOKE_STEP);
+    assert_eq!(receipt.batch_size, 6);
+    assert_eq!(receipt.policy_hits, 4);
+    assert_eq!(receipt.policy_misses, 2);
+    assert_eq!(receipt.llm_fallbacks, 2);
+    assert_eq!(receipt.validation_passes, 6);
+    assert_eq!(receipt.validation_failures, 0);
+    assert_eq!(receipt.reuse_rate_bps, 6_666);
+    assert!(!receipt.regression_flag);
+    assert_eq!(receipt.avoided_llm_calls_per_batch, 4);
+    assert_ne!(receipt.source_receipt_hash, 0);
+    assert_ne!(receipt.receipt_hash, 0);
+    assert!(receipt.is_valid());
+    assert!(receipt.passed());
+}
+
+#[test]
+fn policy_reuse_scale_trace_regression_smoke_exposes_controlled_failure() {
+    let receipt = ai::validation_harness::policy_reuse_scale_trace_regression_smoke_receipt();
+
+    assert_eq!(
+        receipt.record_type,
+        POLICY_REUSE_SCALE_TRACE_REGRESSION_SMOKE_STEP
+    );
+    assert_eq!(receipt.batch_size, 4);
+    assert_eq!(receipt.policy_hits, 2);
+    assert_eq!(receipt.policy_misses, 2);
+    assert_eq!(receipt.llm_fallbacks, 2);
+    assert_eq!(receipt.validation_passes, 3);
+    assert_eq!(receipt.validation_failures, 1);
+    assert_eq!(receipt.reuse_rate_bps, 5_000);
+    assert!(receipt.regression_flag);
+    assert_eq!(receipt.avoided_llm_calls_per_batch, 2);
+    assert!(receipt.is_valid());
+    assert!(!receipt.passed());
+}
+
+#[test]
+fn root_validate_policy_reuse_scale_trace_smoke_mode_is_executable_contract() {
+    assert_root_validate_catalog_compact_mode_contract(
+        "--policy-reuse-scale-trace-smoke",
+        &[
+            "\"record_type\":\"policy_reuse_scale_trace_smoke\"",
+            "\"batch_size\":6",
+            "\"policy_hits\":4",
+            "\"policy_misses\":2",
+            "\"llm_fallbacks\":2",
+            "\"validation_passes\":6",
+            "\"validation_failures\":0",
+            "\"reuse_rate_bps\":6666",
+            "\"regression_flag\":false",
+            "\"avoided_llm_calls_per_batch\":4",
+            "\"source_receipt_hash\":",
+            "\"receipt_hash\":",
+        ],
+    );
+}
+
+#[test]
+fn root_validate_policy_reuse_scale_trace_regression_smoke_mode_is_executable_contract() {
+    assert_root_validate_catalog_compact_mode_contract(
+        "--policy-reuse-scale-trace-regression-smoke",
+        &[
+            "\"record_type\":\"policy_reuse_scale_trace_regression_smoke\"",
+            "\"batch_size\":4",
+            "\"policy_hits\":2",
+            "\"policy_misses\":2",
+            "\"llm_fallbacks\":2",
+            "\"validation_passes\":3",
+            "\"validation_failures\":1",
+            "\"reuse_rate_bps\":5000",
+            "\"regression_flag\":true",
+            "\"avoided_llm_calls_per_batch\":2",
+            "\"source_receipt_hash\":",
+            "\"receipt_hash\":",
+        ],
+    );
+}
+
+#[test]
 fn policy_reuse_receipts_fixture_binds_expected_retained_receipts() {
     let fixture = std::fs::read_to_string(POLICY_REUSE_RECEIPTS_FIXTURE)
         .expect("policy reuse receipts fixture must be readable");
@@ -3878,7 +3971,7 @@ fn root_validation_pass_status_includes_runtime_performance_budget() {
             crate_name: "semantic_scale_probe".to_owned(),
             graph_path: "/tmp/canon-agent-graph-telemetry.json".to_owned(),
             node_count: 64,
-            edge_count: 132,
+            edge_count: 136,
             semantic_fn_count: 64,
             semantic_fn_coverage_bps: 10_000,
             wrapper_hash: "wrapper-hash".to_owned(),
@@ -3945,7 +4038,7 @@ fn root_validation_json_receipt_records_graph_cli_test_surface() {
             crate_name: "semantic_scale_probe".to_owned(),
             graph_path: "/tmp/canon-agent-graph-telemetry.json".to_owned(),
             node_count: 64,
-            edge_count: 132,
+            edge_count: 136,
             semantic_fn_count: 64,
             semantic_fn_coverage_bps: 10_000,
             wrapper_hash: "wrapper-hash".to_owned(),

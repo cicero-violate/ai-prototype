@@ -42,7 +42,7 @@ pub use crate::capability::eval::{
 };
 pub use crate::capability::judgment::{
     JudgmentRecord, PolicyJudgmentDecision, PolicyJudgmentRecord, PolicyReuseLedgerSummaryReceipt,
-    PolicyReuseReceipt, PolicyReuseTrendReceipt,
+    PolicyReuseReceipt, PolicyReuseScaleTraceReceipt, PolicyReuseTrendReceipt,
 };
 pub use crate::capability::learning::{
     export_verified_distillation_row, DistillationExportError, DistillationExportInput,

@@ -103,6 +103,23 @@ pub struct PolicyReuseLedgerSummaryReceipt {
     pub receipt_hash: u64,
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PolicyReuseScaleTraceReceipt {
+    pub schema_version: u64,
+    pub record_type: &'static str,
+    pub batch_size: usize,
+    pub policy_hits: usize,
+    pub policy_misses: usize,
+    pub llm_fallbacks: usize,
+    pub validation_passes: usize,
+    pub validation_failures: usize,
+    pub reuse_rate_bps: u64,
+    pub regression_flag: bool,
+    pub avoided_llm_calls_per_batch: usize,
+    pub source_receipt_hash: u64,
+    pub receipt_hash: u64,
+}
+
 impl PolicyReuseLedgerSummaryReceipt {
     pub fn from_reuse_validation_counts(
         reuse: &PolicyReuseReceipt,
@@ -176,6 +193,77 @@ impl PolicyReuseLedgerSummaryReceipt {
             && self.source_receipt_hash != 0
             && self.receipt_hash != 0
             && self.receipt_hash == policy_reuse_ledger_summary_receipt_hash(self)
+    }
+
+    pub fn passed(&self) -> bool {
+        self.is_valid() && !self.regression_flag
+    }
+}
+
+impl PolicyReuseScaleTraceReceipt {
+    pub fn from_reuse_validation_counts(
+        reuse: &PolicyReuseReceipt,
+        batch_size: usize,
+        validation_passes: usize,
+        validation_failures: usize,
+    ) -> Self {
+        let llm_fallbacks = reuse.policy_miss_count;
+        let regression_flag = validation_failures > 0 || !reuse.passed();
+        let avoided_llm_calls_per_batch = reuse.policy_hit_count;
+        let mut receipt = Self {
+            schema_version: 1,
+            record_type: "policy_reuse_scale_trace",
+            batch_size,
+            policy_hits: reuse.policy_hit_count,
+            policy_misses: reuse.policy_miss_count,
+            llm_fallbacks,
+            validation_passes,
+            validation_failures,
+            reuse_rate_bps: reuse.hit_rate_bps,
+            regression_flag,
+            avoided_llm_calls_per_batch,
+            source_receipt_hash: reuse.receipt_hash,
+            receipt_hash: 0,
+        };
+        receipt.receipt_hash = policy_reuse_scale_trace_receipt_hash(&receipt);
+        receipt
+    }
+
+    pub fn to_json(&self) -> String {
+        format!(
+            "{{\"schema_version\":{},\"record_type\":\"{}\",\"batch_size\":{},\"policy_hits\":{},\"policy_misses\":{},\"llm_fallbacks\":{},\"validation_passes\":{},\"validation_failures\":{},\"reuse_rate_bps\":{},\"regression_flag\":{},\"avoided_llm_calls_per_batch\":{},\"source_receipt_hash\":{},\"receipt_hash\":{}}}",
+            self.schema_version,
+            self.record_type,
+            self.batch_size,
+            self.policy_hits,
+            self.policy_misses,
+            self.llm_fallbacks,
+            self.validation_passes,
+            self.validation_failures,
+            self.reuse_rate_bps,
+            self.regression_flag,
+            self.avoided_llm_calls_per_batch,
+            self.source_receipt_hash,
+            self.receipt_hash,
+        )
+    }
+
+    pub fn is_valid(&self) -> bool {
+        self.schema_version == 1
+            && matches!(
+                self.record_type,
+                "policy_reuse_scale_trace"
+                    | "policy_reuse_scale_trace_smoke"
+                    | "policy_reuse_scale_trace_regression_smoke"
+            )
+            && self.batch_size > 0
+            && self.policy_hits + self.policy_misses == self.batch_size
+            && self.llm_fallbacks == self.policy_misses
+            && self.avoided_llm_calls_per_batch == self.policy_hits
+            && self.reuse_rate_bps <= 10_000
+            && self.source_receipt_hash != 0
+            && self.receipt_hash != 0
+            && self.receipt_hash == policy_reuse_scale_trace_receipt_hash(self)
     }
 
     pub fn passed(&self) -> bool {
@@ -595,6 +683,35 @@ fn policy_reuse_ledger_summary_receipt_hash(receipt: &PolicyReuseLedgerSummaryRe
     h.max(1)
 }
 
+fn policy_reuse_scale_trace_receipt_hash(receipt: &PolicyReuseScaleTraceReceipt) -> u64 {
+    if receipt.schema_version == 0 || receipt.source_receipt_hash == 0 {
+        return 0;
+    }
+    let record_type_code = match receipt.record_type {
+        "policy_reuse_scale_trace"
+        | "policy_reuse_scale_trace_smoke"
+        | "policy_reuse_scale_trace_regression_smoke" => 1,
+        _ => 0,
+    };
+    if record_type_code == 0 || receipt.reuse_rate_bps > 10_000 {
+        return 0;
+    }
+    let mut h = 0x504f_4c52_5343_414cu64;
+    h = mix(h, receipt.schema_version);
+    h = mix(h, record_type_code);
+    h = mix(h, receipt.batch_size as u64);
+    h = mix(h, receipt.policy_hits as u64);
+    h = mix(h, receipt.policy_misses as u64);
+    h = mix(h, receipt.llm_fallbacks as u64);
+    h = mix(h, receipt.validation_passes as u64);
+    h = mix(h, receipt.validation_failures as u64);
+    h = mix(h, receipt.reuse_rate_bps);
+    h = mix(h, u64::from(receipt.regression_flag));
+    h = mix(h, receipt.avoided_llm_calls_per_batch as u64);
+    h = mix(h, receipt.source_receipt_hash);
+    h.max(1)
+}
+
 fn policy_judgment_record_hash(record: &PolicyJudgmentRecord) -> u64 {
     if record.context_hash == 0
         || record.policy_version == 0
@@ -869,5 +986,51 @@ mod tests {
             PolicyReuseLedgerSummaryReceipt::from_reuse_validation_counts(&reuse, 1, 0);
         rebound.source_receipt_hash ^= 1;
         assert!(!rebound.is_valid());
+    }
+
+    #[test]
+    fn policy_reuse_scale_trace_counts_larger_batch_avoided_calls() {
+        let context = context();
+        let policy = promoted_policy();
+        let hit = PolicyJudgmentRecord::from_context_policy(&context, &policy);
+        let miss = PolicyJudgmentRecord::from_context_policy(&context, &PolicyStore::default());
+        let reuse = PolicyReuseReceipt::from_policy_judgments(&[
+            hit.clone(),
+            hit.clone(),
+            hit.clone(),
+            hit,
+            miss.clone(),
+            miss,
+        ]);
+
+        let trace = PolicyReuseScaleTraceReceipt::from_reuse_validation_counts(&reuse, 6, 6, 0);
+
+        assert_eq!(trace.record_type, "policy_reuse_scale_trace");
+        assert_eq!(trace.batch_size, 6);
+        assert_eq!(trace.policy_hits, 4);
+        assert_eq!(trace.policy_misses, 2);
+        assert_eq!(trace.llm_fallbacks, 2);
+        assert_eq!(trace.avoided_llm_calls_per_batch, 4);
+        assert_eq!(trace.reuse_rate_bps, 6_666);
+        assert!(!trace.regression_flag);
+        assert!(trace.passed());
+    }
+
+    #[test]
+    fn policy_reuse_scale_trace_rejects_regression_or_tampering() {
+        let context = context();
+        let policy = promoted_policy();
+        let hit = PolicyJudgmentRecord::from_context_policy(&context, &policy);
+        let miss = PolicyJudgmentRecord::from_context_policy(&context, &PolicyStore::default());
+        let reuse = PolicyReuseReceipt::from_policy_judgments(&[hit.clone(), hit, miss]);
+
+        let mut trace = PolicyReuseScaleTraceReceipt::from_reuse_validation_counts(&reuse, 3, 2, 1);
+
+        assert!(trace.regression_flag);
+        assert!(trace.is_valid());
+        assert!(!trace.passed());
+
+        trace.avoided_llm_calls_per_batch += 1;
+        assert!(!trace.is_valid());
     }
 }
