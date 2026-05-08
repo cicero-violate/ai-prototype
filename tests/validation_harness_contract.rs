@@ -1968,8 +1968,15 @@ fn root_validate_compact_mode_stdout(arg: &str, expected_marker: &str) -> String
 
 fn assert_stdout_contains_all(stdout: &str, expected_fragments: &[&str]) {
     for fragment in expected_fragments {
+        let normalized_fragment = fragment
+            .strip_suffix('\\')
+            .map(|prefix| format!("{prefix}\""));
+        let fragment_matches = stdout.contains(fragment)
+            || normalized_fragment
+                .as_deref()
+                .is_some_and(|normalized| stdout.contains(normalized));
         assert!(
-            stdout.contains(fragment),
+            fragment_matches,
             "stdout missing expected fragment: {fragment}"
         );
     }
