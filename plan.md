@@ -751,3 +751,77 @@ tests/fixtures/external_agent_cli_modes.txt
 ```
 
 Observed `canon-rustc-v3/` working-tree changes remain outside this turn.
+
+
+
+## Implementation Step 5 - Retrieval Example Storage Admission
+
+Completed this turn:
+
+```text
+PolicyReuseEvidenceRetrievalResultUseSummaryManifestApprovalAdmissionConsumptionLearningStorageAdmissionReceipt
+policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_consumption_learning_storage_admission_smoke_receipt()
+policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_consumption_learning_storage_admission_regression_smoke_receipt()
+--policy-reuse-evidence-retrieval-result-use-summary-manifest-approval-admission-consumption-learning-storage-admission-smoke
+--policy-reuse-evidence-retrieval-result-use-summary-manifest-approval-admission-consumption-learning-storage-admission-regression-smoke
+```
+
+Completed semantics:
+
+- `retrieval_example_storage_admitted = true` only when retrieval-example materialization-plan evidence passed, learning admission evidence passed, learning eligibility evidence passed, approval-admission-consumption evidence was consumed, approval-admission is admitted, upstream approval/readiness/admission booleans are true, external result evidence is present, retrieval storage was not read or written, retrieval query execution did not happen, runtime result approval did not happen, policy was not promoted, batch execution did not happen, student training was not performed, storage-admission policy-reuse examples are positive, and `not_admitted_reason = "none"`.
+- Healthy evidence binds to retrieval-example materialization-plan, learning admission, and learning eligibility receipt hashes plus approval-admission-consumption, approval-admission, approval, readiness, and admission source hashes, reports status `retrieval_example_storage_admitted`, and records `not_admitted_reason = "none"`.
+- Regression evidence remains structurally valid while exposing `retrieval_example_materialization_plan_ready = false`, `retrieval_example_learning_admitted = false`, `retrieval_example_learning_eligible = false`, approval-admission-consumption consumed false, upstream booleans false, storage-admission status `retrieval_example_storage_not_admitted`, and `not_admitted_reason = "retrieval_example_materialization_plan_not_ready"`.
+- The receipt remains evidence-only: no retrieval reads/writes, no query execution, no runtime result approval, no policy promotion, no batch execution, no live LLM, no network call, no wall-clock dependency, and no student training.
+- The kernel, transition table, runtime reducer, durable writer, and command ledger were not changed.
+
+## Validation Evidence For Retrieval Example Storage Admission
+
+```text
+cargo fmt --check: initially failed on formatting-only drift, then passed after cargo fmt
+RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test validation_harness_contract storage_admission --no-run --quiet: connector returned 502 once, then passed on retry
+RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo check --quiet: pass
+RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test planning_contract --quiet: pass
+RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test score_contract --quiet: pass
+RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test validation_harness_contract storage_admission --quiet: attempted twice, but connector returned 502 before Rust test output was available
+```
+
+## Current Planning Decision After Retrieval Example Storage Admission
+
+Keep the next implementation turn focused on **Learning**, moving from storage-admission evidence toward a deterministic retrieval-example storage-commit-intent boundary that can express intent to persist learning material while still forbidding the actual storage write in the validation harness.
+
+Current gap:
+
+```text
+Retrieval-example materialization plans can now be admitted for storage as evidence, but the stack still lacks an evidence-only storage-commit-intent receipt that separates admission from actual retrieval storage mutation.
+```
+
+Recommended next slice:
+
+```text
+Add a deterministic policy reuse evidence receipt that consumes retrieval-example storage-admission evidence and emits a retrieval-example storage-commit-intent boundary without performing retrieval storage operations, query execution, policy promotion, runtime result approval, batch execution, or student training.
+```
+
+Recommended constraints:
+
+1. Keep the kernel untouched.
+2. Do not introduce live LLM, network, wall-clock, or environment-dependent measurement.
+3. Reuse retrieval-example storage-admission receipt hashes rather than creating authority.
+4. Keep the receipt evidence-only: no retrieval storage reads/writes, no query execution, no policy promotion, no runtime result approval, no batch execution, and no student training.
+5. Include healthy and controlled regression cases.
+6. Update external CLI mode fixtures and guarded validation counts only if new public modes or tests are added.
+7. Keep unrelated `canon-rustc-v3/` working-tree changes out of this slice unless explicitly selected in a separate turn.
+
+## Implementation Step 5 Commit Scope - Retrieval Example Storage Admission
+
+This turn should update and commit:
+
+```text
+plan.md
+score.md
+src/validation_harness.rs
+src/bin/root_validate.rs
+tests/validation_harness_contract.rs
+tests/fixtures/external_agent_cli_modes.txt
+```
+
+Observed `canon-rustc-v3/` working-tree changes remain outside this turn.

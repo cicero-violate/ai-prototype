@@ -553,3 +553,48 @@ Si = 0.97  one receipt represents the materialization-plan boundary instead of s
 F  = 0.98  materialization planning prepares later retrieval/model-learning gates without committing to storage or training behavior
 G  ≈ 0.967
 ```
+
+
+
+## Implementation Step 5 Score Decision - Retrieval Example Storage Admission
+
+```text
+selected_axis = Learning
+score_change_this_turn = retained L at 1.00
+reason = retrieval-example storage-admission evidence adds a deterministic evidence-only gate after materialization planning without retrieval storage operations, query execution, runtime result approval, policy promotion, batch execution, or student training
+source_changes_observed_but_not_owned = canon-rustc-v3/* modified and untracked files remain out of scope for this implementation turn
+commit_scope = retrieval-example storage-admission implementation, tests, fixture, plan.md, score.md
+```
+
+Updated validation evidence:
+
+```text
+cargo fmt --check: initially failed on formatting-only drift, then passed after cargo fmt
+validation_harness_contract storage_admission --no-run: connector returned 502 once, then passed on retry
+cargo check --quiet: pass
+planning_contract: pass
+score_contract: pass
+focused executable storage_admission tests: attempted twice, connector returned 502 before Rust output was available
+```
+
+Scoring stance after this implementation:
+
+```text
+I  = 0.98  materialized retrieval-example plans can now become deterministic storage-admission evidence
+E  = 0.97  storage admission remains evidence-only and forbids retrieval reads, writes, queries, runtime approval, promotion, batch execution, and training
+C  = 0.91  formatting, focused no-run compile, cargo check, planning contract, and score contract pass; focused executable tests were connector-blocked
+A  = 0.97  authority remains outside the LLM and outside the storage-admission receipt
+R  = 0.96  healthy and controlled not-admitted paths are covered by compiled contracts
+P  = 0.95  no runtime retrieval, query, batch, or training cost is introduced
+S  = 0.98  the evidence chain now exposes a retrieval-example storage-admission boundary
+D  = 0.97  receipts use fixed source hashes, booleans, status strings, reason strings, and deterministic hashes
+T  = 0.98  materialization-plan, admission, eligibility, consumption, approval-admission, approval, readiness, and admission source hashes are explicit
+Co = 0.95  plan and score hand off the next retrieval-example storage-commit-intent gate
+Em = 0.95  root_validate consumers have healthy and regression compact modes for storage-admission evidence
+B  = 0.97  external evaluators get deterministic storage-admission evidence before storage, runtime approval, promotion, or training
+L  = 1.00  storage admission prepares a cleaner path toward retrieval-example storage commit intent
+St = 0.97  storage admission composes existing evidence without kernel or runtime authority drift
+Si = 0.97  one receipt represents the storage-admission boundary instead of scattered downstream checks
+F  = 0.98  storage admission prepares later retrieval/model-learning gates without committing to storage or training behavior
+G  ≈ 0.967
+```
