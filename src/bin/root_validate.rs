@@ -370,6 +370,16 @@ const COMPACT_MODES: &[CompactMode] = &[
         run: policy_reuse_evidence_learning_admission_regression_smoke_mode,
     },
     CompactMode {
+        arg: "--policy-reuse-evidence-retrieval-readiness-smoke",
+        marker: "policy_reuse_evidence_retrieval_readiness_smoke",
+        run: policy_reuse_evidence_retrieval_readiness_smoke_mode,
+    },
+    CompactMode {
+        arg: "--policy-reuse-evidence-retrieval-readiness-regression-smoke",
+        marker: "policy_reuse_evidence_retrieval_readiness_regression_smoke",
+        run: policy_reuse_evidence_retrieval_readiness_regression_smoke_mode,
+    },
+    CompactMode {
         arg: "--root-validate-dispatch-catalog",
         marker: "canon_root_validate_dispatch_catalog_v1",
         run: root_validate_dispatch_catalog_mode,
@@ -1013,6 +1023,32 @@ fn policy_reuse_evidence_learning_admission_regression_smoke_mode(
         && !receipt.learning_data_admissible
         && receipt.admission_status == "not_admissible"
         && receipt.not_admissible_reason == "rollout_not_ready"
+        && !receipt.passed();
+    Ok(CompactModeOutcome::controlled_json(
+        receipt.to_json(),
+        passed,
+    ))
+}
+
+fn policy_reuse_evidence_retrieval_readiness_smoke_mode() -> Result<CompactModeOutcome, String> {
+    let receipt = validation_harness::policy_reuse_evidence_retrieval_readiness_smoke_receipt();
+    Ok(CompactModeOutcome::pass_json(
+        receipt.to_json(),
+        receipt.passed(),
+    ))
+}
+
+fn policy_reuse_evidence_retrieval_readiness_regression_smoke_mode(
+) -> Result<CompactModeOutcome, String> {
+    let receipt =
+        validation_harness::policy_reuse_evidence_retrieval_readiness_regression_smoke_receipt();
+    let passed = receipt.is_valid()
+        && !receipt.learning_data_admissible
+        && !receipt.rollout_ready
+        && !receipt.retrieval_storage_write_performed
+        && !receipt.retrieval_example_ready
+        && receipt.retrieval_status == "not_ready"
+        && receipt.not_ready_reason == "learning_not_admissible"
         && !receipt.passed();
     Ok(CompactModeOutcome::controlled_json(
         receipt.to_json(),

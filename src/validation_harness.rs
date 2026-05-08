@@ -17,7 +17,7 @@ pub const FAST_TEST_STEP: &str = "fast_score_contract_tests";
 pub const LIB_UNIT_STEP: &str = "lib_unit_contract_tests";
 pub const API_TRANSPORT_STEP: &str = "api_transport_contract_tests";
 pub const VALIDATION_HARNESS_STEP: &str = "validation_harness_contract_tests";
-pub const VALIDATION_HARNESS_EXPECTED_TESTS: usize = 192;
+pub const VALIDATION_HARNESS_EXPECTED_TESTS: usize = 196;
 pub const PLANNING_CONTRACT_STEP: &str = "planning_contract_tests";
 pub const GRAPH_MUTATION_CLI_CONTRACT_STEP: &str = "graph_mutation_cli_contract_tests";
 pub const GRAPH_MUTATION_CLI_CONTRACT_EXPECTED_TESTS: usize = 10;
@@ -119,6 +119,10 @@ pub const POLICY_REUSE_EVIDENCE_LEARNING_ADMISSION_SMOKE_STEP: &str =
     "policy_reuse_evidence_learning_admission_smoke";
 pub const POLICY_REUSE_EVIDENCE_LEARNING_ADMISSION_REGRESSION_SMOKE_STEP: &str =
     "policy_reuse_evidence_learning_admission_regression_smoke";
+pub const POLICY_REUSE_EVIDENCE_RETRIEVAL_READINESS_SMOKE_STEP: &str =
+    "policy_reuse_evidence_retrieval_readiness_smoke";
+pub const POLICY_REUSE_EVIDENCE_RETRIEVAL_READINESS_REGRESSION_SMOKE_STEP: &str =
+    "policy_reuse_evidence_retrieval_readiness_regression_smoke";
 pub const POLICY_VALIDATION_HEALTH_SMOKE_STEP: &str = "policy_validation_health_smoke";
 pub const POLICY_VALIDATION_HEALTH_TREND_SMOKE_STEP: &str = "policy_validation_health_trend_smoke";
 pub const POLICY_ORCHESTRATION_CAPACITY_SMOKE_STEP: &str = "policy_orchestration_capacity_smoke";
@@ -1947,6 +1951,87 @@ impl PolicyReuseEvidenceLearningAdmissionReceipt {
             self.admission_status,
             self.not_admissible_reason,
             self.admission_hash,
+            self.receipt_hash,
+        )
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PolicyReuseEvidenceRetrievalReadinessReceipt {
+    pub schema: &'static str,
+    pub record_type: &'static str,
+    pub retrieval_version: u64,
+    pub source_learning_admission_hash: u64,
+    pub source_rollout_readiness_hash: u64,
+    pub source_summary_hash: u64,
+    pub learning_data_admissible: bool,
+    pub rollout_ready: bool,
+    pub summary_status: &'static str,
+    pub retrieval_storage_write_performed: bool,
+    pub retrieval_example_ready: bool,
+    pub retrieval_status: &'static str,
+    pub not_ready_reason: &'static str,
+    pub retrieval_hash: u64,
+    pub receipt_hash: u64,
+}
+
+impl PolicyReuseEvidenceRetrievalReadinessReceipt {
+    pub fn passed(&self) -> bool {
+        self.is_valid() && self.retrieval_example_ready && self.retrieval_status == "ready"
+    }
+
+    pub fn is_valid(&self) -> bool {
+        self.schema == "canon_policy_reuse_evidence_retrieval_readiness_v1"
+            && matches!(
+                self.record_type,
+                "policy_reuse_evidence_retrieval_readiness"
+                    | POLICY_REUSE_EVIDENCE_RETRIEVAL_READINESS_SMOKE_STEP
+                    | POLICY_REUSE_EVIDENCE_RETRIEVAL_READINESS_REGRESSION_SMOKE_STEP
+            )
+            && self.retrieval_version == 1
+            && self.source_learning_admission_hash != 0
+            && self.source_rollout_readiness_hash != 0
+            && self.source_summary_hash != 0
+            && matches!(self.summary_status, "pass" | "fail")
+            && matches!(self.retrieval_status, "ready" | "not_ready")
+            && matches!(
+                self.not_ready_reason,
+                "none"
+                    | "learning_not_admissible"
+                    | "rollout_not_ready"
+                    | "summary_failed"
+                    | "storage_write_attempted"
+            )
+            && self.retrieval_example_ready
+                == (self.learning_data_admissible
+                    && self.rollout_ready
+                    && self.summary_status == "pass"
+                    && !self.retrieval_storage_write_performed
+                    && self.not_ready_reason == "none")
+            && (self.retrieval_status == "ready") == self.retrieval_example_ready
+            && self.retrieval_hash != 0
+            && self.receipt_hash != 0
+            && self.retrieval_hash == policy_reuse_evidence_retrieval_readiness_hash(self)
+            && self.receipt_hash == policy_reuse_evidence_retrieval_readiness_receipt_hash(self)
+    }
+
+    pub fn to_json(&self) -> String {
+        format!(
+            "{{\"schema\":\"{}\",\"record_type\":\"{}\",\"retrieval_version\":{},\"source_learning_admission_hash\":{},\"source_rollout_readiness_hash\":{},\"source_summary_hash\":{},\"learning_data_admissible\":{},\"rollout_ready\":{},\"summary_status\":\"{}\",\"retrieval_storage_write_performed\":{},\"retrieval_example_ready\":{},\"retrieval_status\":\"{}\",\"not_ready_reason\":\"{}\",\"retrieval_hash\":{},\"receipt_hash\":{}}}",
+            self.schema,
+            self.record_type,
+            self.retrieval_version,
+            self.source_learning_admission_hash,
+            self.source_rollout_readiness_hash,
+            self.source_summary_hash,
+            self.learning_data_admissible,
+            self.rollout_ready,
+            self.summary_status,
+            self.retrieval_storage_write_performed,
+            self.retrieval_example_ready,
+            self.retrieval_status,
+            self.not_ready_reason,
+            self.retrieval_hash,
             self.receipt_hash,
         )
     }
@@ -4321,6 +4406,88 @@ fn finalize_policy_reuse_evidence_learning_admission(
     receipt.receipt_hash = policy_reuse_evidence_learning_admission_receipt_hash(receipt);
 }
 
+pub fn policy_reuse_evidence_retrieval_readiness_smoke_receipt(
+) -> PolicyReuseEvidenceRetrievalReadinessReceipt {
+    let admission = policy_reuse_evidence_learning_admission_smoke_receipt();
+    let rollout = policy_reuse_evidence_rollout_readiness_smoke_receipt();
+    let summary = policy_reuse_evidence_summary_smoke_receipt();
+    let mut receipt = policy_reuse_evidence_retrieval_readiness_from_sources(
+        POLICY_REUSE_EVIDENCE_RETRIEVAL_READINESS_SMOKE_STEP,
+        &admission,
+        &rollout,
+        &summary,
+        false,
+        "none",
+    );
+    finalize_policy_reuse_evidence_retrieval_readiness(&mut receipt);
+    receipt
+}
+
+pub fn policy_reuse_evidence_retrieval_readiness_regression_smoke_receipt(
+) -> PolicyReuseEvidenceRetrievalReadinessReceipt {
+    let admission = policy_reuse_evidence_learning_admission_regression_smoke_receipt();
+    let rollout = policy_reuse_evidence_rollout_readiness_regression_smoke_receipt();
+    let summary = policy_reuse_evidence_summary_smoke_receipt();
+    let mut receipt = policy_reuse_evidence_retrieval_readiness_from_sources(
+        POLICY_REUSE_EVIDENCE_RETRIEVAL_READINESS_REGRESSION_SMOKE_STEP,
+        &admission,
+        &rollout,
+        &summary,
+        false,
+        "learning_not_admissible",
+    );
+    finalize_policy_reuse_evidence_retrieval_readiness(&mut receipt);
+    receipt
+}
+
+fn policy_reuse_evidence_retrieval_readiness_from_sources(
+    record_type: &'static str,
+    admission: &PolicyReuseEvidenceLearningAdmissionReceipt,
+    rollout: &PolicyReuseEvidenceRolloutReadinessReceipt,
+    summary: &PolicyReuseEvidenceSummaryReceipt,
+    retrieval_storage_write_performed: bool,
+    not_ready_reason: &'static str,
+) -> PolicyReuseEvidenceRetrievalReadinessReceipt {
+    let learning_data_admissible = admission.passed();
+    let rollout_ready = rollout.passed();
+    let retrieval_example_ready = learning_data_admissible
+        && rollout_ready
+        && summary.summary_status == "pass"
+        && !retrieval_storage_write_performed
+        && not_ready_reason == "none";
+    let retrieval_status = if retrieval_example_ready {
+        "ready"
+    } else {
+        "not_ready"
+    };
+    let mut receipt = PolicyReuseEvidenceRetrievalReadinessReceipt {
+        schema: "canon_policy_reuse_evidence_retrieval_readiness_v1",
+        record_type,
+        retrieval_version: 1,
+        source_learning_admission_hash: admission.receipt_hash,
+        source_rollout_readiness_hash: rollout.receipt_hash,
+        source_summary_hash: summary.receipt_hash,
+        learning_data_admissible,
+        rollout_ready,
+        summary_status: summary.summary_status,
+        retrieval_storage_write_performed,
+        retrieval_example_ready,
+        retrieval_status,
+        not_ready_reason,
+        retrieval_hash: 0,
+        receipt_hash: 0,
+    };
+    finalize_policy_reuse_evidence_retrieval_readiness(&mut receipt);
+    receipt
+}
+
+fn finalize_policy_reuse_evidence_retrieval_readiness(
+    receipt: &mut PolicyReuseEvidenceRetrievalReadinessReceipt,
+) {
+    receipt.retrieval_hash = policy_reuse_evidence_retrieval_readiness_hash(receipt);
+    receipt.receipt_hash = policy_reuse_evidence_retrieval_readiness_receipt_hash(receipt);
+}
+
 #[allow(clippy::too_many_arguments)]
 fn policy_reuse_evidence_surface_index_from_sources(
     record_type: &'static str,
@@ -4805,6 +4972,64 @@ fn policy_reuse_evidence_learning_admission_receipt_hash(
         return 0;
     }
     (admission_hash ^ 0x504f_4c52_4c41_4452u64).max(1)
+}
+
+fn policy_reuse_evidence_retrieval_readiness_hash(
+    receipt: &PolicyReuseEvidenceRetrievalReadinessReceipt,
+) -> u64 {
+    if receipt.retrieval_version == 0
+        || receipt.source_learning_admission_hash == 0
+        || receipt.source_rollout_readiness_hash == 0
+        || receipt.source_summary_hash == 0
+    {
+        return 0;
+    }
+    let summary_status_code = match receipt.summary_status {
+        "pass" => 1,
+        "fail" => 2,
+        _ => 0,
+    };
+    let retrieval_status_code = match receipt.retrieval_status {
+        "ready" => 1,
+        "not_ready" => 2,
+        _ => 0,
+    };
+    let not_ready_reason_code = match receipt.not_ready_reason {
+        "none" => 1,
+        "learning_not_admissible" => 2,
+        "rollout_not_ready" => 3,
+        "summary_failed" => 4,
+        "storage_write_attempted" => 5,
+        _ => 0,
+    };
+    if summary_status_code == 0 || retrieval_status_code == 0 || not_ready_reason_code == 0 {
+        return 0;
+    }
+    let mut h = 0x504f_4c52_5252_4448u64;
+    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.schema.as_bytes());
+    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.record_type.as_bytes());
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.retrieval_version;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_learning_admission_hash;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_rollout_readiness_hash;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_summary_hash;
+    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.learning_data_admissible);
+    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.rollout_ready);
+    h = h.wrapping_mul(0x100000001b3) ^ summary_status_code;
+    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_storage_write_performed);
+    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_example_ready);
+    h = h.wrapping_mul(0x100000001b3) ^ retrieval_status_code;
+    h = h.wrapping_mul(0x100000001b3) ^ not_ready_reason_code;
+    h.max(1)
+}
+
+fn policy_reuse_evidence_retrieval_readiness_receipt_hash(
+    receipt: &PolicyReuseEvidenceRetrievalReadinessReceipt,
+) -> u64 {
+    let retrieval_hash = policy_reuse_evidence_retrieval_readiness_hash(receipt);
+    if retrieval_hash == 0 || receipt.retrieval_hash != retrieval_hash {
+        return 0;
+    }
+    (retrieval_hash ^ 0x504f_4c52_5252_4452u64).max(1)
 }
 
 fn policy_reuse_evidence_summary_hash(receipt: &PolicyReuseEvidenceSummaryReceipt) -> u64 {
