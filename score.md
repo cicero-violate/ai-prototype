@@ -2,16 +2,16 @@
 
 ## Planning Scorecard - 2026-05-08
 
-This turn completed implementation step 1 from the plan: resolve duplicate
-auto-refactor plan authority. No runtime implementation score increase is
-claimed. Existing uncommitted graph-editor, validation, and fixture changes
-remain unscored until a later turn validates and commits them deliberately.
+This planning turn reviewed the current `ai` crate and updated the active implementation
+plan toward supervisor/worker/MCP integration. No runtime implementation score increase is
+claimed. Existing uncommitted implementation changes outside `plan.md` and `score.md` remain
+unscored and intentionally untouched.
 
 ```text
-turn_type = implementation_step_1_plan_authority
+turn_type = planning_supervisor_worker_mcp
 score_change_this_turn = none
-commit_scope = plan.md, score.md, plan-autorefactor.md, canon-rustc-v3/plan-autorefactor.md
-recommended_next_lane = auto_refactor_graph_evidence
+commit_scope = plan.md, score.md
+recommended_next_lane = supervisor_worker_mcp_integration
 implementation_authority_change = none
 policy_authority_change = none
 retrieval_write_change = none
@@ -20,38 +20,33 @@ runtime_mutation_change = none
 
 ## Current Evidence Posture
 
-The repository has candidate implementation work in two apparent areas:
-
-1. deterministic auto-refactor graph evidence and operation planning;
-2. validation-harness expectation or fixture maintenance.
-
-Neither area is scored in this checkpoint because this turn validated only plan
-authority and planning/score contracts. The implementation commit records the
-single authoritative auto-refactor plan and the validation gates required for
-future score movement.
-
-## Step 1 Progress
-
-Completed:
+The project already contains a deterministic API transport boundary:
 
 ```text
-authoritative_auto_refactor_plan = plan-autorefactor.md
-nested_canon_plan_status = pointer only
-superseded_material = schema-v13 transitional plan text
-source_rewrite_authority_change = none
+src/api/transport.rs      ApiTransportSession::handle_frame
+src/api/routes.rs         command envelope handling and evidence submission
+src/capability/tooling    sandbox process receipts and deterministic effect records
 ```
 
-This improves handoff clarity and removes conflicting implementation guidance.
-It does not add runtime behavior, graph-editor behavior, TLog authority, policy
-authority, retrieval writes, or source rewrite capability.
+The selected next implementation should be additive:
+
+1. add a reloadable worker HTTP surface around the existing transport session;
+2. add a stable supervisor that manages worker lifecycle and reloads;
+3. add an MCP tool-call receipt/executor modeled on existing sandbox process receipts;
+4. preserve kernel authority, hash-chain determinism, and typed evidence boundaries.
+
+No score movement is recorded because this turn updated planning/scoring documents only.
 
 ## Observed Unscored Worktree Changes
+
+The worktree contains unrelated pre-existing implementation changes that were not modified by
+this turn and should not be scored here:
 
 ```text
 modified: graph-editor/Cargo.toml
 modified: graph-editor/src/graph.rs
 modified: graph-editor/src/lib.rs
-modified: src/validation_harness.rs
+deleted:  plan-autorefactor.md
 modified: tests/fixtures/validation_command_footprint_receipts.txt
 modified: tests/fixtures/validation_duration_planning_receipts.txt
 modified: tests/validation_harness_contract.rs
@@ -59,10 +54,11 @@ untracked: canon-rustc-v3/validation/auto_refactor_ops.py
 untracked: canon-rustc-v3/validation/auto_refactor_ops_smoke.py
 untracked: graph-editor/src/autorefactor.rs
 untracked: graph-editor/src/bin/auto_refactor_plan.rs
+untracked: teacher-student.md
 ```
 
-These changes may become score-relevant only after focused validation evidence
-is produced and the selected implementation scope is committed.
+These changes may become score-relevant only after focused validation evidence and a separate
+implementation commit. They are out of scope for the supervisor/worker/MCP planning commit.
 
 ## Current Axis Scores
 
@@ -97,28 +93,28 @@ G ≈ 0.966
 
 ```text
 weakest_axis = Correctness
-weakest_axis_reason = implementation changes are present but not validated in this planning turn
+weakest_axis_reason = no supervisor, worker, or MCP implementation has been validated in this turn
 primary_next_axis = Structure
-secondary_next_axis = Efficiency
+secondary_next_axis = Robustness
 guard_axis = Correctness
-current_gap = auto-refactor and validation-harness changes need focused validation and commit discipline
-next_action = verify graph schema expectations in graph-editor/src/graph.rs
-score_freeze_reason = step 1 clarified plan authority only; no runtime implementation validation evidence added
+current_gap = live HTTP lifecycle and MCP receipt surfaces are planned but not implemented
+next_action = implement Step 1 dependency/bin declarations and Step 2 MCP receipt types/codecs/tests
+score_freeze_reason = planning-only checkpoint; no new runtime validation evidence added
 ```
 
 ## Conditions For Future Score Increase
 
-Score increases are allowed only after committed implementation evidence and
-clean validation output.
+Score increases are allowed only after committed implementation evidence and clean validation
+output.
 
-Suggested movement if the auto-refactor lane is validated:
+Suggested movement if supervisor/worker/MCP integration is implemented and validated:
 
 ```text
-Structure: +0.01 if graph relations produce typed, sorted, deduplicated advisory operation specs
-Efficiency: +0.01 if the planner reduces manual refactor-surface inspection without adding runtime authority
-Correctness: +0.01 only if focused healthy and controlled-regression tests prove non-mutating behavior
-Determinism: +0.01 only if repeated generation is byte-stable under the same inputs
-Learning: unchanged unless a separate evidence-only learning boundary is selected and validated
+Structure: +0.01 if supervisor, worker, API server, and MCP receipt code are separated cleanly
+Robustness: +0.01 if worker reload, health checks, dead-worker handling, and timeout paths are tested
+Correctness: +0.01 only if focused contract tests prove receipt normalization and transport replay
+Determinism: +0.01 only if MCP receipt encode/decode and hash roundtrips are byte-stable
+Scalability: +0.01 only if lifecycle management avoids coupling the kernel to HTTP or async state
 ```
 
 Do not raise any score for:
@@ -128,7 +124,8 @@ uncommitted implementation
 unexecuted tests
 generated plans without validation
 live LLM output
-reports that can mutate runtime state
+HTTP endpoints that bypass ApiTransportSession
+MCP calls that do not produce typed receipts
 policy promotion without external validation
 retrieval writes without explicit storage authority
 ```
@@ -143,26 +140,18 @@ CARGO_BUILD_RUSTC_WRAPPER= cargo check --quiet
 CARGO_BUILD_RUSTC_WRAPPER= cargo test --test planning_contract --test score_contract --quiet
 ```
 
-Auto-refactor-specific scoring evidence:
+Supervisor/worker/MCP-specific validation:
 
 ```text
-cd graph-editor && CARGO_BUILD_RUSTC_WRAPPER= cargo fmt --check
-cd graph-editor && CARGO_BUILD_RUSTC_WRAPPER= cargo check --quiet
-cd graph-editor && CARGO_BUILD_RUSTC_WRAPPER= cargo test --quiet
-python3 canon-rustc-v3/validation/auto_refactor_ops_smoke.py
-byte-for-byte identical repeated auto-refactor output for the same graph input
-explicit proof that generated operations are advisory specs and not applied edits
-```
-
-Validation-harness maintenance scoring evidence, if selected instead:
-
-```text
-focused validation_harness_contract filters for each touched fixture surface
-clear explanation of expected-current-output alignment
-no runtime authority, kernel, TLog, policy, retrieval, or learning change
+CARGO_BUILD_RUSTC_WRAPPER= cargo test --test api_transport_contract --quiet
+CARGO_BUILD_RUSTC_WRAPPER= cargo test --test mcp_receipt_contract --quiet
+CARGO_BUILD_RUSTC_WRAPPER= cargo run --bin worker -- --help or equivalent startup smoke
+CARGO_BUILD_RUSTC_WRAPPER= cargo run --bin supervisor -- --help or equivalent startup smoke
+manual or scripted reload smoke: supervisor /health -> /reload -> new worker /health/worker
+MCP receipt roundtrip: encode -> decode -> same receipt_hash and normalized Effect::process
 ```
 
 ## Non-Scored Planning Result
 
-This checkpoint improves handoff clarity only. It does not change the numeric
-score because it adds no new runtime implementation validation evidence.
+This checkpoint improves handoff clarity for the current implementation objective. It does not
+change the numeric score because it adds no runtime implementation or validation evidence.
