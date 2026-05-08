@@ -199,3 +199,7 @@ All 5 gaps are now implemented in schema_version 12.
 | Move item between modules        | —         | ✓               |
 | Inline a function                | —         | partial         |
 | Extract a function               | —         | —               |
+
+## Reference
+
+- https://chatgpt.com/s/t_69fd62a20ad08191814b4f1f53359714
