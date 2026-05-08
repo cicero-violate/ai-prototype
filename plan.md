@@ -164,9 +164,11 @@ pub const MCP_CALL_RECEIPT_RECORD: u64 = 4;   // 1=tool, 2=sandbox_process, 3=pr
 
 ---
 
-## Step 3 — `src/api/server.rs`
+## Step 3 — `src/api/server.rs` — completed 2026-05-08
 
-The axum router used by the worker binary. The supervisor does not use this file.
+Status: implemented in this turn. The worker API server module now exposes health, read-only state, and command routes around `ApiTransportSession`. The current DTO decoder intentionally supports `SubmitEvidence` and `SubmitEvidenceBatch`; unsupported tags are rejected with `400` and do not mutate state. The supervisor does not use this file.
+
+The axum router used by the worker binary.
 
 ### AppState
 

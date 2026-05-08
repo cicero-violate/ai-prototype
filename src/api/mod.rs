@@ -4,4 +4,5 @@
 
 pub mod protocol;
 pub mod routes;
+pub mod server;
 pub mod transport;

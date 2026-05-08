@@ -21,6 +21,10 @@ pub use crate::api::protocol::{
     Command, CommandEnvelope, ControlEventResponse, API_COMMAND_BATCH_LIMIT,
     API_PROTOCOL_SCHEMA_VERSION,
 };
+pub use crate::api::server::{
+    build_router, CommandEnvelopeDto, CommandResponseDto, ErrorDto, EvidenceSubmissionDto,
+    ServerError, StateDto, WorkerAppState,
+};
 pub use crate::api::transport::{
     append_api_transport_receipt_ndjson, decode_api_transport_receipt_ndjson,
     encode_api_transport_receipt_ndjson, handle_transport_frame_once,
