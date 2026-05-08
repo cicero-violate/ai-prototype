@@ -17,7 +17,7 @@ pub const FAST_TEST_STEP: &str = "fast_score_contract_tests";
 pub const LIB_UNIT_STEP: &str = "lib_unit_contract_tests";
 pub const API_TRANSPORT_STEP: &str = "api_transport_contract_tests";
 pub const VALIDATION_HARNESS_STEP: &str = "validation_harness_contract_tests";
-pub const VALIDATION_HARNESS_EXPECTED_TESTS: usize = 204;
+pub const VALIDATION_HARNESS_EXPECTED_TESTS: usize = 212;
 pub const PLANNING_CONTRACT_STEP: &str = "planning_contract_tests";
 pub const GRAPH_MUTATION_CLI_CONTRACT_STEP: &str = "graph_mutation_cli_contract_tests";
 pub const GRAPH_MUTATION_CLI_CONTRACT_EXPECTED_TESTS: usize = 10;
@@ -131,6 +131,14 @@ pub const POLICY_REUSE_EVIDENCE_BATCH_READINESS_SMOKE_STEP: &str =
     "policy_reuse_evidence_batch_readiness_smoke";
 pub const POLICY_REUSE_EVIDENCE_BATCH_READINESS_REGRESSION_SMOKE_STEP: &str =
     "policy_reuse_evidence_batch_readiness_regression_smoke";
+pub const POLICY_REUSE_EVIDENCE_BATCH_EXECUTION_PLAN_SMOKE_STEP: &str =
+    "policy_reuse_evidence_batch_execution_plan_smoke";
+pub const POLICY_REUSE_EVIDENCE_BATCH_EXECUTION_PLAN_REGRESSION_SMOKE_STEP: &str =
+    "policy_reuse_evidence_batch_execution_plan_regression_smoke";
+pub const POLICY_REUSE_EVIDENCE_BATCH_EVALUATION_ADMISSION_SMOKE_STEP: &str =
+    "policy_reuse_evidence_batch_evaluation_admission_smoke";
+pub const POLICY_REUSE_EVIDENCE_BATCH_EVALUATION_ADMISSION_REGRESSION_SMOKE_STEP: &str =
+    "policy_reuse_evidence_batch_evaluation_admission_regression_smoke";
 pub const POLICY_VALIDATION_HEALTH_SMOKE_STEP: &str = "policy_validation_health_smoke";
 pub const POLICY_VALIDATION_HEALTH_TREND_SMOKE_STEP: &str = "policy_validation_health_trend_smoke";
 pub const POLICY_ORCHESTRATION_CAPACITY_SMOKE_STEP: &str = "policy_orchestration_capacity_smoke";
@@ -2229,6 +2237,187 @@ impl PolicyReuseEvidenceBatchReadinessReceipt {
             self.batch_readiness_status,
             self.not_ready_reason,
             self.batch_hash,
+            self.receipt_hash,
+        )
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PolicyReuseEvidenceBatchExecutionPlanReceipt {
+    pub schema: &'static str,
+    pub record_type: &'static str,
+    pub execution_plan_version: u64,
+    pub source_batch_readiness_hash: u64,
+    pub source_compact_validation_hash: u64,
+    pub batch_ready: bool,
+    pub compact_validation_passed: bool,
+    pub no_execute_plan: bool,
+    pub proposed_batch_capacity: usize,
+    pub proposed_policy_reuse_cases: usize,
+    pub proposed_llm_fallback_cases: usize,
+    pub execution_performed: bool,
+    pub plan_ready: bool,
+    pub plan_status: &'static str,
+    pub not_plannable_reason: &'static str,
+    pub plan_hash: u64,
+    pub receipt_hash: u64,
+}
+
+impl PolicyReuseEvidenceBatchExecutionPlanReceipt {
+    pub fn passed(&self) -> bool {
+        self.is_valid() && self.plan_ready && self.plan_status == "planned"
+    }
+
+    pub fn is_valid(&self) -> bool {
+        self.schema == "canon_policy_reuse_evidence_batch_execution_plan_v1"
+            && matches!(
+                self.record_type,
+                "policy_reuse_evidence_batch_execution_plan"
+                    | POLICY_REUSE_EVIDENCE_BATCH_EXECUTION_PLAN_SMOKE_STEP
+                    | POLICY_REUSE_EVIDENCE_BATCH_EXECUTION_PLAN_REGRESSION_SMOKE_STEP
+            )
+            && self.execution_plan_version == 1
+            && self.source_batch_readiness_hash != 0
+            && self.source_compact_validation_hash != 0
+            && self.no_execute_plan
+            && self.proposed_batch_capacity > 0
+            && self.proposed_policy_reuse_cases <= self.proposed_batch_capacity
+            && self.proposed_llm_fallback_cases <= self.proposed_batch_capacity
+            && self.proposed_policy_reuse_cases + self.proposed_llm_fallback_cases
+                == self.proposed_batch_capacity
+            && matches!(self.plan_status, "planned" | "not_plannable")
+            && matches!(
+                self.not_plannable_reason,
+                "none"
+                    | "batch_not_ready"
+                    | "compact_validation_failed"
+                    | "execution_attempted"
+                    | "no_policy_reuse_cases"
+            )
+            && self.plan_ready
+                == (self.batch_ready
+                    && self.compact_validation_passed
+                    && self.no_execute_plan
+                    && !self.execution_performed
+                    && self.proposed_policy_reuse_cases > 0
+                    && self.not_plannable_reason == "none")
+            && (self.plan_status == "planned") == self.plan_ready
+            && self.plan_hash != 0
+            && self.receipt_hash != 0
+            && self.plan_hash == policy_reuse_evidence_batch_execution_plan_hash(self)
+            && self.receipt_hash == policy_reuse_evidence_batch_execution_plan_receipt_hash(self)
+    }
+
+    pub fn to_json(&self) -> String {
+        format!(
+            "{{\"schema\":\"{}\",\"record_type\":\"{}\",\"execution_plan_version\":{},\"source_batch_readiness_hash\":{},\"source_compact_validation_hash\":{},\"batch_ready\":{},\"compact_validation_passed\":{},\"no_execute_plan\":{},\"proposed_batch_capacity\":{},\"proposed_policy_reuse_cases\":{},\"proposed_llm_fallback_cases\":{},\"execution_performed\":{},\"plan_ready\":{},\"plan_status\":\"{}\",\"not_plannable_reason\":\"{}\",\"plan_hash\":{},\"receipt_hash\":{}}}",
+            self.schema,
+            self.record_type,
+            self.execution_plan_version,
+            self.source_batch_readiness_hash,
+            self.source_compact_validation_hash,
+            self.batch_ready,
+            self.compact_validation_passed,
+            self.no_execute_plan,
+            self.proposed_batch_capacity,
+            self.proposed_policy_reuse_cases,
+            self.proposed_llm_fallback_cases,
+            self.execution_performed,
+            self.plan_ready,
+            self.plan_status,
+            self.not_plannable_reason,
+            self.plan_hash,
+            self.receipt_hash,
+        )
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PolicyReuseEvidenceBatchEvaluationAdmissionReceipt {
+    pub schema: &'static str,
+    pub record_type: &'static str,
+    pub admission_version: u64,
+    pub source_batch_execution_plan_hash: u64,
+    pub source_batch_readiness_hash: u64,
+    pub plan_ready: bool,
+    pub batch_ready: bool,
+    pub no_execute_plan: bool,
+    pub execution_performed: bool,
+    pub proposed_batch_capacity: usize,
+    pub admitted_policy_reuse_cases: usize,
+    pub admitted_llm_fallback_cases: usize,
+    pub batch_evaluation_admitted: bool,
+    pub admission_status: &'static str,
+    pub not_admitted_reason: &'static str,
+    pub admission_hash: u64,
+    pub receipt_hash: u64,
+}
+
+impl PolicyReuseEvidenceBatchEvaluationAdmissionReceipt {
+    pub fn passed(&self) -> bool {
+        self.is_valid() && self.batch_evaluation_admitted && self.admission_status == "admitted"
+    }
+
+    pub fn is_valid(&self) -> bool {
+        self.schema == "canon_policy_reuse_evidence_batch_evaluation_admission_v1"
+            && matches!(
+                self.record_type,
+                "policy_reuse_evidence_batch_evaluation_admission"
+                    | POLICY_REUSE_EVIDENCE_BATCH_EVALUATION_ADMISSION_SMOKE_STEP
+                    | POLICY_REUSE_EVIDENCE_BATCH_EVALUATION_ADMISSION_REGRESSION_SMOKE_STEP
+            )
+            && self.admission_version == 1
+            && self.source_batch_execution_plan_hash != 0
+            && self.source_batch_readiness_hash != 0
+            && self.no_execute_plan
+            && self.proposed_batch_capacity > 0
+            && self.admitted_policy_reuse_cases <= self.proposed_batch_capacity
+            && self.admitted_llm_fallback_cases <= self.proposed_batch_capacity
+            && self.admitted_policy_reuse_cases + self.admitted_llm_fallback_cases
+                == self.proposed_batch_capacity
+            && matches!(self.admission_status, "admitted" | "not_admitted")
+            && matches!(
+                self.not_admitted_reason,
+                "none"
+                    | "plan_not_ready"
+                    | "batch_not_ready"
+                    | "execution_already_performed"
+                    | "no_policy_reuse_cases"
+            )
+            && self.batch_evaluation_admitted
+                == (self.plan_ready
+                    && self.batch_ready
+                    && self.no_execute_plan
+                    && !self.execution_performed
+                    && self.admitted_policy_reuse_cases > 0
+                    && self.not_admitted_reason == "none")
+            && (self.admission_status == "admitted") == self.batch_evaluation_admitted
+            && self.admission_hash != 0
+            && self.receipt_hash != 0
+            && self.admission_hash == policy_reuse_evidence_batch_evaluation_admission_hash(self)
+            && self.receipt_hash
+                == policy_reuse_evidence_batch_evaluation_admission_receipt_hash(self)
+    }
+
+    pub fn to_json(&self) -> String {
+        format!(
+            "{{\"schema\":\"{}\",\"record_type\":\"{}\",\"admission_version\":{},\"source_batch_execution_plan_hash\":{},\"source_batch_readiness_hash\":{},\"plan_ready\":{},\"batch_ready\":{},\"no_execute_plan\":{},\"execution_performed\":{},\"proposed_batch_capacity\":{},\"admitted_policy_reuse_cases\":{},\"admitted_llm_fallback_cases\":{},\"batch_evaluation_admitted\":{},\"admission_status\":\"{}\",\"not_admitted_reason\":\"{}\",\"admission_hash\":{},\"receipt_hash\":{}}}",
+            self.schema,
+            self.record_type,
+            self.admission_version,
+            self.source_batch_execution_plan_hash,
+            self.source_batch_readiness_hash,
+            self.plan_ready,
+            self.batch_ready,
+            self.no_execute_plan,
+            self.execution_performed,
+            self.proposed_batch_capacity,
+            self.admitted_policy_reuse_cases,
+            self.admitted_llm_fallback_cases,
+            self.batch_evaluation_admitted,
+            self.admission_status,
+            self.not_admitted_reason,
+            self.admission_hash,
             self.receipt_hash,
         )
     }
@@ -4856,6 +5045,172 @@ fn finalize_policy_reuse_evidence_batch_readiness(
     receipt.receipt_hash = policy_reuse_evidence_batch_readiness_receipt_hash(receipt);
 }
 
+pub fn policy_reuse_evidence_batch_execution_plan_smoke_receipt(
+) -> PolicyReuseEvidenceBatchExecutionPlanReceipt {
+    let batch = policy_reuse_evidence_batch_readiness_smoke_receipt();
+    let compact = policy_reuse_evidence_compact_validation_smoke_receipt();
+    let mut receipt = policy_reuse_evidence_batch_execution_plan_from_sources(
+        POLICY_REUSE_EVIDENCE_BATCH_EXECUTION_PLAN_SMOKE_STEP,
+        &batch,
+        &compact,
+        false,
+        "none",
+    );
+    finalize_policy_reuse_evidence_batch_execution_plan(&mut receipt);
+    receipt
+}
+
+pub fn policy_reuse_evidence_batch_execution_plan_regression_smoke_receipt(
+) -> PolicyReuseEvidenceBatchExecutionPlanReceipt {
+    let batch = policy_reuse_evidence_batch_readiness_regression_smoke_receipt();
+    let compact = policy_reuse_evidence_compact_validation_regression_smoke_receipt();
+    let mut receipt = policy_reuse_evidence_batch_execution_plan_from_sources(
+        POLICY_REUSE_EVIDENCE_BATCH_EXECUTION_PLAN_REGRESSION_SMOKE_STEP,
+        &batch,
+        &compact,
+        false,
+        "batch_not_ready",
+    );
+    finalize_policy_reuse_evidence_batch_execution_plan(&mut receipt);
+    receipt
+}
+
+fn policy_reuse_evidence_batch_execution_plan_from_sources(
+    record_type: &'static str,
+    batch: &PolicyReuseEvidenceBatchReadinessReceipt,
+    compact: &PolicyReuseEvidenceCompactValidationReceipt,
+    execution_performed: bool,
+    not_plannable_reason: &'static str,
+) -> PolicyReuseEvidenceBatchExecutionPlanReceipt {
+    let batch_ready = batch.passed();
+    let compact_validation_passed = compact.passed();
+    let no_execute_plan = true;
+    let proposed_batch_capacity = batch.batch_capacity_limit;
+    let proposed_policy_reuse_cases = batch.projected_llm_calls_avoided_per_full_batch;
+    let proposed_llm_fallback_cases = batch.projected_llm_fallbacks_per_full_batch;
+    let plan_ready = batch_ready
+        && compact_validation_passed
+        && no_execute_plan
+        && !execution_performed
+        && proposed_policy_reuse_cases > 0
+        && not_plannable_reason == "none";
+    let plan_status = if plan_ready {
+        "planned"
+    } else {
+        "not_plannable"
+    };
+    let mut receipt = PolicyReuseEvidenceBatchExecutionPlanReceipt {
+        schema: "canon_policy_reuse_evidence_batch_execution_plan_v1",
+        record_type,
+        execution_plan_version: 1,
+        source_batch_readiness_hash: batch.receipt_hash,
+        source_compact_validation_hash: compact.receipt_hash,
+        batch_ready,
+        compact_validation_passed,
+        no_execute_plan,
+        proposed_batch_capacity,
+        proposed_policy_reuse_cases,
+        proposed_llm_fallback_cases,
+        execution_performed,
+        plan_ready,
+        plan_status,
+        not_plannable_reason,
+        plan_hash: 0,
+        receipt_hash: 0,
+    };
+    finalize_policy_reuse_evidence_batch_execution_plan(&mut receipt);
+    receipt
+}
+
+fn finalize_policy_reuse_evidence_batch_execution_plan(
+    receipt: &mut PolicyReuseEvidenceBatchExecutionPlanReceipt,
+) {
+    receipt.plan_hash = policy_reuse_evidence_batch_execution_plan_hash(receipt);
+    receipt.receipt_hash = policy_reuse_evidence_batch_execution_plan_receipt_hash(receipt);
+}
+
+pub fn policy_reuse_evidence_batch_evaluation_admission_smoke_receipt(
+) -> PolicyReuseEvidenceBatchEvaluationAdmissionReceipt {
+    let plan = policy_reuse_evidence_batch_execution_plan_smoke_receipt();
+    let batch = policy_reuse_evidence_batch_readiness_smoke_receipt();
+    let mut receipt = policy_reuse_evidence_batch_evaluation_admission_from_sources(
+        POLICY_REUSE_EVIDENCE_BATCH_EVALUATION_ADMISSION_SMOKE_STEP,
+        &plan,
+        &batch,
+        "none",
+    );
+    finalize_policy_reuse_evidence_batch_evaluation_admission(&mut receipt);
+    receipt
+}
+
+pub fn policy_reuse_evidence_batch_evaluation_admission_regression_smoke_receipt(
+) -> PolicyReuseEvidenceBatchEvaluationAdmissionReceipt {
+    let plan = policy_reuse_evidence_batch_execution_plan_regression_smoke_receipt();
+    let batch = policy_reuse_evidence_batch_readiness_regression_smoke_receipt();
+    let mut receipt = policy_reuse_evidence_batch_evaluation_admission_from_sources(
+        POLICY_REUSE_EVIDENCE_BATCH_EVALUATION_ADMISSION_REGRESSION_SMOKE_STEP,
+        &plan,
+        &batch,
+        "plan_not_ready",
+    );
+    finalize_policy_reuse_evidence_batch_evaluation_admission(&mut receipt);
+    receipt
+}
+
+fn policy_reuse_evidence_batch_evaluation_admission_from_sources(
+    record_type: &'static str,
+    plan: &PolicyReuseEvidenceBatchExecutionPlanReceipt,
+    batch: &PolicyReuseEvidenceBatchReadinessReceipt,
+    not_admitted_reason: &'static str,
+) -> PolicyReuseEvidenceBatchEvaluationAdmissionReceipt {
+    let plan_ready = plan.passed();
+    let batch_ready = batch.passed();
+    let no_execute_plan = plan.no_execute_plan;
+    let execution_performed = plan.execution_performed;
+    let proposed_batch_capacity = plan.proposed_batch_capacity;
+    let admitted_policy_reuse_cases = plan.proposed_policy_reuse_cases;
+    let admitted_llm_fallback_cases = plan.proposed_llm_fallback_cases;
+    let batch_evaluation_admitted = plan_ready
+        && batch_ready
+        && no_execute_plan
+        && !execution_performed
+        && admitted_policy_reuse_cases > 0
+        && not_admitted_reason == "none";
+    let admission_status = if batch_evaluation_admitted {
+        "admitted"
+    } else {
+        "not_admitted"
+    };
+    let mut receipt = PolicyReuseEvidenceBatchEvaluationAdmissionReceipt {
+        schema: "canon_policy_reuse_evidence_batch_evaluation_admission_v1",
+        record_type,
+        admission_version: 1,
+        source_batch_execution_plan_hash: plan.receipt_hash,
+        source_batch_readiness_hash: batch.receipt_hash,
+        plan_ready,
+        batch_ready,
+        no_execute_plan,
+        execution_performed,
+        proposed_batch_capacity,
+        admitted_policy_reuse_cases,
+        admitted_llm_fallback_cases,
+        batch_evaluation_admitted,
+        admission_status,
+        not_admitted_reason,
+        admission_hash: 0,
+        receipt_hash: 0,
+    };
+    finalize_policy_reuse_evidence_batch_evaluation_admission(&mut receipt);
+    receipt
+}
+
+fn finalize_policy_reuse_evidence_batch_evaluation_admission(
+    receipt: &mut PolicyReuseEvidenceBatchEvaluationAdmissionReceipt,
+) {
+    receipt.admission_hash = policy_reuse_evidence_batch_evaluation_admission_hash(receipt);
+    receipt.receipt_hash = policy_reuse_evidence_batch_evaluation_admission_receipt_hash(receipt);
+}
+
 #[allow(clippy::too_many_arguments)]
 fn policy_reuse_evidence_surface_index_from_sources(
     record_type: &'static str,
@@ -5510,6 +5865,114 @@ fn policy_reuse_evidence_batch_readiness_receipt_hash(
         return 0;
     }
     (batch_hash ^ 0x504f_4c52_4252_4452u64).max(1)
+}
+
+fn policy_reuse_evidence_batch_execution_plan_hash(
+    receipt: &PolicyReuseEvidenceBatchExecutionPlanReceipt,
+) -> u64 {
+    if receipt.execution_plan_version == 0
+        || receipt.source_batch_readiness_hash == 0
+        || receipt.source_compact_validation_hash == 0
+    {
+        return 0;
+    }
+    let plan_status_code = match receipt.plan_status {
+        "planned" => 1,
+        "not_plannable" => 2,
+        _ => 0,
+    };
+    let not_plannable_reason_code = match receipt.not_plannable_reason {
+        "none" => 1,
+        "batch_not_ready" => 2,
+        "compact_validation_failed" => 3,
+        "execution_attempted" => 4,
+        "no_policy_reuse_cases" => 5,
+        _ => 0,
+    };
+    if plan_status_code == 0 || not_plannable_reason_code == 0 {
+        return 0;
+    }
+    let mut h = 0x504f_4c52_4250_4448u64;
+    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.schema.as_bytes());
+    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.record_type.as_bytes());
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.execution_plan_version;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_batch_readiness_hash;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_compact_validation_hash;
+    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.batch_ready);
+    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.compact_validation_passed);
+    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.no_execute_plan);
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.proposed_batch_capacity as u64;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.proposed_policy_reuse_cases as u64;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.proposed_llm_fallback_cases as u64;
+    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.execution_performed);
+    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.plan_ready);
+    h = h.wrapping_mul(0x100000001b3) ^ plan_status_code;
+    h = h.wrapping_mul(0x100000001b3) ^ not_plannable_reason_code;
+    h.max(1)
+}
+
+fn policy_reuse_evidence_batch_execution_plan_receipt_hash(
+    receipt: &PolicyReuseEvidenceBatchExecutionPlanReceipt,
+) -> u64 {
+    let plan_hash = policy_reuse_evidence_batch_execution_plan_hash(receipt);
+    if plan_hash == 0 || receipt.plan_hash != plan_hash {
+        return 0;
+    }
+    (plan_hash ^ 0x504f_4c52_4250_4452u64).max(1)
+}
+
+fn policy_reuse_evidence_batch_evaluation_admission_hash(
+    receipt: &PolicyReuseEvidenceBatchEvaluationAdmissionReceipt,
+) -> u64 {
+    if receipt.admission_version == 0
+        || receipt.source_batch_execution_plan_hash == 0
+        || receipt.source_batch_readiness_hash == 0
+    {
+        return 0;
+    }
+    let admission_status_code = match receipt.admission_status {
+        "admitted" => 1,
+        "not_admitted" => 2,
+        _ => 0,
+    };
+    let not_admitted_reason_code = match receipt.not_admitted_reason {
+        "none" => 1,
+        "plan_not_ready" => 2,
+        "batch_not_ready" => 3,
+        "execution_already_performed" => 4,
+        "no_policy_reuse_cases" => 5,
+        _ => 0,
+    };
+    if admission_status_code == 0 || not_admitted_reason_code == 0 {
+        return 0;
+    }
+    let mut h = 0x504f_4c52_4241_4448u64;
+    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.schema.as_bytes());
+    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.record_type.as_bytes());
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.admission_version;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_batch_execution_plan_hash;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_batch_readiness_hash;
+    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.plan_ready);
+    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.batch_ready);
+    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.no_execute_plan);
+    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.execution_performed);
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.proposed_batch_capacity as u64;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.admitted_policy_reuse_cases as u64;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.admitted_llm_fallback_cases as u64;
+    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.batch_evaluation_admitted);
+    h = h.wrapping_mul(0x100000001b3) ^ admission_status_code;
+    h = h.wrapping_mul(0x100000001b3) ^ not_admitted_reason_code;
+    h.max(1)
+}
+
+fn policy_reuse_evidence_batch_evaluation_admission_receipt_hash(
+    receipt: &PolicyReuseEvidenceBatchEvaluationAdmissionReceipt,
+) -> u64 {
+    let admission_hash = policy_reuse_evidence_batch_evaluation_admission_hash(receipt);
+    if admission_hash == 0 || receipt.admission_hash != admission_hash {
+        return 0;
+    }
+    (admission_hash ^ 0x504f_4c52_4241_4452u64).max(1)
 }
 
 fn policy_reuse_evidence_summary_hash(receipt: &PolicyReuseEvidenceSummaryReceipt) -> u64 {

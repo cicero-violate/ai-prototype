@@ -400,6 +400,26 @@ const COMPACT_MODES: &[CompactMode] = &[
         run: policy_reuse_evidence_batch_readiness_regression_smoke_mode,
     },
     CompactMode {
+        arg: "--policy-reuse-evidence-batch-execution-plan-smoke",
+        marker: "policy_reuse_evidence_batch_execution_plan_smoke",
+        run: policy_reuse_evidence_batch_execution_plan_smoke_mode,
+    },
+    CompactMode {
+        arg: "--policy-reuse-evidence-batch-execution-plan-regression-smoke",
+        marker: "policy_reuse_evidence_batch_execution_plan_regression_smoke",
+        run: policy_reuse_evidence_batch_execution_plan_regression_smoke_mode,
+    },
+    CompactMode {
+        arg: "--policy-reuse-evidence-batch-evaluation-admission-smoke",
+        marker: "policy_reuse_evidence_batch_evaluation_admission_smoke",
+        run: policy_reuse_evidence_batch_evaluation_admission_smoke_mode,
+    },
+    CompactMode {
+        arg: "--policy-reuse-evidence-batch-evaluation-admission-regression-smoke",
+        marker: "policy_reuse_evidence_batch_evaluation_admission_regression_smoke",
+        run: policy_reuse_evidence_batch_evaluation_admission_regression_smoke_mode,
+    },
+    CompactMode {
         arg: "--root-validate-dispatch-catalog",
         marker: "canon_root_validate_dispatch_catalog_v1",
         run: root_validate_dispatch_catalog_mode,
@@ -1205,6 +1225,62 @@ fn policy_reuse_evidence_batch_readiness_regression_smoke_mode(
         && !receipt.batch_ready
         && receipt.batch_readiness_status == "not_ready"
         && receipt.not_ready_reason == "compact_validation_failed"
+        && !receipt.passed();
+    Ok(CompactModeOutcome::controlled_json(
+        receipt.to_json(),
+        passed,
+    ))
+}
+
+fn policy_reuse_evidence_batch_execution_plan_smoke_mode() -> Result<CompactModeOutcome, String> {
+    let receipt = validation_harness::policy_reuse_evidence_batch_execution_plan_smoke_receipt();
+    Ok(CompactModeOutcome::pass_json(
+        receipt.to_json(),
+        receipt.passed(),
+    ))
+}
+
+fn policy_reuse_evidence_batch_execution_plan_regression_smoke_mode(
+) -> Result<CompactModeOutcome, String> {
+    let receipt =
+        validation_harness::policy_reuse_evidence_batch_execution_plan_regression_smoke_receipt();
+    let passed = receipt.is_valid()
+        && !receipt.batch_ready
+        && !receipt.compact_validation_passed
+        && receipt.no_execute_plan
+        && !receipt.execution_performed
+        && !receipt.plan_ready
+        && receipt.plan_status == "not_plannable"
+        && receipt.not_plannable_reason == "batch_not_ready"
+        && !receipt.passed();
+    Ok(CompactModeOutcome::controlled_json(
+        receipt.to_json(),
+        passed,
+    ))
+}
+
+fn policy_reuse_evidence_batch_evaluation_admission_smoke_mode(
+) -> Result<CompactModeOutcome, String> {
+    let receipt =
+        validation_harness::policy_reuse_evidence_batch_evaluation_admission_smoke_receipt();
+    Ok(CompactModeOutcome::pass_json(
+        receipt.to_json(),
+        receipt.passed(),
+    ))
+}
+
+fn policy_reuse_evidence_batch_evaluation_admission_regression_smoke_mode(
+) -> Result<CompactModeOutcome, String> {
+    let receipt = validation_harness::
+        policy_reuse_evidence_batch_evaluation_admission_regression_smoke_receipt();
+    let passed = receipt.is_valid()
+        && !receipt.plan_ready
+        && !receipt.batch_ready
+        && receipt.no_execute_plan
+        && !receipt.execution_performed
+        && !receipt.batch_evaluation_admitted
+        && receipt.admission_status == "not_admitted"
+        && receipt.not_admitted_reason == "plan_not_ready"
         && !receipt.passed();
     Ok(CompactModeOutcome::controlled_json(
         receipt.to_json(),

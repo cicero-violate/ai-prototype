@@ -29,8 +29,8 @@ use ai::validation_harness::{
     VALIDATION_FOOTPRINT_STEP, VALIDATION_HARNESS_EXPECTED_TESTS, VALIDATION_HARNESS_STEP,
 };
 
-const EXPECTED_ROOT_VALIDATE_COMPACT_MODE_COUNT: usize = 72;
-const EXPECTED_EXTERNAL_AGENT_CLI_MODE_COUNT: usize = 77;
+const EXPECTED_ROOT_VALIDATE_COMPACT_MODE_COUNT: usize = 74;
+const EXPECTED_EXTERNAL_AGENT_CLI_MODE_COUNT: usize = 83;
 
 fn expected_guarded_test_count() -> usize {
     VALIDATION_HARNESS_EXPECTED_TESTS + GRAPH_MUTATION_CLI_CONTRACT_EXPECTED_TESTS
@@ -74,7 +74,7 @@ fn root_validation_runs_check_before_contract_suites() {
         steps[4].expected_test_count,
         Some(VALIDATION_HARNESS_EXPECTED_TESTS)
     );
-    assert_eq!(VALIDATION_HARNESS_EXPECTED_TESTS, 204);
+    assert_eq!(VALIDATION_HARNESS_EXPECTED_TESTS, 212);
     assert!(steps[5].args.contains(&"planning_contract"));
     assert!(steps[6].args.contains(&"graph_mutation_cli_contract"));
 }
@@ -636,6 +636,22 @@ fn external_agent_cli_modes_fixture_documents_all_public_modes() {
     assert!(catalog.contains(
         "root_validate --policy-reuse-evidence-batch-readiness-regression-smoke",
         "policy_reuse_evidence_batch_readiness_regression_smoke",
+    ));
+    assert!(catalog.contains(
+        "root_validate --policy-reuse-evidence-batch-execution-plan-smoke",
+        "policy_reuse_evidence_batch_execution_plan_smoke",
+    ));
+    assert!(catalog.contains(
+        "root_validate --policy-reuse-evidence-batch-execution-plan-regression-smoke",
+        "policy_reuse_evidence_batch_execution_plan_regression_smoke",
+    ));
+    assert!(catalog.contains(
+        "root_validate --policy-reuse-evidence-batch-evaluation-admission-smoke",
+        "policy_reuse_evidence_batch_evaluation_admission_smoke",
+    ));
+    assert!(catalog.contains(
+        "root_validate --policy-reuse-evidence-batch-evaluation-admission-regression-smoke",
+        "policy_reuse_evidence_batch_evaluation_admission_regression_smoke",
     ));
     assert!(catalog.contains(
         "root_validate --root-validate-dispatch-catalog",
@@ -5815,6 +5831,240 @@ fn root_validate_policy_reuse_evidence_batch_readiness_regression_smoke_mode_is_
             "\"batch_readiness_status\":\"not_ready\"",
             "\"not_ready_reason\":\"compact_validation_failed\"",
             "\"batch_hash\":",
+            "\"receipt_hash\":",
+        ],
+    );
+}
+
+#[test]
+fn policy_reuse_evidence_batch_execution_plan_smoke_composes_no_execute_plan() {
+    let receipt =
+        ai::validation_harness::policy_reuse_evidence_batch_execution_plan_smoke_receipt();
+    let batch = ai::validation_harness::policy_reuse_evidence_batch_readiness_smoke_receipt();
+    let compact = ai::validation_harness::policy_reuse_evidence_compact_validation_smoke_receipt();
+
+    assert_eq!(
+        receipt.schema,
+        "canon_policy_reuse_evidence_batch_execution_plan_v1"
+    );
+    assert_eq!(
+        receipt.record_type,
+        ai::validation_harness::POLICY_REUSE_EVIDENCE_BATCH_EXECUTION_PLAN_SMOKE_STEP
+    );
+    assert_eq!(receipt.execution_plan_version, 1);
+    assert_eq!(receipt.source_batch_readiness_hash, batch.receipt_hash);
+    assert_eq!(receipt.source_compact_validation_hash, compact.receipt_hash);
+    assert!(receipt.batch_ready);
+    assert!(receipt.compact_validation_passed);
+    assert!(receipt.no_execute_plan);
+    assert_eq!(receipt.proposed_batch_capacity, batch.batch_capacity_limit);
+    assert_eq!(
+        receipt.proposed_policy_reuse_cases,
+        batch.projected_llm_calls_avoided_per_full_batch
+    );
+    assert_eq!(
+        receipt.proposed_llm_fallback_cases,
+        batch.projected_llm_fallbacks_per_full_batch
+    );
+    assert!(!receipt.execution_performed);
+    assert!(receipt.plan_ready);
+    assert_eq!(receipt.plan_status, "planned");
+    assert_eq!(receipt.not_plannable_reason, "none");
+    assert_ne!(receipt.plan_hash, 0);
+    assert_ne!(receipt.receipt_hash, 0);
+    assert!(receipt.is_valid());
+    assert!(receipt.passed());
+}
+
+#[test]
+fn policy_reuse_evidence_batch_execution_plan_regression_smoke_is_valid_not_plannable_evidence() {
+    let receipt =
+        ai::validation_harness::policy_reuse_evidence_batch_execution_plan_regression_smoke_receipt(
+        );
+    let batch =
+        ai::validation_harness::policy_reuse_evidence_batch_readiness_regression_smoke_receipt();
+    let compact =
+        ai::validation_harness::policy_reuse_evidence_compact_validation_regression_smoke_receipt();
+
+    assert_eq!(
+        receipt.record_type,
+        ai::validation_harness::POLICY_REUSE_EVIDENCE_BATCH_EXECUTION_PLAN_REGRESSION_SMOKE_STEP
+    );
+    assert_eq!(receipt.source_batch_readiness_hash, batch.receipt_hash);
+    assert_eq!(receipt.source_compact_validation_hash, compact.receipt_hash);
+    assert!(!receipt.batch_ready);
+    assert!(!receipt.compact_validation_passed);
+    assert!(receipt.no_execute_plan);
+    assert_eq!(receipt.proposed_batch_capacity, batch.batch_capacity_limit);
+    assert!(!receipt.execution_performed);
+    assert!(!receipt.plan_ready);
+    assert_eq!(receipt.plan_status, "not_plannable");
+    assert_eq!(receipt.not_plannable_reason, "batch_not_ready");
+    assert!(receipt.is_valid());
+    assert!(!receipt.passed());
+}
+
+#[test]
+fn root_validate_policy_reuse_evidence_batch_execution_plan_smoke_mode_is_executable_contract() {
+    assert_root_validate_catalog_compact_mode_contract(
+        "--policy-reuse-evidence-batch-execution-plan-smoke",
+        &[
+            "\"schema\":\"canon_policy_reuse_evidence_batch_execution_plan_v1\"",
+            "\"record_type\":\"policy_reuse_evidence_batch_execution_plan_smoke\"",
+            "\"execution_plan_version\":1",
+            "\"source_batch_readiness_hash\":",
+            "\"source_compact_validation_hash\":",
+            "\"batch_ready\":true",
+            "\"compact_validation_passed\":true",
+            "\"no_execute_plan\":true",
+            "\"execution_performed\":false",
+            "\"plan_ready\":true",
+            "\"plan_status\":\"planned\"",
+            "\"not_plannable_reason\":\"none\"",
+            "\"plan_hash\":",
+            "\"receipt_hash\":",
+        ],
+    );
+}
+
+#[test]
+fn root_validate_policy_reuse_evidence_batch_execution_plan_regression_smoke_mode_is_executable_contract(
+) {
+    assert_root_validate_catalog_compact_mode_contract(
+        "--policy-reuse-evidence-batch-execution-plan-regression-smoke",
+        &[
+            "\"schema\":\"canon_policy_reuse_evidence_batch_execution_plan_v1\"",
+            "\"record_type\":\"policy_reuse_evidence_batch_execution_plan_regression_smoke\"",
+            "\"execution_plan_version\":1",
+            "\"batch_ready\":false",
+            "\"compact_validation_passed\":false",
+            "\"no_execute_plan\":true",
+            "\"execution_performed\":false",
+            "\"plan_ready\":false",
+            "\"plan_status\":\"not_plannable\"",
+            "\"not_plannable_reason\":\"batch_not_ready\"",
+            "\"plan_hash\":",
+            "\"receipt_hash\":",
+        ],
+    );
+}
+
+#[test]
+fn policy_reuse_evidence_batch_evaluation_admission_smoke_composes_admission_verdict() {
+    let receipt =
+        ai::validation_harness::policy_reuse_evidence_batch_evaluation_admission_smoke_receipt();
+    let plan = ai::validation_harness::policy_reuse_evidence_batch_execution_plan_smoke_receipt();
+    let batch = ai::validation_harness::policy_reuse_evidence_batch_readiness_smoke_receipt();
+
+    assert_eq!(
+        receipt.schema,
+        "canon_policy_reuse_evidence_batch_evaluation_admission_v1"
+    );
+    assert_eq!(
+        receipt.record_type,
+        ai::validation_harness::POLICY_REUSE_EVIDENCE_BATCH_EVALUATION_ADMISSION_SMOKE_STEP
+    );
+    assert_eq!(receipt.admission_version, 1);
+    assert_eq!(receipt.source_batch_execution_plan_hash, plan.receipt_hash);
+    assert_eq!(receipt.source_batch_readiness_hash, batch.receipt_hash);
+    assert!(receipt.plan_ready);
+    assert!(receipt.batch_ready);
+    assert!(receipt.no_execute_plan);
+    assert!(!receipt.execution_performed);
+    assert_eq!(
+        receipt.proposed_batch_capacity,
+        plan.proposed_batch_capacity
+    );
+    assert_eq!(
+        receipt.admitted_policy_reuse_cases,
+        plan.proposed_policy_reuse_cases
+    );
+    assert_eq!(
+        receipt.admitted_llm_fallback_cases,
+        plan.proposed_llm_fallback_cases
+    );
+    assert!(receipt.batch_evaluation_admitted);
+    assert_eq!(receipt.admission_status, "admitted");
+    assert_eq!(receipt.not_admitted_reason, "none");
+    assert_ne!(receipt.admission_hash, 0);
+    assert_ne!(receipt.receipt_hash, 0);
+    assert!(receipt.is_valid());
+    assert!(receipt.passed());
+}
+
+#[test]
+fn policy_reuse_evidence_batch_evaluation_admission_regression_smoke_is_valid_not_admitted_evidence(
+) {
+    let receipt = ai::validation_harness::
+        policy_reuse_evidence_batch_evaluation_admission_regression_smoke_receipt();
+    let plan =
+        ai::validation_harness::policy_reuse_evidence_batch_execution_plan_regression_smoke_receipt(
+        );
+    let batch =
+        ai::validation_harness::policy_reuse_evidence_batch_readiness_regression_smoke_receipt();
+
+    assert_eq!(
+        receipt.record_type,
+        ai::validation_harness::POLICY_REUSE_EVIDENCE_BATCH_EVALUATION_ADMISSION_REGRESSION_SMOKE_STEP
+    );
+    assert_eq!(receipt.source_batch_execution_plan_hash, plan.receipt_hash);
+    assert_eq!(receipt.source_batch_readiness_hash, batch.receipt_hash);
+    assert!(!receipt.plan_ready);
+    assert!(!receipt.batch_ready);
+    assert!(receipt.no_execute_plan);
+    assert!(!receipt.execution_performed);
+    assert_eq!(
+        receipt.proposed_batch_capacity,
+        plan.proposed_batch_capacity
+    );
+    assert!(!receipt.batch_evaluation_admitted);
+    assert_eq!(receipt.admission_status, "not_admitted");
+    assert_eq!(receipt.not_admitted_reason, "plan_not_ready");
+    assert!(receipt.is_valid());
+    assert!(!receipt.passed());
+}
+
+#[test]
+fn root_validate_policy_reuse_evidence_batch_evaluation_admission_smoke_mode_is_executable_contract(
+) {
+    assert_root_validate_catalog_compact_mode_contract(
+        "--policy-reuse-evidence-batch-evaluation-admission-smoke",
+        &[
+            "\"schema\":\"canon_policy_reuse_evidence_batch_evaluation_admission_v1\"",
+            "\"record_type\":\"policy_reuse_evidence_batch_evaluation_admission_smoke\"",
+            "\"admission_version\":1",
+            "\"source_batch_execution_plan_hash\":",
+            "\"source_batch_readiness_hash\":",
+            "\"plan_ready\":true",
+            "\"batch_ready\":true",
+            "\"no_execute_plan\":true",
+            "\"execution_performed\":false",
+            "\"batch_evaluation_admitted\":true",
+            "\"admission_status\":\"admitted\"",
+            "\"not_admitted_reason\":\"none\"",
+            "\"admission_hash\":",
+            "\"receipt_hash\":",
+        ],
+    );
+}
+
+#[test]
+fn root_validate_policy_reuse_evidence_batch_evaluation_admission_regression_smoke_mode_is_executable_contract(
+) {
+    assert_root_validate_catalog_compact_mode_contract(
+        "--policy-reuse-evidence-batch-evaluation-admission-regression-smoke",
+        &[
+            "\"schema\":\"canon_policy_reuse_evidence_batch_evaluation_admission_v1\"",
+            "\"record_type\":\"policy_reuse_evidence_batch_evaluation_admission_regression_smoke\"",
+            "\"admission_version\":1",
+            "\"plan_ready\":false",
+            "\"batch_ready\":false",
+            "\"no_execute_plan\":true",
+            "\"execution_performed\":false",
+            "\"batch_evaluation_admitted\":false",
+            "\"admission_status\":\"not_admitted\"",
+            "\"not_admitted_reason\":\"plan_not_ready\"",
+            "\"admission_hash\":",
             "\"receipt_hash\":",
         ],
     );
