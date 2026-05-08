@@ -1,6 +1,33 @@
 # Canon Agent Score
 
-This scorecard records current progress for the planning/scoring turn of the current agent loop. The working tree contains deterministic policy reuse evaluator-savings, scaling-projection, distillation-readiness, evidence-surface index, evidence-bundle, evidence-quickcheck, evidence-maturity, evidence-summary, evidence-manifest, evidence validation-budget, evidence rollout-readiness, evidence learning-admission, evidence retrieval-readiness, evidence compact-validation, batch-readiness, batch-execution-plan, batch-evaluation-admission, batch-run-request, external-evaluator-result, learning-candidate, learning-data-admission, retrieval-example-admission, retrieval-example-index, retrieval-corpus-readiness, retrieval-corpus-admission, retrieval-use-approval, retrieval-use-manifest, retrieval-query-plan, retrieval-query-approval, retrieval-result-admission, retrieval-result-manifest, retrieval-result-use-admission, retrieval-result-use-manifest, retrieval-result-use-readiness, retrieval-result-use-approval, retrieval-result-use-manifest-admission, retrieval-result-use-summary, retrieval-result-use-summary-manifest, retrieval-result-use-summary-manifest-admission, retrieval-result-use-summary-manifest-readiness, retrieval-result-use-summary-manifest-approval, and retrieval-result-use-summary-manifest-approval-admission evidence.
+This scorecard records current progress for the planning/scoring turn of the current agent loop. This turn performs no implementation scoring increase. It normalizes the active handoff around deterministic auto-refactor graph signals and evidence-only surface reporting while preserving existing unowned implementation changes.
+
+## Current Turn Summary - 2026-05-08
+
+```text
+turn_type = planning
+score_change_this_turn = no score increase
+active_handoff = deterministic auto-refactor graph signals and evidence-only refactor-surface reporting
+primary_next_axis = Structure
+secondary_next_axis = Efficiency
+commit_scope = plan.md, score.md only
+```
+
+Observed unowned implementation evidence:
+
+```text
+canon-rustc-v3/src/facts.rs                        modified
+canon-rustc-v3/src/hir.rs                          modified
+canon-rustc-v3/src/mir.rs                          modified
+canon-rustc-v3/src/wrapper.rs                      modified
+canon-rustc-v3/validation/semantic_preflight.py    modified
+canon-rustc-v3/validation/semantic_scale_probe.py  modified
+src/validation_harness.rs                          modified
+tests/validation_harness_contract.rs               modified
+canon-rustc-v3/plan-autorefactor.md                untracked
+canon-rustc-v3/validation/auto_refactor_surface.py untracked
+canon-rustc-v3/validation/auto_refactor_surface_smoke.py untracked
+```
 
 ## Planning Turn Normalization - Auto-Refactor Signal Handoff
 
@@ -11,7 +38,7 @@ primary_next_axis = Structure
 secondary_next_axis = Efficiency
 reason = current worktree evidence points to deterministic auto-refactor graph signals, but this turn only updates planning and scoring records
 commit_scope = plan.md, score.md only
-unowned_changes = existing canon-rustc-v3 modified and untracked implementation files
+unowned_changes = existing modified and untracked implementation files outside plan.md and score.md
 ```
 
 Normalized scoring stance:
@@ -28,9 +55,9 @@ turn_type = planning
 selected_axes = Structure, Efficiency
 score_change_this_turn = no score increase; planning/scoring only
 reason = refreshed the handoff around active canon-rustc-v3 auto-refactor graph-signal work without claiming ownership of uncommitted implementation files
-observed_worktree_evidence = modified canon-rustc-v3 facts/hir/mir/wrapper/preflight/scale-probe files plus untracked plan-autorefactor.md and auto_refactor_surface.py
+observed_worktree_evidence = modified canon-rustc-v3 facts/hir/mir/wrapper/preflight/scale-probe files, modified root validation harness files, plus untracked plan-autorefactor.md, auto_refactor_surface.py, and auto_refactor_surface_smoke.py
 current_gap = auto-refactor graph signals and evidence-only surface report are present as active working-tree evidence but are not yet validated, committed, or scored as completed implementation
-next_action = complete and validate deterministic similar/phase/provider graph relations and auto_refactor_surface.py report generation
+next_action = complete and validate deterministic similar/phase/provider graph relations, auto_refactor_surface.py report generation, and report smoke coverage
 commit_scope = plan.md, score.md only
 out_of_scope_changes_preserved = all existing canon-rustc-v3 modified and untracked implementation files remain unowned by this planning turn
 ```
@@ -104,23 +131,25 @@ scope = canon-rustc-v3 graph extraction and reporting evidence only; kernel auth
 validation = no new implementation validation claimed during this planning-only turn
 ```
 
-## Why Learning Is Still The Next Target
+## Why Structure And Efficiency Are The Next Targets
 
-Learning improved because ready admitted summary-manifest evidence can now become approved evidence without promoting policy, reading/writing retrieval storage, executing retrieval queries, approving runtime results, or training a model. Learning remains the next target because the stack still lacks retrieval-result-use-summary-manifest-approval-admission evidence that admits approved summary-manifest evidence without giving the runtime authority over retrieval storage or result approval.
+The active worktree evidence has moved from retrieval-result gates to graph-guided maintenance evidence. `Structure` is now the primary next target because deterministic graph relations can expose split, merge, provider-boundary, phase, and canonicalization surfaces without relying on broad LLM source inference. `Efficiency` is the secondary target because stable graph evidence can reduce repeated analysis cost for common refactor candidates.
 
 ## Next Score Improvement Target
 
-Raise `L` by adding a deterministic policy reuse evidence retrieval-result-use-summary-manifest-approval-admission receipt.
+Raise `Structure` and `Efficiency` by completing deterministic auto-refactor graph signals and an evidence-only refactor-surface report.
 
 Acceptance criteria for the next slice:
 
-1. A deterministic healthy retrieval-result-use-summary-manifest-approval-admission receipt exists and validates successfully.
-2. A deterministic regression retrieval-result-use-summary-manifest-approval-admission receipt exists and exposes a concrete summary-manifest-not-approved reason.
-3. Retrieval-result-use-summary-manifest-approval-admission evidence references retrieval-result-use-summary-manifest-approval and retrieval-result-use-summary-manifest-readiness receipts instead of adding policy authority.
-4. Root validator compact modes expose healthy and regression retrieval-result-use-summary-manifest-approval-admission receipts.
-5. Validation harness contract tests assert retrieval-result-use-summary-manifest-approval-admission semantics, source binding, compact output, and controlled failing evidence.
-6. Planning and score contract tests pass after documentation updates.
-7. The receipt remains evidence-only and does not expand kernel authority, promote policy, execute batches, read/write retrieval storage, execute retrieval queries, or train a student model.
+1. `similar`, `phase`, and `provider` graph relations are registered and validated with explicit relation/risk classification checks.
+2. MIR similarity evidence is deterministic, sorted, deduplicated, same-module bounded, and stable across repeated extraction runs.
+3. MIR phase evidence remains heuristic evidence only and does not claim semantic proof beyond parse/validate/transform hints.
+4. HIR provider-boundary evidence detects known provider sentinels without changing provider behavior or granting runtime authority.
+5. `auto_refactor_surface.py` reads graph evidence and emits sorted deterministic JSON for split, merge, and canonicalization surfaces.
+6. `auto_refactor_surface_smoke.py` or an equivalent smoke fixture validates report generation deterministically.
+7. Semantic preflight and scale probes account for the new relations and report script.
+8. Validation includes formatting, relevant Rust tests/checks, and at least one deterministic report-generation smoke run.
+9. The report remains evidence-only and does not edit source, promote policy, execute retrieval, train a model, or change kernel authority.
 
 ## Implementation Step 5 Score Decision - Retrieval Result Use Summary Manifest Approval
 

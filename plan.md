@@ -1,6 +1,33 @@
 # Canon Agent Implementation Plan
 
-This plan records the current implementation state for the planning/scoring turn of the current agent loop.
+This plan records the current implementation state for the planning/scoring turn of the current agent loop. This turn is planning/scoring only; no implementation files are owned by this turn.
+
+## Current Turn Summary - 2026-05-08
+
+The active repository direction is now normalized around deterministic auto-refactor graph signals in `canon-rustc-v3`. The next implementation turn should finish and validate evidence-only graph/reporting work before claiming any score increase.
+
+Current working-tree evidence remains unowned by this planning turn:
+
+```text
+canon-rustc-v3/src/facts.rs                        modified
+canon-rustc-v3/src/hir.rs                          modified
+canon-rustc-v3/src/mir.rs                          modified
+canon-rustc-v3/src/wrapper.rs                      modified
+canon-rustc-v3/validation/semantic_preflight.py    modified
+canon-rustc-v3/validation/semantic_scale_probe.py  modified
+src/validation_harness.rs                          modified
+tests/validation_harness_contract.rs               modified
+canon-rustc-v3/plan-autorefactor.md                untracked
+canon-rustc-v3/validation/auto_refactor_surface.py untracked
+canon-rustc-v3/validation/auto_refactor_surface_smoke.py untracked
+```
+
+Planning/scoring ownership for this turn is limited to:
+
+```text
+plan.md
+score.md
+```
 
 ## Planning Turn Normalization - Auto-Refactor Signal Handoff
 
@@ -17,7 +44,7 @@ commit_scope = plan.md, score.md only
 unowned_changes = existing canon-rustc-v3 modified and untracked files
 ```
 
-The next implementation turn should validate and complete the `similar`, `phase`, and `provider` relation work plus the evidence-only `auto_refactor_surface.py` report before claiming any score increase. Older retrieval-evidence sections below remain historical ledger entries; the current active handoff is the auto-refactor signal handoff in this section and the section immediately below.
+The next implementation turn should validate and complete the `similar`, `phase`, and `provider` relation work plus the evidence-only `auto_refactor_surface.py` report and smoke script before claiming any score increase. Older retrieval-evidence sections below remain historical ledger entries; the current active handoff is the auto-refactor signal handoff in this section and the section immediately below.
 
 ## North Star
 
@@ -67,6 +94,16 @@ Recommended next slice:
 ```text
 Complete and validate deterministic auto-refactor graph signals and the evidence-only refactor-surface report.
 ```
+
+Implementation sequence:
+
+1. Confirm graph relation registration accepts `similar`, `phase`, and `provider` and classifies risk only where intended.
+2. Finish deterministic HIR provider-boundary evidence from source sentinels without changing provider behavior.
+3. Finish deterministic MIR phase/similarity evidence with stable ordering, deduplication, and same-module bounds.
+4. Finish `auto_refactor_surface.py` as a read-only graph report that emits sorted JSON surfaces.
+5. Add or complete a smoke script/fixture for report generation so the surface report can be validated without requiring broad source edits.
+6. Run formatting, graph extraction/report smoke validation, and the relevant Rust/Python contract checks.
+7. Commit implementation files only in the implementation turn that validates them; this planning turn commits only `plan.md` and `score.md`.
 
 Acceptance criteria:
 
