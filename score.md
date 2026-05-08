@@ -5596,3 +5596,76 @@ Next best work:
 ```text
 Continue reducing validation fixture/test boilerplate only where repeated exact-row validators can be consolidated without weakening drift coverage; otherwise shift back to validation command-footprint reduction or retained policy-capacity planning.
 ```
+
+## After Agent Step 5: Retained Fixture Helper Reuse
+
+```text
+validation = PASS: RUSTC_WRAPPER= cargo test -q --test validation_harness_contract retained_fixture --locked
+validation = PASS: RUSTC_WRAPPER= cargo test -q --test validation_harness_contract policy_orchestration_capacity_receipts_fixture --locked
+validation = PASS: RUSTC_WRAPPER= cargo test -q --test validation_harness_contract --locked
+validation = PASS: RUSTC_WRAPPER= cargo -Znext-lockfile-bump run --bin root_validate --locked
+```
+
+Implemented surface:
+
+```text
+shared_retained_fixture_helper = retained_receipt_fixture_valid
+validators_reused = policy_capacity_cost_summary_receipts_fixture_valid, policy_orchestration_capacity_receipts_fixture_valid
+validation_harness_contract_tests = 128
+root_validation = pass
+kernel_changes = none
+fixture_changes = none
+```
+
+Score movement:
+
+```text
+E:  8.52 -> 8.53
+R:  9.38 -> 9.38
+P:  7.94 -> 7.94
+S:  8.18 -> 8.18
+Si: 8.20 -> 8.21
+G:  8.75 -> 8.75
+```
+
+Rationale: two retained-receipt fixture validators now share one exact header/row/rule assertion helper while retaining their independent live receipt predicates. This reduces future drift-update surface without weakening checked fixture semantics, compact CLI behavior, root validation coverage, or frozen-kernel guarantees.
+
+Current scores after retained fixture helper reuse:
+
+| Axis | Score |
+|------+-------|
+| I    |  8.60 |
+| E    |  8.53 |
+| C    |  9.12 |
+| A    |  9.10 |
+| R    |  9.38 |
+| P    |  7.94 |
+| S    |  8.18 |
+| D    |  9.24 |
+| T    | 10.00 |
+| Co   |  8.53 |
+| Em   |  8.43 |
+| B    |  8.56 |
+| L    |  8.58 |
+| Si   |  8.21 |
+| F    |  8.93 |
+
+```text
+G = 8.75
+```
+
+Weakest remaining axes:
+
+```text
+P  = 7.94
+S  = 8.18
+Si = 8.21
+Em = 8.43
+E  = 8.53
+```
+
+Next best work:
+
+```text
+Apply the retained fixture helper to additional validators only where it stays mechanical and preserves exact rule/row checks; otherwise target performance/scalability work with retained policy-capacity or validation-cost receipts.
+```

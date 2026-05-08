@@ -2860,3 +2860,25 @@ Expected score emphasis:
 ```text
 Si, R, E, Co, B
 ```
+
+## Agent Step 5 Execution Result: Retained Fixture Helper Reuse
+
+- [x] Reduced retained-receipt fixture validation boilerplate in `tests/validation_harness_contract.rs` by adding one shared helper for exact retained-fixture header, expected-line, and rule-line checks.
+- [x] Routed policy capacity cost summary and policy orchestration capacity retained-fixture validators through the shared helper while preserving all live receipt predicates and checked fixture semantics.
+- [x] Preserved validation fixture counts, retained receipt fixture counts, compact root validation modes, and root validation behavior.
+- [x] Focused validation passed: `RUSTC_WRAPPER= cargo test -q --test validation_harness_contract retained_fixture --locked`.
+- [x] Focused capacity fixture validation passed: `RUSTC_WRAPPER= cargo test -q --test validation_harness_contract policy_orchestration_capacity_receipts_fixture --locked`.
+- [x] Full validation harness contract passed: `RUSTC_WRAPPER= cargo test -q --test validation_harness_contract --locked`.
+- [x] Root deterministic validation passed: `RUSTC_WRAPPER= cargo -Znext-lockfile-bump run --bin root_validate --locked`.
+
+## Validation For Agent Step 5
+
+- [x] Source changes were limited to validation harness test-helper reuse.
+- [x] No kernel, capability, runtime, fixture, or generated/runtime files were changed.
+- [x] Root validation receipt remained passing after the refactor.
+
+Next best work:
+
+```text
+Continue reducing retained-fixture validator boilerplate only where the shared helper can be applied mechanically without weakening exact row/rule drift coverage; otherwise shift back to the weakest remaining performance/scalability axis.
+```

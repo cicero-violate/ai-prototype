@@ -1643,6 +1643,18 @@ fn fixture_missing_expected_lines<'a>(fixture: &str, expected: &'a [String]) -> 
         .collect()
 }
 
+fn retained_receipt_fixture_valid(
+    fixture: &str,
+    schema: &str,
+    receipt_count: usize,
+    expected: &[String],
+    rules: &[&str],
+) -> bool {
+    ai::validation_harness::retained_fixture_header_valid(fixture, schema, receipt_count)
+        && fixture_contains_expected_lines(fixture, expected)
+        && rules.iter().all(|rule| fixture.contains(rule))
+}
+
 #[test]
 fn retained_fixture_line_helper_reports_missing_expected_lines() {
     let expected = vec![
@@ -2282,14 +2294,6 @@ fn policy_capacity_cost_summary_receipts_fixture_negative_contract_detects_valid
 }
 
 fn policy_capacity_cost_summary_receipts_fixture_valid(fixture: &str) -> bool {
-    if !ai::validation_harness::retained_fixture_header_valid(
-        fixture,
-        "canon_policy_capacity_cost_summary_receipts_v1",
-        4,
-    ) {
-        return false;
-    }
-
     let smoke = ai::validation_harness::policy_capacity_cost_summary_smoke_receipt();
     let growth = ai::validation_harness::policy_capacity_cost_summary_growth_smoke_receipt();
     let trend = ai::validation_harness::policy_capacity_cost_summary_trend_smoke_receipt();
@@ -2360,12 +2364,19 @@ fn policy_capacity_cost_summary_receipts_fixture_valid(fixture: &str) -> bool {
         format!("policy_capacity_cost_summary_regression_smoke.verdict={}", regression.verdict),
     ];
 
-    fixture_contains_expected_lines(fixture, &expected)
-        && fixture.contains("rule=summary smoke passes only when policy capacity and validation cost both pass")
-        && fixture.contains("rule=growth smoke proves validation footprint or dispatch growth fails summary while policy capacity remains passing")
-        && fixture.contains("rule=trend smoke passes when bounded-batch avoided LLM work improves and validation cost remains stable")
-        && fixture.contains("rule=regression smoke fails when bounded-batch avoided LLM work declines even if validation cost remains stable")
-        && fixture.contains("rule=fixture binds retained semantic values rather than brittle receipt hashes")
+    retained_receipt_fixture_valid(
+        fixture,
+        "canon_policy_capacity_cost_summary_receipts_v1",
+        4,
+        &expected,
+        &[
+            "rule=summary smoke passes only when policy capacity and validation cost both pass",
+            "rule=growth smoke proves validation footprint or dispatch growth fails summary while policy capacity remains passing",
+            "rule=trend smoke passes when bounded-batch avoided LLM work improves and validation cost remains stable",
+            "rule=regression smoke fails when bounded-batch avoided LLM work declines even if validation cost remains stable",
+            "rule=fixture binds retained semantic values rather than brittle receipt hashes",
+        ],
+    )
         && smoke.passed()
         && !growth.passed()
         && trend.passed()
@@ -2599,14 +2610,6 @@ fn policy_orchestration_capacity_receipts_fixture_negative_contract_detects_drif
 }
 
 fn policy_orchestration_capacity_receipts_fixture_valid(fixture: &str) -> bool {
-    if !ai::validation_harness::retained_fixture_header_valid(
-        fixture,
-        "canon_policy_orchestration_capacity_receipts_v1",
-        3,
-    ) {
-        return false;
-    }
-
     let capacity = ai::validation_harness::policy_orchestration_capacity_smoke_receipt();
     let trend = ai::validation_harness::policy_orchestration_capacity_trend_smoke_receipt();
     let regression =
@@ -2656,10 +2659,17 @@ fn policy_orchestration_capacity_receipts_fixture_valid(fixture: &str) -> bool {
         format!("policy_orchestration_capacity_regression_smoke.verdict={}", regression.verdict),
     ];
 
-    fixture_contains_expected_lines(fixture, &expected)
-        && fixture.contains("rule=capacity smoke estimates avoided LLM calls from retained policy reuse records and bounded batch limit")
-        && fixture.contains("rule=trend smoke passes only when batch-level hit rate and avoided LLM calls do not regress")
-        && fixture.contains("rule=regression smoke remains structurally valid but does not pass")
+    retained_receipt_fixture_valid(
+        fixture,
+        "canon_policy_orchestration_capacity_receipts_v1",
+        3,
+        &expected,
+        &[
+            "rule=capacity smoke estimates avoided LLM calls from retained policy reuse records and bounded batch limit",
+            "rule=trend smoke passes only when batch-level hit rate and avoided LLM calls do not regress",
+            "rule=regression smoke remains structurally valid but does not pass",
+        ],
+    )
         && capacity.passed()
         && trend.passed()
         && !regression.passed()
