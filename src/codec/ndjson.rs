@@ -547,42 +547,21 @@ const SEMANTIC_DELTA_TAGS: &[(u64, SemanticDelta)] = &[
     (10, SemanticDelta::LearningPromoted),
 ];
 
-fn phase_from_u64(value: u64) -> Result<Phase, CanonError> {
-    enum_from_u64(value, PHASE_TAGS)
+macro_rules! decode_enum_from_u64 {
+    ($name:ident, $ty:ty, $table:ident) => {
+        fn $name(value: u64) -> Result<$ty, CanonError> {
+            enum_from_u64(value, $table)
+        }
+    };
 }
 
-fn gate_status_from_u64(value: u64) -> Result<GateStatus, CanonError> {
-    enum_from_u64(value, GATE_STATUS_TAGS)
-}
-
-fn gate_id_from_u64(value: u64) -> Result<GateId, CanonError> {
-    enum_from_u64(value, GATE_ID_TAGS)
-}
-
-fn evidence_from_u64(value: u64) -> Result<Evidence, CanonError> {
-    enum_from_u64(value, EVIDENCE_TAGS)
-}
-
-fn failure_from_u64(value: u64) -> Result<FailureClass, CanonError> {
-    enum_from_u64(value, FAILURE_TAGS)
-}
-
-fn recovery_from_u64(value: u64) -> Result<RecoveryAction, CanonError> {
-    enum_from_u64(value, RECOVERY_TAGS)
-}
-
-fn event_kind_from_u64(value: u64) -> Result<EventKind, CanonError> {
-    enum_from_u64(value, EVENT_KIND_TAGS)
-}
-
-fn cause_from_u64(value: u64) -> Result<Cause, CanonError> {
-    enum_from_u64(value, CAUSE_TAGS)
-}
-
-fn decision_from_u64(value: u64) -> Result<Decision, CanonError> {
-    enum_from_u64(value, DECISION_TAGS)
-}
-
-fn semantic_delta_from_u64(value: u64) -> Result<SemanticDelta, CanonError> {
-    enum_from_u64(value, SEMANTIC_DELTA_TAGS)
-}
+decode_enum_from_u64!(phase_from_u64, Phase, PHASE_TAGS);
+decode_enum_from_u64!(gate_status_from_u64, GateStatus, GATE_STATUS_TAGS);
+decode_enum_from_u64!(gate_id_from_u64, GateId, GATE_ID_TAGS);
+decode_enum_from_u64!(evidence_from_u64, Evidence, EVIDENCE_TAGS);
+decode_enum_from_u64!(failure_from_u64, FailureClass, FAILURE_TAGS);
+decode_enum_from_u64!(recovery_from_u64, RecoveryAction, RECOVERY_TAGS);
+decode_enum_from_u64!(event_kind_from_u64, EventKind, EVENT_KIND_TAGS);
+decode_enum_from_u64!(cause_from_u64, Cause, CAUSE_TAGS);
+decode_enum_from_u64!(decision_from_u64, Decision, DECISION_TAGS);
+decode_enum_from_u64!(semantic_delta_from_u64, SemanticDelta, SEMANTIC_DELTA_TAGS);

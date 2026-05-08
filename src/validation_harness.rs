@@ -18,6 +18,20 @@ pub const LIB_UNIT_STEP: &str = "lib_unit_contract_tests";
 pub const API_TRANSPORT_STEP: &str = "api_transport_contract_tests";
 pub const VALIDATION_HARNESS_STEP: &str = "validation_harness_contract_tests";
 pub const VALIDATION_HARNESS_EXPECTED_TESTS: usize = 264;
+const RECEIPT_HASH_MIX_PRIME: u64 = 0x100000001b3;
+
+fn mix_receipt_hash(hash: u64, value: u64) -> u64 {
+    hash.wrapping_mul(RECEIPT_HASH_MIX_PRIME) ^ value
+}
+
+fn mix_receipt_str_hash(hash: u64, value: &str) -> u64 {
+    mix_receipt_hash(hash, stable_hash64(value.as_bytes()))
+}
+
+fn nonzero_receipt_hash(hash: u64) -> u64 {
+    hash.max(1)
+}
+
 pub const PLANNING_CONTRACT_STEP: &str = "planning_contract_tests";
 pub const GRAPH_MUTATION_CLI_CONTRACT_STEP: &str = "graph_mutation_cli_contract_tests";
 pub const GRAPH_MUTATION_CLI_CONTRACT_EXPECTED_TESTS: usize = 10;
@@ -13786,21 +13800,21 @@ fn policy_orchestration_capacity_hash(receipt: &PolicyOrchestrationCapacityRecei
         return 0;
     }
     let mut h = 0x504f_4c4f_4341_5041u64;
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.schema.as_bytes());
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.record_type.as_bytes());
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.batch_capacity_limit as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.retained_policy_record_count as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.policy_hit_count as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.policy_miss_count as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.hit_rate_bps;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.estimated_policy_hits_per_full_batch as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.estimated_llm_fallbacks_per_full_batch as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.estimated_avoided_llm_calls_per_full_batch as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.retained_avoided_llm_call_count as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ capacity_status_code;
-    h = h.wrapping_mul(0x100000001b3) ^ policy_reuse_verdict_code;
-    h = h.wrapping_mul(0x100000001b3) ^ verdict_code;
-    h.max(1)
+    h = mix_receipt_str_hash(h, receipt.schema);
+    h = mix_receipt_str_hash(h, receipt.record_type);
+    h = mix_receipt_hash(h, receipt.batch_capacity_limit as u64);
+    h = mix_receipt_hash(h, receipt.retained_policy_record_count as u64);
+    h = mix_receipt_hash(h, receipt.policy_hit_count as u64);
+    h = mix_receipt_hash(h, receipt.policy_miss_count as u64);
+    h = mix_receipt_hash(h, receipt.hit_rate_bps);
+    h = mix_receipt_hash(h, receipt.estimated_policy_hits_per_full_batch as u64);
+    h = mix_receipt_hash(h, receipt.estimated_llm_fallbacks_per_full_batch as u64);
+    h = mix_receipt_hash(h, receipt.estimated_avoided_llm_calls_per_full_batch as u64);
+    h = mix_receipt_hash(h, receipt.retained_avoided_llm_call_count as u64);
+    h = mix_receipt_hash(h, capacity_status_code);
+    h = mix_receipt_hash(h, policy_reuse_verdict_code);
+    h = mix_receipt_hash(h, verdict_code);
+    nonzero_receipt_hash(h)
 }
 
 fn policy_reuse_evidence_manifest_hash(receipt: &PolicyReuseEvidenceManifestReceipt) -> u64 {
@@ -13820,18 +13834,18 @@ fn policy_reuse_evidence_manifest_hash(receipt: &PolicyReuseEvidenceManifestRece
         return 0;
     }
     let mut h = 0x504f_4c52_4546_4d48u64;
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.schema.as_bytes());
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.record_type.as_bytes());
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.manifest_version;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_summary_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_maturity_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.evaluator_mode_count as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.fixture_dependency_count as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.required_summary_modes_present);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.required_fixture_dependencies_present);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.manifest_complete);
-    h = h.wrapping_mul(0x100000001b3) ^ missing_surface_code;
-    h.max(1)
+    h = mix_receipt_str_hash(h, receipt.schema);
+    h = mix_receipt_str_hash(h, receipt.record_type);
+    h = mix_receipt_hash(h, receipt.manifest_version);
+    h = mix_receipt_hash(h, receipt.source_summary_hash);
+    h = mix_receipt_hash(h, receipt.source_maturity_hash);
+    h = mix_receipt_hash(h, receipt.evaluator_mode_count as u64);
+    h = mix_receipt_hash(h, receipt.fixture_dependency_count as u64);
+    h = mix_receipt_hash(h, u64::from(receipt.required_summary_modes_present));
+    h = mix_receipt_hash(h, u64::from(receipt.required_fixture_dependencies_present));
+    h = mix_receipt_hash(h, u64::from(receipt.manifest_complete));
+    h = mix_receipt_hash(h, missing_surface_code);
+    nonzero_receipt_hash(h)
 }
 
 fn policy_reuse_evidence_manifest_receipt_hash(
@@ -13841,7 +13855,7 @@ fn policy_reuse_evidence_manifest_receipt_hash(
     if manifest_hash == 0 || receipt.manifest_hash != manifest_hash {
         return 0;
     }
-    (manifest_hash ^ 0x504f_4c52_4546_4d52u64).max(1)
+    nonzero_receipt_hash(manifest_hash ^ 0x504f_4c52_4546_4d52u64)
 }
 
 fn policy_reuse_evidence_validation_budget_hash(
@@ -13868,21 +13882,21 @@ fn policy_reuse_evidence_validation_budget_hash(
         return 0;
     }
     let mut h = 0x504f_4c52_4556_4248u64;
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.schema.as_bytes());
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.record_type.as_bytes());
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.budget_version;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_manifest_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_summary_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.targeted_command_count as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.targeted_test_count as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.max_targeted_test_count as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.full_harness_test_count as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.avoided_full_harness_tests as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.manifest_complete);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.budget_within_limit);
-    h = h.wrapping_mul(0x100000001b3) ^ budget_status_code;
-    h = h.wrapping_mul(0x100000001b3) ^ regression_reason_code;
-    h.max(1)
+    h = mix_receipt_str_hash(h, receipt.schema);
+    h = mix_receipt_str_hash(h, receipt.record_type);
+    h = mix_receipt_hash(h, receipt.budget_version);
+    h = mix_receipt_hash(h, receipt.source_manifest_hash);
+    h = mix_receipt_hash(h, receipt.source_summary_hash);
+    h = mix_receipt_hash(h, receipt.targeted_command_count as u64);
+    h = mix_receipt_hash(h, receipt.targeted_test_count as u64);
+    h = mix_receipt_hash(h, receipt.max_targeted_test_count as u64);
+    h = mix_receipt_hash(h, receipt.full_harness_test_count as u64);
+    h = mix_receipt_hash(h, receipt.avoided_full_harness_tests as u64);
+    h = mix_receipt_hash(h, u64::from(receipt.manifest_complete));
+    h = mix_receipt_hash(h, u64::from(receipt.budget_within_limit));
+    h = mix_receipt_hash(h, budget_status_code);
+    h = mix_receipt_hash(h, regression_reason_code);
+    nonzero_receipt_hash(h)
 }
 
 fn policy_reuse_evidence_validation_budget_receipt_hash(
@@ -13892,7 +13906,7 @@ fn policy_reuse_evidence_validation_budget_receipt_hash(
     if budget_hash == 0 || receipt.budget_hash != budget_hash {
         return 0;
     }
-    (budget_hash ^ 0x504f_4c52_4556_4252u64).max(1)
+    nonzero_receipt_hash(budget_hash ^ 0x504f_4c52_4556_4252u64)
 }
 
 fn policy_reuse_evidence_rollout_readiness_hash(
@@ -13937,21 +13951,21 @@ fn policy_reuse_evidence_rollout_readiness_hash(
         return 0;
     }
     let mut h = 0x504f_4c52_4552_5248u64;
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.schema.as_bytes());
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.record_type.as_bytes());
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.readiness_version;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_validation_budget_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_manifest_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_maturity_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_summary_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.validation_budget_passed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.manifest_complete);
-    h = h.wrapping_mul(0x100000001b3) ^ maturity_stage_code;
-    h = h.wrapping_mul(0x100000001b3) ^ summary_status_code;
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.rollout_ready);
-    h = h.wrapping_mul(0x100000001b3) ^ readiness_status_code;
-    h = h.wrapping_mul(0x100000001b3) ^ not_ready_reason_code;
-    h.max(1)
+    h = mix_receipt_str_hash(h, receipt.schema);
+    h = mix_receipt_str_hash(h, receipt.record_type);
+    h = mix_receipt_hash(h, receipt.readiness_version);
+    h = mix_receipt_hash(h, receipt.source_validation_budget_hash);
+    h = mix_receipt_hash(h, receipt.source_manifest_hash);
+    h = mix_receipt_hash(h, receipt.source_maturity_hash);
+    h = mix_receipt_hash(h, receipt.source_summary_hash);
+    h = mix_receipt_hash(h, u64::from(receipt.validation_budget_passed));
+    h = mix_receipt_hash(h, u64::from(receipt.manifest_complete));
+    h = mix_receipt_hash(h, maturity_stage_code);
+    h = mix_receipt_hash(h, summary_status_code);
+    h = mix_receipt_hash(h, u64::from(receipt.rollout_ready));
+    h = mix_receipt_hash(h, readiness_status_code);
+    h = mix_receipt_hash(h, not_ready_reason_code);
+    nonzero_receipt_hash(h)
 }
 
 fn policy_reuse_evidence_rollout_readiness_receipt_hash(
@@ -13961,7 +13975,7 @@ fn policy_reuse_evidence_rollout_readiness_receipt_hash(
     if readiness_hash == 0 || receipt.readiness_hash != readiness_hash {
         return 0;
     }
-    (readiness_hash ^ 0x504f_4c52_4552_5252u64).max(1)
+    nonzero_receipt_hash(readiness_hash ^ 0x504f_4c52_4552_5252u64)
 }
 
 fn policy_reuse_evidence_learning_admission_hash(
@@ -13996,20 +14010,20 @@ fn policy_reuse_evidence_learning_admission_hash(
         return 0;
     }
     let mut h = 0x504f_4c52_4c41_4448u64;
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.schema.as_bytes());
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.record_type.as_bytes());
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.admission_version;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_rollout_readiness_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_validation_budget_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_summary_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.rollout_ready);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.validation_budget_passed);
-    h = h.wrapping_mul(0x100000001b3) ^ summary_status_code;
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.external_evidence_required);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.learning_data_admissible);
-    h = h.wrapping_mul(0x100000001b3) ^ admission_status_code;
-    h = h.wrapping_mul(0x100000001b3) ^ not_admissible_reason_code;
-    h.max(1)
+    h = mix_receipt_str_hash(h, receipt.schema);
+    h = mix_receipt_str_hash(h, receipt.record_type);
+    h = mix_receipt_hash(h, receipt.admission_version);
+    h = mix_receipt_hash(h, receipt.source_rollout_readiness_hash);
+    h = mix_receipt_hash(h, receipt.source_validation_budget_hash);
+    h = mix_receipt_hash(h, receipt.source_summary_hash);
+    h = mix_receipt_hash(h, u64::from(receipt.rollout_ready));
+    h = mix_receipt_hash(h, u64::from(receipt.validation_budget_passed));
+    h = mix_receipt_hash(h, summary_status_code);
+    h = mix_receipt_hash(h, u64::from(receipt.external_evidence_required));
+    h = mix_receipt_hash(h, u64::from(receipt.learning_data_admissible));
+    h = mix_receipt_hash(h, admission_status_code);
+    h = mix_receipt_hash(h, not_admissible_reason_code);
+    nonzero_receipt_hash(h)
 }
 
 fn policy_reuse_evidence_learning_admission_receipt_hash(
@@ -14019,7 +14033,7 @@ fn policy_reuse_evidence_learning_admission_receipt_hash(
     if admission_hash == 0 || receipt.admission_hash != admission_hash {
         return 0;
     }
-    (admission_hash ^ 0x504f_4c52_4c41_4452u64).max(1)
+    nonzero_receipt_hash(admission_hash ^ 0x504f_4c52_4c41_4452u64)
 }
 
 fn policy_reuse_evidence_retrieval_readiness_hash(
@@ -14054,20 +14068,20 @@ fn policy_reuse_evidence_retrieval_readiness_hash(
         return 0;
     }
     let mut h = 0x504f_4c52_5252_4448u64;
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.schema.as_bytes());
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.record_type.as_bytes());
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.retrieval_version;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_learning_admission_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_rollout_readiness_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_summary_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.learning_data_admissible);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.rollout_ready);
-    h = h.wrapping_mul(0x100000001b3) ^ summary_status_code;
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_storage_write_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_example_ready);
-    h = h.wrapping_mul(0x100000001b3) ^ retrieval_status_code;
-    h = h.wrapping_mul(0x100000001b3) ^ not_ready_reason_code;
-    h.max(1)
+    h = mix_receipt_str_hash(h, receipt.schema);
+    h = mix_receipt_str_hash(h, receipt.record_type);
+    h = mix_receipt_hash(h, receipt.retrieval_version);
+    h = mix_receipt_hash(h, receipt.source_learning_admission_hash);
+    h = mix_receipt_hash(h, receipt.source_rollout_readiness_hash);
+    h = mix_receipt_hash(h, receipt.source_summary_hash);
+    h = mix_receipt_hash(h, u64::from(receipt.learning_data_admissible));
+    h = mix_receipt_hash(h, u64::from(receipt.rollout_ready));
+    h = mix_receipt_hash(h, summary_status_code);
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_storage_write_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_example_ready));
+    h = mix_receipt_hash(h, retrieval_status_code);
+    h = mix_receipt_hash(h, not_ready_reason_code);
+    nonzero_receipt_hash(h)
 }
 
 fn policy_reuse_evidence_retrieval_readiness_receipt_hash(
@@ -14077,7 +14091,7 @@ fn policy_reuse_evidence_retrieval_readiness_receipt_hash(
     if retrieval_hash == 0 || receipt.retrieval_hash != retrieval_hash {
         return 0;
     }
-    (retrieval_hash ^ 0x504f_4c52_5252_4452u64).max(1)
+    nonzero_receipt_hash(retrieval_hash ^ 0x504f_4c52_5252_4452u64)
 }
 
 fn policy_reuse_evidence_compact_validation_hash(
@@ -14107,24 +14121,24 @@ fn policy_reuse_evidence_compact_validation_hash(
         return 0;
     }
     let mut h = 0x504f_4c52_4356_4448u64;
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.schema.as_bytes());
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.record_type.as_bytes());
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.compact_validation_version;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_retrieval_readiness_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_learning_admission_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_validation_budget_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_ready);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.learning_data_admissible);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.validation_budget_passed);
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.targeted_command_count as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.targeted_test_count as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.max_targeted_test_count as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.full_harness_test_count as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.avoided_full_harness_tests as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.compact_validation_passed);
-    h = h.wrapping_mul(0x100000001b3) ^ compact_status_code;
-    h = h.wrapping_mul(0x100000001b3) ^ failure_reason_code;
-    h.max(1)
+    h = mix_receipt_str_hash(h, receipt.schema);
+    h = mix_receipt_str_hash(h, receipt.record_type);
+    h = mix_receipt_hash(h, receipt.compact_validation_version);
+    h = mix_receipt_hash(h, receipt.source_retrieval_readiness_hash);
+    h = mix_receipt_hash(h, receipt.source_learning_admission_hash);
+    h = mix_receipt_hash(h, receipt.source_validation_budget_hash);
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_ready));
+    h = mix_receipt_hash(h, u64::from(receipt.learning_data_admissible));
+    h = mix_receipt_hash(h, u64::from(receipt.validation_budget_passed));
+    h = mix_receipt_hash(h, receipt.targeted_command_count as u64);
+    h = mix_receipt_hash(h, receipt.targeted_test_count as u64);
+    h = mix_receipt_hash(h, receipt.max_targeted_test_count as u64);
+    h = mix_receipt_hash(h, receipt.full_harness_test_count as u64);
+    h = mix_receipt_hash(h, receipt.avoided_full_harness_tests as u64);
+    h = mix_receipt_hash(h, u64::from(receipt.compact_validation_passed));
+    h = mix_receipt_hash(h, compact_status_code);
+    h = mix_receipt_hash(h, failure_reason_code);
+    nonzero_receipt_hash(h)
 }
 
 fn policy_reuse_evidence_compact_validation_receipt_hash(
@@ -14134,7 +14148,7 @@ fn policy_reuse_evidence_compact_validation_receipt_hash(
     if compact_hash == 0 || receipt.compact_hash != compact_hash {
         return 0;
     }
-    (compact_hash ^ 0x504f_4c52_4356_4452u64).max(1)
+    nonzero_receipt_hash(compact_hash ^ 0x504f_4c52_4356_4452u64)
 }
 
 fn policy_reuse_evidence_batch_readiness_hash(
@@ -14164,22 +14178,22 @@ fn policy_reuse_evidence_batch_readiness_hash(
         return 0;
     }
     let mut h = 0x504f_4c52_4252_4448u64;
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.schema.as_bytes());
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.record_type.as_bytes());
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.batch_readiness_version;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_compact_validation_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_retrieval_readiness_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_scaling_projection_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.compact_validation_passed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_ready);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.scaling_projection_passed);
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.batch_capacity_limit as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.projected_llm_calls_avoided_per_full_batch as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.projected_llm_fallbacks_per_full_batch as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.batch_ready);
-    h = h.wrapping_mul(0x100000001b3) ^ batch_status_code;
-    h = h.wrapping_mul(0x100000001b3) ^ not_ready_reason_code;
-    h.max(1)
+    h = mix_receipt_str_hash(h, receipt.schema);
+    h = mix_receipt_str_hash(h, receipt.record_type);
+    h = mix_receipt_hash(h, receipt.batch_readiness_version);
+    h = mix_receipt_hash(h, receipt.source_compact_validation_hash);
+    h = mix_receipt_hash(h, receipt.source_retrieval_readiness_hash);
+    h = mix_receipt_hash(h, receipt.source_scaling_projection_hash);
+    h = mix_receipt_hash(h, u64::from(receipt.compact_validation_passed));
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_ready));
+    h = mix_receipt_hash(h, u64::from(receipt.scaling_projection_passed));
+    h = mix_receipt_hash(h, receipt.batch_capacity_limit as u64);
+    h = mix_receipt_hash(h, receipt.projected_llm_calls_avoided_per_full_batch as u64);
+    h = mix_receipt_hash(h, receipt.projected_llm_fallbacks_per_full_batch as u64);
+    h = mix_receipt_hash(h, u64::from(receipt.batch_ready));
+    h = mix_receipt_hash(h, batch_status_code);
+    h = mix_receipt_hash(h, not_ready_reason_code);
+    nonzero_receipt_hash(h)
 }
 
 fn policy_reuse_evidence_batch_readiness_receipt_hash(
@@ -14189,7 +14203,7 @@ fn policy_reuse_evidence_batch_readiness_receipt_hash(
     if batch_hash == 0 || receipt.batch_hash != batch_hash {
         return 0;
     }
-    (batch_hash ^ 0x504f_4c52_4252_4452u64).max(1)
+    nonzero_receipt_hash(batch_hash ^ 0x504f_4c52_4252_4452u64)
 }
 
 fn policy_reuse_evidence_batch_execution_plan_hash(
@@ -14218,22 +14232,22 @@ fn policy_reuse_evidence_batch_execution_plan_hash(
         return 0;
     }
     let mut h = 0x504f_4c52_4250_4448u64;
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.schema.as_bytes());
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.record_type.as_bytes());
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.execution_plan_version;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_batch_readiness_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_compact_validation_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.batch_ready);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.compact_validation_passed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.no_execute_plan);
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.proposed_batch_capacity as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.proposed_policy_reuse_cases as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.proposed_llm_fallback_cases as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.execution_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.plan_ready);
-    h = h.wrapping_mul(0x100000001b3) ^ plan_status_code;
-    h = h.wrapping_mul(0x100000001b3) ^ not_plannable_reason_code;
-    h.max(1)
+    h = mix_receipt_str_hash(h, receipt.schema);
+    h = mix_receipt_str_hash(h, receipt.record_type);
+    h = mix_receipt_hash(h, receipt.execution_plan_version);
+    h = mix_receipt_hash(h, receipt.source_batch_readiness_hash);
+    h = mix_receipt_hash(h, receipt.source_compact_validation_hash);
+    h = mix_receipt_hash(h, u64::from(receipt.batch_ready));
+    h = mix_receipt_hash(h, u64::from(receipt.compact_validation_passed));
+    h = mix_receipt_hash(h, u64::from(receipt.no_execute_plan));
+    h = mix_receipt_hash(h, receipt.proposed_batch_capacity as u64);
+    h = mix_receipt_hash(h, receipt.proposed_policy_reuse_cases as u64);
+    h = mix_receipt_hash(h, receipt.proposed_llm_fallback_cases as u64);
+    h = mix_receipt_hash(h, u64::from(receipt.execution_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.plan_ready));
+    h = mix_receipt_hash(h, plan_status_code);
+    h = mix_receipt_hash(h, not_plannable_reason_code);
+    nonzero_receipt_hash(h)
 }
 
 fn policy_reuse_evidence_batch_execution_plan_receipt_hash(
@@ -14243,7 +14257,7 @@ fn policy_reuse_evidence_batch_execution_plan_receipt_hash(
     if plan_hash == 0 || receipt.plan_hash != plan_hash {
         return 0;
     }
-    (plan_hash ^ 0x504f_4c52_4250_4452u64).max(1)
+    nonzero_receipt_hash(plan_hash ^ 0x504f_4c52_4250_4452u64)
 }
 
 fn policy_reuse_evidence_batch_evaluation_admission_hash(
@@ -14272,22 +14286,22 @@ fn policy_reuse_evidence_batch_evaluation_admission_hash(
         return 0;
     }
     let mut h = 0x504f_4c52_4241_4448u64;
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.schema.as_bytes());
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.record_type.as_bytes());
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.admission_version;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_batch_execution_plan_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_batch_readiness_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.plan_ready);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.batch_ready);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.no_execute_plan);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.execution_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.proposed_batch_capacity as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.admitted_policy_reuse_cases as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.admitted_llm_fallback_cases as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.batch_evaluation_admitted);
-    h = h.wrapping_mul(0x100000001b3) ^ admission_status_code;
-    h = h.wrapping_mul(0x100000001b3) ^ not_admitted_reason_code;
-    h.max(1)
+    h = mix_receipt_str_hash(h, receipt.schema);
+    h = mix_receipt_str_hash(h, receipt.record_type);
+    h = mix_receipt_hash(h, receipt.admission_version);
+    h = mix_receipt_hash(h, receipt.source_batch_execution_plan_hash);
+    h = mix_receipt_hash(h, receipt.source_batch_readiness_hash);
+    h = mix_receipt_hash(h, u64::from(receipt.plan_ready));
+    h = mix_receipt_hash(h, u64::from(receipt.batch_ready));
+    h = mix_receipt_hash(h, u64::from(receipt.no_execute_plan));
+    h = mix_receipt_hash(h, u64::from(receipt.execution_performed));
+    h = mix_receipt_hash(h, receipt.proposed_batch_capacity as u64);
+    h = mix_receipt_hash(h, receipt.admitted_policy_reuse_cases as u64);
+    h = mix_receipt_hash(h, receipt.admitted_llm_fallback_cases as u64);
+    h = mix_receipt_hash(h, u64::from(receipt.batch_evaluation_admitted));
+    h = mix_receipt_hash(h, admission_status_code);
+    h = mix_receipt_hash(h, not_admitted_reason_code);
+    nonzero_receipt_hash(h)
 }
 
 fn policy_reuse_evidence_batch_evaluation_admission_receipt_hash(
@@ -14297,7 +14311,7 @@ fn policy_reuse_evidence_batch_evaluation_admission_receipt_hash(
     if admission_hash == 0 || receipt.admission_hash != admission_hash {
         return 0;
     }
-    (admission_hash ^ 0x504f_4c52_4241_4452u64).max(1)
+    nonzero_receipt_hash(admission_hash ^ 0x504f_4c52_4241_4452u64)
 }
 
 fn policy_reuse_evidence_batch_run_request_hash(
@@ -14326,22 +14340,22 @@ fn policy_reuse_evidence_batch_run_request_hash(
         return 0;
     }
     let mut h = 0x504f_4c52_4252_5148u64;
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.schema.as_bytes());
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.record_type.as_bytes());
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.request_version;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_batch_evaluation_admission_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_batch_execution_plan_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.batch_evaluation_admitted);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.plan_ready);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.no_execute_request);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.execution_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.requested_batch_capacity as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.requested_policy_reuse_cases as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.requested_llm_fallback_cases as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.batch_request_ready);
-    h = h.wrapping_mul(0x100000001b3) ^ request_status_code;
-    h = h.wrapping_mul(0x100000001b3) ^ not_requestable_reason_code;
-    h.max(1)
+    h = mix_receipt_str_hash(h, receipt.schema);
+    h = mix_receipt_str_hash(h, receipt.record_type);
+    h = mix_receipt_hash(h, receipt.request_version);
+    h = mix_receipt_hash(h, receipt.source_batch_evaluation_admission_hash);
+    h = mix_receipt_hash(h, receipt.source_batch_execution_plan_hash);
+    h = mix_receipt_hash(h, u64::from(receipt.batch_evaluation_admitted));
+    h = mix_receipt_hash(h, u64::from(receipt.plan_ready));
+    h = mix_receipt_hash(h, u64::from(receipt.no_execute_request));
+    h = mix_receipt_hash(h, u64::from(receipt.execution_performed));
+    h = mix_receipt_hash(h, receipt.requested_batch_capacity as u64);
+    h = mix_receipt_hash(h, receipt.requested_policy_reuse_cases as u64);
+    h = mix_receipt_hash(h, receipt.requested_llm_fallback_cases as u64);
+    h = mix_receipt_hash(h, u64::from(receipt.batch_request_ready));
+    h = mix_receipt_hash(h, request_status_code);
+    h = mix_receipt_hash(h, not_requestable_reason_code);
+    nonzero_receipt_hash(h)
 }
 
 fn policy_reuse_evidence_batch_run_request_receipt_hash(
@@ -14351,7 +14365,7 @@ fn policy_reuse_evidence_batch_run_request_receipt_hash(
     if request_hash == 0 || receipt.request_hash != request_hash {
         return 0;
     }
-    (request_hash ^ 0x504f_4c52_4252_5152u64).max(1)
+    nonzero_receipt_hash(request_hash ^ 0x504f_4c52_4252_5152u64)
 }
 
 fn policy_reuse_evidence_external_evaluator_result_hash(
@@ -14380,22 +14394,22 @@ fn policy_reuse_evidence_external_evaluator_result_hash(
         return 0;
     }
     let mut h = 0x504f_4c52_4552_4848u64;
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.schema.as_bytes());
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.record_type.as_bytes());
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.evaluator_result_version;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_batch_run_request_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_batch_evaluation_admission_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.batch_request_ready);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.batch_evaluation_admitted);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.external_evaluator_independent);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.llm_self_approved);
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.evaluated_batch_capacity as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.evaluated_policy_reuse_cases as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.evaluated_llm_fallback_cases as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.evaluator_result_passed);
-    h = h.wrapping_mul(0x100000001b3) ^ evaluator_status_code;
-    h = h.wrapping_mul(0x100000001b3) ^ evaluator_failure_reason_code;
-    h.max(1)
+    h = mix_receipt_str_hash(h, receipt.schema);
+    h = mix_receipt_str_hash(h, receipt.record_type);
+    h = mix_receipt_hash(h, receipt.evaluator_result_version);
+    h = mix_receipt_hash(h, receipt.source_batch_run_request_hash);
+    h = mix_receipt_hash(h, receipt.source_batch_evaluation_admission_hash);
+    h = mix_receipt_hash(h, u64::from(receipt.batch_request_ready));
+    h = mix_receipt_hash(h, u64::from(receipt.batch_evaluation_admitted));
+    h = mix_receipt_hash(h, u64::from(receipt.external_evaluator_independent));
+    h = mix_receipt_hash(h, u64::from(receipt.llm_self_approved));
+    h = mix_receipt_hash(h, receipt.evaluated_batch_capacity as u64);
+    h = mix_receipt_hash(h, receipt.evaluated_policy_reuse_cases as u64);
+    h = mix_receipt_hash(h, receipt.evaluated_llm_fallback_cases as u64);
+    h = mix_receipt_hash(h, u64::from(receipt.evaluator_result_passed));
+    h = mix_receipt_hash(h, evaluator_status_code);
+    h = mix_receipt_hash(h, evaluator_failure_reason_code);
+    nonzero_receipt_hash(h)
 }
 
 fn policy_reuse_evidence_external_evaluator_result_receipt_hash(
@@ -14405,7 +14419,7 @@ fn policy_reuse_evidence_external_evaluator_result_receipt_hash(
     if evaluator_hash == 0 || receipt.evaluator_hash != evaluator_hash {
         return 0;
     }
-    (evaluator_hash ^ 0x504f_4c52_4552_4852u64).max(1)
+    nonzero_receipt_hash(evaluator_hash ^ 0x504f_4c52_4552_4852u64)
 }
 
 fn policy_reuse_evidence_learning_candidate_hash(
@@ -14435,22 +14449,22 @@ fn policy_reuse_evidence_learning_candidate_hash(
         return 0;
     }
     let mut h = 0x504f_4c52_4c43_4848u64;
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.schema.as_bytes());
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.record_type.as_bytes());
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.learning_candidate_version;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_external_evaluator_result_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_batch_run_request_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.evaluator_result_passed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.batch_request_ready);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.policy_promotion_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_write_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.candidate_batch_capacity as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.candidate_policy_reuse_cases as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.candidate_llm_fallback_cases as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.learning_candidate_ready);
-    h = h.wrapping_mul(0x100000001b3) ^ candidate_status_code;
-    h = h.wrapping_mul(0x100000001b3) ^ not_candidate_reason_code;
-    h.max(1)
+    h = mix_receipt_str_hash(h, receipt.schema);
+    h = mix_receipt_str_hash(h, receipt.record_type);
+    h = mix_receipt_hash(h, receipt.learning_candidate_version);
+    h = mix_receipt_hash(h, receipt.source_external_evaluator_result_hash);
+    h = mix_receipt_hash(h, receipt.source_batch_run_request_hash);
+    h = mix_receipt_hash(h, u64::from(receipt.evaluator_result_passed));
+    h = mix_receipt_hash(h, u64::from(receipt.batch_request_ready));
+    h = mix_receipt_hash(h, u64::from(receipt.policy_promotion_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_write_performed));
+    h = mix_receipt_hash(h, receipt.candidate_batch_capacity as u64);
+    h = mix_receipt_hash(h, receipt.candidate_policy_reuse_cases as u64);
+    h = mix_receipt_hash(h, receipt.candidate_llm_fallback_cases as u64);
+    h = mix_receipt_hash(h, u64::from(receipt.learning_candidate_ready));
+    h = mix_receipt_hash(h, candidate_status_code);
+    h = mix_receipt_hash(h, not_candidate_reason_code);
+    nonzero_receipt_hash(h)
 }
 
 fn policy_reuse_evidence_learning_candidate_receipt_hash(
@@ -14460,7 +14474,7 @@ fn policy_reuse_evidence_learning_candidate_receipt_hash(
     if candidate_hash == 0 || receipt.candidate_hash != candidate_hash {
         return 0;
     }
-    (candidate_hash ^ 0x504f_4c52_4c43_4852u64).max(1)
+    nonzero_receipt_hash(candidate_hash ^ 0x504f_4c52_4c43_4852u64)
 }
 
 fn policy_reuse_evidence_learning_data_admission_hash(
@@ -14491,23 +14505,23 @@ fn policy_reuse_evidence_learning_data_admission_hash(
         return 0;
     }
     let mut h = 0x504f_4c52_4c44_4148u64;
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.schema.as_bytes());
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.record_type.as_bytes());
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.data_admission_version;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_learning_candidate_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_external_evaluator_result_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.learning_candidate_ready);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.evaluator_result_passed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.policy_promotion_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_write_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.student_training_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.admitted_batch_capacity as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.admitted_policy_reuse_cases as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.admitted_llm_fallback_cases as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.learning_data_admitted);
-    h = h.wrapping_mul(0x100000001b3) ^ admission_status_code;
-    h = h.wrapping_mul(0x100000001b3) ^ not_admitted_reason_code;
-    h.max(1)
+    h = mix_receipt_str_hash(h, receipt.schema);
+    h = mix_receipt_str_hash(h, receipt.record_type);
+    h = mix_receipt_hash(h, receipt.data_admission_version);
+    h = mix_receipt_hash(h, receipt.source_learning_candidate_hash);
+    h = mix_receipt_hash(h, receipt.source_external_evaluator_result_hash);
+    h = mix_receipt_hash(h, u64::from(receipt.learning_candidate_ready));
+    h = mix_receipt_hash(h, u64::from(receipt.evaluator_result_passed));
+    h = mix_receipt_hash(h, u64::from(receipt.policy_promotion_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_write_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.student_training_performed));
+    h = mix_receipt_hash(h, receipt.admitted_batch_capacity as u64);
+    h = mix_receipt_hash(h, receipt.admitted_policy_reuse_cases as u64);
+    h = mix_receipt_hash(h, receipt.admitted_llm_fallback_cases as u64);
+    h = mix_receipt_hash(h, u64::from(receipt.learning_data_admitted));
+    h = mix_receipt_hash(h, admission_status_code);
+    h = mix_receipt_hash(h, not_admitted_reason_code);
+    nonzero_receipt_hash(h)
 }
 
 fn policy_reuse_evidence_learning_data_admission_receipt_hash(
@@ -14517,7 +14531,7 @@ fn policy_reuse_evidence_learning_data_admission_receipt_hash(
     if admission_hash == 0 || receipt.admission_hash != admission_hash {
         return 0;
     }
-    (admission_hash ^ 0x504f_4c52_4c44_4152u64).max(1)
+    nonzero_receipt_hash(admission_hash ^ 0x504f_4c52_4c44_4152u64)
 }
 
 fn policy_reuse_evidence_retrieval_example_admission_hash(
@@ -14548,22 +14562,22 @@ fn policy_reuse_evidence_retrieval_example_admission_hash(
         return 0;
     }
     let mut h = 0x504f_4c52_5245_4148u64;
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.schema.as_bytes());
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.record_type.as_bytes());
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.retrieval_example_admission_version;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_learning_data_admission_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_learning_candidate_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.learning_data_admitted);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.learning_candidate_ready);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_write_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.policy_promotion_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.student_training_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.example_policy_reuse_cases as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.example_llm_fallback_cases as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_example_admitted);
-    h = h.wrapping_mul(0x100000001b3) ^ admission_status_code;
-    h = h.wrapping_mul(0x100000001b3) ^ not_admitted_reason_code;
-    h.max(1)
+    h = mix_receipt_str_hash(h, receipt.schema);
+    h = mix_receipt_str_hash(h, receipt.record_type);
+    h = mix_receipt_hash(h, receipt.retrieval_example_admission_version);
+    h = mix_receipt_hash(h, receipt.source_learning_data_admission_hash);
+    h = mix_receipt_hash(h, receipt.source_learning_candidate_hash);
+    h = mix_receipt_hash(h, u64::from(receipt.learning_data_admitted));
+    h = mix_receipt_hash(h, u64::from(receipt.learning_candidate_ready));
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_write_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.policy_promotion_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.student_training_performed));
+    h = mix_receipt_hash(h, receipt.example_policy_reuse_cases as u64);
+    h = mix_receipt_hash(h, receipt.example_llm_fallback_cases as u64);
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_example_admitted));
+    h = mix_receipt_hash(h, admission_status_code);
+    h = mix_receipt_hash(h, not_admitted_reason_code);
+    nonzero_receipt_hash(h)
 }
 
 fn policy_reuse_evidence_retrieval_example_admission_receipt_hash(
@@ -14573,7 +14587,7 @@ fn policy_reuse_evidence_retrieval_example_admission_receipt_hash(
     if admission_hash == 0 || receipt.admission_hash != admission_hash {
         return 0;
     }
-    (admission_hash ^ 0x504f_4c52_5245_4152u64).max(1)
+    nonzero_receipt_hash(admission_hash ^ 0x504f_4c52_5245_4152u64)
 }
 
 fn policy_reuse_evidence_retrieval_example_index_hash(
@@ -14604,22 +14618,22 @@ fn policy_reuse_evidence_retrieval_example_index_hash(
         return 0;
     }
     let mut h = 0x504f_4c52_5249_5848u64;
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.schema.as_bytes());
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.record_type.as_bytes());
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.retrieval_example_index_version;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_retrieval_example_admission_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_learning_data_admission_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_example_admitted);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.learning_data_admitted);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_write_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.policy_promotion_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.student_training_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.indexed_policy_reuse_examples as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.indexed_llm_fallback_examples as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_example_indexed);
-    h = h.wrapping_mul(0x100000001b3) ^ index_status_code;
-    h = h.wrapping_mul(0x100000001b3) ^ not_indexed_reason_code;
-    h.max(1)
+    h = mix_receipt_str_hash(h, receipt.schema);
+    h = mix_receipt_str_hash(h, receipt.record_type);
+    h = mix_receipt_hash(h, receipt.retrieval_example_index_version);
+    h = mix_receipt_hash(h, receipt.source_retrieval_example_admission_hash);
+    h = mix_receipt_hash(h, receipt.source_learning_data_admission_hash);
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_example_admitted));
+    h = mix_receipt_hash(h, u64::from(receipt.learning_data_admitted));
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_write_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.policy_promotion_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.student_training_performed));
+    h = mix_receipt_hash(h, receipt.indexed_policy_reuse_examples as u64);
+    h = mix_receipt_hash(h, receipt.indexed_llm_fallback_examples as u64);
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_example_indexed));
+    h = mix_receipt_hash(h, index_status_code);
+    h = mix_receipt_hash(h, not_indexed_reason_code);
+    nonzero_receipt_hash(h)
 }
 
 fn policy_reuse_evidence_retrieval_example_index_receipt_hash(
@@ -14629,7 +14643,7 @@ fn policy_reuse_evidence_retrieval_example_index_receipt_hash(
     if index_hash == 0 || receipt.index_hash != index_hash {
         return 0;
     }
-    (index_hash ^ 0x504f_4c52_5249_5852u64).max(1)
+    nonzero_receipt_hash(index_hash ^ 0x504f_4c52_5249_5852u64)
 }
 
 fn policy_reuse_evidence_retrieval_corpus_readiness_hash(
@@ -14661,23 +14675,23 @@ fn policy_reuse_evidence_retrieval_corpus_readiness_hash(
         return 0;
     }
     let mut h = 0x504f_4c52_5243_5248u64;
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.schema.as_bytes());
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.record_type.as_bytes());
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.retrieval_corpus_readiness_version;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_retrieval_example_index_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_retrieval_example_admission_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_example_indexed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_example_admitted);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_read_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_write_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.policy_promotion_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.student_training_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.ready_policy_reuse_examples as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.ready_llm_fallback_examples as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_corpus_ready);
-    h = h.wrapping_mul(0x100000001b3) ^ readiness_status_code;
-    h = h.wrapping_mul(0x100000001b3) ^ not_ready_reason_code;
-    h.max(1)
+    h = mix_receipt_str_hash(h, receipt.schema);
+    h = mix_receipt_str_hash(h, receipt.record_type);
+    h = mix_receipt_hash(h, receipt.retrieval_corpus_readiness_version);
+    h = mix_receipt_hash(h, receipt.source_retrieval_example_index_hash);
+    h = mix_receipt_hash(h, receipt.source_retrieval_example_admission_hash);
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_example_indexed));
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_example_admitted));
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_read_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_write_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.policy_promotion_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.student_training_performed));
+    h = mix_receipt_hash(h, receipt.ready_policy_reuse_examples as u64);
+    h = mix_receipt_hash(h, receipt.ready_llm_fallback_examples as u64);
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_corpus_ready));
+    h = mix_receipt_hash(h, readiness_status_code);
+    h = mix_receipt_hash(h, not_ready_reason_code);
+    nonzero_receipt_hash(h)
 }
 
 fn policy_reuse_evidence_retrieval_corpus_readiness_receipt_hash(
@@ -14687,7 +14701,7 @@ fn policy_reuse_evidence_retrieval_corpus_readiness_receipt_hash(
     if readiness_hash == 0 || receipt.readiness_hash != readiness_hash {
         return 0;
     }
-    (readiness_hash ^ 0x504f_4c52_5243_5252u64).max(1)
+    nonzero_receipt_hash(readiness_hash ^ 0x504f_4c52_5243_5252u64)
 }
 
 fn policy_reuse_evidence_retrieval_corpus_admission_hash(
@@ -14719,23 +14733,23 @@ fn policy_reuse_evidence_retrieval_corpus_admission_hash(
         return 0;
     }
     let mut h = 0x504f_4c52_5243_4148u64;
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.schema.as_bytes());
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.record_type.as_bytes());
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.retrieval_corpus_admission_version;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_retrieval_corpus_readiness_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_retrieval_example_index_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_corpus_ready);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_example_indexed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_read_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_write_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.policy_promotion_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.student_training_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.admitted_policy_reuse_examples as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.admitted_llm_fallback_examples as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_corpus_admitted);
-    h = h.wrapping_mul(0x100000001b3) ^ admission_status_code;
-    h = h.wrapping_mul(0x100000001b3) ^ not_admitted_reason_code;
-    h.max(1)
+    h = mix_receipt_str_hash(h, receipt.schema);
+    h = mix_receipt_str_hash(h, receipt.record_type);
+    h = mix_receipt_hash(h, receipt.retrieval_corpus_admission_version);
+    h = mix_receipt_hash(h, receipt.source_retrieval_corpus_readiness_hash);
+    h = mix_receipt_hash(h, receipt.source_retrieval_example_index_hash);
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_corpus_ready));
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_example_indexed));
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_read_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_write_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.policy_promotion_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.student_training_performed));
+    h = mix_receipt_hash(h, receipt.admitted_policy_reuse_examples as u64);
+    h = mix_receipt_hash(h, receipt.admitted_llm_fallback_examples as u64);
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_corpus_admitted));
+    h = mix_receipt_hash(h, admission_status_code);
+    h = mix_receipt_hash(h, not_admitted_reason_code);
+    nonzero_receipt_hash(h)
 }
 
 fn policy_reuse_evidence_retrieval_corpus_admission_receipt_hash(
@@ -14745,7 +14759,7 @@ fn policy_reuse_evidence_retrieval_corpus_admission_receipt_hash(
     if admission_hash == 0 || receipt.admission_hash != admission_hash {
         return 0;
     }
-    (admission_hash ^ 0x504f_4c52_5243_4152u64).max(1)
+    nonzero_receipt_hash(admission_hash ^ 0x504f_4c52_5243_4152u64)
 }
 
 fn policy_reuse_evidence_retrieval_use_approval_hash(
@@ -14777,23 +14791,23 @@ fn policy_reuse_evidence_retrieval_use_approval_hash(
         return 0;
     }
     let mut h = 0x504f_4c52_5255_4148u64;
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.schema.as_bytes());
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.record_type.as_bytes());
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.retrieval_use_approval_version;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_retrieval_corpus_admission_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_retrieval_corpus_readiness_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_corpus_admitted);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_corpus_ready);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_read_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_write_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.policy_promotion_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.student_training_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.approved_policy_reuse_examples as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.approved_llm_fallback_examples as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_use_approved);
-    h = h.wrapping_mul(0x100000001b3) ^ approval_status_code;
-    h = h.wrapping_mul(0x100000001b3) ^ not_approved_reason_code;
-    h.max(1)
+    h = mix_receipt_str_hash(h, receipt.schema);
+    h = mix_receipt_str_hash(h, receipt.record_type);
+    h = mix_receipt_hash(h, receipt.retrieval_use_approval_version);
+    h = mix_receipt_hash(h, receipt.source_retrieval_corpus_admission_hash);
+    h = mix_receipt_hash(h, receipt.source_retrieval_corpus_readiness_hash);
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_corpus_admitted));
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_corpus_ready));
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_read_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_write_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.policy_promotion_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.student_training_performed));
+    h = mix_receipt_hash(h, receipt.approved_policy_reuse_examples as u64);
+    h = mix_receipt_hash(h, receipt.approved_llm_fallback_examples as u64);
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_use_approved));
+    h = mix_receipt_hash(h, approval_status_code);
+    h = mix_receipt_hash(h, not_approved_reason_code);
+    nonzero_receipt_hash(h)
 }
 
 fn policy_reuse_evidence_retrieval_use_approval_receipt_hash(
@@ -14803,7 +14817,7 @@ fn policy_reuse_evidence_retrieval_use_approval_receipt_hash(
     if approval_hash == 0 || receipt.approval_hash != approval_hash {
         return 0;
     }
-    (approval_hash ^ 0x504f_4c52_5255_4152u64).max(1)
+    nonzero_receipt_hash(approval_hash ^ 0x504f_4c52_5255_4152u64)
 }
 
 fn policy_reuse_evidence_retrieval_use_manifest_hash(
@@ -14835,23 +14849,23 @@ fn policy_reuse_evidence_retrieval_use_manifest_hash(
         return 0;
     }
     let mut h = 0x504f_4c52_5255_4d48u64;
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.schema.as_bytes());
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.record_type.as_bytes());
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.retrieval_use_manifest_version;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_retrieval_use_approval_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_retrieval_corpus_admission_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_use_approved);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_corpus_admitted);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_read_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_write_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.policy_promotion_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.student_training_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.manifest_policy_reuse_examples as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.manifest_llm_fallback_examples as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_use_manifest_ready);
-    h = h.wrapping_mul(0x100000001b3) ^ manifest_status_code;
-    h = h.wrapping_mul(0x100000001b3) ^ not_ready_reason_code;
-    h.max(1)
+    h = mix_receipt_str_hash(h, receipt.schema);
+    h = mix_receipt_str_hash(h, receipt.record_type);
+    h = mix_receipt_hash(h, receipt.retrieval_use_manifest_version);
+    h = mix_receipt_hash(h, receipt.source_retrieval_use_approval_hash);
+    h = mix_receipt_hash(h, receipt.source_retrieval_corpus_admission_hash);
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_use_approved));
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_corpus_admitted));
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_read_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_write_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.policy_promotion_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.student_training_performed));
+    h = mix_receipt_hash(h, receipt.manifest_policy_reuse_examples as u64);
+    h = mix_receipt_hash(h, receipt.manifest_llm_fallback_examples as u64);
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_use_manifest_ready));
+    h = mix_receipt_hash(h, manifest_status_code);
+    h = mix_receipt_hash(h, not_ready_reason_code);
+    nonzero_receipt_hash(h)
 }
 
 fn policy_reuse_evidence_retrieval_use_manifest_receipt_hash(
@@ -14861,7 +14875,7 @@ fn policy_reuse_evidence_retrieval_use_manifest_receipt_hash(
     if manifest_hash == 0 || receipt.manifest_hash != manifest_hash {
         return 0;
     }
-    (manifest_hash ^ 0x504f_4c52_5255_4d52u64).max(1)
+    nonzero_receipt_hash(manifest_hash ^ 0x504f_4c52_5255_4d52u64)
 }
 
 fn policy_reuse_evidence_retrieval_query_plan_hash(
@@ -14894,24 +14908,24 @@ fn policy_reuse_evidence_retrieval_query_plan_hash(
         return 0;
     }
     let mut h = 0x504f_4c52_5251_5048u64;
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.schema.as_bytes());
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.record_type.as_bytes());
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.retrieval_query_plan_version;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_retrieval_use_manifest_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_retrieval_use_approval_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_use_manifest_ready);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_use_approved);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_read_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_write_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_query_executed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.policy_promotion_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.student_training_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.planned_policy_reuse_examples as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.planned_llm_fallback_examples as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_query_plan_ready);
-    h = h.wrapping_mul(0x100000001b3) ^ query_plan_status_code;
-    h = h.wrapping_mul(0x100000001b3) ^ not_ready_reason_code;
-    h.max(1)
+    h = mix_receipt_str_hash(h, receipt.schema);
+    h = mix_receipt_str_hash(h, receipt.record_type);
+    h = mix_receipt_hash(h, receipt.retrieval_query_plan_version);
+    h = mix_receipt_hash(h, receipt.source_retrieval_use_manifest_hash);
+    h = mix_receipt_hash(h, receipt.source_retrieval_use_approval_hash);
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_use_manifest_ready));
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_use_approved));
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_read_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_write_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_query_executed));
+    h = mix_receipt_hash(h, u64::from(receipt.policy_promotion_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.student_training_performed));
+    h = mix_receipt_hash(h, receipt.planned_policy_reuse_examples as u64);
+    h = mix_receipt_hash(h, receipt.planned_llm_fallback_examples as u64);
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_query_plan_ready));
+    h = mix_receipt_hash(h, query_plan_status_code);
+    h = mix_receipt_hash(h, not_ready_reason_code);
+    nonzero_receipt_hash(h)
 }
 
 fn policy_reuse_evidence_retrieval_query_plan_receipt_hash(
@@ -14921,7 +14935,7 @@ fn policy_reuse_evidence_retrieval_query_plan_receipt_hash(
     if query_plan_hash == 0 || receipt.query_plan_hash != query_plan_hash {
         return 0;
     }
-    (query_plan_hash ^ 0x504f_4c52_5251_5052u64).max(1)
+    nonzero_receipt_hash(query_plan_hash ^ 0x504f_4c52_5251_5052u64)
 }
 
 fn policy_reuse_evidence_retrieval_query_approval_hash(
@@ -14954,24 +14968,24 @@ fn policy_reuse_evidence_retrieval_query_approval_hash(
         return 0;
     }
     let mut h = 0x504f_4c52_5251_4148u64;
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.schema.as_bytes());
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.record_type.as_bytes());
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.retrieval_query_approval_version;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_retrieval_query_plan_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_retrieval_use_manifest_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_query_plan_ready);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_use_manifest_ready);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_read_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_write_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_query_executed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.policy_promotion_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.student_training_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.approved_query_policy_reuse_examples as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.approved_query_llm_fallback_examples as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_query_approved);
-    h = h.wrapping_mul(0x100000001b3) ^ query_approval_status_code;
-    h = h.wrapping_mul(0x100000001b3) ^ not_approved_reason_code;
-    h.max(1)
+    h = mix_receipt_str_hash(h, receipt.schema);
+    h = mix_receipt_str_hash(h, receipt.record_type);
+    h = mix_receipt_hash(h, receipt.retrieval_query_approval_version);
+    h = mix_receipt_hash(h, receipt.source_retrieval_query_plan_hash);
+    h = mix_receipt_hash(h, receipt.source_retrieval_use_manifest_hash);
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_query_plan_ready));
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_use_manifest_ready));
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_read_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_write_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_query_executed));
+    h = mix_receipt_hash(h, u64::from(receipt.policy_promotion_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.student_training_performed));
+    h = mix_receipt_hash(h, receipt.approved_query_policy_reuse_examples as u64);
+    h = mix_receipt_hash(h, receipt.approved_query_llm_fallback_examples as u64);
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_query_approved));
+    h = mix_receipt_hash(h, query_approval_status_code);
+    h = mix_receipt_hash(h, not_approved_reason_code);
+    nonzero_receipt_hash(h)
 }
 
 fn policy_reuse_evidence_retrieval_query_approval_receipt_hash(
@@ -14981,7 +14995,7 @@ fn policy_reuse_evidence_retrieval_query_approval_receipt_hash(
     if query_approval_hash == 0 || receipt.query_approval_hash != query_approval_hash {
         return 0;
     }
-    (query_approval_hash ^ 0x504f_4c52_5251_4152u64).max(1)
+    nonzero_receipt_hash(query_approval_hash ^ 0x504f_4c52_5251_4152u64)
 }
 
 fn policy_reuse_evidence_retrieval_result_admission_hash(
@@ -15016,26 +15030,26 @@ fn policy_reuse_evidence_retrieval_result_admission_hash(
         return 0;
     }
     let mut h = 0x504f_4c52_5252_4148u64;
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.schema.as_bytes());
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.record_type.as_bytes());
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.retrieval_result_admission_version;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_retrieval_query_approval_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_retrieval_query_plan_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_query_approved);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_query_plan_ready);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_read_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_write_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_query_executed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.runtime_result_approval_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.policy_promotion_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.student_training_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.external_result_evidence_present);
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.admitted_result_policy_reuse_examples as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.admitted_result_llm_fallback_examples as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_result_admitted);
-    h = h.wrapping_mul(0x100000001b3) ^ result_admission_status_code;
-    h = h.wrapping_mul(0x100000001b3) ^ not_admitted_reason_code;
-    h.max(1)
+    h = mix_receipt_str_hash(h, receipt.schema);
+    h = mix_receipt_str_hash(h, receipt.record_type);
+    h = mix_receipt_hash(h, receipt.retrieval_result_admission_version);
+    h = mix_receipt_hash(h, receipt.source_retrieval_query_approval_hash);
+    h = mix_receipt_hash(h, receipt.source_retrieval_query_plan_hash);
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_query_approved));
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_query_plan_ready));
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_read_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_write_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_query_executed));
+    h = mix_receipt_hash(h, u64::from(receipt.runtime_result_approval_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.policy_promotion_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.student_training_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.external_result_evidence_present));
+    h = mix_receipt_hash(h, receipt.admitted_result_policy_reuse_examples as u64);
+    h = mix_receipt_hash(h, receipt.admitted_result_llm_fallback_examples as u64);
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_result_admitted));
+    h = mix_receipt_hash(h, result_admission_status_code);
+    h = mix_receipt_hash(h, not_admitted_reason_code);
+    nonzero_receipt_hash(h)
 }
 
 fn policy_reuse_evidence_retrieval_result_admission_receipt_hash(
@@ -15045,7 +15059,7 @@ fn policy_reuse_evidence_retrieval_result_admission_receipt_hash(
     if result_admission_hash == 0 || receipt.result_admission_hash != result_admission_hash {
         return 0;
     }
-    (result_admission_hash ^ 0x504f_4c52_5252_4152u64).max(1)
+    nonzero_receipt_hash(result_admission_hash ^ 0x504f_4c52_5252_4152u64)
 }
 
 fn policy_reuse_evidence_retrieval_result_manifest_hash(
@@ -15080,26 +15094,26 @@ fn policy_reuse_evidence_retrieval_result_manifest_hash(
         return 0;
     }
     let mut h = 0x504f_4c52_5252_4d48u64;
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.schema.as_bytes());
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.record_type.as_bytes());
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.retrieval_result_manifest_version;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_retrieval_result_admission_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_retrieval_query_approval_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_result_admitted);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_query_approved);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_read_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_write_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_query_executed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.runtime_result_approval_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.policy_promotion_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.student_training_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.external_result_evidence_present);
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.manifest_policy_reuse_examples as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.manifest_llm_fallback_examples as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_result_manifest_ready);
-    h = h.wrapping_mul(0x100000001b3) ^ result_manifest_status_code;
-    h = h.wrapping_mul(0x100000001b3) ^ not_ready_reason_code;
-    h.max(1)
+    h = mix_receipt_str_hash(h, receipt.schema);
+    h = mix_receipt_str_hash(h, receipt.record_type);
+    h = mix_receipt_hash(h, receipt.retrieval_result_manifest_version);
+    h = mix_receipt_hash(h, receipt.source_retrieval_result_admission_hash);
+    h = mix_receipt_hash(h, receipt.source_retrieval_query_approval_hash);
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_result_admitted));
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_query_approved));
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_read_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_write_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_query_executed));
+    h = mix_receipt_hash(h, u64::from(receipt.runtime_result_approval_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.policy_promotion_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.student_training_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.external_result_evidence_present));
+    h = mix_receipt_hash(h, receipt.manifest_policy_reuse_examples as u64);
+    h = mix_receipt_hash(h, receipt.manifest_llm_fallback_examples as u64);
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_result_manifest_ready));
+    h = mix_receipt_hash(h, result_manifest_status_code);
+    h = mix_receipt_hash(h, not_ready_reason_code);
+    nonzero_receipt_hash(h)
 }
 
 fn policy_reuse_evidence_retrieval_result_manifest_receipt_hash(
@@ -15109,7 +15123,7 @@ fn policy_reuse_evidence_retrieval_result_manifest_receipt_hash(
     if result_manifest_hash == 0 || receipt.result_manifest_hash != result_manifest_hash {
         return 0;
     }
-    (result_manifest_hash ^ 0x504f_4c52_5252_4d52u64).max(1)
+    nonzero_receipt_hash(result_manifest_hash ^ 0x504f_4c52_5252_4d52u64)
 }
 
 fn policy_reuse_evidence_retrieval_result_use_admission_hash(
@@ -15144,26 +15158,26 @@ fn policy_reuse_evidence_retrieval_result_use_admission_hash(
         return 0;
     }
     let mut h = 0x504f_4c52_5255_4148u64;
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.schema.as_bytes());
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.record_type.as_bytes());
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.retrieval_result_use_admission_version;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_retrieval_result_manifest_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_retrieval_result_admission_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_result_manifest_ready);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_result_admitted);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_read_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_write_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_query_executed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.runtime_result_approval_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.policy_promotion_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.student_training_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.external_result_evidence_present);
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.admitted_use_policy_reuse_examples as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.admitted_use_llm_fallback_examples as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_result_use_admitted);
-    h = h.wrapping_mul(0x100000001b3) ^ result_use_admission_status_code;
-    h = h.wrapping_mul(0x100000001b3) ^ not_admitted_reason_code;
-    h.max(1)
+    h = mix_receipt_str_hash(h, receipt.schema);
+    h = mix_receipt_str_hash(h, receipt.record_type);
+    h = mix_receipt_hash(h, receipt.retrieval_result_use_admission_version);
+    h = mix_receipt_hash(h, receipt.source_retrieval_result_manifest_hash);
+    h = mix_receipt_hash(h, receipt.source_retrieval_result_admission_hash);
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_result_manifest_ready));
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_result_admitted));
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_read_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_write_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_query_executed));
+    h = mix_receipt_hash(h, u64::from(receipt.runtime_result_approval_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.policy_promotion_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.student_training_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.external_result_evidence_present));
+    h = mix_receipt_hash(h, receipt.admitted_use_policy_reuse_examples as u64);
+    h = mix_receipt_hash(h, receipt.admitted_use_llm_fallback_examples as u64);
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_result_use_admitted));
+    h = mix_receipt_hash(h, result_use_admission_status_code);
+    h = mix_receipt_hash(h, not_admitted_reason_code);
+    nonzero_receipt_hash(h)
 }
 
 fn policy_reuse_evidence_retrieval_result_use_admission_receipt_hash(
@@ -15176,7 +15190,7 @@ fn policy_reuse_evidence_retrieval_result_use_admission_receipt_hash(
     {
         return 0;
     }
-    (result_use_admission_hash ^ 0x504f_4c52_5255_4152u64).max(1)
+    nonzero_receipt_hash(result_use_admission_hash ^ 0x504f_4c52_5255_4152u64)
 }
 
 fn policy_reuse_evidence_retrieval_result_use_manifest_hash(
@@ -15211,26 +15225,26 @@ fn policy_reuse_evidence_retrieval_result_use_manifest_hash(
         return 0;
     }
     let mut h = 0x504f_4c52_5255_4d48u64;
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.schema.as_bytes());
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.record_type.as_bytes());
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.retrieval_result_use_manifest_version;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_retrieval_result_use_admission_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_retrieval_result_manifest_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_result_use_admitted);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_result_manifest_ready);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_read_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_write_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_query_executed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.runtime_result_approval_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.policy_promotion_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.student_training_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.external_result_evidence_present);
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.use_manifest_policy_reuse_examples as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.use_manifest_llm_fallback_examples as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_result_use_manifest_ready);
-    h = h.wrapping_mul(0x100000001b3) ^ result_use_manifest_status_code;
-    h = h.wrapping_mul(0x100000001b3) ^ not_ready_reason_code;
-    h.max(1)
+    h = mix_receipt_str_hash(h, receipt.schema);
+    h = mix_receipt_str_hash(h, receipt.record_type);
+    h = mix_receipt_hash(h, receipt.retrieval_result_use_manifest_version);
+    h = mix_receipt_hash(h, receipt.source_retrieval_result_use_admission_hash);
+    h = mix_receipt_hash(h, receipt.source_retrieval_result_manifest_hash);
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_result_use_admitted));
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_result_manifest_ready));
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_read_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_write_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_query_executed));
+    h = mix_receipt_hash(h, u64::from(receipt.runtime_result_approval_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.policy_promotion_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.student_training_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.external_result_evidence_present));
+    h = mix_receipt_hash(h, receipt.use_manifest_policy_reuse_examples as u64);
+    h = mix_receipt_hash(h, receipt.use_manifest_llm_fallback_examples as u64);
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_result_use_manifest_ready));
+    h = mix_receipt_hash(h, result_use_manifest_status_code);
+    h = mix_receipt_hash(h, not_ready_reason_code);
+    nonzero_receipt_hash(h)
 }
 
 fn policy_reuse_evidence_retrieval_result_use_manifest_receipt_hash(
@@ -15242,7 +15256,7 @@ fn policy_reuse_evidence_retrieval_result_use_manifest_receipt_hash(
     {
         return 0;
     }
-    (result_use_manifest_hash ^ 0x504f_4c52_5255_4d52u64).max(1)
+    nonzero_receipt_hash(result_use_manifest_hash ^ 0x504f_4c52_5255_4d52u64)
 }
 
 fn policy_reuse_evidence_retrieval_result_use_readiness_hash(
@@ -15277,26 +15291,26 @@ fn policy_reuse_evidence_retrieval_result_use_readiness_hash(
         return 0;
     }
     let mut h = 0x504f_4c52_5255_5248u64;
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.schema.as_bytes());
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.record_type.as_bytes());
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.retrieval_result_use_readiness_version;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_retrieval_result_use_manifest_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_retrieval_result_use_admission_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_result_use_manifest_ready);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_result_use_admitted);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_read_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_write_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_query_executed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.runtime_result_approval_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.policy_promotion_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.student_training_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.external_result_evidence_present);
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.readiness_policy_reuse_examples as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.readiness_llm_fallback_examples as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_result_use_ready);
-    h = h.wrapping_mul(0x100000001b3) ^ result_use_readiness_status_code;
-    h = h.wrapping_mul(0x100000001b3) ^ not_ready_reason_code;
-    h.max(1)
+    h = mix_receipt_str_hash(h, receipt.schema);
+    h = mix_receipt_str_hash(h, receipt.record_type);
+    h = mix_receipt_hash(h, receipt.retrieval_result_use_readiness_version);
+    h = mix_receipt_hash(h, receipt.source_retrieval_result_use_manifest_hash);
+    h = mix_receipt_hash(h, receipt.source_retrieval_result_use_admission_hash);
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_result_use_manifest_ready));
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_result_use_admitted));
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_read_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_write_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_query_executed));
+    h = mix_receipt_hash(h, u64::from(receipt.runtime_result_approval_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.policy_promotion_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.student_training_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.external_result_evidence_present));
+    h = mix_receipt_hash(h, receipt.readiness_policy_reuse_examples as u64);
+    h = mix_receipt_hash(h, receipt.readiness_llm_fallback_examples as u64);
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_result_use_ready));
+    h = mix_receipt_hash(h, result_use_readiness_status_code);
+    h = mix_receipt_hash(h, not_ready_reason_code);
+    nonzero_receipt_hash(h)
 }
 
 fn policy_reuse_evidence_retrieval_result_use_readiness_receipt_hash(
@@ -15309,7 +15323,7 @@ fn policy_reuse_evidence_retrieval_result_use_readiness_receipt_hash(
     {
         return 0;
     }
-    (result_use_readiness_hash ^ 0x504f_4c52_5255_5252u64).max(1)
+    nonzero_receipt_hash(result_use_readiness_hash ^ 0x504f_4c52_5255_5252u64)
 }
 
 fn policy_reuse_evidence_retrieval_result_use_approval_hash(
@@ -15344,26 +15358,26 @@ fn policy_reuse_evidence_retrieval_result_use_approval_hash(
         return 0;
     }
     let mut h = 0x504f_4c52_5255_4148u64;
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.schema.as_bytes());
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.record_type.as_bytes());
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.retrieval_result_use_approval_version;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_retrieval_result_use_readiness_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_retrieval_result_use_manifest_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_result_use_ready);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_result_use_manifest_ready);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_read_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_write_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_query_executed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.runtime_result_approval_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.policy_promotion_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.student_training_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.external_result_evidence_present);
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.approved_use_policy_reuse_examples as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.approved_use_llm_fallback_examples as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_result_use_approved);
-    h = h.wrapping_mul(0x100000001b3) ^ result_use_approval_status_code;
-    h = h.wrapping_mul(0x100000001b3) ^ not_approved_reason_code;
-    h.max(1)
+    h = mix_receipt_str_hash(h, receipt.schema);
+    h = mix_receipt_str_hash(h, receipt.record_type);
+    h = mix_receipt_hash(h, receipt.retrieval_result_use_approval_version);
+    h = mix_receipt_hash(h, receipt.source_retrieval_result_use_readiness_hash);
+    h = mix_receipt_hash(h, receipt.source_retrieval_result_use_manifest_hash);
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_result_use_ready));
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_result_use_manifest_ready));
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_read_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_write_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_query_executed));
+    h = mix_receipt_hash(h, u64::from(receipt.runtime_result_approval_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.policy_promotion_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.student_training_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.external_result_evidence_present));
+    h = mix_receipt_hash(h, receipt.approved_use_policy_reuse_examples as u64);
+    h = mix_receipt_hash(h, receipt.approved_use_llm_fallback_examples as u64);
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_result_use_approved));
+    h = mix_receipt_hash(h, result_use_approval_status_code);
+    h = mix_receipt_hash(h, not_approved_reason_code);
+    nonzero_receipt_hash(h)
 }
 
 fn policy_reuse_evidence_retrieval_result_use_approval_receipt_hash(
@@ -15375,7 +15389,7 @@ fn policy_reuse_evidence_retrieval_result_use_approval_receipt_hash(
     {
         return 0;
     }
-    (result_use_approval_hash ^ 0x504f_4c52_5255_4152u64).max(1)
+    nonzero_receipt_hash(result_use_approval_hash ^ 0x504f_4c52_5255_4152u64)
 }
 
 fn policy_reuse_evidence_retrieval_result_use_manifest_admission_hash(
@@ -15411,26 +15425,26 @@ fn policy_reuse_evidence_retrieval_result_use_manifest_admission_hash(
         return 0;
     }
     let mut h = 0x504f_4c52_5255_4d41u64;
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.schema.as_bytes());
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.record_type.as_bytes());
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.retrieval_result_use_manifest_admission_version;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_retrieval_result_use_approval_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_retrieval_result_use_readiness_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_result_use_approved);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_result_use_ready);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_read_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_write_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_query_executed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.runtime_result_approval_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.policy_promotion_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.student_training_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.external_result_evidence_present);
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.manifest_admission_policy_reuse_examples as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.manifest_admission_llm_fallback_examples as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_result_use_manifest_admitted);
-    h = h.wrapping_mul(0x100000001b3) ^ result_use_manifest_admission_status_code;
-    h = h.wrapping_mul(0x100000001b3) ^ not_admitted_reason_code;
-    h.max(1)
+    h = mix_receipt_str_hash(h, receipt.schema);
+    h = mix_receipt_str_hash(h, receipt.record_type);
+    h = mix_receipt_hash(h, receipt.retrieval_result_use_manifest_admission_version);
+    h = mix_receipt_hash(h, receipt.source_retrieval_result_use_approval_hash);
+    h = mix_receipt_hash(h, receipt.source_retrieval_result_use_readiness_hash);
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_result_use_approved));
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_result_use_ready));
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_read_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_write_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_query_executed));
+    h = mix_receipt_hash(h, u64::from(receipt.runtime_result_approval_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.policy_promotion_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.student_training_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.external_result_evidence_present));
+    h = mix_receipt_hash(h, receipt.manifest_admission_policy_reuse_examples as u64);
+    h = mix_receipt_hash(h, receipt.manifest_admission_llm_fallback_examples as u64);
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_result_use_manifest_admitted));
+    h = mix_receipt_hash(h, result_use_manifest_admission_status_code);
+    h = mix_receipt_hash(h, not_admitted_reason_code);
+    nonzero_receipt_hash(h)
 }
 
 fn policy_reuse_evidence_retrieval_result_use_manifest_admission_receipt_hash(
@@ -15443,7 +15457,7 @@ fn policy_reuse_evidence_retrieval_result_use_manifest_admission_receipt_hash(
     {
         return 0;
     }
-    (result_use_manifest_admission_hash ^ 0x504f_4c52_5255_4d52u64).max(1)
+    nonzero_receipt_hash(result_use_manifest_admission_hash ^ 0x504f_4c52_5255_4d52u64)
 }
 
 fn policy_reuse_evidence_retrieval_result_use_summary_hash(
@@ -15478,26 +15492,29 @@ fn policy_reuse_evidence_retrieval_result_use_summary_hash(
         return 0;
     }
     let mut h = 0x504f_4c52_5255_5355u64;
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.schema.as_bytes());
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.record_type.as_bytes());
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.retrieval_result_use_summary_version;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_retrieval_result_use_manifest_admission_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_retrieval_result_use_approval_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_result_use_manifest_admitted);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_result_use_approved);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_read_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_write_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_query_executed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.runtime_result_approval_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.policy_promotion_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.student_training_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.external_result_evidence_present);
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.summary_policy_reuse_examples as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.summary_llm_fallback_examples as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_result_use_summary_ready);
-    h = h.wrapping_mul(0x100000001b3) ^ result_use_summary_status_code;
-    h = h.wrapping_mul(0x100000001b3) ^ not_ready_reason_code;
-    h.max(1)
+    h = mix_receipt_str_hash(h, receipt.schema);
+    h = mix_receipt_str_hash(h, receipt.record_type);
+    h = mix_receipt_hash(h, receipt.retrieval_result_use_summary_version);
+    h = mix_receipt_hash(
+        h,
+        receipt.source_retrieval_result_use_manifest_admission_hash,
+    );
+    h = mix_receipt_hash(h, receipt.source_retrieval_result_use_approval_hash);
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_result_use_manifest_admitted));
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_result_use_approved));
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_read_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_write_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_query_executed));
+    h = mix_receipt_hash(h, u64::from(receipt.runtime_result_approval_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.policy_promotion_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.student_training_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.external_result_evidence_present));
+    h = mix_receipt_hash(h, receipt.summary_policy_reuse_examples as u64);
+    h = mix_receipt_hash(h, receipt.summary_llm_fallback_examples as u64);
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_result_use_summary_ready));
+    h = mix_receipt_hash(h, result_use_summary_status_code);
+    h = mix_receipt_hash(h, not_ready_reason_code);
+    nonzero_receipt_hash(h)
 }
 
 fn policy_reuse_evidence_retrieval_result_use_summary_receipt_hash(
@@ -15507,7 +15524,7 @@ fn policy_reuse_evidence_retrieval_result_use_summary_receipt_hash(
     if result_use_summary_hash == 0 || receipt.result_use_summary_hash != result_use_summary_hash {
         return 0;
     }
-    (result_use_summary_hash ^ 0x504f_4c52_5255_5352u64).max(1)
+    nonzero_receipt_hash(result_use_summary_hash ^ 0x504f_4c52_5255_5352u64)
 }
 
 fn policy_reuse_evidence_retrieval_result_use_summary_manifest_hash(
@@ -15542,27 +15559,30 @@ fn policy_reuse_evidence_retrieval_result_use_summary_manifest_hash(
         return 0;
     }
     let mut h = 0x504f_4c52_5255_534du64;
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.schema.as_bytes());
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.record_type.as_bytes());
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.retrieval_result_use_summary_manifest_version;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_retrieval_result_use_summary_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_retrieval_result_use_manifest_admission_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_result_use_summary_ready);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_result_use_manifest_admitted);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_read_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_write_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_query_executed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.runtime_result_approval_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.policy_promotion_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.student_training_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.external_result_evidence_present);
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.summary_manifest_policy_reuse_examples as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.summary_manifest_llm_fallback_examples as u64;
+    h = mix_receipt_str_hash(h, receipt.schema);
+    h = mix_receipt_str_hash(h, receipt.record_type);
+    h = mix_receipt_hash(h, receipt.retrieval_result_use_summary_manifest_version);
+    h = mix_receipt_hash(h, receipt.source_retrieval_result_use_summary_hash);
+    h = mix_receipt_hash(
+        h,
+        receipt.source_retrieval_result_use_manifest_admission_hash,
+    );
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_result_use_summary_ready));
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_result_use_manifest_admitted));
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_read_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_write_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_query_executed));
+    h = mix_receipt_hash(h, u64::from(receipt.runtime_result_approval_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.policy_promotion_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.student_training_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.external_result_evidence_present));
+    h = mix_receipt_hash(h, receipt.summary_manifest_policy_reuse_examples as u64);
+    h = mix_receipt_hash(h, receipt.summary_manifest_llm_fallback_examples as u64);
     h = h.wrapping_mul(0x100000001b3)
         ^ u64::from(receipt.retrieval_result_use_summary_manifest_ready);
-    h = h.wrapping_mul(0x100000001b3) ^ result_use_summary_manifest_status_code;
-    h = h.wrapping_mul(0x100000001b3) ^ not_ready_reason_code;
-    h.max(1)
+    h = mix_receipt_hash(h, result_use_summary_manifest_status_code);
+    h = mix_receipt_hash(h, not_ready_reason_code);
+    nonzero_receipt_hash(h)
 }
 
 fn policy_reuse_evidence_retrieval_result_use_summary_manifest_receipt_hash(
@@ -15575,7 +15595,7 @@ fn policy_reuse_evidence_retrieval_result_use_summary_manifest_receipt_hash(
     {
         return 0;
     }
-    (result_use_summary_manifest_hash ^ 0x504f_4c52_5255_535du64).max(1)
+    nonzero_receipt_hash(result_use_summary_manifest_hash ^ 0x504f_4c52_5255_535du64)
 }
 
 fn policy_reuse_evidence_retrieval_result_use_summary_manifest_admission_hash(
@@ -15611,31 +15631,31 @@ fn policy_reuse_evidence_retrieval_result_use_summary_manifest_admission_hash(
         return 0;
     }
     let mut h = 0x504f_4c52_5553_4d41u64;
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.schema.as_bytes());
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.record_type.as_bytes());
+    h = mix_receipt_str_hash(h, receipt.schema);
+    h = mix_receipt_str_hash(h, receipt.record_type);
     h = h.wrapping_mul(0x100000001b3)
         ^ receipt.retrieval_result_use_summary_manifest_admission_version;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_retrieval_result_use_summary_manifest_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_retrieval_result_use_summary_hash;
+    h = mix_receipt_hash(h, receipt.source_retrieval_result_use_summary_manifest_hash);
+    h = mix_receipt_hash(h, receipt.source_retrieval_result_use_summary_hash);
     h = h.wrapping_mul(0x100000001b3)
         ^ u64::from(receipt.retrieval_result_use_summary_manifest_ready);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_result_use_summary_ready);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_read_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_write_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_query_executed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.runtime_result_approval_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.policy_promotion_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.student_training_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.external_result_evidence_present);
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_result_use_summary_ready));
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_read_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_write_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_query_executed));
+    h = mix_receipt_hash(h, u64::from(receipt.runtime_result_approval_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.policy_promotion_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.student_training_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.external_result_evidence_present));
     h = h.wrapping_mul(0x100000001b3)
         ^ receipt.summary_manifest_admission_policy_reuse_examples as u64;
     h = h.wrapping_mul(0x100000001b3)
         ^ receipt.summary_manifest_admission_llm_fallback_examples as u64;
     h = h.wrapping_mul(0x100000001b3)
         ^ u64::from(receipt.retrieval_result_use_summary_manifest_admitted);
-    h = h.wrapping_mul(0x100000001b3) ^ result_use_summary_manifest_admission_status_code;
-    h = h.wrapping_mul(0x100000001b3) ^ not_admitted_reason_code;
-    h.max(1)
+    h = mix_receipt_hash(h, result_use_summary_manifest_admission_status_code);
+    h = mix_receipt_hash(h, not_admitted_reason_code);
+    nonzero_receipt_hash(h)
 }
 
 fn policy_reuse_evidence_retrieval_result_use_summary_manifest_admission_receipt_hash(
@@ -15649,7 +15669,7 @@ fn policy_reuse_evidence_retrieval_result_use_summary_manifest_admission_receipt
     {
         return 0;
     }
-    (result_use_summary_manifest_admission_hash ^ 0x504f_4c52_5553_4d52u64).max(1)
+    nonzero_receipt_hash(result_use_summary_manifest_admission_hash ^ 0x504f_4c52_5553_4d52u64)
 }
 
 fn policy_reuse_evidence_retrieval_result_use_summary_manifest_readiness_hash(
@@ -15685,33 +15705,33 @@ fn policy_reuse_evidence_retrieval_result_use_summary_manifest_readiness_hash(
         return 0;
     }
     let mut h = 0x504f_4c52_5553_5244u64;
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.schema.as_bytes());
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.record_type.as_bytes());
+    h = mix_receipt_str_hash(h, receipt.schema);
+    h = mix_receipt_str_hash(h, receipt.record_type);
     h = h.wrapping_mul(0x100000001b3)
         ^ receipt.retrieval_result_use_summary_manifest_readiness_version;
     h = h.wrapping_mul(0x100000001b3)
         ^ receipt.source_retrieval_result_use_summary_manifest_admission_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_retrieval_result_use_summary_manifest_hash;
+    h = mix_receipt_hash(h, receipt.source_retrieval_result_use_summary_manifest_hash);
     h = h.wrapping_mul(0x100000001b3)
         ^ u64::from(receipt.retrieval_result_use_summary_manifest_admitted);
     h = h.wrapping_mul(0x100000001b3)
         ^ u64::from(receipt.retrieval_result_use_summary_manifest_ready);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_read_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_write_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_query_executed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.runtime_result_approval_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.policy_promotion_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.student_training_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.external_result_evidence_present);
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_read_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_write_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_query_executed));
+    h = mix_receipt_hash(h, u64::from(receipt.runtime_result_approval_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.policy_promotion_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.student_training_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.external_result_evidence_present));
     h = h.wrapping_mul(0x100000001b3)
         ^ receipt.summary_manifest_readiness_policy_reuse_examples as u64;
     h = h.wrapping_mul(0x100000001b3)
         ^ receipt.summary_manifest_readiness_llm_fallback_examples as u64;
     h = h.wrapping_mul(0x100000001b3)
         ^ u64::from(receipt.retrieval_result_use_summary_manifest_ready_for_use);
-    h = h.wrapping_mul(0x100000001b3) ^ result_use_summary_manifest_readiness_status_code;
-    h = h.wrapping_mul(0x100000001b3) ^ not_ready_reason_code;
-    h.max(1)
+    h = mix_receipt_hash(h, result_use_summary_manifest_readiness_status_code);
+    h = mix_receipt_hash(h, not_ready_reason_code);
+    nonzero_receipt_hash(h)
 }
 
 fn policy_reuse_evidence_retrieval_result_use_summary_manifest_readiness_receipt_hash(
@@ -15725,7 +15745,7 @@ fn policy_reuse_evidence_retrieval_result_use_summary_manifest_readiness_receipt
     {
         return 0;
     }
-    (result_use_summary_manifest_readiness_hash ^ 0x504f_4c52_5553_5252u64).max(1)
+    nonzero_receipt_hash(result_use_summary_manifest_readiness_hash ^ 0x504f_4c52_5553_5252u64)
 }
 
 fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_hash(
@@ -15761,8 +15781,8 @@ fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_hash(
         return 0;
     }
     let mut h = 0x504f_4c52_5553_4150u64;
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.schema.as_bytes());
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.record_type.as_bytes());
+    h = mix_receipt_str_hash(h, receipt.schema);
+    h = mix_receipt_str_hash(h, receipt.record_type);
     h = h.wrapping_mul(0x100000001b3)
         ^ receipt.retrieval_result_use_summary_manifest_approval_version;
     h = h.wrapping_mul(0x100000001b3)
@@ -15773,22 +15793,22 @@ fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_hash(
         ^ u64::from(receipt.retrieval_result_use_summary_manifest_ready_for_use);
     h = h.wrapping_mul(0x100000001b3)
         ^ u64::from(receipt.retrieval_result_use_summary_manifest_admitted);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_read_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_write_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_query_executed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.runtime_result_approval_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.policy_promotion_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.student_training_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.external_result_evidence_present);
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_read_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_write_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_query_executed));
+    h = mix_receipt_hash(h, u64::from(receipt.runtime_result_approval_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.policy_promotion_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.student_training_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.external_result_evidence_present));
     h = h.wrapping_mul(0x100000001b3)
         ^ receipt.summary_manifest_approval_policy_reuse_examples as u64;
     h = h.wrapping_mul(0x100000001b3)
         ^ receipt.summary_manifest_approval_llm_fallback_examples as u64;
     h = h.wrapping_mul(0x100000001b3)
         ^ u64::from(receipt.retrieval_result_use_summary_manifest_approved);
-    h = h.wrapping_mul(0x100000001b3) ^ result_use_summary_manifest_approval_status_code;
-    h = h.wrapping_mul(0x100000001b3) ^ not_approved_reason_code;
-    h.max(1)
+    h = mix_receipt_hash(h, result_use_summary_manifest_approval_status_code);
+    h = mix_receipt_hash(h, not_approved_reason_code);
+    nonzero_receipt_hash(h)
 }
 
 fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_receipt_hash(
@@ -15802,7 +15822,7 @@ fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_receipt_
     {
         return 0;
     }
-    (result_use_summary_manifest_approval_hash ^ 0x504f_4c52_5553_4152u64).max(1)
+    nonzero_receipt_hash(result_use_summary_manifest_approval_hash ^ 0x504f_4c52_5553_4152u64)
 }
 
 fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_hash(
@@ -15842,8 +15862,8 @@ fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admissio
         return 0;
     }
     let mut h = 0x504f_4c52_5553_4144u64;
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.schema.as_bytes());
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.record_type.as_bytes());
+    h = mix_receipt_str_hash(h, receipt.schema);
+    h = mix_receipt_str_hash(h, receipt.record_type);
     h = h.wrapping_mul(0x100000001b3)
         ^ receipt.retrieval_result_use_summary_manifest_approval_admission_version;
     h = h.wrapping_mul(0x100000001b3)
@@ -15858,22 +15878,25 @@ fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admissio
         ^ u64::from(receipt.retrieval_result_use_summary_manifest_ready_for_use);
     h = h.wrapping_mul(0x100000001b3)
         ^ u64::from(receipt.retrieval_result_use_summary_manifest_admitted);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_read_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_write_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_query_executed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.runtime_result_approval_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.policy_promotion_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.student_training_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.external_result_evidence_present);
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_read_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_write_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_query_executed));
+    h = mix_receipt_hash(h, u64::from(receipt.runtime_result_approval_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.policy_promotion_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.student_training_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.external_result_evidence_present));
     h = h.wrapping_mul(0x100000001b3)
         ^ receipt.summary_manifest_approval_admission_policy_reuse_examples as u64;
     h = h.wrapping_mul(0x100000001b3)
         ^ receipt.summary_manifest_approval_admission_llm_fallback_examples as u64;
     h = h.wrapping_mul(0x100000001b3)
         ^ u64::from(receipt.retrieval_result_use_summary_manifest_approval_admitted);
-    h = h.wrapping_mul(0x100000001b3) ^ result_use_summary_manifest_approval_admission_status_code;
-    h = h.wrapping_mul(0x100000001b3) ^ not_admitted_reason_code;
-    h.max(1)
+    h = mix_receipt_hash(
+        h,
+        result_use_summary_manifest_approval_admission_status_code,
+    );
+    h = mix_receipt_hash(h, not_admitted_reason_code);
+    nonzero_receipt_hash(h)
 }
 
 fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_receipt_hash(
@@ -15889,7 +15912,9 @@ fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admissio
     {
         return 0;
     }
-    (result_use_summary_manifest_approval_admission_hash ^ 0x504f_4c52_5553_4145u64).max(1)
+    nonzero_receipt_hash(
+        result_use_summary_manifest_approval_admission_hash ^ 0x504f_4c52_5553_4145u64,
+    )
 }
 
 fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_consumption_hash(
@@ -15930,8 +15955,8 @@ fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admissio
         return 0;
     }
     let mut h = 0x504f_4c52_5553_4146u64;
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.schema.as_bytes());
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.record_type.as_bytes());
+    h = mix_receipt_str_hash(h, receipt.schema);
+    h = mix_receipt_str_hash(h, receipt.record_type);
     h = h.wrapping_mul(0x100000001b3)
         ^ receipt.retrieval_result_use_summary_manifest_approval_admission_consumption_version;
     h = h.wrapping_mul(0x100000001b3)
@@ -15950,23 +15975,23 @@ fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admissio
         ^ u64::from(receipt.retrieval_result_use_summary_manifest_ready_for_use);
     h = h.wrapping_mul(0x100000001b3)
         ^ u64::from(receipt.retrieval_result_use_summary_manifest_admitted);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_read_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_write_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_query_executed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.runtime_result_approval_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.policy_promotion_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.batch_execution_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.student_training_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.external_result_evidence_present);
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_read_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_write_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_query_executed));
+    h = mix_receipt_hash(h, u64::from(receipt.runtime_result_approval_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.policy_promotion_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.batch_execution_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.student_training_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.external_result_evidence_present));
     h = h.wrapping_mul(0x100000001b3)
         ^ receipt.summary_manifest_approval_admission_consumption_policy_reuse_examples as u64;
     h = h.wrapping_mul(0x100000001b3)
         ^ receipt.summary_manifest_approval_admission_consumption_llm_fallback_examples as u64;
     h = h.wrapping_mul(0x100000001b3)
         ^ u64::from(receipt.retrieval_result_use_summary_manifest_approval_admission_consumed);
-    h = h.wrapping_mul(0x100000001b3) ^ status_code;
-    h = h.wrapping_mul(0x100000001b3) ^ not_consumed_reason_code;
-    h.max(1)
+    h = mix_receipt_hash(h, status_code);
+    h = mix_receipt_hash(h, not_consumed_reason_code);
+    nonzero_receipt_hash(h)
 }
 
 fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_consumption_receipt_hash(
@@ -16025,8 +16050,8 @@ fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admissio
         return 0;
     }
     let mut h = 0x504f_4c52_5553_4148u64;
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.schema.as_bytes());
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.record_type.as_bytes());
+    h = mix_receipt_str_hash(h, receipt.schema);
+    h = mix_receipt_str_hash(h, receipt.record_type);
     h = h.wrapping_mul(0x100000001b3)
         ^ receipt.retrieval_result_use_summary_manifest_approval_admission_consumption_learning_eligibility_version;
     h = h.wrapping_mul(0x100000001b3)
@@ -16049,22 +16074,22 @@ fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admissio
         ^ u64::from(receipt.retrieval_result_use_summary_manifest_ready_for_use);
     h = h.wrapping_mul(0x100000001b3)
         ^ u64::from(receipt.retrieval_result_use_summary_manifest_admitted);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_read_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_write_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_query_executed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.runtime_result_approval_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.policy_promotion_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.batch_execution_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.student_training_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.external_result_evidence_present);
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_read_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_write_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_query_executed));
+    h = mix_receipt_hash(h, u64::from(receipt.runtime_result_approval_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.policy_promotion_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.batch_execution_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.student_training_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.external_result_evidence_present));
     h = h.wrapping_mul(0x100000001b3)
         ^ receipt.retrieval_example_learning_eligibility_policy_reuse_examples as u64;
     h = h.wrapping_mul(0x100000001b3)
         ^ receipt.retrieval_example_learning_eligibility_llm_fallback_examples as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_example_learning_eligible);
-    h = h.wrapping_mul(0x100000001b3) ^ status_code;
-    h = h.wrapping_mul(0x100000001b3) ^ not_eligible_reason_code;
-    h.max(1)
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_example_learning_eligible));
+    h = mix_receipt_hash(h, status_code);
+    h = mix_receipt_hash(h, not_eligible_reason_code);
+    nonzero_receipt_hash(h)
 }
 
 fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_consumption_learning_eligibility_receipt_hash(
@@ -16080,7 +16105,7 @@ fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admissio
     {
         return 0;
     }
-    (retrieval_example_learning_eligibility_hash ^ 0x504f_4c52_5553_4149u64).max(1)
+    nonzero_receipt_hash(retrieval_example_learning_eligibility_hash ^ 0x504f_4c52_5553_4149u64)
 }
 
 fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_consumption_learning_admission_hash(
@@ -16124,11 +16149,14 @@ fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admissio
         return 0;
     }
     let mut h = 0x504f_4c52_5553_414au64;
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.schema.as_bytes());
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.record_type.as_bytes());
+    h = mix_receipt_str_hash(h, receipt.schema);
+    h = mix_receipt_str_hash(h, receipt.record_type);
     h = h.wrapping_mul(0x100000001b3)
         ^ receipt.retrieval_result_use_summary_manifest_approval_admission_consumption_learning_admission_version;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_retrieval_example_learning_eligibility_hash;
+    h = mix_receipt_hash(
+        h,
+        receipt.source_retrieval_example_learning_eligibility_hash,
+    );
     h = h.wrapping_mul(0x100000001b3)
         ^ receipt.source_retrieval_result_use_summary_manifest_approval_admission_consumption_hash;
     h = h.wrapping_mul(0x100000001b3)
@@ -16139,7 +16167,7 @@ fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admissio
         ^ receipt.source_retrieval_result_use_summary_manifest_readiness_hash;
     h = h.wrapping_mul(0x100000001b3)
         ^ receipt.source_retrieval_result_use_summary_manifest_admission_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_example_learning_eligible);
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_example_learning_eligible));
     h = h.wrapping_mul(0x100000001b3)
         ^ u64::from(receipt.retrieval_result_use_summary_manifest_approval_admission_consumed);
     h = h.wrapping_mul(0x100000001b3)
@@ -16150,22 +16178,22 @@ fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admissio
         ^ u64::from(receipt.retrieval_result_use_summary_manifest_ready_for_use);
     h = h.wrapping_mul(0x100000001b3)
         ^ u64::from(receipt.retrieval_result_use_summary_manifest_admitted);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_read_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_write_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_query_executed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.runtime_result_approval_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.policy_promotion_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.batch_execution_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.student_training_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.external_result_evidence_present);
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_read_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_write_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_query_executed));
+    h = mix_receipt_hash(h, u64::from(receipt.runtime_result_approval_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.policy_promotion_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.batch_execution_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.student_training_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.external_result_evidence_present));
     h = h.wrapping_mul(0x100000001b3)
         ^ receipt.retrieval_example_learning_admission_policy_reuse_examples as u64;
     h = h.wrapping_mul(0x100000001b3)
         ^ receipt.retrieval_example_learning_admission_llm_fallback_examples as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_example_learning_admitted);
-    h = h.wrapping_mul(0x100000001b3) ^ status_code;
-    h = h.wrapping_mul(0x100000001b3) ^ not_admitted_reason_code;
-    h.max(1)
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_example_learning_admitted));
+    h = mix_receipt_hash(h, status_code);
+    h = mix_receipt_hash(h, not_admitted_reason_code);
+    nonzero_receipt_hash(h)
 }
 
 fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_consumption_learning_admission_receipt_hash(
@@ -16181,7 +16209,7 @@ fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admissio
     {
         return 0;
     }
-    (retrieval_example_learning_admission_hash ^ 0x504f_4c52_5553_414bu64).max(1)
+    nonzero_receipt_hash(retrieval_example_learning_admission_hash ^ 0x504f_4c52_5553_414bu64)
 }
 
 fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_consumption_learning_materialization_plan_hash(
@@ -16228,12 +16256,15 @@ fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admissio
         return 0;
     }
     let mut h = 0x504f_4c52_5553_414cu64;
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.schema.as_bytes());
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.record_type.as_bytes());
+    h = mix_receipt_str_hash(h, receipt.schema);
+    h = mix_receipt_str_hash(h, receipt.record_type);
     h = h.wrapping_mul(0x100000001b3)
         ^ receipt.retrieval_example_learning_materialization_plan_version;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_retrieval_example_learning_admission_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_retrieval_example_learning_eligibility_hash;
+    h = mix_receipt_hash(h, receipt.source_retrieval_example_learning_admission_hash);
+    h = mix_receipt_hash(
+        h,
+        receipt.source_retrieval_example_learning_eligibility_hash,
+    );
     h = h.wrapping_mul(0x100000001b3)
         ^ receipt.source_retrieval_result_use_summary_manifest_approval_admission_consumption_hash;
     h = h.wrapping_mul(0x100000001b3)
@@ -16244,8 +16275,8 @@ fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admissio
         ^ receipt.source_retrieval_result_use_summary_manifest_readiness_hash;
     h = h.wrapping_mul(0x100000001b3)
         ^ receipt.source_retrieval_result_use_summary_manifest_admission_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_example_learning_admitted);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_example_learning_eligible);
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_example_learning_admitted));
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_example_learning_eligible));
     h = h.wrapping_mul(0x100000001b3)
         ^ u64::from(receipt.retrieval_result_use_summary_manifest_approval_admission_consumed);
     h = h.wrapping_mul(0x100000001b3)
@@ -16256,21 +16287,21 @@ fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admissio
         ^ u64::from(receipt.retrieval_result_use_summary_manifest_ready_for_use);
     h = h.wrapping_mul(0x100000001b3)
         ^ u64::from(receipt.retrieval_result_use_summary_manifest_admitted);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_read_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_write_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_query_executed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.runtime_result_approval_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.policy_promotion_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.batch_execution_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.student_training_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.external_result_evidence_present);
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.materialization_plan_policy_reuse_examples as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.materialization_plan_llm_fallback_examples as u64;
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_read_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_write_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_query_executed));
+    h = mix_receipt_hash(h, u64::from(receipt.runtime_result_approval_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.policy_promotion_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.batch_execution_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.student_training_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.external_result_evidence_present));
+    h = mix_receipt_hash(h, receipt.materialization_plan_policy_reuse_examples as u64);
+    h = mix_receipt_hash(h, receipt.materialization_plan_llm_fallback_examples as u64);
     h = h.wrapping_mul(0x100000001b3)
         ^ u64::from(receipt.retrieval_example_materialization_plan_ready);
-    h = h.wrapping_mul(0x100000001b3) ^ status_code;
-    h = h.wrapping_mul(0x100000001b3) ^ not_ready_reason_code;
-    h.max(1)
+    h = mix_receipt_hash(h, status_code);
+    h = mix_receipt_hash(h, not_ready_reason_code);
+    nonzero_receipt_hash(h)
 }
 
 fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_consumption_learning_materialization_plan_receipt_hash(
@@ -16286,7 +16317,7 @@ fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admissio
     {
         return 0;
     }
-    (retrieval_example_materialization_plan_hash ^ 0x504f_4c52_5553_414du64).max(1)
+    nonzero_receipt_hash(retrieval_example_materialization_plan_hash ^ 0x504f_4c52_5553_414du64)
 }
 
 fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_consumption_learning_storage_admission_hash(
@@ -16335,13 +16366,19 @@ fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admissio
         return 0;
     }
     let mut h = 0x504f_4c52_5553_414eu64;
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.schema.as_bytes());
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.record_type.as_bytes());
+    h = mix_receipt_str_hash(h, receipt.schema);
+    h = mix_receipt_str_hash(h, receipt.record_type);
     h = h.wrapping_mul(0x100000001b3)
         ^ receipt.retrieval_example_learning_storage_admission_version;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_retrieval_example_materialization_plan_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_retrieval_example_learning_admission_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_retrieval_example_learning_eligibility_hash;
+    h = mix_receipt_hash(
+        h,
+        receipt.source_retrieval_example_materialization_plan_hash,
+    );
+    h = mix_receipt_hash(h, receipt.source_retrieval_example_learning_admission_hash);
+    h = mix_receipt_hash(
+        h,
+        receipt.source_retrieval_example_learning_eligibility_hash,
+    );
     h = h.wrapping_mul(0x100000001b3)
         ^ receipt.source_retrieval_result_use_summary_manifest_approval_admission_consumption_hash;
     h = h.wrapping_mul(0x100000001b3)
@@ -16354,8 +16391,8 @@ fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admissio
         ^ receipt.source_retrieval_result_use_summary_manifest_admission_hash;
     h = h.wrapping_mul(0x100000001b3)
         ^ u64::from(receipt.retrieval_example_materialization_plan_ready);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_example_learning_admitted);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_example_learning_eligible);
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_example_learning_admitted));
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_example_learning_eligible));
     h = h.wrapping_mul(0x100000001b3)
         ^ u64::from(receipt.retrieval_result_use_summary_manifest_approval_admission_consumed);
     h = h.wrapping_mul(0x100000001b3)
@@ -16366,20 +16403,20 @@ fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admissio
         ^ u64::from(receipt.retrieval_result_use_summary_manifest_ready_for_use);
     h = h.wrapping_mul(0x100000001b3)
         ^ u64::from(receipt.retrieval_result_use_summary_manifest_admitted);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_read_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_write_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_query_executed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.runtime_result_approval_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.policy_promotion_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.batch_execution_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.student_training_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.external_result_evidence_present);
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.storage_admission_policy_reuse_examples as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.storage_admission_llm_fallback_examples as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_example_storage_admitted);
-    h = h.wrapping_mul(0x100000001b3) ^ status_code;
-    h = h.wrapping_mul(0x100000001b3) ^ reason_code;
-    h.max(1)
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_read_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_write_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_query_executed));
+    h = mix_receipt_hash(h, u64::from(receipt.runtime_result_approval_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.policy_promotion_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.batch_execution_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.student_training_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.external_result_evidence_present));
+    h = mix_receipt_hash(h, receipt.storage_admission_policy_reuse_examples as u64);
+    h = mix_receipt_hash(h, receipt.storage_admission_llm_fallback_examples as u64);
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_example_storage_admitted));
+    h = mix_receipt_hash(h, status_code);
+    h = mix_receipt_hash(h, reason_code);
+    nonzero_receipt_hash(h)
 }
 
 fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_consumption_learning_storage_admission_receipt_hash(
@@ -16392,7 +16429,7 @@ fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admissio
     if storage_hash == 0 || receipt.retrieval_example_storage_admission_hash != storage_hash {
         return 0;
     }
-    (storage_hash ^ 0x504f_4c52_5553_414fu64).max(1)
+    nonzero_receipt_hash(storage_hash ^ 0x504f_4c52_5553_414fu64)
 }
 
 fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_consumption_learning_storage_commit_intent_hash(
@@ -16426,14 +16463,20 @@ fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admissio
         return 0;
     }
     let mut h = 0x504f_4c52_5553_4350u64;
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.schema.as_bytes());
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.record_type.as_bytes());
+    h = mix_receipt_str_hash(h, receipt.schema);
+    h = mix_receipt_str_hash(h, receipt.record_type);
     h = h.wrapping_mul(0x100000001b3)
         ^ receipt.retrieval_example_learning_storage_commit_intent_version;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_retrieval_example_storage_admission_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_retrieval_example_materialization_plan_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_retrieval_example_learning_admission_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_retrieval_example_learning_eligibility_hash;
+    h = mix_receipt_hash(h, receipt.source_retrieval_example_storage_admission_hash);
+    h = mix_receipt_hash(
+        h,
+        receipt.source_retrieval_example_materialization_plan_hash,
+    );
+    h = mix_receipt_hash(h, receipt.source_retrieval_example_learning_admission_hash);
+    h = mix_receipt_hash(
+        h,
+        receipt.source_retrieval_example_learning_eligibility_hash,
+    );
     h = h.wrapping_mul(0x100000001b3)
         ^ receipt.source_retrieval_result_use_summary_manifest_approval_admission_consumption_hash;
     h = h.wrapping_mul(0x100000001b3)
@@ -16444,11 +16487,11 @@ fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admissio
         ^ receipt.source_retrieval_result_use_summary_manifest_readiness_hash;
     h = h.wrapping_mul(0x100000001b3)
         ^ receipt.source_retrieval_result_use_summary_manifest_admission_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_example_storage_admitted);
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_example_storage_admitted));
     h = h.wrapping_mul(0x100000001b3)
         ^ u64::from(receipt.retrieval_example_materialization_plan_ready);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_example_learning_admitted);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_example_learning_eligible);
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_example_learning_admitted));
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_example_learning_eligible));
     h = h.wrapping_mul(0x100000001b3)
         ^ u64::from(receipt.retrieval_result_use_summary_manifest_approval_admission_consumed);
     h = h.wrapping_mul(0x100000001b3)
@@ -16459,21 +16502,27 @@ fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admissio
         ^ u64::from(receipt.retrieval_result_use_summary_manifest_ready_for_use);
     h = h.wrapping_mul(0x100000001b3)
         ^ u64::from(receipt.retrieval_result_use_summary_manifest_admitted);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_read_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_write_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_query_executed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.runtime_result_approval_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.policy_promotion_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.batch_execution_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.student_training_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.external_result_evidence_present);
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.storage_commit_intent_policy_reuse_examples as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.storage_commit_intent_llm_fallback_examples as u64;
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_read_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_write_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_query_executed));
+    h = mix_receipt_hash(h, u64::from(receipt.runtime_result_approval_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.policy_promotion_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.batch_execution_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.student_training_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.external_result_evidence_present));
+    h = mix_receipt_hash(
+        h,
+        receipt.storage_commit_intent_policy_reuse_examples as u64,
+    );
+    h = mix_receipt_hash(
+        h,
+        receipt.storage_commit_intent_llm_fallback_examples as u64,
+    );
     h = h.wrapping_mul(0x100000001b3)
         ^ u64::from(receipt.retrieval_example_storage_commit_intent_ready);
-    h = h.wrapping_mul(0x100000001b3) ^ status_code;
-    h = h.wrapping_mul(0x100000001b3) ^ reason_code;
-    h.max(1)
+    h = mix_receipt_hash(h, status_code);
+    h = mix_receipt_hash(h, reason_code);
+    nonzero_receipt_hash(h)
 }
 
 fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_consumption_learning_storage_commit_intent_receipt_hash(
@@ -16486,7 +16535,7 @@ fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admissio
     if intent_hash == 0 || receipt.retrieval_example_storage_commit_intent_hash != intent_hash {
         return 0;
     }
-    (intent_hash ^ 0x504f_4c52_5553_4351u64).max(1)
+    nonzero_receipt_hash(intent_hash ^ 0x504f_4c52_5553_4351u64)
 }
 
 fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_consumption_learning_storage_write_preflight_hash(
@@ -16520,14 +16569,23 @@ fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admissio
         return 0;
     }
     let mut h = 0x504f_4c52_5553_5750u64;
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.schema.as_bytes());
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.record_type.as_bytes());
+    h = mix_receipt_str_hash(h, receipt.schema);
+    h = mix_receipt_str_hash(h, receipt.record_type);
     h = h.wrapping_mul(0x100000001b3)
         ^ receipt.retrieval_example_learning_storage_write_preflight_version;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_retrieval_example_storage_commit_intent_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_retrieval_example_materialization_plan_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_retrieval_example_learning_admission_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_retrieval_example_learning_eligibility_hash;
+    h = mix_receipt_hash(
+        h,
+        receipt.source_retrieval_example_storage_commit_intent_hash,
+    );
+    h = mix_receipt_hash(
+        h,
+        receipt.source_retrieval_example_materialization_plan_hash,
+    );
+    h = mix_receipt_hash(h, receipt.source_retrieval_example_learning_admission_hash);
+    h = mix_receipt_hash(
+        h,
+        receipt.source_retrieval_example_learning_eligibility_hash,
+    );
     h = h.wrapping_mul(0x100000001b3)
         ^ receipt.source_retrieval_result_use_summary_manifest_approval_admission_consumption_hash;
     h = h.wrapping_mul(0x100000001b3)
@@ -16540,11 +16598,11 @@ fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admissio
         ^ receipt.source_retrieval_result_use_summary_manifest_admission_hash;
     h = h.wrapping_mul(0x100000001b3)
         ^ u64::from(receipt.retrieval_example_storage_commit_intent_ready);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_example_storage_admitted);
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_example_storage_admitted));
     h = h.wrapping_mul(0x100000001b3)
         ^ u64::from(receipt.retrieval_example_materialization_plan_ready);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_example_learning_admitted);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_example_learning_eligible);
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_example_learning_admitted));
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_example_learning_eligible));
     h = h.wrapping_mul(0x100000001b3)
         ^ u64::from(receipt.retrieval_result_use_summary_manifest_approval_admission_consumed);
     h = h.wrapping_mul(0x100000001b3)
@@ -16555,23 +16613,23 @@ fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admissio
         ^ u64::from(receipt.retrieval_result_use_summary_manifest_ready_for_use);
     h = h.wrapping_mul(0x100000001b3)
         ^ u64::from(receipt.retrieval_result_use_summary_manifest_admitted);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_read_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_write_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_query_executed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.runtime_result_approval_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.policy_promotion_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.batch_execution_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.student_training_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.external_result_evidence_present);
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_read_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_write_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_query_executed));
+    h = mix_receipt_hash(h, u64::from(receipt.runtime_result_approval_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.policy_promotion_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.batch_execution_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.student_training_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.external_result_evidence_present));
     h = h.wrapping_mul(0x100000001b3)
         ^ receipt.storage_write_preflight_policy_reuse_examples as u64;
     h = h.wrapping_mul(0x100000001b3)
         ^ receipt.storage_write_preflight_llm_fallback_examples as u64;
     h = h.wrapping_mul(0x100000001b3)
         ^ u64::from(receipt.retrieval_example_storage_write_preflight_ready);
-    h = h.wrapping_mul(0x100000001b3) ^ status_code;
-    h = h.wrapping_mul(0x100000001b3) ^ reason_code;
-    h.max(1)
+    h = mix_receipt_hash(h, status_code);
+    h = mix_receipt_hash(h, reason_code);
+    nonzero_receipt_hash(h)
 }
 
 fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_consumption_learning_storage_write_preflight_receipt_hash(
@@ -16586,7 +16644,7 @@ fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admissio
     {
         return 0;
     }
-    (preflight_hash ^ 0x504f_4c52_5553_5751u64).max(1)
+    nonzero_receipt_hash(preflight_hash ^ 0x504f_4c52_5553_5751u64)
 }
 
 fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_consumption_learning_storage_write_approval_hash(
@@ -16621,16 +16679,25 @@ fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admissio
         return 0;
     }
     let mut h = 0x504f_4c52_5553_5741u64;
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.schema.as_bytes());
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.record_type.as_bytes());
+    h = mix_receipt_str_hash(h, receipt.schema);
+    h = mix_receipt_str_hash(h, receipt.record_type);
     h = h.wrapping_mul(0x100000001b3)
         ^ receipt.retrieval_example_learning_storage_write_approval_version;
     h = h.wrapping_mul(0x100000001b3)
         ^ receipt.source_retrieval_example_storage_write_preflight_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_retrieval_example_storage_commit_intent_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_retrieval_example_materialization_plan_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_retrieval_example_learning_admission_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_retrieval_example_learning_eligibility_hash;
+    h = mix_receipt_hash(
+        h,
+        receipt.source_retrieval_example_storage_commit_intent_hash,
+    );
+    h = mix_receipt_hash(
+        h,
+        receipt.source_retrieval_example_materialization_plan_hash,
+    );
+    h = mix_receipt_hash(h, receipt.source_retrieval_example_learning_admission_hash);
+    h = mix_receipt_hash(
+        h,
+        receipt.source_retrieval_example_learning_eligibility_hash,
+    );
     h = h.wrapping_mul(0x100000001b3)
         ^ receipt.source_retrieval_result_use_summary_manifest_approval_admission_consumption_hash;
     h = h.wrapping_mul(0x100000001b3)
@@ -16645,11 +16712,11 @@ fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admissio
         ^ u64::from(receipt.retrieval_example_storage_write_preflight_ready);
     h = h.wrapping_mul(0x100000001b3)
         ^ u64::from(receipt.retrieval_example_storage_commit_intent_ready);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_example_storage_admitted);
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_example_storage_admitted));
     h = h.wrapping_mul(0x100000001b3)
         ^ u64::from(receipt.retrieval_example_materialization_plan_ready);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_example_learning_admitted);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_example_learning_eligible);
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_example_learning_admitted));
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_example_learning_eligible));
     h = h.wrapping_mul(0x100000001b3)
         ^ u64::from(receipt.retrieval_result_use_summary_manifest_approval_admission_consumed);
     h = h.wrapping_mul(0x100000001b3)
@@ -16660,20 +16727,29 @@ fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admissio
         ^ u64::from(receipt.retrieval_result_use_summary_manifest_ready_for_use);
     h = h.wrapping_mul(0x100000001b3)
         ^ u64::from(receipt.retrieval_result_use_summary_manifest_admitted);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_read_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_write_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_query_executed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.runtime_result_approval_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.policy_promotion_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.batch_execution_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.student_training_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.external_result_evidence_present);
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.storage_write_approval_policy_reuse_examples as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.storage_write_approval_llm_fallback_examples as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_example_storage_write_approved);
-    h = h.wrapping_mul(0x100000001b3) ^ status_code;
-    h = h.wrapping_mul(0x100000001b3) ^ reason_code;
-    h.max(1)
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_read_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_write_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_query_executed));
+    h = mix_receipt_hash(h, u64::from(receipt.runtime_result_approval_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.policy_promotion_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.batch_execution_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.student_training_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.external_result_evidence_present));
+    h = mix_receipt_hash(
+        h,
+        receipt.storage_write_approval_policy_reuse_examples as u64,
+    );
+    h = mix_receipt_hash(
+        h,
+        receipt.storage_write_approval_llm_fallback_examples as u64,
+    );
+    h = mix_receipt_hash(
+        h,
+        u64::from(receipt.retrieval_example_storage_write_approved),
+    );
+    h = mix_receipt_hash(h, status_code);
+    h = mix_receipt_hash(h, reason_code);
+    nonzero_receipt_hash(h)
 }
 
 fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_consumption_learning_storage_write_approval_receipt_hash(
@@ -16687,7 +16763,7 @@ fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admissio
     {
         return 0;
     }
-    (approval_hash ^ 0x504f_4c52_5553_5742u64).max(1)
+    nonzero_receipt_hash(approval_hash ^ 0x504f_4c52_5553_5742u64)
 }
 
 fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_consumption_learning_storage_write_admission_hash(
@@ -16723,18 +16799,27 @@ fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admissio
         return 0;
     }
     let mut h = 0x504f_4c52_5553_5743u64;
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.schema.as_bytes());
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.record_type.as_bytes());
+    h = mix_receipt_str_hash(h, receipt.schema);
+    h = mix_receipt_str_hash(h, receipt.record_type);
     h = h.wrapping_mul(0x100000001b3)
         ^ receipt.retrieval_example_learning_storage_write_admission_version;
     h = h.wrapping_mul(0x100000001b3)
         ^ receipt.source_retrieval_example_storage_write_approval_hash;
     h = h.wrapping_mul(0x100000001b3)
         ^ receipt.source_retrieval_example_storage_write_preflight_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_retrieval_example_storage_commit_intent_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_retrieval_example_materialization_plan_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_retrieval_example_learning_admission_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_retrieval_example_learning_eligibility_hash;
+    h = mix_receipt_hash(
+        h,
+        receipt.source_retrieval_example_storage_commit_intent_hash,
+    );
+    h = mix_receipt_hash(
+        h,
+        receipt.source_retrieval_example_materialization_plan_hash,
+    );
+    h = mix_receipt_hash(h, receipt.source_retrieval_example_learning_admission_hash);
+    h = mix_receipt_hash(
+        h,
+        receipt.source_retrieval_example_learning_eligibility_hash,
+    );
     h = h.wrapping_mul(0x100000001b3)
         ^ receipt.source_retrieval_result_use_summary_manifest_approval_admission_consumption_hash;
     h = h.wrapping_mul(0x100000001b3)
@@ -16745,16 +16830,19 @@ fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admissio
         ^ receipt.source_retrieval_result_use_summary_manifest_readiness_hash;
     h = h.wrapping_mul(0x100000001b3)
         ^ receipt.source_retrieval_result_use_summary_manifest_admission_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_example_storage_write_approved);
+    h = mix_receipt_hash(
+        h,
+        u64::from(receipt.retrieval_example_storage_write_approved),
+    );
     h = h.wrapping_mul(0x100000001b3)
         ^ u64::from(receipt.retrieval_example_storage_write_preflight_ready);
     h = h.wrapping_mul(0x100000001b3)
         ^ u64::from(receipt.retrieval_example_storage_commit_intent_ready);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_example_storage_admitted);
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_example_storage_admitted));
     h = h.wrapping_mul(0x100000001b3)
         ^ u64::from(receipt.retrieval_example_materialization_plan_ready);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_example_learning_admitted);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_example_learning_eligible);
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_example_learning_admitted));
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_example_learning_eligible));
     h = h.wrapping_mul(0x100000001b3)
         ^ u64::from(receipt.retrieval_result_use_summary_manifest_approval_admission_consumed);
     h = h.wrapping_mul(0x100000001b3)
@@ -16765,22 +16853,25 @@ fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admissio
         ^ u64::from(receipt.retrieval_result_use_summary_manifest_ready_for_use);
     h = h.wrapping_mul(0x100000001b3)
         ^ u64::from(receipt.retrieval_result_use_summary_manifest_admitted);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_read_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_write_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_query_executed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.runtime_result_approval_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.policy_promotion_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.batch_execution_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.student_training_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.external_result_evidence_present);
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_read_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_write_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_query_executed));
+    h = mix_receipt_hash(h, u64::from(receipt.runtime_result_approval_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.policy_promotion_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.batch_execution_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.student_training_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.external_result_evidence_present));
     h = h.wrapping_mul(0x100000001b3)
         ^ receipt.storage_write_admission_policy_reuse_examples as u64;
     h = h.wrapping_mul(0x100000001b3)
         ^ receipt.storage_write_admission_llm_fallback_examples as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_example_storage_write_admitted);
-    h = h.wrapping_mul(0x100000001b3) ^ status_code;
-    h = h.wrapping_mul(0x100000001b3) ^ reason_code;
-    h.max(1)
+    h = mix_receipt_hash(
+        h,
+        u64::from(receipt.retrieval_example_storage_write_admitted),
+    );
+    h = mix_receipt_hash(h, status_code);
+    h = mix_receipt_hash(h, reason_code);
+    nonzero_receipt_hash(h)
 }
 
 fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_consumption_learning_storage_write_admission_receipt_hash(
@@ -16795,7 +16886,7 @@ fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admissio
     {
         return 0;
     }
-    (admission_hash ^ 0x504f_4c52_5553_5744u64).max(1)
+    nonzero_receipt_hash(admission_hash ^ 0x504f_4c52_5553_5744u64)
 }
 
 fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_consumption_learning_storage_write_commit_intent_hash(
@@ -16832,8 +16923,8 @@ fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admissio
         return 0;
     }
     let mut h = 0x504f_4c52_5553_5745u64;
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.schema.as_bytes());
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.record_type.as_bytes());
+    h = mix_receipt_str_hash(h, receipt.schema);
+    h = mix_receipt_str_hash(h, receipt.record_type);
     h = h.wrapping_mul(0x100000001b3)
         ^ receipt.retrieval_example_learning_storage_write_commit_intent_version;
     h = h.wrapping_mul(0x100000001b3)
@@ -16842,10 +16933,19 @@ fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admissio
         ^ receipt.source_retrieval_example_storage_write_approval_hash;
     h = h.wrapping_mul(0x100000001b3)
         ^ receipt.source_retrieval_example_storage_write_preflight_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_retrieval_example_storage_commit_intent_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_retrieval_example_materialization_plan_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_retrieval_example_learning_admission_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_retrieval_example_learning_eligibility_hash;
+    h = mix_receipt_hash(
+        h,
+        receipt.source_retrieval_example_storage_commit_intent_hash,
+    );
+    h = mix_receipt_hash(
+        h,
+        receipt.source_retrieval_example_materialization_plan_hash,
+    );
+    h = mix_receipt_hash(h, receipt.source_retrieval_example_learning_admission_hash);
+    h = mix_receipt_hash(
+        h,
+        receipt.source_retrieval_example_learning_eligibility_hash,
+    );
     h = h.wrapping_mul(0x100000001b3)
         ^ receipt.source_retrieval_result_use_summary_manifest_approval_admission_consumption_hash;
     h = h.wrapping_mul(0x100000001b3)
@@ -16856,17 +16956,23 @@ fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admissio
         ^ receipt.source_retrieval_result_use_summary_manifest_readiness_hash;
     h = h.wrapping_mul(0x100000001b3)
         ^ receipt.source_retrieval_result_use_summary_manifest_admission_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_example_storage_write_admitted);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_example_storage_write_approved);
+    h = mix_receipt_hash(
+        h,
+        u64::from(receipt.retrieval_example_storage_write_admitted),
+    );
+    h = mix_receipt_hash(
+        h,
+        u64::from(receipt.retrieval_example_storage_write_approved),
+    );
     h = h.wrapping_mul(0x100000001b3)
         ^ u64::from(receipt.retrieval_example_storage_write_preflight_ready);
     h = h.wrapping_mul(0x100000001b3)
         ^ u64::from(receipt.retrieval_example_storage_commit_intent_ready);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_example_storage_admitted);
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_example_storage_admitted));
     h = h.wrapping_mul(0x100000001b3)
         ^ u64::from(receipt.retrieval_example_materialization_plan_ready);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_example_learning_admitted);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_example_learning_eligible);
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_example_learning_admitted));
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_example_learning_eligible));
     h = h.wrapping_mul(0x100000001b3)
         ^ u64::from(receipt.retrieval_result_use_summary_manifest_approval_admission_consumed);
     h = h.wrapping_mul(0x100000001b3)
@@ -16877,23 +16983,23 @@ fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admissio
         ^ u64::from(receipt.retrieval_result_use_summary_manifest_ready_for_use);
     h = h.wrapping_mul(0x100000001b3)
         ^ u64::from(receipt.retrieval_result_use_summary_manifest_admitted);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_read_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_write_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_query_executed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.runtime_result_approval_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.policy_promotion_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.batch_execution_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.student_training_performed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.external_result_evidence_present);
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_read_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_write_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.retrieval_query_executed));
+    h = mix_receipt_hash(h, u64::from(receipt.runtime_result_approval_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.policy_promotion_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.batch_execution_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.student_training_performed));
+    h = mix_receipt_hash(h, u64::from(receipt.external_result_evidence_present));
     h = h.wrapping_mul(0x100000001b3)
         ^ receipt.storage_write_commit_intent_policy_reuse_examples as u64;
     h = h.wrapping_mul(0x100000001b3)
         ^ receipt.storage_write_commit_intent_llm_fallback_examples as u64;
     h = h.wrapping_mul(0x100000001b3)
         ^ u64::from(receipt.retrieval_example_storage_write_commit_intent_ready);
-    h = h.wrapping_mul(0x100000001b3) ^ status_code;
-    h = h.wrapping_mul(0x100000001b3) ^ reason_code;
-    h.max(1)
+    h = mix_receipt_hash(h, status_code);
+    h = mix_receipt_hash(h, reason_code);
+    nonzero_receipt_hash(h)
 }
 
 fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_consumption_learning_storage_write_commit_intent_receipt_hash(
@@ -16907,7 +17013,7 @@ fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admissio
     {
         return 0;
     }
-    (intent_hash ^ 0x504f_4c52_5553_5746u64).max(1)
+    nonzero_receipt_hash(intent_hash ^ 0x504f_4c52_5553_5746u64)
 }
 
 fn policy_reuse_evidence_summary_hash(receipt: &PolicyReuseEvidenceSummaryReceipt) -> u64 {
@@ -16946,18 +17052,18 @@ fn policy_reuse_evidence_summary_hash(receipt: &PolicyReuseEvidenceSummaryReceip
         return 0;
     }
     let mut h = 0x504f_4c52_4553_5548u64;
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.schema.as_bytes());
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.record_type.as_bytes());
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.summary_version;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_maturity_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_quickcheck_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_bundle_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ maturity_stage_code;
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.promotion_eligible);
-    h = h.wrapping_mul(0x100000001b3) ^ summary_status_code;
-    h = h.wrapping_mul(0x100000001b3) ^ evaluator_action_code;
-    h = h.wrapping_mul(0x100000001b3) ^ regression_reason_code;
-    h.max(1)
+    h = mix_receipt_str_hash(h, receipt.schema);
+    h = mix_receipt_str_hash(h, receipt.record_type);
+    h = mix_receipt_hash(h, receipt.summary_version);
+    h = mix_receipt_hash(h, receipt.source_maturity_hash);
+    h = mix_receipt_hash(h, receipt.source_quickcheck_hash);
+    h = mix_receipt_hash(h, receipt.source_bundle_hash);
+    h = mix_receipt_hash(h, maturity_stage_code);
+    h = mix_receipt_hash(h, u64::from(receipt.promotion_eligible));
+    h = mix_receipt_hash(h, summary_status_code);
+    h = mix_receipt_hash(h, evaluator_action_code);
+    h = mix_receipt_hash(h, regression_reason_code);
+    nonzero_receipt_hash(h)
 }
 
 fn policy_reuse_evidence_summary_receipt_hash(receipt: &PolicyReuseEvidenceSummaryReceipt) -> u64 {
@@ -16965,7 +17071,7 @@ fn policy_reuse_evidence_summary_receipt_hash(receipt: &PolicyReuseEvidenceSumma
     if summary_hash == 0 || receipt.summary_hash != summary_hash {
         return 0;
     }
-    (summary_hash ^ 0x504f_4c52_4553_5552u64).max(1)
+    nonzero_receipt_hash(summary_hash ^ 0x504f_4c52_4553_5552u64)
 }
 
 fn policy_reuse_evidence_maturity_hash(receipt: &PolicyReuseEvidenceMaturityReceipt) -> u64 {
@@ -16990,19 +17096,19 @@ fn policy_reuse_evidence_maturity_hash(receipt: &PolicyReuseEvidenceMaturityRece
         return 0;
     }
     let mut h = 0x504f_4c52_454d_4148u64;
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.schema.as_bytes());
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.record_type.as_bytes());
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.maturity_version;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_quickcheck_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_bundle_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.validated_layer_count as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.required_layer_count as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ maturity_stage_code;
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.quickcheck_passed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.bundle_complete);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.promotion_eligible);
-    h = h.wrapping_mul(0x100000001b3) ^ regression_reason_code;
-    h.max(1)
+    h = mix_receipt_str_hash(h, receipt.schema);
+    h = mix_receipt_str_hash(h, receipt.record_type);
+    h = mix_receipt_hash(h, receipt.maturity_version);
+    h = mix_receipt_hash(h, receipt.source_quickcheck_hash);
+    h = mix_receipt_hash(h, receipt.source_bundle_hash);
+    h = mix_receipt_hash(h, receipt.validated_layer_count as u64);
+    h = mix_receipt_hash(h, receipt.required_layer_count as u64);
+    h = mix_receipt_hash(h, maturity_stage_code);
+    h = mix_receipt_hash(h, u64::from(receipt.quickcheck_passed));
+    h = mix_receipt_hash(h, u64::from(receipt.bundle_complete));
+    h = mix_receipt_hash(h, u64::from(receipt.promotion_eligible));
+    h = mix_receipt_hash(h, regression_reason_code);
+    nonzero_receipt_hash(h)
 }
 
 fn policy_reuse_evidence_maturity_receipt_hash(
@@ -17012,7 +17118,7 @@ fn policy_reuse_evidence_maturity_receipt_hash(
     if maturity_hash == 0 || receipt.maturity_hash != maturity_hash {
         return 0;
     }
-    (maturity_hash ^ 0x504f_4c52_454d_4152u64).max(1)
+    nonzero_receipt_hash(maturity_hash ^ 0x504f_4c52_454d_4152u64)
 }
 
 fn policy_reuse_evidence_quickcheck_command_set_hash() -> u64 {
@@ -17023,9 +17129,9 @@ fn policy_reuse_evidence_quickcheck_command_set_hash() -> u64 {
         "cargo test --test validation_harness_contract",
         "cargo test --test score_contract --test planning_contract",
     ] {
-        h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(command.as_bytes());
+        h = mix_receipt_hash(h, stable_hash64(command.as_bytes()));
     }
-    h.max(1)
+    nonzero_receipt_hash(h)
 }
 
 fn policy_reuse_evidence_quickcheck_hash(receipt: &PolicyReuseEvidenceQuickcheckReceipt) -> u64 {
@@ -17046,19 +17152,19 @@ fn policy_reuse_evidence_quickcheck_hash(receipt: &PolicyReuseEvidenceQuickcheck
         return 0;
     }
     let mut h = 0x504f_4c52_4551_5548u64;
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.schema.as_bytes());
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.record_type.as_bytes());
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.quickcheck_version;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_bundle_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.validation_harness_expected_tests as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.required_command_count as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.observed_command_count as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.minimum_command_set_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.bundle_complete);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.commands_complete);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.quickcheck_passed);
-    h = h.wrapping_mul(0x100000001b3) ^ missing_command_code;
-    h.max(1)
+    h = mix_receipt_str_hash(h, receipt.schema);
+    h = mix_receipt_str_hash(h, receipt.record_type);
+    h = mix_receipt_hash(h, receipt.quickcheck_version);
+    h = mix_receipt_hash(h, receipt.source_bundle_hash);
+    h = mix_receipt_hash(h, receipt.validation_harness_expected_tests as u64);
+    h = mix_receipt_hash(h, receipt.required_command_count as u64);
+    h = mix_receipt_hash(h, receipt.observed_command_count as u64);
+    h = mix_receipt_hash(h, receipt.minimum_command_set_hash);
+    h = mix_receipt_hash(h, u64::from(receipt.bundle_complete));
+    h = mix_receipt_hash(h, u64::from(receipt.commands_complete));
+    h = mix_receipt_hash(h, u64::from(receipt.quickcheck_passed));
+    h = mix_receipt_hash(h, missing_command_code);
+    nonzero_receipt_hash(h)
 }
 
 fn policy_reuse_evidence_quickcheck_receipt_hash(
@@ -17068,7 +17174,7 @@ fn policy_reuse_evidence_quickcheck_receipt_hash(
     if quickcheck_hash == 0 || receipt.quickcheck_hash != quickcheck_hash {
         return 0;
     }
-    (quickcheck_hash ^ 0x504f_4c52_4551_5552u64).max(1)
+    nonzero_receipt_hash(quickcheck_hash ^ 0x504f_4c52_4551_5552u64)
 }
 
 fn policy_reuse_evidence_bundle_hash(receipt: &PolicyReuseEvidenceBundleReceipt) -> u64 {
@@ -17092,23 +17198,23 @@ fn policy_reuse_evidence_bundle_hash(receipt: &PolicyReuseEvidenceBundleReceipt)
         return 0;
     }
     let mut h = 0x504f_4c52_4542_5548u64;
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.schema.as_bytes());
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.record_type.as_bytes());
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.bundle_version;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_surface_index_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_policy_reuse_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_cost_catalog_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_evaluator_savings_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_scaling_projection_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_distillation_readiness_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.bundled_evidence_family_count as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.bundled_root_mode_count as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.bundled_dependency_group_count as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.surface_index_complete);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.source_hashes_complete);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.bundle_complete);
-    h = h.wrapping_mul(0x100000001b3) ^ regression_reason_code;
-    h.max(1)
+    h = mix_receipt_str_hash(h, receipt.schema);
+    h = mix_receipt_str_hash(h, receipt.record_type);
+    h = mix_receipt_hash(h, receipt.bundle_version);
+    h = mix_receipt_hash(h, receipt.source_surface_index_hash);
+    h = mix_receipt_hash(h, receipt.source_policy_reuse_hash);
+    h = mix_receipt_hash(h, receipt.source_cost_catalog_hash);
+    h = mix_receipt_hash(h, receipt.source_evaluator_savings_hash);
+    h = mix_receipt_hash(h, receipt.source_scaling_projection_hash);
+    h = mix_receipt_hash(h, receipt.source_distillation_readiness_hash);
+    h = mix_receipt_hash(h, receipt.bundled_evidence_family_count as u64);
+    h = mix_receipt_hash(h, receipt.bundled_root_mode_count as u64);
+    h = mix_receipt_hash(h, receipt.bundled_dependency_group_count as u64);
+    h = mix_receipt_hash(h, u64::from(receipt.surface_index_complete));
+    h = mix_receipt_hash(h, u64::from(receipt.source_hashes_complete));
+    h = mix_receipt_hash(h, u64::from(receipt.bundle_complete));
+    h = mix_receipt_hash(h, regression_reason_code);
+    nonzero_receipt_hash(h)
 }
 
 fn policy_reuse_evidence_bundle_receipt_hash(receipt: &PolicyReuseEvidenceBundleReceipt) -> u64 {
@@ -17116,7 +17222,7 @@ fn policy_reuse_evidence_bundle_receipt_hash(receipt: &PolicyReuseEvidenceBundle
     if bundle_hash == 0 || receipt.bundle_hash != bundle_hash {
         return 0;
     }
-    (bundle_hash ^ 0x504f_4c52_4542_5552u64).max(1)
+    nonzero_receipt_hash(bundle_hash ^ 0x504f_4c52_4542_5552u64)
 }
 
 fn policy_reuse_evidence_surface_index_hash(
@@ -17142,25 +17248,25 @@ fn policy_reuse_evidence_surface_index_hash(
         return 0;
     }
     let mut h = 0x504f_4c52_4553_4948u64;
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.schema.as_bytes());
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.record_type.as_bytes());
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.index_version;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.evidence_family_count as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.healthy_mode_count as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.regression_mode_count as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.dependency_group_count as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.indexed_root_mode_count as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_policy_reuse_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_cost_catalog_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_evaluator_savings_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_scaling_projection_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_distillation_readiness_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.required_healthy_modes_present);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.required_regression_modes_present);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.required_dependency_groups_present);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.index_complete);
-    h = h.wrapping_mul(0x100000001b3) ^ missing_surface_code;
-    h.max(1)
+    h = mix_receipt_str_hash(h, receipt.schema);
+    h = mix_receipt_str_hash(h, receipt.record_type);
+    h = mix_receipt_hash(h, receipt.index_version);
+    h = mix_receipt_hash(h, receipt.evidence_family_count as u64);
+    h = mix_receipt_hash(h, receipt.healthy_mode_count as u64);
+    h = mix_receipt_hash(h, receipt.regression_mode_count as u64);
+    h = mix_receipt_hash(h, receipt.dependency_group_count as u64);
+    h = mix_receipt_hash(h, receipt.indexed_root_mode_count as u64);
+    h = mix_receipt_hash(h, receipt.source_policy_reuse_hash);
+    h = mix_receipt_hash(h, receipt.source_cost_catalog_hash);
+    h = mix_receipt_hash(h, receipt.source_evaluator_savings_hash);
+    h = mix_receipt_hash(h, receipt.source_scaling_projection_hash);
+    h = mix_receipt_hash(h, receipt.source_distillation_readiness_hash);
+    h = mix_receipt_hash(h, u64::from(receipt.required_healthy_modes_present));
+    h = mix_receipt_hash(h, u64::from(receipt.required_regression_modes_present));
+    h = mix_receipt_hash(h, u64::from(receipt.required_dependency_groups_present));
+    h = mix_receipt_hash(h, u64::from(receipt.index_complete));
+    h = mix_receipt_hash(h, missing_surface_code);
+    nonzero_receipt_hash(h)
 }
 
 fn policy_reuse_evidence_surface_index_receipt_hash(
@@ -17170,7 +17276,7 @@ fn policy_reuse_evidence_surface_index_receipt_hash(
     if surface_hash == 0 || receipt.surface_hash != surface_hash {
         return 0;
     }
-    (surface_hash ^ 0x504f_4c52_4553_4952u64).max(1)
+    nonzero_receipt_hash(surface_hash ^ 0x504f_4c52_4553_4952u64)
 }
 
 fn policy_reuse_scaling_projection_hash(receipt: &PolicyReuseScalingProjectionReceipt) -> u64 {
@@ -17191,23 +17297,23 @@ fn policy_reuse_scaling_projection_hash(receipt: &PolicyReuseScalingProjectionRe
         return 0;
     }
     let mut h = 0x504f_4c52_5350_4a48u64;
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.schema.as_bytes());
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.record_type.as_bytes());
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.projection_version;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_evaluator_savings_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_orchestration_capacity_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.batch_capacity_limit as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.retained_sample_runs as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.retained_llm_calls_avoided as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.retained_cost_units_avoided;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.cost_units_per_llm_call;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.projected_llm_calls_avoided_per_full_batch as u64;
+    h = mix_receipt_str_hash(h, receipt.schema);
+    h = mix_receipt_str_hash(h, receipt.record_type);
+    h = mix_receipt_hash(h, receipt.projection_version);
+    h = mix_receipt_hash(h, receipt.source_evaluator_savings_hash);
+    h = mix_receipt_hash(h, receipt.source_orchestration_capacity_hash);
+    h = mix_receipt_hash(h, receipt.batch_capacity_limit as u64);
+    h = mix_receipt_hash(h, receipt.retained_sample_runs as u64);
+    h = mix_receipt_hash(h, receipt.retained_llm_calls_avoided as u64);
+    h = mix_receipt_hash(h, receipt.retained_cost_units_avoided);
+    h = mix_receipt_hash(h, receipt.cost_units_per_llm_call);
+    h = mix_receipt_hash(h, receipt.projected_llm_calls_avoided_per_full_batch as u64);
     h = h.wrapping_mul(0x100000001b3)
         ^ receipt.projected_reasoning_cost_units_avoided_per_full_batch;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.projected_llm_fallbacks_per_full_batch as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.projection_passed);
-    h = h.wrapping_mul(0x100000001b3) ^ regression_reason_code;
-    h.max(1)
+    h = mix_receipt_hash(h, receipt.projected_llm_fallbacks_per_full_batch as u64);
+    h = mix_receipt_hash(h, u64::from(receipt.projection_passed));
+    h = mix_receipt_hash(h, regression_reason_code);
+    nonzero_receipt_hash(h)
 }
 
 fn policy_reuse_scaling_projection_receipt_hash(
@@ -17217,7 +17323,7 @@ fn policy_reuse_scaling_projection_receipt_hash(
     if projection_hash == 0 || receipt.projection_hash != projection_hash {
         return 0;
     }
-    (projection_hash ^ 0x504f_4c52_5350_4a52u64).max(1)
+    nonzero_receipt_hash(projection_hash ^ 0x504f_4c52_5350_4a52u64)
 }
 
 fn policy_reuse_distillation_readiness_hash(
@@ -17244,27 +17350,27 @@ fn policy_reuse_distillation_readiness_hash(
         return 0;
     }
     let mut h = 0x504f_4c52_4452_4459u64;
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.schema.as_bytes());
-    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.record_type.as_bytes());
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.readiness_version;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_policy_reuse_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_cost_catalog_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_evaluator_savings_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_scaling_projection_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_validation_health_hash;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.verified_policy_hits as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.verified_llm_calls_avoided as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.projected_llm_calls_avoided_per_full_batch as u64;
+    h = mix_receipt_str_hash(h, receipt.schema);
+    h = mix_receipt_str_hash(h, receipt.record_type);
+    h = mix_receipt_hash(h, receipt.readiness_version);
+    h = mix_receipt_hash(h, receipt.source_policy_reuse_hash);
+    h = mix_receipt_hash(h, receipt.source_cost_catalog_hash);
+    h = mix_receipt_hash(h, receipt.source_evaluator_savings_hash);
+    h = mix_receipt_hash(h, receipt.source_scaling_projection_hash);
+    h = mix_receipt_hash(h, receipt.source_validation_health_hash);
+    h = mix_receipt_hash(h, receipt.verified_policy_hits as u64);
+    h = mix_receipt_hash(h, receipt.verified_llm_calls_avoided as u64);
+    h = mix_receipt_hash(h, receipt.projected_llm_calls_avoided_per_full_batch as u64);
     h = h.wrapping_mul(0x100000001b3)
         ^ receipt.projected_reasoning_cost_units_avoided_per_full_batch;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.validation_guarded_test_count as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.catalog_complete);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.evaluator_savings_passed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.scaling_projection_passed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.validation_health_passed);
-    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.distillation_ready);
-    h = h.wrapping_mul(0x100000001b3) ^ regression_reason_code;
-    h.max(1)
+    h = mix_receipt_hash(h, receipt.validation_guarded_test_count as u64);
+    h = mix_receipt_hash(h, u64::from(receipt.catalog_complete));
+    h = mix_receipt_hash(h, u64::from(receipt.evaluator_savings_passed));
+    h = mix_receipt_hash(h, u64::from(receipt.scaling_projection_passed));
+    h = mix_receipt_hash(h, u64::from(receipt.validation_health_passed));
+    h = mix_receipt_hash(h, u64::from(receipt.distillation_ready));
+    h = mix_receipt_hash(h, regression_reason_code);
+    nonzero_receipt_hash(h)
 }
 
 fn policy_reuse_distillation_readiness_receipt_hash(
@@ -17274,7 +17380,7 @@ fn policy_reuse_distillation_readiness_receipt_hash(
     if readiness_hash == 0 || receipt.readiness_hash != readiness_hash {
         return 0;
     }
-    (readiness_hash ^ 0x504f_4c52_4452_4452u64).max(1)
+    nonzero_receipt_hash(readiness_hash ^ 0x504f_4c52_4452_4452u64)
 }
 
 fn policy_reuse_smoke_records_array() -> [crate::capability::judgment::PolicyJudgmentRecord; 2] {
