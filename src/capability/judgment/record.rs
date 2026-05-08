@@ -138,6 +138,29 @@ pub struct PolicyReusePerformanceCostTrendReceipt {
     pub receipt_hash: u64,
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PolicyReuseCostCatalogReceipt {
+    pub schema_version: u64,
+    pub record_type: &'static str,
+    pub catalog_version: u64,
+    pub evidence_family_count: usize,
+    pub healthy_mode_count: usize,
+    pub regression_mode_count: usize,
+    pub retained_fixture_count: usize,
+    pub required_healthy_modes_present: bool,
+    pub required_regression_modes_present: bool,
+    pub summary_complete: bool,
+    pub missing_required_modes: &'static str,
+    pub source_policy_reuse_hash: u64,
+    pub source_scale_trace_hash: u64,
+    pub source_performance_cost_trend_hash: u64,
+    pub source_validation_health_hash: u64,
+    pub source_validation_duration_hash: u64,
+    pub source_runtime_performance_hash: u64,
+    pub catalog_hash: u64,
+    pub receipt_hash: u64,
+}
+
 impl PolicyReuseLedgerSummaryReceipt {
     pub fn from_reuse_validation_counts(
         reuse: &PolicyReuseReceipt,
@@ -366,6 +389,111 @@ impl PolicyReusePerformanceCostTrendReceipt {
 
     pub fn passed(&self) -> bool {
         self.is_valid() && !self.cost_regression_flag
+    }
+}
+
+impl PolicyReuseCostCatalogReceipt {
+    #[allow(clippy::too_many_arguments)]
+    pub fn from_source_hashes(
+        evidence_family_count: usize,
+        healthy_mode_count: usize,
+        regression_mode_count: usize,
+        retained_fixture_count: usize,
+        required_healthy_modes_present: bool,
+        required_regression_modes_present: bool,
+        missing_required_modes: &'static str,
+        source_policy_reuse_hash: u64,
+        source_scale_trace_hash: u64,
+        source_performance_cost_trend_hash: u64,
+        source_validation_health_hash: u64,
+        source_validation_duration_hash: u64,
+        source_runtime_performance_hash: u64,
+    ) -> Self {
+        let summary_complete = required_healthy_modes_present
+            && required_regression_modes_present
+            && missing_required_modes == "none";
+        let mut receipt = Self {
+            schema_version: 1,
+            record_type: "policy_reuse_cost_catalog",
+            catalog_version: 1,
+            evidence_family_count,
+            healthy_mode_count,
+            regression_mode_count,
+            retained_fixture_count,
+            required_healthy_modes_present,
+            required_regression_modes_present,
+            summary_complete,
+            missing_required_modes,
+            source_policy_reuse_hash,
+            source_scale_trace_hash,
+            source_performance_cost_trend_hash,
+            source_validation_health_hash,
+            source_validation_duration_hash,
+            source_runtime_performance_hash,
+            catalog_hash: 0,
+            receipt_hash: 0,
+        };
+        receipt.catalog_hash = policy_reuse_cost_catalog_content_hash(&receipt);
+        receipt.receipt_hash = policy_reuse_cost_catalog_receipt_hash(&receipt);
+        receipt
+    }
+
+    pub fn to_json(&self) -> String {
+        format!(
+            "{{\"schema_version\":{},\"record_type\":\"{}\",\"catalog_version\":{},\"evidence_family_count\":{},\"healthy_mode_count\":{},\"regression_mode_count\":{},\"retained_fixture_count\":{},\"required_healthy_modes_present\":{},\"required_regression_modes_present\":{},\"summary_complete\":{},\"missing_required_modes\":\"{}\",\"source_policy_reuse_hash\":{},\"source_scale_trace_hash\":{},\"source_performance_cost_trend_hash\":{},\"source_validation_health_hash\":{},\"source_validation_duration_hash\":{},\"source_runtime_performance_hash\":{},\"catalog_hash\":{},\"receipt_hash\":{}}}",
+            self.schema_version,
+            self.record_type,
+            self.catalog_version,
+            self.evidence_family_count,
+            self.healthy_mode_count,
+            self.regression_mode_count,
+            self.retained_fixture_count,
+            self.required_healthy_modes_present,
+            self.required_regression_modes_present,
+            self.summary_complete,
+            self.missing_required_modes,
+            self.source_policy_reuse_hash,
+            self.source_scale_trace_hash,
+            self.source_performance_cost_trend_hash,
+            self.source_validation_health_hash,
+            self.source_validation_duration_hash,
+            self.source_runtime_performance_hash,
+            self.catalog_hash,
+            self.receipt_hash,
+        )
+    }
+
+    pub fn is_valid(&self) -> bool {
+        self.schema_version == 1
+            && self.catalog_version == 1
+            && matches!(
+                self.record_type,
+                "policy_reuse_cost_catalog"
+                    | "policy_reuse_cost_catalog_smoke"
+                    | "policy_reuse_cost_catalog_incomplete_smoke"
+            )
+            && self.evidence_family_count > 0
+            && self.healthy_mode_count > 0
+            && self.regression_mode_count > 0
+            && self.retained_fixture_count > 0
+            && self.summary_complete
+                == (self.required_healthy_modes_present
+                    && self.required_regression_modes_present
+                    && self.missing_required_modes == "none")
+            && self.source_policy_reuse_hash != 0
+            && self.source_scale_trace_hash != 0
+            && self.source_performance_cost_trend_hash != 0
+            && self.source_validation_health_hash != 0
+            && self.source_validation_duration_hash != 0
+            && self.source_runtime_performance_hash != 0
+            && self.catalog_hash != 0
+            && self.receipt_hash != 0
+            && self.catalog_hash == policy_reuse_cost_catalog_content_hash(self)
+            && self.receipt_hash == policy_reuse_cost_catalog_receipt_hash(self)
+    }
+
+    pub fn passed(&self) -> bool {
+        self.is_valid() && self.summary_complete
     }
 }
 
@@ -860,6 +988,63 @@ fn policy_reuse_performance_cost_trend_receipt_hash(
     h.max(1)
 }
 
+fn policy_reuse_cost_catalog_content_hash(receipt: &PolicyReuseCostCatalogReceipt) -> u64 {
+    if receipt.schema_version == 0
+        || receipt.catalog_version == 0
+        || receipt.source_policy_reuse_hash == 0
+        || receipt.source_scale_trace_hash == 0
+        || receipt.source_performance_cost_trend_hash == 0
+        || receipt.source_validation_health_hash == 0
+        || receipt.source_validation_duration_hash == 0
+        || receipt.source_runtime_performance_hash == 0
+    {
+        return 0;
+    }
+    let record_type_code = match receipt.record_type {
+        "policy_reuse_cost_catalog"
+        | "policy_reuse_cost_catalog_smoke"
+        | "policy_reuse_cost_catalog_incomplete_smoke" => 1,
+        _ => 0,
+    };
+    let missing_required_modes_code = match receipt.missing_required_modes {
+        "none" => 1,
+        "required_regression_modes" => 2,
+        "required_healthy_modes" => 3,
+        "required_healthy_modes,required_regression_modes" => 4,
+        _ => 0,
+    };
+    if record_type_code == 0 || missing_required_modes_code == 0 {
+        return 0;
+    }
+    let mut h = 0x504f_4c52_4341_5441u64;
+    h = mix(h, receipt.schema_version);
+    h = mix(h, record_type_code);
+    h = mix(h, receipt.catalog_version);
+    h = mix(h, receipt.evidence_family_count as u64);
+    h = mix(h, receipt.healthy_mode_count as u64);
+    h = mix(h, receipt.regression_mode_count as u64);
+    h = mix(h, receipt.retained_fixture_count as u64);
+    h = mix(h, u64::from(receipt.required_healthy_modes_present));
+    h = mix(h, u64::from(receipt.required_regression_modes_present));
+    h = mix(h, u64::from(receipt.summary_complete));
+    h = mix(h, missing_required_modes_code);
+    h = mix(h, receipt.source_policy_reuse_hash);
+    h = mix(h, receipt.source_scale_trace_hash);
+    h = mix(h, receipt.source_performance_cost_trend_hash);
+    h = mix(h, receipt.source_validation_health_hash);
+    h = mix(h, receipt.source_validation_duration_hash);
+    h = mix(h, receipt.source_runtime_performance_hash);
+    h.max(1)
+}
+
+fn policy_reuse_cost_catalog_receipt_hash(receipt: &PolicyReuseCostCatalogReceipt) -> u64 {
+    let catalog_hash = policy_reuse_cost_catalog_content_hash(receipt);
+    if catalog_hash == 0 || receipt.catalog_hash != catalog_hash {
+        return 0;
+    }
+    mix(0x504f_4c52_4341_5452u64, catalog_hash).max(1)
+}
+
 fn policy_judgment_record_hash(record: &PolicyJudgmentRecord) -> u64 {
     if record.context_hash == 0
         || record.policy_version == 0
@@ -1233,6 +1418,55 @@ mod tests {
 
         assert!(receipt.cost_regression_flag);
         assert!(receipt.is_valid());
+        assert!(!receipt.passed());
+    }
+
+    #[test]
+    fn policy_reuse_cost_catalog_binds_required_source_hashes() {
+        let receipt = PolicyReuseCostCatalogReceipt::from_source_hashes(
+            6, 4, 4, 6, true, true, "none", 0x101, 0x202, 0x303, 0x404, 0x505, 0x606,
+        );
+
+        assert_eq!(receipt.record_type, "policy_reuse_cost_catalog");
+        assert_eq!(receipt.catalog_version, 1);
+        assert_eq!(receipt.evidence_family_count, 6);
+        assert_eq!(receipt.healthy_mode_count, 4);
+        assert_eq!(receipt.regression_mode_count, 4);
+        assert_eq!(receipt.retained_fixture_count, 6);
+        assert!(receipt.required_healthy_modes_present);
+        assert!(receipt.required_regression_modes_present);
+        assert!(receipt.summary_complete);
+        assert_eq!(receipt.missing_required_modes, "none");
+        assert_ne!(receipt.catalog_hash, 0);
+        assert!(receipt.passed());
+
+        let mut tampered = receipt.clone();
+        tampered.source_runtime_performance_hash ^= 1;
+        assert!(!tampered.is_valid());
+    }
+
+    #[test]
+    fn policy_reuse_cost_catalog_flags_incomplete_coverage() {
+        let receipt = PolicyReuseCostCatalogReceipt::from_source_hashes(
+            6,
+            4,
+            3,
+            6,
+            true,
+            false,
+            "required_regression_modes",
+            0x101,
+            0x202,
+            0x303,
+            0x404,
+            0x505,
+            0x606,
+        );
+
+        assert!(receipt.is_valid());
+        assert!(!receipt.summary_complete);
+        assert!(!receipt.required_regression_modes_present);
+        assert_eq!(receipt.missing_required_modes, "required_regression_modes");
         assert!(!receipt.passed());
     }
 }

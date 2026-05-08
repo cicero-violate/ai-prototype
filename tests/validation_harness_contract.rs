@@ -29,8 +29,8 @@ use ai::validation_harness::{
     VALIDATION_FOOTPRINT_STEP, VALIDATION_HARNESS_EXPECTED_TESTS, VALIDATION_HARNESS_STEP,
 };
 
-const EXPECTED_ROOT_VALIDATE_COMPACT_MODE_COUNT: usize = 42;
-const EXPECTED_EXTERNAL_AGENT_CLI_MODE_COUNT: usize = 47;
+const EXPECTED_ROOT_VALIDATE_COMPACT_MODE_COUNT: usize = 44;
+const EXPECTED_EXTERNAL_AGENT_CLI_MODE_COUNT: usize = 49;
 
 fn expected_guarded_test_count() -> usize {
     VALIDATION_HARNESS_EXPECTED_TESTS + GRAPH_MUTATION_CLI_CONTRACT_EXPECTED_TESTS
@@ -74,7 +74,7 @@ fn root_validation_runs_check_before_contract_suites() {
         steps[4].expected_test_count,
         Some(VALIDATION_HARNESS_EXPECTED_TESTS)
     );
-    assert_eq!(VALIDATION_HARNESS_EXPECTED_TESTS, 140);
+    assert_eq!(VALIDATION_HARNESS_EXPECTED_TESTS, 144);
     assert!(steps[5].args.contains(&"planning_contract"));
     assert!(steps[6].args.contains(&"graph_mutation_cli_contract"));
 }
@@ -508,6 +508,14 @@ fn external_agent_cli_modes_fixture_documents_all_public_modes() {
     assert!(catalog.contains(
         "root_validate --policy-reuse-performance-cost-trend-regression-smoke",
         "policy_reuse_performance_cost_trend_regression_smoke",
+    ));
+    assert!(catalog.contains(
+        "root_validate --policy-reuse-cost-catalog-smoke",
+        "policy_reuse_cost_catalog_smoke",
+    ));
+    assert!(catalog.contains(
+        "root_validate --policy-reuse-cost-catalog-incomplete-smoke",
+        "policy_reuse_cost_catalog_incomplete_smoke",
     ));
     assert!(catalog.contains(
         "root_validate --root-validate-dispatch-catalog",
@@ -3839,8 +3847,8 @@ fn policy_reuse_performance_cost_trend_smoke_exposes_cost_safe_reuse() {
     assert_eq!(receipt.batch_size, 6);
     assert_eq!(receipt.avoided_llm_calls_per_batch, 4);
     assert_eq!(receipt.reuse_rate_bps, 6_666);
-    assert_eq!(receipt.validation_expected_count_guarded_tests, 150);
-    assert_eq!(receipt.estimated_ms_per_guarded_test, 20);
+    assert_eq!(receipt.validation_expected_count_guarded_tests, 154);
+    assert_eq!(receipt.estimated_ms_per_guarded_test, 19);
     assert_eq!(receipt.runtime_budget_status, "pass");
     assert_eq!(receipt.validation_cost_verdict, "pass");
     assert!(!receipt.cost_regression_flag);
@@ -3864,8 +3872,8 @@ fn policy_reuse_performance_cost_trend_regression_smoke_exposes_cost_failure() {
     assert_eq!(receipt.batch_size, 6);
     assert_eq!(receipt.avoided_llm_calls_per_batch, 4);
     assert_eq!(receipt.reuse_rate_bps, 6_666);
-    assert_eq!(receipt.validation_expected_count_guarded_tests, 150);
-    assert_eq!(receipt.estimated_ms_per_guarded_test, 22);
+    assert_eq!(receipt.validation_expected_count_guarded_tests, 154);
+    assert_eq!(receipt.estimated_ms_per_guarded_test, 21);
     assert_eq!(receipt.runtime_budget_status, "pass");
     assert_eq!(receipt.validation_cost_verdict, "fail");
     assert!(receipt.cost_regression_flag);
@@ -3882,8 +3890,8 @@ fn root_validate_policy_reuse_performance_cost_trend_smoke_mode_is_executable_co
             "\"batch_size\":6",
             "\"avoided_llm_calls_per_batch\":4",
             "\"reuse_rate_bps\":6666",
-            "\"validation_expected_count_guarded_tests\":150",
-            "\"estimated_ms_per_guarded_test\":20",
+            "\"validation_expected_count_guarded_tests\":154",
+            "\"estimated_ms_per_guarded_test\":19",
             "\"runtime_budget_status\":\"pass\"",
             "\"validation_cost_verdict\":\"pass\"",
             "\"cost_regression_flag\":false",
@@ -3905,14 +3913,112 @@ fn root_validate_policy_reuse_performance_cost_trend_regression_smoke_mode_is_ex
             "\"batch_size\":6",
             "\"avoided_llm_calls_per_batch\":4",
             "\"reuse_rate_bps\":6666",
-            "\"validation_expected_count_guarded_tests\":150",
-            "\"estimated_ms_per_guarded_test\":22",
+            "\"validation_expected_count_guarded_tests\":154",
+            "\"estimated_ms_per_guarded_test\":21",
             "\"runtime_budget_status\":\"pass\"",
             "\"validation_cost_verdict\":\"fail\"",
             "\"cost_regression_flag\":true",
             "\"source_scale_trace_hash\":",
             "\"source_validation_duration_hash\":",
             "\"source_runtime_performance_hash\":",
+            "\"receipt_hash\":",
+        ],
+    );
+}
+
+#[test]
+fn policy_reuse_cost_catalog_smoke_exposes_complete_reuse_cost_family() {
+    let receipt = ai::validation_harness::policy_reuse_cost_catalog_smoke_receipt();
+
+    assert_eq!(
+        receipt.record_type,
+        ai::validation_harness::POLICY_REUSE_COST_CATALOG_SMOKE_STEP
+    );
+    assert_eq!(receipt.catalog_version, 1);
+    assert_eq!(receipt.evidence_family_count, 6);
+    assert_eq!(receipt.healthy_mode_count, 4);
+    assert_eq!(receipt.regression_mode_count, 4);
+    assert_eq!(receipt.retained_fixture_count, 6);
+    assert!(receipt.required_healthy_modes_present);
+    assert!(receipt.required_regression_modes_present);
+    assert!(receipt.summary_complete);
+    assert_eq!(receipt.missing_required_modes, "none");
+    assert_ne!(receipt.source_policy_reuse_hash, 0);
+    assert_ne!(receipt.source_scale_trace_hash, 0);
+    assert_ne!(receipt.source_performance_cost_trend_hash, 0);
+    assert_ne!(receipt.source_validation_health_hash, 0);
+    assert_ne!(receipt.source_validation_duration_hash, 0);
+    assert_ne!(receipt.source_runtime_performance_hash, 0);
+    assert_ne!(receipt.catalog_hash, 0);
+    assert_ne!(receipt.receipt_hash, 0);
+    assert!(receipt.is_valid());
+    assert!(receipt.passed());
+}
+
+#[test]
+fn policy_reuse_cost_catalog_incomplete_smoke_exposes_missing_coverage() {
+    let receipt = ai::validation_harness::policy_reuse_cost_catalog_incomplete_smoke_receipt();
+
+    assert_eq!(
+        receipt.record_type,
+        ai::validation_harness::POLICY_REUSE_COST_CATALOG_INCOMPLETE_SMOKE_STEP
+    );
+    assert_eq!(receipt.catalog_version, 1);
+    assert_eq!(receipt.evidence_family_count, 6);
+    assert_eq!(receipt.healthy_mode_count, 4);
+    assert_eq!(receipt.regression_mode_count, 3);
+    assert_eq!(receipt.retained_fixture_count, 6);
+    assert!(receipt.required_healthy_modes_present);
+    assert!(!receipt.required_regression_modes_present);
+    assert!(!receipt.summary_complete);
+    assert_eq!(receipt.missing_required_modes, "required_regression_modes");
+    assert!(receipt.is_valid());
+    assert!(!receipt.passed());
+}
+
+#[test]
+fn root_validate_policy_reuse_cost_catalog_smoke_mode_is_executable_contract() {
+    assert_root_validate_catalog_compact_mode_contract(
+        "--policy-reuse-cost-catalog-smoke",
+        &[
+            "\"record_type\":\"policy_reuse_cost_catalog_smoke\"",
+            "\"catalog_version\":1",
+            "\"evidence_family_count\":6",
+            "\"healthy_mode_count\":4",
+            "\"regression_mode_count\":4",
+            "\"retained_fixture_count\":6",
+            "\"required_healthy_modes_present\":true",
+            "\"required_regression_modes_present\":true",
+            "\"summary_complete\":true",
+            "\"missing_required_modes\":\"none\"",
+            "\"source_policy_reuse_hash\":",
+            "\"source_scale_trace_hash\":",
+            "\"source_performance_cost_trend_hash\":",
+            "\"source_validation_health_hash\":",
+            "\"source_validation_duration_hash\":",
+            "\"source_runtime_performance_hash\":",
+            "\"catalog_hash\":",
+            "\"receipt_hash\":",
+        ],
+    );
+}
+
+#[test]
+fn root_validate_policy_reuse_cost_catalog_incomplete_smoke_mode_is_executable_contract() {
+    assert_root_validate_catalog_compact_mode_contract(
+        "--policy-reuse-cost-catalog-incomplete-smoke",
+        &[
+            "\"record_type\":\"policy_reuse_cost_catalog_incomplete_smoke\"",
+            "\"catalog_version\":1",
+            "\"evidence_family_count\":6",
+            "\"healthy_mode_count\":4",
+            "\"regression_mode_count\":3",
+            "\"retained_fixture_count\":6",
+            "\"required_healthy_modes_present\":true",
+            "\"required_regression_modes_present\":false",
+            "\"summary_complete\":false",
+            "\"missing_required_modes\":\"required_regression_modes\"",
+            "\"catalog_hash\":",
             "\"receipt_hash\":",
         ],
     );

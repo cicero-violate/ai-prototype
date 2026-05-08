@@ -17,7 +17,7 @@ pub const FAST_TEST_STEP: &str = "fast_score_contract_tests";
 pub const LIB_UNIT_STEP: &str = "lib_unit_contract_tests";
 pub const API_TRANSPORT_STEP: &str = "api_transport_contract_tests";
 pub const VALIDATION_HARNESS_STEP: &str = "validation_harness_contract_tests";
-pub const VALIDATION_HARNESS_EXPECTED_TESTS: usize = 140;
+pub const VALIDATION_HARNESS_EXPECTED_TESTS: usize = 144;
 pub const PLANNING_CONTRACT_STEP: &str = "planning_contract_tests";
 pub const GRAPH_MUTATION_CLI_CONTRACT_STEP: &str = "graph_mutation_cli_contract_tests";
 pub const GRAPH_MUTATION_CLI_CONTRACT_EXPECTED_TESTS: usize = 10;
@@ -73,6 +73,9 @@ pub const POLICY_REUSE_PERFORMANCE_COST_TREND_SMOKE_STEP: &str =
     "policy_reuse_performance_cost_trend_smoke";
 pub const POLICY_REUSE_PERFORMANCE_COST_TREND_REGRESSION_SMOKE_STEP: &str =
     "policy_reuse_performance_cost_trend_regression_smoke";
+pub const POLICY_REUSE_COST_CATALOG_SMOKE_STEP: &str = "policy_reuse_cost_catalog_smoke";
+pub const POLICY_REUSE_COST_CATALOG_INCOMPLETE_SMOKE_STEP: &str =
+    "policy_reuse_cost_catalog_incomplete_smoke";
 pub const POLICY_VALIDATION_HEALTH_SMOKE_STEP: &str = "policy_validation_health_smoke";
 pub const POLICY_VALIDATION_HEALTH_TREND_SMOKE_STEP: &str = "policy_validation_health_trend_smoke";
 pub const POLICY_ORCHESTRATION_CAPACITY_SMOKE_STEP: &str = "policy_orchestration_capacity_smoke";
@@ -2540,6 +2543,151 @@ pub fn policy_reuse_performance_cost_trend_regression_smoke_receipt(
         source_runtime_performance_hash,
     )
     .receipt_hash;
+    receipt
+}
+
+fn policy_reuse_cost_catalog_source_hashes() -> (u64, u64, u64, u64, u64, u64) {
+    let policy_reuse = policy_reuse_smoke_receipt();
+    let scale_trace = policy_reuse_scale_trace_smoke_receipt();
+    let performance_cost = policy_reuse_performance_cost_trend_smoke_receipt();
+    let validation_health = policy_validation_health_smoke_receipt();
+    let validation_duration = validation_duration_planning_trend_smoke_receipt();
+    let runtime_performance = runtime_performance_trend_smoke_receipt();
+    (
+        policy_reuse.receipt_hash,
+        scale_trace.receipt_hash,
+        performance_cost.receipt_hash,
+        stable_hash64(validation_health.to_json().as_bytes()),
+        stable_hash64(validation_duration.to_json().as_bytes()),
+        stable_hash64(runtime_performance.to_json().as_bytes()),
+    )
+}
+
+pub fn policy_reuse_cost_catalog_smoke_receipt(
+) -> crate::capability::judgment::PolicyReuseCostCatalogReceipt {
+    let (
+        source_policy_reuse_hash,
+        source_scale_trace_hash,
+        source_performance_cost_trend_hash,
+        source_validation_health_hash,
+        source_validation_duration_hash,
+        source_runtime_performance_hash,
+    ) = policy_reuse_cost_catalog_source_hashes();
+    let mut receipt =
+        crate::capability::judgment::PolicyReuseCostCatalogReceipt::from_source_hashes(
+            6,
+            4,
+            4,
+            6,
+            true,
+            true,
+            "none",
+            source_policy_reuse_hash,
+            source_scale_trace_hash,
+            source_performance_cost_trend_hash,
+            source_validation_health_hash,
+            source_validation_duration_hash,
+            source_runtime_performance_hash,
+        );
+    receipt.record_type = POLICY_REUSE_COST_CATALOG_SMOKE_STEP;
+    receipt.catalog_hash =
+        crate::capability::judgment::PolicyReuseCostCatalogReceipt::from_source_hashes(
+            6,
+            4,
+            4,
+            6,
+            true,
+            true,
+            "none",
+            source_policy_reuse_hash,
+            source_scale_trace_hash,
+            source_performance_cost_trend_hash,
+            source_validation_health_hash,
+            source_validation_duration_hash,
+            source_runtime_performance_hash,
+        )
+        .catalog_hash;
+    receipt.receipt_hash =
+        crate::capability::judgment::PolicyReuseCostCatalogReceipt::from_source_hashes(
+            6,
+            4,
+            4,
+            6,
+            true,
+            true,
+            "none",
+            source_policy_reuse_hash,
+            source_scale_trace_hash,
+            source_performance_cost_trend_hash,
+            source_validation_health_hash,
+            source_validation_duration_hash,
+            source_runtime_performance_hash,
+        )
+        .receipt_hash;
+    receipt
+}
+
+pub fn policy_reuse_cost_catalog_incomplete_smoke_receipt(
+) -> crate::capability::judgment::PolicyReuseCostCatalogReceipt {
+    let (
+        source_policy_reuse_hash,
+        source_scale_trace_hash,
+        source_performance_cost_trend_hash,
+        source_validation_health_hash,
+        source_validation_duration_hash,
+        source_runtime_performance_hash,
+    ) = policy_reuse_cost_catalog_source_hashes();
+    let mut receipt =
+        crate::capability::judgment::PolicyReuseCostCatalogReceipt::from_source_hashes(
+            6,
+            4,
+            3,
+            6,
+            true,
+            false,
+            "required_regression_modes",
+            source_policy_reuse_hash,
+            source_scale_trace_hash,
+            source_performance_cost_trend_hash,
+            source_validation_health_hash,
+            source_validation_duration_hash,
+            source_runtime_performance_hash,
+        );
+    receipt.record_type = POLICY_REUSE_COST_CATALOG_INCOMPLETE_SMOKE_STEP;
+    receipt.catalog_hash =
+        crate::capability::judgment::PolicyReuseCostCatalogReceipt::from_source_hashes(
+            6,
+            4,
+            3,
+            6,
+            true,
+            false,
+            "required_regression_modes",
+            source_policy_reuse_hash,
+            source_scale_trace_hash,
+            source_performance_cost_trend_hash,
+            source_validation_health_hash,
+            source_validation_duration_hash,
+            source_runtime_performance_hash,
+        )
+        .catalog_hash;
+    receipt.receipt_hash =
+        crate::capability::judgment::PolicyReuseCostCatalogReceipt::from_source_hashes(
+            6,
+            4,
+            3,
+            6,
+            true,
+            false,
+            "required_regression_modes",
+            source_policy_reuse_hash,
+            source_scale_trace_hash,
+            source_performance_cost_trend_hash,
+            source_validation_health_hash,
+            source_validation_duration_hash,
+            source_runtime_performance_hash,
+        )
+        .receipt_hash;
     receipt
 }
 
