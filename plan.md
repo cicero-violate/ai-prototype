@@ -1,6 +1,6 @@
 # Canon Agent Implementation Plan
 
-This plan tracks the current deterministic implementation slice from the repository state.
+This plan tracks the current deterministic implementation plan from the repository state.
 
 ## North Star
 
@@ -30,11 +30,11 @@ The repository currently exposes these meaningful surfaces:
 - validation-harness/root-validate smoke exposure for larger-batch policy reuse scale evidence, including a controlled validation-regression case;
 - retained fixtures for policy reuse, policy validation health, policy validation trend, orchestration capacity, policy capacity/cost, runtime performance trend, validation duration planning, validation command footprint, and external CLI mode evidence.
 
-## Completed Implementation Slice
+## Last Completed Implementation Slice
 
-Implemented this turn: added deterministic **policy reuse scale trace** evidence in the judgment/capability and validation-harness layers.
+The last completed slice added deterministic **policy reuse scale trace** evidence in the judgment/capability and validation-harness layers.
 
-The implemented slice answers:
+That slice answers:
 
 ```text
 When policy reuse is evaluated over a larger deterministic batch, does the system preserve validation health while increasing avoided LLM calls per batch?
@@ -73,24 +73,107 @@ Completed implementation tasks:
    - `source_receipt_hash`
 6. Updated retained external CLI mode, validation command footprint, validation duration planning, and policy validation health fixtures for the new deterministic public modes and guarded-test count.
 
-## Validation Evidence
+## Current Planning Turn
 
-Targeted validation run this turn:
+This turn is intentionally limited to planning and scoring. No source implementation changes are planned in this turn.
+
+Planning objective:
+
+```text
+Select the smallest next implementation slice that improves the weakest current axis without changing kernel authority.
+```
+
+Current diagnosis:
+
+- Weakest axis: **Performance**.
+- Secondary risk: **Simplicity**.
+- Adjacent risk: **Scalability**.
+
+Reason: larger-batch policy reuse evidence now exposes avoided LLM calls and validation health, but the repository still lacks one deterministic receipt that joins reuse-scale wins to retained validation/runtime cost. Consumers must infer cost safety by reading separate fixtures, which weakens performance scoring and increases audit friction.
+
+## Next Implementation Slice
+
+Add deterministic **policy reuse performance-cost trend** evidence that ties larger-batch avoided LLM calls to retained validation/runtime cost.
+
+The next slice should answer:
+
+```text
+When policy reuse scales across retained batches, does avoided LLM work grow without increasing validation/runtime cost beyond budget?
+```
+
+Implementation constraints:
+
+1. Keep the kernel untouched.
+2. Use deterministic fixture or smoke evidence only.
+3. Reuse existing runtime performance, validation duration, policy capacity/cost, and scale-trace surfaces.
+4. Avoid live LLM, network, wall-clock, or environment-dependent measurements.
+5. Expose cost trend fields in one compact receipt where possible.
+6. Include healthy and controlled cost-regression cases.
+7. Preserve existing root validator and retained-fixture semantics unless a fixture must be extended for the new public evidence.
+
+Suggested receipt name:
+
+```text
+PolicyReusePerformanceCostTrendReceipt
+```
+
+Suggested constructors:
+
+```text
+policy_reuse_performance_cost_trend_smoke_receipt()
+policy_reuse_performance_cost_trend_regression_smoke_receipt()
+```
+
+Suggested root validator modes:
+
+```text
+--policy-reuse-performance-cost-trend-smoke
+--policy-reuse-performance-cost-trend-regression-smoke
+```
+
+Suggested exposed fields:
+
+```text
+batch_size
+avoided_llm_calls_per_batch
+reuse_rate_bps
+validation_expected_count_guarded_tests
+estimated_ms_per_guarded_test
+runtime_budget_status
+validation_cost_verdict
+cost_regression_flag
+source_scale_trace_hash
+source_validation_duration_hash
+source_runtime_performance_hash
+```
+
+Suggested deterministic semantics:
+
+- `cost_regression_flag = false` only when validation cost and runtime budget are both healthy.
+- `cost_regression_flag = true` when avoided LLM calls are visible but retained validation/runtime cost exceeds the deterministic budget.
+- Source hashes must bind the cost-trend receipt to the underlying scale trace and retained duration/performance evidence.
+- The receipt should make the healthy/regression distinction visible without requiring consumers to join unrelated receipts manually.
+
+Suggested targeted validation for the next implementation turn:
 
 ```text
 cargo fmt --check
 RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --lib capability::judgment::record --quiet
 RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test validation_harness_contract --quiet
 RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test score_contract --test planning_contract --quiet
-
-cargo fmt --check: pass
-judgment::record unit tests: 14 passed, 0 failed
-validation_harness_contract: 136 passed, 0 failed
-planning_contract: 2 passed, 0 failed
-score_contract: 5 passed, 0 failed
 ```
 
-Full-suite validation was not run in this implementation turn.
+## Validation Evidence For This Planning Turn
+
+No implementation validation was required for this planning-only turn.
+
+Planning/scoring file validation:
+
+```text
+files inspected = plan.md, score.md, repository file list, git status
+files changed   = plan.md, score.md
+source changes  = none planned
+```
 
 ## Evaluation Axes
 
@@ -116,54 +199,6 @@ F  = Future-Proofing
 ```text
 G = (I*E*C*A*R*P*S*D*T*Co*Em*B*L*St*Si*F)^(1/16)
 arg max(G) = good
-```
-
-## Priority Judgment
-
-The weakest practical axis is now **Performance**, with **Simplicity** and **Scalability** close behind.
-
-Reason: the new scale trace demonstrates larger-batch reuse and avoided LLM calls with validation health visible, but there is still no fresh benchmark proving the added validation/catalog evidence does not increase runtime or validation cost beyond retained budgets.
-
-## Next Implementation Slice
-
-Add deterministic **policy reuse performance-cost trend** evidence that ties larger-batch avoided LLM calls to retained validation/runtime cost.
-
-The next slice should answer:
-
-```text
-When policy reuse scales across retained batches, does avoided LLM work grow without increasing validation/runtime cost beyond budget?
-```
-
-Suggested constraints:
-
-1. Keep the kernel untouched.
-2. Use deterministic fixture or smoke evidence only.
-3. Reuse existing runtime performance, validation duration, policy capacity/cost, and scale-trace surfaces.
-4. Avoid live LLM, network, or wall-clock measurements.
-5. Expose cost trend fields in one compact receipt where possible.
-6. Include healthy and controlled cost-regression cases.
-
-Suggested exposed fields:
-
-```text
-batch_size
-avoided_llm_calls_per_batch
-reuse_rate_bps
-validation_expected_count_guarded_tests
-estimated_ms_per_guarded_test
-runtime_budget_status
-validation_cost_verdict
-cost_regression_flag
-source_scale_trace_hash
-source_validation_duration_hash
-```
-
-Suggested targeted validation for the next implementation turn:
-
-```text
-RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test validation_harness_contract --quiet
-RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --lib capability::judgment::record --quiet
-RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test score_contract --test planning_contract --quiet
 ```
 
 ## Deferred Work
