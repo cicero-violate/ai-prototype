@@ -1776,3 +1776,48 @@ score.md
 ```
 
 Tracked implementation files for storage-write-admission were already clean at the start of this turn. Observed `canon-rustc-v3/` working-tree changes remain outside this turn.
+
+
+## Planning Turn Update - 2026-05-08T11:01:08Z - Scoped Auto-Refactor Handoff
+
+This planning/scoring turn keeps the implementation boundary unchanged: only `plan.md` and `score.md` are owned by this turn. The working tree still contains active, uncommitted `canon-rustc-v3` implementation work that must remain uncommitted unless a later implementation turn explicitly owns it.
+
+Observed current worktree evidence for the next implementation turn:
+
+```text
+modified: canon-rustc-v3/src/facts.rs
+modified: canon-rustc-v3/src/hir.rs
+modified: canon-rustc-v3/src/mir.rs
+modified: canon-rustc-v3/src/wrapper.rs
+modified: canon-rustc-v3/validation/semantic_preflight.py
+modified: canon-rustc-v3/validation/semantic_scale_probe.py
+modified: src/validation_harness.rs
+modified: tests/validation_harness_contract.rs
+untracked: canon-rustc-v3/plan-autorefactor.md
+untracked: canon-rustc-v3/validation/auto_refactor_surface.py
+untracked: canon-rustc-v3/validation/auto_refactor_surface_smoke.py
+```
+
+Current implementation plan:
+
+1. Keep the next implementation turn centered on **Structure** with **Efficiency** as the paired axis.
+2. Finish deterministic graph relation support for `similar`, `phase`, and `provider` without granting those relations authority over the state machine.
+3. Validate that risk classification treats similarity/phase evidence as heuristic refactor guidance, while provider evidence remains boundary metadata.
+4. Complete the evidence-only auto-refactor surface report so it reads graph evidence and emits sorted deterministic JSON for split, merge, and canonicalization candidates.
+5. Add or complete smoke validation for the report against a stable fixture or generated graph snapshot.
+6. Run focused validation for the Rust extractor, validation harness, semantic preflight, scale probe, and planning/score contracts.
+7. Commit implementation files only in a later implementation turn after validation passes; do not include unrelated graph-editor, runtime-kernel, durable-writer, or retrieval-learning changes.
+
+Acceptance criteria for scoring the next implementation turn:
+
+```text
+- relation enum/allowlist and risk accounting include similar, phase, and provider deterministically
+- graph extraction emits stable, deduplicated relation evidence across repeated runs
+- provider-boundary evidence is explicit but does not change provider behavior
+- phase/similarity evidence is labelled as heuristic and not semantic proof
+- auto_refactor_surface.py is read-only and deterministic
+- auto_refactor_surface_smoke.py or equivalent validation passes
+- cargo fmt/check/test and relevant Python validation smoke commands pass or failures are documented with exact blockers
+```
+
+Planning decision: no score increase is claimed in this turn. The next turn should convert the existing unowned implementation evidence into validated, committed structure/efficiency work or explicitly roll it back if validation fails.

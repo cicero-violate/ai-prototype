@@ -1154,3 +1154,56 @@ Si = 0.97  one receipt represents the write-admission boundary instead of scatte
 F  = 0.98  write admission prepares later retrieval/model-learning gates without committing to storage or training behavior
 G  ≈ 0.966
 ```
+
+
+## Planning Turn Score Update - 2026-05-08T11:01:08Z - Scoped Auto-Refactor Handoff
+
+```text
+turn_type = planning
+score_change_this_turn = none
+selected_next_axes = Structure, Efficiency
+commit_scope = plan.md and score.md only
+implementation_files_owned_this_turn = none
+unowned_worktree_changes = canon-rustc-v3 graph/refactor implementation files plus validation harness edits
+```
+
+Current score stance is retained from the prior scorecard. This turn does not claim correctness, robustness, performance, learning, or structure gains because no implementation validation was completed and the active `canon-rustc-v3` work remains uncommitted implementation evidence.
+
+Planning/scoring rationale:
+
+- `Structure` remains the primary next target because deterministic graph relations and refactor-surface reporting can make code organization risks visible before source edits are attempted.
+- `Efficiency` remains the secondary next target because stable graph evidence can reduce repeated LLM inspection of the same Rust extractor maintenance surfaces.
+- `Correctness` is not increased because relation semantics, report determinism, and smoke validation still need executable proof.
+- `Transparency` is preserved by documenting the exact unowned files and commit boundary.
+- `Stability` is preserved by keeping kernel/runtime authority, durable writer behavior, retrieval storage, policy promotion, and student training out of this planning turn.
+
+Score retention:
+
+```text
+I  = 0.98 retained
+E  = 0.97 retained; next implementation may improve effective maintenance efficiency if graph signals validate
+C  = 0.90 retained; no new executable validation result claimed this turn
+A  = 0.97 retained
+R  = 0.96 retained
+P  = 0.95 retained
+S  = 0.98 retained
+D  = 0.97 retained
+T  = 0.98 retained; current boundary is explicitly recorded
+Co = 0.95 retained
+Em = 0.95 retained
+B  = 0.97 retained
+L  = 1.00 retained
+St = 0.97 retained; implementation authority unchanged
+Si = 0.97 retained
+F  = 0.98 retained
+G  ≈ 0.966 retained
+```
+
+Validation status for this planning/scoring turn:
+
+```text
+file inspection: completed
+planning/scoring update: completed
+implementation validation: not run; out of scope for planning-only turn
+commit target: plan.md score.md
+```
