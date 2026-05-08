@@ -1,6 +1,6 @@
 # Canon Agent Implementation Plan
 
-This plan tracks the current deterministic implementation plan after implementation step 5 of the current agent loop.
+This plan tracks the current deterministic implementation plan after planning step 6 of the current agent loop.
 
 ## North Star
 
@@ -66,9 +66,9 @@ The repository currently exposes these meaningful surfaces:
 
 ## Current Completed Implementation Baseline
 
-The current working tree contains deterministic **policy reuse evidence compact-validation** evidence in the validation-harness/root-validator layer, while retaining evaluator-savings, scaling-projection, distillation-readiness, evidence-surface index, evidence-bundle, evidence-quickcheck, evidence-maturity, evidence-summary, evidence-manifest, validation-budget, rollout-readiness, learning-admission, and retrieval-readiness evidence already present in this loop.
+The current working tree contains deterministic **policy reuse evidence compact-validation** evidence in the validation-harness/root-validator layer, while retaining evaluator-savings, scaling-projection, distillation-readiness, evidence-surface index, evidence-bundle, evidence-quickcheck, evidence-maturity, evidence-summary, evidence-manifest, validation-budget, rollout-readiness, learning-admission, and retrieval-readiness evidence already present in this loop. This planning turn does not change implementation code and intentionally preserves the existing source modifications in `canon-rustc-v3/src/graph.rs` and `canon-rustc-v3/src/hir.rs` for the implementation turn.
 
-This slice answers:
+This completed slice answers:
 
 ```text
 Can an evaluator inspect one deterministic receipt that summarizes the compact targeted validation footprint for the retrieval/learning admission chain without executing validation or promoting policy?
@@ -143,11 +143,11 @@ planning_contract: 2 passed, 0 failed
 score_contract: 5 passed, 0 failed
 ```
 
-Planning and score contract validation passed after this document update.
+Planning and score contract validation passed for the previous compact-validation document update. This planning-only turn updates the next-slice handoff and score without changing implementation code.
 
 ## Planned Next Implementation Slice
 
-Planning decision for the next turn: keep the next implementation slice focused on the weakest remaining axis, **Scalability**.
+Planning decision for the next implementation turn: keep the slice focused on the weakest remaining axis, **Scalability**.
 
 Current gap:
 
@@ -214,12 +214,27 @@ arg max(G) = good
 - Parallel orchestration execution should wait until larger-batch reuse, validation health, retained validation/runtime cost, catalog completeness, evaluator savings, scaling projection, distillation readiness, evidence-surface indexing, bundled evidence inspection, quickcheck validation, maturity staging, stable summary evidence, manifest coverage, validation-budget evidence, rollout-readiness evidence, learning-admission evidence, retrieval-readiness evidence, compact-validation evidence, and batch-readiness evidence are proven together.
 - Full-suite validation should run after the batch-readiness slice if fixture or CLI mode churn is broader than expected.
 
+## Planning Step 6 Decision
+
+```text
+turn_type = planning_step_6
+mode = planning_and_scoring_only
+selected_axis = Scalability
+selected_slice = deterministic policy reuse evidence batch-readiness receipt
+implementation_files_changed_this_turn = none
+existing_uncommitted_source_changes_observed = canon-rustc-v3/src/graph.rs, canon-rustc-v3/src/hir.rs
+commit_scope = plan.md and score.md only
+```
+
+The next implementation turn should add batch-readiness evidence only after reconciling the existing uncommitted `canon-rustc-v3` source changes. Those source changes are not part of this planning commit and should not be overwritten by documentation-only work.
+
 ## Turn Protocol
 
 1. Plan and score first.
 2. Choose the smallest implementation slice improving the weakest axis.
-3. During implementation, work in validation-harness/root-validator evidence only unless a stricter dependency is discovered.
-4. Add deterministic contract tests.
-5. Run targeted validation and record results.
-6. Update `plan.md` and `score.md`.
-7. Commit the turn.
+3. Keep planning commits scoped to `plan.md` and `score.md` unless implementation work is explicitly requested.
+4. During implementation, work in validation-harness/root-validator evidence only unless a stricter dependency is discovered.
+5. Add deterministic contract tests.
+6. Run targeted validation and record results.
+7. Update `plan.md` and `score.md`.
+8. Commit the turn.

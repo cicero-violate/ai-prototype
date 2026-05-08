@@ -1,10 +1,10 @@
 # Canon Agent Score
 
-This scorecard records current progress after implementation step 5 of the current agent loop. The working tree contains deterministic policy reuse evaluator-savings, scaling-projection, distillation-readiness, evidence-surface index, evidence-bundle, evidence-quickcheck, evidence-maturity, evidence-summary, evidence-manifest, evidence validation-budget, evidence rollout-readiness, evidence learning-admission, evidence retrieval-readiness, and evidence compact-validation evidence.
+This scorecard records current progress after planning step 6 of the current agent loop. The working tree contains deterministic policy reuse evaluator-savings, scaling-projection, distillation-readiness, evidence-surface index, evidence-bundle, evidence-quickcheck, evidence-maturity, evidence-summary, evidence-manifest, evidence validation-budget, evidence rollout-readiness, evidence learning-admission, evidence retrieval-readiness, and evidence compact-validation evidence.
 
 ## Validation Evidence
 
-Targeted validation relevant to the current working tree:
+Targeted validation relevant to the current implemented baseline:
 
 ```text
 command = cargo fmt --check
@@ -20,7 +20,7 @@ planning_contract: 2 passed, 0 failed
 score_contract: 5 passed, 0 failed
 ```
 
-Planning and score contract validation passed after this score update.
+Planning and score contract validation passed for the previous compact-validation score update. This planning-only turn updates the next-slice scorecard and does not modify implementation code.
 
 ## Axis Scores
 
@@ -54,14 +54,14 @@ G ≈ 0.862
 ## Current Judgment
 
 ```text
-turn_type = implementation_step_5
+turn_type = planning_step_6
 weakest_axis = Scalability
 secondary_risk = batch readiness for larger reuse evaluation is not yet summarized
-completed_action = added deterministic policy reuse evidence compact-validation evidence
+completed_action = selected deterministic policy reuse evidence batch-readiness as the next implementation slice
 current_gap = compact validation footprint is explicit, but larger-batch readiness is not summarized
 next_action = add deterministic policy reuse evidence batch-readiness evidence
 scope = validation-harness/root-validator evidence only; kernel authority unchanged
-validation = targeted formatting/compact-validation/full-validation-harness/score/planning tests passed
+validation = previous targeted formatting/compact-validation/full-validation-harness/score/planning tests passed; this turn is documentation-only planning
 ```
 
 ## Why Scalability Is Now Weakest
@@ -81,6 +81,16 @@ Completed scoring evidence:
 - contract tests asserting compact-validation semantics, source binding, compact output, and controlled failing evidence;
 - updated retained root mode and guarded-test fixture counts;
 - no kernel authority expansion, validation execution, policy promotion, retrieval write, or student-model training.
+
+## Planning Step 6 Score Decision
+
+```text
+selected_axis = Scalability
+score_change_this_turn = none
+reason = planning/scoring-only turn; implementation evidence unchanged
+source_changes_observed_but_not_committed = canon-rustc-v3/src/graph.rs, canon-rustc-v3/src/hir.rs
+commit_scope = plan.md and score.md only
+```
 
 ## Next Score Improvement Target
 
