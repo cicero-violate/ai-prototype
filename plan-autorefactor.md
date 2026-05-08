@@ -124,14 +124,14 @@ Included test coverage:
 
 ## Success Criteria Status
 
-| Criterion | Status |
-|---|---:|
-| Schema-v16 graph signals exist: `phase`, `similar`, `provider` | implemented |
-| Split surface can be named and ranked | implemented |
-| Merge surface can be named and ranked | implemented |
-| Canonicalize surface can be named and ranked | implemented |
-| Deterministic operation specs exist | implemented |
-| At least one structural operation produced on live graph | implemented: 1,560 ops |
+| Criterion                                                                       | Status                           |
+|---------------------------------------------------------------------------------+----------------------------------|
+| Schema-v16 graph signals exist: `phase`, `similar`, `provider`                  | implemented                      |
+| Split surface can be named and ranked                                           | implemented                      |
+| Merge surface can be named and ranked                                           | implemented                      |
+| Canonicalize surface can be named and ranked                                    | implemented                      |
+| Deterministic operation specs exist                                             | implemented                      |
+| At least one structural operation produced on live graph                        | implemented: 1,560 ops           |
 | Concrete source rewrite application for `SplitFn` / `MergeFns` / `ExtractTrait` | deferred to lowering/editor pass |
 
 ## Non-Goals Preserved
