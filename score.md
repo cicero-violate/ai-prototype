@@ -1207,3 +1207,57 @@ planning/scoring update: completed
 implementation validation: not run; out of scope for planning-only turn
 commit target: plan.md score.md
 ```
+
+
+## Planning Turn Score Update - 2026-05-08T11:06:38Z - Structure/Efficiency Continuation
+
+```text
+turn_type = planning
+score_change_this_turn = none
+selected_next_axes = Structure, Efficiency
+commit_scope = plan.md and score.md only
+implementation_files_owned_this_turn = none
+unowned_worktree_changes = canon-rustc-v3 graph/refactor files, validation harness edits, and auto-refactor helper files
+```
+
+Current score stance is retained from the prior scorecard. This turn does not claim implementation progress because no owned source changes were validated or committed. The observed implementation work remains candidate evidence for the next implementation turn only.
+
+Planning/scoring rationale:
+
+- `Structure` remains the primary next axis because graph relation evidence and auto-refactor reporting can expose deterministic maintenance boundaries before source mutation is attempted.
+- `Efficiency` remains the paired axis because stable graph-derived reports can reduce repeated LLM inspection and make recurring Rust extractor maintenance cheaper.
+- `Correctness` is not increased because relation determinism, risk semantics, and report smoke validation still require executable proof.
+- `Transparency` is preserved by documenting the exact unowned files and the restricted commit boundary.
+- `Stability` is preserved by keeping state-machine authority, durable writing, retrieval storage, policy promotion, live LLM use, network use, and student training outside this planning/scoring turn.
+
+Score retention:
+
+```text
+I  = 0.98 retained
+E  = 0.97 retained; candidate graph/refactor work may improve maintenance efficiency only after validation
+C  = 0.90 retained; no new executable validation result claimed this turn
+A  = 0.97 retained
+R  = 0.96 retained
+P  = 0.95 retained
+S  = 0.98 retained
+D  = 0.97 retained
+T  = 0.98 retained; current boundary and unowned files are explicitly recorded
+Co = 0.95 retained
+Em = 0.95 retained
+B  = 0.97 retained
+L  = 1.00 retained
+St = 0.97 retained; implementation authority unchanged
+Si = 0.97 retained
+F  = 0.98 retained
+G  ≈ 0.966 retained
+```
+
+Validation status for this planning/scoring turn:
+
+```text
+repository inspection: completed
+plan.md update: completed
+score.md update: completed
+implementation validation: not run; out of scope for planning-only turn
+commit target: plan.md score.md
+```
