@@ -450,6 +450,16 @@ const COMPACT_MODES: &[CompactMode] = &[
         run: policy_reuse_evidence_learning_candidate_regression_smoke_mode,
     },
     CompactMode {
+        arg: "--policy-reuse-evidence-learning-data-admission-smoke",
+        marker: "policy_reuse_evidence_learning_data_admission_smoke",
+        run: policy_reuse_evidence_learning_data_admission_smoke_mode,
+    },
+    CompactMode {
+        arg: "--policy-reuse-evidence-learning-data-admission-regression-smoke",
+        marker: "policy_reuse_evidence_learning_data_admission_regression_smoke",
+        run: policy_reuse_evidence_learning_data_admission_regression_smoke_mode,
+    },
+    CompactMode {
         arg: "--root-validate-dispatch-catalog",
         marker: "canon_root_validate_dispatch_catalog_v1",
         run: root_validate_dispatch_catalog_mode,
@@ -1394,6 +1404,36 @@ fn policy_reuse_evidence_learning_candidate_regression_smoke_mode(
         && !receipt.learning_candidate_ready
         && receipt.candidate_status == "not_candidate"
         && receipt.not_candidate_reason == "evaluator_not_passed"
+        && !receipt.passed();
+    Ok(CompactModeOutcome::controlled_json(
+        receipt.to_json(),
+        passed,
+    ))
+}
+
+fn policy_reuse_evidence_learning_data_admission_smoke_mode() -> Result<CompactModeOutcome, String>
+{
+    let receipt = validation_harness::policy_reuse_evidence_learning_data_admission_smoke_receipt();
+    Ok(CompactModeOutcome::pass_json(
+        receipt.to_json(),
+        receipt.passed(),
+    ))
+}
+
+fn policy_reuse_evidence_learning_data_admission_regression_smoke_mode(
+) -> Result<CompactModeOutcome, String> {
+    let receipt =
+        validation_harness::policy_reuse_evidence_learning_data_admission_regression_smoke_receipt(
+        );
+    let passed = receipt.is_valid()
+        && !receipt.learning_candidate_ready
+        && !receipt.evaluator_result_passed
+        && !receipt.policy_promotion_performed
+        && !receipt.retrieval_write_performed
+        && !receipt.student_training_performed
+        && !receipt.learning_data_admitted
+        && receipt.admission_status == "not_admitted"
+        && receipt.not_admitted_reason == "candidate_not_ready"
         && !receipt.passed();
     Ok(CompactModeOutcome::controlled_json(
         receipt.to_json(),

@@ -29,8 +29,8 @@ use ai::validation_harness::{
     VALIDATION_FOOTPRINT_STEP, VALIDATION_HARNESS_EXPECTED_TESTS, VALIDATION_HARNESS_STEP,
 };
 
-const EXPECTED_ROOT_VALIDATE_COMPACT_MODE_COUNT: usize = 80;
-const EXPECTED_EXTERNAL_AGENT_CLI_MODE_COUNT: usize = 89;
+const EXPECTED_ROOT_VALIDATE_COMPACT_MODE_COUNT: usize = 82;
+const EXPECTED_EXTERNAL_AGENT_CLI_MODE_COUNT: usize = 91;
 
 fn expected_guarded_test_count() -> usize {
     VALIDATION_HARNESS_EXPECTED_TESTS + GRAPH_MUTATION_CLI_CONTRACT_EXPECTED_TESTS
@@ -74,7 +74,7 @@ fn root_validation_runs_check_before_contract_suites() {
         steps[4].expected_test_count,
         Some(VALIDATION_HARNESS_EXPECTED_TESTS)
     );
-    assert_eq!(VALIDATION_HARNESS_EXPECTED_TESTS, 224);
+    assert_eq!(VALIDATION_HARNESS_EXPECTED_TESTS, 228);
     assert!(steps[5].args.contains(&"planning_contract"));
     assert!(steps[6].args.contains(&"graph_mutation_cli_contract"));
 }
@@ -676,6 +676,14 @@ fn external_agent_cli_modes_fixture_documents_all_public_modes() {
     assert!(catalog.contains(
         "root_validate --policy-reuse-evidence-learning-candidate-regression-smoke",
         "policy_reuse_evidence_learning_candidate_regression_smoke",
+    ));
+    assert!(catalog.contains(
+        "root_validate --policy-reuse-evidence-learning-data-admission-smoke",
+        "policy_reuse_evidence_learning_data_admission_smoke",
+    ));
+    assert!(catalog.contains(
+        "root_validate --policy-reuse-evidence-learning-data-admission-regression-smoke",
+        "policy_reuse_evidence_learning_data_admission_regression_smoke",
     ));
     assert!(catalog.contains(
         "root_validate --root-validate-dispatch-catalog",
@@ -6467,6 +6475,142 @@ fn root_validate_policy_reuse_evidence_learning_candidate_regression_smoke_mode_
             "\"candidate_status\":\"not_candidate\"",
             "\"not_candidate_reason\":\"evaluator_not_passed\"",
             "\"candidate_hash\":",
+            "\"receipt_hash\":",
+        ],
+    );
+}
+
+#[test]
+fn policy_reuse_evidence_learning_data_admission_smoke_composes_dataset_admission() {
+    let receipt =
+        ai::validation_harness::policy_reuse_evidence_learning_data_admission_smoke_receipt();
+    let candidate =
+        ai::validation_harness::policy_reuse_evidence_learning_candidate_smoke_receipt();
+    let evaluator =
+        ai::validation_harness::policy_reuse_evidence_external_evaluator_result_smoke_receipt();
+
+    assert_eq!(
+        receipt.schema,
+        "canon_policy_reuse_evidence_learning_data_admission_v1"
+    );
+    assert_eq!(
+        receipt.record_type,
+        ai::validation_harness::POLICY_REUSE_EVIDENCE_LEARNING_DATA_ADMISSION_SMOKE_STEP
+    );
+    assert_eq!(receipt.data_admission_version, 1);
+    assert_eq!(
+        receipt.source_learning_candidate_hash,
+        candidate.receipt_hash
+    );
+    assert_eq!(
+        receipt.source_external_evaluator_result_hash,
+        evaluator.receipt_hash
+    );
+    assert!(receipt.learning_candidate_ready);
+    assert!(receipt.evaluator_result_passed);
+    assert!(!receipt.policy_promotion_performed);
+    assert!(!receipt.retrieval_write_performed);
+    assert!(!receipt.student_training_performed);
+    assert_eq!(
+        receipt.admitted_batch_capacity,
+        candidate.candidate_batch_capacity
+    );
+    assert_eq!(
+        receipt.admitted_policy_reuse_cases,
+        candidate.candidate_policy_reuse_cases
+    );
+    assert_eq!(
+        receipt.admitted_llm_fallback_cases,
+        candidate.candidate_llm_fallback_cases
+    );
+    assert!(receipt.learning_data_admitted);
+    assert_eq!(receipt.admission_status, "admitted");
+    assert_eq!(receipt.not_admitted_reason, "none");
+    assert_ne!(receipt.admission_hash, 0);
+    assert_ne!(receipt.receipt_hash, 0);
+    assert!(receipt.is_valid());
+    assert!(receipt.passed());
+}
+
+#[test]
+fn policy_reuse_evidence_learning_data_admission_regression_smoke_is_valid_not_admitted_evidence() {
+    let receipt = ai::validation_harness::
+        policy_reuse_evidence_learning_data_admission_regression_smoke_receipt();
+    let candidate =
+        ai::validation_harness::policy_reuse_evidence_learning_candidate_regression_smoke_receipt();
+    let evaluator = ai::validation_harness::
+        policy_reuse_evidence_external_evaluator_result_regression_smoke_receipt();
+
+    assert_eq!(
+        receipt.record_type,
+        ai::validation_harness::POLICY_REUSE_EVIDENCE_LEARNING_DATA_ADMISSION_REGRESSION_SMOKE_STEP
+    );
+    assert_eq!(
+        receipt.source_learning_candidate_hash,
+        candidate.receipt_hash
+    );
+    assert_eq!(
+        receipt.source_external_evaluator_result_hash,
+        evaluator.receipt_hash
+    );
+    assert!(!receipt.learning_candidate_ready);
+    assert!(!receipt.evaluator_result_passed);
+    assert!(!receipt.policy_promotion_performed);
+    assert!(!receipt.retrieval_write_performed);
+    assert!(!receipt.student_training_performed);
+    assert_eq!(
+        receipt.admitted_batch_capacity,
+        candidate.candidate_batch_capacity
+    );
+    assert!(!receipt.learning_data_admitted);
+    assert_eq!(receipt.admission_status, "not_admitted");
+    assert_eq!(receipt.not_admitted_reason, "candidate_not_ready");
+    assert!(receipt.is_valid());
+    assert!(!receipt.passed());
+}
+
+#[test]
+fn root_validate_policy_reuse_evidence_learning_data_admission_smoke_mode_is_executable_contract() {
+    assert_root_validate_catalog_compact_mode_contract(
+        "--policy-reuse-evidence-learning-data-admission-smoke",
+        &[
+            "\"schema\":\"canon_policy_reuse_evidence_learning_data_admission_v1\"",
+            "\"record_type\":\"policy_reuse_evidence_learning_data_admission_smoke\"",
+            "\"data_admission_version\":1",
+            "\"source_learning_candidate_hash\":",
+            "\"source_external_evaluator_result_hash\":",
+            "\"learning_candidate_ready\":true",
+            "\"evaluator_result_passed\":true",
+            "\"policy_promotion_performed\":false",
+            "\"retrieval_write_performed\":false",
+            "\"student_training_performed\":false",
+            "\"learning_data_admitted\":true",
+            "\"admission_status\":\"admitted\"",
+            "\"not_admitted_reason\":\"none\"",
+            "\"admission_hash\":",
+            "\"receipt_hash\":",
+        ],
+    );
+}
+
+#[test]
+fn root_validate_policy_reuse_evidence_learning_data_admission_regression_smoke_mode_is_executable_contract(
+) {
+    assert_root_validate_catalog_compact_mode_contract(
+        "--policy-reuse-evidence-learning-data-admission-regression-smoke",
+        &[
+            "\"schema\":\"canon_policy_reuse_evidence_learning_data_admission_v1\"",
+            "\"record_type\":\"policy_reuse_evidence_learning_data_admission_regression_smoke\"",
+            "\"data_admission_version\":1",
+            "\"learning_candidate_ready\":false",
+            "\"evaluator_result_passed\":false",
+            "\"policy_promotion_performed\":false",
+            "\"retrieval_write_performed\":false",
+            "\"student_training_performed\":false",
+            "\"learning_data_admitted\":false",
+            "\"admission_status\":\"not_admitted\"",
+            "\"not_admitted_reason\":\"candidate_not_ready\"",
+            "\"admission_hash\":",
             "\"receipt_hash\":",
         ],
     );
