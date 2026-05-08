@@ -1,43 +1,46 @@
 # canon-rustc-v3 Scorecard
 
 Reviewed: 2026-05-08
-Stage: `planning refresh`
-Base commit: `6a7275b`
-Scope: planning/scoring review for `ai/canon-rustc-v3`; implementation behavior unchanged.
+Stage: `implementation step 1`
+Base commit: `bdd2893`
+Scope: add a schema-16 relation vocabulary contract for `ai/canon-rustc-v3`; implementation behavior unchanged.
 
 ## Validation Evidence This Turn
 
 | Check | Result | Judgment |
 |---|---:|---|
-| `git status --short` | reviewed | Repository has broader untracked work; this turn only edits project planning files. |
-| `wc -l PURPOSE.md` | pass | Purpose file is 8 LOC, under the requested 10 LOC limit. |
-| `grep` source/doc contract scan | pass | Schema 16, receipt schema 1, and current relation vocabulary are visible in implementation. |
-| Existing docs scan | pass | `GOAL.md`, `plan.md`, and `score.md` were reviewed before refresh. |
+| `python3 validation/schema16_relation_contract.py` | pass | Rust-declared allowed/risk relations match the schema-16 contract; auto-refactor fixture relations are canonical. |
+| `python3 validation/auto_refactor_surface_smoke.py` | pass | Existing schema-16 surface report fixture remains stable. |
+| `python3 validation/auto_refactor_ops_smoke.py` | pass | Advisory op generation still emits valid `SplitFn`, `MergeFns`, and `ExtractTrait` specs. |
+| `python3 -m py_compile ...` | pass | New and relevant validation scripts compile. |
+| `cargo test --offline` | pass | 11 Rust unit tests pass. |
+| `cargo check --offline --no-default-features` | pass | Pass-through/non-capture boundary still compiles. |
+| `git diff --check -- validation/schema16_relation_contract.py plan.md score.md` | pass | No whitespace errors in this turn's changed files. |
 
 ## Progress This Turn
 
-- Re-reviewed `GOAL.md`, `PURPOSE.md`, `plan.md`, `score.md`, `Cargo.toml`, and the source relation/schema constants.
-- Refilled `PURPOSE.md` without exceeding 10 LOC.
-- Replaced stale step-specific planning text with a current implementation plan.
-- Replaced stale step-specific score text with this planning-turn scorecard.
-- Left implementation files unchanged.
+- Implemented the next concrete target from `plan.md`: a compact schema-16 relation contract test.
+- Connected the contract to `src/facts.rs` instead of duplicating unchecked fixture expectations only.
+- Verified the schema-16 auto-refactor fixture emits `call`, `phase`, `provider`, and `similar` and no non-canonical relations.
+- Preserved all wrapper behavior and validation thresholds.
+- Updated `plan.md` and `score.md` to reflect the completed implementation step.
 
 ## Scores
 
 | Dimension | Score | Evidence-backed judgment |
 |---|---:|---|
-| Correctness | 8 | Planning now reflects implementation constants and validation surface; full rust-source closure remains unresolved. |
-| Determinism | 9 | Existing graph/receipt design remains centered on stable hashes and fixture replay. |
-| Alignment | 9 | Purpose, plan, score, and implementation vocabulary are synchronized for schema 16. |
-| Transparency | 9 | Advisory-only refactor boundary and non-goals are explicit. |
-| Performance | 8 | Thresholded performance gating exists; no new performance run was required for this planning-only turn. |
-| Simplicity | 9 | Purpose is short; plan focuses on next proof targets without duplicating the full goal spec. |
-| Future-proofing | 8 | Next steps point to contract tests, fixture expansion, and toolchain-source closure. |
+| Correctness | 9 | Static Rust vocabulary and schema-16 fixture relations are now checked together. |
+| Determinism | 9 | Contract reads stable source and fixture content; no runtime nondeterminism introduced. |
+| Alignment | 9 | Plan, score, Rust constants, and fixture relation expectations now share one vocabulary. |
+| Transparency | 9 | Fixture coverage is explicit and does not overclaim full relation coverage from one graph. |
+| Performance | 8 | No capture-path change; existing performance gates remain the planned regression proof. |
+| Simplicity | 9 | The validation script is small, direct, and focused on one contract. |
+| Future-proofing | 9 | Future schema changes must update constants, fixture expectations, and this contract together. |
 
 ## Aggregate
 
-Average score: `8.57 / 10`.
+Average score: `8.86 / 10`.
 
 ## Next Proof Target
 
-Add a fixture-level schema-16 relation vocabulary test, then rerun replay, preflight, performance, and whitespace gates after any implementation change.
+Expand witness fixture coverage after replay determinism remains stable, then rerun replay, preflight, performance, and whitespace gates after any semantic implementation change.
