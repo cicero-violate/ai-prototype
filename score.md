@@ -2,6 +2,25 @@
 
 This scorecard records current progress for the planning/scoring turn of the current agent loop. The working tree contains deterministic policy reuse evaluator-savings, scaling-projection, distillation-readiness, evidence-surface index, evidence-bundle, evidence-quickcheck, evidence-maturity, evidence-summary, evidence-manifest, evidence validation-budget, evidence rollout-readiness, evidence learning-admission, evidence retrieval-readiness, evidence compact-validation, batch-readiness, batch-execution-plan, batch-evaluation-admission, batch-run-request, external-evaluator-result, learning-candidate, learning-data-admission, retrieval-example-admission, retrieval-example-index, retrieval-corpus-readiness, retrieval-corpus-admission, retrieval-use-approval, retrieval-use-manifest, retrieval-query-plan, retrieval-query-approval, retrieval-result-admission, retrieval-result-manifest, retrieval-result-use-admission, retrieval-result-use-manifest, retrieval-result-use-readiness, retrieval-result-use-approval, retrieval-result-use-manifest-admission, retrieval-result-use-summary, retrieval-result-use-summary-manifest, retrieval-result-use-summary-manifest-admission, retrieval-result-use-summary-manifest-readiness, retrieval-result-use-summary-manifest-approval, and retrieval-result-use-summary-manifest-approval-admission evidence.
 
+## Planning Turn Normalization - Auto-Refactor Signal Handoff
+
+```text
+turn_type = planning
+score_change_this_turn = no score increase
+primary_next_axis = Structure
+secondary_next_axis = Efficiency
+reason = current worktree evidence points to deterministic auto-refactor graph signals, but this turn only updates planning and scoring records
+commit_scope = plan.md, score.md only
+unowned_changes = existing canon-rustc-v3 modified and untracked implementation files
+```
+
+Normalized scoring stance:
+
+- `Structure` is the next implementation target because graph-level split, merge, canonicalization, phase, similarity, and provider-boundary signals can make the Rust extractor easier to audit and refactor.
+- `Efficiency` is the paired target because deterministic graph evidence can reduce repeated LLM analysis of the same maintenance surfaces.
+- `Correctness` does not increase this turn because no implementation validation was completed for the active auto-refactor work.
+- Historical retrieval-evidence sections below are retained as ledger history; the current active score decision is this auto-refactor planning handoff and the immediately following current-turn score decision.
+
 ## Current Planning Turn Score Decision - Auto-Refactor Signal Handoff
 
 ```text
@@ -74,14 +93,15 @@ G ≈ 0.966
 ## Current Judgment
 
 ```text
-turn_type = implementation_step_5
-weakest_axis = Learning
-secondary_risk = retrieval-result-use summary-manifest approval-admission boundary is not yet admitted
-completed_action = added deterministic policy reuse evidence retrieval-result-use-summary-manifest-approval evidence
-current_gap = retrieval-result-use-summary-manifest-approval is explicit, but retrieval-result-use-summary-manifest-approval-admission evidence is not admitted
-next_action = add deterministic policy reuse evidence retrieval-result-use-summary-manifest-approval-admission evidence
-scope = validation-harness/root-validator evidence only; kernel authority unchanged
-validation = formatting, focused result-use-summary-manifest-approval no-run, cargo check, and planning/score tests passed; focused executable result-use-summary-manifest-approval tests attempted but connector returned 502
+turn_type = planning
+weakest_axis = Correctness for the active auto-refactor slice until validation is completed
+primary_next_axis = Structure
+secondary_next_axis = Efficiency
+completed_action = refreshed planning/scoring handoff around active deterministic auto-refactor graph-signal work
+current_gap = similar/phase/provider graph relation work and auto_refactor_surface.py report generation are active worktree evidence but are not yet validated or committed as completed implementation
+next_action = complete and validate deterministic auto-refactor graph signals and evidence-only surface reporting
+scope = canon-rustc-v3 graph extraction and reporting evidence only; kernel authority, policy promotion, retrieval writes, and student training unchanged
+validation = no new implementation validation claimed during this planning-only turn
 ```
 
 ## Why Learning Is Still The Next Target

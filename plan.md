@@ -2,6 +2,23 @@
 
 This plan records the current implementation state for the planning/scoring turn of the current agent loop.
 
+## Planning Turn Normalization - Auto-Refactor Signal Handoff
+
+This planning turn keeps ownership limited to `plan.md` and `score.md`. The working tree contains active `canon-rustc-v3` implementation changes that appear to target deterministic graph evidence for auto-refactor surfaces; those files remain unowned by this turn and must not be committed here.
+
+Current normalized handoff:
+
+```text
+turn_type = planning
+primary_next_axis = Structure
+secondary_next_axis = Efficiency
+implementation_target = deterministic auto-refactor graph signals and evidence-only surface reporting
+commit_scope = plan.md, score.md only
+unowned_changes = existing canon-rustc-v3 modified and untracked files
+```
+
+The next implementation turn should validate and complete the `similar`, `phase`, and `provider` relation work plus the evidence-only `auto_refactor_surface.py` report before claiming any score increase. Older retrieval-evidence sections below remain historical ledger entries; the current active handoff is the auto-refactor signal handoff in this section and the section immediately below.
+
 ## North Star
 
 Canon Agent is a deterministic, self-improving runtime where:
