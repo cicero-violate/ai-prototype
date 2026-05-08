@@ -30,7 +30,7 @@ use ai::validation_harness::{
 };
 
 const EXPECTED_ROOT_VALIDATE_COMPACT_MODE_COUNT: usize = 86;
-const EXPECTED_EXTERNAL_AGENT_CLI_MODE_COUNT: usize = 119;
+const EXPECTED_EXTERNAL_AGENT_CLI_MODE_COUNT: usize = 121;
 
 fn expected_guarded_test_count() -> usize {
     VALIDATION_HARNESS_EXPECTED_TESTS + GRAPH_MUTATION_CLI_CONTRACT_EXPECTED_TESTS
@@ -924,6 +924,14 @@ fn external_agent_cli_modes_fixture_documents_all_public_modes() {
     assert!(catalog.contains(
         "root_validate --policy-reuse-evidence-retrieval-result-use-summary-manifest-approval-admission-consumption-learning-storage-write-admission-regression-smoke",
         "policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_consumption_learning_storage_write_admission_regression_smoke",
+    ));
+    assert!(catalog.contains(
+        "root_validate --policy-reuse-evidence-retrieval-result-use-summary-manifest-approval-admission-consumption-learning-storage-write-commit-intent-smoke",
+        "policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_consumption_learning_storage_write_commit_intent_smoke",
+    ));
+    assert!(catalog.contains(
+        "root_validate --policy-reuse-evidence-retrieval-result-use-summary-manifest-approval-admission-consumption-learning-storage-write-commit-intent-regression-smoke",
+        "policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_consumption_learning_storage_write_commit_intent_regression_smoke",
     ));
     assert!(catalog.contains(
         "root_validate --root-validate-dispatch-catalog",
@@ -11773,6 +11781,206 @@ fn root_validate_policy_reuse_evidence_retrieval_result_use_summary_manifest_app
             "\"retrieval_example_storage_write_admission_status\":\"retrieval_example_storage_write_not_admitted\"",
             "\"not_admitted_reason\":\"retrieval_example_storage_write_not_approved\"",
             "\"retrieval_example_storage_write_admission_hash\":",
+            "\"receipt_hash\":",
+        ],
+    );
+}
+
+#[test]
+fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_consumption_learning_storage_write_commit_intent_smoke_commits_intent_without_writing_storage(
+) {
+    let receipt = ai::validation_harness::
+        policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_consumption_learning_storage_write_commit_intent_smoke_receipt();
+    let admission = ai::validation_harness::
+        policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_consumption_learning_storage_write_admission_smoke_receipt();
+
+    assert_eq!(
+        receipt.schema,
+        "canon_policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_consumption_learning_storage_write_commit_intent_v1"
+    );
+    assert_eq!(
+        receipt.record_type,
+        ai::validation_harness::POLICY_REUSE_EVIDENCE_RETRIEVAL_RESULT_USE_SUMMARY_MANIFEST_APPROVAL_ADMISSION_CONSUMPTION_LEARNING_STORAGE_WRITE_COMMIT_INTENT_SMOKE_STEP
+    );
+    assert_eq!(
+        receipt.retrieval_example_learning_storage_write_commit_intent_version,
+        1
+    );
+    assert_eq!(
+        receipt.source_retrieval_example_storage_write_admission_hash,
+        admission.receipt_hash
+    );
+    assert_eq!(
+        receipt.source_retrieval_example_storage_write_approval_hash,
+        admission.source_retrieval_example_storage_write_approval_hash
+    );
+    assert_eq!(
+        receipt.source_retrieval_example_storage_write_preflight_hash,
+        admission.source_retrieval_example_storage_write_preflight_hash
+    );
+    assert_eq!(
+        receipt.source_retrieval_example_storage_commit_intent_hash,
+        admission.source_retrieval_example_storage_commit_intent_hash
+    );
+    assert!(receipt.retrieval_example_storage_write_admitted);
+    assert!(receipt.retrieval_example_storage_write_approved);
+    assert!(receipt.retrieval_example_storage_write_preflight_ready);
+    assert!(receipt.retrieval_example_storage_commit_intent_ready);
+    assert!(receipt.retrieval_example_storage_admitted);
+    assert!(receipt.retrieval_example_materialization_plan_ready);
+    assert!(receipt.retrieval_example_learning_admitted);
+    assert!(receipt.retrieval_example_learning_eligible);
+    assert!(receipt.retrieval_result_use_summary_manifest_approval_admission_consumed);
+    assert!(receipt.retrieval_result_use_summary_manifest_approval_admitted);
+    assert!(receipt.retrieval_result_use_summary_manifest_approved);
+    assert!(receipt.retrieval_result_use_summary_manifest_ready_for_use);
+    assert!(receipt.retrieval_result_use_summary_manifest_admitted);
+    assert!(!receipt.retrieval_read_performed);
+    assert!(!receipt.retrieval_write_performed);
+    assert!(!receipt.retrieval_query_executed);
+    assert!(!receipt.runtime_result_approval_performed);
+    assert!(!receipt.policy_promotion_performed);
+    assert!(!receipt.batch_execution_performed);
+    assert!(!receipt.student_training_performed);
+    assert!(receipt.external_result_evidence_present);
+    assert_eq!(
+        receipt.storage_write_commit_intent_policy_reuse_examples,
+        admission.storage_write_admission_policy_reuse_examples
+    );
+    assert_eq!(
+        receipt.storage_write_commit_intent_llm_fallback_examples,
+        admission.storage_write_admission_llm_fallback_examples
+    );
+    assert!(receipt.retrieval_example_storage_write_commit_intent_ready);
+    assert_eq!(
+        receipt.retrieval_example_storage_write_commit_intent_status,
+        "retrieval_example_storage_write_commit_intent_ready"
+    );
+    assert_eq!(receipt.not_ready_reason, "none");
+    assert_ne!(receipt.retrieval_example_storage_write_commit_intent_hash, 0);
+    assert_ne!(receipt.receipt_hash, 0);
+    assert!(receipt.is_valid());
+    assert!(receipt.passed());
+}
+
+#[test]
+fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_consumption_learning_storage_write_commit_intent_regression_smoke_is_valid_not_ready_evidence(
+) {
+    let receipt = ai::validation_harness::
+        policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_consumption_learning_storage_write_commit_intent_regression_smoke_receipt();
+    let admission = ai::validation_harness::
+        policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_consumption_learning_storage_write_admission_regression_smoke_receipt();
+
+    assert_eq!(
+        receipt.record_type,
+        ai::validation_harness::POLICY_REUSE_EVIDENCE_RETRIEVAL_RESULT_USE_SUMMARY_MANIFEST_APPROVAL_ADMISSION_CONSUMPTION_LEARNING_STORAGE_WRITE_COMMIT_INTENT_REGRESSION_SMOKE_STEP
+    );
+    assert_eq!(
+        receipt.source_retrieval_example_storage_write_admission_hash,
+        admission.receipt_hash
+    );
+    assert!(!receipt.retrieval_example_storage_write_admitted);
+    assert!(!receipt.retrieval_example_storage_write_approved);
+    assert!(!receipt.retrieval_example_storage_write_preflight_ready);
+    assert!(!receipt.retrieval_example_storage_commit_intent_ready);
+    assert!(!receipt.retrieval_example_storage_admitted);
+    assert!(!receipt.retrieval_example_materialization_plan_ready);
+    assert!(!receipt.retrieval_example_learning_admitted);
+    assert!(!receipt.retrieval_example_learning_eligible);
+    assert!(!receipt.retrieval_result_use_summary_manifest_approval_admission_consumed);
+    assert!(!receipt.retrieval_result_use_summary_manifest_approval_admitted);
+    assert!(!receipt.retrieval_result_use_summary_manifest_approved);
+    assert!(!receipt.retrieval_result_use_summary_manifest_ready_for_use);
+    assert!(!receipt.retrieval_result_use_summary_manifest_admitted);
+    assert!(!receipt.retrieval_read_performed);
+    assert!(!receipt.retrieval_write_performed);
+    assert!(!receipt.retrieval_query_executed);
+    assert!(!receipt.runtime_result_approval_performed);
+    assert!(!receipt.policy_promotion_performed);
+    assert!(!receipt.batch_execution_performed);
+    assert!(!receipt.student_training_performed);
+    assert!(receipt.external_result_evidence_present);
+    assert!(!receipt.retrieval_example_storage_write_commit_intent_ready);
+    assert_eq!(
+        receipt.retrieval_example_storage_write_commit_intent_status,
+        "retrieval_example_storage_write_commit_intent_not_ready"
+    );
+    assert_eq!(
+        receipt.not_ready_reason,
+        "retrieval_example_storage_write_not_admitted"
+    );
+    assert!(receipt.is_valid());
+    assert!(!receipt.passed());
+}
+
+#[test]
+fn root_validate_policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_consumption_learning_storage_write_commit_intent_smoke_mode_is_executable_contract(
+) {
+    assert_root_validate_catalog_compact_mode_contract(
+        "--policy-reuse-evidence-retrieval-result-use-summary-manifest-approval-admission-consumption-learning-storage-write-commit-intent-smoke",
+        &[
+            "\"schema\":\"canon_policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_consumption_learning_storage_write_commit_intent_v1\"",
+            "\"record_type\":\"policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_consumption_learning_storage_write_commit_intent_smoke\"",
+            "\"retrieval_example_learning_storage_write_commit_intent_version\":1",
+            "\"source_retrieval_example_storage_write_admission_hash\":",
+            "\"source_retrieval_example_storage_write_approval_hash\":",
+            "\"source_retrieval_example_storage_write_preflight_hash\":",
+            "\"source_retrieval_example_storage_commit_intent_hash\":",
+            "\"retrieval_example_storage_write_admitted\":true",
+            "\"retrieval_example_storage_write_approved\":true",
+            "\"retrieval_example_storage_write_preflight_ready\":true",
+            "\"retrieval_example_storage_commit_intent_ready\":true",
+            "\"retrieval_example_storage_admitted\":true",
+            "\"retrieval_example_materialization_plan_ready\":true",
+            "\"retrieval_example_learning_admitted\":true",
+            "\"retrieval_example_learning_eligible\":true",
+            "\"retrieval_read_performed\":false",
+            "\"retrieval_write_performed\":false",
+            "\"retrieval_query_executed\":false",
+            "\"runtime_result_approval_performed\":false",
+            "\"policy_promotion_performed\":false",
+            "\"batch_execution_performed\":false",
+            "\"student_training_performed\":false",
+            "\"external_result_evidence_present\":true",
+            "\"retrieval_example_storage_write_commit_intent_ready\":true",
+            "\"retrieval_example_storage_write_commit_intent_status\":\"retrieval_example_storage_write_commit_intent_ready\"",
+            "\"not_ready_reason\":\"none\"",
+            "\"retrieval_example_storage_write_commit_intent_hash\":",
+            "\"receipt_hash\":",
+        ],
+    );
+}
+
+#[test]
+fn root_validate_policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_consumption_learning_storage_write_commit_intent_regression_smoke_mode_is_executable_contract(
+) {
+    assert_root_validate_catalog_compact_mode_contract(
+        "--policy-reuse-evidence-retrieval-result-use-summary-manifest-approval-admission-consumption-learning-storage-write-commit-intent-regression-smoke",
+        &[
+            "\"schema\":\"canon_policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_consumption_learning_storage_write_commit_intent_v1\"",
+            "\"record_type\":\"policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_consumption_learning_storage_write_commit_intent_regression_smoke\"",
+            "\"retrieval_example_learning_storage_write_commit_intent_version\":1",
+            "\"source_retrieval_example_storage_write_admission_hash\":",
+            "\"retrieval_example_storage_write_admitted\":false",
+            "\"retrieval_example_storage_write_approved\":false",
+            "\"retrieval_example_storage_write_preflight_ready\":false",
+            "\"retrieval_example_storage_commit_intent_ready\":false",
+            "\"retrieval_example_storage_admitted\":false",
+            "\"retrieval_example_materialization_plan_ready\":false",
+            "\"retrieval_example_learning_admitted\":false",
+            "\"retrieval_example_learning_eligible\":false",
+            "\"retrieval_read_performed\":false",
+            "\"retrieval_write_performed\":false",
+            "\"retrieval_query_executed\":false",
+            "\"runtime_result_approval_performed\":false",
+            "\"policy_promotion_performed\":false",
+            "\"batch_execution_performed\":false",
+            "\"student_training_performed\":false",
+            "\"external_result_evidence_present\":true",
+            "\"retrieval_example_storage_write_commit_intent_ready\":false",
+            "\"retrieval_example_storage_write_commit_intent_status\":\"retrieval_example_storage_write_commit_intent_not_ready\"",
+            "\"not_ready_reason\":\"retrieval_example_storage_write_not_admitted\"",
+            "\"retrieval_example_storage_write_commit_intent_hash\":",
             "\"receipt_hash\":",
         ],
     );
