@@ -987,3 +987,41 @@ Si = 0.97  one receipt represents the write-approval boundary instead of scatter
 F  = 0.98  write approval prepares later retrieval/model-learning gates without committing to storage or training behavior
 G  ≈ 0.966
 ```
+
+## Planning Turn Score Decision - Retrieval Example Storage Write Admission Verification
+
+```text
+selected_axis = Learning
+score_change_this_turn = retained L at 1.00; retained G at approximately 0.966
+reason = the next highest-leverage slice is verification of the existing retrieval-example storage-write-admission evidence boundary after storage-write-approval verification
+source_changes_observed_but_not_owned = canon-rustc-v3/* modified and untracked files remain out of scope for this planning turn
+commit_scope = plan.md and score.md only
+```
+
+Planning score stance:
+
+```text
+I  = 0.98  storage-write-approval evidence can feed deterministic storage-write-admission evidence
+E  = 0.97  planned admission verification remains evidence-only and forbids retrieval reads, writes, queries, runtime approval, promotion, batch execution, and training
+C  = 0.90  no implementation validation was rerun in this planning-only turn; prior focused compile, cargo check, planning contract, and score contract evidence remains the latest recorded validation
+A  = 0.97  authority remains outside the LLM and outside the storage-write-admission receipt
+R  = 0.96  plan requires healthy and controlled not-admitted regression paths
+P  = 0.95  planned verification introduces no runtime retrieval, query, batch, or training cost
+S  = 0.98  the selected boundary keeps retrieval-example storage mutation separated behind explicit admission evidence
+D  = 0.97  planned verification should confirm fixed source hashes, booleans, status strings, reason strings, and deterministic hashes
+T  = 0.98  plan requires explicit binding to storage-write-approval, storage-write-preflight, commit-intent, and upstream learning/admission evidence
+Co = 0.95  plan and score now hand off a precise retrieval-example storage-write-admission verification slice
+Em = 0.95  planned root_validate checks give external consumers compact healthy and regression admission evidence once executed
+B  = 0.97  external evaluators retain deterministic admission evidence before storage writes, runtime approval, promotion, or training
+L  = 1.00  the selected slice continues the learning evidence chain toward externally gated retrieval-example storage writes
+St = 0.97  plan keeps kernel and runtime authority stable
+Si = 0.97  plan preserves one receipt per boundary rather than scattered downstream checks
+F  = 0.98  storage-write-admission verification prepares later retrieval/model-learning gates without committing to storage or training behavior
+G  ≈ 0.966
+```
+
+Planning-only validation note:
+
+```text
+No source validation was rerun during this planning-only turn. The next implementation turn should run the validation commands listed in plan.md for storage-write-admission verification.
+```

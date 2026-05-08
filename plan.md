@@ -1483,3 +1483,77 @@ score.md
 ```
 
 Tracked implementation files for storage-write-approval were already clean at the start of this turn. Observed `canon-rustc-v3/` working-tree changes remain outside this turn.
+
+## Planning Turn - Retrieval Example Storage Write Admission Verification
+
+Current repository observation:
+
+```text
+Existing tracked source already exposes a deterministic retrieval-example storage-write-admission evidence surface:
+
+PolicyReuseEvidenceRetrievalResultUseSummaryManifestApprovalAdmissionConsumptionLearningStorageWriteAdmissionReceipt
+policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_consumption_learning_storage_write_admission_smoke_receipt()
+policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_consumption_learning_storage_write_admission_regression_smoke_receipt()
+--policy-reuse-evidence-retrieval-result-use-summary-manifest-approval-admission-consumption-learning-storage-write-admission-smoke
+--policy-reuse-evidence-retrieval-result-use-summary-manifest-approval-admission-consumption-learning-storage-write-admission-regression-smoke
+```
+
+Planning decision for the next implementation turn:
+
+Keep the next turn focused on **Learning**, specifically verifying the existing storage-write-admission boundary that consumes storage-write-approval evidence before any retrieval-example storage mutation authority exists.
+
+Current gap:
+
+```text
+Storage-write-approval evidence is verified in the latest recorded turn, and storage-write-admission source symbols are present. The next turn should verify the admission boundary with focused compile and contract evidence, then decide whether the downstream storage-write-commit-intent boundary remains valid or needs a fresh verification pass.
+```
+
+Recommended next slice:
+
+```text
+Verify the deterministic policy reuse evidence receipt that consumes retrieval-example storage-write-approval evidence and emits retrieval-example storage-write-admission evidence without performing retrieval storage reads/writes, query execution, runtime result approval, policy promotion, batch execution, live LLM calls, network calls, wall-clock-dependent measurement, or student training.
+```
+
+Recommended validation commands:
+
+```text
+RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test validation_harness_contract storage_write_admission --no-run --quiet
+RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test validation_harness_contract storage_write_admission --quiet
+RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo run --quiet --bin root_validate -- --policy-reuse-evidence-retrieval-result-use-summary-manifest-approval-admission-consumption-learning-storage-write-admission-smoke
+RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo run --quiet --bin root_validate -- --policy-reuse-evidence-retrieval-result-use-summary-manifest-approval-admission-consumption-learning-storage-write-admission-regression-smoke
+RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo check --quiet
+RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test planning_contract --quiet
+RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test score_contract --quiet
+```
+
+Recommended constraints:
+
+1. Keep the kernel, transition table, runtime reducer, durable writer, and command ledger untouched.
+2. Do not introduce live LLM, network, wall-clock, or environment-dependent measurement.
+3. Reuse storage-write-approval and upstream receipt hashes rather than creating storage mutation authority.
+4. Keep the receipt evidence-only: no retrieval storage reads/writes, no query execution, no policy promotion, no runtime result approval, no batch execution, and no student training.
+5. Include healthy and controlled regression checks for admission and not-admitted status.
+6. Update fixtures and guarded validation counts only if the next turn discovers a missing public mode or test entry.
+7. Keep unrelated `canon-rustc-v3/` working-tree changes out of this slice unless explicitly selected in a separate implementation turn.
+
+## Planning Turn Commit Scope - Retrieval Example Storage Write Admission Verification
+
+This planning turn updates and commits:
+
+```text
+plan.md
+score.md
+```
+
+Observed non-owned working-tree changes remain outside this planning turn:
+
+```text
+canon-rustc-v3/src/facts.rs
+canon-rustc-v3/src/hir.rs
+canon-rustc-v3/src/mir.rs
+canon-rustc-v3/src/wrapper.rs
+canon-rustc-v3/validation/semantic_preflight.py
+canon-rustc-v3/validation/semantic_scale_probe.py
+canon-rustc-v3/plan-autorefactor.md
+canon-rustc-v3/validation/auto_refactor_surface.py
+```
