@@ -17,7 +17,7 @@ pub const FAST_TEST_STEP: &str = "fast_score_contract_tests";
 pub const LIB_UNIT_STEP: &str = "lib_unit_contract_tests";
 pub const API_TRANSPORT_STEP: &str = "api_transport_contract_tests";
 pub const VALIDATION_HARNESS_STEP: &str = "validation_harness_contract_tests";
-pub const VALIDATION_HARNESS_EXPECTED_TESTS: usize = 216;
+pub const VALIDATION_HARNESS_EXPECTED_TESTS: usize = 220;
 pub const PLANNING_CONTRACT_STEP: &str = "planning_contract_tests";
 pub const GRAPH_MUTATION_CLI_CONTRACT_STEP: &str = "graph_mutation_cli_contract_tests";
 pub const GRAPH_MUTATION_CLI_CONTRACT_EXPECTED_TESTS: usize = 10;
@@ -143,6 +143,10 @@ pub const POLICY_REUSE_EVIDENCE_BATCH_RUN_REQUEST_SMOKE_STEP: &str =
     "policy_reuse_evidence_batch_run_request_smoke";
 pub const POLICY_REUSE_EVIDENCE_BATCH_RUN_REQUEST_REGRESSION_SMOKE_STEP: &str =
     "policy_reuse_evidence_batch_run_request_regression_smoke";
+pub const POLICY_REUSE_EVIDENCE_EXTERNAL_EVALUATOR_RESULT_SMOKE_STEP: &str =
+    "policy_reuse_evidence_external_evaluator_result_smoke";
+pub const POLICY_REUSE_EVIDENCE_EXTERNAL_EVALUATOR_RESULT_REGRESSION_SMOKE_STEP: &str =
+    "policy_reuse_evidence_external_evaluator_result_regression_smoke";
 pub const POLICY_VALIDATION_HEALTH_SMOKE_STEP: &str = "policy_validation_health_smoke";
 pub const POLICY_VALIDATION_HEALTH_TREND_SMOKE_STEP: &str = "policy_validation_health_trend_smoke";
 pub const POLICY_ORCHESTRATION_CAPACITY_SMOKE_STEP: &str = "policy_orchestration_capacity_smoke";
@@ -2512,6 +2516,98 @@ impl PolicyReuseEvidenceBatchRunRequestReceipt {
             self.request_status,
             self.not_requestable_reason,
             self.request_hash,
+            self.receipt_hash,
+        )
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PolicyReuseEvidenceExternalEvaluatorResultReceipt {
+    pub schema: &'static str,
+    pub record_type: &'static str,
+    pub evaluator_result_version: u64,
+    pub source_batch_run_request_hash: u64,
+    pub source_batch_evaluation_admission_hash: u64,
+    pub batch_request_ready: bool,
+    pub batch_evaluation_admitted: bool,
+    pub external_evaluator_independent: bool,
+    pub llm_self_approved: bool,
+    pub evaluated_batch_capacity: usize,
+    pub evaluated_policy_reuse_cases: usize,
+    pub evaluated_llm_fallback_cases: usize,
+    pub evaluator_result_passed: bool,
+    pub evaluator_status: &'static str,
+    pub evaluator_failure_reason: &'static str,
+    pub evaluator_hash: u64,
+    pub receipt_hash: u64,
+}
+
+impl PolicyReuseEvidenceExternalEvaluatorResultReceipt {
+    pub fn passed(&self) -> bool {
+        self.is_valid() && self.evaluator_result_passed && self.evaluator_status == "passed"
+    }
+
+    pub fn is_valid(&self) -> bool {
+        self.schema == "canon_policy_reuse_evidence_external_evaluator_result_v1"
+            && matches!(
+                self.record_type,
+                "policy_reuse_evidence_external_evaluator_result"
+                    | POLICY_REUSE_EVIDENCE_EXTERNAL_EVALUATOR_RESULT_SMOKE_STEP
+                    | POLICY_REUSE_EVIDENCE_EXTERNAL_EVALUATOR_RESULT_REGRESSION_SMOKE_STEP
+            )
+            && self.evaluator_result_version == 1
+            && self.source_batch_run_request_hash != 0
+            && self.source_batch_evaluation_admission_hash != 0
+            && self.external_evaluator_independent
+            && !self.llm_self_approved
+            && self.evaluated_batch_capacity > 0
+            && self.evaluated_policy_reuse_cases <= self.evaluated_batch_capacity
+            && self.evaluated_llm_fallback_cases <= self.evaluated_batch_capacity
+            && self.evaluated_policy_reuse_cases + self.evaluated_llm_fallback_cases
+                == self.evaluated_batch_capacity
+            && matches!(self.evaluator_status, "passed" | "failed")
+            && matches!(
+                self.evaluator_failure_reason,
+                "none"
+                    | "request_not_ready"
+                    | "admission_not_granted"
+                    | "external_evaluator_failed"
+                    | "llm_self_approval_detected"
+            )
+            && self.evaluator_result_passed
+                == (self.batch_request_ready
+                    && self.batch_evaluation_admitted
+                    && self.external_evaluator_independent
+                    && !self.llm_self_approved
+                    && self.evaluated_policy_reuse_cases > 0
+                    && self.evaluator_failure_reason == "none")
+            && (self.evaluator_status == "passed") == self.evaluator_result_passed
+            && self.evaluator_hash != 0
+            && self.receipt_hash != 0
+            && self.evaluator_hash == policy_reuse_evidence_external_evaluator_result_hash(self)
+            && self.receipt_hash
+                == policy_reuse_evidence_external_evaluator_result_receipt_hash(self)
+    }
+
+    pub fn to_json(&self) -> String {
+        format!(
+            r#"{{"schema":"{}","record_type":"{}","evaluator_result_version":{},"source_batch_run_request_hash":{},"source_batch_evaluation_admission_hash":{},"batch_request_ready":{},"batch_evaluation_admitted":{},"external_evaluator_independent":{},"llm_self_approved":{},"evaluated_batch_capacity":{},"evaluated_policy_reuse_cases":{},"evaluated_llm_fallback_cases":{},"evaluator_result_passed":{},"evaluator_status":"{}","evaluator_failure_reason":"{}","evaluator_hash":{},"receipt_hash":{}}}"#,
+            self.schema,
+            self.record_type,
+            self.evaluator_result_version,
+            self.source_batch_run_request_hash,
+            self.source_batch_evaluation_admission_hash,
+            self.batch_request_ready,
+            self.batch_evaluation_admitted,
+            self.external_evaluator_independent,
+            self.llm_self_approved,
+            self.evaluated_batch_capacity,
+            self.evaluated_policy_reuse_cases,
+            self.evaluated_llm_fallback_cases,
+            self.evaluator_result_passed,
+            self.evaluator_status,
+            self.evaluator_failure_reason,
+            self.evaluator_hash,
             self.receipt_hash,
         )
     }
@@ -5387,6 +5483,92 @@ fn finalize_policy_reuse_evidence_batch_run_request(
     receipt.receipt_hash = policy_reuse_evidence_batch_run_request_receipt_hash(receipt);
 }
 
+pub fn policy_reuse_evidence_external_evaluator_result_smoke_receipt(
+) -> PolicyReuseEvidenceExternalEvaluatorResultReceipt {
+    let request = policy_reuse_evidence_batch_run_request_smoke_receipt();
+    let admission = policy_reuse_evidence_batch_evaluation_admission_smoke_receipt();
+    let mut receipt = policy_reuse_evidence_external_evaluator_result_from_sources(
+        POLICY_REUSE_EVIDENCE_EXTERNAL_EVALUATOR_RESULT_SMOKE_STEP,
+        &request,
+        &admission,
+        true,
+        false,
+        "none",
+    );
+    finalize_policy_reuse_evidence_external_evaluator_result(&mut receipt);
+    receipt
+}
+
+pub fn policy_reuse_evidence_external_evaluator_result_regression_smoke_receipt(
+) -> PolicyReuseEvidenceExternalEvaluatorResultReceipt {
+    let request = policy_reuse_evidence_batch_run_request_regression_smoke_receipt();
+    let admission = policy_reuse_evidence_batch_evaluation_admission_regression_smoke_receipt();
+    let mut receipt = policy_reuse_evidence_external_evaluator_result_from_sources(
+        POLICY_REUSE_EVIDENCE_EXTERNAL_EVALUATOR_RESULT_REGRESSION_SMOKE_STEP,
+        &request,
+        &admission,
+        true,
+        false,
+        "external_evaluator_failed",
+    );
+    finalize_policy_reuse_evidence_external_evaluator_result(&mut receipt);
+    receipt
+}
+
+fn policy_reuse_evidence_external_evaluator_result_from_sources(
+    record_type: &'static str,
+    request: &PolicyReuseEvidenceBatchRunRequestReceipt,
+    admission: &PolicyReuseEvidenceBatchEvaluationAdmissionReceipt,
+    external_evaluator_independent: bool,
+    llm_self_approved: bool,
+    evaluator_failure_reason: &'static str,
+) -> PolicyReuseEvidenceExternalEvaluatorResultReceipt {
+    let batch_request_ready = request.passed();
+    let batch_evaluation_admitted = admission.passed();
+    let evaluated_batch_capacity = request.requested_batch_capacity;
+    let evaluated_policy_reuse_cases = request.requested_policy_reuse_cases;
+    let evaluated_llm_fallback_cases = request.requested_llm_fallback_cases;
+    let evaluator_result_passed = batch_request_ready
+        && batch_evaluation_admitted
+        && external_evaluator_independent
+        && !llm_self_approved
+        && evaluated_policy_reuse_cases > 0
+        && evaluator_failure_reason == "none";
+    let evaluator_status = if evaluator_result_passed {
+        "passed"
+    } else {
+        "failed"
+    };
+    let mut receipt = PolicyReuseEvidenceExternalEvaluatorResultReceipt {
+        schema: "canon_policy_reuse_evidence_external_evaluator_result_v1",
+        record_type,
+        evaluator_result_version: 1,
+        source_batch_run_request_hash: request.receipt_hash,
+        source_batch_evaluation_admission_hash: admission.receipt_hash,
+        batch_request_ready,
+        batch_evaluation_admitted,
+        external_evaluator_independent,
+        llm_self_approved,
+        evaluated_batch_capacity,
+        evaluated_policy_reuse_cases,
+        evaluated_llm_fallback_cases,
+        evaluator_result_passed,
+        evaluator_status,
+        evaluator_failure_reason,
+        evaluator_hash: 0,
+        receipt_hash: 0,
+    };
+    finalize_policy_reuse_evidence_external_evaluator_result(&mut receipt);
+    receipt
+}
+
+fn finalize_policy_reuse_evidence_external_evaluator_result(
+    receipt: &mut PolicyReuseEvidenceExternalEvaluatorResultReceipt,
+) {
+    receipt.evaluator_hash = policy_reuse_evidence_external_evaluator_result_hash(receipt);
+    receipt.receipt_hash = policy_reuse_evidence_external_evaluator_result_receipt_hash(receipt);
+}
+
 #[allow(clippy::too_many_arguments)]
 fn policy_reuse_evidence_surface_index_from_sources(
     record_type: &'static str,
@@ -6203,6 +6385,60 @@ fn policy_reuse_evidence_batch_run_request_receipt_hash(
         return 0;
     }
     (request_hash ^ 0x504f_4c52_4252_5152u64).max(1)
+}
+
+fn policy_reuse_evidence_external_evaluator_result_hash(
+    receipt: &PolicyReuseEvidenceExternalEvaluatorResultReceipt,
+) -> u64 {
+    if receipt.evaluator_result_version == 0
+        || receipt.source_batch_run_request_hash == 0
+        || receipt.source_batch_evaluation_admission_hash == 0
+    {
+        return 0;
+    }
+    let evaluator_status_code = match receipt.evaluator_status {
+        "passed" => 1,
+        "failed" => 2,
+        _ => 0,
+    };
+    let evaluator_failure_reason_code = match receipt.evaluator_failure_reason {
+        "none" => 1,
+        "request_not_ready" => 2,
+        "admission_not_granted" => 3,
+        "external_evaluator_failed" => 4,
+        "llm_self_approval_detected" => 5,
+        _ => 0,
+    };
+    if evaluator_status_code == 0 || evaluator_failure_reason_code == 0 {
+        return 0;
+    }
+    let mut h = 0x504f_4c52_4552_4848u64;
+    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.schema.as_bytes());
+    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.record_type.as_bytes());
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.evaluator_result_version;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_batch_run_request_hash;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_batch_evaluation_admission_hash;
+    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.batch_request_ready);
+    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.batch_evaluation_admitted);
+    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.external_evaluator_independent);
+    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.llm_self_approved);
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.evaluated_batch_capacity as u64;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.evaluated_policy_reuse_cases as u64;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.evaluated_llm_fallback_cases as u64;
+    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.evaluator_result_passed);
+    h = h.wrapping_mul(0x100000001b3) ^ evaluator_status_code;
+    h = h.wrapping_mul(0x100000001b3) ^ evaluator_failure_reason_code;
+    h.max(1)
+}
+
+fn policy_reuse_evidence_external_evaluator_result_receipt_hash(
+    receipt: &PolicyReuseEvidenceExternalEvaluatorResultReceipt,
+) -> u64 {
+    let evaluator_hash = policy_reuse_evidence_external_evaluator_result_hash(receipt);
+    if evaluator_hash == 0 || receipt.evaluator_hash != evaluator_hash {
+        return 0;
+    }
+    (evaluator_hash ^ 0x504f_4c52_4552_4852u64).max(1)
 }
 
 fn policy_reuse_evidence_summary_hash(receipt: &PolicyReuseEvidenceSummaryReceipt) -> u64 {

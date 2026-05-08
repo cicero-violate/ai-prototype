@@ -430,6 +430,16 @@ const COMPACT_MODES: &[CompactMode] = &[
         run: policy_reuse_evidence_batch_run_request_regression_smoke_mode,
     },
     CompactMode {
+        arg: "--policy-reuse-evidence-external-evaluator-result-smoke",
+        marker: "policy_reuse_evidence_external_evaluator_result_smoke",
+        run: policy_reuse_evidence_external_evaluator_result_smoke_mode,
+    },
+    CompactMode {
+        arg: "--policy-reuse-evidence-external-evaluator-result-regression-smoke",
+        marker: "policy_reuse_evidence_external_evaluator_result_regression_smoke",
+        run: policy_reuse_evidence_external_evaluator_result_regression_smoke_mode,
+    },
+    CompactMode {
         arg: "--root-validate-dispatch-catalog",
         marker: "canon_root_validate_dispatch_catalog_v1",
         run: root_validate_dispatch_catalog_mode,
@@ -1318,6 +1328,35 @@ fn policy_reuse_evidence_batch_run_request_regression_smoke_mode(
         && !receipt.batch_request_ready
         && receipt.request_status == "not_requestable"
         && receipt.not_requestable_reason == "admission_not_granted"
+        && !receipt.passed();
+    Ok(CompactModeOutcome::controlled_json(
+        receipt.to_json(),
+        passed,
+    ))
+}
+
+fn policy_reuse_evidence_external_evaluator_result_smoke_mode() -> Result<CompactModeOutcome, String>
+{
+    let receipt =
+        validation_harness::policy_reuse_evidence_external_evaluator_result_smoke_receipt();
+    Ok(CompactModeOutcome::pass_json(
+        receipt.to_json(),
+        receipt.passed(),
+    ))
+}
+
+fn policy_reuse_evidence_external_evaluator_result_regression_smoke_mode(
+) -> Result<CompactModeOutcome, String> {
+    let receipt = validation_harness::
+        policy_reuse_evidence_external_evaluator_result_regression_smoke_receipt();
+    let passed = receipt.is_valid()
+        && !receipt.batch_request_ready
+        && !receipt.batch_evaluation_admitted
+        && receipt.external_evaluator_independent
+        && !receipt.llm_self_approved
+        && !receipt.evaluator_result_passed
+        && receipt.evaluator_status == "failed"
+        && receipt.evaluator_failure_reason == "external_evaluator_failed"
         && !receipt.passed();
     Ok(CompactModeOutcome::controlled_json(
         receipt.to_json(),

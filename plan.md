@@ -1,6 +1,6 @@
 # Canon Agent Implementation Plan
 
-This plan tracks the current deterministic implementation plan after implementation step 2 of the current agent loop.
+This plan tracks the current deterministic implementation plan after implementation step 3 of the current agent loop.
 
 ## North Star
 
@@ -70,106 +70,21 @@ The repository currently exposes these meaningful surfaces:
 - validation-harness/root-validate smoke exposure for healthy and controlled plan-not-ready batch-evaluation-admission evidence;
 - deterministic policy reuse evidence batch-run-request receipt in the validation harness;
 - validation-harness/root-validate smoke exposure for healthy and controlled admission-not-granted batch-run-request evidence;
+- deterministic policy reuse evidence external-evaluator-result receipt in the validation harness;
+- validation-harness/root-validate smoke exposure for healthy and controlled evaluator-failed external-evaluator-result evidence;
 - retained fixtures for policy reuse, policy validation health, policy validation trend, orchestration capacity, policy capacity/cost, runtime performance trend, validation duration planning, validation command footprint, external CLI mode evidence, and evidence-surface index coverage.
 
 ## Current Completed Implementation Baseline
 
-The current working tree contains deterministic **policy reuse evidence batch-run-request** evidence in the validation-harness/root-validator layer, while retaining evaluator-savings, scaling-projection, distillation-readiness, evidence-surface index, evidence-bundle, evidence-quickcheck, evidence-maturity, evidence-summary, evidence-manifest, validation-budget, rollout-readiness, learning-admission, retrieval-readiness, compact-validation, batch-readiness, batch-execution-plan, and batch-evaluation-admission evidence already present in this loop. This implementation step 2 adds a deterministic no-execute request boundary that composes batch-evaluation-admission and batch-execution-plan evidence.
+The current working tree contains deterministic **policy reuse evidence external-evaluator-result** evidence in the validation-harness/root-validator layer, while retaining evaluator-savings, scaling-projection, distillation-readiness, evidence-surface index, evidence-bundle, evidence-quickcheck, evidence-maturity, evidence-summary, evidence-manifest, validation-budget, rollout-readiness, learning-admission, retrieval-readiness, compact-validation, batch-readiness, batch-execution-plan, batch-evaluation-admission, and batch-run-request evidence already present in this loop. This implementation step 3 adds a deterministic evaluator-result boundary that composes batch-run-request and batch-evaluation-admission evidence without allowing LLM self-approval.
 
 This completed slice answers:
 
 ```text
-Can an evaluator inspect one deterministic receipt that records the next external batch-run request boundary after admission without executing the run, promoting policy, writing retrieval storage, training a model, or changing kernel authority?
+Can an evaluator inspect one deterministic receipt that records an externally evaluated batch outcome boundary without letting the LLM approve itself, executing batches, promoting policy, writing retrieval storage, training a model, or changing kernel authority?
 ```
 
 Implemented surfaces:
-
-```text
-PolicyReuseEvidenceBatchRunRequestReceipt
-policy_reuse_evidence_batch_run_request_smoke_receipt()
-policy_reuse_evidence_batch_run_request_regression_smoke_receipt()
---policy-reuse-evidence-batch-run-request-smoke
---policy-reuse-evidence-batch-run-request-regression-smoke
-```
-
-Implemented fields:
-
-```text
-schema
-record_type
-request_version
-source_batch_evaluation_admission_hash
-source_batch_execution_plan_hash
-batch_evaluation_admitted
-plan_ready
-no_execute_request
-execution_performed
-requested_batch_capacity
-requested_policy_reuse_cases
-requested_llm_fallback_cases
-batch_request_ready
-request_status
-not_requestable_reason
-request_hash
-receipt_hash
-```
-
-Completed implementation tasks:
-
-1. Added `PolicyReuseEvidenceBatchRunRequestReceipt` with deterministic validation, JSON output, request hash, and receipt hash.
-2. Added healthy and controlled admission-not-granted regression smoke constructors.
-3. Bound batch-run-request evidence to batch-evaluation-admission and batch-execution-plan receipt hashes.
-4. Added root validator compact modes for healthy and regression batch-run-request receipts.
-5. Added validation harness contracts for batch-run-request semantics, source binding, compact output, and controlled failing evidence.
-6. Updated external CLI mode fixture for the two batch-run-request public modes and raised mode count from 83 to 85.
-7. Updated validation harness expected test count from 212 to 216.
-8. Kept kernel authority unchanged and did not execute batches, promote policy, write retrieval storage, train a student model, or alter live runtime behavior.
-
-Implemented deterministic semantics:
-
-- `batch_request_ready = true` only when batch-evaluation-admission passed, batch-execution-plan passed, the request remains explicitly no-execute, no execution was performed, requested policy-reuse cases are positive, and `not_requestable_reason = "none"`.
-- Healthy evidence reuses batch-evaluation-admission and batch-execution-plan receipt hashes, reports request status `request_ready`, and records `not_requestable_reason = "none"`.
-- Regression evidence remains structurally valid while exposing `batch_evaluation_admitted = false`, `plan_ready = false`, request status `not_requestable`, and `not_requestable_reason = "admission_not_granted"`.
-- Batch-run-request source evidence reuses existing evidence receipt hashes instead of adding policy authority.
-- The receipt is evidence-only; it records a no-execute external batch request boundary without executing batches, changing kernel authority, promoting policy, writing retrieval storage, training models, or altering runtime behavior.
-- The new receipt does not introduce live LLM, network, wall-clock, or environment-dependent measurement.
-
-## Validation Evidence Recorded For This Baseline
-
-```text
-cargo fmt --check
-RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo check --quiet
-RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test validation_harness_contract policy_reuse_evidence_batch_run_request --no-run --quiet
-RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo run --quiet --bin root_validate -- --policy-reuse-evidence-batch-run-request-smoke
-RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo run --quiet --bin root_validate -- --policy-reuse-evidence-batch-run-request-regression-smoke
-
-cargo fmt --check: pass
-cargo check --quiet: pass
-validation_harness_contract policy_reuse_evidence_batch_run_request --no-run: pass
-root_validate batch-run-request smoke mode: attempted, but connector returned 502 before a Rust result was available
-root_validate batch-run-request regression mode: attempted, but connector returned 502 before a Rust result was available
-combined root-mode validation attempt: attempted, but connector returned 502 before a Rust result was available
-```
-
-Batch-run-request compile/check validation passed. Direct root-mode execution was attempted, but the connector returned 502 before reporting Rust results.
-
-## Planned Next Implementation Slice
-
-Planning decision for the next implementation turn: keep the slice focused on the weakest remaining axis, **Scalability**, now from batch-run-request evidence toward deterministic external-evaluator-result evidence.
-
-Current gap:
-
-```text
-Batch-run-request evidence is now explicit, but the evidence stack still lacks one deterministic external-evaluator-result receipt that records an externally evaluated batch outcome boundary without allowing the LLM to approve itself.
-```
-
-Recommended next slice:
-
-```text
-Add a deterministic policy reuse evidence external-evaluator-result receipt that composes batch-run-request and batch-evaluation-admission evidence into pass/fail evaluator-result evidence.
-```
-
-Recommended concrete surfaces:
 
 ```text
 PolicyReuseEvidenceExternalEvaluatorResultReceipt
@@ -179,13 +94,100 @@ policy_reuse_evidence_external_evaluator_result_regression_smoke_receipt()
 --policy-reuse-evidence-external-evaluator-result-regression-smoke
 ```
 
+Implemented fields:
+
+```text
+schema
+record_type
+evaluator_result_version
+source_batch_run_request_hash
+source_batch_evaluation_admission_hash
+batch_request_ready
+batch_evaluation_admitted
+external_evaluator_independent
+llm_self_approved
+evaluated_batch_capacity
+evaluated_policy_reuse_cases
+evaluated_llm_fallback_cases
+evaluator_result_passed
+evaluator_status
+evaluator_failure_reason
+evaluator_hash
+receipt_hash
+```
+
+Completed implementation tasks:
+
+1. Added `PolicyReuseEvidenceExternalEvaluatorResultReceipt` with deterministic validation, JSON output, evaluator hash, and receipt hash.
+2. Added healthy and controlled external-evaluator-failed regression smoke constructors.
+3. Bound external-evaluator-result evidence to batch-run-request and batch-evaluation-admission receipt hashes.
+4. Added root validator compact modes for healthy and regression external-evaluator-result receipts.
+5. Added validation harness contracts for external-evaluator-result semantics, source binding, compact output, and controlled failing evidence.
+6. Updated external CLI mode fixture for the two external-evaluator-result public modes and raised mode count from 85 to 87.
+7. Updated validation harness expected test count from 216 to 220.
+8. Kept kernel authority unchanged and did not execute batches, promote policy, write retrieval storage, train a student model, or alter live runtime behavior.
+
+Implemented deterministic semantics:
+
+- `evaluator_result_passed = true` only when batch-run-request passed, batch-evaluation-admission passed, the evaluator is marked independent, LLM self-approval is false, evaluated policy-reuse cases are positive, and `evaluator_failure_reason = "none"`.
+- Healthy evidence reuses batch-run-request and batch-evaluation-admission receipt hashes, reports evaluator status `passed`, and records `evaluator_failure_reason = "none"`.
+- Regression evidence remains structurally valid while exposing `batch_request_ready = false`, `batch_evaluation_admitted = false`, evaluator status `failed`, and `evaluator_failure_reason = "external_evaluator_failed"`.
+- External-evaluator-result source evidence reuses existing evidence receipt hashes instead of adding policy authority.
+- The receipt is evidence-only; it records an evaluator-result boundary without executing batches, changing kernel authority, promoting policy, writing retrieval storage, training models, or altering runtime behavior.
+- The new receipt does not introduce live LLM, network, wall-clock, or environment-dependent measurement.
+
+## Validation Evidence Recorded For This Baseline
+
+```text
+cargo fmt --check
+RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo check --quiet
+RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test validation_harness_contract policy_reuse_evidence_external_evaluator_result --no-run --quiet
+RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo run --quiet --bin root_validate -- --policy-reuse-evidence-external-evaluator-result-smoke
+RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo run --quiet --bin root_validate -- --policy-reuse-evidence-external-evaluator-result-regression-smoke
+
+cargo fmt --check: pass
+cargo check --quiet: pass
+validation_harness_contract policy_reuse_evidence_external_evaluator_result --no-run: pass
+root_validate external-evaluator-result smoke mode: attempted, but connector returned 502 before a Rust result was available
+root_validate external-evaluator-result regression mode: attempted, but connector returned 502 before a Rust result was available
+combined format/check/no-run attempt: attempted, but connector returned 502 before a Rust result was available
+```
+
+External-evaluator-result compile/check validation passed. Direct root-mode execution was attempted, but the connector returned 502 before reporting Rust results.
+
+## Planned Next Implementation Slice
+
+Planning decision for the next implementation turn: keep the slice focused on the weakest remaining axis, **Scalability**, now from external evaluator result evidence toward deterministic policy-learning-candidate evidence.
+
+Current gap:
+
+```text
+External evaluator results are now explicit, but the evidence stack still lacks one deterministic policy-learning-candidate receipt that records whether externally proven batch results may become learning data without promoting policy.
+```
+
+Recommended next slice:
+
+```text
+Add a deterministic policy reuse evidence learning-candidate receipt that composes external-evaluator-result and batch-run-request evidence into candidate/not-candidate learning evidence.
+```
+
+Recommended concrete surfaces:
+
+```text
+PolicyReuseEvidenceLearningCandidateReceipt
+policy_reuse_evidence_learning_candidate_smoke_receipt()
+policy_reuse_evidence_learning_candidate_regression_smoke_receipt()
+--policy-reuse-evidence-learning-candidate-smoke
+--policy-reuse-evidence-learning-candidate-regression-smoke
+```
+
 Recommended constraints:
 
 1. Keep the kernel untouched.
 2. Do not introduce live LLM, network, wall-clock, or environment-dependent measurement.
-3. Reuse batch-run-request and batch-evaluation-admission receipt hashes.
-4. Keep the receipt evidence-only: it may state an external evaluator result, but it must not execute batches or promote policy.
-5. Include healthy and controlled evaluator-failed regression cases.
+3. Reuse external-evaluator-result and batch-run-request receipt hashes.
+4. Keep the receipt evidence-only: it may state learning-candidate status, but it must not promote policy or write retrieval storage.
+5. Include healthy and controlled evaluator-not-passed regression cases.
 6. Keep student-model training deferred.
 
 ## Evaluation Axes
@@ -219,22 +221,22 @@ arg max(G) = good
 - Full live Ollama validation remains environment-dependent.
 - Graph telemetry still requires explicit wrapper capture.
 - Student-model training is intentionally deferred until verified distillation data is large and clean.
-- Parallel orchestration execution should wait until larger-batch reuse, validation health, retained validation/runtime cost, catalog completeness, evaluator savings, scaling projection, distillation readiness, evidence-surface indexing, bundled evidence inspection, quickcheck validation, maturity staging, stable summary evidence, manifest coverage, validation-budget evidence, rollout-readiness evidence, learning-admission evidence, retrieval-readiness evidence, compact-validation evidence, batch-readiness evidence, batch-execution-plan evidence, batch-evaluation-admission evidence, and batch-run-request evidence are proven together.
-- Full-suite validation should run after the external-evaluator-result slice if connector stability allows or if fixture/CLI mode churn is broader than expected.
+- Parallel orchestration execution should wait until larger-batch reuse, validation health, retained validation/runtime cost, catalog completeness, evaluator savings, scaling projection, distillation readiness, evidence-surface indexing, bundled evidence inspection, quickcheck validation, maturity staging, stable summary evidence, manifest coverage, validation-budget evidence, rollout-readiness evidence, learning-admission evidence, retrieval-readiness evidence, compact-validation evidence, batch-readiness evidence, batch-execution-plan evidence, batch-evaluation-admission evidence, batch-run-request evidence, and external-evaluator-result evidence are proven together.
+- Full-suite validation should run after the learning-candidate slice if connector stability allows or if fixture/CLI mode churn is broader than expected.
 
-## Implementation Step 2 Decision
+## Implementation Step 3 Decision
 
 ```text
-turn_type = implementation_step_2
+turn_type = implementation_step_3
 mode = implementation
 selected_axis = Scalability
-selected_slice = deterministic policy reuse evidence batch-run-request receipt completed
+selected_slice = deterministic policy reuse evidence external-evaluator-result receipt completed
 implementation_files_changed_this_turn = src/validation_harness.rs, src/bin/root_validate.rs, tests/validation_harness_contract.rs, tests/fixtures/external_agent_cli_modes.txt
-existing_uncommitted_source_changes_observed = none in final status before commit
-commit_scope = batch-run-request implementation, tests, fixture, plan.md, score.md
+existing_uncommitted_source_changes_observed = canon-rustc-v3/plan-autorefactor.md remains untracked and out of scope
+commit_scope = external-evaluator-result implementation, tests, fixture, plan.md, score.md
 ```
 
-This implementation turn completed batch-run-request evidence in the validation-harness/root-validator layer and did not change kernel authority or runtime execution behavior.
+This implementation turn completed external-evaluator-result evidence in the validation-harness/root-validator layer and did not change kernel authority or runtime execution behavior.
 
 ## Turn Protocol
 
