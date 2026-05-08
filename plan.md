@@ -1,16 +1,16 @@
 # Plan: Supervisor / Worker / MCP Integration
 
-## Planning turn snapshot — 2026-05-08
+## Implementation snapshot — 2026-05-08
 
 This repository is past the bootstrap portion of the supervisor/worker/MCP plan. The current
 implementation has cargo targets, MCP receipt records, a worker API server, a reload supervisor,
 and public re-exports in place. The next useful implementation turn should add committed
 end-to-end evidence rather than more structural scaffolding.
 
-Current recommended lane:
+Current recommended lane after this turn:
 
 ```text
-implement Step 7: MCP example trace / end-to-end integration smoke
+continue Step 7: supervised worker command-ingress smoke, then optional example trace
 ```
 
 The core gap is evidence that the already implemented surfaces work together as a single loop:
@@ -137,7 +137,7 @@ Recommended implementation order:
 
 ```text
 1. Add a supervised worker command-ingress smoke test.
-2. Add an MCP receipt live-executor smoke using a tiny local test HTTP server.
+2. Add an MCP receipt live-executor smoke using a tiny local test HTTP server. [completed 2026-05-08]
 3. Optionally add examples/ollama_mcp_tool_loop_trace.rs after the deterministic tests pass.
 ```
 
@@ -159,9 +159,12 @@ terminates supervisor and verifies process cleanup
 If a stable command fixture is not available in one turn, keep the smoke to worker discovery,
 worker health, and state read. Do not fabricate command hashes or accept lossy assertions.
 
-### 7B — LiveMcpCallExecutor local HTTP smoke
+### 7B — LiveMcpCallExecutor local HTTP smoke — completed 2026-05-08
 
-Add a deterministic test in `tests/mcp_receipt_contract.rs` or a new focused contract file that:
+Added deterministic test `mcp_executor_calls_local_worker_and_records_receipt` in
+`tests/mcp_receipt_contract.rs`.
+
+Implemented evidence:
 
 ```text
 starts a local HTTP server on 127.0.0.1:0
@@ -173,7 +176,17 @@ asserts receipt success, response hash normalization, args hash stability, and N
 asserts disallowed tool remains denied
 ```
 
-This test should not require the external `chatgpt-mcp-connector` service.
+This test does not require the external `chatgpt-mcp-connector` service and proves that
+`LiveMcpCallExecutor::execute_call` performs a real local HTTP round trip, records a normalized
+successful `McpCallReceipt`, validates the receipt against the original request, roundtrips
+through NDJSON, and keeps disallowed tools denied.
+
+Validation evidence:
+
+```text
+CARGO_BUILD_RUSTC_WRAPPER= cargo test --test mcp_receipt_contract --quiet
+result: 6 passed
+```
 
 ### 7C — Optional example trace
 
@@ -227,7 +240,7 @@ CARGO_BUILD_RUSTC_WRAPPER= cargo test --test planning_contract --test score_cont
 
 ```text
 Correctness: no committed smoke currently proves a command submitted to a supervised worker path
-Transparency: no committed example currently shows MCP receipt production in a full loop trace
+Transparency: no committed example currently shows MCP receipt production in a full loop trace, but deterministic live-executor receipt evidence now exists
 Robustness: supervisor unexpected-worker-exit behavior should be tested before expanding authority
 Simplicity: avoid turning Step 7 into a broad autonomous loop implementation
 ```

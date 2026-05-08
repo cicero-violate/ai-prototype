@@ -3,6 +3,9 @@ use ai::{
     load_mcp_call_receipts_ndjson, verify_mcp_call_receipts, CapabilityRegistry, Effect,
     LiveMcpCallExecutor, McpCallReceipt, McpCallRequest, ToolSandboxError,
 };
+use std::io::{Read, Write};
+use std::net::TcpListener;
+use std::thread;
 
 fn receipt_path(name: &str) -> std::path::PathBuf {
     std::env::temp_dir().join(format!(
@@ -111,4 +114,68 @@ fn mcp_executor_enforces_allowlist_and_args_bound() {
         Err(ToolSandboxError::ArtifactTooLarge)
     );
     assert!(executor.request_for("shell", "{}").is_ok());
+}
+
+#[test]
+fn mcp_executor_calls_local_worker_and_records_receipt() {
+    let listener = TcpListener::bind("127.0.0.1:0").expect("bind local mcp worker");
+    let port = listener.local_addr().expect("local addr").port();
+    let worker_url = format!("http://127.0.0.1:{port}/mcp_worker");
+    let response_body =
+        br#"{"jsonrpc":"2.0","id":1,"result":{"content":[{"type":"text","text":"ok"}]}}"#;
+    let expected_response_bytes = response_body.len() as u64;
+
+    let server = thread::spawn(move || {
+        let (mut stream, _) = listener.accept().expect("accept mcp request");
+        let mut request_bytes = [0u8; 4096];
+        let read = stream.read(&mut request_bytes).expect("read mcp request");
+        let request = String::from_utf8_lossy(&request_bytes[..read]);
+
+        assert!(request.contains("POST /mcp_worker HTTP/1.1"));
+        assert!(request.contains("\"method\":\"tools/call\""));
+        assert!(request.contains("\"name\":\"shell\""));
+        assert!(request.contains("\"command\":\"true\""));
+
+        let response = format!(
+            "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\n\r\n{}",
+            response_body.len(),
+            String::from_utf8_lossy(response_body)
+        );
+        stream
+            .write_all(response.as_bytes())
+            .expect("write mcp response");
+    });
+
+    let args = r#"{"cwd":".","command":"true"}"#;
+    let executor = LiveMcpCallExecutor::new(worker_url)
+        .with_allowed_tool("shell")
+        .with_timeout_ms(1000)
+        .with_max_output_bytes(4096);
+    let request = executor
+        .request_for("shell", args)
+        .expect("request should be admissible");
+    let receipt = executor
+        .execute_call("shell", args)
+        .expect("local mcp call should produce receipt");
+
+    server.join().expect("server thread should finish");
+
+    assert!(receipt.is_success());
+    assert!(receipt.is_contract_valid());
+    assert!(receipt.effect_is_normalized());
+    assert!(receipt.is_valid_for(&request));
+    assert_eq!(receipt.exit_status, 0);
+    assert!(!receipt.timed_out);
+    assert_eq!(receipt.response_bytes, expected_response_bytes);
+    assert_ne!(receipt.response_hash, 0);
+    assert_eq!(executor.replay_receipt(&receipt, "shell", args), Ok(true));
+
+    let encoded = encode_mcp_call_receipt_ndjson(&receipt);
+    let decoded = decode_mcp_call_receipt_ndjson(&encoded).expect("receipt should decode");
+    assert_eq!(decoded, receipt);
+    assert_eq!(verify_mcp_call_receipts(&[decoded]), Ok(1));
+    assert_eq!(
+        executor.execute_call("apply_patch", "{}"),
+        Err(ToolSandboxError::CommandDenied)
+    );
 }

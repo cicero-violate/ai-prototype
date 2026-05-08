@@ -1,18 +1,18 @@
 # Canon Agent Score
 
-## Planning / scoring update — 2026-05-08
+## Implementation Step 7B Scorecard — 2026-05-08
 
-This turn is a planning-only reconciliation turn. No implementation score increase is claimed.
-The plan now reflects the actual current implementation state: Steps 1 through 6 of the
-supervisor/worker/MCP integration are complete, and Step 7 should produce deterministic
-end-to-end evidence.
+This turn implemented deterministic Step 7B evidence: a live `LiveMcpCallExecutor` smoke test
+against a local one-shot HTTP server. The test exercises a real JSON-RPC `tools/call` POST,
+records a successful normalized `McpCallReceipt`, validates replay against the original request,
+roundtrips through NDJSON, verifies receipt shape, and confirms disallowed tools remain denied.
 
 ```text
-turn_type = planning_scoring_reconciliation
-score_change_this_turn = none
-commit_scope = plan.md, score.md
-recommended_next_lane = step_7_end_to_end_mcp_tool_integration_evidence
-implementation_authority_change = none
+turn_type = implementation_step_7b_live_mcp_executor_smoke
+score_change_this_turn = correctness_transparency_credit
+commit_scope = tests/mcp_receipt_contract.rs, plan.md, score.md
+recommended_next_lane = step_7a_supervised_worker_command_ingress_smoke
+implementation_authority_change = none; test evidence only
 policy_authority_change = none
 retrieval_write_change = none
 runtime_mutation_change = none
@@ -44,27 +44,50 @@ Worker binary starts a local HTTP server from PORT and AI_TLOG_DIR
 Supervisor starts worker generation 1 and supports /health and /reload
 Supervisor reload starts replacement worker before retiring old worker
 MCP types/helpers are re-exported from record, tooling, and crate root surfaces
+LiveMcpCallExecutor has deterministic live HTTP smoke coverage without external MCP service dependency
 ```
 
 ---
 
-## Evidence currently supporting the score
+## Evidence from this turn
 
-Previously recorded validation evidence remains the basis for the current score:
+New deterministic contract added:
+
+```text
+mcp_executor_calls_local_worker_and_records_receipt
+```
+
+The new test proves:
+
+```text
+local HTTP server receives POST /mcp_worker
+request body contains JSON-RPC tools/call
+request body contains allowed tool shell and bounded args
+executor returns successful McpCallReceipt
+receipt effect is normalized
+receipt validates against the original McpCallRequest
+receipt replays true through LiveMcpCallExecutor::replay_receipt
+receipt roundtrips through MCP NDJSON codec
+verify_mcp_call_receipts accepts the decoded receipt
+disallowed apply_patch call remains CommandDenied
+```
+
+Validation run in this turn:
 
 ```text
 CARGO_BUILD_RUSTC_WRAPPER= cargo fmt --check                                      pass
+CARGO_BUILD_RUSTC_WRAPPER= cargo test --test mcp_receipt_contract --quiet          pass, 6 tests
+CARGO_BUILD_RUSTC_WRAPPER= cargo test --test supervisor_binary_contract --quiet    pass, 2 tests
+CARGO_BUILD_RUSTC_WRAPPER= cargo test --test worker_binary_contract --quiet        pass, 2 tests
+CARGO_BUILD_RUSTC_WRAPPER= cargo test --test api_server_contract --quiet           pass, 4 tests
 CARGO_BUILD_RUSTC_WRAPPER= cargo check --all-targets --quiet                       pass
-CARGO_BUILD_RUSTC_WRAPPER= cargo test --test supervisor_binary_contract --quiet    pass
-CARGO_BUILD_RUSTC_WRAPPER= cargo test --test worker_binary_contract --quiet        pass
-CARGO_BUILD_RUSTC_WRAPPER= cargo test --test api_server_contract --quiet           pass
-CARGO_BUILD_RUSTC_WRAPPER= cargo test --test planning_contract --test score_contract --quiet  pass
+CARGO_BUILD_RUSTC_WRAPPER= cargo test --test planning_contract --test score_contract --quiet  pass, 7 tests
 ```
 
 Focused contract coverage already present:
 
 ```text
-mcp_receipt_contract: request hash, receipt normalization, NDJSON roundtrip, tamper rejection, executor allowlist/bounds
+mcp_receipt_contract: request hash, receipt normalization, NDJSON roundtrip, tamper rejection, executor allowlist/bounds, live local HTTP executor smoke
 api_server_contract: health, state, evidence command DTO handling, unsupported command rejection
 worker_binary_contract: worker help/startup health behavior
 supervisor_binary_contract: supervisor help, worker startup, reload generation behavior
@@ -76,18 +99,20 @@ score_contract: score vector, timing, recovery, validation receipt invariants
 
 ## Current axis scores
 
-No axis changes are made in this planning turn.
+A small score increase is justified for Correctness and Transparency because one missing Step 7
+condition is now satisfied by deterministic committed evidence. Robustness is held because
+supervised-worker command ingress and unexpected-worker-exit coverage remain open.
 
 ```text
 I  Intelligence      = 0.98
 E  Efficiency        = 0.97
-C  Correctness       = 0.94
+C  Correctness       = 0.95
 A  Alignment         = 0.97
 R  Robustness        = 0.99
 P  Performance       = 0.95
 S  Scalability       = 1.00
 D  Determinism       = 0.98
-T  Transparency      = 0.98
+T  Transparency      = 0.99
 Co Collaboration     = 0.95
 Em Empowerment       = 0.95
 B  Benefit           = 0.97
@@ -100,7 +125,7 @@ F  Future-Proofing   = 0.98
 Approximate geometric mean:
 
 ```text
-G ≈ 0.975
+G ≈ 0.977
 ```
 
 ---
@@ -109,25 +134,24 @@ G ≈ 0.975
 
 ```text
 weakest_axis = Correctness
-weakest_axis_reason = core pieces are implemented, but no committed deterministic smoke currently proves the supervised worker command path or live MCP executor path end-to-end
+weakest_axis_reason = live MCP executor evidence now exists, but no committed deterministic smoke currently proves command ingress through a supervised worker
 primary_next_axis = Correctness
-secondary_next_axis = Transparency
+secondary_next_axis = Robustness
 guard_axis = Robustness
-current_gap = missing committed Step 7 evidence connecting supervisor/worker discovery, worker command ingress, MCP receipt production, and evidence submission/tlog verification
-next_action = add deterministic Step 7 contract evidence before claiming integration-complete status
-score_freeze_reason = this was a planning/scoring reconciliation turn with no new implementation or validation run
+current_gap = missing committed Step 7A evidence connecting supervisor health discovery to worker state/command ingress
+next_action = add supervised-worker command-ingress smoke without fabricating command hashes
+score_freeze_reason = do not increase further until supervised worker ingress or full example trace evidence is committed
 ```
 
 ---
 
 ## Conditions for next score increase
 
-The next implementation turn may increase Correctness and/or Transparency only if it commits
-validation evidence proving at least one of the following:
+The next implementation turn may increase Correctness and/or Robustness only if it commits
+validation evidence proving at least one remaining gap:
 
 ```text
 a supervised-worker smoke discovers worker_port from supervisor /health and exercises worker /health/worker plus /v1/state or /v1/command
-a deterministic local-server smoke exercises LiveMcpCallExecutor without relying on an external MCP service
 an example trace records an McpCallReceipt and submits it through the existing EvidenceProducer path
 the resulting receipt/tlog is verified by committed tests or reproducible commands
 ```
