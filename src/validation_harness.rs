@@ -17,7 +17,7 @@ pub const FAST_TEST_STEP: &str = "fast_score_contract_tests";
 pub const LIB_UNIT_STEP: &str = "lib_unit_contract_tests";
 pub const API_TRANSPORT_STEP: &str = "api_transport_contract_tests";
 pub const VALIDATION_HARNESS_STEP: &str = "validation_harness_contract_tests";
-pub const VALIDATION_HARNESS_EXPECTED_TESTS: usize = 212;
+pub const VALIDATION_HARNESS_EXPECTED_TESTS: usize = 216;
 pub const PLANNING_CONTRACT_STEP: &str = "planning_contract_tests";
 pub const GRAPH_MUTATION_CLI_CONTRACT_STEP: &str = "graph_mutation_cli_contract_tests";
 pub const GRAPH_MUTATION_CLI_CONTRACT_EXPECTED_TESTS: usize = 10;
@@ -139,6 +139,10 @@ pub const POLICY_REUSE_EVIDENCE_BATCH_EVALUATION_ADMISSION_SMOKE_STEP: &str =
     "policy_reuse_evidence_batch_evaluation_admission_smoke";
 pub const POLICY_REUSE_EVIDENCE_BATCH_EVALUATION_ADMISSION_REGRESSION_SMOKE_STEP: &str =
     "policy_reuse_evidence_batch_evaluation_admission_regression_smoke";
+pub const POLICY_REUSE_EVIDENCE_BATCH_RUN_REQUEST_SMOKE_STEP: &str =
+    "policy_reuse_evidence_batch_run_request_smoke";
+pub const POLICY_REUSE_EVIDENCE_BATCH_RUN_REQUEST_REGRESSION_SMOKE_STEP: &str =
+    "policy_reuse_evidence_batch_run_request_regression_smoke";
 pub const POLICY_VALIDATION_HEALTH_SMOKE_STEP: &str = "policy_validation_health_smoke";
 pub const POLICY_VALIDATION_HEALTH_TREND_SMOKE_STEP: &str = "policy_validation_health_trend_smoke";
 pub const POLICY_ORCHESTRATION_CAPACITY_SMOKE_STEP: &str = "policy_orchestration_capacity_smoke";
@@ -2418,6 +2422,96 @@ impl PolicyReuseEvidenceBatchEvaluationAdmissionReceipt {
             self.admission_status,
             self.not_admitted_reason,
             self.admission_hash,
+            self.receipt_hash,
+        )
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PolicyReuseEvidenceBatchRunRequestReceipt {
+    pub schema: &'static str,
+    pub record_type: &'static str,
+    pub request_version: u64,
+    pub source_batch_evaluation_admission_hash: u64,
+    pub source_batch_execution_plan_hash: u64,
+    pub batch_evaluation_admitted: bool,
+    pub plan_ready: bool,
+    pub no_execute_request: bool,
+    pub execution_performed: bool,
+    pub requested_batch_capacity: usize,
+    pub requested_policy_reuse_cases: usize,
+    pub requested_llm_fallback_cases: usize,
+    pub batch_request_ready: bool,
+    pub request_status: &'static str,
+    pub not_requestable_reason: &'static str,
+    pub request_hash: u64,
+    pub receipt_hash: u64,
+}
+
+impl PolicyReuseEvidenceBatchRunRequestReceipt {
+    pub fn passed(&self) -> bool {
+        self.is_valid() && self.batch_request_ready && self.request_status == "request_ready"
+    }
+
+    pub fn is_valid(&self) -> bool {
+        self.schema == "canon_policy_reuse_evidence_batch_run_request_v1"
+            && matches!(
+                self.record_type,
+                "policy_reuse_evidence_batch_run_request"
+                    | POLICY_REUSE_EVIDENCE_BATCH_RUN_REQUEST_SMOKE_STEP
+                    | POLICY_REUSE_EVIDENCE_BATCH_RUN_REQUEST_REGRESSION_SMOKE_STEP
+            )
+            && self.request_version == 1
+            && self.source_batch_evaluation_admission_hash != 0
+            && self.source_batch_execution_plan_hash != 0
+            && self.no_execute_request
+            && self.requested_batch_capacity > 0
+            && self.requested_policy_reuse_cases <= self.requested_batch_capacity
+            && self.requested_llm_fallback_cases <= self.requested_batch_capacity
+            && self.requested_policy_reuse_cases + self.requested_llm_fallback_cases
+                == self.requested_batch_capacity
+            && matches!(self.request_status, "request_ready" | "not_requestable")
+            && matches!(
+                self.not_requestable_reason,
+                "none"
+                    | "admission_not_granted"
+                    | "plan_not_ready"
+                    | "execution_already_performed"
+                    | "no_policy_reuse_cases"
+            )
+            && self.batch_request_ready
+                == (self.batch_evaluation_admitted
+                    && self.plan_ready
+                    && self.no_execute_request
+                    && !self.execution_performed
+                    && self.requested_policy_reuse_cases > 0
+                    && self.not_requestable_reason == "none")
+            && (self.request_status == "request_ready") == self.batch_request_ready
+            && self.request_hash != 0
+            && self.receipt_hash != 0
+            && self.request_hash == policy_reuse_evidence_batch_run_request_hash(self)
+            && self.receipt_hash == policy_reuse_evidence_batch_run_request_receipt_hash(self)
+    }
+
+    pub fn to_json(&self) -> String {
+        format!(
+            r#"{{"schema":"{}","record_type":"{}","request_version":{},"source_batch_evaluation_admission_hash":{},"source_batch_execution_plan_hash":{},"batch_evaluation_admitted":{},"plan_ready":{},"no_execute_request":{},"execution_performed":{},"requested_batch_capacity":{},"requested_policy_reuse_cases":{},"requested_llm_fallback_cases":{},"batch_request_ready":{},"request_status":"{}","not_requestable_reason":"{}","request_hash":{},"receipt_hash":{}}}"#,
+            self.schema,
+            self.record_type,
+            self.request_version,
+            self.source_batch_evaluation_admission_hash,
+            self.source_batch_execution_plan_hash,
+            self.batch_evaluation_admitted,
+            self.plan_ready,
+            self.no_execute_request,
+            self.execution_performed,
+            self.requested_batch_capacity,
+            self.requested_policy_reuse_cases,
+            self.requested_llm_fallback_cases,
+            self.batch_request_ready,
+            self.request_status,
+            self.not_requestable_reason,
+            self.request_hash,
             self.receipt_hash,
         )
     }
@@ -5211,6 +5305,88 @@ fn finalize_policy_reuse_evidence_batch_evaluation_admission(
     receipt.receipt_hash = policy_reuse_evidence_batch_evaluation_admission_receipt_hash(receipt);
 }
 
+pub fn policy_reuse_evidence_batch_run_request_smoke_receipt(
+) -> PolicyReuseEvidenceBatchRunRequestReceipt {
+    let admission = policy_reuse_evidence_batch_evaluation_admission_smoke_receipt();
+    let plan = policy_reuse_evidence_batch_execution_plan_smoke_receipt();
+    let mut receipt = policy_reuse_evidence_batch_run_request_from_sources(
+        POLICY_REUSE_EVIDENCE_BATCH_RUN_REQUEST_SMOKE_STEP,
+        &admission,
+        &plan,
+        "none",
+    );
+    finalize_policy_reuse_evidence_batch_run_request(&mut receipt);
+    receipt
+}
+
+pub fn policy_reuse_evidence_batch_run_request_regression_smoke_receipt(
+) -> PolicyReuseEvidenceBatchRunRequestReceipt {
+    let admission = policy_reuse_evidence_batch_evaluation_admission_regression_smoke_receipt();
+    let plan = policy_reuse_evidence_batch_execution_plan_regression_smoke_receipt();
+    let mut receipt = policy_reuse_evidence_batch_run_request_from_sources(
+        POLICY_REUSE_EVIDENCE_BATCH_RUN_REQUEST_REGRESSION_SMOKE_STEP,
+        &admission,
+        &plan,
+        "admission_not_granted",
+    );
+    finalize_policy_reuse_evidence_batch_run_request(&mut receipt);
+    receipt
+}
+
+fn policy_reuse_evidence_batch_run_request_from_sources(
+    record_type: &'static str,
+    admission: &PolicyReuseEvidenceBatchEvaluationAdmissionReceipt,
+    plan: &PolicyReuseEvidenceBatchExecutionPlanReceipt,
+    not_requestable_reason: &'static str,
+) -> PolicyReuseEvidenceBatchRunRequestReceipt {
+    let batch_evaluation_admitted = admission.passed();
+    let plan_ready = plan.passed();
+    let no_execute_request = plan.no_execute_plan;
+    let execution_performed = plan.execution_performed;
+    let requested_batch_capacity = admission.proposed_batch_capacity;
+    let requested_policy_reuse_cases = admission.admitted_policy_reuse_cases;
+    let requested_llm_fallback_cases = admission.admitted_llm_fallback_cases;
+    let batch_request_ready = batch_evaluation_admitted
+        && plan_ready
+        && no_execute_request
+        && !execution_performed
+        && requested_policy_reuse_cases > 0
+        && not_requestable_reason == "none";
+    let request_status = if batch_request_ready {
+        "request_ready"
+    } else {
+        "not_requestable"
+    };
+    let mut receipt = PolicyReuseEvidenceBatchRunRequestReceipt {
+        schema: "canon_policy_reuse_evidence_batch_run_request_v1",
+        record_type,
+        request_version: 1,
+        source_batch_evaluation_admission_hash: admission.receipt_hash,
+        source_batch_execution_plan_hash: plan.receipt_hash,
+        batch_evaluation_admitted,
+        plan_ready,
+        no_execute_request,
+        execution_performed,
+        requested_batch_capacity,
+        requested_policy_reuse_cases,
+        requested_llm_fallback_cases,
+        batch_request_ready,
+        request_status,
+        not_requestable_reason,
+        request_hash: 0,
+        receipt_hash: 0,
+    };
+    finalize_policy_reuse_evidence_batch_run_request(&mut receipt);
+    receipt
+}
+
+fn finalize_policy_reuse_evidence_batch_run_request(
+    receipt: &mut PolicyReuseEvidenceBatchRunRequestReceipt,
+) {
+    receipt.request_hash = policy_reuse_evidence_batch_run_request_hash(receipt);
+    receipt.receipt_hash = policy_reuse_evidence_batch_run_request_receipt_hash(receipt);
+}
+
 #[allow(clippy::too_many_arguments)]
 fn policy_reuse_evidence_surface_index_from_sources(
     record_type: &'static str,
@@ -5973,6 +6149,60 @@ fn policy_reuse_evidence_batch_evaluation_admission_receipt_hash(
         return 0;
     }
     (admission_hash ^ 0x504f_4c52_4241_4452u64).max(1)
+}
+
+fn policy_reuse_evidence_batch_run_request_hash(
+    receipt: &PolicyReuseEvidenceBatchRunRequestReceipt,
+) -> u64 {
+    if receipt.request_version == 0
+        || receipt.source_batch_evaluation_admission_hash == 0
+        || receipt.source_batch_execution_plan_hash == 0
+    {
+        return 0;
+    }
+    let request_status_code = match receipt.request_status {
+        "request_ready" => 1,
+        "not_requestable" => 2,
+        _ => 0,
+    };
+    let not_requestable_reason_code = match receipt.not_requestable_reason {
+        "none" => 1,
+        "admission_not_granted" => 2,
+        "plan_not_ready" => 3,
+        "execution_already_performed" => 4,
+        "no_policy_reuse_cases" => 5,
+        _ => 0,
+    };
+    if request_status_code == 0 || not_requestable_reason_code == 0 {
+        return 0;
+    }
+    let mut h = 0x504f_4c52_4252_5148u64;
+    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.schema.as_bytes());
+    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.record_type.as_bytes());
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.request_version;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_batch_evaluation_admission_hash;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_batch_execution_plan_hash;
+    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.batch_evaluation_admitted);
+    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.plan_ready);
+    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.no_execute_request);
+    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.execution_performed);
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.requested_batch_capacity as u64;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.requested_policy_reuse_cases as u64;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.requested_llm_fallback_cases as u64;
+    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.batch_request_ready);
+    h = h.wrapping_mul(0x100000001b3) ^ request_status_code;
+    h = h.wrapping_mul(0x100000001b3) ^ not_requestable_reason_code;
+    h.max(1)
+}
+
+fn policy_reuse_evidence_batch_run_request_receipt_hash(
+    receipt: &PolicyReuseEvidenceBatchRunRequestReceipt,
+) -> u64 {
+    let request_hash = policy_reuse_evidence_batch_run_request_hash(receipt);
+    if request_hash == 0 || receipt.request_hash != request_hash {
+        return 0;
+    }
+    (request_hash ^ 0x504f_4c52_4252_5152u64).max(1)
 }
 
 fn policy_reuse_evidence_summary_hash(receipt: &PolicyReuseEvidenceSummaryReceipt) -> u64 {

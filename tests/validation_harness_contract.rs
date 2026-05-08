@@ -29,8 +29,8 @@ use ai::validation_harness::{
     VALIDATION_FOOTPRINT_STEP, VALIDATION_HARNESS_EXPECTED_TESTS, VALIDATION_HARNESS_STEP,
 };
 
-const EXPECTED_ROOT_VALIDATE_COMPACT_MODE_COUNT: usize = 74;
-const EXPECTED_EXTERNAL_AGENT_CLI_MODE_COUNT: usize = 83;
+const EXPECTED_ROOT_VALIDATE_COMPACT_MODE_COUNT: usize = 76;
+const EXPECTED_EXTERNAL_AGENT_CLI_MODE_COUNT: usize = 85;
 
 fn expected_guarded_test_count() -> usize {
     VALIDATION_HARNESS_EXPECTED_TESTS + GRAPH_MUTATION_CLI_CONTRACT_EXPECTED_TESTS
@@ -74,7 +74,7 @@ fn root_validation_runs_check_before_contract_suites() {
         steps[4].expected_test_count,
         Some(VALIDATION_HARNESS_EXPECTED_TESTS)
     );
-    assert_eq!(VALIDATION_HARNESS_EXPECTED_TESTS, 212);
+    assert_eq!(VALIDATION_HARNESS_EXPECTED_TESTS, 216);
     assert!(steps[5].args.contains(&"planning_contract"));
     assert!(steps[6].args.contains(&"graph_mutation_cli_contract"));
 }
@@ -652,6 +652,14 @@ fn external_agent_cli_modes_fixture_documents_all_public_modes() {
     assert!(catalog.contains(
         "root_validate --policy-reuse-evidence-batch-evaluation-admission-regression-smoke",
         "policy_reuse_evidence_batch_evaluation_admission_regression_smoke",
+    ));
+    assert!(catalog.contains(
+        "root_validate --policy-reuse-evidence-batch-run-request-smoke",
+        "policy_reuse_evidence_batch_run_request_smoke",
+    ));
+    assert!(catalog.contains(
+        "root_validate --policy-reuse-evidence-batch-run-request-regression-smoke",
+        "policy_reuse_evidence_batch_run_request_regression_smoke",
     ));
     assert!(catalog.contains(
         "root_validate --root-validate-dispatch-catalog",
@@ -6065,6 +6073,131 @@ fn root_validate_policy_reuse_evidence_batch_evaluation_admission_regression_smo
             "\"admission_status\":\"not_admitted\"",
             "\"not_admitted_reason\":\"plan_not_ready\"",
             "\"admission_hash\":",
+            "\"receipt_hash\":",
+        ],
+    );
+}
+
+#[test]
+fn policy_reuse_evidence_batch_run_request_smoke_composes_no_execute_request() {
+    let receipt = ai::validation_harness::policy_reuse_evidence_batch_run_request_smoke_receipt();
+    let admission =
+        ai::validation_harness::policy_reuse_evidence_batch_evaluation_admission_smoke_receipt();
+    let plan = ai::validation_harness::policy_reuse_evidence_batch_execution_plan_smoke_receipt();
+
+    assert_eq!(
+        receipt.schema,
+        "canon_policy_reuse_evidence_batch_run_request_v1"
+    );
+    assert_eq!(
+        receipt.record_type,
+        ai::validation_harness::POLICY_REUSE_EVIDENCE_BATCH_RUN_REQUEST_SMOKE_STEP
+    );
+    assert_eq!(receipt.request_version, 1);
+    assert_eq!(
+        receipt.source_batch_evaluation_admission_hash,
+        admission.receipt_hash
+    );
+    assert_eq!(receipt.source_batch_execution_plan_hash, plan.receipt_hash);
+    assert!(receipt.batch_evaluation_admitted);
+    assert!(receipt.plan_ready);
+    assert!(receipt.no_execute_request);
+    assert!(!receipt.execution_performed);
+    assert_eq!(
+        receipt.requested_batch_capacity,
+        admission.proposed_batch_capacity
+    );
+    assert_eq!(
+        receipt.requested_policy_reuse_cases,
+        admission.admitted_policy_reuse_cases
+    );
+    assert_eq!(
+        receipt.requested_llm_fallback_cases,
+        admission.admitted_llm_fallback_cases
+    );
+    assert!(receipt.batch_request_ready);
+    assert_eq!(receipt.request_status, "request_ready");
+    assert_eq!(receipt.not_requestable_reason, "none");
+    assert_ne!(receipt.request_hash, 0);
+    assert_ne!(receipt.receipt_hash, 0);
+    assert!(receipt.is_valid());
+    assert!(receipt.passed());
+}
+
+#[test]
+fn policy_reuse_evidence_batch_run_request_regression_smoke_is_valid_not_requestable_evidence() {
+    let receipt =
+        ai::validation_harness::policy_reuse_evidence_batch_run_request_regression_smoke_receipt();
+    let admission = ai::validation_harness::
+        policy_reuse_evidence_batch_evaluation_admission_regression_smoke_receipt();
+    let plan =
+        ai::validation_harness::policy_reuse_evidence_batch_execution_plan_regression_smoke_receipt(
+        );
+
+    assert_eq!(
+        receipt.record_type,
+        ai::validation_harness::POLICY_REUSE_EVIDENCE_BATCH_RUN_REQUEST_REGRESSION_SMOKE_STEP
+    );
+    assert_eq!(
+        receipt.source_batch_evaluation_admission_hash,
+        admission.receipt_hash
+    );
+    assert_eq!(receipt.source_batch_execution_plan_hash, plan.receipt_hash);
+    assert!(!receipt.batch_evaluation_admitted);
+    assert!(!receipt.plan_ready);
+    assert!(receipt.no_execute_request);
+    assert!(!receipt.execution_performed);
+    assert_eq!(
+        receipt.requested_batch_capacity,
+        admission.proposed_batch_capacity
+    );
+    assert!(!receipt.batch_request_ready);
+    assert_eq!(receipt.request_status, "not_requestable");
+    assert_eq!(receipt.not_requestable_reason, "admission_not_granted");
+    assert!(receipt.is_valid());
+    assert!(!receipt.passed());
+}
+
+#[test]
+fn root_validate_policy_reuse_evidence_batch_run_request_smoke_mode_is_executable_contract() {
+    assert_root_validate_catalog_compact_mode_contract(
+        "--policy-reuse-evidence-batch-run-request-smoke",
+        &[
+            "\"schema\":\"canon_policy_reuse_evidence_batch_run_request_v1\"",
+            "\"record_type\":\"policy_reuse_evidence_batch_run_request_smoke\"",
+            "\"request_version\":1",
+            "\"source_batch_evaluation_admission_hash\":",
+            "\"source_batch_execution_plan_hash\":",
+            "\"batch_evaluation_admitted\":true",
+            "\"plan_ready\":true",
+            "\"no_execute_request\":true",
+            "\"execution_performed\":false",
+            "\"batch_request_ready\":true",
+            "\"request_status\":\"request_ready\"",
+            "\"not_requestable_reason\":\"none\"",
+            "\"request_hash\":",
+            "\"receipt_hash\":",
+        ],
+    );
+}
+
+#[test]
+fn root_validate_policy_reuse_evidence_batch_run_request_regression_smoke_mode_is_executable_contract(
+) {
+    assert_root_validate_catalog_compact_mode_contract(
+        "--policy-reuse-evidence-batch-run-request-regression-smoke",
+        &[
+            "\"schema\":\"canon_policy_reuse_evidence_batch_run_request_v1\"",
+            "\"record_type\":\"policy_reuse_evidence_batch_run_request_regression_smoke\"",
+            "\"request_version\":1",
+            "\"batch_evaluation_admitted\":false",
+            "\"plan_ready\":false",
+            "\"no_execute_request\":true",
+            "\"execution_performed\":false",
+            "\"batch_request_ready\":false",
+            "\"request_status\":\"not_requestable\"",
+            "\"not_requestable_reason\":\"admission_not_granted\"",
+            "\"request_hash\":",
             "\"receipt_hash\":",
         ],
     );

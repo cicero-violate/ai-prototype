@@ -420,6 +420,16 @@ const COMPACT_MODES: &[CompactMode] = &[
         run: policy_reuse_evidence_batch_evaluation_admission_regression_smoke_mode,
     },
     CompactMode {
+        arg: "--policy-reuse-evidence-batch-run-request-smoke",
+        marker: "policy_reuse_evidence_batch_run_request_smoke",
+        run: policy_reuse_evidence_batch_run_request_smoke_mode,
+    },
+    CompactMode {
+        arg: "--policy-reuse-evidence-batch-run-request-regression-smoke",
+        marker: "policy_reuse_evidence_batch_run_request_regression_smoke",
+        run: policy_reuse_evidence_batch_run_request_regression_smoke_mode,
+    },
+    CompactMode {
         arg: "--root-validate-dispatch-catalog",
         marker: "canon_root_validate_dispatch_catalog_v1",
         run: root_validate_dispatch_catalog_mode,
@@ -1281,6 +1291,33 @@ fn policy_reuse_evidence_batch_evaluation_admission_regression_smoke_mode(
         && !receipt.batch_evaluation_admitted
         && receipt.admission_status == "not_admitted"
         && receipt.not_admitted_reason == "plan_not_ready"
+        && !receipt.passed();
+    Ok(CompactModeOutcome::controlled_json(
+        receipt.to_json(),
+        passed,
+    ))
+}
+
+fn policy_reuse_evidence_batch_run_request_smoke_mode() -> Result<CompactModeOutcome, String> {
+    let receipt = validation_harness::policy_reuse_evidence_batch_run_request_smoke_receipt();
+    Ok(CompactModeOutcome::pass_json(
+        receipt.to_json(),
+        receipt.passed(),
+    ))
+}
+
+fn policy_reuse_evidence_batch_run_request_regression_smoke_mode(
+) -> Result<CompactModeOutcome, String> {
+    let receipt =
+        validation_harness::policy_reuse_evidence_batch_run_request_regression_smoke_receipt();
+    let passed = receipt.is_valid()
+        && !receipt.batch_evaluation_admitted
+        && !receipt.plan_ready
+        && receipt.no_execute_request
+        && !receipt.execution_performed
+        && !receipt.batch_request_ready
+        && receipt.request_status == "not_requestable"
+        && receipt.not_requestable_reason == "admission_not_granted"
         && !receipt.passed();
     Ok(CompactModeOutcome::controlled_json(
         receipt.to_json(),
