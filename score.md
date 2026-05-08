@@ -815,3 +815,47 @@ F  = 0.98  write approval prepares later retrieval/model-learning gates without 
 G  ≈ 0.967
 ```
 
+## Implementation Step 3 Score Decision - Retrieval Example Storage Write Admission
+
+```text
+selected_axis = Learning
+score_change_this_turn = retained L at 1.00
+reason = retrieval-example storage-write-admission evidence adds a deterministic evidence-only gate after storage-write-approval without retrieval storage operations, query execution, runtime result approval, policy promotion, batch execution, or student training
+source_changes_observed_but_not_owned = canon-rustc-v3/* modified and untracked files remain out of scope for this implementation turn
+commit_scope = retrieval-example storage-write-admission implementation, tests, fixture, plan.md, score.md
+```
+
+Updated validation evidence:
+
+```text
+cargo fmt --check: pass
+validation_harness_contract storage_write_admission --no-run: pass
+focused executable validation_harness_contract storage_write_admission tests: attempted twice, connector returned 502 before Rust output was available
+root_validate storage-write-admission smoke execution: attempted with focused executable retry, connector returned 502 before output was available
+cargo check --quiet: pass
+planning_contract: pass
+score_contract: pass
+```
+
+Scoring stance after this implementation:
+
+```text
+I  = 0.98  approved storage-write evidence can now become deterministic storage-write-admission evidence
+E  = 0.97  write admission remains evidence-only and forbids retrieval reads, writes, queries, runtime approval, promotion, batch execution, and training
+C  = 0.91  formatting, focused no-run compile, cargo check, planning contract, and score contract pass; executable checks were connector-blocked
+A  = 0.97  authority remains outside the LLM and outside the storage-write-admission receipt
+R  = 0.96  healthy and controlled not-admitted paths are covered by compiled contracts
+P  = 0.95  no runtime retrieval, query, batch, or training cost is introduced
+S  = 0.98  the evidence chain now exposes a retrieval-example storage-write-admission boundary before mutation authority exists
+D  = 0.97  receipts use fixed source hashes, booleans, status strings, reason strings, and deterministic hashes
+T  = 0.98  write-approval, write-preflight, commit-intent, materialization-plan, admission, eligibility, consumption, approval-admission, approval, readiness, and admission source hashes are explicit
+Co = 0.95  plan and score hand off the next retrieval-example storage-write-commit-intent gate
+Em = 0.95  root_validate consumers have healthy and regression compact modes for write-admission evidence once connector execution is available
+B  = 0.97  external evaluators get deterministic write-admission evidence before storage writes, runtime approval, promotion, or training
+L  = 1.00  write admission prepares a cleaner path toward externally committed retrieval-example storage writes
+St = 0.97  write admission composes existing evidence without kernel or runtime authority drift
+Si = 0.97  one receipt represents the write-admission boundary instead of scattered downstream checks
+F  = 0.98  write admission prepares later retrieval/model-learning gates without committing to storage or training behavior
+G  ≈ 0.967
+```
+
