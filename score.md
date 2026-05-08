@@ -107,6 +107,20 @@ Acceptance criteria for the next slice:
 6. Planning and score contract tests pass after documentation updates.
 7. The receipt remains evidence-only and does not expand kernel authority, promote policy, execute batches, read/write retrieval storage, execute retrieval queries, or train a student model.
 
+
+## Current Planning Turn Decision - Retrieval Result Use Summary Handoff
+
+```text
+turn_type = planning
+selected_axis = Learning
+score_change_this_turn = no score increase; planning/scoring only
+reason = refreshed the handoff from retrieval-result-use-manifest-admission to retrieval-result-use-summary without claiming new implementation evidence
+current_gap = retrieval-result-use-summary evidence is not yet implemented
+next_action = add deterministic policy reuse evidence retrieval-result-use-summary evidence
+commit_scope = plan.md, score.md only
+out_of_scope_changes_preserved = existing modified and untracked canon-rustc-v3 working-tree changes remain unowned by this planning turn
+```
+
 ## Implementation Step 5 Score Decision - Retrieval Result Use Manifest Admission
 
 ```text

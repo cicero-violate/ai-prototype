@@ -217,20 +217,16 @@ Recommended constraints:
 7. Update external CLI mode fixtures and guarded validation counts only if new public modes or tests are added.
 8. Keep unrelated `canon-rustc-v3/` working-tree changes out of this slice unless explicitly selected in a separate turn.
 
-## Implementation Turn Commit Scope
+## Planning Turn Commit Scope
 
-This turn implemented retrieval-result-use-manifest-admission. It should update and commit:
+This turn is planning/scoring only. It should update and commit exactly:
 
 ```text
 plan.md
 score.md
-src/validation_harness.rs
-src/bin/root_validate.rs
-tests/validation_harness_contract.rs
-tests/fixtures/external_agent_cli_modes.txt
 ```
 
-Observed `canon-rustc-v3/` working-tree changes remain outside this turn unless a later implementation turn explicitly selects them.
+Do not claim new implementation evidence in this turn. Existing modified and untracked files under `canon-rustc-v3/` remain observed but unowned unless a later implementation turn explicitly selects them.
 
 ## Acceptance Criteria For Next Implementation Turn
 
