@@ -598,3 +598,46 @@ Si = 0.97  one receipt represents the storage-admission boundary instead of scat
 F  = 0.98  storage admission prepares later retrieval/model-learning gates without committing to storage or training behavior
 G  ≈ 0.967
 ```
+
+## Planning Turn Score Decision - Retrieval Example Storage Commit Intent
+
+```text
+selected_axis = Learning
+turn_type = planning_and_scoring_only
+score_change_this_turn = retained L at 1.00 and G at approximately 0.967
+reason = the next planned slice introduces a deterministic storage-commit-intent boundary after storage admission while still forbidding actual retrieval storage mutation, query execution, runtime result approval, policy promotion, batch execution, and student training
+source_changes_observed_but_not_owned = canon-rustc-v3/* modified and untracked files remain out of scope for this planning turn
+commit_scope = plan.md, score.md
+```
+
+Planning validation evidence:
+
+```text
+git status --short: observed unowned canon-rustc-v3 changes; no implementation files selected for this planning turn
+grep storage_admission/materialization_plan: confirmed current evidence chain reaches storage-admission and lacks storage-commit-intent implementation
+RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test planning_contract --quiet: pass
+RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test score_contract --quiet: pass
+```
+
+Scoring stance for the next implementation slice:
+
+```text
+I  = 0.98  storage-admission evidence is ready to feed a deterministic storage-commit-intent boundary
+E  = 0.97  planned commit intent remains evidence-only and forbids retrieval reads, writes, queries, runtime approval, promotion, batch execution, and training
+C  = 0.91  current confidence is based on prior passing checks and this planning inspection; implementation validation is deferred to the next coding turn
+A  = 0.97  authority remains outside the LLM and outside the planned storage-commit-intent receipt
+R  = 0.96  planned healthy and controlled not-ready paths preserve regression coverage discipline
+P  = 0.95  no runtime retrieval, query, batch, or training cost is planned
+S  = 0.98  the next boundary will make storage commit intent explicit before mutation authority exists
+D  = 0.97  planned receipts should use fixed source hashes, booleans, status strings, reason strings, and deterministic hashes
+T  = 0.98  storage-admission and upstream source hashes will remain explicit
+Co = 0.95  plan and score now hand off the next storage-commit-intent gate
+Em = 0.95  planned root_validate modes will expose healthy and regression compact evidence
+B  = 0.97  external evaluators will receive deterministic commit-intent evidence before storage writes, runtime approval, promotion, or training
+L  = 1.00  the storage-commit-intent boundary continues the learning path toward safe retrieval-example persistence
+St = 0.97  planned work composes existing evidence without kernel or runtime authority drift
+Si = 0.97  one receipt should represent the commit-intent boundary instead of scattered downstream checks
+F  = 0.98  commit intent prepares later externally validated storage-write gates without committing to mutation behavior now
+G  ≈ 0.967
+```
+
