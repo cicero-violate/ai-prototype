@@ -2789,3 +2789,74 @@ Expected score emphasis:
 ```text
 R, Si, P, S, B
 ```
+
+
+## Agent Step 68 Execution Result: Validation Fixture Exact-Count Helper Reuse
+
+- [x] Added shared validation harness contract constants for external-agent CLI mode count, root compact-mode count, fixture count, retained receipt fixture count, and command fixture count.
+- [x] Added `expected_guarded_test_count()` in `tests/validation_harness_contract.rs` so guarded-test assertions reuse the same derived expression instead of repeating the sum literal.
+- [x] Refactored validation footprint, command-footprint planning, external-agent catalog, dispatch catalog, fixture catalog summary, fixture catalog detail, and duration-planning assertions to use the shared count helpers.
+- [x] Preserved existing fixture schemas, compact CLI modes, retained receipt fixtures, root validation step ordering, and frozen kernel behavior.
+- [x] Focused fixture validation passed: `env RUSTUP_TOOLCHAIN=nightly-2026-04-30-x86_64-unknown-linux-gnu LD_LIBRARY_PATH="$HOME/.rustup/toolchains/nightly-2026-04-30-x86_64-unknown-linux-gnu/lib" cargo test --test validation_harness_contract fixture -q` with 43 matching tests.
+- [x] Validation harness contract passed: `env RUSTUP_TOOLCHAIN=nightly-2026-04-30-x86_64-unknown-linux-gnu LD_LIBRARY_PATH="$HOME/.rustup/toolchains/nightly-2026-04-30-x86_64-unknown-linux-gnu/lib" cargo test --test validation_harness_contract -q` with 128 tests.
+- [x] Root validation passed: `env RUSTUP_TOOLCHAIN=nightly-2026-04-30-x86_64-unknown-linux-gnu LD_LIBRARY_PATH="$HOME/.rustup/toolchains/nightly-2026-04-30-x86_64-unknown-linux-gnu/lib" cargo -Znext-lockfile-bump run --bin root_validate --locked`.
+
+## Validation For This Fixture Exact-Count Helper Turn
+
+- [x] The intentional source change for this step is in `tests/validation_harness_contract.rs`.
+- [x] Existing checked-in fixture contents and retained receipt schemas were not changed by this step.
+- [x] Existing compact-mode receipt constructors, policy reuse/capacity semantics, graph mutation CLI workflow fixtures, and frozen kernel behavior remain unchanged.
+- [x] Root deterministic validation emitted `validation_harness_contract_tests` expected/observed counts of 128, `lib_unit_contract_tests` observed count of 177, and `graph_mutation_cli_contract_tests` expected/observed counts of 10.
+
+## Evaluation Turn Result: Validation Fixture Exact-Count Helper Review
+
+- [x] Repeated raw fixture/catalog count literals are now centralized behind named constants and a derived guarded-test helper.
+- [x] Future fixture-count drift now has a smaller update surface: tests consume one set of named expectations rather than repeating raw numeric literals across catalog summary/detail and executable-output checks.
+- [x] This improves simplicity, robustness, efficiency, collaboration, and performance without changing compact-mode behavior or the frozen kernel.
+
+Recommended next plan item:
+
+```text
+Continue reducing validation fixture/test boilerplate only where repeated exact-row validators can be consolidated without weakening drift coverage; otherwise shift back to validation command-footprint reduction or retained policy-capacity planning.
+```
+
+Expected score emphasis:
+
+```text
+Si, R, E, Co, P
+```
+
+## Agent Step 69 Execution Result: Validation Fixture Catalog Count Constants
+
+- [x] Added exported validation fixture catalog count constants in `src/validation_harness.rs` for total fixtures, retained receipt fixtures, and command fixtures.
+- [x] Replaced repeated production-side catalog count literals in summary/detail `passed()` checks and detail verdict construction with the shared constants.
+- [x] Refactored `tests/validation_harness_contract.rs` to consume the production fixture-count constants while keeping external-agent CLI mode count test-local.
+- [x] Preserved fixture catalog schemas, retained receipt fixture contents, compact CLI modes, root validation step ordering, and frozen kernel behavior.
+- [x] Focused fixture validation passed: `RUSTC_WRAPPER= cargo test -q --test validation_harness_contract fixture --locked` with 43 matching tests.
+- [x] Validation harness contract passed: `RUSTC_WRAPPER= cargo test -q --test validation_harness_contract --locked` with 128 tests.
+- [x] Root validation initially hit a connector 502 transport error, then passed on retry: `RUSTC_WRAPPER= cargo -Znext-lockfile-bump run --bin root_validate --locked`.
+
+## Validation For This Fixture Catalog Count Constants Turn
+
+- [x] The intentional source change for this step is in `src/validation_harness.rs` and `tests/validation_harness_contract.rs`.
+- [x] Production fixture-count policy now has a single named update surface instead of repeated raw `10/8/1` literals across catalog receipts.
+- [x] Existing checked-in fixture bytes and retained receipt schemas were not changed by this step.
+- [x] Root deterministic validation emitted `validation_harness_contract_tests` expected/observed counts of 128, `lib_unit_contract_tests` observed count of 177, and `graph_mutation_cli_contract_tests` expected/observed counts of 10.
+
+## Evaluation Turn Result: Validation Fixture Catalog Count Constants Review
+
+- [x] The validation fixture catalog now shares named production constants between receipt validation, verdict generation, and contract tests.
+- [x] Future fixture catalog cardinality changes require fewer synchronized edits and are less likely to drift between production and test expectations.
+- [x] This improves simplicity, robustness, efficiency, collaboration, and maintainability without changing compact-mode behavior or the frozen kernel.
+
+Recommended next plan item:
+
+```text
+Continue reducing validation fixture/test boilerplate only where repeated exact-row validators can be consolidated without weakening drift coverage; otherwise shift back to validation command-footprint reduction or retained policy-capacity planning.
+```
+
+Expected score emphasis:
+
+```text
+Si, R, E, Co, B
+```

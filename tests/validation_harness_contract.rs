@@ -2,7 +2,9 @@ use ai::validation_harness::{
     compare_runtime_performance_trend, compare_validation_cost_footprint, root_validation_steps,
     runtime_performance_receipt, validation_footprint_receipt_for_steps, GraphTelemetryReceipt,
     RuntimePerformanceReceipt, StepReceipt, StepRunner, ValidationReceipt, ValidationStep,
-    API_TRANSPORT_STEP, CHECK_STEP, EXTERNAL_AGENT_CLI_MODES_FIXTURE, FAST_TEST_STEP,
+    API_TRANSPORT_STEP, CHECK_STEP, EXPECTED_COMMAND_FIXTURE_COUNT,
+    EXPECTED_RETAINED_RECEIPT_FIXTURE_COUNT, EXPECTED_VALIDATION_FIXTURE_COUNT,
+    EXTERNAL_AGENT_CLI_MODES_FIXTURE, FAST_TEST_STEP,
     GRAPH_MUTATION_CLI_CONTRACT_EXPECTED_TESTS, GRAPH_MUTATION_CLI_CONTRACT_STEP, LIB_UNIT_STEP,
     LOCKFILE_COMPAT_FLAG, PLANNING_CONTRACT_STEP, POLICY_CAPACITY_COST_SUMMARY_RECEIPTS_FIXTURE,
     POLICY_CAPACITY_COST_SUMMARY_REGRESSION_SMOKE_STEP, POLICY_CAPACITY_COST_SUMMARY_SMOKE_STEP,
@@ -10,21 +12,27 @@ use ai::validation_harness::{
     POLICY_REUSE_RECEIPTS_FIXTURE, POLICY_VALIDATION_HEALTH_RECEIPTS_FIXTURE,
     POLICY_VALIDATION_HEALTH_TREND_RECEIPTS_FIXTURE, RUNTIME_PERFORMANCE_BUDGET_SMOKE_STEP,
     RUNTIME_PERFORMANCE_STEP, RUNTIME_PERFORMANCE_THRESHOLDS_FIXTURE,
-    RUNTIME_PERFORMANCE_TREND_FIXTURE, VALIDATION_COMMAND_FOOTPRINT_RECEIPTS_FIXTURE,
-    VALIDATION_DURATION_PLANNING_RECEIPTS_FIXTURE,
-    RUNTIME_PERFORMANCE_TREND_REGRESSION_SMOKE_STEP,
-    RUNTIME_PERFORMANCE_TREND_SMOKE_STEP, VALIDATION_COST_FOOTPRINT_GROWTH_SMOKE_STEP,
-    VALIDATION_DURATION_PLANNING_BUDGET_EXHAUSTION_SMOKE_STEP,
-    VALIDATION_DURATION_PLANNING_REGRESSION_SMOKE_STEP,
-    VALIDATION_DURATION_PLANNING_STEP, VALIDATION_DURATION_PLANNING_TREND_SMOKE_STEP,
-    VALIDATION_FIXTURE_CATALOG_STEP, VALIDATION_FOOTPRINT_STEP,
-    VALIDATION_COMMAND_FOOTPRINT_PLANNING_STEP,
+    RUNTIME_PERFORMANCE_TREND_FIXTURE, RUNTIME_PERFORMANCE_TREND_REGRESSION_SMOKE_STEP,
+    RUNTIME_PERFORMANCE_TREND_SMOKE_STEP, VALIDATION_COMMAND_FOOTPRINT_PLANNING_STEP,
+    VALIDATION_COMMAND_FOOTPRINT_RECEIPTS_FIXTURE,
     VALIDATION_COMMAND_FOOTPRINT_REGRESSION_SMOKE_STEP,
     VALIDATION_COMMAND_FOOTPRINT_TARGET_MET_SMOKE_STEP, VALIDATION_COMMAND_FOOTPRINT_TARGET_STEPS,
     VALIDATION_COMMAND_FOOTPRINT_TREND_SMOKE_STEP,
     VALIDATION_COMMAND_FOOTPRINT_UNSAFE_TARGET_SMOKE_STEP,
-    VALIDATION_HARNESS_EXPECTED_TESTS, VALIDATION_HARNESS_STEP,
+    VALIDATION_COST_FOOTPRINT_GROWTH_SMOKE_STEP,
+    VALIDATION_DURATION_PLANNING_BUDGET_EXHAUSTION_SMOKE_STEP,
+    VALIDATION_DURATION_PLANNING_RECEIPTS_FIXTURE,
+    VALIDATION_DURATION_PLANNING_REGRESSION_SMOKE_STEP, VALIDATION_DURATION_PLANNING_STEP,
+    VALIDATION_DURATION_PLANNING_TREND_SMOKE_STEP, VALIDATION_FIXTURE_CATALOG_STEP,
+    VALIDATION_FOOTPRINT_STEP, VALIDATION_HARNESS_EXPECTED_TESTS, VALIDATION_HARNESS_STEP,
 };
+
+const EXPECTED_ROOT_VALIDATE_COMPACT_MODE_COUNT: usize = 36;
+const EXPECTED_EXTERNAL_AGENT_CLI_MODE_COUNT: usize = 41;
+
+fn expected_guarded_test_count() -> usize {
+    VALIDATION_HARNESS_EXPECTED_TESTS + GRAPH_MUTATION_CLI_CONTRACT_EXPECTED_TESTS
+}
 
 #[test]
 fn root_validation_requires_lockfile_compatibility_flag() {
@@ -94,7 +102,7 @@ fn validation_footprint_receipt_summarizes_root_suite_contract() {
     assert_eq!(receipt.expected_count_guarded_steps, 2);
     assert_eq!(
         receipt.expected_count_guarded_tests,
-        VALIDATION_HARNESS_EXPECTED_TESTS + GRAPH_MUTATION_CLI_CONTRACT_EXPECTED_TESTS
+        expected_guarded_test_count()
     );
     assert_eq!(receipt.lockfile_compat_step_count, receipt.cargo_step_count);
     assert!(receipt.runtime_budget_required);
@@ -120,7 +128,7 @@ fn root_validate_validation_footprint_mode_is_executable_contract() {
             "\"expected_count_guarded_steps\":2",
             &format!(
                 "\"expected_count_guarded_tests\":{}",
-                VALIDATION_HARNESS_EXPECTED_TESTS + GRAPH_MUTATION_CLI_CONTRACT_EXPECTED_TESTS
+                expected_guarded_test_count()
             ),
             "\"runtime_budget_required\":true",
             "\"max_project_agent_elapsed_ms_p95\":10000",
@@ -137,15 +145,21 @@ fn validation_command_footprint_planning_receipt_sets_safe_reduction_target() {
         VALIDATION_COMMAND_FOOTPRINT_TARGET_STEPS,
     );
 
-    assert_eq!(receipt.schema, "canon_validation_command_footprint_planning_v1");
-    assert_eq!(receipt.record_type, VALIDATION_COMMAND_FOOTPRINT_PLANNING_STEP);
+    assert_eq!(
+        receipt.schema,
+        "canon_validation_command_footprint_planning_v1"
+    );
+    assert_eq!(
+        receipt.record_type,
+        VALIDATION_COMMAND_FOOTPRINT_PLANNING_STEP
+    );
     assert_eq!(receipt.current_total_declared_steps, 7);
     assert_eq!(receipt.target_total_declared_steps, 6);
     assert_eq!(receipt.command_reduction_target, 1);
     assert_eq!(receipt.expected_count_guarded_steps, 2);
     assert_eq!(
         receipt.expected_count_guarded_tests,
-        VALIDATION_HARNESS_EXPECTED_TESTS + GRAPH_MUTATION_CLI_CONTRACT_EXPECTED_TESTS
+        expected_guarded_test_count()
     );
     assert_eq!(receipt.footprint_verdict, "pass");
     assert_eq!(receipt.safety_status, "pass");
@@ -162,7 +176,10 @@ fn validation_command_footprint_target_met_smoke_passes_without_required_reducti
     assert_eq!(receipt.target_total_declared_steps, 7);
     assert_eq!(receipt.command_reduction_target, 0);
     assert_eq!(receipt.expected_count_guarded_steps, 2);
-    assert_eq!(receipt.record_type, VALIDATION_COMMAND_FOOTPRINT_TARGET_MET_SMOKE_STEP);
+    assert_eq!(
+        receipt.record_type,
+        VALIDATION_COMMAND_FOOTPRINT_TARGET_MET_SMOKE_STEP
+    );
     assert_eq!(receipt.safety_status, "pass");
     assert_eq!(receipt.planning_status, "met");
     assert_eq!(receipt.verdict, "pass");
@@ -171,13 +188,17 @@ fn validation_command_footprint_target_met_smoke_passes_without_required_reducti
 
 #[test]
 fn validation_command_footprint_planning_rejects_unsafe_target() {
-    let receipt = ai::validation_harness::validation_command_footprint_unsafe_target_smoke_receipt();
+    let receipt =
+        ai::validation_harness::validation_command_footprint_unsafe_target_smoke_receipt();
 
     assert_eq!(receipt.current_total_declared_steps, 7);
     assert_eq!(receipt.target_total_declared_steps, 1);
     assert_eq!(receipt.command_reduction_target, 6);
     assert_eq!(receipt.expected_count_guarded_steps, 2);
-    assert_eq!(receipt.record_type, VALIDATION_COMMAND_FOOTPRINT_UNSAFE_TARGET_SMOKE_STEP);
+    assert_eq!(
+        receipt.record_type,
+        VALIDATION_COMMAND_FOOTPRINT_UNSAFE_TARGET_SMOKE_STEP
+    );
     assert_eq!(receipt.safety_status, "fail");
     assert_eq!(receipt.planning_status, "unsafe_target");
     assert_eq!(receipt.verdict, "fail");
@@ -226,13 +247,18 @@ fn root_validate_validation_command_footprint_planning_modes_are_executable_cont
     );
 }
 
-
 #[test]
 fn validation_command_footprint_trend_smoke_compares_retained_targets() {
     let receipt = ai::validation_harness::validation_command_footprint_trend_smoke_receipt();
 
-    assert_eq!(receipt.schema, "canon_validation_command_footprint_trend_v1");
-    assert_eq!(receipt.record_type, VALIDATION_COMMAND_FOOTPRINT_TREND_SMOKE_STEP);
+    assert_eq!(
+        receipt.schema,
+        "canon_validation_command_footprint_trend_v1"
+    );
+    assert_eq!(
+        receipt.record_type,
+        VALIDATION_COMMAND_FOOTPRINT_TREND_SMOKE_STEP
+    );
     assert_eq!(receipt.baseline_target_total_declared_steps, 6);
     assert_eq!(receipt.current_target_total_declared_steps, 7);
     assert_eq!(receipt.target_total_declared_step_delta, 1);
@@ -250,8 +276,14 @@ fn validation_command_footprint_trend_smoke_compares_retained_targets() {
 fn validation_command_footprint_regression_smoke_exposes_controlled_negative() {
     let receipt = ai::validation_harness::validation_command_footprint_regression_smoke_receipt();
 
-    assert_eq!(receipt.schema, "canon_validation_command_footprint_trend_v1");
-    assert_eq!(receipt.record_type, VALIDATION_COMMAND_FOOTPRINT_REGRESSION_SMOKE_STEP);
+    assert_eq!(
+        receipt.schema,
+        "canon_validation_command_footprint_trend_v1"
+    );
+    assert_eq!(
+        receipt.record_type,
+        VALIDATION_COMMAND_FOOTPRINT_REGRESSION_SMOKE_STEP
+    );
     assert_eq!(receipt.baseline_target_total_declared_steps, 7);
     assert_eq!(receipt.current_target_total_declared_steps, 6);
     assert_eq!(receipt.target_total_declared_step_delta, -1);
@@ -268,8 +300,10 @@ fn validation_command_footprint_regression_smoke_exposes_controlled_negative() {
 #[test]
 fn validation_command_footprint_trend_rejects_unsafe_current_target() {
     let baseline = ai::validation_harness::validation_command_footprint_planning_smoke_receipt();
-    let current = ai::validation_harness::validation_command_footprint_unsafe_target_smoke_receipt();
-    let receipt = ai::validation_harness::compare_validation_command_footprint_trend(&baseline, &current);
+    let current =
+        ai::validation_harness::validation_command_footprint_unsafe_target_smoke_receipt();
+    let receipt =
+        ai::validation_harness::compare_validation_command_footprint_trend(&baseline, &current);
 
     assert_eq!(receipt.current_safety_status, "fail");
     assert_eq!(receipt.current_planning_status, "unsafe_target");
@@ -367,7 +401,10 @@ fn external_agent_cli_modes_fixture_documents_all_public_modes() {
         .expect("external agent CLI modes fixture should parse");
 
     assert_eq!(catalog.schema, "canon_external_agent_cli_modes_v1");
-    assert_eq!(catalog.declared_mode_count, 41);
+    assert_eq!(
+        catalog.declared_mode_count,
+        EXPECTED_EXTERNAL_AGENT_CLI_MODE_COUNT
+    );
     assert_eq!(catalog.entries.len(), catalog.declared_mode_count);
     assert!(catalog.contains(
         "root_validate --validation-footprint",
@@ -545,7 +582,10 @@ fn root_validate_dispatch_catalog_matches_documented_root_modes_contract() {
     let stdout = String::from_utf8_lossy(&output.stdout);
     assert!(stdout.contains("\"schema\":\"canon_root_validate_dispatch_catalog_v1\""));
     assert!(stdout.contains("\"record_type\":\"root_validate_dispatch_catalog\""));
-    assert!(stdout.contains("\"compact_mode_count\":36"));
+    assert!(stdout.contains(&format!(
+        "\"compact_mode_count\":{}",
+        EXPECTED_ROOT_VALIDATE_COMPACT_MODE_COUNT
+    )));
     assert!(!stdout.contains("canon_root_validation_v1"));
 
     for line in fixture
@@ -920,9 +960,15 @@ fn validation_fixture_catalog_receipt_summarizes_retained_fixture_inventory() {
 
     assert_eq!(receipt.schema, "canon_validation_fixture_catalog_v1");
     assert_eq!(receipt.record_type, VALIDATION_FIXTURE_CATALOG_STEP);
-    assert_eq!(receipt.fixture_count, 10);
-    assert_eq!(receipt.retained_receipt_fixture_count, 8);
-    assert_eq!(receipt.command_fixture_count, 1);
+    assert_eq!(receipt.fixture_count, EXPECTED_VALIDATION_FIXTURE_COUNT);
+    assert_eq!(
+        receipt.retained_receipt_fixture_count,
+        EXPECTED_RETAINED_RECEIPT_FIXTURE_COUNT
+    );
+    assert_eq!(
+        receipt.command_fixture_count,
+        EXPECTED_COMMAND_FIXTURE_COUNT
+    );
     assert!(receipt.total_fixture_bytes > 0);
     assert_eq!(receipt.verdict, "pass");
     assert!(receipt.passed());
@@ -957,8 +1003,14 @@ fn root_validate_validation_fixture_catalog_mode_is_executable_contract() {
     let stdout = String::from_utf8_lossy(&output.stdout);
     assert!(stdout.contains("\"schema\":\"canon_validation_fixture_catalog_v1\""));
     assert!(stdout.contains("\"record_type\":\"validation_fixture_catalog\""));
-    assert!(stdout.contains("\"fixture_count\":10"));
-    assert!(stdout.contains("\"retained_receipt_fixture_count\":8"));
+    assert!(stdout.contains(&format!(
+        "\"fixture_count\":{}",
+        EXPECTED_VALIDATION_FIXTURE_COUNT
+    )));
+    assert!(stdout.contains(&format!(
+        "\"retained_receipt_fixture_count\":{}",
+        EXPECTED_RETAINED_RECEIPT_FIXTURE_COUNT
+    )));
     assert!(!stdout.contains("canon_root_validation_v1"));
 }
 
@@ -969,12 +1021,15 @@ fn validation_fixture_catalog_detail_receipt_exposes_per_fixture_rows() {
 
     assert_eq!(detail.schema, "canon_validation_fixture_catalog_detail_v1");
     assert_eq!(detail.record_type, "validation_fixture_catalog_detail");
-    assert_eq!(detail.fixture_count, 10);
-    assert_eq!(detail.retained_receipt_fixture_count, 8);
-    assert_eq!(detail.command_fixture_count, 1);
+    assert_eq!(detail.fixture_count, EXPECTED_VALIDATION_FIXTURE_COUNT);
+    assert_eq!(
+        detail.retained_receipt_fixture_count,
+        EXPECTED_RETAINED_RECEIPT_FIXTURE_COUNT
+    );
+    assert_eq!(detail.command_fixture_count, EXPECTED_COMMAND_FIXTURE_COUNT);
     assert!(detail.total_fixture_bytes > 0);
     assert!(!detail.fixture_set_hash.is_empty());
-    assert_eq!(detail.rows.len(), 10);
+    assert_eq!(detail.rows.len(), EXPECTED_VALIDATION_FIXTURE_COUNT);
     assert!(detail.passed());
     assert!(detail.rows.iter().any(|row| {
         row.kind == "retained_receipt"
@@ -1041,8 +1096,11 @@ fn root_validate_validation_fixture_catalog_detail_mode_is_executable_contract()
         &[
             "schema=canon_validation_fixture_catalog_detail_v1",
             "record_type=validation_fixture_catalog_detail",
-            "fixture_count=10",
-            "retained_receipt_fixture_count=8",
+            &format!("fixture_count={}", EXPECTED_VALIDATION_FIXTURE_COUNT),
+            &format!(
+                "retained_receipt_fixture_count={}",
+                EXPECTED_RETAINED_RECEIPT_FIXTURE_COUNT
+            ),
             "fixture=retained_receipt|tests/fixtures/policy_capacity_cost_summary_receipts.txt|",
             "verdict=pass",
         ],
@@ -1064,7 +1122,7 @@ fn validation_duration_planning_receipt_summarizes_retained_duration_and_footpri
     assert_eq!(receipt.total_declared_steps, 7);
     assert_eq!(
         receipt.expected_count_guarded_tests,
-        VALIDATION_HARNESS_EXPECTED_TESTS + GRAPH_MUTATION_CLI_CONTRACT_EXPECTED_TESTS
+        expected_guarded_test_count()
     );
     assert_eq!(receipt.estimated_ms_per_declared_step, 450);
     assert!(receipt.estimated_ms_per_guarded_test > 0);
@@ -1096,7 +1154,8 @@ fn validation_duration_planning_receipt_rejects_budget_exhaustion() {
 
 #[test]
 fn validation_duration_planning_budget_exhaustion_smoke_receipt_is_controlled_negative() {
-    let receipt = ai::validation_harness::validation_duration_planning_budget_exhaustion_smoke_receipt();
+    let receipt =
+        ai::validation_harness::validation_duration_planning_budget_exhaustion_smoke_receipt();
 
     assert_eq!(receipt.schema, "canon_validation_duration_planning_v1");
     assert_eq!(
@@ -1153,9 +1212,18 @@ fn root_validate_validation_duration_planning_budget_exhaustion_smoke_is_executa
 fn validation_duration_planning_trend_smoke_compares_retained_planning_cost() {
     let receipt = ai::validation_harness::validation_duration_planning_trend_smoke_receipt();
 
-    assert_eq!(receipt.schema, "canon_validation_duration_planning_trend_v1");
-    assert_eq!(receipt.record_type, VALIDATION_DURATION_PLANNING_TREND_SMOKE_STEP);
-    assert_eq!(receipt.baseline_retained_project_agent_elapsed_ms_p95, 3_150);
+    assert_eq!(
+        receipt.schema,
+        "canon_validation_duration_planning_trend_v1"
+    );
+    assert_eq!(
+        receipt.record_type,
+        VALIDATION_DURATION_PLANNING_TREND_SMOKE_STEP
+    );
+    assert_eq!(
+        receipt.baseline_retained_project_agent_elapsed_ms_p95,
+        3_150
+    );
     assert_eq!(receipt.current_retained_project_agent_elapsed_ms_p95, 3_000);
     assert_eq!(receipt.retained_duration_delta_ms, -150);
     assert_eq!(receipt.retained_budget_headroom_delta_ms, 150);
@@ -1185,12 +1253,18 @@ fn root_validate_validation_duration_planning_trend_smoke_is_executable_contract
 fn validation_duration_planning_regression_smoke_exposes_controlled_negative_receipt() {
     let receipt = ai::validation_harness::validation_duration_planning_regression_smoke_receipt();
 
-    assert_eq!(receipt.schema, "canon_validation_duration_planning_trend_v1");
+    assert_eq!(
+        receipt.schema,
+        "canon_validation_duration_planning_trend_v1"
+    );
     assert_eq!(
         receipt.record_type,
         VALIDATION_DURATION_PLANNING_REGRESSION_SMOKE_STEP
     );
-    assert_eq!(receipt.baseline_retained_project_agent_elapsed_ms_p95, 3_150);
+    assert_eq!(
+        receipt.baseline_retained_project_agent_elapsed_ms_p95,
+        3_150
+    );
     assert_eq!(receipt.current_retained_project_agent_elapsed_ms_p95, 3_301);
     assert_eq!(receipt.retained_duration_delta_ms, 151);
     assert_eq!(receipt.retained_budget_headroom_delta_ms, -151);
@@ -1215,7 +1289,6 @@ fn root_validate_validation_duration_planning_regression_smoke_is_executable_con
         ],
     );
 }
-
 
 #[test]
 fn runtime_performance_receipt_json_contains_required_contract_fields() {
@@ -1598,7 +1671,8 @@ fn retained_fixture_header_helper_accepts_exact_schema_and_count() {
 
 #[test]
 fn retained_fixture_header_helper_rejects_drifted_count_and_prefix_matches() {
-    let fixture = "schema=canon_fixture_header_v1_extra\nschema=canon_fixture_header_v1\nreceipt_count=20\n";
+    let fixture =
+        "schema=canon_fixture_header_v1_extra\nschema=canon_fixture_header_v1\nreceipt_count=20\n";
 
     assert!(!ai::validation_harness::retained_fixture_header_valid(
         fixture,
@@ -2185,7 +2259,8 @@ fn policy_capacity_cost_summary_receipts_fixture_negative_contract_detects_drift
 }
 
 #[test]
-fn policy_capacity_cost_summary_receipts_fixture_negative_contract_detects_validation_cost_trend_drift() {
+fn policy_capacity_cost_summary_receipts_fixture_negative_contract_detects_validation_cost_trend_drift(
+) {
     let fixture = std::fs::read_to_string(POLICY_CAPACITY_COST_SUMMARY_RECEIPTS_FIXTURE)
         .expect("policy capacity cost summary receipts fixture must be readable");
 
@@ -2680,7 +2755,7 @@ fn policy_validation_health_smoke_combines_policy_reuse_and_validation_cost() {
     assert_eq!(receipt.validation_cost_verdict, "pass");
     assert_eq!(
         receipt.expected_count_guarded_tests,
-        VALIDATION_HARNESS_EXPECTED_TESTS + GRAPH_MUTATION_CLI_CONTRACT_EXPECTED_TESTS
+        expected_guarded_test_count()
     );
     assert_eq!(receipt.total_declared_steps, 7);
     assert!(!receipt.command_set_changed);
@@ -2798,13 +2873,13 @@ fn policy_validation_health_receipt_rejects_dispatch_catalog_drift() {
         .contains("\"dispatch_catalog_changed\":true"));
 }
 
-
-
 #[test]
 fn validation_command_footprint_receipts_fixture_binds_expected_retained_receipts() {
     let fixture = std::fs::read_to_string(VALIDATION_COMMAND_FOOTPRINT_RECEIPTS_FIXTURE)
         .expect("validation command footprint receipts fixture must be readable");
-    assert!(validation_command_footprint_receipts_fixture_valid(&fixture));
+    assert!(validation_command_footprint_receipts_fixture_valid(
+        &fixture
+    ));
 }
 
 #[test]
@@ -2837,19 +2912,25 @@ fn validation_command_footprint_receipts_fixture_negative_contract_detects_drift
         "validation_command_footprint_planning.command_reduction_target=1",
         "validation_command_footprint_planning.command_reduction_target=0",
     );
-    assert!(!validation_command_footprint_receipts_fixture_valid(&drifted));
+    assert!(!validation_command_footprint_receipts_fixture_valid(
+        &drifted
+    ));
 
     let drifted_unsafe = fixture.replace(
         "validation_command_footprint_unsafe_target_smoke.safety_status=fail",
         "validation_command_footprint_unsafe_target_smoke.safety_status=pass",
     );
-    assert!(!validation_command_footprint_receipts_fixture_valid(&drifted_unsafe));
+    assert!(!validation_command_footprint_receipts_fixture_valid(
+        &drifted_unsafe
+    ));
 
     let drifted_target_met = fixture.replace(
         "validation_command_footprint_target_met_smoke.planning_status=met",
         "validation_command_footprint_target_met_smoke.planning_status=action_required",
     );
-    assert!(!validation_command_footprint_receipts_fixture_valid(&drifted_target_met));
+    assert!(!validation_command_footprint_receipts_fixture_valid(
+        &drifted_target_met
+    ));
 }
 
 #[test]
@@ -2860,13 +2941,17 @@ fn validation_command_footprint_receipts_fixture_negative_contract_detects_trend
         "validation_command_footprint_trend_smoke.command_reduction_target_delta=-1",
         "validation_command_footprint_trend_smoke.command_reduction_target_delta=0",
     );
-    assert!(!validation_command_footprint_receipts_fixture_valid(&drifted_trend));
+    assert!(!validation_command_footprint_receipts_fixture_valid(
+        &drifted_trend
+    ));
 
     let drifted_regression = fixture.replace(
         "validation_command_footprint_regression_smoke.trend_status=regressed",
         "validation_command_footprint_regression_smoke.trend_status=pass",
     );
-    assert!(!validation_command_footprint_receipts_fixture_valid(&drifted_regression));
+    assert!(!validation_command_footprint_receipts_fixture_valid(
+        &drifted_regression
+    ));
 }
 
 #[test]
@@ -2875,13 +2960,17 @@ fn validation_command_footprint_receipts_fixture_negative_contract_detects_heade
         .expect("validation command footprint receipts fixture must be readable");
 
     let drifted_count = fixture.replace("receipt_count=5", "receipt_count=30");
-    assert!(!validation_command_footprint_receipts_fixture_valid(&drifted_count));
+    assert!(!validation_command_footprint_receipts_fixture_valid(
+        &drifted_count
+    ));
 
     let drifted_schema = fixture.replace(
         "schema=canon_validation_command_footprint_receipts_v1",
         "schema=canon_validation_command_footprint_receipts_v1_extra",
     );
-    assert!(!validation_command_footprint_receipts_fixture_valid(&drifted_schema));
+    assert!(!validation_command_footprint_receipts_fixture_valid(
+        &drifted_schema
+    ));
 }
 
 fn validation_command_footprint_receipts_fixture_valid(fixture: &str) -> bool {
@@ -2894,10 +2983,13 @@ fn validation_command_footprint_receipts_fixture_valid(fixture: &str) -> bool {
     }
 
     let planning = ai::validation_harness::validation_command_footprint_planning_smoke_receipt();
-    let target_met = ai::validation_harness::validation_command_footprint_target_met_smoke_receipt();
-    let unsafe_target = ai::validation_harness::validation_command_footprint_unsafe_target_smoke_receipt();
+    let target_met =
+        ai::validation_harness::validation_command_footprint_target_met_smoke_receipt();
+    let unsafe_target =
+        ai::validation_harness::validation_command_footprint_unsafe_target_smoke_receipt();
     let trend = ai::validation_harness::validation_command_footprint_trend_smoke_receipt();
-    let regression = ai::validation_harness::validation_command_footprint_regression_smoke_receipt();
+    let regression =
+        ai::validation_harness::validation_command_footprint_regression_smoke_receipt();
     let mut expected = validation_command_footprint_expected_fixture_lines(&[
         ("validation_command_footprint_planning", &planning),
         ("validation_command_footprint_target_met_smoke", &target_met),
@@ -2906,10 +2998,12 @@ fn validation_command_footprint_receipts_fixture_valid(fixture: &str) -> bool {
             &unsafe_target,
         ),
     ]);
-    expected.extend(validation_command_footprint_trend_expected_fixture_lines(&[
-        ("validation_command_footprint_trend_smoke", &trend),
-        ("validation_command_footprint_regression_smoke", &regression),
-    ]));
+    expected.extend(validation_command_footprint_trend_expected_fixture_lines(
+        &[
+            ("validation_command_footprint_trend_smoke", &trend),
+            ("validation_command_footprint_regression_smoke", &regression),
+        ],
+    ));
 
     fixture_contains_expected_lines(fixture, &expected)
         && fixture.contains("rule=planning smoke passes only when footprint is passing and target keeps all expected-count guarded suites")
@@ -2932,7 +3026,10 @@ fn validation_command_footprint_receipts_fixture_valid(fixture: &str) -> bool {
 }
 
 fn validation_command_footprint_expected_fixture_lines(
-    receipts: &[(&str, &ai::validation_harness::ValidationCommandFootprintPlanningReceipt)],
+    receipts: &[(
+        &str,
+        &ai::validation_harness::ValidationCommandFootprintPlanningReceipt,
+    )],
 ) -> Vec<String> {
     let mut expected = Vec::with_capacity(receipts.len() * 11);
     for (prefix, receipt) in receipts {
@@ -2971,7 +3068,10 @@ fn validation_command_footprint_expected_fixture_lines(
     expected
 }
 fn validation_command_footprint_trend_expected_fixture_lines(
-    receipts: &[(&str, &ai::validation_harness::ValidationCommandFootprintTrendReceipt)],
+    receipts: &[(
+        &str,
+        &ai::validation_harness::ValidationCommandFootprintTrendReceipt,
+    )],
 ) -> Vec<String> {
     let mut expected = Vec::with_capacity(receipts.len() * 13);
     for (prefix, receipt) in receipts {
@@ -3009,8 +3109,14 @@ fn validation_command_footprint_trend_expected_fixture_lines(
                 "{prefix}.current_planning_status={}",
                 receipt.current_planning_status
             ),
-            format!("{prefix}.baseline_safety_status={}", receipt.baseline_safety_status),
-            format!("{prefix}.current_safety_status={}", receipt.current_safety_status),
+            format!(
+                "{prefix}.baseline_safety_status={}",
+                receipt.baseline_safety_status
+            ),
+            format!(
+                "{prefix}.current_safety_status={}",
+                receipt.current_safety_status
+            ),
             format!("{prefix}.trend_status={}", receipt.trend_status),
             format!("{prefix}.verdict={}", receipt.verdict),
         ]);
@@ -3022,7 +3128,9 @@ fn validation_command_footprint_trend_expected_fixture_lines(
 fn validation_duration_planning_receipts_fixture_binds_expected_retained_receipts() {
     let fixture = std::fs::read_to_string(VALIDATION_DURATION_PLANNING_RECEIPTS_FIXTURE)
         .expect("validation duration planning receipts fixture must be readable");
-    assert!(validation_duration_planning_receipts_fixture_valid(&fixture));
+    assert!(validation_duration_planning_receipts_fixture_valid(
+        &fixture
+    ));
 }
 
 #[test]
@@ -3053,7 +3161,9 @@ fn validation_duration_planning_receipts_fixture_negative_contract_detects_drift
         "validation_duration_planning_budget_exhaustion_smoke.retained_budget_headroom_ms=-1",
         "validation_duration_planning_budget_exhaustion_smoke.retained_budget_headroom_ms=0",
     );
-    assert!(!validation_duration_planning_receipts_fixture_valid(&drifted));
+    assert!(!validation_duration_planning_receipts_fixture_valid(
+        &drifted
+    ));
 }
 
 #[test]
@@ -3065,13 +3175,17 @@ fn validation_duration_planning_receipts_fixture_negative_contract_detects_trend
         "validation_duration_planning_trend_smoke.retained_duration_delta_ms=-150",
         "validation_duration_planning_trend_smoke.retained_duration_delta_ms=0",
     );
-    assert!(!validation_duration_planning_receipts_fixture_valid(&drifted_trend));
+    assert!(!validation_duration_planning_receipts_fixture_valid(
+        &drifted_trend
+    ));
 
     let drifted_regression = fixture.replace(
         "validation_duration_planning_regression_smoke.retained_budget_headroom_delta_ms=-151",
         "validation_duration_planning_regression_smoke.retained_budget_headroom_delta_ms=0",
     );
-    assert!(!validation_duration_planning_receipts_fixture_valid(&drifted_regression));
+    assert!(!validation_duration_planning_receipts_fixture_valid(
+        &drifted_regression
+    ));
 }
 
 fn validation_duration_planning_receipts_fixture_valid(fixture: &str) -> bool {
@@ -3096,13 +3210,12 @@ fn validation_duration_planning_receipts_fixture_valid(fixture: &str) -> bool {
             &budget_exhaustion,
         ),
     ]);
-    expected.extend(validation_duration_planning_trend_expected_fixture_lines(&[
-        ("validation_duration_planning_trend_smoke", &trend),
-        (
-            "validation_duration_planning_regression_smoke",
-            &regression,
-        ),
-    ]));
+    expected.extend(validation_duration_planning_trend_expected_fixture_lines(
+        &[
+            ("validation_duration_planning_trend_smoke", &trend),
+            ("validation_duration_planning_regression_smoke", &regression),
+        ],
+    ));
 
     fixture_contains_expected_lines(fixture, &expected)
         && fixture.contains("rule=duration planning summary passes only when retained runtime budget, validation footprint, positive step count, and positive guarded-test count pass")
@@ -3120,7 +3233,10 @@ fn validation_duration_planning_receipts_fixture_valid(fixture: &str) -> bool {
 }
 
 fn validation_duration_planning_expected_fixture_lines(
-    receipts: &[(&str, &ai::validation_harness::ValidationDurationPlanningReceipt)],
+    receipts: &[(
+        &str,
+        &ai::validation_harness::ValidationDurationPlanningReceipt,
+    )],
 ) -> Vec<String> {
     let mut expected = Vec::with_capacity(receipts.len() * 12);
     for (prefix, receipt) in receipts {
@@ -3138,7 +3254,10 @@ fn validation_duration_planning_expected_fixture_lines(
                 "{prefix}.retained_budget_headroom_ms={}",
                 receipt.retained_budget_headroom_ms
             ),
-            format!("{prefix}.total_declared_steps={}", receipt.total_declared_steps),
+            format!(
+                "{prefix}.total_declared_steps={}",
+                receipt.total_declared_steps
+            ),
             format!(
                 "{prefix}.expected_count_guarded_tests={}",
                 receipt.expected_count_guarded_tests
@@ -3151,7 +3270,10 @@ fn validation_duration_planning_expected_fixture_lines(
                 "{prefix}.estimated_ms_per_guarded_test={}",
                 receipt.estimated_ms_per_guarded_test
             ),
-            format!("{prefix}.runtime_budget_status={}", receipt.runtime_budget_status),
+            format!(
+                "{prefix}.runtime_budget_status={}",
+                receipt.runtime_budget_status
+            ),
             format!("{prefix}.footprint_verdict={}", receipt.footprint_verdict),
             format!("{prefix}.planning_status={}", receipt.planning_status),
             format!("{prefix}.verdict={}", receipt.verdict),
@@ -3160,9 +3282,11 @@ fn validation_duration_planning_expected_fixture_lines(
     expected
 }
 
-
 fn validation_duration_planning_trend_expected_fixture_lines(
-    receipts: &[(&str, &ai::validation_harness::ValidationDurationPlanningTrendReceipt)],
+    receipts: &[(
+        &str,
+        &ai::validation_harness::ValidationDurationPlanningTrendReceipt,
+    )],
 ) -> Vec<String> {
     let mut expected = Vec::with_capacity(receipts.len() * 15);
     for (prefix, receipt) in receipts {
@@ -3204,8 +3328,14 @@ fn validation_duration_planning_trend_expected_fixture_lines(
                 "{prefix}.estimated_ms_per_guarded_test_delta={}",
                 receipt.estimated_ms_per_guarded_test_delta
             ),
-            format!("{prefix}.baseline_planning_status={}", receipt.baseline_planning_status),
-            format!("{prefix}.current_planning_status={}", receipt.current_planning_status),
+            format!(
+                "{prefix}.baseline_planning_status={}",
+                receipt.baseline_planning_status
+            ),
+            format!(
+                "{prefix}.current_planning_status={}",
+                receipt.current_planning_status
+            ),
             format!("{prefix}.trend_status={}", receipt.trend_status),
             format!("{prefix}.verdict={}", receipt.verdict),
         ]);

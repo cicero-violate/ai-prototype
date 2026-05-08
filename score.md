@@ -5449,3 +5449,150 @@ Next best work:
 ```text
 Reduce validation fixture/test boilerplate only where duplicated assertions can be replaced by shared exact-count and exact-row validators without reducing drift coverage.
 ```
+
+
+## After Agent Step 68: Validation Fixture Exact-Count Helper Reuse
+
+```text
+validation = PASS: env RUSTUP_TOOLCHAIN=nightly-2026-04-30-x86_64-unknown-linux-gnu LD_LIBRARY_PATH="$HOME/.rustup/toolchains/nightly-2026-04-30-x86_64-unknown-linux-gnu/lib" cargo test --test validation_harness_contract fixture -q
+validation = PASS: env RUSTUP_TOOLCHAIN=nightly-2026-04-30-x86_64-unknown-linux-gnu LD_LIBRARY_PATH="$HOME/.rustup/toolchains/nightly-2026-04-30-x86_64-unknown-linux-gnu/lib" cargo test --test validation_harness_contract -q
+validation = PASS: env RUSTUP_TOOLCHAIN=nightly-2026-04-30-x86_64-unknown-linux-gnu LD_LIBRARY_PATH="$HOME/.rustup/toolchains/nightly-2026-04-30-x86_64-unknown-linux-gnu/lib" cargo -Znext-lockfile-bump run --bin root_validate --locked
+```
+
+Implemented surface:
+
+```text
+expected_external_agent_cli_mode_count = 41
+expected_root_validate_compact_mode_count = 36
+expected_validation_fixture_count = 10
+expected_retained_receipt_fixture_count = 8
+expected_command_fixture_count = 1
+expected_guarded_test_count_helper = VALIDATION_HARNESS_EXPECTED_TESTS + GRAPH_MUTATION_CLI_CONTRACT_EXPECTED_TESTS
+fixture_filter_tests = 43
+validation_harness_contract_tests = 128
+lib_unit_contract_tests = 177
+graph_mutation_cli_contract_tests = 10
+kernel_changes = none
+serialization_dependencies_added = none
+graph_json_parser_added = none
+```
+
+Score movement:
+
+```text
+E:  8.50 -> 8.51
+C:  9.12 -> 9.12
+R:  9.36 -> 9.37
+P:  7.93 -> 7.94
+S:  8.18 -> 8.18
+T: 10.00 -> 10.00
+Co: 8.51 -> 8.52
+Em: 8.43 -> 8.43
+B:  8.55 -> 8.55
+L:  8.58 -> 8.58
+Si: 8.17 -> 8.19
+G:  8.74 -> 8.74
+```
+
+Rationale: fixture/catalog count expectations are now named and reused instead of repeated as raw literals across validation harness contract tests. The refactor preserves existing fixture contents, compact CLI modes, retained receipt schemas, and validation semantics while reducing future drift-update surface.
+
+Current scores after validation fixture exact-count helper reuse:
+
+| Axis | Score |
+|------+-------|
+| I    |  8.60 |
+| E    |  8.51 |
+| C    |  9.12 |
+| A    |  9.10 |
+| R    |  9.37 |
+| P    |  7.94 |
+| S    |  8.18 |
+| D    |  9.24 |
+| T    | 10.00 |
+| Co   |  8.52 |
+| Em   |  8.43 |
+| B    |  8.55 |
+| L    |  8.58 |
+| Si   |  8.19 |
+| F    |  8.93 |
+
+```text
+G = 8.74
+```
+
+Weakest remaining axes:
+
+```text
+P  = 7.94
+S  = 8.18
+Si = 8.19
+Em = 8.43
+E  = 8.51
+```
+
+Next best work:
+
+```text
+Continue reducing validation fixture/test boilerplate only where repeated exact-row validators can be consolidated without weakening drift coverage; otherwise shift back to validation command-footprint reduction or retained policy-capacity planning.
+```
+
+## Score Update: Validation Fixture Catalog Count Constants
+
+Score movement:
+
+```text
+E:  8.51 -> 8.52
+C:  9.12 -> 9.12
+R:  9.37 -> 9.38
+P:  7.94 -> 7.94
+S:  8.18 -> 8.18
+T: 10.00 -> 10.00
+Co: 8.52 -> 8.53
+Em: 8.43 -> 8.43
+B:  8.55 -> 8.56
+L:  8.58 -> 8.58
+Si: 8.19 -> 8.20
+G:  8.74 -> 8.75
+```
+
+Rationale: fixture catalog cardinality expectations are now exported production constants and reused by receipt `passed()` checks, verdict generation, and validation harness contract assertions. This removes duplicated raw `10/8/1` literals from production catalog logic while preserving fixture contents, compact CLI behavior, retained schemas, and root validation semantics.
+
+Current scores after validation fixture catalog count constants:
+
+| Axis | Score |
+|------+-------|
+| I    |  8.60 |
+| E    |  8.52 |
+| C    |  9.12 |
+| A    |  9.10 |
+| R    |  9.38 |
+| P    |  7.94 |
+| S    |  8.18 |
+| D    |  9.24 |
+| T    | 10.00 |
+| Co   |  8.53 |
+| Em   |  8.43 |
+| B    |  8.56 |
+| L    |  8.58 |
+| Si   |  8.20 |
+| F    |  8.93 |
+
+```text
+G = 8.75
+```
+
+Weakest remaining axes:
+
+```text
+P  = 7.94
+S  = 8.18
+Si = 8.20
+Em = 8.43
+E  = 8.52
+```
+
+Next best work:
+
+```text
+Continue reducing validation fixture/test boilerplate only where repeated exact-row validators can be consolidated without weakening drift coverage; otherwise shift back to validation command-footprint reduction or retained policy-capacity planning.
+```

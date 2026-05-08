@@ -300,8 +300,10 @@ fn validation_duration_planning_mode() -> Result<CompactModeOutcome, String> {
     ))
 }
 
-fn validation_duration_planning_budget_exhaustion_smoke_mode() -> Result<CompactModeOutcome, String> {
-    let receipt = validation_harness::validation_duration_planning_budget_exhaustion_smoke_receipt();
+fn validation_duration_planning_budget_exhaustion_smoke_mode() -> Result<CompactModeOutcome, String>
+{
+    let receipt =
+        validation_harness::validation_duration_planning_budget_exhaustion_smoke_receipt();
     let passed = receipt.runtime_budget_status == "fail"
         && receipt.planning_status == "fail"
         && receipt.verdict == "fail"

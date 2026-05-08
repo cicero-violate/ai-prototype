@@ -21,6 +21,9 @@ pub const VALIDATION_HARNESS_EXPECTED_TESTS: usize = 128;
 pub const PLANNING_CONTRACT_STEP: &str = "planning_contract_tests";
 pub const GRAPH_MUTATION_CLI_CONTRACT_STEP: &str = "graph_mutation_cli_contract_tests";
 pub const GRAPH_MUTATION_CLI_CONTRACT_EXPECTED_TESTS: usize = 10;
+pub const EXPECTED_VALIDATION_FIXTURE_COUNT: usize = 10;
+pub const EXPECTED_RETAINED_RECEIPT_FIXTURE_COUNT: usize = 8;
+pub const EXPECTED_COMMAND_FIXTURE_COUNT: usize = 1;
 pub const PYTHON_CONTRACT_STEP: &str = "python_contract_tests";
 pub const PYTHON_CONTRACT_SKIP_REASON: &str =
     "required validation scripts are absent from this checkout";
@@ -44,9 +47,12 @@ pub const VALIDATION_COMMAND_FOOTPRINT_TARGET_STEPS: usize = 6;
 pub const VALIDATION_FIXTURE_CATALOG_STEP: &str = "validation_fixture_catalog";
 pub const VALIDATION_FIXTURE_CATALOG_DETAIL_STEP: &str = "validation_fixture_catalog_detail";
 pub const VALIDATION_DURATION_PLANNING_STEP: &str = "validation_duration_planning_summary";
-pub const VALIDATION_DURATION_PLANNING_BUDGET_EXHAUSTION_SMOKE_STEP: &str = "validation_duration_planning_budget_exhaustion_smoke";
-pub const VALIDATION_DURATION_PLANNING_TREND_SMOKE_STEP: &str = "validation_duration_planning_trend_smoke";
-pub const VALIDATION_DURATION_PLANNING_REGRESSION_SMOKE_STEP: &str = "validation_duration_planning_regression_smoke";
+pub const VALIDATION_DURATION_PLANNING_BUDGET_EXHAUSTION_SMOKE_STEP: &str =
+    "validation_duration_planning_budget_exhaustion_smoke";
+pub const VALIDATION_DURATION_PLANNING_TREND_SMOKE_STEP: &str =
+    "validation_duration_planning_trend_smoke";
+pub const VALIDATION_DURATION_PLANNING_REGRESSION_SMOKE_STEP: &str =
+    "validation_duration_planning_regression_smoke";
 pub const RUNTIME_PERFORMANCE_BUDGET_SMOKE_STEP: &str = "runtime_performance_budget_smoke";
 pub const RUNTIME_PERFORMANCE_TREND_SMOKE_STEP: &str = "runtime_performance_trend_smoke";
 pub const RUNTIME_PERFORMANCE_TREND_REGRESSION_SMOKE_STEP: &str =
@@ -96,7 +102,9 @@ pub const DEFAULT_MAX_DOWNLOAD_FOLLOW_GET_MS_P95: u64 = 2_000;
 pub const DEFAULT_MAX_DOWNLOAD_WRITE_MS_P95: u64 = 1_000;
 
 pub fn retained_fixture_header_valid(fixture: &str, schema: &str, receipt_count: usize) -> bool {
-    fixture.lines().any(|line| line == format!("schema={schema}"))
+    fixture
+        .lines()
+        .any(|line| line == format!("schema={schema}"))
         && fixture
             .lines()
             .any(|line| line == format!("receipt_count={receipt_count}"))
@@ -271,7 +279,6 @@ impl ValidationCommandFootprintPlanningReceipt {
         )
     }
 }
-
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ValidationCommandFootprintTrendReceipt {
@@ -647,9 +654,9 @@ pub struct ValidationFixtureCatalogReceipt {
 impl ValidationFixtureCatalogReceipt {
     pub fn passed(&self) -> bool {
         self.verdict == "pass"
-            && self.fixture_count == 10
-            && self.retained_receipt_fixture_count == 8
-            && self.command_fixture_count == 1
+            && self.fixture_count == EXPECTED_VALIDATION_FIXTURE_COUNT
+            && self.retained_receipt_fixture_count == EXPECTED_RETAINED_RECEIPT_FIXTURE_COUNT
+            && self.command_fixture_count == EXPECTED_COMMAND_FIXTURE_COUNT
             && self.total_fixture_bytes > 0
             && !self.fixture_set_hash.is_empty()
     }
@@ -693,10 +700,10 @@ pub struct ValidationFixtureCatalogDetailReceipt {
 impl ValidationFixtureCatalogDetailReceipt {
     pub fn passed(&self) -> bool {
         self.verdict == "pass"
-            && self.fixture_count == 10
+            && self.fixture_count == EXPECTED_VALIDATION_FIXTURE_COUNT
             && self.rows.len() == self.fixture_count
-            && self.retained_receipt_fixture_count == 8
-            && self.command_fixture_count == 1
+            && self.retained_receipt_fixture_count == EXPECTED_RETAINED_RECEIPT_FIXTURE_COUNT
+            && self.command_fixture_count == EXPECTED_COMMAND_FIXTURE_COUNT
             && self.total_fixture_bytes > 0
             && !self.fixture_set_hash.is_empty()
             && self
@@ -1341,10 +1348,10 @@ pub fn validation_fixture_catalog_detail_receipt(
     rows.sort_by(|left, right| left.path.cmp(right.path));
     hash_rows.sort();
     let fixture_set_hash = stable_hash64(hash_rows.join("\n").as_bytes()).to_string();
-    let verdict = if fixtures.len() == 10
+    let verdict = if fixtures.len() == EXPECTED_VALIDATION_FIXTURE_COUNT
         && rows.len() == fixtures.len()
-        && retained_receipt_fixture_count == 8
-        && command_fixture_count == 1
+        && retained_receipt_fixture_count == EXPECTED_RETAINED_RECEIPT_FIXTURE_COUNT
+        && command_fixture_count == EXPECTED_COMMAND_FIXTURE_COUNT
         && total_fixture_bytes > 0
     {
         "pass"
@@ -1620,13 +1627,12 @@ pub fn compare_validation_cost_footprint_with_dispatch_hashes(
     }
 }
 
-
 pub fn validation_command_footprint_planning_receipt(
     footprint: &ValidationFootprintReceipt,
     target_total_declared_steps: usize,
 ) -> ValidationCommandFootprintPlanningReceipt {
-    let command_reduction_target = footprint.total_declared_steps as isize
-        - target_total_declared_steps as isize;
+    let command_reduction_target =
+        footprint.total_declared_steps as isize - target_total_declared_steps as isize;
     let safety_status = if footprint.passed()
         && target_total_declared_steps > 0
         && target_total_declared_steps >= footprint.expected_count_guarded_steps
@@ -1644,7 +1650,11 @@ pub fn validation_command_footprint_planning_receipt(
     } else {
         "unsafe_target"
     };
-    let verdict = if safety_status == "pass" { "pass" } else { "fail" };
+    let verdict = if safety_status == "pass" {
+        "pass"
+    } else {
+        "fail"
+    };
 
     ValidationCommandFootprintPlanningReceipt {
         schema: "canon_validation_command_footprint_planning_v1",
@@ -1662,7 +1672,8 @@ pub fn validation_command_footprint_planning_receipt(
     }
 }
 
-pub fn validation_command_footprint_planning_smoke_receipt() -> ValidationCommandFootprintPlanningReceipt {
+pub fn validation_command_footprint_planning_smoke_receipt(
+) -> ValidationCommandFootprintPlanningReceipt {
     let footprint = validation_footprint_receipt();
     validation_command_footprint_planning_receipt(
         &footprint,
@@ -1673,10 +1684,8 @@ pub fn validation_command_footprint_planning_smoke_receipt() -> ValidationComman
 pub fn validation_command_footprint_target_met_smoke_receipt(
 ) -> ValidationCommandFootprintPlanningReceipt {
     let footprint = validation_footprint_receipt();
-    let mut receipt = validation_command_footprint_planning_receipt(
-        &footprint,
-        footprint.total_declared_steps,
-    );
+    let mut receipt =
+        validation_command_footprint_planning_receipt(&footprint, footprint.total_declared_steps);
     receipt.record_type = VALIDATION_COMMAND_FOOTPRINT_TARGET_MET_SMOKE_STEP;
     receipt
 }
@@ -1695,8 +1704,8 @@ pub fn compare_validation_command_footprint_trend(
 ) -> ValidationCommandFootprintTrendReceipt {
     let target_total_declared_step_delta = current.target_total_declared_steps as isize
         - baseline.target_total_declared_steps as isize;
-    let command_reduction_target_delta = current.command_reduction_target
-        - baseline.command_reduction_target;
+    let command_reduction_target_delta =
+        current.command_reduction_target - baseline.command_reduction_target;
     let trend_status = if baseline.passed()
         && current.passed()
         && current.planning_status == "met"
@@ -1722,11 +1731,16 @@ pub fn compare_validation_command_footprint_trend(
         baseline_safety_status: baseline.safety_status,
         current_safety_status: current.safety_status,
         trend_status,
-        verdict: if trend_status == "pass" { "pass" } else { "fail" },
+        verdict: if trend_status == "pass" {
+            "pass"
+        } else {
+            "fail"
+        },
     }
 }
 
-pub fn validation_command_footprint_trend_smoke_receipt() -> ValidationCommandFootprintTrendReceipt {
+pub fn validation_command_footprint_trend_smoke_receipt() -> ValidationCommandFootprintTrendReceipt
+{
     let baseline = validation_command_footprint_planning_smoke_receipt();
     let current = validation_command_footprint_target_met_smoke_receipt();
     let mut receipt = compare_validation_command_footprint_trend(&baseline, &current);
@@ -1734,7 +1748,8 @@ pub fn validation_command_footprint_trend_smoke_receipt() -> ValidationCommandFo
     receipt
 }
 
-pub fn validation_command_footprint_regression_smoke_receipt() -> ValidationCommandFootprintTrendReceipt {
+pub fn validation_command_footprint_regression_smoke_receipt(
+) -> ValidationCommandFootprintTrendReceipt {
     let baseline = validation_command_footprint_target_met_smoke_receipt();
     let current = validation_command_footprint_planning_smoke_receipt();
     let mut receipt = compare_validation_command_footprint_trend(&baseline, &current);
@@ -1792,7 +1807,8 @@ pub fn validation_duration_planning_smoke_receipt() -> ValidationDurationPlannin
     validation_duration_planning_receipt(&runtime, &footprint)
 }
 
-pub fn validation_duration_planning_budget_exhaustion_smoke_receipt() -> ValidationDurationPlanningReceipt {
+pub fn validation_duration_planning_budget_exhaustion_smoke_receipt(
+) -> ValidationDurationPlanningReceipt {
     let runtime = runtime_performance_receipt(10_001);
     let footprint = validation_footprint_receipt();
     let mut receipt = validation_duration_planning_receipt(&runtime, &footprint);
@@ -1806,8 +1822,8 @@ pub fn compare_validation_duration_planning_trend(
 ) -> ValidationDurationPlanningTrendReceipt {
     let retained_duration_delta_ms = current.retained_project_agent_elapsed_ms_p95 as i64
         - baseline.retained_project_agent_elapsed_ms_p95 as i64;
-    let retained_budget_headroom_delta_ms = current.retained_budget_headroom_ms
-        - baseline.retained_budget_headroom_ms;
+    let retained_budget_headroom_delta_ms =
+        current.retained_budget_headroom_ms - baseline.retained_budget_headroom_ms;
     let estimated_ms_per_guarded_test_delta = current.estimated_ms_per_guarded_test as i64
         - baseline.estimated_ms_per_guarded_test as i64;
     let trend_status = if baseline.passed()
@@ -1824,8 +1840,10 @@ pub fn compare_validation_duration_planning_trend(
     ValidationDurationPlanningTrendReceipt {
         schema: "canon_validation_duration_planning_trend_v1",
         record_type: "validation_duration_planning_trend",
-        baseline_retained_project_agent_elapsed_ms_p95: baseline.retained_project_agent_elapsed_ms_p95,
-        current_retained_project_agent_elapsed_ms_p95: current.retained_project_agent_elapsed_ms_p95,
+        baseline_retained_project_agent_elapsed_ms_p95: baseline
+            .retained_project_agent_elapsed_ms_p95,
+        current_retained_project_agent_elapsed_ms_p95: current
+            .retained_project_agent_elapsed_ms_p95,
         retained_duration_delta_ms,
         baseline_retained_budget_headroom_ms: baseline.retained_budget_headroom_ms,
         current_retained_budget_headroom_ms: current.retained_budget_headroom_ms,
@@ -1836,11 +1854,16 @@ pub fn compare_validation_duration_planning_trend(
         baseline_planning_status: baseline.planning_status,
         current_planning_status: current.planning_status,
         trend_status,
-        verdict: if trend_status == "pass" { "pass" } else { "fail" },
+        verdict: if trend_status == "pass" {
+            "pass"
+        } else {
+            "fail"
+        },
     }
 }
 
-pub fn validation_duration_planning_trend_smoke_receipt() -> ValidationDurationPlanningTrendReceipt {
+pub fn validation_duration_planning_trend_smoke_receipt() -> ValidationDurationPlanningTrendReceipt
+{
     let baseline = validation_duration_planning_smoke_receipt();
     let current_runtime = runtime_performance_receipt(3_000);
     let footprint = validation_footprint_receipt();
