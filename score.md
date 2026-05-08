@@ -1,55 +1,56 @@
 # Canon Agent Score
 
-## Implementation Step 5 Scorecard - 2026-05-08
+## Planning / scoring update — 2026-05-08
 
-This turn implemented Step 5 of the supervisor/worker/MCP integration plan: the stable
-supervisor binary. The supervisor now owns worker lifecycle, starts a worker on boot, exposes
-`GET /health`, supports `POST /reload`, starts a replacement worker before retiring the old one,
-and kills active/retired workers on shutdown.
+This turn is a planning-only reconciliation turn. No implementation score increase is claimed.
+The plan now reflects the actual current implementation state: Steps 1 through 6 of the
+supervisor/worker/MCP integration are complete, and Step 7 should produce deterministic
+end-to-end evidence.
 
 ```text
-turn_type = implementation_step_5_supervisor_lifecycle_reload
-score_change_this_turn = robustness_scalability_correctness_credit
-commit_scope = Cargo.toml, Cargo.lock, src/bin/supervisor.rs, tests/supervisor_binary_contract.rs, plan.md, score.md
-recommended_next_lane = example_trace_or_plan_reconciliation
-implementation_authority_change = supervisor can spawn/reload worker processes; kernel and API authority unchanged
+turn_type = planning_scoring_reconciliation
+score_change_this_turn = none
+commit_scope = plan.md, score.md
+recommended_next_lane = step_7_end_to_end_mcp_tool_integration_evidence
+implementation_authority_change = none
 policy_authority_change = none
 retrieval_write_change = none
-runtime_mutation_change = none; supervisor never proxies /v1/command or mutates kernel state
+runtime_mutation_change = none
 ```
 
-## Completed This Turn
+---
+
+## Current implementation state
+
+Completed implementation commits currently visible:
 
 ```text
-modified: Cargo.toml
-modified: Cargo.lock
-modified: src/bin/supervisor.rs
-new file: tests/supervisor_binary_contract.rs
-modified: plan.md
-modified: score.md
+3117d05 Implement supervisor worker cargo targets
+8356abd Implement MCP call receipts
+e77b1fc Implement worker API server
+cea5e2a Implement worker runtime startup
+6dd425d Implement supervisor lifecycle reload
 ```
 
-Implemented supervisor behavior:
+Completed capability surfaces:
 
 ```text
-supervisor --help exits successfully without required environment
-SUPERVISOR_PORT defaults to 9100
-AI_TLOG_DIR defaults to tlog
-AI_WORKER_BIN defaults to worker binary next to supervisor
-AI_MCP_WORKER_URL defaults to http://127.0.0.1:38469/mcp_worker
-supervisor allocates worker port from 127.0.0.1:0
-supervisor spawns worker with AI_WORKER_MODE, PORT, AI_TLOG_DIR, AI_MCP_WORKER_URL, AI_WORKER_GENERATION
-supervisor waits for worker /health/worker before publishing active generation
-GET /health reports ok, generation, and worker_port
-POST /reload starts new worker before retiring old worker
-retired workers are killed after bounded drain window
-shutdown kills active and retired workers
+Cargo supervisor/worker targets exist
+McpCallRequest, McpCallReceipt, LiveMcpCallExecutor exist
+MCP receipt NDJSON helpers and verifier exist
+McpCallReceipt implements EvidenceProducer
+Worker API server exposes /health/worker, /v1/state, /v1/command
+Worker binary starts a local HTTP server from PORT and AI_TLOG_DIR
+Supervisor starts worker generation 1 and supports /health and /reload
+Supervisor reload starts replacement worker before retiring old worker
+MCP types/helpers are re-exported from record, tooling, and crate root surfaces
 ```
 
-The supervisor intentionally does not expose `/v1/command` or `/v1/state`. Command/state routes
-remain worker-only, preserving the existing API transport boundary.
+---
 
-## Validation Evidence
+## Evidence currently supporting the score
+
+Previously recorded validation evidence remains the basis for the current score:
 
 ```text
 CARGO_BUILD_RUSTC_WRAPPER= cargo fmt --check                                      pass
@@ -60,55 +61,22 @@ CARGO_BUILD_RUSTC_WRAPPER= cargo test --test api_server_contract --quiet        
 CARGO_BUILD_RUSTC_WRAPPER= cargo test --test planning_contract --test score_contract --quiet  pass
 ```
 
-Focused contract result:
+Focused contract coverage already present:
 
 ```text
-supervisor_binary_contract: 2 passed
-worker_binary_contract:     2 passed
-api_server_contract:        4 passed
-planning_contract:          2 passed
-score_contract:             5 passed
+mcp_receipt_contract: request hash, receipt normalization, NDJSON roundtrip, tamper rejection, executor allowlist/bounds
+api_server_contract: health, state, evidence command DTO handling, unsupported command rejection
+worker_binary_contract: worker help/startup health behavior
+supervisor_binary_contract: supervisor help, worker startup, reload generation behavior
+planning_contract: planning record invariants
+score_contract: score vector, timing, recovery, validation receipt invariants
 ```
 
-## Contract Coverage Added
+---
 
-```text
-supervisor_help_does_not_require_environment
-supervisor_spawns_worker_and_reloads_generation
-```
+## Current axis scores
 
-These tests prove that the supervisor help path is non-mutating and environment-independent, and
-that a real supervisor process starts generation 1 worker, reports health, reloads to generation
-2 on a different worker port, and exposes the replacement worker's `/health/worker` endpoint.
-
-## Observed Unscored Worktree Changes
-
-The repository still contains unrelated pre-existing/unscored worktree changes outside this
-turn's implementation scope:
-
-```text
-modified: graph-editor/Cargo.toml
-modified: graph-editor/src/graph.rs
-modified: graph-editor/src/lib.rs
-deleted:  plan-autorefactor.md
-modified: tests/fixtures/validation_command_footprint_receipts.txt
-modified: tests/fixtures/validation_duration_planning_receipts.txt
-modified: tests/validation_harness_contract.rs
-untracked: canon-rustc-v3/validation/auto_refactor_ops.py
-untracked: canon-rustc-v3/validation/auto_refactor_ops_smoke.py
-untracked: graph-editor/src/autorefactor.rs
-untracked: graph-editor/src/bin/auto_refactor_plan.rs
-untracked: src/domain/
-untracked: teacher-student.md
-```
-
-These are not scored here and should remain outside the Step 5 commit.
-
-## Current Axis Scores
-
-A small increase is justified for Correctness, Robustness, and Scalability because supervisor
-process management, worker spawning, worker health waiting, reload, and real process smoke tests
-now exist. No Learning or policy score movement is claimed.
+No axis changes are made in this planning turn.
 
 ```text
 I  Intelligence      = 0.98
@@ -135,26 +103,60 @@ Approximate geometric mean:
 G ≈ 0.975
 ```
 
-## Current Judgment
+---
+
+## Current judgment
 
 ```text
 weakest_axis = Correctness
-weakest_axis_reason = supervisor and worker lifecycle are live, but end-to-end command submission through a supervised worker is not yet covered
+weakest_axis_reason = core pieces are implemented, but no committed deterministic smoke currently proves the supervised worker command path or live MCP executor path end-to-end
 primary_next_axis = Correctness
 secondary_next_axis = Transparency
 guard_axis = Robustness
-current_gap = no example trace or supervised command-ingress smoke validates the full supervisor -> worker -> ApiTransportSession path
-next_action = implement Step 7 example trace or add an end-to-end supervised worker command smoke before declaring integration complete
-score_freeze_reason = MCP receipt executor, worker server, and supervisor lifecycle are implemented, but no full MCP/tool-loop example has been committed
+current_gap = missing committed Step 7 evidence connecting supervisor/worker discovery, worker command ingress, MCP receipt production, and evidence submission/tlog verification
+next_action = add deterministic Step 7 contract evidence before claiming integration-complete status
+score_freeze_reason = this was a planning/scoring reconciliation turn with no new implementation or validation run
 ```
 
-## Conditions For Next Score Increase
+---
 
-The next implementation should not increase Correctness or Transparency unless it adds committed
-evidence proving one of:
+## Conditions for next score increase
+
+The next implementation turn may increase Correctness and/or Transparency only if it commits
+validation evidence proving at least one of the following:
 
 ```text
-an example trace exercises LiveMcpCallExecutor and records MCP receipts
-or a supervised-worker command smoke submits /v1/command to the worker port discovered from supervisor /health
-or plan reconciliation marks Step 6 already satisfied and defines the next concrete integration gap
+a supervised-worker smoke discovers worker_port from supervisor /health and exercises worker /health/worker plus /v1/state or /v1/command
+a deterministic local-server smoke exercises LiveMcpCallExecutor without relying on an external MCP service
+an example trace records an McpCallReceipt and submits it through the existing EvidenceProducer path
+the resulting receipt/tlog is verified by committed tests or reproducible commands
 ```
+
+The next turn should not increase score for documentation-only changes, broad scaffolding, or
+example code that requires unavailable external services and lacks deterministic test coverage.
+
+---
+
+## Unscored worktree changes to preserve
+
+The current `ai` worktree contains unrelated pre-existing changes outside this planning turn.
+They are not scored here and should not be included in the planning/scoring commit:
+
+```text
+modified: graph-editor/Cargo.toml
+modified: graph-editor/src/graph.rs
+modified: graph-editor/src/lib.rs
+deleted:  plan-autorefactor.md
+modified: tests/fixtures/validation_command_footprint_receipts.txt
+modified: tests/fixtures/validation_duration_planning_receipts.txt
+modified: tests/validation_harness_contract.rs
+untracked: canon-rustc-v3/validation/auto_refactor_ops.py
+untracked: canon-rustc-v3/validation/auto_refactor_ops_smoke.py
+untracked: graph-editor/src/autorefactor.rs
+untracked: graph-editor/src/bin/auto_refactor_plan.rs
+untracked: src/agent/
+untracked: src/domain/
+untracked: teacher-student.md
+```
+
+Only `plan.md` and `score.md` should be staged for this turn.

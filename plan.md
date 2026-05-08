@@ -1,430 +1,247 @@
-# Plan: Supervisor + Worker + MCP Integration
+# Plan: Supervisor / Worker / MCP Integration
 
-## Context
+## Planning turn snapshot — 2026-05-08
 
-The `ai` crate is a Rust library plus CLI binaries. It has no HTTP server today. All state
-mutation goes through `ApiTransportSession::handle_frame()` in `src/api/transport.rs`, which
-writes a durable tlog to disk before touching in-memory state. The kernel is pure and has no
-external dependencies.
+This repository is past the bootstrap portion of the supervisor/worker/MCP plan. The current
+implementation has cargo targets, MCP receipt records, a worker API server, a reload supervisor,
+and public re-exports in place. The next useful implementation turn should add committed
+end-to-end evidence rather than more structural scaffolding.
 
-The `chatgpt-mcp-connector` (already running) exposes:
-- Public MCP supervisor: `http://0.0.0.0:4000/mcp` (OAuth-protected, proxies to worker)
-- Internal MCP worker: `http://127.0.0.1:<dynamic_port>/mcp_worker` (local, no OAuth)
+Current recommended lane:
 
-The goal is:
-1. A stable **supervisor** binary that manages the `ai` worker process lifecycle and supports
-   hot reload (for self-modification — the worker rewrites its own source, rebuilds, signals
-   the supervisor to restart it).
-2. A reloadable **worker** binary that owns the kernel state machine and serves it over HTTP.
-3. An MCP executor in `src/capability/tooling/record/mcp.rs` that calls the local
-   `mcp_worker` endpoint to execute tools (shell, apply_patch, etc.).
-
-The supervisor/worker split mirrors the existing `chatgpt-mcp-connector` pattern exactly.
-No new architectural concepts are introduced.
-
----
-
-## New files
-
-```
-src/bin/supervisor.rs
-src/bin/worker.rs
-src/api/server.rs
-src/capability/tooling/record/mcp.rs
+```text
+implement Step 7: MCP example trace / end-to-end integration smoke
 ```
 
-## Changed files
+The core gap is evidence that the already implemented surfaces work together as a single loop:
 
-```
-Cargo.toml                              add tokio, axum, serde, serde_json, reqwest
-src/capability/tooling/record/mod.rs    pub mod mcp + re-exports
-src/capability/tooling/mod.rs           re-export McpCallRequest, McpCallReceipt, LiveMcpCallExecutor
-src/lib.rs                              re-export new public surface
+```text
+supervisor -> worker health discovery -> worker command ingress -> MCP/tool receipt production -> evidence submission / durable tlog
 ```
 
 ---
 
-## Step 1 — Cargo.toml — completed 2026-05-08
+## Completed steps
 
-Status: implemented in this turn. `Cargo.toml` now declares the planned HTTP/MCP
-dependencies and the `supervisor` / `worker` binary targets. Minimal compiling binary
-stubs exist so later turns can replace placeholder behavior with lifecycle and HTTP
-server implementations while keeping `cargo check --all-targets` green.
+### Step 1 — Cargo targets and dependencies — completed
 
-Added dependencies. All new deps are intended for the two new binaries and future `mcp.rs`.
+Implemented in commit `3117d05 Implement supervisor worker cargo targets`.
 
-```toml
-[dependencies]
-tokio      = { version = "1", features = ["rt-multi-thread", "macros", "net", "time", "signal", "io-util"] }
-axum       = { version = "0.7", features = [] }
-serde      = { version = "1", features = ["derive"] }
-serde_json = "1"
-reqwest    = { version = "0.12", default-features = false, features = ["json", "blocking"] }
+Completed surface:
 
-[[bin]]
-name = "supervisor"
-path = "src/bin/supervisor.rs"
-
-[[bin]]
-name = "worker"
-path = "src/bin/worker.rs"
+```text
+Cargo.toml declares supervisor and worker binary targets
+Cargo.toml includes tokio, axum, serde, serde_json, reqwest, tower
+src/bin/supervisor.rs exists
+src/bin/worker.rs exists
+cargo check --all-targets remained green after target introduction
 ```
 
-Note: `reqwest` is used by `LiveMcpCallExecutor` to call the local MCP worker. Use the
-blocking client inside `execute_call()` so the executor stays sync (matching the existing
-`LiveSandboxProcessExecutor` which is also sync). If the calling context is async, wrap in
-`tokio::task::spawn_blocking`.
+### Step 2 — MCP call receipt records and executor — completed
 
----
+Implemented in commit `8356abd Implement MCP call receipts`.
 
-## Step 2 — `src/capability/tooling/record/mcp.rs` — completed 2026-05-08
+Completed surface:
 
-Status: implemented in this turn. The MCP call request/receipt record, live allowlist-gated executor, compact NDJSON codec, append/load helpers, replay verifier, evidence submission path, public re-exports, and focused contract tests now exist. The live executor is still local-worker only and does not add kernel, policy, retrieval, or supervisor authority.
-
-### Types
-
-```rust
-pub struct McpCallRequest {
-    pub capability: CapabilityId,          // always Tooling
-    pub registry_policy_hash: u64,
-    pub worker_url_hash: u64,              // hash of the mcp_worker URL string
-    pub tool_name_hash: u64,               // hash of tool name e.g. "shell"
-    pub args_hash: u64,                    // hash of JSON args blob
-    pub timeout_ms: u64,
-    pub max_output_bytes: u64,
-}
-// contract_hash(): mix all fields, same pattern as SandboxProcessRequest
-
-pub struct McpCallReceipt {
-    pub request_hash: u64,
-    pub registry_policy_hash: u64,
-    pub worker_url_hash: u64,
-    pub tool_name_hash: u64,
-    pub args_hash: u64,
-    pub timeout_ms: u64,
-    pub max_output_bytes: u64,
-    pub effect: Effect,                    // Effect::process(response_hash, 0, response_bytes, 0, exit_status, timed_out)
-    pub response_hash: u64,                // bytes_hash of the raw JSON response body
-    pub response_bytes: u64,
-    pub exit_status: u64,                  // 0 = tool returned success, 1 = tool returned error
-    pub timed_out: bool,
-    pub receipt_hash: u64,                 // mix of all fields, same pattern as SandboxProcessReceipt
-}
-// is_success(): exit_status == 0 && !timed_out && is_contract_valid()
-// is_contract_valid(): all hashes non-zero, effect_is_normalized()
-// effect_is_normalized(): effect == Effect::process(response_hash, 0, response_bytes, 0, exit_status, timed_out)
-// submission() → EvidenceSubmission::with_effect_payload(GateId::Execution, Evidence::ExecutionReceipt, is_success(), PacketEffect::None, payload_hash)
-// impl EvidenceProducer for McpCallReceipt (same as SandboxProcessReceipt)
+```text
+src/capability/tooling/record/mcp.rs exists
+McpCallRequest exists
+McpCallReceipt exists
+LiveMcpCallExecutor exists
+MCP receipt hash normalization exists
+MCP NDJSON encode/decode/append/load helpers exist
+verify_mcp_call_receipts exists
+EvidenceProducer is implemented for McpCallReceipt
+tests/mcp_receipt_contract.rs covers request, receipt, NDJSON, tamper rejection, allowlist, and bounds behavior
 ```
 
-### Executor
+### Step 3 — Worker API server — completed
 
-```rust
-pub struct LiveMcpCallExecutor {
-    pub worker_url: String,                // "http://127.0.0.1:PORT/mcp_worker"
-    pub allowed_tools: Vec<String>,        // allowlist — same security model as allowed_commands
-    pub timeout_ms: u64,
-    pub max_output_bytes: u64,
-    pub registry: CapabilityRegistry,
-}
+Implemented in commit `e77b1fc Implement worker API server`.
+
+Completed surface:
+
+```text
+src/api/server.rs exists
+WorkerAppState wraps ApiTransportSession state behind Arc<Mutex<_>>
+GET /health/worker exists
+GET /v1/state exists
+POST /v1/command exists
+SubmitEvidence and SubmitEvidenceBatch DTO paths are supported
+unsupported command payload tags are rejected without mutation
+tests/api_server_contract.rs covers server contract behavior
 ```
 
-Builder: `.with_allowed_tool("shell")`, `.with_allowed_tool("apply_patch")`,
-`.with_timeout_ms(5000)`, `.with_max_output_bytes(65536)`, `.with_registry(r)`.
+### Step 4 — Worker binary runtime startup — completed
 
-`execute_call(tool_name: &str, args_json: &str) -> Result<McpCallReceipt, ToolSandboxError>`:
+Implemented in commit `cea5e2a Implement worker runtime startup`.
 
-1. Validate `tool_name` is in `allowed_tools` → `ToolSandboxError::CommandDenied`
-2. Validate `args_json.len() as u64 <= max_output_bytes` → `ToolSandboxError::ArtifactTooLarge`
-3. Build JSON-RPC 2.0 body:
-   ```json
-   {"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"<tool_name>","arguments":<args>}}
-   ```
-4. POST to `worker_url` with `Content-Type: application/json`, timeout = `timeout_ms`
-5. On HTTP error or timeout → set `exit_status=1` / `timed_out=true`
-6. Hash response body with `bytes_hash()` → `response_hash`
-7. Build `Effect::process(response_hash, 0, response_bytes, 0, exit_status, timed_out)`
-8. Compute `receipt_hash` (mix all fields, same pattern as `expected_process_receipt_hash`)
-9. Return `McpCallReceipt`
+Completed surface:
 
-### NDJSON codec
+```text
+worker reads PORT
+worker reads AI_TLOG_DIR
+worker initializes or resumes durable runtime state
+worker serves build_router(state) on 127.0.0.1:PORT
+worker supports signal-driven shutdown
+worker does not run an autonomous tick loop
+tests/worker_binary_contract.rs covers help/startup health behavior
+```
 
-Same pattern as `process.rs`. Implement:
-- `encode_mcp_call_receipt_ndjson(receipt: &McpCallReceipt) -> String`
-- `decode_mcp_call_receipt_ndjson(line: &str) -> Result<McpCallReceipt, ToolSandboxError>`
-- `append_mcp_call_receipt_ndjson(path, receipt) -> Result<(), ToolSandboxError>`
-- `load_mcp_call_receipts_ndjson(path) -> Result<Vec<McpCallReceipt>, ToolSandboxError>`
-- `verify_mcp_call_receipts(tlog, receipts) -> Result<usize, ToolSandboxError>`
+### Step 5 — Supervisor lifecycle and reload — completed
 
-Constants:
-```rust
-pub const MCP_CALL_RECEIPT_SCHEMA_VERSION: u64 = 1;
-pub const MCP_CALL_RECEIPT_RECORD: u64 = 4;   // 1=tool, 2=sandbox_process, 3=process_effect, 4=mcp
+Implemented in commit `6dd425d Implement supervisor lifecycle reload`.
+
+Completed surface:
+
+```text
+supervisor --help exits without requiring runtime environment
+SUPERVISOR_PORT defaults to 9100
+AI_TLOG_DIR defaults to tlog
+AI_WORKER_BIN defaults to worker next to supervisor
+AI_MCP_WORKER_URL defaults to http://127.0.0.1:38469/mcp_worker
+supervisor starts generation 1 worker on a dynamically allocated local port
+GET /health reports ok, active generation, and worker port
+POST /reload starts replacement worker before retiring the old worker
+retired workers are killed after a bounded drain window
+shutdown kills active and retired workers
+tests/supervisor_binary_contract.rs covers startup and reload behavior
+```
+
+### Step 6 — Public re-exports — completed
+
+Completed in current source.
+
+Completed surface:
+
+```text
+src/capability/tooling/record.rs re-exports MCP records/helpers
+src/capability/tooling/mod.rs re-exports MCP records/helpers
+src/lib.rs re-exports MCP records/helpers
+downstream tests import MCP types from the crate root successfully
 ```
 
 ---
 
-## Step 3 — `src/api/server.rs` — completed 2026-05-08
+## Next implementation step
 
-Status: implemented in this turn. The worker API server module now exposes health, read-only state, and command routes around `ApiTransportSession`. The current DTO decoder intentionally supports `SubmitEvidence` and `SubmitEvidenceBatch`; unsupported tags are rejected with `400` and do not mutate state. The supervisor does not use this file.
+## Step 7 — Add committed end-to-end MCP/tool integration evidence
 
-The axum router used by the worker binary.
+### Objective
 
-### AppState
+Add one small, deterministic integration artifact that proves the current supervisor/worker/MCP
+surfaces compose. Prefer a test first; add an example trace only if the test would need live
+external services.
 
-```rust
-#[derive(Clone)]
-pub struct WorkerAppState {
-    inner: Arc<Mutex<WorkerSession>>,
-}
+Recommended implementation order:
 
-pub struct WorkerSession {
-    session: ApiTransportSession,
-    tlog_path: PathBuf,
-    next_request_id: u64,
-}
+```text
+1. Add a supervised worker command-ingress smoke test.
+2. Add an MCP receipt live-executor smoke using a tiny local test HTTP server.
+3. Optionally add examples/ollama_mcp_tool_loop_trace.rs after the deterministic tests pass.
 ```
 
-### DTOs (serde-annotated, no kernel types exposed)
+### 7A — Supervised worker command-ingress smoke
 
-```rust
-#[derive(Deserialize)]
-pub struct CommandEnvelopeDto {
-    pub command_id: u64,
-    pub command_hash: u64,
-    pub payload_tag: String,      // "SubmitEvidence" | "SubmitProcessReceipt" | "SubmitMcpReceipt" | ...
-    pub payload: serde_json::Value,
-}
+Add or extend `tests/supervisor_binary_contract.rs` with a focused test that:
 
-#[derive(Serialize)]
-pub struct CommandResponseDto {
-    pub ok: bool,
-    pub request_id: u64,
-    pub event_seq: u64,
-    pub event_hash: u64,
-    pub phase: String,
-    pub disposition: String,      // "accepted" | "replayed"
-}
-
-#[derive(Serialize)]
-pub struct StateDto {
-    pub phase: String,
-    pub tlog_len: usize,
-    pub objective_id: u64,
-    pub task_id: u64,
-}
+```text
+starts supervisor with temp AI_TLOG_DIR
+polls GET /health
+extracts worker_port
+calls GET http://127.0.0.1:{worker_port}/health/worker
+calls GET http://127.0.0.1:{worker_port}/v1/state
+posts a minimal valid /v1/command envelope to the worker, if a stable DTO fixture is available
+asserts the worker remains healthy and state/tlog response is coherent
+terminates supervisor and verifies process cleanup
 ```
 
-### Routes
+If a stable command fixture is not available in one turn, keep the smoke to worker discovery,
+worker health, and state read. Do not fabricate command hashes or accept lossy assertions.
 
+### 7B — LiveMcpCallExecutor local HTTP smoke
+
+Add a deterministic test in `tests/mcp_receipt_contract.rs` or a new focused contract file that:
+
+```text
+starts a local HTTP server on 127.0.0.1:0
+accepts JSON-RPC tools/call requests
+returns a fixed JSON body for an allowed tool
+constructs LiveMcpCallExecutor with that local URL and one allowed tool
+executes the call
+asserts receipt success, response hash normalization, args hash stability, and NDJSON roundtrip
+asserts disallowed tool remains denied
 ```
-POST /v1/command   → post_command(State, Json<CommandEnvelopeDto>) → Json<CommandResponseDto>
-GET  /v1/state     → get_state(State)                              → Json<StateDto>
-GET  /health/worker → health()                                      → "ok"
-```
 
-`post_command`:
-1. Lock `WorkerSession`
-2. Allocate `next_request_id`, increment
-3. Deserialize payload into `Command` based on `payload_tag`
-4. Build `ApiTransportFrame::new(request_id, CommandEnvelope { command_id, command_hash, command })`
-5. Call `session.handle_frame(frame)`
-6. Append updated tlog to disk via `tick_durable` pattern (write before releasing lock)
-7. Return `CommandResponseDto`
+This test should not require the external `chatgpt-mcp-connector` service.
 
-`get_state`: lock, read `session.state()`, return dto. No mutation.
+### 7C — Optional example trace
 
-`health`: always 200. Called by supervisor during startup wait.
+Add `examples/ollama_mcp_tool_loop_trace.rs` only after 7A or 7B is committed. The example may
+depend on `AI_MCP_WORKER_URL`, but it must not be the only evidence for correctness because live
+Ollama and connector availability are environment-dependent.
 
-### Router builder
+Example behavior:
 
-```rust
-pub fn build_router(state: WorkerAppState) -> axum::Router {
-    Router::new()
-        .route("/v1/command", post(post_command))
-        .route("/v1/state",   get(get_state))
-        .route("/health/worker", get(health))
-        .with_state(state)
-}
+```text
+read AI_MCP_WORKER_URL
+build LiveMcpCallExecutor with allowed tools: shell, apply_patch
+execute one bounded tool call or model-selected tool call
+append McpCallReceipt NDJSON
+submit the receipt through the existing EvidenceProducer path
+verify receipt/tlog consistency
 ```
 
 ---
 
-## Step 4 — `src/bin/worker.rs` — completed 2026-05-08
+## Guardrails for the next turn
 
-Status: implemented in this turn. The worker binary now reads `PORT` and `AI_TLOG_DIR`, initializes or resumes durable runtime state, builds `WorkerAppState`, serves `build_router(state)` on `127.0.0.1:PORT`, and shuts down through Tokio signal handling. It still does not run an autonomous tick loop; state advances only through HTTP command ingress.
-
-Runs when `AI_WORKER_MODE=1`. Short main:
-
-```
-1. Read PORT from env (required)
-2. Read AI_TLOG_DIR from env (default: "tlog")
-3. Load or initialize DurableRuntimeState from AI_TLOG_DIR
-4. Build WorkerAppState wrapping ApiTransportSession::from_parts(...)
-5. Build router via server::build_router(state)
-6. Bind TcpListener on 127.0.0.1:PORT
-7. Serve with graceful shutdown on SIGTERM/SIGINT
-8. On shutdown: flush final tlog to disk, exit 0
-```
-
-The worker does NOT run its own tick loop. State advances only in response to
-`POST /v1/command`. The agent loop (or curl) is the driver.
-
----
-
-## Step 5 — `src/bin/supervisor.rs` — completed 2026-05-08
-
-Status: implemented in this turn. The supervisor binary now reads supervisor/worker environment settings, spawns a local worker on a dynamically allocated port, exposes `/health` and `/reload`, starts a replacement worker before retiring the old one, drains retired workers, and shuts down active/retired workers on supervisor shutdown.
-
-Models on `chatgpt-mcp-connector/src/worker.rs`. Stable — never reloads itself.
-
-### WorkerProcess state
-
-```rust
-struct WorkerProcess {
-    active: Option<WorkerInstance>,
-    retired: Vec<RetiredWorker>,
-    next_generation: u64,
-    binary_path: PathBuf,          // path to the `worker` binary
-}
-
-struct WorkerInstance {
-    child: tokio::process::Child,
-    port: u16,
-    generation: u64,
-}
-
-struct RetiredWorker {
-    instance: WorkerInstance,
-    retired_at: Instant,
-}
-```
-
-### Supervisor routes
-
-```
-POST /reload       → reload_inner(): spawn new worker, retire old (30s drain), return generation info
-GET  /health       → { "ok": true, "generation": N, "worker_port": PORT }
-```
-
-The supervisor does NOT expose `/v1/command` or `/v1/state`. Those live on the worker.
-Callers that need to submit commands talk directly to the worker port (discoverable via
-`GET /health` on the supervisor). This avoids double-proxying and matches the connector pattern.
-
-### spawn_worker
-
-```rust
-async fn spawn_worker(binary_path, generation, tlog_dir, mcp_worker_url) -> Result<WorkerInstance> {
-    let port = allocate_port()?;    // bind :0, read port, drop listener
-    let child = Command::new(binary_path)
-        .env("AI_WORKER_MODE", "1")
-        .env("PORT", port.to_string())
-        .env("AI_TLOG_DIR", tlog_dir)
-        .env("AI_MCP_WORKER_URL", mcp_worker_url)
-        .env("AI_WORKER_GENERATION", generation.to_string())
-        .kill_on_drop(true)
-        .stdin(Stdio::null())
-        .stdout(Stdio::inherit())
-        .stderr(Stdio::inherit())
-        .spawn()?;
-    wait_for_health(port).await?;   // poll GET /health/worker, 10s deadline, 100ms interval
-    Ok(WorkerInstance { child, port, generation })
-}
-```
-
-### reload flow
-
-```
-POST /reload received
-→ spawn new worker (new port, next_generation)
-→ wait_for_health on new worker
-→ update active worker pointer
-→ push old worker to retired list
-→ background task: after 30s, kill retired workers
-→ return { ok, active_generation, active_port }
-```
-
-The worker binary path is the same binary each time. After self-modification rebuilds the
-binary at `target/debug/worker` (or wherever), the next reload picks up the new binary
-automatically — no path change needed.
-
-### main
-
-```
-1. Read SUPERVISOR_PORT from env (default: 9100)
-2. Read AI_TLOG_DIR from env (default: "tlog")
-3. Read AI_WORKER_BIN from env (default: path to `worker` binary next to supervisor)
-4. Read AI_MCP_WORKER_URL from env (default: "http://127.0.0.1:38469/mcp_worker")
-5. Wrap WorkerProcess in Arc<Mutex<>>
-6. spawn_worker() for generation 1
-7. Start axum on 0.0.0.0:SUPERVISOR_PORT with /reload + /health routes
-8. Serve until SIGTERM/SIGINT
-9. On shutdown: kill active worker, exit 0
+```text
+do not change kernel semantics for Step 7
+do not add OAuth or external MCP auth code
+do not make the supervisor proxy /v1/command or /v1/state
+do not require a live external MCP endpoint in tests
+do not claim a score increase without committed validation evidence
+preserve unrelated worktree changes outside the Step 7 scope
 ```
 
 ---
 
-## Step 6 — Wire re-exports
+## Validation commands for next implementation turn
 
-`src/capability/tooling/record/mod.rs`:
-```rust
-pub mod mcp;
-pub use self::mcp::{
-    McpCallReceipt, McpCallRequest, LiveMcpCallExecutor,
-    append_mcp_call_receipt_ndjson, load_mcp_call_receipts_ndjson,
-    verify_mcp_call_receipts, MCP_CALL_RECEIPT_RECORD, MCP_CALL_RECEIPT_SCHEMA_VERSION,
-};
+Run the smallest relevant set first, then the broader suite:
+
+```text
+CARGO_BUILD_RUSTC_WRAPPER= cargo fmt --check
+CARGO_BUILD_RUSTC_WRAPPER= cargo test --test mcp_receipt_contract --quiet
+CARGO_BUILD_RUSTC_WRAPPER= cargo test --test supervisor_binary_contract --quiet
+CARGO_BUILD_RUSTC_WRAPPER= cargo test --test worker_binary_contract --quiet
+CARGO_BUILD_RUSTC_WRAPPER= cargo test --test api_server_contract --quiet
+CARGO_BUILD_RUSTC_WRAPPER= cargo check --all-targets --quiet
+CARGO_BUILD_RUSTC_WRAPPER= cargo test --test planning_contract --test score_contract --quiet
 ```
-
-`src/capability/tooling/mod.rs` and `src/lib.rs`: add the same re-exports to the public surface,
-following the exact pattern of `SandboxProcessReceipt` and `LiveSandboxProcessExecutor`.
 
 ---
 
-## Step 7 — Example trace
+## Open risks
 
-Add `examples/ollama_mcp_tool_loop_trace.rs` to demonstrate the full loop:
-
+```text
+Correctness: no committed smoke currently proves a command submitted to a supervised worker path
+Transparency: no committed example currently shows MCP receipt production in a full loop trace
+Robustness: supervisor unexpected-worker-exit behavior should be tested before expanding authority
+Simplicity: avoid turning Step 7 into a broad autonomous loop implementation
 ```
-1. Read AI_MCP_WORKER_URL from env
-2. Build LiveMcpCallExecutor with allowed tools: ["shell", "apply_patch"]
-3. Run same judgment + tool call loop as ollama_tool_loop_trace.rs
-4. For each tool call:
-   a. Ask Ollama for tool intent (or use structured tool_calls if model supports it)
-   b. executor.execute_call(tool_name, args_json) → McpCallReceipt
-   c. append_mcp_call_receipt_ndjson to tlog dir
-   d. receipts.push(receipt)
-5. Command::SubmitProcessReceiptBatch → handle_envelope (McpCallReceipt implements EvidenceProducer)
-6. verify_tlog + write_tlog_ndjson
-```
-
-`McpCallReceipt` submits via the same `Evidence::ExecutionReceipt` / `GateId::Execution`
-path as `SandboxProcessReceipt`. The kernel sees no difference.
 
 ---
 
-## Invariants to preserve
+## Out of scope for the next turn
 
-- The library crate (`src/lib.rs`) must compile with zero HTTP/async deps. The new tokio/axum/reqwest
-  deps are used only in `src/bin/*` and `src/capability/tooling/record/mcp.rs`. If reqwest
-  blocking adds unwanted transitive deps to the lib, gate it behind a `mcp` feature flag.
-- All new hash functions must follow the `mix()` pattern already in the codebase. No `std::hash`,
-  no external hasher.
-- `McpCallReceipt::receipt_hash` must be computed identically on every re-encode/decode
-  roundtrip. Write a unit test that encodes, decodes, and asserts the receipt_hash is unchanged.
-- The supervisor must not crash if the worker exits unexpectedly. `try_wait()` on the child
-  before forwarding to it; if dead, return 503.
-- `wait_for_health` deadline: 10 seconds, 100ms poll interval — same as connector.
-- Retired worker drain: 30 seconds — same as connector.
-
----
-
-## What is NOT in this plan
-
-- OAuth / `mcp_auth.rs`: not needed for local `mcp_worker` endpoint.
-- `https://cheese-server.duckdns.org/ai/mcp`: the external URL is a reverse proxy to the
-  local supervisor. The `ai` project talks to the local worker directly.
-- Autonomous tick loop: the supervisor does not drive the kernel. Commands come in over HTTP.
-- Teacher-student distillation: separate concern, not in this plan.
-- `ToolKind::McpCall`: `McpCallReceipt` submits via the existing evidence path without
-  needing a new ToolKind variant.
+```text
+teacher-student distillation
+OAuth / remote MCP authentication
+autonomous kernel tick loop
+new ToolKind variant for MCP calls
+large graph-editor or autorefactor changes
+policy authority expansion
+retrieval write expansion
+```
