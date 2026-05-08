@@ -1,6 +1,6 @@
 # Canon Agent Implementation Plan
 
-This plan records the current implementation state after implementation step 1 of the current agent loop.
+This plan records the current implementation state for the planning/scoring turn of the current agent loop.
 
 ## North Star
 
@@ -13,6 +13,62 @@ Canon Agent is a deterministic, self-improving runtime where:
 - LLM calls shrink over time as policy handles repeated cases.
 
 The architecture must keep safety and intelligence separated: the kernel enforces correctness, the capability layer accumulates intelligence, and policy learning never grants itself authority.
+
+## Current Planning Turn - Auto-Refactor Signal Handoff
+
+This turn is planning/scoring only. The working tree contains active, uncommitted implementation work under `canon-rustc-v3`; those files are treated as implementation evidence but are not owned by this planning turn.
+
+Observed implementation evidence:
+
+```text
+canon-rustc-v3/src/facts.rs                       modified
+canon-rustc-v3/src/hir.rs                         modified
+canon-rustc-v3/src/mir.rs                         modified
+canon-rustc-v3/src/wrapper.rs                     modified
+canon-rustc-v3/validation/semantic_preflight.py   modified
+canon-rustc-v3/validation/semantic_scale_probe.py modified
+canon-rustc-v3/plan-autorefactor.md               untracked
+canon-rustc-v3/validation/auto_refactor_surface.py untracked
+```
+
+The active implementation direction is deterministic auto-refactor evidence for the Rust graph extractor:
+
+- add canonical `similar`, `phase`, and `provider` graph relations;
+- mark `similar` and `phase` as risk relations while keeping `provider` informational;
+- emit provider-boundary edges from HIR source sentinels for OpenAI-compatible and Ollama surfaces;
+- collect MIR body profiles, phase hints, validation-call hints, and same-module callee-similarity edges;
+- add an evidence-only Python report that names split, merge, and canonicalization surfaces from `graph.json` without editing source.
+
+This extends the Canon Agent goal by reducing future reasoning cost through deterministic maintenance-surface evidence. The graph names likely refactor work; the agent can then apply bounded, reviewable edits instead of asking an LLM to infer broad source structure from scratch.
+
+## Immediate Plan For Next Implementation Turn
+
+Keep the next implementation turn focused on **Structure** and **Efficiency** in `canon-rustc-v3`, not on kernel authority or runtime policy promotion.
+
+Recommended next slice:
+
+```text
+Complete and validate deterministic auto-refactor graph signals and the evidence-only refactor-surface report.
+```
+
+Acceptance criteria:
+
+1. `similar`, `phase`, and `provider` are accepted graph relations with explicit tests for relation/risk classification.
+2. MIR similarity emission is deterministic, deduplicated, same-module bounded, and stable across repeated graph extraction runs.
+3. MIR phase emission remains heuristic evidence only and does not claim semantic proof beyond parse/validate/transform hints.
+4. HIR provider emission detects known provider sentinels without hard-coding runtime authority or changing provider behavior.
+5. `auto_refactor_surface.py` reads a graph file and emits split, merge, and canonicalize surfaces as sorted deterministic JSON.
+6. Semantic preflight and scale probes account for the new relation set and report script.
+7. Validation covers Rust formatting/tests for `canon-rustc-v3` plus at least one deterministic report-generation smoke run against a known graph fixture or live graph snapshot.
+8. No source edits are applied by the report script; graph-editor integration remains a later, separately gated step.
+
+Out of scope for the next implementation turn:
+
+- changing the Canon Agent kernel state machine;
+- promoting learned policy;
+- training a student model;
+- executing retrieval queries or storage writes;
+- applying automatic source refactors without a separate approved operation boundary.
 
 ## Current Implementation Baseline
 

@@ -1,6 +1,27 @@
 # Canon Agent Score
 
-This scorecard records current progress after implementation step 1 of the current agent loop. The working tree contains deterministic policy reuse evaluator-savings, scaling-projection, distillation-readiness, evidence-surface index, evidence-bundle, evidence-quickcheck, evidence-maturity, evidence-summary, evidence-manifest, evidence validation-budget, evidence rollout-readiness, evidence learning-admission, evidence retrieval-readiness, evidence compact-validation, batch-readiness, batch-execution-plan, batch-evaluation-admission, batch-run-request, external-evaluator-result, learning-candidate, learning-data-admission, retrieval-example-admission, retrieval-example-index, retrieval-corpus-readiness, retrieval-corpus-admission, retrieval-use-approval, retrieval-use-manifest, retrieval-query-plan, retrieval-query-approval, retrieval-result-admission, retrieval-result-manifest, retrieval-result-use-admission, retrieval-result-use-manifest, retrieval-result-use-readiness, retrieval-result-use-approval, retrieval-result-use-manifest-admission, retrieval-result-use-summary, retrieval-result-use-summary-manifest, retrieval-result-use-summary-manifest-admission, retrieval-result-use-summary-manifest-readiness, retrieval-result-use-summary-manifest-approval, and retrieval-result-use-summary-manifest-approval-admission evidence.
+This scorecard records current progress for the planning/scoring turn of the current agent loop. The working tree contains deterministic policy reuse evaluator-savings, scaling-projection, distillation-readiness, evidence-surface index, evidence-bundle, evidence-quickcheck, evidence-maturity, evidence-summary, evidence-manifest, evidence validation-budget, evidence rollout-readiness, evidence learning-admission, evidence retrieval-readiness, evidence compact-validation, batch-readiness, batch-execution-plan, batch-evaluation-admission, batch-run-request, external-evaluator-result, learning-candidate, learning-data-admission, retrieval-example-admission, retrieval-example-index, retrieval-corpus-readiness, retrieval-corpus-admission, retrieval-use-approval, retrieval-use-manifest, retrieval-query-plan, retrieval-query-approval, retrieval-result-admission, retrieval-result-manifest, retrieval-result-use-admission, retrieval-result-use-manifest, retrieval-result-use-readiness, retrieval-result-use-approval, retrieval-result-use-manifest-admission, retrieval-result-use-summary, retrieval-result-use-summary-manifest, retrieval-result-use-summary-manifest-admission, retrieval-result-use-summary-manifest-readiness, retrieval-result-use-summary-manifest-approval, and retrieval-result-use-summary-manifest-approval-admission evidence.
+
+## Current Planning Turn Score Decision - Auto-Refactor Signal Handoff
+
+```text
+turn_type = planning
+selected_axes = Structure, Efficiency
+score_change_this_turn = no score increase; planning/scoring only
+reason = refreshed the handoff around active canon-rustc-v3 auto-refactor graph-signal work without claiming ownership of uncommitted implementation files
+observed_worktree_evidence = modified canon-rustc-v3 facts/hir/mir/wrapper/preflight/scale-probe files plus untracked plan-autorefactor.md and auto_refactor_surface.py
+current_gap = auto-refactor graph signals and evidence-only surface report are present as active working-tree evidence but are not yet validated, committed, or scored as completed implementation
+next_action = complete and validate deterministic similar/phase/provider graph relations and auto_refactor_surface.py report generation
+commit_scope = plan.md, score.md only
+out_of_scope_changes_preserved = all existing canon-rustc-v3 modified and untracked implementation files remain unowned by this planning turn
+```
+
+Planning/scoring assessment:
+
+- `Structure` is the primary next scoring target because graph-level split, merge, and provider-boundary signals can reduce duplicated and over-broad source surfaces.
+- `Efficiency` is the secondary target because deterministic graph evidence should reduce repeated LLM reasoning over the same refactor candidates.
+- `Correctness` does not increase this turn because the active implementation evidence was not validated by this planning turn.
+- `Learning` remains strong, but the immediate handoff has moved from retrieval-result evidence gates to graph-guided self-improvement surfaces.
 
 ## Validation Evidence
 
