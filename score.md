@@ -641,3 +641,47 @@ F  = 0.98  commit intent prepares later externally validated storage-write gates
 G  ≈ 0.967
 ```
 
+## Implementation Step 1 Score Decision - Retrieval Example Storage Commit Intent
+
+```text
+selected_axis = Learning
+score_change_this_turn = retained L at 1.00
+reason = retrieval-example storage-commit-intent evidence adds a deterministic evidence-only gate after storage admission without retrieval storage operations, query execution, runtime result approval, policy promotion, batch execution, or student training
+source_changes_observed_but_not_owned = canon-rustc-v3/* modified and untracked files remain out of scope for this implementation turn
+commit_scope = retrieval-example storage-commit-intent implementation, tests, fixture, plan.md, score.md
+```
+
+Updated validation evidence:
+
+```text
+cargo fmt --check: initially failed on formatting-only drift, then passed after cargo fmt
+validation_harness_contract storage_commit_intent --no-run: connector returned 502 once, then passed on retry
+focused executable validation_harness_contract storage_commit_intent tests: attempted twice, connector returned 502 before Rust output was available
+root_validate storage-commit-intent smoke execution: attempted, connector returned 502 before output was available
+cargo check --quiet: pass
+planning_contract: pass
+score_contract: pass
+```
+
+Scoring stance after this implementation:
+
+```text
+I  = 0.98  admitted retrieval-example storage evidence can now become deterministic commit-intent evidence
+E  = 0.97  commit intent remains evidence-only and forbids retrieval reads, writes, queries, runtime approval, promotion, batch execution, and training
+C  = 0.91  formatting, focused no-run compile, cargo check, planning contract, and score contract pass; executable checks were connector-blocked
+A  = 0.97  authority remains outside the LLM and outside the storage-commit-intent receipt
+R  = 0.96  healthy and controlled not-ready paths are covered by compiled contracts
+P  = 0.95  no runtime retrieval, query, batch, or training cost is introduced
+S  = 0.98  the evidence chain now exposes a retrieval-example storage-commit-intent boundary
+D  = 0.97  receipts use fixed source hashes, booleans, status strings, reason strings, and deterministic hashes
+T  = 0.98  storage-admission, materialization-plan, admission, eligibility, consumption, approval-admission, approval, readiness, and admission source hashes are explicit
+Co = 0.95  plan and score hand off the next retrieval-example storage-write-preflight gate
+Em = 0.95  root_validate consumers have healthy and regression compact modes for commit-intent evidence
+B  = 0.97  external evaluators get deterministic commit-intent evidence before storage writes, runtime approval, promotion, or training
+L  = 1.00  commit intent prepares a cleaner path toward retrieval-example storage-write preflight
+St = 0.97  commit intent composes existing evidence without kernel or runtime authority drift
+Si = 0.97  one receipt represents the commit-intent boundary instead of scattered downstream checks
+F  = 0.98  commit intent prepares later retrieval/model-learning gates without committing to storage or training behavior
+G  ≈ 0.967
+```
+
