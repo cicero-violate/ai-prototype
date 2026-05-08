@@ -13428,34 +13428,36 @@ fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admissio
         admission.storage_write_admission_policy_reuse_examples;
     let storage_write_commit_intent_llm_fallback_examples =
         admission.storage_write_admission_llm_fallback_examples;
-    let retrieval_example_storage_write_commit_intent_ready = retrieval_example_storage_write_admitted
-        && admission.retrieval_example_storage_write_approved
-        && admission.retrieval_example_storage_write_preflight_ready
-        && admission.retrieval_example_storage_commit_intent_ready
-        && admission.retrieval_example_storage_admitted
-        && admission.retrieval_example_materialization_plan_ready
-        && admission.retrieval_example_learning_admitted
-        && admission.retrieval_example_learning_eligible
-        && admission.retrieval_result_use_summary_manifest_approval_admission_consumed
-        && admission.retrieval_result_use_summary_manifest_approval_admitted
-        && admission.retrieval_result_use_summary_manifest_approved
-        && admission.retrieval_result_use_summary_manifest_ready_for_use
-        && admission.retrieval_result_use_summary_manifest_admitted
-        && admission.external_result_evidence_present
-        && !admission.retrieval_read_performed
-        && !admission.retrieval_write_performed
-        && !admission.retrieval_query_executed
-        && !admission.runtime_result_approval_performed
-        && !admission.policy_promotion_performed
-        && !admission.batch_execution_performed
-        && !admission.student_training_performed
-        && storage_write_commit_intent_policy_reuse_examples > 0
-        && not_ready_reason == "none";
-    let retrieval_example_storage_write_commit_intent_status = if retrieval_example_storage_write_commit_intent_ready {
-        "retrieval_example_storage_write_commit_intent_ready"
-    } else {
-        "retrieval_example_storage_write_commit_intent_not_ready"
-    };
+    let retrieval_example_storage_write_commit_intent_ready =
+        retrieval_example_storage_write_admitted
+            && admission.retrieval_example_storage_write_approved
+            && admission.retrieval_example_storage_write_preflight_ready
+            && admission.retrieval_example_storage_commit_intent_ready
+            && admission.retrieval_example_storage_admitted
+            && admission.retrieval_example_materialization_plan_ready
+            && admission.retrieval_example_learning_admitted
+            && admission.retrieval_example_learning_eligible
+            && admission.retrieval_result_use_summary_manifest_approval_admission_consumed
+            && admission.retrieval_result_use_summary_manifest_approval_admitted
+            && admission.retrieval_result_use_summary_manifest_approved
+            && admission.retrieval_result_use_summary_manifest_ready_for_use
+            && admission.retrieval_result_use_summary_manifest_admitted
+            && admission.external_result_evidence_present
+            && !admission.retrieval_read_performed
+            && !admission.retrieval_write_performed
+            && !admission.retrieval_query_executed
+            && !admission.runtime_result_approval_performed
+            && !admission.policy_promotion_performed
+            && !admission.batch_execution_performed
+            && !admission.student_training_performed
+            && storage_write_commit_intent_policy_reuse_examples > 0
+            && not_ready_reason == "none";
+    let retrieval_example_storage_write_commit_intent_status =
+        if retrieval_example_storage_write_commit_intent_ready {
+            "retrieval_example_storage_write_commit_intent_ready"
+        } else {
+            "retrieval_example_storage_write_commit_intent_not_ready"
+        };
     let mut receipt = PolicyReuseEvidenceRetrievalResultUseSummaryManifestApprovalAdmissionConsumptionLearningStorageWriteCommitIntentReceipt {
         schema: "canon_policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_consumption_learning_storage_write_commit_intent_v1",
         record_type,
@@ -16824,8 +16826,7 @@ fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admissio
         ^ receipt.source_retrieval_example_storage_write_approval_hash;
     h = h.wrapping_mul(0x100000001b3)
         ^ receipt.source_retrieval_example_storage_write_preflight_hash;
-    h = h.wrapping_mul(0x100000001b3)
-        ^ receipt.source_retrieval_example_storage_commit_intent_hash;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_retrieval_example_storage_commit_intent_hash;
     h = h.wrapping_mul(0x100000001b3) ^ receipt.source_retrieval_example_materialization_plan_hash;
     h = h.wrapping_mul(0x100000001b3) ^ receipt.source_retrieval_example_learning_admission_hash;
     h = h.wrapping_mul(0x100000001b3) ^ receipt.source_retrieval_example_learning_eligibility_hash;
@@ -16839,10 +16840,8 @@ fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admissio
         ^ receipt.source_retrieval_result_use_summary_manifest_readiness_hash;
     h = h.wrapping_mul(0x100000001b3)
         ^ receipt.source_retrieval_result_use_summary_manifest_admission_hash;
-    h = h.wrapping_mul(0x100000001b3)
-        ^ u64::from(receipt.retrieval_example_storage_write_admitted);
-    h = h.wrapping_mul(0x100000001b3)
-        ^ u64::from(receipt.retrieval_example_storage_write_approved);
+    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_example_storage_write_admitted);
+    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.retrieval_example_storage_write_approved);
     h = h.wrapping_mul(0x100000001b3)
         ^ u64::from(receipt.retrieval_example_storage_write_preflight_ready);
     h = h.wrapping_mul(0x100000001b3)
@@ -16870,8 +16869,10 @@ fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admissio
     h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.batch_execution_performed);
     h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.student_training_performed);
     h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.external_result_evidence_present);
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.storage_write_commit_intent_policy_reuse_examples as u64;
-    h = h.wrapping_mul(0x100000001b3) ^ receipt.storage_write_commit_intent_llm_fallback_examples as u64;
+    h = h.wrapping_mul(0x100000001b3)
+        ^ receipt.storage_write_commit_intent_policy_reuse_examples as u64;
+    h = h.wrapping_mul(0x100000001b3)
+        ^ receipt.storage_write_commit_intent_llm_fallback_examples as u64;
     h = h.wrapping_mul(0x100000001b3)
         ^ u64::from(receipt.retrieval_example_storage_write_commit_intent_ready);
     h = h.wrapping_mul(0x100000001b3) ^ status_code;
@@ -16886,8 +16887,7 @@ fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admissio
         policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_consumption_learning_storage_write_commit_intent_hash(
             receipt,
         );
-    if intent_hash == 0
-        || receipt.retrieval_example_storage_write_commit_intent_hash != intent_hash
+    if intent_hash == 0 || receipt.retrieval_example_storage_write_commit_intent_hash != intent_hash
     {
         return 0;
     }

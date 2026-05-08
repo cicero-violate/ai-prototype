@@ -11857,7 +11857,10 @@ fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admissio
         "retrieval_example_storage_write_commit_intent_ready"
     );
     assert_eq!(receipt.not_ready_reason, "none");
-    assert_ne!(receipt.retrieval_example_storage_write_commit_intent_hash, 0);
+    assert_ne!(
+        receipt.retrieval_example_storage_write_commit_intent_hash,
+        0
+    );
     assert_ne!(receipt.receipt_hash, 0);
     assert!(receipt.is_valid());
     assert!(receipt.passed());
