@@ -1,5 +1,18 @@
 # Canon Agent Implementation Plan
 
+## Planning Turn Checkpoint - 2026-05-08 - Preserve Implementation Boundary
+
+This planning turn keeps the repository focused on planning and scoring only. The active worktree still contains candidate implementation changes for deterministic auto-refactor graph evidence. Those files are not adopted or scored by this turn. The next implementation turn must either validate them with focused evidence and commit them deliberately, or revert/rework them before claiming progress.
+
+Planning scope for this turn:
+
+- update the implementation handoff around the observed auto-refactor slice;
+- restore scoring to a planning-only posture;
+- preserve unowned implementation changes without staging them;
+- commit only `plan.md` and `score.md`.
+
+Immediate implementation handoff remains unchanged: complete deterministic `similar`, `phase`, and `provider` graph relations, finish read-only auto-refactor report generation, prove advisory/non-authority semantics, and validate the resulting graph/report surface before any score increase.
+
 ## Planning Turn Update - 2026-05-08 - Auto-Refactor Evidence Handoff
 
 This planning turn updates only `plan.md` and `score.md`. Existing implementation changes in the worktree are treated as observed evidence for the next implementation turn, not as changes owned, validated, or scored by this turn.
