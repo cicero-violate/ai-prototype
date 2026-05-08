@@ -509,3 +509,47 @@ Si = 0.97  one receipt represents the admission boundary instead of scattered do
 F  = 0.98  admission prepares later retrieval/model-learning gates without committing to storage or training behavior
 G  ≈ 0.967
 ```
+
+
+
+## Implementation Step 4 Score Decision - Retrieval Example Materialization Plan
+
+```text
+selected_axis = Learning
+score_change_this_turn = retained L at 1.00
+reason = retrieval-example materialization-plan evidence adds a deterministic evidence-only packaging gate after learning admission without retrieval storage operations, query execution, runtime result approval, policy promotion, batch execution, or student training
+source_changes_observed_but_not_owned = canon-rustc-v3/* modified and untracked files remain out of scope for this implementation turn
+commit_scope = retrieval-example materialization-plan implementation, tests, fixture, plan.md, score.md
+```
+
+Updated validation evidence:
+
+```text
+cargo fmt --check: initially failed on formatting-only drift, then passed after cargo fmt
+validation_harness_contract materialization_plan --no-run: connector returned 502 once, then passed on retry
+cargo check --quiet: pass
+planning_contract and score_contract: pass
+focused executable materialization_plan tests: attempted twice, connector returned 502 before Rust output was available
+```
+
+Scoring stance after this implementation:
+
+```text
+I  = 0.98  admitted retrieval-example evidence can now become deterministic materialization-plan evidence
+E  = 0.97  materialization planning remains evidence-only and forbids retrieval reads, writes, queries, runtime approval, promotion, batch execution, and training
+C  = 0.91  formatting, focused no-run compile, cargo check, and planning/score tests pass; focused executable tests were connector-blocked
+A  = 0.97  authority remains outside the LLM and outside the materialization-plan receipt
+R  = 0.96  healthy and controlled not-ready paths are covered by compiled contracts
+P  = 0.95  no runtime retrieval, query, batch, or training cost is introduced
+S  = 0.98  the evidence chain now exposes a retrieval-example materialization-plan boundary
+D  = 0.97  receipts use fixed source hashes, booleans, status strings, reason strings, and deterministic hashes
+T  = 0.98  admission and eligibility source hashes plus upstream consumption/approval-admission/approval/readiness/admission hashes are explicit
+Co = 0.95  plan and score hand off the next retrieval-example storage-admission gate
+Em = 0.95  root_validate consumers have healthy and regression compact modes for materialization-plan evidence
+B  = 0.97  external evaluators get deterministic materialization-plan evidence before storage, runtime approval, promotion, or training
+L  = 1.00  materialization planning prepares a cleaner path toward retrieval-example storage admission
+St = 0.97  materialization planning composes existing evidence without kernel or runtime authority drift
+Si = 0.97  one receipt represents the materialization-plan boundary instead of scattered downstream checks
+F  = 0.98  materialization planning prepares later retrieval/model-learning gates without committing to storage or training behavior
+G  ≈ 0.967
+```
