@@ -12,6 +12,7 @@
 
 mod artifact;
 mod hash;
+mod mcp;
 mod process;
 mod receipt;
 mod request;
@@ -19,6 +20,11 @@ mod types;
 
 pub use self::artifact::{
     DeterministicToolExecutor, LiveSandboxToolExecutor, ToolExecutionRecord, ToolReceipt,
+};
+pub use self::mcp::{
+    append_mcp_call_receipt_ndjson, decode_mcp_call_receipt_ndjson, encode_mcp_call_receipt_ndjson,
+    load_mcp_call_receipts_ndjson, verify_mcp_call_receipts, LiveMcpCallExecutor, McpCallReceipt,
+    McpCallRequest, MCP_CALL_RECEIPT_RECORD, MCP_CALL_RECEIPT_SCHEMA_VERSION,
 };
 pub use self::process::{
     append_sandbox_process_receipt_ndjson, decode_sandbox_process_receipt_ndjson,

@@ -77,7 +77,9 @@ blocking client inside `execute_call()` so the executor stays sync (matching the
 
 ---
 
-## Step 2 — `src/capability/tooling/record/mcp.rs`
+## Step 2 — `src/capability/tooling/record/mcp.rs` — completed 2026-05-08
+
+Status: implemented in this turn. The MCP call request/receipt record, live allowlist-gated executor, compact NDJSON codec, append/load helpers, replay verifier, evidence submission path, public re-exports, and focused contract tests now exist. The live executor is still local-worker only and does not add kernel, policy, retrieval, or supervisor authority.
 
 ### Types
 
