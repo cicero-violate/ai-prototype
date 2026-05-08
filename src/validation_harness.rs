@@ -9701,16 +9701,21 @@ pub fn policy_reuse_evidence_batch_run_request_smoke_receipt(
 
 pub fn policy_reuse_evidence_batch_run_request_regression_smoke_receipt(
 ) -> PolicyReuseEvidenceBatchRunRequestReceipt {
-    let admission = policy_reuse_evidence_batch_evaluation_admission_regression_smoke_receipt();
-    let plan = policy_reuse_evidence_batch_execution_plan_regression_smoke_receipt();
-    let mut receipt = policy_reuse_evidence_batch_run_request_from_sources(
-        POLICY_REUSE_EVIDENCE_BATCH_RUN_REQUEST_REGRESSION_SMOKE_STEP,
-        &admission,
-        &plan,
-        "admission_not_granted",
-    );
-    finalize_policy_reuse_evidence_batch_run_request(&mut receipt);
-    receipt
+    static RECEIPT: std::sync::OnceLock<PolicyReuseEvidenceBatchRunRequestReceipt> =
+        std::sync::OnceLock::new();
+    RECEIPT
+        .get_or_init(|| {
+            let admission =
+                policy_reuse_evidence_batch_evaluation_admission_regression_smoke_receipt();
+            let plan = policy_reuse_evidence_batch_execution_plan_regression_smoke_receipt();
+            policy_reuse_evidence_batch_run_request_from_sources(
+                POLICY_REUSE_EVIDENCE_BATCH_RUN_REQUEST_REGRESSION_SMOKE_STEP,
+                &admission,
+                &plan,
+                "admission_not_granted",
+            )
+        })
+        .clone()
 }
 
 fn policy_reuse_evidence_batch_run_request_from_sources(
@@ -9769,34 +9774,43 @@ fn finalize_policy_reuse_evidence_batch_run_request(
 
 pub fn policy_reuse_evidence_external_evaluator_result_smoke_receipt(
 ) -> PolicyReuseEvidenceExternalEvaluatorResultReceipt {
-    let request = policy_reuse_evidence_batch_run_request_smoke_receipt();
-    let admission = policy_reuse_evidence_batch_evaluation_admission_smoke_receipt();
-    let mut receipt = policy_reuse_evidence_external_evaluator_result_from_sources(
-        POLICY_REUSE_EVIDENCE_EXTERNAL_EVALUATOR_RESULT_SMOKE_STEP,
-        &request,
-        &admission,
-        true,
-        false,
-        "none",
-    );
-    finalize_policy_reuse_evidence_external_evaluator_result(&mut receipt);
-    receipt
+    static RECEIPT: std::sync::OnceLock<PolicyReuseEvidenceExternalEvaluatorResultReceipt> =
+        std::sync::OnceLock::new();
+    RECEIPT
+        .get_or_init(|| {
+            let request = policy_reuse_evidence_batch_run_request_smoke_receipt();
+            let admission = policy_reuse_evidence_batch_evaluation_admission_smoke_receipt();
+            policy_reuse_evidence_external_evaluator_result_from_sources(
+                POLICY_REUSE_EVIDENCE_EXTERNAL_EVALUATOR_RESULT_SMOKE_STEP,
+                &request,
+                &admission,
+                true,
+                false,
+                "none",
+            )
+        })
+        .clone()
 }
 
 pub fn policy_reuse_evidence_external_evaluator_result_regression_smoke_receipt(
 ) -> PolicyReuseEvidenceExternalEvaluatorResultReceipt {
-    let request = policy_reuse_evidence_batch_run_request_regression_smoke_receipt();
-    let admission = policy_reuse_evidence_batch_evaluation_admission_regression_smoke_receipt();
-    let mut receipt = policy_reuse_evidence_external_evaluator_result_from_sources(
-        POLICY_REUSE_EVIDENCE_EXTERNAL_EVALUATOR_RESULT_REGRESSION_SMOKE_STEP,
-        &request,
-        &admission,
-        true,
-        false,
-        "external_evaluator_failed",
-    );
-    finalize_policy_reuse_evidence_external_evaluator_result(&mut receipt);
-    receipt
+    static RECEIPT: std::sync::OnceLock<PolicyReuseEvidenceExternalEvaluatorResultReceipt> =
+        std::sync::OnceLock::new();
+    RECEIPT
+        .get_or_init(|| {
+            let request = policy_reuse_evidence_batch_run_request_regression_smoke_receipt();
+            let admission =
+                policy_reuse_evidence_batch_evaluation_admission_regression_smoke_receipt();
+            policy_reuse_evidence_external_evaluator_result_from_sources(
+                POLICY_REUSE_EVIDENCE_EXTERNAL_EVALUATOR_RESULT_REGRESSION_SMOKE_STEP,
+                &request,
+                &admission,
+                true,
+                false,
+                "external_evaluator_failed",
+            )
+        })
+        .clone()
 }
 
 fn policy_reuse_evidence_external_evaluator_result_from_sources(
@@ -9855,34 +9869,43 @@ fn finalize_policy_reuse_evidence_external_evaluator_result(
 
 pub fn policy_reuse_evidence_learning_candidate_smoke_receipt(
 ) -> PolicyReuseEvidenceLearningCandidateReceipt {
-    let evaluator = policy_reuse_evidence_external_evaluator_result_smoke_receipt();
-    let request = policy_reuse_evidence_batch_run_request_smoke_receipt();
-    let mut receipt = policy_reuse_evidence_learning_candidate_from_sources(
-        POLICY_REUSE_EVIDENCE_LEARNING_CANDIDATE_SMOKE_STEP,
-        &evaluator,
-        &request,
-        false,
-        false,
-        "none",
-    );
-    finalize_policy_reuse_evidence_learning_candidate(&mut receipt);
-    receipt
+    static RECEIPT: std::sync::OnceLock<PolicyReuseEvidenceLearningCandidateReceipt> =
+        std::sync::OnceLock::new();
+    RECEIPT
+        .get_or_init(|| {
+            let evaluator = policy_reuse_evidence_external_evaluator_result_smoke_receipt();
+            let request = policy_reuse_evidence_batch_run_request_smoke_receipt();
+            policy_reuse_evidence_learning_candidate_from_sources(
+                POLICY_REUSE_EVIDENCE_LEARNING_CANDIDATE_SMOKE_STEP,
+                &evaluator,
+                &request,
+                false,
+                false,
+                "none",
+            )
+        })
+        .clone()
 }
 
 pub fn policy_reuse_evidence_learning_candidate_regression_smoke_receipt(
 ) -> PolicyReuseEvidenceLearningCandidateReceipt {
-    let evaluator = policy_reuse_evidence_external_evaluator_result_regression_smoke_receipt();
-    let request = policy_reuse_evidence_batch_run_request_regression_smoke_receipt();
-    let mut receipt = policy_reuse_evidence_learning_candidate_from_sources(
-        POLICY_REUSE_EVIDENCE_LEARNING_CANDIDATE_REGRESSION_SMOKE_STEP,
-        &evaluator,
-        &request,
-        false,
-        false,
-        "evaluator_not_passed",
-    );
-    finalize_policy_reuse_evidence_learning_candidate(&mut receipt);
-    receipt
+    static RECEIPT: std::sync::OnceLock<PolicyReuseEvidenceLearningCandidateReceipt> =
+        std::sync::OnceLock::new();
+    RECEIPT
+        .get_or_init(|| {
+            let evaluator =
+                policy_reuse_evidence_external_evaluator_result_regression_smoke_receipt();
+            let request = policy_reuse_evidence_batch_run_request_regression_smoke_receipt();
+            policy_reuse_evidence_learning_candidate_from_sources(
+                POLICY_REUSE_EVIDENCE_LEARNING_CANDIDATE_REGRESSION_SMOKE_STEP,
+                &evaluator,
+                &request,
+                false,
+                false,
+                "evaluator_not_passed",
+            )
+        })
+        .clone()
 }
 
 fn policy_reuse_evidence_learning_candidate_from_sources(
@@ -9941,36 +9964,45 @@ fn finalize_policy_reuse_evidence_learning_candidate(
 
 pub fn policy_reuse_evidence_learning_data_admission_smoke_receipt(
 ) -> PolicyReuseEvidenceLearningDataAdmissionReceipt {
-    let candidate = policy_reuse_evidence_learning_candidate_smoke_receipt();
-    let evaluator = policy_reuse_evidence_external_evaluator_result_smoke_receipt();
-    let mut receipt = policy_reuse_evidence_learning_data_admission_from_sources(
-        POLICY_REUSE_EVIDENCE_LEARNING_DATA_ADMISSION_SMOKE_STEP,
-        &candidate,
-        &evaluator,
-        false,
-        false,
-        false,
-        "none",
-    );
-    finalize_policy_reuse_evidence_learning_data_admission(&mut receipt);
-    receipt
+    static RECEIPT: std::sync::OnceLock<PolicyReuseEvidenceLearningDataAdmissionReceipt> =
+        std::sync::OnceLock::new();
+    RECEIPT
+        .get_or_init(|| {
+            let candidate = policy_reuse_evidence_learning_candidate_smoke_receipt();
+            let evaluator = policy_reuse_evidence_external_evaluator_result_smoke_receipt();
+            policy_reuse_evidence_learning_data_admission_from_sources(
+                POLICY_REUSE_EVIDENCE_LEARNING_DATA_ADMISSION_SMOKE_STEP,
+                &candidate,
+                &evaluator,
+                false,
+                false,
+                false,
+                "none",
+            )
+        })
+        .clone()
 }
 
 pub fn policy_reuse_evidence_learning_data_admission_regression_smoke_receipt(
 ) -> PolicyReuseEvidenceLearningDataAdmissionReceipt {
-    let candidate = policy_reuse_evidence_learning_candidate_regression_smoke_receipt();
-    let evaluator = policy_reuse_evidence_external_evaluator_result_regression_smoke_receipt();
-    let mut receipt = policy_reuse_evidence_learning_data_admission_from_sources(
-        POLICY_REUSE_EVIDENCE_LEARNING_DATA_ADMISSION_REGRESSION_SMOKE_STEP,
-        &candidate,
-        &evaluator,
-        false,
-        false,
-        false,
-        "candidate_not_ready",
-    );
-    finalize_policy_reuse_evidence_learning_data_admission(&mut receipt);
-    receipt
+    static RECEIPT: std::sync::OnceLock<PolicyReuseEvidenceLearningDataAdmissionReceipt> =
+        std::sync::OnceLock::new();
+    RECEIPT
+        .get_or_init(|| {
+            let candidate = policy_reuse_evidence_learning_candidate_regression_smoke_receipt();
+            let evaluator =
+                policy_reuse_evidence_external_evaluator_result_regression_smoke_receipt();
+            policy_reuse_evidence_learning_data_admission_from_sources(
+                POLICY_REUSE_EVIDENCE_LEARNING_DATA_ADMISSION_REGRESSION_SMOKE_STEP,
+                &candidate,
+                &evaluator,
+                false,
+                false,
+                false,
+                "candidate_not_ready",
+            )
+        })
+        .clone()
 }
 
 fn policy_reuse_evidence_learning_data_admission_from_sources(
@@ -10034,7 +10066,7 @@ pub fn policy_reuse_evidence_retrieval_example_admission_smoke_receipt(
 ) -> PolicyReuseEvidenceRetrievalExampleAdmissionReceipt {
     let data_admission = policy_reuse_evidence_learning_data_admission_smoke_receipt();
     let candidate = policy_reuse_evidence_learning_candidate_smoke_receipt();
-    let mut receipt = policy_reuse_evidence_retrieval_example_admission_from_sources(
+    policy_reuse_evidence_retrieval_example_admission_from_sources(
         POLICY_REUSE_EVIDENCE_RETRIEVAL_EXAMPLE_ADMISSION_SMOKE_STEP,
         &data_admission,
         &candidate,
@@ -10042,16 +10074,14 @@ pub fn policy_reuse_evidence_retrieval_example_admission_smoke_receipt(
         false,
         false,
         "none",
-    );
-    finalize_policy_reuse_evidence_retrieval_example_admission(&mut receipt);
-    receipt
+    )
 }
 
 pub fn policy_reuse_evidence_retrieval_example_admission_regression_smoke_receipt(
 ) -> PolicyReuseEvidenceRetrievalExampleAdmissionReceipt {
     let data_admission = policy_reuse_evidence_learning_data_admission_regression_smoke_receipt();
     let candidate = policy_reuse_evidence_learning_candidate_regression_smoke_receipt();
-    let mut receipt = policy_reuse_evidence_retrieval_example_admission_from_sources(
+    policy_reuse_evidence_retrieval_example_admission_from_sources(
         POLICY_REUSE_EVIDENCE_RETRIEVAL_EXAMPLE_ADMISSION_REGRESSION_SMOKE_STEP,
         &data_admission,
         &candidate,
@@ -10059,9 +10089,7 @@ pub fn policy_reuse_evidence_retrieval_example_admission_regression_smoke_receip
         false,
         false,
         "data_not_admitted",
-    );
-    finalize_policy_reuse_evidence_retrieval_example_admission(&mut receipt);
-    receipt
+    )
 }
 
 fn policy_reuse_evidence_retrieval_example_admission_from_sources(
@@ -10123,7 +10151,7 @@ pub fn policy_reuse_evidence_retrieval_example_index_smoke_receipt(
 ) -> PolicyReuseEvidenceRetrievalExampleIndexReceipt {
     let example_admission = policy_reuse_evidence_retrieval_example_admission_smoke_receipt();
     let data_admission = policy_reuse_evidence_learning_data_admission_smoke_receipt();
-    let mut receipt = policy_reuse_evidence_retrieval_example_index_from_sources(
+    policy_reuse_evidence_retrieval_example_index_from_sources(
         POLICY_REUSE_EVIDENCE_RETRIEVAL_EXAMPLE_INDEX_SMOKE_STEP,
         &example_admission,
         &data_admission,
@@ -10131,9 +10159,7 @@ pub fn policy_reuse_evidence_retrieval_example_index_smoke_receipt(
         false,
         false,
         "none",
-    );
-    finalize_policy_reuse_evidence_retrieval_example_index(&mut receipt);
-    receipt
+    )
 }
 
 pub fn policy_reuse_evidence_retrieval_example_index_regression_smoke_receipt(
@@ -10141,7 +10167,7 @@ pub fn policy_reuse_evidence_retrieval_example_index_regression_smoke_receipt(
     let example_admission =
         policy_reuse_evidence_retrieval_example_admission_regression_smoke_receipt();
     let data_admission = policy_reuse_evidence_learning_data_admission_regression_smoke_receipt();
-    let mut receipt = policy_reuse_evidence_retrieval_example_index_from_sources(
+    policy_reuse_evidence_retrieval_example_index_from_sources(
         POLICY_REUSE_EVIDENCE_RETRIEVAL_EXAMPLE_INDEX_REGRESSION_SMOKE_STEP,
         &example_admission,
         &data_admission,
@@ -10149,9 +10175,7 @@ pub fn policy_reuse_evidence_retrieval_example_index_regression_smoke_receipt(
         false,
         false,
         "example_not_admitted",
-    );
-    finalize_policy_reuse_evidence_retrieval_example_index(&mut receipt);
-    receipt
+    )
 }
 
 fn policy_reuse_evidence_retrieval_example_index_from_sources(
@@ -10213,7 +10237,7 @@ pub fn policy_reuse_evidence_retrieval_corpus_readiness_smoke_receipt(
 ) -> PolicyReuseEvidenceRetrievalCorpusReadinessReceipt {
     let example_index = policy_reuse_evidence_retrieval_example_index_smoke_receipt();
     let example_admission = policy_reuse_evidence_retrieval_example_admission_smoke_receipt();
-    let mut receipt = policy_reuse_evidence_retrieval_corpus_readiness_from_sources(
+    policy_reuse_evidence_retrieval_corpus_readiness_from_sources(
         POLICY_REUSE_EVIDENCE_RETRIEVAL_CORPUS_READINESS_SMOKE_STEP,
         &example_index,
         &example_admission,
@@ -10222,9 +10246,7 @@ pub fn policy_reuse_evidence_retrieval_corpus_readiness_smoke_receipt(
         false,
         false,
         "none",
-    );
-    finalize_policy_reuse_evidence_retrieval_corpus_readiness(&mut receipt);
-    receipt
+    )
 }
 
 pub fn policy_reuse_evidence_retrieval_corpus_readiness_regression_smoke_receipt(
@@ -10232,7 +10254,7 @@ pub fn policy_reuse_evidence_retrieval_corpus_readiness_regression_smoke_receipt
     let example_index = policy_reuse_evidence_retrieval_example_index_regression_smoke_receipt();
     let example_admission =
         policy_reuse_evidence_retrieval_example_admission_regression_smoke_receipt();
-    let mut receipt = policy_reuse_evidence_retrieval_corpus_readiness_from_sources(
+    policy_reuse_evidence_retrieval_corpus_readiness_from_sources(
         POLICY_REUSE_EVIDENCE_RETRIEVAL_CORPUS_READINESS_REGRESSION_SMOKE_STEP,
         &example_index,
         &example_admission,
@@ -10241,9 +10263,7 @@ pub fn policy_reuse_evidence_retrieval_corpus_readiness_regression_smoke_receipt
         false,
         false,
         "index_not_ready",
-    );
-    finalize_policy_reuse_evidence_retrieval_corpus_readiness(&mut receipt);
-    receipt
+    )
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -10309,7 +10329,7 @@ pub fn policy_reuse_evidence_retrieval_corpus_admission_smoke_receipt(
 ) -> PolicyReuseEvidenceRetrievalCorpusAdmissionReceipt {
     let corpus_readiness = policy_reuse_evidence_retrieval_corpus_readiness_smoke_receipt();
     let example_index = policy_reuse_evidence_retrieval_example_index_smoke_receipt();
-    let mut receipt = policy_reuse_evidence_retrieval_corpus_admission_from_sources(
+    policy_reuse_evidence_retrieval_corpus_admission_from_sources(
         POLICY_REUSE_EVIDENCE_RETRIEVAL_CORPUS_ADMISSION_SMOKE_STEP,
         &corpus_readiness,
         &example_index,
@@ -10318,9 +10338,7 @@ pub fn policy_reuse_evidence_retrieval_corpus_admission_smoke_receipt(
         false,
         false,
         "none",
-    );
-    finalize_policy_reuse_evidence_retrieval_corpus_admission(&mut receipt);
-    receipt
+    )
 }
 
 pub fn policy_reuse_evidence_retrieval_corpus_admission_regression_smoke_receipt(
@@ -10328,7 +10346,7 @@ pub fn policy_reuse_evidence_retrieval_corpus_admission_regression_smoke_receipt
     let corpus_readiness =
         policy_reuse_evidence_retrieval_corpus_readiness_regression_smoke_receipt();
     let example_index = policy_reuse_evidence_retrieval_example_index_regression_smoke_receipt();
-    let mut receipt = policy_reuse_evidence_retrieval_corpus_admission_from_sources(
+    policy_reuse_evidence_retrieval_corpus_admission_from_sources(
         POLICY_REUSE_EVIDENCE_RETRIEVAL_CORPUS_ADMISSION_REGRESSION_SMOKE_STEP,
         &corpus_readiness,
         &example_index,
@@ -10337,9 +10355,7 @@ pub fn policy_reuse_evidence_retrieval_corpus_admission_regression_smoke_receipt
         false,
         false,
         "corpus_not_ready",
-    );
-    finalize_policy_reuse_evidence_retrieval_corpus_admission(&mut receipt);
-    receipt
+    )
 }
 
 #[allow(clippy::too_many_arguments)]

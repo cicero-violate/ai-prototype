@@ -172,6 +172,29 @@ The root Cargo config currently forces a stale `canon-rustc-v3/target/debug/cano
 
 Unrelated existing `canon-rustc-v3` modifications remain out of scope for this commit and should not be staged as part of the CLI catalog repair.
 
+
+## Current Turn Addendum: Retrieval Evidence Test Runtime Repair
+
+The execution lane shifted to a focused performance repair after retrieval evidence receipt tests exceeded 60 seconds. The fix keeps receipt semantics unchanged while removing repeated deterministic recomposition:
+
+```text
+- cache immutable upstream policy-reuse smoke receipts with std::sync::OnceLock
+- return cloned cached receipts to preserve caller ownership and immutability
+- remove duplicate public-builder finalization where from_sources already finalizes
+- normalize retrieval example/corpus executable-contract compact JSON fragments
+```
+
+Validation evidence collected in this turn:
+
+```text
+CARGO_BUILD_RUSTC_WRAPPER= cargo check --quiet
+CARGO_BUILD_RUSTC_WRAPPER= cargo fmt --check
+original slow exact receipt tests: 8/8 passed
+observed per-test times: 4.50s, 4.62s, 4.81s, 4.99s, 7.23s, 7.42s, 8.16s, 8.29s
+```
+
+The broader `policy_reuse_evidence_retrieval_` filter also includes unrelated later root_validate executable-contract tests with stale compact-JSON fragment expectations. Those are out of scope for this repair unless selected explicitly in a later turn.
+
 ## Handoff Checklist For Next Agent Turn
 
 Before modifying implementation files, the next agent should choose exactly one lane:

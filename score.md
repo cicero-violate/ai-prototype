@@ -142,6 +142,37 @@ tests/validation_harness_contract.rs
 
 Unrelated modified or untracked `canon-rustc-v3` files remain non-scored and intentionally unstaged.
 
+
+## Current Turn Score Addendum: Retrieval Evidence Test Runtime Repair
+
+This turn repairs a focused performance defect in retrieval evidence smoke receipt construction. The originally slow exact receipt tests now pass individually below 9 seconds after caching deterministic upstream smoke receipts and removing duplicate finalization calls.
+
+Validation evidence:
+
+```text
+CARGO_BUILD_RUSTC_WRAPPER= cargo check --quiet
+CARGO_BUILD_RUSTC_WRAPPER= cargo fmt --check
+8 originally slow exact receipt tests passed
+max observed exact-test runtime = 8.29s
+```
+
+Score impact:
+
+```text
+Performance: eligible for +0.01 in the next scoring cycle if the committed change remains stable under broader validation
+Correctness: unchanged; behavior is intended to be semantically identical and focused exact tests passed
+Determinism: unchanged; cached receipts are immutable deterministic smoke receipts
+```
+
+Commit scope for this addendum:
+
+```text
+plan.md
+score.md
+src/validation_harness.rs
+tests/validation_harness_contract.rs
+```
+
 ## Scoring Rule For Next Turn
 
 Raise scores only if the next turn provides committed implementation evidence plus validation output. Suggested axis movement, if evidence is clean:
