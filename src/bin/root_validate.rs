@@ -480,6 +480,16 @@ const COMPACT_MODES: &[CompactMode] = &[
         run: policy_reuse_evidence_retrieval_example_index_regression_smoke_mode,
     },
     CompactMode {
+        arg: "--policy-reuse-evidence-retrieval-corpus-readiness-smoke",
+        marker: "policy_reuse_evidence_retrieval_corpus_readiness_smoke",
+        run: policy_reuse_evidence_retrieval_corpus_readiness_smoke_mode,
+    },
+    CompactMode {
+        arg: "--policy-reuse-evidence-retrieval-corpus-readiness-regression-smoke",
+        marker: "policy_reuse_evidence_retrieval_corpus_readiness_regression_smoke",
+        run: policy_reuse_evidence_retrieval_corpus_readiness_regression_smoke_mode,
+    },
+    CompactMode {
         arg: "--root-validate-dispatch-catalog",
         marker: "canon_root_validate_dispatch_catalog_v1",
         run: root_validate_dispatch_catalog_mode,
@@ -1514,6 +1524,37 @@ fn policy_reuse_evidence_retrieval_example_index_regression_smoke_mode(
         && !receipt.retrieval_example_indexed
         && receipt.index_status == "not_indexed"
         && receipt.not_indexed_reason == "example_not_admitted"
+        && !receipt.passed();
+    Ok(CompactModeOutcome::controlled_json(
+        receipt.to_json(),
+        passed,
+    ))
+}
+
+fn policy_reuse_evidence_retrieval_corpus_readiness_smoke_mode(
+) -> Result<CompactModeOutcome, String> {
+    let receipt =
+        validation_harness::policy_reuse_evidence_retrieval_corpus_readiness_smoke_receipt();
+    Ok(CompactModeOutcome::pass_json(
+        receipt.to_json(),
+        receipt.passed(),
+    ))
+}
+
+fn policy_reuse_evidence_retrieval_corpus_readiness_regression_smoke_mode(
+) -> Result<CompactModeOutcome, String> {
+    let receipt = validation_harness::
+        policy_reuse_evidence_retrieval_corpus_readiness_regression_smoke_receipt();
+    let passed = receipt.is_valid()
+        && !receipt.retrieval_example_indexed
+        && !receipt.retrieval_example_admitted
+        && !receipt.retrieval_read_performed
+        && !receipt.retrieval_write_performed
+        && !receipt.policy_promotion_performed
+        && !receipt.student_training_performed
+        && !receipt.retrieval_corpus_ready
+        && receipt.readiness_status == "not_ready"
+        && receipt.not_ready_reason == "index_not_ready"
         && !receipt.passed();
     Ok(CompactModeOutcome::controlled_json(
         receipt.to_json(),

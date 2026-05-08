@@ -1,6 +1,6 @@
 # Canon Agent Implementation Plan
 
-This plan records the current implementation state after implementation step 2 of the current agent loop.
+This plan records the current implementation state after implementation step 3 of the current agent loop.
 
 ## North Star
 
@@ -80,95 +80,21 @@ The repository currently exposes these meaningful surfaces:
 - validation-harness/root-validate smoke exposure for healthy and controlled data-not-admitted retrieval-example-admission evidence;
 - deterministic policy reuse evidence retrieval-example-index receipt in the validation harness;
 - validation-harness/root-validate smoke exposure for healthy and controlled example-not-admitted retrieval-example-index evidence;
+- deterministic policy reuse evidence retrieval-corpus-readiness receipt in the validation harness;
+- validation-harness/root-validate smoke exposure for healthy and controlled index-not-ready retrieval-corpus-readiness evidence;
 - retained fixtures for policy reuse, policy validation health, policy validation trend, orchestration capacity, policy capacity/cost, runtime performance trend, validation duration planning, validation command footprint, external CLI mode evidence, and evidence-surface index coverage.
 
 ## Latest Completed Slice
 
-The latest completed implementation slice is deterministic **policy reuse evidence retrieval-example-index** evidence in the validation-harness/root-validator layer. It composes retrieval-example-admission and learning-data-admission evidence into one index/no-index boundary without writing retrieval storage.
+The latest completed implementation slice is deterministic **policy reuse evidence retrieval-corpus-readiness** evidence in the validation-harness/root-validator layer. It composes retrieval-example-index and retrieval-example-admission evidence into one ready/not-ready corpus boundary without reading or writing retrieval storage.
 
 This slice answers:
 
 ```text
-Can an evaluator inspect one deterministic receipt that summarizes whether admitted retrieval examples may be indexed without writing retrieval storage, promoting policy, training a model, executing batches, or changing kernel authority?
+Can an evaluator inspect one deterministic receipt that decides whether indexed examples are ready to serve as a retrieval corpus without reading or writing retrieval storage, promoting policy, training a model, executing batches, or changing kernel authority?
 ```
 
 Implemented surfaces:
-
-```text
-PolicyReuseEvidenceRetrievalExampleIndexReceipt
-policy_reuse_evidence_retrieval_example_index_smoke_receipt()
-policy_reuse_evidence_retrieval_example_index_regression_smoke_receipt()
---policy-reuse-evidence-retrieval-example-index-smoke
---policy-reuse-evidence-retrieval-example-index-regression-smoke
-```
-
-Implemented fields:
-
-```text
-schema
-record_type
-retrieval_example_index_version
-source_retrieval_example_admission_hash
-source_learning_data_admission_hash
-retrieval_example_admitted
-learning_data_admitted
-retrieval_write_performed
-policy_promotion_performed
-student_training_performed
-indexed_policy_reuse_examples
-indexed_llm_fallback_examples
-retrieval_example_indexed
-index_status
-not_indexed_reason
-index_hash
-receipt_hash
-```
-
-Completed semantics:
-
-- `retrieval_example_indexed = true` only when retrieval-example admission passed, learning-data admission passed, retrieval storage was not written, policy was not promoted, student training was not performed, indexed policy-reuse examples are positive, and `not_indexed_reason = "none"`.
-- Healthy evidence binds to retrieval-example-admission and learning-data-admission receipt hashes, reports index status `indexed`, and records `not_indexed_reason = "none"`.
-- Regression evidence remains structurally valid while exposing `retrieval_example_admitted = false`, `learning_data_admitted = false`, index status `not_indexed`, and `not_indexed_reason = "example_not_admitted"`.
-- The receipt is evidence-only and does not execute batches, change kernel authority, promote policy, write retrieval storage, train models, or alter runtime behavior.
-- The receipt does not introduce live LLM, network, wall-clock, or environment-dependent measurement.
-
-## Validation Evidence For Latest Baseline
-
-```text
-cargo fmt --check
-RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test validation_harness_contract policy_reuse_evidence_retrieval_example_index --no-run --quiet
-RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo check --quiet
-RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test planning_contract --test score_contract --quiet
-RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test validation_harness_contract root_validate_policy_reuse_evidence_retrieval_example_index --quiet
-RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo run --quiet --bin root_validate -- --policy-reuse-evidence-retrieval-example-index-smoke
-RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo run --quiet --bin root_validate -- --policy-reuse-evidence-retrieval-example-index-regression-smoke
-
-cargo fmt --check: pass
-validation_harness_contract policy_reuse_evidence_retrieval_example_index --no-run: pass
-cargo check --quiet: pass
-planning_contract and score_contract: pass
-root_validate retrieval-example-index focused executable tests: attempted, but connector returned 502 before a Rust result was available
-root_validate retrieval-example-index smoke mode: attempted, but connector returned 502 before a Rust result was available
-root_validate retrieval-example-index regression mode: attempted, but connector returned 502 before a Rust result was available
-```
-
-## Current Planning Decision
-
-Keep the next implementation turn focused on **Learning**, moving from retrieval-example indexing evidence toward deterministic retrieval-corpus-readiness evidence.
-
-Current gap:
-
-```text
-Retrieval-example indexing is now summarized as evidence, but the stack still lacks one deterministic retrieval-corpus-readiness receipt that decides whether indexed examples are ready to serve as a retrieval corpus without reading or writing retrieval storage.
-```
-
-Recommended next slice:
-
-```text
-Add a deterministic policy reuse evidence retrieval-corpus-readiness receipt that composes retrieval-example-index and retrieval-example-admission evidence into ready/not-ready corpus evidence without performing retrieval storage operations.
-```
-
-Recommended concrete surfaces:
 
 ```text
 PolicyReuseEvidenceRetrievalCorpusReadinessReceipt
@@ -178,24 +104,97 @@ policy_reuse_evidence_retrieval_corpus_readiness_regression_smoke_receipt()
 --policy-reuse-evidence-retrieval-corpus-readiness-regression-smoke
 ```
 
+Implemented fields:
+
+```text
+schema
+record_type
+retrieval_corpus_readiness_version
+source_retrieval_example_index_hash
+source_retrieval_example_admission_hash
+retrieval_example_indexed
+retrieval_example_admitted
+retrieval_read_performed
+retrieval_write_performed
+policy_promotion_performed
+student_training_performed
+ready_policy_reuse_examples
+ready_llm_fallback_examples
+retrieval_corpus_ready
+readiness_status
+not_ready_reason
+readiness_hash
+receipt_hash
+```
+
+Completed semantics:
+
+- `retrieval_corpus_ready = true` only when retrieval-example index passed, retrieval-example admission passed, retrieval storage was not read or written, policy was not promoted, student training was not performed, ready policy-reuse examples are positive, and `not_ready_reason = "none"`.
+- Healthy evidence binds to retrieval-example-index and retrieval-example-admission receipt hashes, reports readiness status `ready`, and records `not_ready_reason = "none"`.
+- Regression evidence remains structurally valid while exposing `retrieval_example_indexed = false`, `retrieval_example_admitted = false`, readiness status `not_ready`, and `not_ready_reason = "index_not_ready"`.
+- The receipt is evidence-only and does not execute batches, change kernel authority, promote policy, read/write retrieval storage, train models, or alter runtime behavior.
+- The receipt does not introduce live LLM, network, wall-clock, or environment-dependent measurement.
+
+## Validation Evidence For Latest Baseline
+
+```text
+cargo fmt --check
+RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test validation_harness_contract policy_reuse_evidence_retrieval_corpus_readiness --no-run --quiet
+RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo check --quiet
+RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test planning_contract --test score_contract --quiet
+RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test validation_harness_contract root_validate_policy_reuse_evidence_retrieval_corpus_readiness --quiet
+
+cargo fmt --check: pass
+validation_harness_contract policy_reuse_evidence_retrieval_corpus_readiness --no-run: pass
+cargo check --quiet: pass
+planning_contract and score_contract: pass
+root_validate retrieval-corpus-readiness focused executable tests: attempted, but connector returned 502 before a Rust result was available
+```
+
+## Current Planning Decision
+
+Keep the next implementation turn focused on **Learning**, moving from retrieval-corpus-readiness evidence toward deterministic retrieval-corpus-admission evidence.
+
+Current gap:
+
+```text
+Retrieval-corpus readiness is now explicit, but the stack still lacks one deterministic retrieval-corpus-admission receipt that decides whether a ready corpus may be admitted for retrieval use without reading or writing retrieval storage.
+```
+
+Recommended next slice:
+
+```text
+Add a deterministic policy reuse evidence retrieval-corpus-admission receipt that composes retrieval-corpus-readiness and retrieval-example-index evidence into admitted/not-admitted corpus evidence without performing retrieval storage operations.
+```
+
+Recommended concrete surfaces:
+
+```text
+PolicyReuseEvidenceRetrievalCorpusAdmissionReceipt
+policy_reuse_evidence_retrieval_corpus_admission_smoke_receipt()
+policy_reuse_evidence_retrieval_corpus_admission_regression_smoke_receipt()
+--policy-reuse-evidence-retrieval-corpus-admission-smoke
+--policy-reuse-evidence-retrieval-corpus-admission-regression-smoke
+```
+
 Recommended constraints:
 
 1. Keep the kernel untouched.
 2. Do not introduce live LLM, network, wall-clock, or environment-dependent measurement.
-3. Reuse retrieval-example-index and retrieval-example-admission receipt hashes.
+3. Reuse retrieval-corpus-readiness and retrieval-example-index receipt hashes.
 4. Keep the receipt evidence-only: no retrieval reads/writes, policy promotion, student training, or batch execution.
-5. Include healthy and controlled index-not-ready regression cases.
+5. Include healthy and controlled corpus-not-ready regression cases.
 6. Keep actual retrieval storage and student-model training deferred.
 7. Update external CLI mode fixtures and guarded validation counts only if new public modes or tests are added.
 8. Keep unrelated `canon-rustc-v3/` working-tree changes out of this slice unless explicitly selected in a separate turn.
 
 ## Acceptance Criteria For Next Implementation Turn
 
-1. A deterministic healthy retrieval-corpus-readiness receipt exists and validates successfully.
-2. A deterministic regression retrieval-corpus-readiness receipt exists and exposes a concrete index-not-ready reason.
-3. Retrieval-corpus-readiness evidence references retrieval-example-index and retrieval-example-admission receipts instead of adding policy authority.
-4. Root validator compact modes expose healthy and regression retrieval-corpus-readiness receipts.
-5. Validation harness contract tests assert retrieval-corpus-readiness semantics, source binding, compact output, and controlled failing evidence.
+1. A deterministic healthy retrieval-corpus-admission receipt exists and validates successfully.
+2. A deterministic regression retrieval-corpus-admission receipt exists and exposes a concrete corpus-not-ready reason.
+3. Retrieval-corpus-admission evidence references retrieval-corpus-readiness and retrieval-example-index receipts instead of adding policy authority.
+4. Root validator compact modes expose healthy and regression retrieval-corpus-admission receipts.
+5. Validation harness contract tests assert retrieval-corpus-admission semantics, source binding, compact output, and controlled failing evidence.
 6. Planning and score contract tests pass after documentation updates.
 7. The receipt remains evidence-only and does not expand kernel authority, promote policy, execute batches, read/write retrieval storage, or train a student model.
 

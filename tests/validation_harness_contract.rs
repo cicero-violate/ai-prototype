@@ -30,7 +30,7 @@ use ai::validation_harness::{
 };
 
 const EXPECTED_ROOT_VALIDATE_COMPACT_MODE_COUNT: usize = 82;
-const EXPECTED_EXTERNAL_AGENT_CLI_MODE_COUNT: usize = 95;
+const EXPECTED_EXTERNAL_AGENT_CLI_MODE_COUNT: usize = 97;
 
 fn expected_guarded_test_count() -> usize {
     VALIDATION_HARNESS_EXPECTED_TESTS + GRAPH_MUTATION_CLI_CONTRACT_EXPECTED_TESTS
@@ -74,7 +74,7 @@ fn root_validation_runs_check_before_contract_suites() {
         steps[4].expected_test_count,
         Some(VALIDATION_HARNESS_EXPECTED_TESTS)
     );
-    assert_eq!(VALIDATION_HARNESS_EXPECTED_TESTS, 236);
+    assert_eq!(VALIDATION_HARNESS_EXPECTED_TESTS, 240);
     assert!(steps[5].args.contains(&"planning_contract"));
     assert!(steps[6].args.contains(&"graph_mutation_cli_contract"));
 }
@@ -700,6 +700,14 @@ fn external_agent_cli_modes_fixture_documents_all_public_modes() {
     assert!(catalog.contains(
         "root_validate --policy-reuse-evidence-retrieval-example-index-regression-smoke",
         "policy_reuse_evidence_retrieval_example_index_regression_smoke",
+    ));
+    assert!(catalog.contains(
+        "root_validate --policy-reuse-evidence-retrieval-corpus-readiness-smoke",
+        "policy_reuse_evidence_retrieval_corpus_readiness_smoke",
+    ));
+    assert!(catalog.contains(
+        "root_validate --policy-reuse-evidence-retrieval-corpus-readiness-regression-smoke",
+        "policy_reuse_evidence_retrieval_corpus_readiness_regression_smoke",
     ));
     assert!(catalog.contains(
         "root_validate --root-validate-dispatch-catalog",
@@ -6893,6 +6901,143 @@ fn root_validate_policy_reuse_evidence_retrieval_example_index_regression_smoke_
             "\"index_status\":\"not_indexed\"",
             "\"not_indexed_reason\":\"example_not_admitted\"",
             "\"index_hash\":",
+            "\"receipt_hash\":",
+        ],
+    );
+}
+
+#[test]
+fn policy_reuse_evidence_retrieval_corpus_readiness_smoke_composes_corpus_readiness() {
+    let receipt =
+        ai::validation_harness::policy_reuse_evidence_retrieval_corpus_readiness_smoke_receipt();
+    let example_index =
+        ai::validation_harness::policy_reuse_evidence_retrieval_example_index_smoke_receipt();
+    let example_admission =
+        ai::validation_harness::policy_reuse_evidence_retrieval_example_admission_smoke_receipt();
+
+    assert_eq!(
+        receipt.schema,
+        "canon_policy_reuse_evidence_retrieval_corpus_readiness_v1"
+    );
+    assert_eq!(
+        receipt.record_type,
+        ai::validation_harness::POLICY_REUSE_EVIDENCE_RETRIEVAL_CORPUS_READINESS_SMOKE_STEP
+    );
+    assert_eq!(receipt.retrieval_corpus_readiness_version, 1);
+    assert_eq!(
+        receipt.source_retrieval_example_index_hash,
+        example_index.receipt_hash
+    );
+    assert_eq!(
+        receipt.source_retrieval_example_admission_hash,
+        example_admission.receipt_hash
+    );
+    assert!(receipt.retrieval_example_indexed);
+    assert!(receipt.retrieval_example_admitted);
+    assert!(!receipt.retrieval_read_performed);
+    assert!(!receipt.retrieval_write_performed);
+    assert!(!receipt.policy_promotion_performed);
+    assert!(!receipt.student_training_performed);
+    assert_eq!(
+        receipt.ready_policy_reuse_examples,
+        example_index.indexed_policy_reuse_examples
+    );
+    assert_eq!(
+        receipt.ready_llm_fallback_examples,
+        example_index.indexed_llm_fallback_examples
+    );
+    assert!(receipt.retrieval_corpus_ready);
+    assert_eq!(receipt.readiness_status, "ready");
+    assert_eq!(receipt.not_ready_reason, "none");
+    assert_ne!(receipt.readiness_hash, 0);
+    assert_ne!(receipt.receipt_hash, 0);
+    assert!(receipt.is_valid());
+    assert!(receipt.passed());
+}
+
+#[test]
+fn policy_reuse_evidence_retrieval_corpus_readiness_regression_smoke_is_valid_not_ready_evidence() {
+    let receipt = ai::validation_harness::
+        policy_reuse_evidence_retrieval_corpus_readiness_regression_smoke_receipt();
+    let example_index = ai::validation_harness::
+        policy_reuse_evidence_retrieval_example_index_regression_smoke_receipt();
+    let example_admission = ai::validation_harness::
+        policy_reuse_evidence_retrieval_example_admission_regression_smoke_receipt();
+
+    assert_eq!(
+        receipt.record_type,
+        ai::validation_harness::POLICY_REUSE_EVIDENCE_RETRIEVAL_CORPUS_READINESS_REGRESSION_SMOKE_STEP
+    );
+    assert_eq!(
+        receipt.source_retrieval_example_index_hash,
+        example_index.receipt_hash
+    );
+    assert_eq!(
+        receipt.source_retrieval_example_admission_hash,
+        example_admission.receipt_hash
+    );
+    assert!(!receipt.retrieval_example_indexed);
+    assert!(!receipt.retrieval_example_admitted);
+    assert!(!receipt.retrieval_read_performed);
+    assert!(!receipt.retrieval_write_performed);
+    assert!(!receipt.policy_promotion_performed);
+    assert!(!receipt.student_training_performed);
+    assert_eq!(
+        receipt.ready_policy_reuse_examples,
+        example_index.indexed_policy_reuse_examples
+    );
+    assert!(!receipt.retrieval_corpus_ready);
+    assert_eq!(receipt.readiness_status, "not_ready");
+    assert_eq!(receipt.not_ready_reason, "index_not_ready");
+    assert!(receipt.is_valid());
+    assert!(!receipt.passed());
+}
+
+#[test]
+fn root_validate_policy_reuse_evidence_retrieval_corpus_readiness_smoke_mode_is_executable_contract(
+) {
+    assert_root_validate_catalog_compact_mode_contract(
+        "--policy-reuse-evidence-retrieval-corpus-readiness-smoke",
+        &[
+            "\"schema\":\"canon_policy_reuse_evidence_retrieval_corpus_readiness_v1\"",
+            "\"record_type\":\"policy_reuse_evidence_retrieval_corpus_readiness_smoke\"",
+            "\"retrieval_corpus_readiness_version\":1",
+            "\"source_retrieval_example_index_hash\":",
+            "\"source_retrieval_example_admission_hash\":",
+            "\"retrieval_example_indexed\":true",
+            "\"retrieval_example_admitted\":true",
+            "\"retrieval_read_performed\":false",
+            "\"retrieval_write_performed\":false",
+            "\"policy_promotion_performed\":false",
+            "\"student_training_performed\":false",
+            "\"retrieval_corpus_ready\":true",
+            "\"readiness_status\":\"ready\"",
+            "\"not_ready_reason\":\"none\"",
+            "\"readiness_hash\":",
+            "\"receipt_hash\":",
+        ],
+    );
+}
+
+#[test]
+fn root_validate_policy_reuse_evidence_retrieval_corpus_readiness_regression_smoke_mode_is_executable_contract(
+) {
+    assert_root_validate_catalog_compact_mode_contract(
+        "--policy-reuse-evidence-retrieval-corpus-readiness-regression-smoke",
+        &[
+            "\"schema\":\"canon_policy_reuse_evidence_retrieval_corpus_readiness_v1\"",
+            "\"record_type\":\"policy_reuse_evidence_retrieval_corpus_readiness_regression_smoke\"",
+            "\"retrieval_corpus_readiness_version\":1",
+            "\"retrieval_example_indexed\":false",
+            "\"retrieval_example_admitted\":false",
+            "\"retrieval_read_performed\":false",
+            "\"retrieval_write_performed\":false",
+            "\"policy_promotion_performed\":false",
+            "\"student_training_performed\":false",
+            "\"retrieval_corpus_ready\":false",
+            "\"readiness_status\":\"not_ready\"",
+            "\"not_ready_reason\":\"index_not_ready\"",
+            "\"readiness_hash\":",
             "\"receipt_hash\":",
         ],
     );
