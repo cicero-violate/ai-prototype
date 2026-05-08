@@ -1,6 +1,6 @@
 # Canon Agent Implementation Plan
 
-This plan tracks the current deterministic implementation plan from the repository state.
+This is the planning turn for the next agent loop. It records the current repository baseline, the selected next implementation slice, and the acceptance criteria for that slice.
 
 ## North Star
 
@@ -11,6 +11,8 @@ Canon Agent is a deterministic, self-improving runtime where:
 - every decision is replayable through hash-chained logs and receipts;
 - learning promotes only externally verified wins into append-only policy;
 - LLM calls shrink over time as policy handles repeated cases.
+
+The architecture must keep safety and intelligence separated: the kernel enforces correctness, the capability layer accumulates intelligence, and policy learning never grants itself authority.
 
 ## Current Implementation Baseline
 
@@ -28,98 +30,31 @@ The repository currently exposes these meaningful surfaces:
 - validation-harness/root-validate smoke exposure for policy reuse ledger summary evidence, including a controlled validation-regression case;
 - deterministic policy reuse scale trace receipt in the judgment layer;
 - validation-harness/root-validate smoke exposure for larger-batch policy reuse scale evidence, including a controlled validation-regression case;
+- deterministic policy reuse performance-cost trend receipt in the judgment layer;
+- validation-harness/root-validate smoke exposure for reuse/cost trend evidence, including a controlled cost-regression case;
 - retained fixtures for policy reuse, policy validation health, policy validation trend, orchestration capacity, policy capacity/cost, runtime performance trend, validation duration planning, validation command footprint, and external CLI mode evidence.
 
 ## Last Completed Implementation Slice
 
-The last completed slice added deterministic **policy reuse scale trace** evidence in the judgment/capability and validation-harness layers.
+The last completed slice added deterministic **policy reuse performance-cost trend** evidence in the judgment/capability and validation-harness layers.
 
 That slice answers:
-
-```text
-When policy reuse is evaluated over a larger deterministic batch, does the system preserve validation health while increasing avoided LLM calls per batch?
-```
-
-Completed constraints:
-
-1. Kept the kernel untouched.
-2. Used deterministic generated smoke records only.
-3. Avoided live LLM, network, wall-clock, or environment-dependent calls.
-4. Reused existing judgment, validation-harness, root-validate, and retained-fixture surfaces.
-5. Preserved compact policy reuse ledger summary semantics.
-6. Added a larger-batch healthy case and a larger-batch validation-regression case.
-7. Made scale evidence readable without joining unrelated receipts.
-
-Completed implementation tasks:
-
-1. Added `PolicyReuseScaleTraceReceipt` with deterministic hash binding and validation.
-2. Exported the new receipt through judgment and crate public surfaces.
-3. Added deterministic constructors:
-   - `policy_reuse_scale_trace_smoke_receipt()`
-   - `policy_reuse_scale_trace_regression_smoke_receipt()`
-4. Added root validator compact modes:
-   - `--policy-reuse-scale-trace-smoke`
-   - `--policy-reuse-scale-trace-regression-smoke`
-5. Extended `validation_harness_contract` with semantic assertions for:
-   - `batch_size`
-   - `policy_hits`
-   - `policy_misses`
-   - `llm_fallbacks`
-   - `validation_passes`
-   - `validation_failures`
-   - `reuse_rate_bps`
-   - `regression_flag`
-   - `avoided_llm_calls_per_batch`
-   - `source_receipt_hash`
-6. Updated retained external CLI mode, validation command footprint, validation duration planning, and policy validation health fixtures for the new deterministic public modes and guarded-test count.
-
-## Current Implementation Turn
-
-Implemented this turn: deterministic **policy reuse performance-cost trend** evidence tying larger-batch avoided LLM calls to retained validation/runtime cost.
-
-The implemented slice keeps the kernel untouched and adds capability/validation-harness evidence only. It answers whether policy reuse can scale while retained validation/runtime cost remains within deterministic budget.
-
-## Completed Implementation Slice
-
-Added deterministic **policy reuse performance-cost trend** evidence that ties larger-batch avoided LLM calls to retained validation/runtime cost.
-
-The completed slice answers:
 
 ```text
 When policy reuse scales across retained batches, does avoided LLM work grow without increasing validation/runtime cost beyond budget?
 ```
 
-Completed constraints:
-
-1. Keep the kernel untouched.
-2. Use deterministic fixture or smoke evidence only.
-3. Reuse existing runtime performance, validation duration, policy capacity/cost, and scale-trace surfaces.
-4. Avoid live LLM, network, wall-clock, or environment-dependent measurements.
-5. Expose cost trend fields in one compact receipt where possible.
-6. Include healthy and controlled cost-regression cases.
-7. Preserve existing root validator and retained-fixture semantics unless a fixture must be extended for the new public evidence.
-
-Implemented receipt:
+Completed implementation surfaces:
 
 ```text
 PolicyReusePerformanceCostTrendReceipt
-```
-
-Implemented constructors:
-
-```text
 policy_reuse_performance_cost_trend_smoke_receipt()
 policy_reuse_performance_cost_trend_regression_smoke_receipt()
-```
-
-Implemented root validator modes:
-
-```text
 --policy-reuse-performance-cost-trend-smoke
 --policy-reuse-performance-cost-trend-regression-smoke
 ```
 
-Exposed fields:
+Important exposed fields:
 
 ```text
 batch_size
@@ -135,39 +70,9 @@ source_validation_duration_hash
 source_runtime_performance_hash
 ```
 
-Completed implementation tasks:
-
-1. Added `PolicyReusePerformanceCostTrendReceipt` with deterministic hash binding and validation.
-2. Exported the new receipt through judgment and crate public surfaces.
-3. Added deterministic healthy and controlled cost-regression smoke constructors.
-4. Added root validator compact modes for both performance-cost trend receipts.
-5. Extended validation harness contracts for healthy/regression semantic fields and source hashes.
-6. Updated external CLI mode fixture and retained guarded-test count from 146 to 150 after adding four harness tests.
-
-Implemented deterministic semantics:
-
-- `cost_regression_flag = false` only when the scale trace, validation duration, validation cost verdict, and runtime budget are healthy.
-- `cost_regression_flag = true` when avoided LLM calls are visible but retained validation/runtime cost evidence regresses.
-- Source hashes bind the cost-trend receipt to the underlying scale trace, validation duration planning trend, and runtime performance trend evidence.
-- The receipt makes the healthy/regression distinction visible without requiring consumers to join unrelated receipts manually.
-
-Targeted validation run this turn:
+Recorded targeted validation from the prior implementation turn:
 
 ```text
-cargo fmt --check
-RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --lib capability::judgment::record --quiet
-RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test validation_harness_contract --quiet
-RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test score_contract --test planning_contract --quiet
-```
-
-## Validation Evidence For This Implementation Turn
-
-```text
-cargo fmt --check
-RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --lib capability::judgment::record --quiet
-RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test validation_harness_contract --quiet
-RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test score_contract --test planning_contract --quiet
-
 cargo fmt --check: pass
 judgment::record unit tests: 16 passed, 0 failed
 validation_harness_contract: 140 passed, 0 failed
@@ -175,7 +80,118 @@ planning_contract: 2 passed, 0 failed
 score_contract: 5 passed, 0 failed
 ```
 
-Full-suite validation was not run in this implementation turn.
+Full-suite validation was not run in that implementation turn.
+
+## Current Planning Turn
+
+This turn is intentionally limited to planning and scoring. No implementation code is planned for this turn.
+
+The next implementation slice should improve the weakest current axis: **Simplicity**.
+
+Current gap:
+
+```text
+Reuse, scale, validation-health, validation-duration, runtime-performance, and cost-trend evidence are individually deterministic, but audit consumers still need to know several fixture families and root validator modes to understand the complete reuse/cost story.
+```
+
+Selected next slice:
+
+```text
+Add a deterministic retained policy reuse cost catalog summary that consolidates the existing reuse/scale/cost fixture family into a compact, hash-bound audit surface.
+```
+
+The slice should not add new policy authority or kernel behavior. It should only add deterministic evidence consolidation for audit and validation consumers.
+
+## Proposed Next Implementation Slice
+
+### Name
+
+```text
+policy reuse cost catalog summary
+```
+
+### Primary Question
+
+```text
+Can an auditor inspect one deterministic summary to see which retained policy reuse/cost evidence exists, which modes expose it, and whether the healthy/regression coverage is complete?
+```
+
+### Scope
+
+Implement a compact deterministic receipt and validation-harness exposure that catalogues the retained reuse/cost evidence family.
+
+Recommended receipt name:
+
+```text
+PolicyReuseCostCatalogReceipt
+```
+
+Recommended deterministic constructors:
+
+```text
+policy_reuse_cost_catalog_smoke_receipt()
+policy_reuse_cost_catalog_incomplete_smoke_receipt()
+```
+
+Recommended root validator modes:
+
+```text
+--policy-reuse-cost-catalog-smoke
+--policy-reuse-cost-catalog-incomplete-smoke
+```
+
+Recommended fields:
+
+```text
+catalog_version
+evidence_family_count
+healthy_mode_count
+regression_mode_count
+retained_fixture_count
+required_healthy_modes_present
+required_regression_modes_present
+summary_complete
+missing_required_modes
+source_policy_reuse_hash
+source_scale_trace_hash
+source_performance_cost_trend_hash
+source_validation_health_hash
+source_validation_duration_hash
+source_runtime_performance_hash
+catalog_hash
+```
+
+### Constraints
+
+1. Keep the kernel untouched.
+2. Do not introduce live LLM, network, wall-clock, or environment-dependent evidence.
+3. Reuse existing deterministic smoke receipts and retained fixtures.
+4. Preserve existing compact root validator modes.
+5. Keep the new receipt read-only and audit-oriented.
+6. Include a healthy complete catalog and a controlled incomplete catalog.
+7. Bind the catalog to source evidence hashes rather than duplicating source semantics.
+8. Avoid broad fixture churn unless the external mode or guarded-test count fixtures must be extended.
+
+### Acceptance Criteria
+
+1. A deterministic healthy catalog receipt exists and validates successfully.
+2. A deterministic incomplete catalog receipt exists and exposes the missing coverage explicitly.
+3. Root validator exposes both compact modes.
+4. `validation_harness_contract` asserts catalog completeness semantics and source hashes.
+5. Existing planning and scoring contract tests pass after plan/score updates.
+6. The kernel state machine remains unchanged.
+7. The new summary reduces audit joins across retained reuse/cost fixture families.
+
+### Suggested Targeted Validation
+
+```text
+cargo fmt --check
+RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --lib capability::judgment::record --quiet
+RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test validation_harness_contract --quiet
+RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test score_contract --test planning_contract --quiet
+```
+
+Full-suite validation can remain deferred unless the implementation touches runtime, API, graph mutation, or script surfaces.
 
 ## Evaluation Axes
 
@@ -208,8 +224,8 @@ arg max(G) = good
 - Full live Ollama validation remains environment-dependent.
 - Graph telemetry still requires explicit wrapper capture.
 - Student-model training is intentionally deferred until verified distillation data is large and clean.
-- Parallel orchestration scaling should wait until larger-batch reuse, validation health, and retained validation/runtime cost are proven together.
-- Full-suite validation should be scheduled after the performance-cost learning signal lands.
+- Parallel orchestration scaling should wait until larger-batch reuse, validation health, retained validation/runtime cost, and catalog completeness are proven together.
+- Full-suite validation should be scheduled after the catalog summary lands if fixture or CLI mode churn is broader than expected.
 
 ## Turn Protocol
 

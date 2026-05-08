@@ -1,10 +1,10 @@
 # Canon Agent Score
 
-This scorecard is the current implementation baseline, not a claim of full-system completion.
+This scorecard is the current planning-turn baseline, not a claim of additional implementation work.
 
 ## Validation Evidence
 
-Targeted validation run this turn:
+No implementation validation was run in this planning turn before updating the score. The current baseline therefore carries forward the targeted validation recorded from the last implementation turn:
 
 ```text
 command = cargo fmt --check
@@ -20,86 +20,85 @@ planning_contract: 2 passed, 0 failed
 score_contract: 5 passed, 0 failed
 ```
 
-Full-suite validation was not run in this implementation turn.
+This planning turn should run the planning and scoring contract tests after editing `plan.md` and `score.md`.
+
+Full-suite validation was not run in the prior implementation turn and is not required for this planning-only turn.
 
 ## Axis Scores
 
-Scores are on a `0.00` to `1.00` scale and reflect the current repository evidence inspected this turn.
+Scores are on a `0.00` to `1.00` scale and reflect the repository evidence reviewed for this planning turn.
 
 ```text
-I  Intelligence      = 0.69  performance-cost trend evidence makes policy reuse quality more actionable
-E  Efficiency        = 0.68  avoided LLM calls are now joined to retained validation/runtime cost evidence
-C  Correctness       = 0.83  targeted judgment, validation-harness, score, and planning contracts pass
-A  Alignment         = 0.83  kernel authority remains unchanged; evidence stays in capability/validation layers
-R  Robustness        = 0.77  healthy and controlled-regression performance-cost paths are covered
+I  Intelligence      = 0.69  performance-cost trend evidence remains the strongest learning-reuse signal
+E  Efficiency        = 0.68  avoided LLM calls are joined to retained validation/runtime cost evidence
+C  Correctness       = 0.83  prior targeted judgment, validation-harness, score, and planning contracts passed
+A  Alignment         = 0.83  selected next slice preserves kernel authority boundaries
+R  Robustness        = 0.77  healthy and controlled-regression performance-cost paths remain covered
 P  Performance       = 0.64  deterministic trend receipt ties reuse scale to validation/runtime cost within budget
-S  Scalability       = 0.65  larger deterministic retained batches now expose reuse plus cost safety in one receipt
-D  Determinism       = 0.86  cost trend uses deterministic smoke records and hash-bound source receipts
-T  Transparency      = 0.84  reuse, guarded-test count, runtime budget, validation verdict, and source hashes are compactly visible
-Co Collaboration     = 0.73  plan and score now hand off the next weakest-axis slice after cost-trend completion
-Em Empowerment       = 0.69  consumers can query root_validate for reuse/cost health without manual receipt joins
-B  Benefit           = 0.74  implementation improves direct measurement of reasoning-cost reduction under budget
-L  Learning          = 0.66  verified reuse evidence is now linked to cost-safety promotion signals
-St Structure         = 0.76  trend evidence is isolated to judgment/validation surfaces with explicit contracts
-Si Simplicity        = 0.64  compact performance-cost output reduces audit joins across retained fixtures
-F  Future-Proofing   = 0.77  layered architecture remains intact while adding scalable cost evidence hooks
+S  Scalability       = 0.65  larger deterministic retained batches expose reuse plus cost safety in one receipt
+D  Determinism       = 0.86  next slice is constrained to deterministic smoke and retained fixture evidence
+T  Transparency      = 0.84  current receipts expose source hashes, but audit coverage is still distributed
+Co Collaboration     = 0.74  this planning turn defines a narrow next slice with explicit acceptance criteria
+Em Empowerment       = 0.69  root_validate consumers can query reuse/cost health, but catalog-level discovery is missing
+B  Benefit           = 0.74  next slice targets lower audit cost without expanding authority
+L  Learning          = 0.66  verified reuse/cost evidence is useful, but promotion-readiness remains indirect
+St Structure         = 0.76  evidence remains isolated to judgment/validation surfaces with explicit contracts
+Si Simplicity        = 0.64  weakest axis; retained reuse/cost evidence is still spread across fixture families
+F  Future-Proofing   = 0.77  catalog summary would make future retained evidence additions easier to audit
 ```
 
 Approximate geometric mean:
 
 ```text
-G ≈ 0.730
+G ≈ 0.731
 ```
 
 ## Current Judgment
 
 ```text
-turn_type = implementation step 1
+turn_type = planning turn
 weakest_axis = Simplicity
 secondary_risk = Scalability
-completed_action = added deterministic policy reuse performance-cost trend evidence
-current_gap = cost-trend evidence is compact, but retained fixture/cost surfaces are still spread across several fixture families
-next_action = add a retained policy reuse performance-cost fixture or catalog summary if the next loop continues evidence consolidation
+last_completed_action = added deterministic policy reuse performance-cost trend evidence
+current_gap = reuse/cost evidence is deterministic but distributed across several fixture families and root validator modes
+next_action = add a deterministic retained policy reuse cost catalog summary
 scope = capability/validation-harness evidence only; kernel authority unchanged
-validation = targeted judgment/validation-harness/score/planning tests passed; full suite not run this turn
+validation = planning/score contracts should be run after this file update; full suite not required for planning-only turn
 ```
 
-## Why Simplicity Is Now Weakest
+## Why Simplicity Remains Weakest
 
-Performance improved because the new receipt joins larger-batch avoided LLM calls with retained validation/runtime cost signals. The next weak point is simplicity: related retained evidence still exists across separate fixture families, and a consumer may still need fixture/catalog context for broader audit workflows.
+The performance-cost trend receipt reduced manual joins across scale, validation duration, and runtime performance evidence. However, the broader retained reuse/cost audit story still spans multiple fixture families and compact validator modes. An auditor can verify each piece, but still needs prior knowledge of which pieces form the complete evidence family.
 
-## Completed Score Improvement Target
+The next slice should make that evidence family discoverable through one deterministic catalog receipt.
 
-Raised `P` from `0.59` to `0.64` by adding a deterministic performance-cost trend receipt that joins larger-batch reuse evidence with retained validation/runtime cost evidence.
+## Next Score Improvement Target
 
-The harness now exposes these fields for deterministic retained batches:
+Raise `Si` from `0.64` to approximately `0.68` by adding a compact, deterministic policy reuse cost catalog summary.
+
+Expected scoring improvements after implementation:
 
 ```text
-batch_size
-avoided_llm_calls_per_batch
-reuse_rate_bps
-validation_expected_count_guarded_tests
-estimated_ms_per_guarded_test
-runtime_budget_status
-validation_cost_verdict
-cost_regression_flag
-source_scale_trace_hash
-source_validation_duration_hash
-source_runtime_performance_hash
+Si +0.04  fewer audit joins across retained reuse/cost fixture families
+T  +0.02  clearer discovery of required healthy/regression evidence
+Co +0.02  better handoff for future agents and auditors
+Em +0.02  root_validate consumers can inspect catalog completeness directly
+F  +0.01  future evidence families can follow the catalog pattern
 ```
 
-Completed scoring evidence:
+## Planned Acceptance Criteria
 
-- retained larger-batch healthy reuse/cost case exposed by the harness;
-- retained larger-batch cost-regression case exposed by the harness;
-- targeted validation commands and results recorded in this file;
-- no kernel authority expansion.
-
-## Acceptance Criteria Completed This Turn
-
-1. A deterministic healthy performance-cost trend receipt exists.
-2. A deterministic controlled cost-regression receipt exists.
+1. A deterministic healthy catalog receipt exists and validates successfully.
+2. A deterministic incomplete catalog receipt exists and exposes missing required coverage.
 3. Root validator compact modes expose both receipts.
-4. `validation_harness_contract` asserts the semantic fields and source hashes.
-5. Planning and score contract tests pass.
+4. `validation_harness_contract` asserts catalog completeness semantics and source hashes.
+5. Planning and score contract tests pass after documentation updates.
 6. The kernel state machine remains unchanged.
+
+## Non-Goals For The Next Slice
+
+- Do not add new policy authority.
+- Do not change kernel transitions.
+- Do not perform live LLM, network, wall-clock, or environment-dependent measurement.
+- Do not begin student-model training.
+- Do not broaden orchestration or parallel execution semantics.
