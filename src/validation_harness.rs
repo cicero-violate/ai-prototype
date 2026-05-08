@@ -17,7 +17,7 @@ pub const FAST_TEST_STEP: &str = "fast_score_contract_tests";
 pub const LIB_UNIT_STEP: &str = "lib_unit_contract_tests";
 pub const API_TRANSPORT_STEP: &str = "api_transport_contract_tests";
 pub const VALIDATION_HARNESS_STEP: &str = "validation_harness_contract_tests";
-pub const VALIDATION_HARNESS_EXPECTED_TESTS: usize = 172;
+pub const VALIDATION_HARNESS_EXPECTED_TESTS: usize = 176;
 pub const PLANNING_CONTRACT_STEP: &str = "planning_contract_tests";
 pub const GRAPH_MUTATION_CLI_CONTRACT_STEP: &str = "graph_mutation_cli_contract_tests";
 pub const GRAPH_MUTATION_CLI_CONTRACT_EXPECTED_TESTS: usize = 10;
@@ -101,6 +101,9 @@ pub const POLICY_REUSE_EVIDENCE_QUICKCHECK_REGRESSION_SMOKE_STEP: &str =
 pub const POLICY_REUSE_EVIDENCE_MATURITY_SMOKE_STEP: &str = "policy_reuse_evidence_maturity_smoke";
 pub const POLICY_REUSE_EVIDENCE_MATURITY_REGRESSION_SMOKE_STEP: &str =
     "policy_reuse_evidence_maturity_regression_smoke";
+pub const POLICY_REUSE_EVIDENCE_SUMMARY_SMOKE_STEP: &str = "policy_reuse_evidence_summary_smoke";
+pub const POLICY_REUSE_EVIDENCE_SUMMARY_REGRESSION_SMOKE_STEP: &str =
+    "policy_reuse_evidence_summary_regression_smoke";
 pub const POLICY_VALIDATION_HEALTH_SMOKE_STEP: &str = "policy_validation_health_smoke";
 pub const POLICY_VALIDATION_HEALTH_TREND_SMOKE_STEP: &str = "policy_validation_health_trend_smoke";
 pub const POLICY_ORCHESTRATION_CAPACITY_SMOKE_STEP: &str = "policy_orchestration_capacity_smoke";
@@ -1539,6 +1542,75 @@ impl PolicyReuseEvidenceMaturityReceipt {
             self.promotion_eligible,
             self.regression_reason,
             self.maturity_hash,
+            self.receipt_hash,
+        )
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PolicyReuseEvidenceSummaryReceipt {
+    pub schema: &'static str,
+    pub record_type: &'static str,
+    pub summary_version: u64,
+    pub source_maturity_hash: u64,
+    pub source_quickcheck_hash: u64,
+    pub source_bundle_hash: u64,
+    pub maturity_stage: &'static str,
+    pub promotion_eligible: bool,
+    pub summary_status: &'static str,
+    pub evaluator_action: &'static str,
+    pub regression_reason: &'static str,
+    pub summary_hash: u64,
+    pub receipt_hash: u64,
+}
+
+impl PolicyReuseEvidenceSummaryReceipt {
+    pub fn passed(&self) -> bool {
+        self.is_valid() && self.summary_status == "pass"
+    }
+
+    pub fn is_valid(&self) -> bool {
+        self.schema == "canon_policy_reuse_evidence_summary_v1"
+            && matches!(
+                self.record_type,
+                "policy_reuse_evidence_summary"
+                    | POLICY_REUSE_EVIDENCE_SUMMARY_SMOKE_STEP
+                    | POLICY_REUSE_EVIDENCE_SUMMARY_REGRESSION_SMOKE_STEP
+            )
+            && self.summary_version == 1
+            && self.source_maturity_hash != 0
+            && self.source_quickcheck_hash != 0
+            && self.source_bundle_hash != 0
+            && matches!(self.maturity_stage, "candidate" | "immature")
+            && matches!(self.summary_status, "pass" | "fail")
+            && matches!(self.evaluator_action, "accept_summary" | "inspect_maturity")
+            && matches!(self.regression_reason, "none" | "maturity_immature")
+            && (self.summary_status == "pass")
+                == (self.promotion_eligible
+                    && self.maturity_stage == "candidate"
+                    && self.evaluator_action == "accept_summary"
+                    && self.regression_reason == "none")
+            && self.summary_hash != 0
+            && self.receipt_hash != 0
+            && self.summary_hash == policy_reuse_evidence_summary_hash(self)
+            && self.receipt_hash == policy_reuse_evidence_summary_receipt_hash(self)
+    }
+
+    pub fn to_json(&self) -> String {
+        format!(
+            "{{\"schema\":\"{}\",\"record_type\":\"{}\",\"summary_version\":{},\"source_maturity_hash\":{},\"source_quickcheck_hash\":{},\"source_bundle_hash\":{},\"maturity_stage\":\"{}\",\"promotion_eligible\":{},\"summary_status\":\"{}\",\"evaluator_action\":\"{}\",\"regression_reason\":\"{}\",\"summary_hash\":{},\"receipt_hash\":{}}}",
+            self.schema,
+            self.record_type,
+            self.summary_version,
+            self.source_maturity_hash,
+            self.source_quickcheck_hash,
+            self.source_bundle_hash,
+            self.maturity_stage,
+            self.promotion_eligible,
+            self.summary_status,
+            self.evaluator_action,
+            self.regression_reason,
+            self.summary_hash,
             self.receipt_hash,
         )
     }
@@ -3531,6 +3603,74 @@ fn finalize_policy_reuse_evidence_maturity(receipt: &mut PolicyReuseEvidenceMatu
     receipt.receipt_hash = policy_reuse_evidence_maturity_receipt_hash(receipt);
 }
 
+pub fn policy_reuse_evidence_summary_smoke_receipt() -> PolicyReuseEvidenceSummaryReceipt {
+    let maturity = policy_reuse_evidence_maturity_smoke_receipt();
+    let quickcheck = policy_reuse_evidence_quickcheck_smoke_receipt();
+    let bundle = policy_reuse_evidence_bundle_smoke_receipt();
+    let mut receipt = policy_reuse_evidence_summary_from_sources(
+        POLICY_REUSE_EVIDENCE_SUMMARY_SMOKE_STEP,
+        &maturity,
+        &quickcheck,
+        &bundle,
+        "pass",
+        "accept_summary",
+        "none",
+    );
+    finalize_policy_reuse_evidence_summary(&mut receipt);
+    receipt
+}
+
+pub fn policy_reuse_evidence_summary_regression_smoke_receipt() -> PolicyReuseEvidenceSummaryReceipt
+{
+    let maturity = policy_reuse_evidence_maturity_regression_smoke_receipt();
+    let quickcheck = policy_reuse_evidence_quickcheck_regression_smoke_receipt();
+    let bundle = policy_reuse_evidence_bundle_smoke_receipt();
+    let mut receipt = policy_reuse_evidence_summary_from_sources(
+        POLICY_REUSE_EVIDENCE_SUMMARY_REGRESSION_SMOKE_STEP,
+        &maturity,
+        &quickcheck,
+        &bundle,
+        "fail",
+        "inspect_maturity",
+        "maturity_immature",
+    );
+    finalize_policy_reuse_evidence_summary(&mut receipt);
+    receipt
+}
+
+fn policy_reuse_evidence_summary_from_sources(
+    record_type: &'static str,
+    maturity: &PolicyReuseEvidenceMaturityReceipt,
+    quickcheck: &PolicyReuseEvidenceQuickcheckReceipt,
+    bundle: &PolicyReuseEvidenceBundleReceipt,
+    summary_status: &'static str,
+    evaluator_action: &'static str,
+    regression_reason: &'static str,
+) -> PolicyReuseEvidenceSummaryReceipt {
+    let mut receipt = PolicyReuseEvidenceSummaryReceipt {
+        schema: "canon_policy_reuse_evidence_summary_v1",
+        record_type,
+        summary_version: 1,
+        source_maturity_hash: maturity.receipt_hash,
+        source_quickcheck_hash: quickcheck.receipt_hash,
+        source_bundle_hash: bundle.receipt_hash,
+        maturity_stage: maturity.maturity_stage,
+        promotion_eligible: maturity.promotion_eligible,
+        summary_status,
+        evaluator_action,
+        regression_reason,
+        summary_hash: 0,
+        receipt_hash: 0,
+    };
+    finalize_policy_reuse_evidence_summary(&mut receipt);
+    receipt
+}
+
+fn finalize_policy_reuse_evidence_summary(receipt: &mut PolicyReuseEvidenceSummaryReceipt) {
+    receipt.summary_hash = policy_reuse_evidence_summary_hash(receipt);
+    receipt.receipt_hash = policy_reuse_evidence_summary_receipt_hash(receipt);
+}
+
 #[allow(clippy::too_many_arguments)]
 fn policy_reuse_evidence_surface_index_from_sources(
     record_type: &'static str,
@@ -3796,6 +3936,64 @@ fn policy_orchestration_capacity_hash(receipt: &PolicyOrchestrationCapacityRecei
     h = h.wrapping_mul(0x100000001b3) ^ policy_reuse_verdict_code;
     h = h.wrapping_mul(0x100000001b3) ^ verdict_code;
     h.max(1)
+}
+
+fn policy_reuse_evidence_summary_hash(receipt: &PolicyReuseEvidenceSummaryReceipt) -> u64 {
+    if receipt.summary_version == 0
+        || receipt.source_maturity_hash == 0
+        || receipt.source_quickcheck_hash == 0
+        || receipt.source_bundle_hash == 0
+    {
+        return 0;
+    }
+    let maturity_stage_code = match receipt.maturity_stage {
+        "candidate" => 1,
+        "immature" => 2,
+        _ => 0,
+    };
+    let summary_status_code = match receipt.summary_status {
+        "pass" => 1,
+        "fail" => 2,
+        _ => 0,
+    };
+    let evaluator_action_code = match receipt.evaluator_action {
+        "accept_summary" => 1,
+        "inspect_maturity" => 2,
+        _ => 0,
+    };
+    let regression_reason_code = match receipt.regression_reason {
+        "none" => 1,
+        "maturity_immature" => 2,
+        _ => 0,
+    };
+    if maturity_stage_code == 0
+        || summary_status_code == 0
+        || evaluator_action_code == 0
+        || regression_reason_code == 0
+    {
+        return 0;
+    }
+    let mut h = 0x504f_4c52_4553_5548u64;
+    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.schema.as_bytes());
+    h = h.wrapping_mul(0x100000001b3) ^ stable_hash64(receipt.record_type.as_bytes());
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.summary_version;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_maturity_hash;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_quickcheck_hash;
+    h = h.wrapping_mul(0x100000001b3) ^ receipt.source_bundle_hash;
+    h = h.wrapping_mul(0x100000001b3) ^ maturity_stage_code;
+    h = h.wrapping_mul(0x100000001b3) ^ u64::from(receipt.promotion_eligible);
+    h = h.wrapping_mul(0x100000001b3) ^ summary_status_code;
+    h = h.wrapping_mul(0x100000001b3) ^ evaluator_action_code;
+    h = h.wrapping_mul(0x100000001b3) ^ regression_reason_code;
+    h.max(1)
+}
+
+fn policy_reuse_evidence_summary_receipt_hash(receipt: &PolicyReuseEvidenceSummaryReceipt) -> u64 {
+    let summary_hash = policy_reuse_evidence_summary_hash(receipt);
+    if summary_hash == 0 || receipt.summary_hash != summary_hash {
+        return 0;
+    }
+    (summary_hash ^ 0x504f_4c52_4553_5552u64).max(1)
 }
 
 fn policy_reuse_evidence_maturity_hash(receipt: &PolicyReuseEvidenceMaturityReceipt) -> u64 {
