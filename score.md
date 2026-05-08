@@ -1,6 +1,6 @@
 # Canon Agent Score
 
-This scorecard records current progress after the planning turn following implementation step 5 of the current agent loop. The working tree contains deterministic policy reuse evaluator-savings, scaling-projection, distillation-readiness, evidence-surface index, evidence-bundle, evidence-quickcheck, evidence-maturity, evidence-summary, evidence-manifest, evidence validation-budget, evidence rollout-readiness, evidence learning-admission, evidence retrieval-readiness, evidence compact-validation, batch-readiness, batch-execution-plan, batch-evaluation-admission, batch-run-request, external-evaluator-result, learning-candidate, learning-data-admission, retrieval-example-admission, retrieval-example-index, retrieval-corpus-readiness, retrieval-corpus-admission, retrieval-use-approval, retrieval-use-manifest, retrieval-query-plan, retrieval-query-approval, retrieval-result-admission, retrieval-result-manifest, retrieval-result-use-admission, retrieval-result-use-manifest, retrieval-result-use-readiness, retrieval-result-use-approval, retrieval-result-use-manifest-admission, retrieval-result-use-summary, retrieval-result-use-summary-manifest, retrieval-result-use-summary-manifest-admission, retrieval-result-use-summary-manifest-readiness, and retrieval-result-use-summary-manifest-approval evidence.
+This scorecard records current progress after implementation step 1 of the current agent loop. The working tree contains deterministic policy reuse evaluator-savings, scaling-projection, distillation-readiness, evidence-surface index, evidence-bundle, evidence-quickcheck, evidence-maturity, evidence-summary, evidence-manifest, evidence validation-budget, evidence rollout-readiness, evidence learning-admission, evidence retrieval-readiness, evidence compact-validation, batch-readiness, batch-execution-plan, batch-evaluation-admission, batch-run-request, external-evaluator-result, learning-candidate, learning-data-admission, retrieval-example-admission, retrieval-example-index, retrieval-corpus-readiness, retrieval-corpus-admission, retrieval-use-approval, retrieval-use-manifest, retrieval-query-plan, retrieval-query-approval, retrieval-result-admission, retrieval-result-manifest, retrieval-result-use-admission, retrieval-result-use-manifest, retrieval-result-use-readiness, retrieval-result-use-approval, retrieval-result-use-manifest-admission, retrieval-result-use-summary, retrieval-result-use-summary-manifest, retrieval-result-use-summary-manifest-admission, retrieval-result-use-summary-manifest-readiness, retrieval-result-use-summary-manifest-approval, and retrieval-result-use-summary-manifest-approval-admission evidence.
 
 ## Validation Evidence
 
@@ -299,4 +299,83 @@ St = unchanged at 0.97
 Si = unchanged at 0.97
 F  = unchanged at 0.98
 G  = unchanged at approximately 0.966
+```
+
+
+## Implementation Step 1 Score Decision - Retrieval Result Use Summary Manifest Approval Admission
+
+```text
+selected_axis = Learning
+score_change_this_turn = retained L at 1.00
+reason = retrieval-result-use-summary-manifest-approval-admission evidence composes retrieval-result-use-summary-manifest-approval, retrieval-result-use-summary-manifest-readiness, and retrieval-result-use-summary-manifest-admission into one deterministic result-use-summary-manifest-approval-admitted boundary without retrieval storage operations, query execution, runtime result approval, promotion, batch execution, or student training
+source_changes_observed_but_not_owned = canon-rustc-v3/* modified and untracked files remain out of scope for this implementation turn
+commit_scope = retrieval-result-use-summary-manifest-approval-admission implementation, tests, fixture, plan.md, score.md
+```
+
+Updated validation evidence:
+
+```text
+cargo fmt --check: pass
+validation_harness_contract retrieval_result_use_summary_manifest_approval_admission --no-run: pass
+cargo check --quiet: pass after retry
+planning_contract and score_contract: pass
+focused executable retrieval_result_use_summary_manifest_approval_admission tests: attempted twice, connector returned 502 before a Rust result was available
+```
+
+Scoring stance after this implementation:
+
+```text
+I  = 0.98  approved summary-manifest evidence can now be deterministically admitted for later gates
+E  = 0.97  approval-admission is evidence-only and avoids retrieval reads, writes, query execution, and runtime result approval
+C  = 0.91  formatting, focused no-run compile, cargo check, and planning/score tests pass; executable focused test was connector-blocked
+A  = 0.97  approval-admission forbids retrieval storage operations, promotion, runtime result approval, and student training
+R  = 0.96  healthy and controlled summary-manifest-not-approved paths are covered by compiled contracts
+P  = 0.95  no runtime retrieval storage, query execution, or model-training cost is introduced
+S  = 0.98  the evidence chain now exposes an admitted approval boundary for downstream gates
+D  = 0.97  receipts use fixed source hashes, booleans, status strings, reason strings, and deterministic hashes
+T  = 0.98  approval, readiness, admission source hashes and not-admitted reason are explicit
+Co = 0.95  plan and score hand off the next downstream evidence-only retrieval/model-learning gate
+Em = 0.95  root_validate consumers have healthy and regression compact modes for approval-admission evidence
+B  = 0.97  evaluators get deterministic admitted approval evidence before storage, query execution, runtime result approval, or model training
+L  = 1.00  approved summary-manifest evidence can now become admitted evidence without storage operations
+St = 0.97  approval-admission composes existing evidence without kernel or authority drift
+Si = 0.97  one receipt represents the approval-admission boundary instead of scattered checks
+F  = 0.98  approval-admission prepares later retrieval/model-learning gates without committing to storage or training behavior
+G  ≈ 0.967
+```
+
+
+## Planning Turn Score Decision - Downstream Approval Admission Consumption Gate
+
+```text
+turn_type = planning_only
+selected_axis = Learning
+score_change_this_turn = no score increase; planning/scoring only
+reason = refreshed the handoff from retrieval-result-use-summary-manifest-approval-admission evidence toward a downstream consumption gate without claiming new implementation or validation evidence
+current_gap = approval-admission evidence is explicit, but there is not yet a deterministic evidence-only consumer gate for later retrieval/model-learning decisions
+next_action = add policy reuse evidence retrieval-result-use-summary-manifest-approval-admission-consumption receipts with healthy and controlled not-admitted paths
+commit_scope = plan.md, score.md only
+out_of_scope_changes_preserved = staged implementation files and canon-rustc-v3 modified/untracked files remain unowned by this planning turn
+```
+
+Planning-only scoring stance:
+
+```text
+I  = unchanged at 0.98
+E  = unchanged at 0.97
+C  = unchanged at 0.91
+A  = unchanged at 0.97
+R  = unchanged at 0.96
+P  = unchanged at 0.95
+S  = unchanged at 0.98
+D  = unchanged at 0.97
+T  = unchanged at 0.98
+Co = unchanged at 0.95
+Em = unchanged at 0.95
+B  = unchanged at 0.97
+L  = unchanged at 1.00
+St = unchanged at 0.97
+Si = unchanged at 0.97
+F  = unchanged at 0.98
+G  = unchanged at approximately 0.967
 ```
