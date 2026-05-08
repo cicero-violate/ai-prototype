@@ -17,7 +17,7 @@ pub const FAST_TEST_STEP: &str = "fast_score_contract_tests";
 pub const LIB_UNIT_STEP: &str = "lib_unit_contract_tests";
 pub const API_TRANSPORT_STEP: &str = "api_transport_contract_tests";
 pub const VALIDATION_HARNESS_STEP: &str = "validation_harness_contract_tests";
-pub const VALIDATION_HARNESS_EXPECTED_TESTS: usize = 128;
+pub const VALIDATION_HARNESS_EXPECTED_TESTS: usize = 132;
 pub const PLANNING_CONTRACT_STEP: &str = "planning_contract_tests";
 pub const GRAPH_MUTATION_CLI_CONTRACT_STEP: &str = "graph_mutation_cli_contract_tests";
 pub const GRAPH_MUTATION_CLI_CONTRACT_EXPECTED_TESTS: usize = 10;
@@ -63,6 +63,9 @@ pub const VALIDATION_COST_FOOTPRINT_GROWTH_SMOKE_STEP: &str =
 pub const POLICY_REUSE_SMOKE_STEP: &str = "policy_reuse_smoke";
 pub const POLICY_REUSE_TREND_SMOKE_STEP: &str = "policy_reuse_trend_smoke";
 pub const POLICY_REUSE_REGRESSION_SMOKE_STEP: &str = "policy_reuse_regression_smoke";
+pub const POLICY_REUSE_LEDGER_SUMMARY_SMOKE_STEP: &str = "policy_reuse_ledger_summary_smoke";
+pub const POLICY_REUSE_LEDGER_SUMMARY_REGRESSION_SMOKE_STEP: &str =
+    "policy_reuse_ledger_summary_regression_smoke";
 pub const POLICY_VALIDATION_HEALTH_SMOKE_STEP: &str = "policy_validation_health_smoke";
 pub const POLICY_VALIDATION_HEALTH_TREND_SMOKE_STEP: &str = "policy_validation_health_trend_smoke";
 pub const POLICY_ORCHESTRATION_CAPACITY_SMOKE_STEP: &str = "policy_orchestration_capacity_smoke";
@@ -2374,6 +2377,43 @@ pub fn policy_reuse_regression_smoke_receipt(
     receipt.receipt_hash =
         crate::capability::judgment::PolicyReuseTrendReceipt::compare(&baseline, &current)
             .receipt_hash;
+    receipt
+}
+
+pub fn policy_reuse_ledger_summary_smoke_receipt(
+) -> crate::capability::judgment::PolicyReuseLedgerSummaryReceipt {
+    let reuse = policy_reuse_smoke_receipt();
+    let mut receipt =
+        crate::capability::judgment::PolicyReuseLedgerSummaryReceipt::from_reuse_validation_counts(
+            &reuse, 3, 0,
+        );
+    receipt.record_type = POLICY_REUSE_LEDGER_SUMMARY_SMOKE_STEP;
+    receipt.receipt_hash =
+        crate::capability::judgment::PolicyReuseLedgerSummaryReceipt::from_reuse_validation_counts(
+            &reuse, 3, 0,
+        )
+        .receipt_hash;
+    receipt
+}
+
+pub fn policy_reuse_ledger_summary_regression_smoke_receipt(
+) -> crate::capability::judgment::PolicyReuseLedgerSummaryReceipt {
+    let (hit, miss) = policy_reuse_smoke_records();
+    let reuse = crate::capability::judgment::PolicyReuseReceipt::from_policy_judgments(&[
+        hit.clone(),
+        hit,
+        miss,
+    ]);
+    let mut receipt =
+        crate::capability::judgment::PolicyReuseLedgerSummaryReceipt::from_reuse_validation_counts(
+            &reuse, 2, 1,
+        );
+    receipt.record_type = POLICY_REUSE_LEDGER_SUMMARY_REGRESSION_SMOKE_STEP;
+    receipt.receipt_hash =
+        crate::capability::judgment::PolicyReuseLedgerSummaryReceipt::from_reuse_validation_counts(
+            &reuse, 2, 1,
+        )
+        .receipt_hash;
     receipt
 }
 

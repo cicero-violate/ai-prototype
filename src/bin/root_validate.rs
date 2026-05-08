@@ -210,6 +210,16 @@ const COMPACT_MODES: &[CompactMode] = &[
         run: policy_reuse_regression_smoke_mode,
     },
     CompactMode {
+        arg: "--policy-reuse-ledger-summary-smoke",
+        marker: "policy_reuse_ledger_summary_smoke",
+        run: policy_reuse_ledger_summary_smoke_mode,
+    },
+    CompactMode {
+        arg: "--policy-reuse-ledger-summary-regression-smoke",
+        marker: "policy_reuse_ledger_summary_regression_smoke",
+        run: policy_reuse_ledger_summary_regression_smoke_mode,
+    },
+    CompactMode {
         arg: "--root-validate-dispatch-catalog",
         marker: "canon_root_validate_dispatch_catalog_v1",
         run: root_validate_dispatch_catalog_mode,
@@ -526,6 +536,23 @@ fn policy_reuse_trend_smoke_mode() -> Result<CompactModeOutcome, String> {
 fn policy_reuse_regression_smoke_mode() -> Result<CompactModeOutcome, String> {
     let receipt = validation_harness::policy_reuse_regression_smoke_receipt();
     let passed = receipt.trend_status == "regressed" && receipt.verdict == "fail";
+    Ok(CompactModeOutcome::controlled_json(
+        receipt.to_json(),
+        passed,
+    ))
+}
+
+fn policy_reuse_ledger_summary_smoke_mode() -> Result<CompactModeOutcome, String> {
+    let receipt = validation_harness::policy_reuse_ledger_summary_smoke_receipt();
+    Ok(CompactModeOutcome::pass_json(
+        receipt.to_json(),
+        receipt.passed(),
+    ))
+}
+
+fn policy_reuse_ledger_summary_regression_smoke_mode() -> Result<CompactModeOutcome, String> {
+    let receipt = validation_harness::policy_reuse_ledger_summary_regression_smoke_receipt();
+    let passed = receipt.is_valid() && receipt.regression_flag && !receipt.passed();
     Ok(CompactModeOutcome::controlled_json(
         receipt.to_json(),
         passed,

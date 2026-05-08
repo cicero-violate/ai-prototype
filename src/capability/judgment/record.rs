@@ -165,7 +165,12 @@ impl PolicyReuseLedgerSummaryReceipt {
 
     pub fn is_valid(&self) -> bool {
         self.schema_version == 1
-            && self.record_type == "policy_reuse_ledger_summary"
+            && matches!(
+                self.record_type,
+                "policy_reuse_ledger_summary"
+                    | "policy_reuse_ledger_summary_smoke"
+                    | "policy_reuse_ledger_summary_regression_smoke"
+            )
             && self.llm_fallbacks == self.policy_misses
             && self.reuse_rate_bps <= 10_000
             && self.source_receipt_hash != 0
@@ -568,7 +573,9 @@ fn policy_reuse_ledger_summary_receipt_hash(receipt: &PolicyReuseLedgerSummaryRe
         return 0;
     }
     let record_type_code = match receipt.record_type {
-        "policy_reuse_ledger_summary" => 1,
+        "policy_reuse_ledger_summary"
+        | "policy_reuse_ledger_summary_smoke"
+        | "policy_reuse_ledger_summary_regression_smoke" => 1,
         _ => 0,
     };
     if record_type_code == 0 || receipt.reuse_rate_bps > 10_000 {

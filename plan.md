@@ -1,6 +1,6 @@
 # Canon Agent Implementation Plan
 
-This plan tracks the current deterministic implementation slice from the repository state. This turn is intentionally limited to planning and scoring.
+This plan tracks the current deterministic implementation slice from the repository state.
 
 ## North Star
 
@@ -24,21 +24,23 @@ The repository already contains these meaningful surfaces:
 - local/Ollama and OpenAI-compatible LLM effect/proof receipt surfaces;
 - validation harness constants and observe-validation script contracts;
 - policy, learning, eval, judgment, verification, tooling, memory, observation, and orchestration modules exported as crate surfaces;
-- deterministic policy reuse ledger summary receipt in the judgment layer.
+- deterministic policy reuse ledger summary receipt in the judgment layer;
+- validation-harness/root-validate smoke exposure for policy reuse ledger summary evidence, including a controlled validation-regression case.
 
-Most recent recorded targeted validation from the prior implementation turn:
+Targeted validation run this turn:
 
 ```text
-RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test score_contract --test planning_contract --test validation_harness_contract --quiet
+RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test validation_harness_contract --quiet
 RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --lib capability::judgment::record --quiet
+RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test score_contract --test planning_contract --quiet
 
 planning_contract: 2 passed, 0 failed
 score_contract:    5 passed, 0 failed
-validation_harness_contract: 128 passed, 0 failed
+validation_harness_contract: 132 passed, 0 failed
 judgment::record unit tests: 12 passed, 0 failed
 ```
 
-No code validation was run in this planning/scoring turn.
+Full-suite validation was not run in this implementation turn.
 
 ## Evaluation Axes
 
@@ -68,63 +70,71 @@ arg max(G) = good
 
 ## Priority Judgment
 
-The weakest practical axis remains **Learning**, with **Simplicity** close behind.
+The weakest practical axis is now **Scalability**, with **Performance** and **Simplicity** close behind.
 
-Reason: the repository now has policy reuse, validation health, and judgment receipt surfaces, but the root validation/observe path still needs to expose the compact reuse-health signal directly. Until that signal is visible at the harness/catalog boundary, learning exists as typed internal evidence rather than as an obvious run-level improvement metric.
+Reason: the compact learning signal is now visible through the validation harness/root validator, but the runtime still has limited evidence that policy reuse scales across larger batches, parallel orchestration, or real multi-run traces without raising validation cost.
 
 ## Next Implementation Slice
 
-Promote `PolicyReuseLedgerSummaryReceipt` into the validation harness/catalog path so the root observe report can expose one compact policy-reuse/validation-health signal without requiring consumers to join multiple receipts.
+Implemented this turn: promoted `PolicyReuseLedgerSummaryReceipt` into the validation harness/root-validate catalog path so consumers can read one compact policy-reuse/validation-health signal without joining multiple receipts.
 
-The slice should answer:
+The implemented slice answers:
 
 ```text
 For a completed run set, how much work was handled by policy, how much fell back to LLM/tooling, and did validation health regress while reuse increased?
 ```
 
-Required constraints:
+Completed constraints:
 
 1. Keep the kernel untouched.
-2. Do not add LLM authority or policy self-approval.
-3. Add harness/catalog exposure only after preserving deterministic receipt semantics.
-4. Prefer semantic assertions over brittle hash literals.
-5. Keep the public signal compact enough for observe/report consumers.
+2. Added harness/root-validate compact modes only.
+3. Preserved deterministic receipt validation and hash binding while allowing smoke-specific record types.
+4. Added semantic assertions for healthy reuse and validation-regression cases.
+5. Updated retained CLI/validation fixtures for the new public modes and expected guarded-test count.
 
-Expected implementation tasks:
+Completed implementation tasks:
 
-1. Add a validation-harness fixture or smoke path for `PolicyReuseLedgerSummaryReceipt`.
-2. Register the summary signal in the dispatch/catalog evidence surface if it is not already present.
-3. Add contract assertions for both healthy reuse and validation-regression cases.
-4. Preserve replay/tamper coverage in judgment unit tests.
-5. Run targeted validation:
+1. Added `policy_reuse_ledger_summary_smoke_receipt()`.
+2. Added `policy_reuse_ledger_summary_regression_smoke_receipt()`.
+3. Added root validator compact modes:
+   - `--policy-reuse-ledger-summary-smoke`
+   - `--policy-reuse-ledger-summary-regression-smoke`
+4. Added validation-harness contract assertions for all required semantic fields:
+   - `policy_hits`
+   - `policy_misses`
+   - `llm_fallbacks`
+   - `validation_passes`
+   - `validation_failures`
+   - `reuse_rate_bps`
+   - `regression_flag`
+   - `source_receipt_hash`
+5. Preserved judgment-layer replay/tamper coverage through targeted judgment tests.
+
+## Next Implementation Slice
+
+Add a deterministic **policy reuse scale trace** that shows whether the compact summary remains useful across larger retained batches.
+
+The next slice should answer:
+
+```text
+When policy reuse is evaluated over a larger deterministic batch, does the system preserve validation health while increasing avoided LLM calls per batch?
+```
+
+Suggested constraints:
+
+1. Keep the kernel untouched.
+2. Use retained deterministic fixtures or generated smoke records only.
+3. Avoid live LLM or environment-dependent calls.
+4. Reuse existing orchestration/capacity surfaces where possible.
+5. Add semantic tests for batch size, policy hits, LLM fallbacks, validation failures, and avoided-call trend.
+
+Suggested targeted validation:
 
 ```text
 RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test validation_harness_contract --quiet
 RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --lib capability::judgment::record --quiet
 RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test score_contract --test planning_contract --quiet
 ```
-
-## Acceptance Criteria
-
-The next implementation turn should count as complete only if:
-
-- the validation harness exposes policy reuse summary evidence with these semantic fields:
-
-```text
-policy_hits
-policy_misses
-llm_fallbacks
-validation_passes
-validation_failures
-reuse_rate_bps
-regression_flag
-source_receipt_hash
-```
-
-- healthy reuse and regression cases are both represented;
-- targeted tests pass with wrappers cleared;
-- no kernel code changes are required;
-- `plan.md` and `score.md` are updated again with actual validation evidence.
 
 ## Deferred Work
 
