@@ -1,10 +1,10 @@
 # Canon Agent Score
 
-This scorecard records current progress after implementation step 5 of the current agent loop. The working tree contains deterministic policy reuse evaluator-savings, scaling-projection, distillation-readiness, evidence-surface index, evidence-bundle, evidence-quickcheck, evidence-maturity, evidence-summary, evidence-manifest, evidence validation-budget, evidence rollout-readiness, evidence learning-admission, evidence retrieval-readiness, evidence compact-validation, batch-readiness, batch-execution-plan, batch-evaluation-admission, batch-run-request, external-evaluator-result, learning-candidate, and learning-data-admission evidence.
+This scorecard records the current planning turn after implementation step 5. The working tree contains deterministic policy reuse evaluator-savings, scaling-projection, distillation-readiness, evidence-surface index, evidence-bundle, evidence-quickcheck, evidence-maturity, evidence-summary, evidence-manifest, evidence validation-budget, evidence rollout-readiness, evidence learning-admission, evidence retrieval-readiness, evidence compact-validation, batch-readiness, batch-execution-plan, batch-evaluation-admission, batch-run-request, external-evaluator-result, learning-candidate, and learning-data-admission evidence.
 
 ## Validation Evidence
 
-Targeted validation relevant to the current implemented baseline:
+Targeted validation relevant to the latest implemented baseline:
 
 ```text
 command = cargo fmt --check
@@ -21,7 +21,7 @@ root_validate learning-data-admission smoke mode: attempted, connector returned 
 root_validate learning-data-admission regression mode: attempted, connector returned 502 before a Rust result was available
 ```
 
-Learning-data-admission compile/check validation passed. Direct root-mode execution was attempted, but the connector returned 502 before reporting Rust results.
+This planning turn updates `plan.md` and `score.md` only. No runtime implementation validation was rerun for this documentation-only change.
 
 ## Axis Scores
 
@@ -30,14 +30,14 @@ Scores are on a `0.00` to `1.00` scale and reflect the current repository eviden
 ```text
 I  Intelligence      = 0.86  externally evaluated result evidence now feeds explicit clean dataset admission evidence
 E  Efficiency        = 0.84  compact-validation still summarizes targeted command/test budget for the expanded evidence chain
-C  Correctness       = 0.90  formatting, cargo check, and focused no-run pass; connector blocked direct root-mode execution
+C  Correctness       = 0.90  formatting, cargo check, and focused no-run passed for the latest implementation baseline; connector blocked direct root-mode execution
 A  Alignment         = 0.92  learning-data-admission evidence forbids policy promotion, retrieval writes, and student training at admission time
 R  Robustness        = 0.91  healthy and controlled candidate-not-ready paths are covered by compiled contracts
 P  Performance       = 0.83  targeted validation footprint for retrieval/learning/data-admission chain is explicit
 S  Scalability       = 0.92  clean dataset admission evidence extends the batch evidence chain toward reusable datasets
 D  Determinism       = 0.95  dataset admission receipts use fixed source hashes, counts, booleans, status strings, and hashes
 T  Transparency      = 0.98  source hashes, admitted case counts, admission status, and not-admitted reason are explicit
-Co Collaboration     = 0.91  plan and score now hand off a retrieval-example-admission slice
+Co Collaboration     = 0.92  planning now gives the next turn concrete retrieval-example-admission fields and semantics
 Em Empowerment       = 0.90  root_validate consumers have direct modes for learning-data-admission evidence once connector execution is available
 B  Benefit           = 0.92  evaluators get deterministic clean dataset admission evidence before retrieval-example admission
 L  Learning          = 0.91  learning candidates can now be admitted to clean datasets without promotion or storage writes
@@ -49,20 +49,20 @@ F  Future-Proofing   = 0.93  dataset admission evidence prepares for retrieval-e
 Approximate geometric mean:
 
 ```text
-G ≈ 0.904
+G ≈ 0.905
 ```
 
 ## Current Judgment
 
 ```text
-turn_type = implementation_step_5
+turn_type = planning_after_implementation_step_5
 weakest_axis = Learning
 secondary_risk = retrieval-example admission boundary is not yet summarized
-completed_action = added deterministic policy reuse evidence learning-data-admission evidence
+completed_action = added deterministic policy reuse evidence learning-data-admission evidence in the previous implementation step
 current_gap = learning-data admission is explicit, but retrieval-example admission evidence is not summarized
 next_action = add deterministic policy reuse evidence retrieval-example-admission evidence
-scope = validation-harness/root-validator evidence only; kernel authority unchanged
-validation = formatting, cargo check, and focused test no-run passed; direct root-mode execution attempted but connector returned 502
+scope = planning/scoring only this turn; validation-harness/root-validator evidence next turn; kernel authority unchanged
+validation = latest implementation baseline has formatting, cargo check, and focused test no-run pass; direct root-mode execution attempted but connector returned 502
 ```
 
 ## Why Learning Is Still The Next Target
@@ -71,7 +71,7 @@ Learning improved because learning candidates can now be admitted to clean datas
 
 ## Completed Score Improvement Target
 
-Raised `L` from `0.89` to `0.91` by adding deterministic policy reuse evidence learning-data-admission evidence.
+Raised `L` from `0.89` to `0.91` in the previous implementation step by adding deterministic policy reuse evidence learning-data-admission evidence.
 
 Completed scoring evidence:
 
@@ -83,14 +83,14 @@ Completed scoring evidence:
 - updated retained root mode and guarded-test fixture counts;
 - no kernel authority expansion, batch execution, policy promotion, retrieval write, or student-model training.
 
-## Implementation Step 5 Score Decision
+## Planning Turn Score Decision
 
 ```text
 selected_axis = Learning
-score_change_this_turn = L 0.89 -> 0.91
-reason = learning-data-admission evidence composes learning-candidate and external-evaluator-result into one deterministic clean-dataset admission boundary without promotion, retrieval writes, or student training
-source_changes_observed_but_not_owned = canon-rustc-v3/plan-autorefactor.md remains untracked and out of scope
-commit_scope = learning-data-admission implementation, tests, fixture, plan.md, score.md
+score_change_this_turn = no numeric change; planning-only turn
+reason = the next implementation target is now specified as retrieval-example-admission evidence with concrete fields, deterministic semantics, and acceptance criteria
+source_changes_observed_but_not_owned = canon-rustc-v3/src/facts.rs, canon-rustc-v3/src/mir.rs, canon-rustc-v3/src/wrapper.rs are modified; canon-rustc-v3/plan-autorefactor.md remains untracked; all are out of scope for this planning turn
+commit_scope = plan.md, score.md
 ```
 
 ## Next Score Improvement Target
@@ -103,6 +103,17 @@ Acceptance criteria for the next slice:
 2. A deterministic regression retrieval-example-admission receipt exists and exposes a concrete data-not-admitted reason.
 3. Retrieval-example-admission evidence references learning-data-admission and learning-candidate receipts instead of adding policy authority.
 4. Root validator compact modes expose healthy and regression retrieval-example-admission receipts.
-5. Validation harness contract tests assert retrieval-example-admission semantics, source binding, and compact output.
+5. Validation harness contract tests assert retrieval-example-admission semantics, source binding, compact output, and controlled failing evidence.
 6. Planning and score contract tests pass after documentation updates.
 7. The receipt remains evidence-only and does not expand kernel authority, promote policy, execute batches, write retrieval storage, or train a student model.
+
+## Out-of-Scope Working Tree Notes
+
+```text
+modified = canon-rustc-v3/src/facts.rs
+modified = canon-rustc-v3/src/mir.rs
+modified = canon-rustc-v3/src/wrapper.rs
+untracked = canon-rustc-v3/plan-autorefactor.md
+```
+
+These files were observed during planning and intentionally left untouched.
