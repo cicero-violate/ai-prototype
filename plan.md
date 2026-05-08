@@ -2882,3 +2882,29 @@ Next best work:
 ```text
 Continue reducing retained-fixture validator boilerplate only where the shared helper can be applied mechanically without weakening exact row/rule drift coverage; otherwise shift back to the weakest remaining performance/scalability axis.
 ```
+
+## Evaluation Turn Result: Post Retained Fixture Helper Review
+
+- [x] Re-evaluated the repository after retained fixture helper reuse at commit `55c8526`.
+- [x] Validation harness contract remains stable at 128 tests.
+- [x] Root deterministic validation remains passing, including count-guarded validation harness and graph mutation CLI suites.
+- [x] Runtime performance receipt remains within budget: observed `project_agent_elapsed_ms_p95=1137` against `max_project_agent_elapsed_ms_p95=10000` in this evaluation run.
+- [x] The recent helper extraction improved simplicity and update safety without changing kernel, capability, runtime, fixture, or generated files.
+
+Current plan adjustment:
+
+```text
+Prefer the next implementation step only if it improves the lowest axes P or S directly. If the next turn stays in validation-fixture cleanup, apply the retained fixture helper only to validators with the exact same header + expected lines + rule lines structure and preserve independent live receipt predicates.
+```
+
+Recommended next concrete step:
+
+```text
+Refactor one additional retained-fixture validator through the shared helper if mechanical; otherwise add a retained policy-capacity or validation-cost comparison that improves performance/scalability without running extra LLM calls or nondeterministic benchmarks.
+```
+
+Expected score emphasis:
+
+```text
+P, S, Si, E, R
+```

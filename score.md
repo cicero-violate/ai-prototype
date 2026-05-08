@@ -5669,3 +5669,70 @@ Next best work:
 ```text
 Apply the retained fixture helper to additional validators only where it stays mechanical and preserves exact rule/row checks; otherwise target performance/scalability work with retained policy-capacity or validation-cost receipts.
 ```
+
+## Evaluation Update: Post Retained Fixture Helper Review
+
+```text
+validation = PASS: RUSTC_WRAPPER= cargo test -q --test validation_harness_contract --locked
+validation_harness_contract_tests = 128 passed
+validation = PASS: RUSTC_WRAPPER= cargo -Znext-lockfile-bump run --bin root_validate --locked
+root_validation_runtime_p95_ms = 1137
+root_validation_runtime_p95_budget_ms = 10000
+root_validation_expected_validation_harness_tests = 128
+root_validation_observed_validation_harness_tests = 128
+root_validation_expected_graph_mutation_cli_tests = 10
+root_validation_observed_graph_mutation_cli_tests = 10
+```
+
+Evaluation finding:
+
+```text
+current_status = stable_after_retained_fixture_helper_reuse
+kernel_changes = none
+capability_changes = none
+runtime_changes = none
+fixture_changes = none
+validation_status = pass
+```
+
+Current scores retained:
+
+| Axis | Score |
+|------+-------|
+| I    |  8.60 |
+| E    |  8.53 |
+| C    |  9.12 |
+| A    |  9.10 |
+| R    |  9.38 |
+| P    |  7.94 |
+| S    |  8.18 |
+| D    |  9.24 |
+| T    | 10.00 |
+| Co   |  8.53 |
+| Em   |  8.43 |
+| B    |  8.56 |
+| L    |  8.58 |
+| Si   |  8.21 |
+| F    |  8.93 |
+
+```text
+G = 8.75
+```
+
+Weakest remaining axes:
+
+```text
+P  = 7.94
+S  = 8.18
+Si = 8.21
+Em = 8.43
+E  = 8.53
+```
+
+Rationale: the evaluation turn did not introduce new source changes. The prior retained-fixture helper reuse remains validated, root validation remains passing, and the next implementation should prioritize direct performance/scalability gains unless additional fixture-helper reuse is fully mechanical and preserves exact drift coverage.
+
+Next best work:
+
+```text
+Target P/S improvement with retained policy-capacity or validation-cost comparison work; only continue fixture cleanup where the shared retained fixture helper can be applied without changing exact row/rule semantics or live receipt predicates.
+```
