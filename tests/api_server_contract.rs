@@ -1,7 +1,7 @@
 use ai::{
-    build_router, tick, ApiTransportLedger, ApiTransportSession, Command, CommandEnvelope,
-    CommandLedger, EvidenceSubmission, EvidenceSubmissionDto, McpCallReceipt, McpCallRequest,
-    RuntimeConfig, State, StateDto, TLog, WorkerAppState,
+    build_router, resume_durable_runtime, tick, ApiTransportLedger, ApiTransportSession, Command,
+    CommandEnvelope, CommandLedger, EvidenceSubmission, EvidenceSubmissionDto, McpCallReceipt,
+    McpCallRequest, RuntimeConfig, State, StateDto, TLog, WorkerAppState,
 };
 use axum::body::{to_bytes, Body};
 use axum::http::{Request, StatusCode};
@@ -194,6 +194,86 @@ async fn command_route_uses_transport_session_and_persists_tlog() {
     assert_eq!(response.disposition, "accepted");
     assert_eq!(state.snapshot().unwrap().tlog_len, 3);
     assert!(std::fs::metadata(&path).unwrap().len() > 0);
+    let _ = std::fs::remove_file(path);
+}
+
+#[tokio::test]
+async fn command_route_replays_after_durable_resume_without_appending_tlog() {
+    let path = tlog_path("durable-resume-replay");
+    let _ = std::fs::remove_file(&path);
+    let cfg = RuntimeConfig::default();
+    let mut initial_state = State::default();
+    let mut initial_tlog = TLog::default();
+    assert!(tick(&mut initial_state, &mut initial_tlog, cfg).is_ok());
+    let initial_session = ApiTransportSession::from_parts(
+        initial_state,
+        initial_tlog,
+        cfg,
+        CommandLedger::default(),
+        ApiTransportLedger::default(),
+    )
+    .expect("initialized session should verify");
+    let first_state = WorkerAppState::new(initial_session, &path);
+    let first_app = build_router(first_state.clone());
+    let submission = EvidenceSubmission::with_payload(
+        ai::GateId::Invariant,
+        ai::Evidence::InvariantProof,
+        true,
+        0xabc,
+    );
+    let body = command_body(71, submission);
+
+    let first_response = first_app
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/v1/command")
+                .header("Content-Type", "application/json")
+                .body(Body::from(body.to_string()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    let first_response: ai::CommandResponseDto = ok_response_json(first_response).await;
+    assert_eq!(first_response.disposition, "accepted");
+    let persisted_snapshot = first_state.snapshot().unwrap();
+    let persisted_disk_len = std::fs::metadata(&path).unwrap().len();
+
+    let resumed = resume_durable_runtime(State::default(), &path).unwrap();
+    assert_eq!(resumed.state.phase, ai::Phase::Analysis);
+    assert_eq!(resumed.tlog.len(), persisted_snapshot.tlog_len);
+    let resumed_session = ApiTransportSession::from_parts(
+        resumed.state,
+        resumed.tlog,
+        cfg,
+        resumed.command_ledger,
+        ApiTransportLedger::default(),
+    )
+    .expect("resumed session should verify");
+    let resumed_state = WorkerAppState::new(resumed_session, &path);
+    let resumed_app = build_router(resumed_state.clone());
+
+    let replay_response = resumed_app
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/v1/command")
+                .header("Content-Type", "application/json")
+                .body(Body::from(body.to_string()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    let replay_response: ai::CommandResponseDto = ok_response_json(replay_response).await;
+
+    assert_eq!(replay_response.disposition, "replayed");
+    assert_eq!(replay_response.event_hash, first_response.event_hash);
+    assert_eq!(replay_response.event_seq, first_response.event_seq);
+    assert_eq!(
+        resumed_state.snapshot().unwrap().tlog_len,
+        persisted_snapshot.tlog_len
+    );
+    assert_eq!(std::fs::metadata(&path).unwrap().len(), persisted_disk_len);
     let _ = std::fs::remove_file(path);
 }
 
