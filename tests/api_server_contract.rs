@@ -20,6 +20,21 @@ fn tlog_path(name: &str) -> std::path::PathBuf {
     ))
 }
 
+fn missing_parent_tlog_path(name: &str) -> std::path::PathBuf {
+    let nanos = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .expect("system time should be after epoch")
+        .as_nanos();
+    let dir = std::path::PathBuf::from("target/test-tmp/api-server-tlogs").join(format!(
+        "missing-parent-{name}-{}-{nanos}",
+        std::process::id(),
+    ));
+    if dir.exists() {
+        std::fs::remove_dir_all(&dir).expect("stale missing-parent fixture dir should remove");
+    }
+    dir.join("tlog.ndjson")
+}
+
 fn invariant_payload(payload_hash: u64) -> EvidenceSubmissionDto {
     EvidenceSubmissionDto {
         gate: "Invariant".to_string(),
@@ -197,6 +212,54 @@ async fn command_route_uses_transport_session_and_persists_tlog() {
     assert_eq!(state.snapshot().unwrap().tlog_len, 3);
     assert!(std::fs::metadata(&path).unwrap().len() > 0);
     let _ = std::fs::remove_file(path);
+}
+
+#[tokio::test]
+async fn command_route_maps_tlog_persistence_failure_to_internal_server_error() {
+    let path = missing_parent_tlog_path("persistence-failure");
+    let parent = path.parent().expect("fixture path should have parent");
+    assert!(!parent.exists());
+
+    let cfg = RuntimeConfig::default();
+    let mut initial_state = State::default();
+    let mut initial_tlog = TLog::default();
+    assert!(tick(&mut initial_state, &mut initial_tlog, cfg).is_ok());
+    let session = ApiTransportSession::from_parts(
+        initial_state,
+        initial_tlog,
+        cfg,
+        CommandLedger::default(),
+        ApiTransportLedger::default(),
+    )
+    .expect("initialized session should verify");
+    let state = WorkerAppState::new(session, &path);
+    let app = build_router(state.clone());
+    let submission = EvidenceSubmission::with_payload(
+        ai::GateId::Invariant,
+        ai::Evidence::InvariantProof,
+        true,
+        0xabc,
+    );
+    let body = command_body(91, submission);
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/v1/command")
+                .header("Content-Type", "application/json")
+                .body(Body::from(body.to_string()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
+    let error: ai::ErrorDto = response_json(response).await;
+    assert!(!error.ok);
+    assert_eq!(error.error, "TlogIo");
+    assert!(!path.exists());
+    assert_eq!(state.snapshot().unwrap().tlog_len, 3);
 }
 
 #[tokio::test]

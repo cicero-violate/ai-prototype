@@ -2407,3 +2407,48 @@ Next execution priorities, in order:
 
 Do not start another implementation slice merely to raise scores. The next change should preserve the architecture boundary: the state machine governs transitions and evidence; capability-layer intelligence remains subordinate to typed, externally verifiable records.
 
+## Completed Execution Slice After API Server TLogIo Persistence Step 1
+
+Completed deterministic API server persistence-error coverage for the real `TlogIo` route adapter path.
+
+Implementation details:
+
+```text
+- Added missing_parent_tlog_path() fixture helper in tests/api_server_contract.rs.
+- Added command_route_maps_tlog_persistence_failure_to_internal_server_error().
+- The test sends a valid command through /v1/command while the configured TLog path has a deliberately missing parent directory.
+- write_tlog_ndjson() fails through the real persistence path and the server maps ServerError::TlogIo to HTTP 500 INTERNAL_SERVER_ERROR with an error body of TlogIo.
+- The fixture avoids invalid HTTP state, synthetic private adapter calls, live services, wrapper dependencies, and brittle permission assumptions.
+```
+
+This closes the concrete persistence-error branch listed in the planning checkpoint while preserving deterministic route-level evidence.
+
+## Validation Evidence From API Server TLogIo Persistence Step 1
+
+```text
+command: RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo fmt --check
+exit: 0
+log: target/validation-logs/fmt-api-server-tlogio-step1.log
+exit file: target/validation-logs/fmt-api-server-tlogio-step1.exit
+```
+
+```text
+command: RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test api_server_contract -- --test-threads=1
+exit: 0
+result: 10 passed; 0 failed
+log: target/validation-logs/api-server-contract-tlogio-step1.log
+exit file: target/validation-logs/api-server-contract-tlogio-step1.exit
+```
+
+## Next Execution Slice After API Server TLogIo Persistence Step 1
+
+Continue P4 only where concrete missing evidence remains. Candidate priorities:
+
+```text
+1. Capture live wrapper-configured observe-validation evidence only when wrapper services/artifacts are available and the run can be classified without contaminating git state.
+2. Add compact receiver manifest exact-once checks only when a new compact receiver workflow introduces new metric keys or rendering semantics.
+3. Reduce duplicated command-normalization test boilerplate only if the refactor is behavior-preserving and keeps current exact rendered-value coverage intact.
+```
+
+Avoid further API server branch work unless a new deterministic uncovered failure path is identified.
+

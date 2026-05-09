@@ -228,3 +228,109 @@ exit file: target/validation-logs/score-contract-planning-checkpoint-55dcab2.exi
 
 Next implementation trigger: proceed only with live wrapper-configured observe-validation evidence, compact receiver manifest coverage for newly introduced metric keys, deterministic persistence-error evidence, or behavior-preserving test boilerplate reduction.
 
+## Implementation Step 1 — API Server TLogIo Persistence Coverage
+
+Date: 2026-05-09 America/Toronto / 2026-05-09 UTC
+Turn type: implementation step 1 after planning checkpoint `40cdbd0`
+Scope executed: added deterministic API server route-level coverage for TLog persistence failure mapping.
+
+Current timestamp evidence:
+
+```text
+branch: main
+latest visible commit before this implementation turn: 40cdbd0 Update planning checkpoint
+working directory: /workspace/ai_sandbox/canon-mini-agent/prototype/ai
+working tree at turn start: clean
+```
+
+Implementation, test, and planning/scoring files owned by this turn:
+
+```text
+tests/api_server_contract.rs
+plan.md
+score.md
+```
+
+Generated validation logs and exit files remain ignored and are not committed.
+
+Score movement: correctness, robustness, determinism, scalability, and future-proofing each improve slightly because a previously identified concrete persistence-error branch now has deterministic route-level evidence. Transparency remains capped at 10 because evidence was already fully documented.
+
+```text
+I  Intelligence      = 7.0
+E  Efficiency        = 7.9
+C  Correctness       = 9.89
+A  Alignment         = 8.8
+R  Robustness        = 10.0
+P  Performance       = 6.45
+S  Scalability       = 6.82
+D  Determinism       = 9.63
+T  Transparency      = 10.0
+Co Collaboration     = 8.0
+Em Empowerment       = 7.8
+B  Benefit           = 8.1
+L  Learning          = 7.1
+St Structure         = 9.74
+Si Simplicity        = 7.34
+F  Future-Proofing   = 9.20
+```
+
+Approximate geometric mean:
+
+```text
+G ≈ 8.32 / 10
+```
+
+Completed work this turn:
+
+- Read the latest `plan.md` and `score.md` checkpoint.
+- Confirmed live wrapper-configured observe-validation evidence was not safely available as a fresh deterministic implementation target.
+- Selected the next concrete planned item: deterministic API server persistence-error handling evidence.
+- Added a missing-parent TLog fixture helper that triggers `write_tlog_ndjson()` failure through normal route execution.
+- Added `command_route_maps_tlog_persistence_failure_to_internal_server_error()` to verify HTTP 500 and `TlogIo` error body after a valid command hits a persistence failure.
+- Preserved deterministic API route behavior without synthetic private adapter calls or live-service dependencies.
+
+Validation evidence captured this turn:
+
+```text
+command: RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo fmt --check
+exit: 0
+log: target/validation-logs/fmt-api-server-tlogio-step1.log
+exit file: target/validation-logs/fmt-api-server-tlogio-step1.exit
+```
+
+```text
+command: RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test api_server_contract -- --test-threads=1
+exit: 0
+result: 10 passed; 0 failed
+log: target/validation-logs/api-server-contract-tlogio-step1.log
+exit file: target/validation-logs/api-server-contract-tlogio-step1.exit
+```
+
+Planning/scoring contract validation after documentation updates:
+
+```text
+command: RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test planning_contract -- --test-threads=1
+exit: 0
+result: 2 passed; 0 failed
+log: target/validation-logs/planning-contract-tlogio-step1.log
+exit file: target/validation-logs/planning-contract-tlogio-step1.exit
+```
+
+```text
+command: RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test score_contract -- --test-threads=1
+exit: 0
+result: 5 passed; 0 failed
+log: target/validation-logs/score-contract-tlogio-step1.log
+exit file: target/validation-logs/score-contract-tlogio-step1.exit
+```
+
+Current risks / gaps:
+
+- No fresh live wrapper-configured observe-validation run has been captured in this environment.
+- Live router/MCP/Ollama/OpenAI paths remain environment-dependent.
+- The new persistence-failure test documents the current adapter response after in-memory session mutation; a future atomic durability redesign would require updating this expectation.
+
+Immediate next action:
+
+Search for live wrapper-configured observe-validation evidence when prerequisites are available, or keep implementation limited to newly identified deterministic uncovered branches.
+
