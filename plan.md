@@ -4,12 +4,13 @@
 
 Canon Agent is a Rust prototype for a deterministic, auditable, self-improving agent runtime. The target architecture remains a formally constrained state-machine kernel with a capability layer around it. The kernel owns correctness, state transitions, durable records, replay boundaries, and audit evidence. LLMs and tools operate inside the capability layer and must produce typed, reviewable evidence rather than governing the runtime directly.
 
-Current implementation snapshot, 2026-05-09 00:21:47 EDT America/Toronto / 2026-05-09T04:21:47Z UTC:
+Current implementation snapshot, 2026-05-09 00:37:34 EDT America/Toronto / 2026-05-09T04:37:34Z UTC:
 
 - Branch: `main`.
-- Latest visible prior commit before this implementation turn: `fa58cb1 Update Canon Agent planning and scoring`.
+- Latest visible prior commit before this planning turn: `a4f819f Add receipt replay invariant verifier`.
 - The requested working directory resolves to the connector workspace root: `/workspace/ai_sandbox/canon-mini-agent/prototype/ai`.
-- This implementation step completed the first P3 receipt/replay invariant slice.
+- This planning turn reviewed the existing dirty implementation batch for the P3 API transport receipt consumer integration and preserved it unmodified.
+- Current dirty implementation files are `src/api/transport.rs`, `src/lib.rs`, and `tests/api_transport_contract.rs`; they should be owned by the next execution/implementation commit, not this planning commit.
 - The pre-existing implementation batch has now been reviewed at diff level and validated.
 - P0 validation baseline is closed with fresh all-target, fmt, lib-test, and clippy evidence.
 - Connector 502s occurred during long-running validation polling, but redirected/detached validation evidence completed with exit files and final test summaries.
@@ -111,7 +112,7 @@ Fresh validation evidence from implementation step 1:
 
 ### P3 — Runtime and receipt correctness — in progress
 
-1. Expand replay and receipt invariants for forged, duplicated, reordered, stale, and missing receipts — first slice complete.
+1. Expand replay and receipt invariants for forged, duplicated, reordered, stale, and missing receipts — consumer integration in progress.
    - Primary source surface discovered during this planning turn: `src/recovery.rs` for validation receipts and `src/validation_harness.rs` for receipt hashing/typed evidence contracts.
    - Added a deterministic `ReceiptChainEntry` / `ReceiptReplayReport` verifier in `src/recovery.rs`.
    - Added compact `ReceiptReplayFailure` classifications for `forged_receipt`, `duplicated_receipt`, `reordered_receipt`, `stale_receipt`, and `missing_receipt`.
@@ -122,6 +123,17 @@ Fresh validation evidence from implementation step 1:
      - `cargo test --lib -- --test-threads=1` passed; 209 tests; exit `0`; log `target/validation-logs/test-lib-step1.log`.
      - `cargo clippy --all-targets -- -D warnings` passed; exit `0`; log `target/validation-logs/clippy-step1.log`.
    - Environment note: broad validation returned a connector-level `502`, but redirected logs and exit files showed lib tests and clippy completed with exit `0`.
+   - Implementation step 2 wired receipt-chain verification into the durable API transport receipt consumer.
+   - Added `verify_api_transport_receipt_chain` and `verify_api_transport_receipt_chain_with_expected_count` so API transport ledgers expose compact replay reports and optional expected-count missing-tail checks.
+   - Added `api_transport_receipt_replay_classification` and `api_transport_receipt_replay_classification_with_expected_count` so consumer-facing failures expose `forged_receipt`, `duplicated_receipt`, `reordered_receipt`, `stale_receipt`, and `missing_receipt` strings.
+   - Existing `verify_api_transport_receipts` now uses the receipt-chain verifier and maps compact receipt failures to stable `CanonError` values.
+   - Added API transport contract coverage for valid receipt-chain replay plus missing, stale, duplicated, reordered, and forged API transport receipt ledgers.
+   - Validation evidence from implementation step 2:
+     - `cargo test --test api_transport_contract -- --test-threads=1` passed; 19 tests; exit `0`; log `target/validation-logs/api-transport-contract-step2.log`.
+     - `cargo fmt --check` passed; exit `0`; log `target/validation-logs/fmt-step2.log`.
+     - `cargo test --lib -- --test-threads=1` passed; 209 tests; exit `0`; log `target/validation-logs/test-lib-step2.log`.
+     - `cargo clippy --all-targets -- -D warnings` passed; exit `0`; log `target/validation-logs/clippy-step2.log`.
+   - Environment note: broad validation and clippy streaming returned connector-level `502`, but redirected exit files and logs showed completed commands with exit `0`.
 2. Keep policy promotion externally verified; never let the LLM approve its own candidates.
    - Any future policy-learning admission must remain gated by external evaluator evidence.
    - LLM-authored candidates may propose changes but cannot self-certify them into learning data.
@@ -142,15 +154,15 @@ Fresh validation evidence from implementation step 1:
 
 ## Next Execute-Turn Recommendation
 
-1. Continue P3 by connecting receipt-chain verification to the nearest durable receipt ledger or validation-report consumer that can use compact failure classifications.
-2. Add API/worker compatibility coverage for batch command limits, invalid envelopes, durable resume behavior, and supervisor reload after the receipt-chain verifier is wired into a consumer.
+1. Continue P3 with API/worker compatibility coverage for batch command limits, invalid envelopes, durable resume behavior, and supervisor reload.
+2. Consider wiring compact receipt-chain classifications into validation-report output if a report consumer needs persisted failure-class rows.
 3. Keep policy promotion externally verified; never let the LLM approve its own candidates.
 4. Continue using `TMPDIR="$PWD/target/test-tmp"` for Rust tests in quota-sensitive sandboxes.
 5. Run targeted tests for the next consumer, `cargo fmt --check`, `cargo test --lib -- --test-threads=1`, and `cargo clippy --all-targets -- -D warnings` after the next P3 slice.
 
 ## Planning-Turn Handoff
 
-P0, P1, and P2 are complete. P3 is now in progress with the first receipt-chain invariant verifier and focused tests complete. The next execution turn should wire the compact verifier into a durable receipt/reporting consumer or proceed to API/worker compatibility coverage if that consumer already exists.
+P0, P1, and P2 are complete. P3 is now in progress with the receipt-chain invariant verifier implemented and a dirty, validated API transport receipt consumer integration present in the working tree. This planning turn intentionally does not modify implementation files. The next execution turn should either commit/finish the existing API transport integration batch or continue P3 with API/worker compatibility coverage for batch command limits, invalid envelopes, durable resume behavior, and supervisor reload.
 
 ## Current Non-Goals
 

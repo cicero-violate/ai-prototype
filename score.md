@@ -3,127 +3,136 @@
 ## Current Progress Snapshot
 
 Date: 2026-05-08 America/Toronto / 2026-05-09 UTC
-Turn type: implementation step 1
-Scope executed: first P3 runtime/receipt correctness slice.
+Turn type: planning/scoring
+Scope executed: refreshed implementation plan and score based on the current dirty P3 API transport receipt consumer integration state; no implementation files modified.
 
 Current timestamp evidence:
 
 ```text
-2026-05-09 00:21:47 EDT America/Toronto / 2026-05-09T04:21:47Z UTC
+2026-05-09 00:37:34 EDT America/Toronto / 2026-05-09T04:37:34Z UTC
 branch: main
-latest visible prior commit before this turn: fa58cb1 Update Canon Agent planning and scoring
+latest visible prior commit before this planning turn: a4f819f Add receipt replay invariant verifier
 working directory: /workspace/ai_sandbox/canon-mini-agent/prototype/ai
 ```
 
 ## Current Git State
 
-Implementation and documentation files owned by this commit:
+Planning/scoring files owned by this commit:
 
 ```text
-src/recovery.rs
 plan.md
 score.md
+```
+
+Pre-existing dirty implementation files intentionally preserved outside this planning commit:
+
+```text
+src/api/transport.rs
+src/lib.rs
+tests/api_transport_contract.rs
 ```
 
 Generated validation logs and exit files are intentionally left under ignored `target/validation-logs/` and are not committed.
 
 ## Scorecard
 
-Scores are approximate implementation-readiness scores on a 0-10 scale. Correctness, robustness, determinism, and transparency improve slightly because receipt replay now has a deterministic verifier, compact failure classes, and focused tests for valid/invalid receipt-chain cases.
+Scores are approximate implementation-readiness scores on a 0-10 scale. Correctness, robustness, determinism, and transparency improve because the receipt-chain verifier is now consumed by the durable API transport receipt path and exposes compact failure classifications through contract tests.
 
 ```text
 I  Intelligence      = 7.0
 E  Efficiency        = 7.0
-C  Correctness       = 8.1
+C  Correctness       = 8.2
 A  Alignment         = 8.5
-R  Robustness        = 8.2
+R  Robustness        = 8.3
 P  Performance       = 5.9
 S  Scalability       = 6.5
-D  Determinism       = 8.8
-T  Transparency      = 8.9
+D  Determinism       = 8.9
+T  Transparency      = 9.0
 Co Collaboration     = 7.9
 Em Empowerment       = 7.5
-B  Benefit           = 7.7
+B  Benefit           = 7.8
 L  Learning          = 7.1
-St Structure         = 8.2
+St Structure         = 8.3
 Si Simplicity        = 6.6
-F  Future-Proofing   = 7.9
+F  Future-Proofing   = 8.0
 ```
 
 Approximate geometric mean:
 
 ```text
-G ≈ 7.56 / 10
+G ≈ 7.60 / 10
 ```
 
 ## Completed Work This Turn
 
-- Read `plan.md` and executed the next concrete P3 item.
-- Added deterministic receipt-chain verification in `src/recovery.rs`:
-  - `ReceiptChainEntry`
-  - `ReceiptReplayReport`
-  - `ReceiptReplayFailure`
-  - `verify_receipt_chain`
-- Added compact receipt replay failure classifications:
-  - `forged_receipt`
-  - `duplicated_receipt`
-  - `reordered_receipt`
-  - `stale_receipt`
-  - `missing_receipt`
-- Added focused recovery tests for:
-  - valid receipt-chain replay
-  - forged receipt hash
-  - forged run identity
+- Read the current repository status, recent commits, `plan.md`, `score.md`, `Cargo.toml`, and the source tree.
+- Confirmed this is a planning/scoring turn and avoided edits to implementation files.
+- Preserved the existing dirty P3 API transport receipt consumer integration batch for a future implementation commit.
+- Updated the handoff so the next execution turn has a concrete P3 path.
+
+## Most Recent Implementation Work Reflected In This Score
+
+- Wired `verify_receipt_chain` into the durable API transport receipt consumer.
+- Added API transport receipt-chain APIs:
+  - `verify_api_transport_receipt_chain`
+  - `verify_api_transport_receipt_chain_with_expected_count`
+  - `api_transport_receipt_replay_classification`
+  - `api_transport_receipt_replay_classification_with_expected_count`
+- Kept `verify_api_transport_receipts` as the stable `CanonError`-returning API while routing its checks through the receipt-chain verifier.
+- Exported the new API transport receipt-chain functions from `src/lib.rs`.
+- Added API transport contract coverage for:
+  - valid receipt-chain replay report
+  - missing receipt with explicit expected count
+  - stale receipt not backed by the current TLog
   - duplicated receipt
   - reordered receipts
-  - stale extra receipts
-  - missing receipts
-  - compact classification strings
+  - forged receipt hash
 
 ## Validation Evidence Captured This Turn
+
+No new validation was run during this planning/scoring turn. The current score relies on the most recent validation evidence from the dirty implementation batch already present in the working tree:
+
+```text
+command: TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test api_transport_contract -- --test-threads=1
+exit: 0
+result: 19 passed; 0 failed
+log: target/validation-logs/api-transport-contract-step2.log
+exit file: target/validation-logs/api-transport-contract-step2.exit
+```
 
 ```text
 command: RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo fmt --check
 exit: 0
-log: target/validation-logs/fmt-step1.log
-exit file: target/validation-logs/fmt-step1.exit
-```
-
-```text
-command: TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test recovery::tests --lib -- --test-threads=1
-exit: 0
-result: 8 passed; 0 failed; 201 filtered out
-log: target/validation-logs/recovery-tests-step1.log
-exit file: target/validation-logs/recovery-tests-step1.exit
+log: target/validation-logs/fmt-step2.log
+exit file: target/validation-logs/fmt-step2.exit
 ```
 
 ```text
 command: TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --lib -- --test-threads=1
 exit: 0
-result: 209 passed; 0 failed; finished in 0.41s
-log: target/validation-logs/test-lib-step1.log
-exit file: target/validation-logs/test-lib-step1.exit
+result: 209 passed; 0 failed; finished in 0.42s
+log: target/validation-logs/test-lib-step2.log
+exit file: target/validation-logs/test-lib-step2.exit
 ```
 
 ```text
 command: TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo clippy --all-targets -- -D warnings
 exit: 0
-log: target/validation-logs/clippy-step1.log
-exit file: target/validation-logs/clippy-step1.exit
+log: target/validation-logs/clippy-step2.log
+exit file: target/validation-logs/clippy-step2.exit
 ```
 
 ## Connector / Environment Notes
 
-- An initial write attempt hit `Disk quota exceeded` and truncated `src/recovery.rs`; the file was immediately restored from Git before applying the final patch.
-- Ignored build/log artifacts were cleaned to reduce `target/` pressure from about 4.3G to about 3.0G.
-- A combined format/test command returned connector-level `502`; redirected rerun evidence showed format and targeted tests completed.
-- The broad lib/clippy command also returned connector-level `502`; redirected exit files and logs showed both commands completed with exit `0`.
+- The first targeted API transport contract run returned connector-level `502` and exposed test failures from an over-strict consumer integration.
+- The implementation was adjusted so self-contained durable transport ledgers verify their own chain, while expected-count APIs classify missing-tail evidence when a caller has that external expectation.
+- Broad validation and clippy streaming returned connector-level `502`, but redirected exit files and logs showed commands completed with exit `0`.
 
 ## Current Risks / Gaps
 
-- The new receipt-chain verifier is tested but not yet wired into a durable receipt ledger or validation-report consumer.
 - API/worker compatibility coverage for batch command limits, invalid envelopes, durable resume behavior, and supervisor reload remains pending.
-- Full all-target validation was not rerun this step because prior turns showed quota pressure; this turn used targeted recovery tests plus lib/fmt/clippy.
+- Compact receipt-chain classifications are exposed by the API transport consumer, but not yet emitted as validation-report rows.
+- Full all-target validation was not rerun this step because prior turns showed quota pressure; this turn used targeted API transport tests plus lib/fmt/clippy.
 - No fresh benchmark evidence has been captured.
 - Live router/MCP/Ollama/OpenAI paths still depend on environment services and can fail independently of core runtime correctness.
 
@@ -131,12 +140,12 @@ exit file: target/validation-logs/clippy-step1.exit
 
 Raise scores only after fresh evidence:
 
-- **Correctness / Robustness:** receipt-chain verification is consumed by a durable ledger/reporting path, not only unit tested.
-- **Transparency:** consumer-facing receipt/replay failures emit compact classifications in persisted evidence.
+- **Correctness / Robustness:** API/worker compatibility rejects batch over-limit, invalid envelopes, stale durable resume, and supervisor reload regressions.
+- **Transparency:** compact receipt-chain classifications are emitted in persisted validation/report evidence when relevant.
 - **Performance:** benchmark or runtime latency evidence is captured.
 - **Scalability:** multi-agent coordination and router failure scenarios are tested.
 - **Learning:** policy promotion remains externally evaluated and self-approval remains impossible under tests.
 
 ## Immediate Next Action
 
-Continue P3 by wiring `verify_receipt_chain` into the nearest durable receipt ledger or validation-report consumer, preserving compact failure classifications and adding targeted consumer tests before the standard fmt/lib/clippy validation sequence.
+Continue P3 with API/worker compatibility coverage for batch command limits, invalid envelopes, durable resume behavior, and supervisor reload. Preserve the receipt-chain classification behavior while adding those tests.
