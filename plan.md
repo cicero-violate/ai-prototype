@@ -3335,3 +3335,70 @@ Proceed only if:
 3. source inspection exposes uncovered deterministic failure-classification or persistence-error coverage;
 4. another behavior-preserving test-helper cleanup improves evidence clarity without weakening exact-once assertions.
 ```
+
+## Planning / Scoring Checkpoint After Runtime Archive Fallback Coverage fc6159d
+
+This planning turn reviewed the current implementation state after commit `fc6159d Cover runtime archive missing report fallback` and made no implementation changes.
+
+Current project state:
+
+```text
+branch: main
+latest visible commit before this planning turn: fc6159d Cover runtime archive missing report fallback
+working directory: /workspace/ai_sandbox/canon-mini-agent/prototype/ai
+working tree at planning review start: clean
+```
+
+Current P4 posture:
+
+```text
+- Generated graph JSON classification, graph fixture evidence, connector transport classification, command execution classification, compact runtime archive report integration, runtime archive missing-report fallback, and command-normalization manifest evidence are complete for the current deterministic scope.
+- Wrapper graph validation remains optional unless `CANON_RUSTC_WRAPPER` or `CANON_RUSTC_V3_ARTIFACT_DIR` is deliberately configured.
+- Live graph telemetry evidence has not been captured in this environment because wrapper-configured validation prerequisites are not present.
+- No runtime behavior change is planned solely for score movement.
+```
+
+Next implementation plan:
+
+```text
+1. First check whether live wrapper validation is intentionally available:
+   - `CANON_RUSTC_WRAPPER` is set and points to an executable wrapper; or
+   - `CANON_RUSTC_V3_ARTIFACT_DIR` is set for wrapper artifact collection.
+   If available, run a focused wrapper-configured observe-validation path and record the resulting graph/wrapper telemetry evidence.
+
+2. If wrapper validation is unavailable, inspect source for one concrete deterministic coverage gap before changing implementation:
+   - compact receiver artifact metric keys that are rendered but lack exact-value or exact-once checks;
+   - report/classifier branches whose status options exceed direct executable coverage;
+   - persistence or replay error branches that can be exercised without live external services;
+   - helper boilerplate that can be reduced without weakening explicit assertions.
+
+3. Do not add broad validation runs only to improve scores. Prefer focused contract tests, report-only paths, or deterministic fixture tests.
+
+4. Keep generated logs, target output, runtime archives, SSE chunks, and connector artifacts out of git. Stage only intentional source/test/docs/planning files.
+```
+
+Planning-only validation target for this checkpoint:
+
+```text
+- Run `cargo test --test planning_contract -- --test-threads=1`.
+- Run `cargo test --test score_contract -- --test-threads=1`.
+- Commit only `plan.md` and `score.md` if both pass.
+```
+
+Validation evidence captured for this planning/scoring checkpoint:
+
+```text
+command: TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test planning_contract -- --test-threads=1
+exit: 0
+result: 2 passed; 0 failed
+log: target/validation-logs/planning-contract-planning-checkpoint-fc6159d.log
+exit file: target/validation-logs/planning-contract-planning-checkpoint-fc6159d.exit
+```
+
+```text
+command: TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test score_contract -- --test-threads=1
+exit: 0
+result: 5 passed; 0 failed
+log: target/validation-logs/score-contract-planning-checkpoint-fc6159d.log
+exit file: target/validation-logs/score-contract-planning-checkpoint-fc6159d.exit
+```

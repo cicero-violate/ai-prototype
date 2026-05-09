@@ -2047,3 +2047,90 @@ Current risks / gaps:
 - Live graph telemetry still requires deliberate wrapper and artifact-dir inputs.
 - Compact full-summary replay remains artifact-only by design.
 ```
+
+## Planning / Scoring Checkpoint After Commit fc6159d
+
+Date: 2026-05-09 America/Toronto / 2026-05-09 UTC
+Turn type: planning/scoring checkpoint
+Scope executed: no implementation changes; updated planning and scoring state only.
+
+Current timestamp evidence:
+
+```text
+branch: main
+latest visible commit before this planning turn: fc6159d Cover runtime archive missing report fallback
+working directory: /workspace/ai_sandbox/canon-mini-agent/prototype/ai
+working tree at checkpoint start: planning/scoring files already dirty with duplicated checkpoint draft; implementation files clean
+```
+
+Planning/scoring files owned by this turn:
+
+```text
+plan.md
+score.md
+```
+
+Implementation files intentionally not modified this turn. Prior implementation evidence from runtime archive missing compact report fallback remains the current validation basis. No score increase is claimed from this checkpoint alone.
+
+Checkpoint score posture:
+
+```text
+I  Intelligence      = 7.0
+E  Efficiency        = 7.92
+C  Correctness       = 9.96
+A  Alignment         = 8.8
+R  Robustness        = 10.0
+P  Performance       = 6.45
+S  Scalability       = 6.82
+D  Determinism       = 9.71
+T  Transparency      = 10.0
+Co Collaboration     = 8.0
+Em Empowerment       = 7.8
+B  Benefit           = 8.1
+L  Learning          = 7.1
+St Structure         = 9.75
+Si Simplicity        = 7.36
+F  Future-Proofing   = 9.30
+```
+
+Approximate geometric mean remains:
+
+```text
+G ≈ 8.33 / 10
+```
+
+Planning rationale:
+
+```text
+- The current highest-value path is not a broad implementation change; it is either live wrapper-configured validation when prerequisites exist or a narrow deterministic branch/metric coverage gap found by source inspection.
+- Current P4 deterministic evidence already covers graph fixture, generated graph JSON classification, connector transport classifications, command execution classifications, compact runtime archive report integration, missing compact-report fallback, receipt replay classification inventory, and command-normalization manifest metrics.
+- Scores remain unchanged because this turn only updates plan and score documents.
+```
+
+Next implementation trigger:
+
+```text
+Proceed only if one of these is true:
+1. live wrapper-configured observe-validation prerequisites are deliberately available;
+2. compact receiver artifacts gain a new field, metric key, missing flag, or rendering semantic requiring exact-value/exact-once coverage;
+3. source inspection exposes an uncovered deterministic failure-classification, replay, persistence, or report fallback branch;
+4. behavior-preserving test helper cleanup reduces duplicated assertions without weakening coverage.
+```
+
+Validation evidence captured for this planning/scoring checkpoint:
+
+```text
+command: TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test planning_contract -- --test-threads=1
+exit: 0
+result: 2 passed; 0 failed
+log: target/validation-logs/planning-contract-planning-checkpoint-fc6159d.log
+exit file: target/validation-logs/planning-contract-planning-checkpoint-fc6159d.exit
+```
+
+```text
+command: TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test score_contract -- --test-threads=1
+exit: 0
+result: 5 passed; 0 failed
+log: target/validation-logs/score-contract-planning-checkpoint-fc6159d.log
+exit file: target/validation-logs/score-contract-planning-checkpoint-fc6159d.exit
+```
