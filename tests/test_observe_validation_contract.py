@@ -473,6 +473,102 @@ class ObserveValidationContractTest(unittest.TestCase):
             self.assertFalse(row["runtime_archive_missing_signal_flags"]["missing_runtime_prior_state"])
             self.assertFalse(row["runtime_archive_missing_signal_flags"]["missing_runtime_conversation_ledger"])
 
+    def test_runtime_archive_evidence_can_use_passing_compact_report(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            report = root / "runtime-report.ndjson"
+            row = {
+                "event": "runtime_archive_report",
+                "validation_status": "pass",
+                "runtime_archive_present": True,
+                "runtime_archive_inspection_status": "pass",
+                "runtime_archive_download_index_files": 1,
+                "runtime_archive_prior_state_files": 1,
+                "runtime_archive_conversation_ledger_files": 1,
+                "runtime_manifest_base_expected": "base-from-report",
+                "runtime_manifest_base_commit": "base-from-report",
+                "runtime_manifest_base_matches_delta_base": True,
+                "runtime_archive_missing_signal_count": 0,
+            }
+            report.write_text(json.dumps(row, sort_keys=True) + "\n", encoding="utf-8")
+
+            runtime = self.observe_module.runtime_archive_evidence(
+                archive_path="",
+                report_path=str(report),
+                base="base-from-report",
+            )
+            missing = self.observe_module.runtime_archive_missing_flags(runtime, "base-from-report")
+
+        self.assertEqual(runtime["runtime_archive_evidence_source"], "compact_report")
+        self.assertEqual(runtime["runtime_archive_report_status"], "pass")
+        self.assertFalse(missing["missing_runtime_manifest_base_match"])
+        self.assertFalse(missing["missing_runtime_download_index"])
+        self.assertFalse(missing["missing_runtime_prior_state"])
+        self.assertFalse(missing["missing_runtime_conversation_ledger"])
+
+    def test_runtime_archive_evidence_rejects_base_mismatched_compact_report(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            report = root / "runtime-report.ndjson"
+            row = {
+                "event": "runtime_archive_report",
+                "validation_status": "pass",
+                "runtime_archive_download_index_files": 1,
+                "runtime_archive_prior_state_files": 1,
+                "runtime_archive_conversation_ledger_files": 1,
+                "runtime_manifest_base_expected": "old-base",
+                "runtime_manifest_base_commit": "old-base",
+                "runtime_manifest_base_matches_delta_base": True,
+                "runtime_archive_missing_signal_count": 0,
+            }
+            report.write_text(json.dumps(row, sort_keys=True) + "\n", encoding="utf-8")
+
+            runtime = self.observe_module.runtime_archive_evidence(
+                archive_path="",
+                report_path=str(report),
+                base="new-base",
+            )
+
+        self.assertEqual(runtime["runtime_archive_evidence_source"], "none")
+        self.assertEqual(runtime["runtime_archive_report_status"], "not_usable")
+        self.assertEqual(runtime["runtime_archive_inspection_status"], "skipped_env_missing")
+
+    def test_runtime_archive_evidence_prefers_direct_archive_over_compact_report(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            manifest = root / "runtime" / "runtime-manifest.json"
+            manifest.parent.mkdir(parents=True, exist_ok=True)
+            manifest.write_text('{"base_commit":"direct-base"}', encoding="utf-8")
+            archive = root / "runtime.tar"
+            with tarfile.open(archive, "w") as tf:
+                tf.add(manifest, arcname="runtime/runtime-manifest.json")
+            report = root / "runtime-report.ndjson"
+            report.write_text(
+                json.dumps(
+                    {
+                        "event": "runtime_archive_report",
+                        "validation_status": "pass",
+                        "runtime_manifest_base_expected": "report-base",
+                        "runtime_manifest_base_commit": "report-base",
+                        "runtime_manifest_base_matches_delta_base": True,
+                        "runtime_archive_missing_signal_count": 0,
+                    },
+                    sort_keys=True,
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            runtime = self.observe_module.runtime_archive_evidence(
+                archive_path=str(archive),
+                report_path=str(report),
+                base="direct-base",
+            )
+
+        self.assertEqual(runtime["runtime_archive_evidence_source"], "direct_archive")
+        self.assertEqual(runtime["runtime_archive_report_status"], "not_consulted_direct_archive_configured")
+        self.assertEqual(runtime["runtime_manifest_base_commit"], "direct-base")
+
     def test_runtime_manifest_base_match_uses_archive_manifest_commit(self) -> None:
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)

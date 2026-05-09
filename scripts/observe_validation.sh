@@ -111,6 +111,16 @@ def read_json(path: Path) -> dict[str, Any]:
         return {}
 
 
+def read_last_ndjson(path: Path) -> dict[str, Any]:
+    if not path.exists():
+        return {}
+    try:
+        rows = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return {}
+    return rows[-1] if rows else {}
+
+
 def source_evidence() -> dict[str, list[str]]:
     mapping: dict[str, list[str]] = {}
     for path in sorted((ROOT / "src").rglob("*.rs")) + sorted((ROOT / "tests").rglob("*.rs")):
@@ -490,6 +500,72 @@ def runtime_archive_report_row(path: str | None, base: str | None) -> dict[str, 
     }
 
 
+def runtime_archive_from_report(path: str | None, base: str | None) -> dict[str, Any]:
+    if not path:
+        return {
+            "runtime_archive_report_present": False,
+            "runtime_archive_report_status": "skipped_env_missing",
+        }
+    report = read_last_ndjson(Path(path))
+    if not report:
+        return {
+            "runtime_archive_report_present": False,
+            "runtime_archive_report_status": "missing_or_invalid",
+        }
+    expected_base = report.get("runtime_manifest_base_expected")
+    base_matches = bool(base and expected_base == base and report.get("runtime_manifest_base_matches_delta_base"))
+    missing_count = report.get("runtime_archive_missing_signal_count")
+    valid = (
+        report.get("event") == "runtime_archive_report"
+        and report.get("validation_status") == "pass"
+        and base_matches
+        and missing_count == 0
+    )
+    runtime = {
+        key: value
+        for key, value in report.items()
+        if key.startswith("runtime_archive_")
+        or key.startswith("runtime_manifest_")
+        or key.startswith("missing_runtime_")
+    }
+    runtime.update(
+        {
+            "runtime_archive_report_present": True,
+            "runtime_archive_report_status": "pass" if valid else "not_usable",
+            "runtime_archive_report_path": str(path),
+            "runtime_archive_report_base_matches_current": base_matches,
+        }
+    )
+    if not valid:
+        return runtime
+    runtime["runtime_archive_present"] = bool(report.get("runtime_archive_present"))
+    runtime["runtime_archive_inspection_status"] = report.get("runtime_archive_inspection_status", "pass")
+    return runtime
+
+
+def runtime_archive_evidence(
+    *, archive_path: str | None, report_path: str | None, base: str | None
+) -> dict[str, Any]:
+    if archive_path:
+        runtime = inspect_runtime_archive(archive_path)
+        runtime["runtime_archive_evidence_source"] = "direct_archive"
+        runtime["runtime_archive_report_status"] = "not_consulted_direct_archive_configured"
+        return runtime
+    runtime = runtime_archive_from_report(report_path, base)
+    if runtime.get("runtime_archive_report_status") == "pass":
+        runtime["runtime_archive_evidence_source"] = "compact_report"
+        return runtime
+    fallback = inspect_runtime_archive(None)
+    fallback.update(
+        {
+            "runtime_archive_evidence_source": "none",
+            "runtime_archive_report_status": runtime.get("runtime_archive_report_status"),
+            "runtime_archive_report_present": runtime.get("runtime_archive_report_present", False),
+        }
+    )
+    return fallback
+
+
 def emit_runtime_archive_report() -> int:
     row = runtime_archive_report_row(
         os.environ.get("CANON_RUNTIME_ARCHIVE"),
@@ -672,7 +748,11 @@ def main() -> int:
     )
 
     runtime_performance = runtime_performance_summary(commands)
-    runtime = inspect_runtime_archive(os.environ.get("CANON_RUNTIME_ARCHIVE"))
+    runtime = runtime_archive_evidence(
+        archive_path=os.environ.get("CANON_RUNTIME_ARCHIVE"),
+        report_path=os.environ.get("CANON_RUNTIME_ARCHIVE_REPORT"),
+        base=base,
+    )
 
     missing = {
         "missing_cargo_test": "cargo_test_all_targets" not in command_statuses,

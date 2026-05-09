@@ -629,9 +629,59 @@ result: 2 passed; 0 failed
 log: target/validation-logs/graph-workflow-fixture-validator-runtime-step2.log
 ```
 
-## Next Execution Slice After Runtime Archive Report Step 2
+## Completed Execution Slice After Runtime Archive Report Step 2
 
-Continue P4 by integrating the compact runtime archive report evidence into full observe-validation summary semantics where appropriate, or by adding a focused fixture/report path for another remaining missing-signal class. Preserve the existing report-only modes, optional wrapper classification, generated graph JSON classification, graph fixture evidence, receipt replay inventory, and runtime performance evidence.
+Completed compact runtime archive report integration into full observe-validation summary semantics. Full observe-validation now uses direct `CANON_RUNTIME_ARCHIVE` evidence first, and otherwise can consume a passing compact report supplied through `CANON_RUNTIME_ARCHIVE_REPORT` when its base matches the current `CANON_DELTA_BASE`. Base-mismatched or invalid reports are rejected and fall back to missing archive evidence.
+
+
+## Validation Evidence From Runtime Archive Report Integration Step 3
+
+```text
+python3 -m unittest tests/test_observe_validation_contract.py
+exit: 0
+result: 30 passed; 0 failed
+log: target/validation-logs/observe-validation-contract-runtime-integration-step3.log
+```
+
+```text
+python3 -m py_compile scripts/observe_validation.sh tests/test_observe_validation_contract.py
+exit: 0
+log: target/validation-logs/py-compile-runtime-integration-step3.log
+```
+
+```text
+CANON_DELTA_BASE=$(git rev-parse HEAD) CANON_RUNTIME_ARCHIVE=target/runtime-archive-step3-head-report.tar CANON_OBSERVE_REPORT=target/observe/runtime-archive-report-step3-head.ndjson python3 scripts/observe_validation.sh --runtime-archive-report
+exit: 0
+result: validation_status=pass, runtime_archive_inspection_status=pass, runtime_manifest_base_matches_delta_base=true, runtime_archive_missing_signal_count=0
+summary: missing_runtime_manifest_base_match=false, missing_runtime_download_index=false, missing_runtime_prior_state=false, missing_runtime_conversation_ledger=false
+log: target/validation-logs/runtime-archive-report-step3-head.log
+```
+
+```text
+CANON_OBSERVE_REPORT=target/observe/graph-fixture-report-runtime-integration-step3.ndjson python3 scripts/observe_validation.sh --graph-fixture-report
+exit: 0
+result: validation_status=pass, graph_evidence_status=graph_mutation_landed_with_receipt_snapshot
+log: target/validation-logs/graph-fixture-report-runtime-integration-step3.log
+```
+
+```text
+python3 -m unittest tests/test_graph_workflow_fixture_validator.py
+exit: 0
+result: 2 passed; 0 failed
+log: target/validation-logs/graph-workflow-fixture-validator-runtime-integration-step3.log
+```
+
+```text
+CANON_TEST_TIMEOUT_SECONDS=1 CANON_DELTA_BASE=$(git rev-parse HEAD) CANON_RUNTIME_ARCHIVE_REPORT=target/observe/runtime-archive-report-step3-head.ndjson CANON_OBSERVE_REPORT=target/observe/full-observe-runtime-report-integration-step3-head.ndjson python3 scripts/observe_validation.sh
+connector result: 502 transport error during long command; ignored artifacts were produced
+exit file: target/validation-logs/full-observe-runtime-report-integration-step3-head.exit = 1
+result: validation_status=fail from command timeout/required command status; compact runtime report integration evidence present
+summary: runtime_archive_evidence_source=compact_report, runtime_archive_report_status=pass, runtime_archive_report_base_matches_current=true, delta_base_is_ancestor=true, runtime_manifest_base_matches_delta_base=true, missing_runtime_manifest_base_match=false, missing_runtime_download_index=false, missing_runtime_prior_state=false, missing_runtime_conversation_ledger=false, missing_runtime_performance_signal=false, missing_signal_count=0
+```
+
+## Next Execution Slice After Runtime Archive Report Integration Step 3
+
+Continue P4 by improving full observe-validation pass/fail classification so missing-signal success is distinguished from required command timeout/failure status, or by adding a focused fixture/report path for another remaining externally dependent signal. Preserve direct archive precedence over compact reports, base-match validation for report consumption, optional wrapper semantics, generated graph JSON classification, graph fixture evidence, receipt replay inventory, and runtime performance evidence.
 
 ## Current Non-Goals
 
