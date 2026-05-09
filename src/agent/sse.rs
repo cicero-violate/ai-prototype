@@ -78,11 +78,13 @@ pub struct SseResult {
 
 impl SseResult {
     pub fn is_complete(&self) -> bool {
-        self.done && self.message_stream_complete
+        self.done && self.message_stream_complete && self.finish_reason.as_deref() != Some("length")
     }
 
     pub fn completion_reason(&self) -> &'static str {
-        if !self.done {
+        if self.finish_reason.as_deref() == Some("length") {
+            "length_finished"
+        } else if !self.done {
             "missing_done_frame"
         } else if !self.message_stream_complete {
             "missing_message_stream_complete"
@@ -97,6 +99,9 @@ impl SseResult {
             return false;
         }
         if self.finish_reason.as_deref() == Some("length") {
+            return false;
+        }
+        if self.target_url.is_some() {
             return false;
         }
         if self.message_stream_complete {
@@ -294,4 +299,92 @@ pub fn decode_chunked_body(body: &str) -> Option<String> {
         }
     }
     Some(output)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn parse_fixture(body: &str) -> SseResult {
+        let dir = std::env::temp_dir().join(format!("canon-sse-fixture-{}", std::process::id()));
+        let mut logger = ChunkLogger::new(&dir, "fixture", 0, "turn").unwrap();
+        parse_sse_body(body, &mut logger)
+    }
+
+    #[test]
+    fn complete_stream_requires_done_and_message_stream_complete() {
+        let result = parse_fixture(
+            "data: {\"object\":\"chat.completion.chunk\",\"choices\":[{\"delta\":{\"content\":\"ok\"},\"finish_reason\":null}]}\n\n\
+             data: {\"object\":\"chat.completion.chunk\",\"choices\":[{\"delta\":{},\"finish_reason\":\"stop\"}]}\n\n\
+             data: {\"object\":\"x-turn\",\"message_stream_complete\":true,\"target_url\":\"http://127.0.0.1/thread\"}\n\n\
+             data: [DONE]\n\n",
+        );
+        assert_eq!(result.content, "ok");
+        assert!(result.is_complete());
+        assert_eq!(result.completion_reason(), "ok");
+        assert!(!result.retry_is_safe(false));
+    }
+
+    #[test]
+    fn truncated_stream_missing_done_is_retry_safe_for_new_chat_without_target_url() {
+        let result = parse_fixture(
+            "data: {\"object\":\"chat.completion.chunk\",\"choices\":[{\"delta\":{\"content\":\"partial\"},\"finish_reason\":null}]}\n\n",
+        );
+        assert_eq!(result.content, "partial");
+        assert!(!result.is_complete());
+        assert_eq!(result.completion_reason(), "missing_done_frame");
+        assert!(result.retry_is_safe(false));
+        assert!(!result.retry_is_safe(true));
+    }
+
+    #[test]
+    fn missing_message_stream_complete_is_retry_safe_only_without_target_url() {
+        let result = parse_fixture(
+            "data: {\"object\":\"chat.completion.chunk\",\"choices\":[{\"delta\":{\"content\":\"body\"},\"finish_reason\":\"stop\"}]}\n\n\
+             data: [DONE]\n\n",
+        );
+        assert!(!result.is_complete());
+        assert_eq!(
+            result.completion_reason(),
+            "missing_message_stream_complete"
+        );
+        assert!(result.retry_is_safe(false));
+        assert!(!result.retry_is_safe(true));
+    }
+
+    #[test]
+    fn target_url_preserves_evidence_and_blocks_retry_even_when_stream_metadata_is_missing() {
+        let result = parse_fixture(
+            "data: {\"object\":\"chat.completion.chunk\",\"choices\":[{\"delta\":{\"content\":\"body\"},\"finish_reason\":\"stop\"}]}\n\n\
+             data: {\"object\":\"x-turn\",\"target_url\":\"http://127.0.0.1/thread\"}\n\n\
+             data: [DONE]\n\n",
+        );
+        assert!(!result.is_complete());
+        assert_eq!(
+            result.completion_reason(),
+            "missing_message_stream_complete"
+        );
+        assert!(result.target_url.is_some());
+        assert!(!result.retry_is_safe(false));
+    }
+
+    #[test]
+    fn length_finished_output_is_incomplete_and_never_retry_safe() {
+        let result = parse_fixture(
+            "data: {\"object\":\"chat.completion.chunk\",\"choices\":[{\"delta\":{\"content\":\"too long\"},\"finish_reason\":\"length\"}]}\n\n\
+             data: {\"object\":\"x-turn\",\"message_stream_complete\":true}\n\n\
+             data: [DONE]\n\n",
+        );
+        assert_eq!(result.finish_reason.as_deref(), Some("length"));
+        assert!(!result.is_complete());
+        assert_eq!(result.completion_reason(), "length_finished");
+        assert!(!result.retry_is_safe(false));
+        assert!(!result.retry_is_safe(true));
+    }
+
+    #[test]
+    fn partial_chunked_body_preserves_available_payload_for_retry_evidence() {
+        let body = "5\r\nhello\r\n9\r\nworld";
+        assert_eq!(decode_chunked_body(body).as_deref(), Some("helloworld"));
+    }
 }

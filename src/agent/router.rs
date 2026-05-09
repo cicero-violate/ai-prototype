@@ -151,7 +151,10 @@ impl RouterStreamingResult {
         if self.finish_reason.as_deref() == Some("length") {
             return false;
         }
-        self.reason != "missing_message_stream_complete"
+        if self.target_url.is_some() {
+            return false;
+        }
+        !self.complete
     }
 }
 

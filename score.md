@@ -3,15 +3,15 @@
 ## Current Progress Snapshot
 
 Date: 2026-05-08 America/Toronto / 2026-05-09 UTC
-Turn type: implementation step 2
-Scope executed: P1 validation-evidence reporting and compact observe-report source restoration.
+Turn type: implementation step 4
+Scope executed: P2 streaming retry reliability at the SSE/router boundary.
 
 Current timestamp evidence:
 
 ```text
-2026-05-09 00:00:31 EDT America/Toronto / 2026-05-09T04:00:31Z UTC
+2026-05-09 00:06:36 EDT America/Toronto / 2026-05-09T04:06:36Z UTC
 branch: main
-latest visible prior commit before this turn: 599bfb9
+latest visible prior commit before this turn: d928951
 working directory: /workspace/ai_sandbox/canon-mini-agent/prototype/ai
 ```
 
@@ -20,35 +20,31 @@ working directory: /workspace/ai_sandbox/canon-mini-agent/prototype/ai
 Implementation files owned by this commit:
 
 ```text
-.cargo/config.toml
-scripts/observe_validation.sh
-scripts/validate_policy_learning_trace.py
-scripts/validate_rust_panic_surface.py
-scripts/write_delta_manifest.py
-tests/test_observe_validation_contract.py
+src/agent/sse.rs
+src/agent/router.rs
 plan.md
 score.md
 ```
 
-Generated validation evidence files are intentionally left under ignored `target/validation-logs/` and `target/observe/` and are not committed.
+Generated validation evidence files are intentionally left under ignored `target/validation-logs/` and are not committed.
 
 ## Scorecard
 
-Scores are approximate implementation-readiness scores on a 0-10 scale. Transparency and robustness improved because validation evidence is now source-backed, compact, and classifies connector/environment failures separately from semantic validation failures.
+Scores are approximate implementation-readiness scores on a 0-10 scale. Robustness and determinism improve because stream completion/retry decisions now preserve evidence and classify incomplete output more precisely.
 
 ```text
 I  Intelligence      = 7.0
 E  Efficiency        = 6.8
-C  Correctness       = 7.7
+C  Correctness       = 7.8
 A  Alignment         = 8.4
-R  Robustness        = 7.6
+R  Robustness        = 7.8
 P  Performance       = 5.9
 S  Scalability       = 6.4
-D  Determinism       = 8.5
+D  Determinism       = 8.6
 T  Transparency      = 8.7
 Co Collaboration     = 7.8
 Em Empowerment       = 7.4
-B  Benefit           = 7.4
+B  Benefit           = 7.5
 L  Learning          = 7.1
 St Structure         = 8.0
 Si Simplicity        = 6.4
@@ -58,90 +54,79 @@ F  Future-Proofing   = 7.7
 Approximate geometric mean:
 
 ```text
-G ≈ 7.37 / 10
+G ≈ 7.40 / 10
 ```
 
 ## Completed Work This Turn
 
-- Read `plan.md` and executed P1: make validation evidence first-class.
-- Removed the forced `.cargo/config.toml` `rustc-wrapper` setting so root validation does not depend on local graph-capture tooling.
-- Added `scripts/observe_validation.sh` as a source-backed compact NDJSON validation reporter.
-- Added explicit connector-failure fields:
-  - `connector_failure_classification_present`
-  - `connector_failure_present`
-  - `connector_failure_status`
-  - `connector_failure_classes`
-  - `connector_transport_instability_present`
-  - per-command `connector_failure_class`
-- Added compact ignored artifact counts:
-  - `ignored_artifact_count`
-  - `ignored_target_artifact_count`
-  - `ignored_runtime_artifact_count`
-  - `ignored_validation_artifact_count`
-- Added source-backed helper validators:
-  - `scripts/validate_rust_panic_surface.py`
-  - `scripts/validate_policy_learning_trace.py`
-- Added `scripts/write_delta_manifest.py` so observe reports can be consumed into receipts/manifests from tracked source code.
-- Extended `tests/test_observe_validation_contract.py` to check connector classification and ignored artifact count report fields.
+- Read `plan.md` and executed the next concrete P2 slice: streaming retry behavior and evidence preservation.
+- Updated `SseResult::is_complete` so `finish_reason=length` does not count as complete even if `[DONE]` and `message_stream_complete` are present.
+- Added explicit `length_finished` completion classification.
+- Updated SSE retry safety to block retry when a target URL has already been observed.
+- Updated router-level streaming retry safety to match evidence preservation rules.
+- Added SSE fixtures for:
+  - complete stream requiring both `[DONE]` and `message_stream_complete`
+  - truncated stream missing `[DONE]`
+  - missing `message_stream_complete`
+  - target URL observed with missing stream-complete metadata
+  - length-finished output
+  - partial chunked body preservation
 
 ## Validation Evidence Captured This Turn
 
 ```text
-command: python3 -m unittest tests/test_observe_validation_contract.py tests/test_panic_surface_contract.py tests/test_policy_learning_trace_contract.py tests/test_write_delta_manifest.py
+command: TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test agent::sse::tests --lib -- --test-threads=1
 exit: 0
-result: 29 tests passed
-log: target/validation-logs/python-contracts-all-step2-final.log
-exit file: target/validation-logs/python-contracts-all-step2-final.exit
+result: 6 passed; 0 failed; 191 filtered out
+log: target/validation-logs/sse-tests-step4.log
+exit file: target/validation-logs/sse-tests-step4.exit
 ```
 
 ```text
 command: RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo fmt --check
-exit: 0
-log: target/validation-logs/fmt-step2.log
-exit file: target/validation-logs/fmt-step2.exit
+exit: 0 after formatting the new test block
+log: target/validation-logs/fmt-step4-rerun.log
+exit file: target/validation-logs/fmt-step4-rerun.exit
 ```
 
 ```text
 command: TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --lib -- --test-threads=1
 exit: 0
-result: 191 passed; 0 failed; finished in 0.44s
-log: target/validation-logs/test-lib-step2.log
-exit file: target/validation-logs/test-lib-step2.exit
+result: 197 passed; 0 failed
+log: target/validation-logs/test-lib-step4.log
+exit file: target/validation-logs/test-lib-step4.exit
 ```
 
 ```text
 command: TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo clippy --all-targets -- -D warnings
 exit: 0
-log: target/validation-logs/clippy-step2.log
-exit file: target/validation-logs/clippy-step2.exit
+log: target/validation-logs/clippy-step4.log
+exit file: target/validation-logs/clippy-step4.exit
 ```
 
 ## Connector / Environment Notes
 
-- One combined shell call returned connector-level `502`, but the generated exit files showed:
-  - combined Python contracts exit `0`
-  - observe smoke exit `1`
-- The observe smoke emitted the new connector classification and missing-signal fields under `target/observe/validation-report-step2-smoke.ndjson`.
-- The observe smoke failed because its embedded `cargo test --all-targets` hit environment quota pressure. The cargo-test log shows multiple failures with `Disk quota exceeded`; this is classified as environment/quota pressure rather than semantic regression evidence.
-- Direct Rust checks were rerun with `TMPDIR="$PWD/target/test-tmp"` and passed for fmt, lib tests, and clippy.
+- One combined validation command returned connector-level `502`, but the redirected exit files and logs were written.
+- Captured exit files showed fmt initially failed due formatting only, while lib tests and clippy passed.
+- `cargo fmt` was applied, and `cargo fmt --check` reran with exit `0`.
+- The all-target gate was not rerun this turn because the previous step documented quota pressure for all-target in this sandbox; targeted SSE fixtures plus lib/clippy/fmt were the relevant checks for this P2 slice.
 
 ## Current Risks / Gaps
 
-- Full all-target validation remains expensive and sensitive to `/tmp`/quota pressure unless run with redirected temp directories and compact polling.
-- Observe reporting is now source-backed, but P2 still needs loop-mode stream/retry fixtures.
-- No fresh benchmark evidence was captured, so performance remains comparatively low.
-- Live router/MCP/Ollama/OpenAI paths still depend on environment services and can fail independently of core runtime correctness.
+- P2 still needs loop-driver-level coverage to prove retry attempt labels and evidence files survive retry sequences.
+- Project-loop mode versus phase-driven worker mode still needs clarification.
+- Full all-target validation remains expensive and sensitive to temp/quota pressure unless run with redirected temp directories and compact polling.
+- No fresh benchmark evidence was captured.
 
 ## Next Score Update Triggers
 
 Raise scores only after fresh evidence:
 
-- **Robustness / Determinism:** loop-mode retry fixtures pass for truncated streams, missing `[DONE]`, missing `message_stream_complete`, and length-finished output.
+- **Robustness / Determinism:** loop-driver fixtures verify retry attempt labels and evidence preservation across incomplete turns.
+- **Transparency:** retry metadata is written into chunk/evidence logs in a compact, reviewable form.
 - **Performance:** benchmark or runtime latency evidence is captured.
 - **Scalability:** multi-agent coordination and router failure scenarios are tested.
-- **Learning:** full candidate proposal -> sandbox execution -> external evaluation -> distillation/export -> policy-store insertion fixture passes.
-- **Simplicity:** generated/runtime/subproject artifact boundaries remain clean after all-target validation.
 
 ## Immediate Next Action
 
-Begin P2 by hardening loop-mode retry behavior and evidence preservation with fixtures for incomplete streams and explicit completion signals.
+Continue P2 by adding loop-driver-level retry/evidence preservation fixtures and clarifying project-loop mode versus phase-driven worker mode.
