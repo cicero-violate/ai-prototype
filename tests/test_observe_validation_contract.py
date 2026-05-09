@@ -576,6 +576,10 @@ class ObserveValidationContractTest(unittest.TestCase):
                 "SemanticVerificationReceipt",
                 row["semantic_artifact_verification_evidence_tokens"],
             )
+            self.assertEqual(row["ignored_artifact_count"], 0)
+            self.assertEqual(row["ignored_target_artifact_count"], 0)
+            self.assertEqual(row["ignored_runtime_artifact_count"], 0)
+            self.assertEqual(row["ignored_validation_artifact_count"], 0)
             self.assertEqual(row["router_test_count"], 0)
             self.assertEqual(row["connector_transport_artifact_classification"], "transport_interrupted_artifacts_complete")
             self.assertTrue(row["connector_transport_report_complete"])

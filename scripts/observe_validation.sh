@@ -663,6 +663,10 @@ def full_summary_report() -> dict[str, Any]:
         "semantic_artifact_verification_evidence_tokens": {
             "SemanticVerificationReceipt": ["src/capability/verification/semantic.rs"]
         },
+        "ignored_artifact_count": 0,
+        "ignored_target_artifact_count": 0,
+        "ignored_runtime_artifact_count": 0,
+        "ignored_validation_artifact_count": 0,
         "router_test_count": 0,
         "runtime_archive_evidence_source": "compact_report",
         "runtime_archive_report_present": True,

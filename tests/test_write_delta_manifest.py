@@ -716,6 +716,10 @@ class DeltaManifestTest(unittest.TestCase):
         self.assertEqual(receipt["external_observation_stream_evidence_files"], ["src/api/protocol.rs"])
         self.assertTrue(receipt["external_api_action_test_present"])
         self.assertIn("SemanticVerificationReceipt", receipt["semantic_artifact_verification_evidence_tokens"])
+        self.assertEqual(receipt["ignored_artifact_count"], 0)
+        self.assertEqual(receipt["ignored_target_artifact_count"], 0)
+        self.assertEqual(receipt["ignored_runtime_artifact_count"], 0)
+        self.assertEqual(receipt["ignored_validation_artifact_count"], 0)
         self.assertEqual(receipt["router_test_count"], 0)
         self.assert_compact_full_summary_command_receipt(receipt)
         for command in receipt["validation_commands"]:
@@ -736,6 +740,10 @@ class DeltaManifestTest(unittest.TestCase):
             "external_observation_stream_test_present": True,
             "external_api_action_test_present": True,
             "semantic_artifact_verification_test_present": True,
+            "ignored_artifact_count": 0,
+            "ignored_target_artifact_count": 0,
+            "ignored_runtime_artifact_count": 0,
+            "ignored_validation_artifact_count": 0,
             "router_test_count": 0,
             "connector_transport_artifact_classification": "transport_interrupted_artifacts_complete",
             "runtime_manifest_base_matches_delta_base": True,
@@ -778,6 +786,10 @@ class DeltaManifestTest(unittest.TestCase):
                 "semantic_artifact_verification_test_present",
                 "semantic_artifact_verification_evidence_files",
                 "semantic_artifact_verification_evidence_tokens",
+                "ignored_artifact_count",
+                "ignored_target_artifact_count",
+                "ignored_runtime_artifact_count",
+                "ignored_validation_artifact_count",
                 "router_test_count",
             ),
         )

@@ -3524,3 +3524,92 @@ Current risks / gaps:
 - Live graph telemetry still requires deliberate wrapper and artifact-dir inputs.
 - P4 remains open only for additional source-justified compact evidence/reporting hardening.
 ```
+
+## Implementation Step 5 - Full Summary Ignored Artifact Count Preservation
+
+Completed work:
+
+```text
+- Inspected preserved summary keys and actual compact full-summary artifact tests.
+- Identified that ignored_artifact_count, ignored_target_artifact_count, ignored_runtime_artifact_count, and ignored_validation_artifact_count were preserved by the delta manifest receiver but omitted by compact full-summary report mode.
+- Updated compact full-summary report output to emit explicit zero ignored-artifact counts.
+- Added observe-validation contract coverage for the emitted zero values.
+- Added delta-manifest receiver coverage that the actual full-summary artifact receipt preserves those fields and renders the ignored-artifact manifest metrics exactly once.
+```
+
+Validation evidence captured this turn:
+
+```text
+command: python3 -m py_compile scripts/observe_validation.sh scripts/write_delta_manifest.py tests/test_observe_validation_contract.py tests/test_write_delta_manifest.py
+exit: 0
+log: target/validation-logs/py-compile-full-summary-ignored-artifacts-impl-step5.log
+exit file: target/validation-logs/py-compile-full-summary-ignored-artifacts-impl-step5.exit
+```
+
+```text
+command: python3 -m unittest tests.test_write_delta_manifest tests.test_observe_validation_contract
+exit: 0
+result: 67 passed; 0 failed
+log: target/validation-logs/python-full-summary-ignored-artifacts-impl-step5.log
+exit file: target/validation-logs/python-full-summary-ignored-artifacts-impl-step5.exit
+```
+
+```text
+command: TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test planning_contract -- --test-threads=1
+exit: 0
+result: 2 passed; 0 failed
+log: target/validation-logs/planning-contract-full-summary-ignored-artifacts-impl-step5.log
+exit file: target/validation-logs/planning-contract-full-summary-ignored-artifacts-impl-step5.exit
+```
+
+```text
+command: TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test score_contract -- --test-threads=1
+exit: 0
+result: 5 passed; 0 failed
+log: target/validation-logs/score-contract-full-summary-ignored-artifacts-impl-step5.log
+exit file: target/validation-logs/score-contract-full-summary-ignored-artifacts-impl-step5.exit
+```
+
+Score update:
+
+```text
+I  Intelligence      = 7.0
+E  Efficiency        = 7.92
+C  Correctness       = 9.989
+A  Alignment         = 8.8
+R  Robustness        = 10.0
+P  Performance       = 6.45
+S  Scalability       = 6.82
+D  Determinism       = 9.750
+T  Transparency      = 10.0
+Co Collaboration     = 8.0
+Em Empowerment       = 7.8
+B  Benefit           = 8.1
+L  Learning          = 7.1
+St Structure         = 9.75
+Si Simplicity        = 7.36
+F  Future-Proofing   = 9.334
+```
+
+Approximate geometric mean:
+
+```text
+G ≈ 8.33 / 10
+```
+
+Rationale:
+
+```text
+- Correctness improves slightly because compact full-summary reports now emit ignored-artifact count evidence instead of omitting preserved zero-count fields.
+- Determinism improves slightly because the actual full-summary receiver path now requires exact-once manifest rendering for the ignored-artifact metric family.
+- Future-proofing improves slightly because future omission or duplicate rendering of compact ignored-artifact evidence now fails focused tests.
+- Runtime behavior and performance remain unchanged.
+```
+
+Current risks / gaps:
+
+```text
+- No fresh live wrapper-configured observe-validation evidence was captured.
+- Live graph telemetry still requires deliberate wrapper and artifact-dir inputs.
+- P4 remains open only for additional source-justified compact evidence/reporting hardening.
+```
