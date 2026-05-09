@@ -121,6 +121,11 @@ def source_evidence() -> dict[str, list[str]]:
             "ObservationCursor",
             "CommandEnvelope::new",
             "SemanticVerificationReceipt",
+            "forged_receipt",
+            "duplicated_receipt",
+            "reordered_receipt",
+            "stale_receipt",
+            "missing_receipt",
             "learning_policy_llm_feedback_loop_drives_judgment",
         ):
             if token in text:
@@ -259,6 +264,16 @@ def main() -> int:
     external_observation = token_files(evidence, ["ObservationCursor"])
     external_api = token_files(evidence, ["CommandEnvelope::new"])
     semantic_artifact = token_files(evidence, ["SemanticVerificationReceipt"])
+    receipt_replay_classification = token_files(
+        evidence,
+        [
+            "forged_receipt",
+            "duplicated_receipt",
+            "reordered_receipt",
+            "stale_receipt",
+            "missing_receipt",
+        ],
+    )
 
     failed_required = [c["name"] for c in commands if c.get("status") not in {"pass", "skipped_env_missing"}]
     command_statuses = {c["name"]: c.get("status") for c in commands}
@@ -271,6 +286,7 @@ def main() -> int:
         "external_observation_stream_test_present": bool(unique_files(external_observation)),
         "external_api_action_test_present": bool(unique_files(external_api)),
         "semantic_artifact_verification_test_present": bool(unique_files(semantic_artifact)),
+        "receipt_replay_classification_test_present": all(receipt_replay_classification.values()),
     }
 
     missing = {
@@ -289,6 +305,9 @@ def main() -> int:
         "missing_external_observation_stream_test": not evidence["external_observation_stream_test_present"],
         "missing_external_api_action_test": not evidence["external_api_action_test_present"],
         "missing_semantic_artifact_verification_test": not evidence["semantic_artifact_verification_test_present"],
+        "missing_receipt_replay_classification_report": not evidence[
+            "receipt_replay_classification_test_present"
+        ],
         "missing_router_offline_tests": True,
         "missing_connector_failure_classification": False,
     }
@@ -322,6 +341,14 @@ def main() -> int:
         "connector_failure_status": connector_failure_status,
         "connector_failure_classes": connector_failure_classes,
         "connector_transport_instability_present": connector_transport_instability_present,
+        "receipt_replay_classification_present": evidence[
+            "receipt_replay_classification_test_present"
+        ],
+        "receipt_replay_classifications": sorted(receipt_replay_classification.keys()),
+        "receipt_replay_classification_evidence_files": unique_files(
+            receipt_replay_classification
+        ),
+        "receipt_replay_classification_evidence_tokens": receipt_replay_classification,
         "missing_signal_flags": missing,
         "missing_signal_count": sum(1 for value in missing.values() if value),
         "git_status_clean": not bool(git_status),

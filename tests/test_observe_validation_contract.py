@@ -157,6 +157,22 @@ class ObserveValidationContractTest(unittest.TestCase):
         ):
             self.assertIn(token, self.script)
 
+    def test_receipt_replay_classification_report_is_emitted(self) -> None:
+        for token in (
+            "receipt_replay_classification_present",
+            "receipt_replay_classifications",
+            "receipt_replay_classification_evidence_files",
+            "receipt_replay_classification_evidence_tokens",
+            "missing_receipt_replay_classification_report",
+            "receipt_replay_classification_test_present",
+            "forged_receipt",
+            "duplicated_receipt",
+            "reordered_receipt",
+            "stale_receipt",
+            "missing_receipt",
+        ):
+            self.assertIn(token, self.script)
+
     def test_ignored_artifact_counts_are_emitted(self) -> None:
         for token in (
             "ignored_artifact_count",

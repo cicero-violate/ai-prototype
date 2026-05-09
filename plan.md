@@ -4,13 +4,13 @@
 
 Canon Agent is a Rust prototype for a deterministic, auditable, self-improving agent runtime. The target architecture remains a formally constrained state-machine kernel with a capability layer around it. The kernel owns correctness, state transitions, durable records, replay boundaries, and audit evidence. LLMs and tools operate inside the capability layer and must produce typed, reviewable evidence rather than governing the runtime directly.
 
-Current implementation snapshot, 2026-05-09 00:49:14 EDT America/Toronto / 2026-05-09T04:49:14Z UTC:
+Current implementation snapshot, 2026-05-09 00:54:25 EDT America/Toronto / 2026-05-09T04:54:25Z UTC:
 
 - Branch: `main`.
-- Latest visible prior commit before this implementation turn: `974cbdf Add worker durable resume replay test`.
+- Latest visible prior commit before this implementation turn: `723e7f7 Add supervisor reload replay continuity test`.
 - The requested working directory resolves to the connector workspace root: `/workspace/ai_sandbox/canon-mini-agent/prototype/ai`.
-- This implementation step added supervisor reload edge coverage for cross-generation command replay continuity.
-- The supervisor binary contract now proves the replacement worker resumes the persisted TLog, returns `replayed` for a duplicate command, preserves original event identity, and does not append durable TLog state.
+- This implementation step added persisted validation-report evidence for compact receipt replay classifications.
+- The observe-validation summary row now records the receipt replay classification inventory, source evidence files, source evidence tokens, and a missing-signal flag for classification report availability.
 - The pre-existing implementation batch has now been reviewed at diff level and validated.
 - P0 validation baseline is closed with fresh all-target, fmt, lib-test, and clippy evidence.
 - Connector 502s occurred during long-running validation polling, but redirected/detached validation evidence completed with exit files and final test summaries.
@@ -166,6 +166,18 @@ Fresh validation evidence from implementation step 1:
      - `cargo test --lib -- --test-threads=1` passed; 209 tests; exit `0`; log `target/validation-logs/test-lib-impl-step4.log`.
      - `cargo clippy --all-targets -- -D warnings` passed; exit `0`; log `target/validation-logs/clippy-impl-step4.log`.
    - P3 API/worker compatibility slices for batch command limits, invalid envelopes, durable resume, and supervisor reload now have targeted coverage.
+4. Persist compact receipt-chain classification evidence in validation/report rows.
+   - Added source-derived receipt replay classification inventory fields to `scripts/observe_validation.sh`.
+   - The persisted `validation_summary` row now emits `receipt_replay_classification_present`, `receipt_replay_classifications`, `receipt_replay_classification_evidence_files`, and `receipt_replay_classification_evidence_tokens`.
+   - Added `missing_receipt_replay_classification_report` to missing-signal flags so report consumers can distinguish unavailable classification evidence from ordinary validation failures.
+   - Added Python contract coverage for the new report schema tokens and all five compact classes: `forged_receipt`, `duplicated_receipt`, `reordered_receipt`, `stale_receipt`, and `missing_receipt`.
+   - Smoke report evidence with `CANON_TEST_TIMEOUT_SECONDS=1` confirmed the new summary fields are emitted and `missing_receipt_replay_classification_report` is `false`; the smoke validation status itself was expectedly `fail` because the timeout was intentionally too short.
+   - Validation evidence from current implementation step:
+     - `python3 -m unittest tests/test_observe_validation_contract.py` passed; 16 tests; exit `0`; log `target/validation-logs/observe-validation-contract-impl-step5.log`.
+     - `cargo test --test api_transport_contract -- --test-threads=1` passed; 19 tests; exit `0`; log `target/validation-logs/api-transport-contract-impl-step5.log`.
+     - `cargo fmt --check` passed; exit `0`; log `target/validation-logs/fmt-impl-step5.log`.
+     - `cargo test --lib -- --test-threads=1` passed; 209 tests; exit `0`; log `target/validation-logs/test-lib-impl-step5.log`.
+     - `cargo clippy --all-targets -- -D warnings` passed; exit `0`; log `target/validation-logs/clippy-impl-step5.log`.
 
 ### P4 — Graph source-of-truth integration
 
@@ -181,15 +193,15 @@ Fresh validation evidence from implementation step 1:
 
 ## Next Execute-Turn Recommendation
 
-1. Continue P3 by deciding whether compact receipt-chain classifications should be emitted into persisted validation/report rows.
-2. Consider wiring compact receipt-chain classifications into validation-report output if a report consumer needs persisted failure-class rows.
+1. Continue by moving to P4 graph source-of-truth integration unless another P3 report consumer needs deeper receipt replay rows.
+2. Keep compact receipt-chain classifications source-derived in observe-validation until a durable runtime receipt ledger format is added for failed replay attempts.
 3. Keep policy promotion externally verified; never let the LLM approve its own candidates.
 4. Continue using `TMPDIR="$PWD/target/test-tmp"` for Rust tests in quota-sensitive sandboxes.
 5. Run targeted tests for the next consumer, `cargo fmt --check`, `cargo test --lib -- --test-threads=1`, and `cargo clippy --all-targets -- -D warnings` after the next P3 slice.
 
 ## Planning-Turn Handoff
 
-P0, P1, and P2 are complete. P3 is now in progress with the receipt-chain invariant verifier implemented, wired into the durable API transport receipt consumer, and supplemented by worker/supervisor boundary tests for batch limits, invalid envelopes, durable resume replay, and supervisor reload replay continuity. The next execution turn should decide whether compact receipt-chain classifications should be emitted into persisted validation/report rows or move to the next P4 graph source-of-truth slice.
+P0, P1, and P2 are complete. P3 now has receipt-chain invariant verification, API transport consumption, worker/supervisor boundary coverage, and persisted observe-validation summary evidence for compact replay classifications. The next execution turn should move to the next P4 graph source-of-truth slice unless a deeper P3 runtime receipt ledger for failed replay attempts is required.
 
 ## Current Non-Goals
 
