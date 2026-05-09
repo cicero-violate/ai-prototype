@@ -2637,3 +2637,50 @@ Candidate priorities:
 ```
 
 Do not make compact replay modes depend on live wrapper validation.
+
+## Completed Execution Slice After Full Summary Graph Manifest Step 2
+
+Completed receiver-side compact full-summary manifest coverage for the graph workflow fixture validation command added in the prior implementation step.
+
+Implementation details:
+
+```text
+- Updated tests/test_write_delta_manifest.py synthetic compact full-summary replay fixture from three validation commands to four.
+- Added graph_workflow_fixture_validation to the synthetic compact full-summary validation_commands fixture.
+- Asserted the delta receipt preserves graph_workflow_fixture_validation in validation_commands.
+- Asserted the rendered delta manifest includes graph_workflow_fixture_validation: pass.
+- Updated actual --full-summary-report artifact manifest coverage to require four commands and four distinct summary validation commands.
+```
+
+This closes the concrete compact receiver follow-up introduced by the prior step: the observe-validation compact full-summary artifact now emits four required validation commands, and the delta manifest receiver test coverage verifies that graph workflow fixture command evidence is preserved through receipt and manifest rendering.
+
+## Validation Evidence From Full Summary Graph Manifest Step 2
+
+```text
+command: python3 -m py_compile tests/test_write_delta_manifest.py scripts/write_delta_manifest.py
+exit: 0
+log: target/validation-logs/py-compile-full-summary-graph-manifest-step2.log
+exit file: target/validation-logs/py-compile-full-summary-graph-manifest-step2.exit
+```
+
+```text
+command: python3 -m unittest tests.test_write_delta_manifest
+exit: 0
+result: 23 passed; 0 failed
+log: target/validation-logs/write-delta-manifest-full-summary-graph-manifest-step2.log
+exit file: target/validation-logs/write-delta-manifest-full-summary-graph-manifest-step2.exit
+```
+
+## Next Execution Slice After Full Summary Graph Manifest Step 2
+
+No additional deterministic branch is currently identified. Continue only when a new compact receiver field, live-wrapper prerequisite, or source-inspected failure branch appears.
+
+Candidate priorities:
+
+```text
+1. Capture live wrapper-configured observe-validation evidence only when CANON_RUSTC_WRAPPER and CANON_RUSTC_V3_ARTIFACT_DIR are deliberately available for a clean non-compact run.
+2. Add compact receiver manifest exact-once checks only if a future compact receiver workflow introduces new metric keys or rendering semantics.
+3. Add deterministic failure-classification coverage only for newly identified uncovered branches.
+```
+
+Do not make compact replay modes depend on live wrapper validation.

@@ -465,8 +465,9 @@ class DeltaManifestTest(unittest.TestCase):
             {"name": "cargo_test_all_targets", "cmd": ["cargo", "test", "--all-targets"], "status": "pass"},
             {"name": "panic_surface_validation", "cmd": ["python3", "scripts/validate_rust_panic_surface.py"], "status": "pass"},
             {"name": "policy_learning_trace_validation", "cmd": ["python3", "scripts/validate_policy_learning_trace.py"], "status": "pass"},
+            {"name": "graph_workflow_fixture_validation", "cmd": ["python3", "scripts/validate_graph_workflow_fixture.py"], "status": "pass"},
         ]
-        self.write_report(commands=commands, command_count=3, test_count=3, extra={
+        self.write_report(commands=commands, command_count=4, test_count=4, extra={
             "full_summary_report_only": True,
             "full_summary_report_command": "--full-summary-report",
             "command_execution_status": "pass",
@@ -490,14 +491,16 @@ class DeltaManifestTest(unittest.TestCase):
         self.assertEqual(done.returncode, 0, done.stderr)
         receipt = json.loads(self.receipt.read_text(encoding="utf-8"))
         manifest = self.out.read_text(encoding="utf-8")
-        self.assertEqual(receipt["validation_command_count"], 3)
-        self.assertEqual(receipt["validation_test_count"], 3)
+        self.assertEqual(receipt["validation_command_count"], 4)
+        self.assertEqual(receipt["validation_test_count"], 4)
+        self.assertIn("graph_workflow_fixture_validation", {command["name"] for command in receipt["validation_commands"]})
         self.assertEqual(receipt["connector_transport_artifact_classification"], "transport_interrupted_artifacts_complete")
         self.assertTrue(receipt["runtime_manifest_base_matches_delta_base"])
         self.assert_manifest_key_values(manifest, {
             "cargo_test_all_targets": "pass",
             "connector_transport_artifact_classification": "transport_interrupted_artifacts_complete",
             "runtime_manifest_base_matches_delta_base": True,
+            "graph_workflow_fixture_validation": "pass",
         })
 
     def test_generates_manifest_from_actual_full_summary_report_artifact(self) -> None:
@@ -559,16 +562,17 @@ class DeltaManifestTest(unittest.TestCase):
         self.assertTrue(receipt["runtime_manifest_base_matches_delta_base"])
         self.assert_command_normalization_receipt(
             receipt,
-            count=3,
+            count=4,
             source="summary_validation_commands",
-            summary_input=3,
-            summary_distinct=3,
+            summary_input=4,
+            summary_distinct=4,
             summary_duplicate=0,
             row_input=0,
             row_distinct=0,
             row_duplicate=0,
         )
-        self.assertEqual(receipt["validation_test_count"], 3)
+        self.assertEqual(receipt["validation_test_count"], 4)
+        self.assertIn("graph_workflow_fixture_validation", {command["name"] for command in receipt["validation_commands"]})
         for command in receipt["validation_commands"]:
             self.assertIn("cmd", command)
             self.assertTrue(command["cmd"])
@@ -582,13 +586,14 @@ class DeltaManifestTest(unittest.TestCase):
             "connector_transport_artifact_classification": "transport_interrupted_artifacts_complete",
             "runtime_manifest_base_matches_delta_base": True,
             "cargo_test_all_targets": "pass",
+            "graph_workflow_fixture_validation": "pass",
         })
         self.assert_command_normalization_manifest(
             manifest,
-            count=3,
+            count=4,
             source="summary_validation_commands",
-            summary_input=3,
-            summary_distinct=3,
+            summary_input=4,
+            summary_distinct=4,
             summary_duplicate=0,
             row_input=0,
             row_distinct=0,
