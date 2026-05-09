@@ -1,0 +1,10 @@
+schema=canon_runtime_performance_trend_fixture_v1
+baseline_project_agent_elapsed_ms_p95=3000
+current_project_agent_elapsed_ms_p95=3150
+allowed_regression_bps=500
+expected_observed_regression_bps=500
+expected_trend_status=pass
+regressed_current_project_agent_elapsed_ms_p95=3301
+expected_regressed_observed_regression_bps=1003
+expected_regressed_trend_status=fail
+rationale=trend comparison uses retained receipt numbers and basis-point deltas, not a live benchmark run

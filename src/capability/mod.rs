@@ -3,7 +3,7 @@
 //! Capabilities own rich records, policy lookup, thresholds, and external work.
 //! They submit only kernel-visible evidence tokens through the runtime.
 
-use crate::kernel::{CapabilityRegistryProjection, Evidence, GateId, State, mix};
+use crate::kernel::{mix, CapabilityRegistryProjection, Evidence, GateId, State};
 
 pub mod context;
 pub mod eval;
@@ -444,7 +444,11 @@ const fn structural_payload_hash(
     h = h.wrapping_mul(0x100000001b3);
     h ^= effect as u64;
     h = h.wrapping_mul(0x100000001b3);
-    if h == 0 { 1 } else { h }
+    if h == 0 {
+        1
+    } else {
+        h
+    }
 }
 
 pub trait EvidenceProducer {

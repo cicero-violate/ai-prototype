@@ -11,11 +11,11 @@ use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 
 use crate::capability::EvidenceSubmission;
-use crate::kernel::{Evidence, GateId, mix};
+use crate::kernel::{mix, Evidence, GateId};
 
 use super::record::{
-    MAX_OBSERVATION_PAYLOAD_BYTES, ObservationCursor, ObservationFrame, ObservationFrameKind,
-    ObservationRecord,
+    ObservationCursor, ObservationFrame, ObservationFrameKind, ObservationRecord,
+    MAX_OBSERVATION_PAYLOAD_BYTES,
 };
 
 pub const OBSERVATION_CURSOR_SCHEMA_VERSION: u64 = 1;

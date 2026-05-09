@@ -5,7 +5,7 @@
 //! ordered external frame into a hash-addressed `ObservationRecord`.
 
 use crate::capability::{EvidenceProducer, EvidenceSubmission};
-use crate::kernel::{Evidence, GateId, mix};
+use crate::kernel::{mix, Evidence, GateId};
 
 pub const MAX_OBSERVATION_PAYLOAD_BYTES: usize = 4096;
 

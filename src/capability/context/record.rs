@@ -2,7 +2,7 @@
 
 use crate::capability::memory::{MemoryLookupReceipt, MemoryLookupRecord};
 use crate::capability::{EvidenceProducer, EvidenceSubmission};
-use crate::kernel::{Evidence, GateId, Packet, mix};
+use crate::kernel::{mix, Evidence, GateId, Packet};
 
 pub const CONTEXT_ASSEMBLY_RECEIPT_SCHEMA_VERSION: u64 = 1;
 pub const CONTEXT_ASSEMBLY_RECEIPT_RECORD: u64 = 0xc07e_1001;

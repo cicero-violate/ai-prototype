@@ -7,5 +7,5 @@
 pub mod record;
 
 pub use self::record::{
-    PLAN_RECEIPT_RECORD, PLAN_RECEIPT_SCHEMA_VERSION, PlanDecision, PlanReceipt, PlanRecord,
+    PlanDecision, PlanReceipt, PlanRecord, PLAN_RECEIPT_RECORD, PLAN_RECEIPT_SCHEMA_VERSION,
 };

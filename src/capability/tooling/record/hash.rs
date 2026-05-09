@@ -3,7 +3,7 @@ use std::io::Read;
 use std::path::Path;
 
 use crate::capability::CapabilityId;
-use crate::kernel::{Packet, mix};
+use crate::kernel::{mix, Packet};
 
 use super::request::ToolRequest;
 use super::types::{ToolEffectKind, ToolSandboxError};

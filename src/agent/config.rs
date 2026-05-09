@@ -2,9 +2,10 @@ use std::env;
 use std::path::PathBuf;
 
 /// Runtime config for the agent loop, sourced from environment variables.
-/// Mirrors chatgpt-agent-loop/config.mjs.
+/// Mirrors chatgpt-agent-loop/config.mjs, extended with certification fields.
 #[derive(Clone, Debug)]
 pub struct AgentLoopConfig {
+    // ── Loop ─────────────────────────────────────────────────────────────────
     pub execute_turns: u32,
     pub turn_retry_limit: u32,
     pub loop_sleep_ms: u64,
@@ -16,6 +17,15 @@ pub struct AgentLoopConfig {
     pub router_turn_max_ms: u64,
     pub router_first_capture_ms: u64,
     pub router_idle_ms: u64,
+    // ── Certification (tlog / receipts) ───────────────────────────────────────
+    /// Worker HTTP port. When set, each completed loop cycle runs an AgentCycle
+    /// certification pass that stamps evidence to the tlog.
+    pub worker_port: Option<u16>,
+    /// Supervisor HTTP port. When set, the supervisor's /reload endpoint is
+    /// called before each certification to give the cycle a fresh worker state.
+    pub supervisor_port: Option<u16>,
+    /// Maximum steps for the certification AgentCycle (default 30).
+    pub cert_max_steps: u64,
 }
 
 impl AgentLoopConfig {
@@ -27,6 +37,12 @@ impl AgentLoopConfig {
         let sse_chunks_dir = env::var("SSE_CHUNKS_DIR")
             .map(PathBuf::from)
             .unwrap_or_else(|_| project_dir.join("agent_state").join("sse-chunks"));
+        let worker_port = env::var("AI_WORKER_PORT")
+            .ok()
+            .and_then(|v| v.parse::<u16>().ok());
+        let supervisor_port = env::var("SUPERVISOR_PORT")
+            .ok()
+            .and_then(|v| v.parse::<u16>().ok());
         Self {
             execute_turns: env_u32("EXECUTE_TURNS", 5),
             turn_retry_limit: env_u32("TURN_RETRY_LIMIT", 2),
@@ -40,14 +56,23 @@ impl AgentLoopConfig {
             router_turn_max_ms: env_u64("ROUTER_TURN_MAX_MS", 600_000),
             router_first_capture_ms: env_u64("ROUTER_FIRST_CAPTURE_MS", 60_000),
             router_idle_ms: env_u64("ROUTER_IDLE_MS", 2_500),
+            worker_port,
+            supervisor_port,
+            cert_max_steps: env_u64("AI_CERT_MAX_STEPS", 30),
         }
     }
 }
 
 fn env_u32(key: &str, default: u32) -> u32 {
-    env::var(key).ok().and_then(|v| v.parse().ok()).unwrap_or(default)
+    env::var(key)
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(default)
 }
 
 fn env_u64(key: &str, default: u64) -> u64 {
-    env::var(key).ok().and_then(|v| v.parse().ok()).unwrap_or(default)
+    env::var(key)
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(default)
 }

@@ -528,7 +528,11 @@ fn compute_structural_payload_hash(
     h = h.wrapping_mul(0x100000001b3);
     h ^= effect_u64;
     h = h.wrapping_mul(0x100000001b3);
-    if h == 0 { 1 } else { h }
+    if h == 0 {
+        1
+    } else {
+        h
+    }
 }
 
 fn compute_evidence_contract_hash(

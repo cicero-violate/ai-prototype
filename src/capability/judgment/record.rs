@@ -1,9 +1,9 @@
 //! Judgment payload owned outside the kernel.
 
 use crate::capability::context::ContextRecord;
-use crate::capability::policy::{POLICY_FEEDBACK_HASH, PolicyLookupReceipt, PolicyStore};
+use crate::capability::policy::{PolicyLookupReceipt, PolicyStore, POLICY_FEEDBACK_HASH};
 use crate::capability::{EvidenceProducer, EvidenceSubmission};
-use crate::kernel::{Evidence, GateId, mix};
+use crate::kernel::{mix, Evidence, GateId};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct JudgmentRecord {

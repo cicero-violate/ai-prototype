@@ -7,6 +7,6 @@
 pub mod record;
 
 pub use self::record::{
-    CONTEXT_ASSEMBLY_RECEIPT_RECORD, CONTEXT_ASSEMBLY_RECEIPT_SCHEMA_VERSION,
-    ContextAssemblyReceipt, ContextDecision, ContextRecord,
+    ContextAssemblyReceipt, ContextDecision, ContextRecord, CONTEXT_ASSEMBLY_RECEIPT_RECORD,
+    CONTEXT_ASSEMBLY_RECEIPT_SCHEMA_VERSION,
 };

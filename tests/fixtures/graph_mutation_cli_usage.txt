@@ -1,0 +1,5 @@
+usage:
+  graph_mutation verify-ops <ops.ndjson>
+  graph_mutation verify-receipts <patch-receipts.ndjson> <mutation-receipts.ndjson>
+  graph_mutation generate-patch <graph-contract.ndjson> <source-root> <ops.ndjson> <patch.out> <patch-receipt.out>
+  graph_mutation verify-landing <old-graph-contract.ndjson> <new-graph-contract.ndjson> <ops.ndjson> <mutation-receipt.out>

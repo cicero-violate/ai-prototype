@@ -9,7 +9,9 @@
 //!   AI_WORKER_PORT, CANON_OPENAI_BASE_URL, AI_AGENT_DOMAIN,
 //!   AI_AGENT_METRIC, AI_AGENT_MAX_STEPS
 
-use ai::agent::{AgentCycle, AgentLoopConfig, AgentObjective, LoopDriver, RouterClient, WorkerClient};
+use ai::agent::{
+    AgentCycle, AgentLoopConfig, AgentObjective, LoopDriver, RouterClient, WorkerClient,
+};
 
 fn main() {
     if std::env::args().any(|a| a == "--help" || a == "-h") {

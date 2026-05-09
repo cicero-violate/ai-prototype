@@ -3,24 +3,24 @@ use std::io::{BufRead, BufReader, Write};
 use std::path::Path;
 
 use crate::capability::verification::{
-    CanonicalEffect, CanonicalEffectProof, CanonicalEffectReceipt, PROOF_FLAGS_REQUIRED,
-    ProofSubjectKind, VerificationProofBinding, VerificationProofRecord,
+    CanonicalEffect, CanonicalEffectProof, CanonicalEffectReceipt, ProofSubjectKind,
+    VerificationProofBinding, VerificationProofRecord, PROOF_FLAGS_REQUIRED,
 };
 use crate::capability::{CapabilityId, CapabilityRegistry, EvidenceProducer, EvidenceSubmission};
 use crate::kernel::{
-    Cause, ControlEvent, Decision, EventKind, Evidence, GateId, GateStatus, Phase, TLog, mix,
+    mix, Cause, ControlEvent, Decision, EventKind, Evidence, GateId, GateStatus, Phase, TLog,
 };
 
-use super::artifact::{ToolExecutionRecord, persisted_execution_effect_is_valid};
+use super::artifact::{persisted_execution_effect_is_valid, ToolExecutionRecord};
 use super::hash::{
     capability_from_u64, parse_u64_ndjson_fields, sync_dir, tool_effect_kind_from_u64,
     tool_effect_output_hash, validate_u64_ndjson_header,
 };
 use super::process::SandboxProcessReceipt;
 use super::types::{
-    Effect, PROCESS_EFFECT_RECEIPT_RECORD, PROCESS_EFFECT_RECEIPT_SCHEMA_VERSION,
-    TOOL_EFFECT_RECEIPT_RECORD, TOOL_EFFECT_RECEIPT_SCHEMA_VERSION, ToolEffectKind,
-    ToolSandboxError,
+    Effect, ToolEffectKind, ToolSandboxError, PROCESS_EFFECT_RECEIPT_RECORD,
+    PROCESS_EFFECT_RECEIPT_SCHEMA_VERSION, TOOL_EFFECT_RECEIPT_RECORD,
+    TOOL_EFFECT_RECEIPT_SCHEMA_VERSION,
 };
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

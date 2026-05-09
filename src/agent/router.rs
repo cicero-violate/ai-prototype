@@ -8,13 +8,13 @@ use std::io::{self, Read, Write};
 use std::net::TcpStream;
 use std::time::Duration;
 
-use crate::agent::sse::{ChunkLogger, decode_chunked_body, parse_sse_body};
+use crate::agent::sse::{decode_chunked_body, parse_sse_body, ChunkLogger};
 use crate::capability::llm::openai::{
     OpenAiBrowserOptions, OpenAiChatRequest, OpenAiChatResponse, OpenAiClient, OpenAiConfig,
     OpenAiError,
 };
 use crate::capability::llm::transport::{
-    LocalEndpointError, chat_completions_path, parse_local_http_endpoint,
+    chat_completions_path, parse_local_http_endpoint, LocalEndpointError,
 };
 
 pub struct RouterClient {
@@ -65,7 +65,10 @@ impl RouterClient {
             self.target_url = Some(url);
         }
         let target_url = response.target_url.clone();
-        Ok(RouterTurnResult { response, target_url })
+        Ok(RouterTurnResult {
+            response,
+            target_url,
+        })
     }
 
     pub fn inner(&self) -> &OpenAiClient {
@@ -231,8 +234,8 @@ fn send_streaming_request(
     })?;
 
     let path = chat_completions_path(&endpoint.path_prefix);
-    let mut stream = TcpStream::connect((endpoint.host.as_str(), endpoint.port))
-        .map_err(OpenAiError::Io)?;
+    let mut stream =
+        TcpStream::connect((endpoint.host.as_str(), endpoint.port)).map_err(OpenAiError::Io)?;
     stream
         .set_read_timeout(Some(Duration::from_millis(config.timeout_ms)))
         .map_err(OpenAiError::Io)?;
@@ -255,7 +258,10 @@ fn send_streaming_request(
     match stream.read_to_string(&mut full_response) {
         Ok(_) => {}
         Err(e)
-            if matches!(e.kind(), io::ErrorKind::WouldBlock | io::ErrorKind::TimedOut) => {}
+            if matches!(
+                e.kind(),
+                io::ErrorKind::WouldBlock | io::ErrorKind::TimedOut
+            ) => {}
         Err(e) => return Err(OpenAiError::Io(e)),
     }
 

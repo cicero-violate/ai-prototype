@@ -5,8 +5,8 @@ use std::io::{BufRead, BufReader, Write};
 use std::path::Path;
 
 use crate::capability::verification::{
-    CanonicalEffect, CanonicalEffectProof, CanonicalEffectReceipt, PROOF_FLAGS_REQUIRED,
-    ProofSubjectKind, VerificationProofBinding, VerificationProofRecord,
+    CanonicalEffect, CanonicalEffectProof, CanonicalEffectReceipt, ProofSubjectKind,
+    VerificationProofBinding, VerificationProofRecord, PROOF_FLAGS_REQUIRED,
 };
 use crate::kernel::mix;
 

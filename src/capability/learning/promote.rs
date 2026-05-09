@@ -5,10 +5,10 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 
 use crate::capability::policy::{
-    POLICY_FEEDBACK_HASH, POLICY_PROMOTION_SOURCE_SEQ, PolicyEntry, PolicyStore, PolicyStoreError,
+    PolicyEntry, PolicyStore, PolicyStoreError, POLICY_FEEDBACK_HASH, POLICY_PROMOTION_SOURCE_SEQ,
 };
 use crate::capability::{EvidenceProducer, EvidenceSubmission};
-use crate::kernel::{ControlEvent, EventKind, Evidence, GateId, Phase, mix};
+use crate::kernel::{mix, ControlEvent, EventKind, Evidence, GateId, Phase};
 
 pub const DISTILLATION_ROW_SCHEMA_VERSION: u64 = 1;
 pub const DISTILLATION_ROW_RECORD: u64 = 0x4449_5354_3031_3031;

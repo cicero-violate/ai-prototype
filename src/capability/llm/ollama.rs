@@ -13,28 +13,27 @@ use std::net::TcpStream;
 use std::path::Path;
 use std::time::Duration;
 
-use crate::capability::EvidenceSubmission;
 use crate::capability::context::ContextRecord;
 use crate::capability::llm::record::{
-    LlmRecord, LlmStructuredAdapter, retry_budget_decision_receiptable,
-    retry_budget_decision_valid, retry_budget_exhausted, retry_budget_policy_valid,
+    retry_budget_decision_receiptable, retry_budget_decision_valid, retry_budget_exhausted,
+    retry_budget_policy_valid, LlmRecord, LlmStructuredAdapter,
 };
 use crate::capability::llm::transport::{
-    LocalEndpointError, LocalLlmEndpoint, chat_completions_path as shared_chat_completions_path,
-    parse_local_http_endpoint, provider_text_hash,
-    request_identity_hash as shared_request_identity_hash,
-    retry_policy_hash as shared_retry_policy_hash,
+    chat_completions_path as shared_chat_completions_path, parse_local_http_endpoint,
+    provider_text_hash, request_identity_hash as shared_request_identity_hash,
+    retry_policy_hash as shared_retry_policy_hash, LocalEndpointError, LocalLlmEndpoint,
 };
 use crate::capability::policy::PolicyStore;
 use crate::capability::verification::{
-    CanonicalEffect, CanonicalEffectProof, CanonicalEffectReceipt, PROOF_FLAG_PHASE_VERIFIED,
-    PROOF_FLAG_PROVENANCE_VERIFIED, PROOF_FLAG_RECEIPT_VERIFIED, PROOF_FLAG_TAMPER_REJECTED,
-    ProofSubjectKind, VerificationProofBinding, VerificationProofRecord,
-    verify_verification_proof_record_bindings,
+    verify_verification_proof_record_bindings, CanonicalEffect, CanonicalEffectProof,
+    CanonicalEffectReceipt, ProofSubjectKind, VerificationProofBinding, VerificationProofRecord,
+    PROOF_FLAG_PHASE_VERIFIED, PROOF_FLAG_PROVENANCE_VERIFIED, PROOF_FLAG_RECEIPT_VERIFIED,
+    PROOF_FLAG_TAMPER_REJECTED,
 };
-use crate::codec::ndjson::{TLOG_RECORD_EVENT, load_tlog_ndjson};
+use crate::capability::EvidenceSubmission;
+use crate::codec::ndjson::{load_tlog_ndjson, TLOG_RECORD_EVENT};
 use crate::kernel::{
-    Cause, ControlEvent, Decision, EventKind, Evidence, GateId, GateStatus, Phase, TLog, mix,
+    mix, Cause, ControlEvent, Decision, EventKind, Evidence, GateId, GateStatus, Phase, TLog,
 };
 
 pub const OLLAMA_PROVIDER: &str = "ollama";

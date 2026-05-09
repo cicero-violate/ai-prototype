@@ -1,9 +1,8 @@
 use ai::api::routes::handle_envelope;
 use ai::{
-    Command, CommandEnvelope, ContextRecord, ControlEvent, GateStatus, LiveMcpCallExecutor,
-    McpCallReceipt, MemoryFact, MemoryIndex, OllamaClient, OllamaMessage, Phase, PolicyStore,
-    RuntimeConfig, State, TLog, append_mcp_call_receipt_ndjson, tick, verify_tlog,
-    write_tlog_ndjson,
+    append_mcp_call_receipt_ndjson, tick, verify_tlog, write_tlog_ndjson, Command, CommandEnvelope,
+    ContextRecord, ControlEvent, GateStatus, LiveMcpCallExecutor, McpCallReceipt, MemoryFact,
+    MemoryIndex, OllamaClient, OllamaMessage, Phase, PolicyStore, RuntimeConfig, State, TLog,
 };
 use serde_json::Value;
 use std::path::Path;

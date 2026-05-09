@@ -3,8 +3,8 @@
 ## Current Progress Snapshot
 
 Date: 2026-05-08
-Turn type: planning/scoring only
-Scope reviewed: `ai` project structure, root docs, source tree, tests, and existing placeholder planning files.
+Turn type: execute step 1
+Scope reviewed: `.gitignore`, git status/ignored status, source docs/tests/fixtures, formatting state, focused library-test baseline.
 
 ## Scorecard
 
@@ -12,27 +12,27 @@ Scores are approximate implementation-readiness scores on a 0-10 scale, based on
 
 ```text
 I  Intelligence      = 6.8
-E  Efficiency        = 6.4
-C  Correctness       = 7.0
+E  Efficiency        = 6.5
+C  Correctness       = 6.8
 A  Alignment         = 8.2
-R  Robustness        = 6.7
+R  Robustness        = 6.8
 P  Performance       = 5.8
 S  Scalability       = 6.2
 D  Determinism       = 8.0
-T  Transparency      = 7.8
-Co Collaboration     = 7.4
+T  Transparency      = 8.0
+Co Collaboration     = 7.5
 Em Empowerment       = 7.1
 B  Benefit           = 7.0
 L  Learning          = 6.9
-St Structure         = 7.6
-Si Simplicity        = 5.9
-F  Future-Proofing   = 7.3
+St Structure         = 7.7
+Si Simplicity        = 6.1
+F  Future-Proofing   = 7.4
 ```
 
 Approximate geometric mean:
 
 ```text
-G ≈ 6.93 / 10
+G ≈ 7.03 / 10
 ```
 
 ## Basis For Scoring
@@ -48,8 +48,8 @@ G ≈ 6.93 / 10
 
 ### Gaps / Risks
 
-- Validation status is not yet refreshed in this planning turn; scores rely on inspection, not command results.
-- Repository hygiene needs review because the working tree includes many untracked project/runtime directories and generated artifacts.
+- Validation was refreshed for formatting and focused library tests. Formatting passes; library tests currently fail on filesystem write/quota errors rather than assertion mismatches in the visible failures.
+- Repository hygiene improved: broad ignores hiding source docs/tests were narrowed, while generated runtime artifacts remain ignored. Some newly visible source fixtures are now intentionally staged for tracking.
 - Complexity is high. Many exported surfaces and receipt families may be difficult to maintain without stronger end-to-end validation summaries.
 - Live router/MCP/Ollama/OpenAI paths require environment dependencies and can fail independently of core runtime correctness.
 - Graph telemetry appears optional and may be absent unless wrapper configuration is correct.
@@ -74,24 +74,46 @@ G ≈ 6.93 / 10
 - **Simplicity (5.9):** The project is conceptually dense and operationally complex.
 - **Future-Proofing (7.3):** Versioned schemas, receipts, and documented boundaries help future evolution.
 
-## Latest Planning-Turn Work Completed
+## Latest Execute-Turn Work Completed
 
-- Replaced placeholder `plan.md` with an implementation plan organized by priority.
-- Replaced placeholder `score.md` with current progress scoring and risk notes.
-- No source implementation changes were intentionally made in this planning turn.
+- Audited `.gitignore` and ignored/untracked status.
+- Fixed `.gitignore` to stop hiding source-owned `docs/`, `tests/`, general JSON contracts, and `tests/fixtures/**/*.ndjson`.
+- Added narrower generated/runtime ignores for state, logs, validation logs/status files, generated report JSON, and repo-agent runtime JSON/NDJSON.
+- Applied `cargo fmt` to existing Rust sources/tests and verified formatting.
+- Removed ignored bulky generated artifacts (`ai.tar.gz`, validation logs/status files, incremental build directories), reducing local project usage by about 1.3 GB.
+- Surfaced previously hidden source docs, contract tests, and fixtures for tracking.
 
 ## Validation State
 
-Not run in this planning turn. Recommended next execute turn:
+Commands run with `RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER=""`:
+
+```text
+cargo fmt --check
+status: pass (0)
+
+cargo test --lib --quiet -- --test-threads=1
+status: fail (101)
+result: 167 passed, 24 failed, 0 ignored
+primary failure class: filesystem write/quota errors
+examples: Disk quota exceeded, TlogIo, PolicyIo, SandboxIo
+
+cargo test --all-targets
+status: inconclusive in this turn; connector returned 502 on full-output/full-process attempts before a reliable final status was captured
+
+cargo clippy --all-targets -- -D warnings
+status: inconclusive in this turn; connector returned 502 before a reliable final status was captured
+```
+
+Environment note: `df -h` reported substantial free space on `/workspace` and `/tmp`, but tests still received OS error 122 (`Disk quota exceeded`) on write paths. This suggests a user/project quota or sandbox write limit rather than normal filesystem fullness.
+
+Next validation target:
 
 ```sh
 cd ai
-RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo fmt --check
+RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --lib -- --test-threads=1
 RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets
 RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo clippy --all-targets -- -D warnings
 ```
-
-Record exact outcomes here after execution.
 
 ## Next Score Update Triggers
 

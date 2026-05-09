@@ -96,11 +96,8 @@ other_sources/
 graph_snapshot/
 graph_snapshot_conversation_v2/
 
-*.json
 _old/
-docs/
 *.patch
-tests/
 *.tarcanonical.tar
 
 *.tlog
@@ -126,7 +123,6 @@ chrome-dev-profile/
 *.csv
 **/analysis/*.csv
 **/analysis/*.bin
-**/analysis/*.json
 **/analysis/*.jsonl
 **/analysis/*.lock
 **/analysis/*.txt
@@ -143,10 +139,12 @@ state/event_runtime.lock
 .claude/*
 test_projects/*
 
-**.ndjsonagent_state/*.ndjson
+**.ndjson
+agent_state/*.ndjson
 
 agent_state/
 *.ndjson
+!tests/fixtures/**/*.ndjson
 !ai-chromium/router-server/test/fixtures/**
 
 rust_chatgpt_sandbox/
@@ -156,3 +154,19 @@ target/
 .repo-agent-runtime/
 .repo-agent-runtime/upload-bundles/
 downloads/
+
+# === Runtime state and generated validation artifacts ===
+.supervisor-state.json
+state/
+tlog/
+log/
+examples/tlog/
+target/validation-*.log
+target/validation-*.status
+
+# Generated report JSON should stay out of source control, while committed
+# fixtures and source-owned JSON contracts remain visible to git status.
+**/validation/reports/*.json
+**/state/**/*.json
+**/.repo-agent-runtime/*.json
+**/.repo-agent-runtime/*.ndjson

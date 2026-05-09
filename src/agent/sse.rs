@@ -10,7 +10,12 @@ pub struct ChunkLogger {
 }
 
 impl ChunkLogger {
-    pub fn new(sse_chunks_dir: &Path, tag: &str, cycle_num: u64, label: &str) -> std::io::Result<Self> {
+    pub fn new(
+        sse_chunks_dir: &Path,
+        tag: &str,
+        cycle_num: u64,
+        label: &str,
+    ) -> std::io::Result<Self> {
         fs::create_dir_all(sse_chunks_dir)?;
         let ts = timestamp_ms();
         let filename = safe_filename(&format!("{ts}-{tag}-cycle-{cycle_num}-{label}.ndjson"));
@@ -27,7 +32,9 @@ impl ChunkLogger {
         let line = if extra_json.is_empty() {
             format!("{{\"sequence\":{seq},\"observed_at\":{ts},\"kind\":\"{kind}\"}}\n")
         } else {
-            format!("{{\"sequence\":{seq},\"observed_at\":{ts},\"kind\":\"{kind}\",{extra_json}}}\n")
+            format!(
+                "{{\"sequence\":{seq},\"observed_at\":{ts},\"kind\":\"{kind}\",{extra_json}}}\n"
+            )
         };
         let _ = self.file.write_all(line.as_bytes());
     }
@@ -45,7 +52,11 @@ fn safe_filename(value: &str) -> String {
         })
         .collect();
     let s = s.trim_matches('-');
-    if s.is_empty() { "turn.ndjson".to_string() } else { s.to_string() }
+    if s.is_empty() {
+        "turn.ndjson".to_string()
+    } else {
+        s.to_string()
+    }
 }
 
 fn timestamp_ms() -> u128 {
@@ -140,7 +151,13 @@ pub fn parse_sse_body(body: &str, logger: &mut ChunkLogger) -> SseResult {
         );
     }
 
-    SseResult { content, target_url, message_stream_complete, done, finish_reason }
+    SseResult {
+        content,
+        target_url,
+        message_stream_complete,
+        done,
+        finish_reason,
+    }
 }
 
 fn process_sse_frame(
@@ -259,11 +276,7 @@ pub fn decode_chunked_body(body: &str) -> Option<String> {
     let mut rest = body;
     loop {
         let end_of_size = rest.find("\r\n")?;
-        let size_str = rest[..end_of_size]
-            .trim()
-            .split(';')
-            .next()
-            .unwrap_or("");
+        let size_str = rest[..end_of_size].trim().split(';').next().unwrap_or("");
         let size = usize::from_str_radix(size_str, 16).ok()?;
         rest = &rest[end_of_size + 2..];
         if size == 0 {

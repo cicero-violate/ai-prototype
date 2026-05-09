@@ -69,19 +69,12 @@ async fn response_json<T: serde::de::DeserializeOwned>(response: axum::response:
     serde_json::from_slice(&body).expect("body should deserialize")
 }
 
-async fn ok_response_json<T: serde::de::DeserializeOwned>(
-    response: axum::response::Response,
-) -> T {
+async fn ok_response_json<T: serde::de::DeserializeOwned>(response: axum::response::Response) -> T {
     let status = response.status();
     let body = to_bytes(response.into_body(), usize::MAX)
         .await
         .expect("body should read");
-    assert_eq!(
-        status,
-        StatusCode::OK,
-        "{}",
-        String::from_utf8_lossy(&body)
-    );
+    assert_eq!(status, StatusCode::OK, "{}", String::from_utf8_lossy(&body));
     serde_json::from_slice(&body).expect("body should deserialize")
 }
 

@@ -1,7 +1,7 @@
 //! Durable eval payload owned by the eval capability.
 
 use crate::capability::{EvidenceProducer, EvidenceSubmission, PacketEffect};
-use crate::kernel::{Evidence, GateId, mix};
+use crate::kernel::{mix, Evidence, GateId};
 
 pub const EVAL_SCORECARD_SCHEMA_VERSION: u64 = 1;
 pub const EVAL_SCORECARD_RECORD: u64 = 0x0e7a_5001;

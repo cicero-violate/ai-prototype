@@ -7,22 +7,22 @@ pub mod proof;
 pub mod record;
 
 pub use self::proof::{
-    CanonicalEffect, CanonicalEffectKind, CanonicalEffectProof, CanonicalEffectReceipt,
-    PROOF_FLAG_PHASE_VERIFIED, PROOF_FLAG_PROVENANCE_VERIFIED, PROOF_FLAG_RECEIPT_VERIFIED,
-    PROOF_FLAG_TAMPER_REJECTED, PROOF_FLAGS_REQUIRED, ProofSubjectKind, VERIFICATION_PROOF_RECORD,
-    VERIFICATION_PROOF_SCHEMA_VERSION, VerificationProofBinding, VerificationProofError,
-    VerificationProofRecord, append_verification_proof_record_ndjson,
-    decode_verification_proof_record_ndjson, encode_verification_proof_record_ndjson,
-    load_verification_proof_records_ndjson, verify_verification_proof_record_bindings,
-    verify_verification_proof_record_order_ndjson, verify_verification_proof_record_replay,
-    verify_verification_proof_record_replay_ndjson, verify_verification_proof_records,
-    verify_verification_proof_records_ndjson,
+    append_verification_proof_record_ndjson, decode_verification_proof_record_ndjson,
+    encode_verification_proof_record_ndjson, load_verification_proof_records_ndjson,
+    verify_verification_proof_record_bindings, verify_verification_proof_record_order_ndjson,
+    verify_verification_proof_record_replay, verify_verification_proof_record_replay_ndjson,
+    verify_verification_proof_records, verify_verification_proof_records_ndjson, CanonicalEffect,
+    CanonicalEffectKind, CanonicalEffectProof, CanonicalEffectReceipt, ProofSubjectKind,
+    VerificationProofBinding, VerificationProofError, VerificationProofRecord,
+    PROOF_FLAGS_REQUIRED, PROOF_FLAG_PHASE_VERIFIED, PROOF_FLAG_PROVENANCE_VERIFIED,
+    PROOF_FLAG_RECEIPT_VERIFIED, PROOF_FLAG_TAMPER_REJECTED, VERIFICATION_PROOF_RECORD,
+    VERIFICATION_PROOF_SCHEMA_VERSION,
 };
 
 pub use self::record::{
-    ArtifactBackedSemanticProfile, ArtifactBackedSemanticReceipt, ArtifactSemanticProfile,
-    ArtifactVerificationProfileKind, DeterministicSemanticVerifier, SemanticVerificationReceipt,
-    VERIFICATION_RECEIPT_RECORD, VERIFICATION_RECEIPT_SCHEMA_VERSION, VerificationCheck,
+    content_hash, verify_artifact_backed_semantics, ArtifactBackedSemanticProfile,
+    ArtifactBackedSemanticReceipt, ArtifactSemanticProfile, ArtifactVerificationProfileKind,
+    DeterministicSemanticVerifier, SemanticVerificationReceipt, VerificationCheck,
     VerificationDecision, VerificationReceipt, VerificationRecord, VerificationRequest,
-    content_hash, verify_artifact_backed_semantics,
+    VERIFICATION_RECEIPT_RECORD, VERIFICATION_RECEIPT_SCHEMA_VERSION,
 };

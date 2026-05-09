@@ -13,20 +13,20 @@
 //! kernel evidence contract.
 
 use crate::capability::{EvidenceProducer, EvidenceSubmission, PacketEffect};
-use crate::kernel::{Evidence, GateId, Packet, mix};
+use crate::kernel::{mix, Evidence, GateId, Packet};
 use std::fs;
 use std::path::Path;
 
 pub use super::proof::{
-    PROOF_FLAG_PHASE_VERIFIED, PROOF_FLAG_PROVENANCE_VERIFIED, PROOF_FLAG_RECEIPT_VERIFIED,
-    PROOF_FLAG_TAMPER_REJECTED, PROOF_FLAGS_REQUIRED, ProofSubjectKind, VERIFICATION_PROOF_RECORD,
-    VERIFICATION_PROOF_SCHEMA_VERSION, VerificationProofBinding, VerificationProofError,
-    VerificationProofRecord, append_verification_proof_record_ndjson,
-    decode_verification_proof_record_ndjson, encode_verification_proof_record_ndjson,
-    load_verification_proof_records_ndjson, verify_verification_proof_record_bindings,
-    verify_verification_proof_record_order_ndjson, verify_verification_proof_record_replay,
-    verify_verification_proof_record_replay_ndjson, verify_verification_proof_records,
-    verify_verification_proof_records_ndjson,
+    append_verification_proof_record_ndjson, decode_verification_proof_record_ndjson,
+    encode_verification_proof_record_ndjson, load_verification_proof_records_ndjson,
+    verify_verification_proof_record_bindings, verify_verification_proof_record_order_ndjson,
+    verify_verification_proof_record_replay, verify_verification_proof_record_replay_ndjson,
+    verify_verification_proof_records, verify_verification_proof_records_ndjson, ProofSubjectKind,
+    VerificationProofBinding, VerificationProofError, VerificationProofRecord,
+    PROOF_FLAGS_REQUIRED, PROOF_FLAG_PHASE_VERIFIED, PROOF_FLAG_PROVENANCE_VERIFIED,
+    PROOF_FLAG_RECEIPT_VERIFIED, PROOF_FLAG_TAMPER_REJECTED, VERIFICATION_PROOF_RECORD,
+    VERIFICATION_PROOF_SCHEMA_VERSION,
 };
 
 const DEFECT_NONE: u64 = 0;

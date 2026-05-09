@@ -98,13 +98,26 @@ The repo also contains embedded/subproject material (`canon-rustc-v3`, `graph-ed
 
 ## Next Execute-Turn Recommendation
 
-Run validation baseline and tighten repository hygiene:
+Fix quota-safe validation and complete the baseline:
 
-1. Inspect `ai/.gitignore` and root status to identify generated/transient files.
-2. Run formatting/tests/clippy with Rust wrappers disabled.
-3. Update `score.md` with exact command outcomes.
-4. If checks fail, fix the smallest deterministic issue first.
-5. Commit only intentional source/doc/test changes.
+1. Investigate why filesystem-writing tests still receive `Disk quota exceeded` despite normal `df` free-space output.
+2. Prefer redirecting temp/runtime test writes to a known writable, cleaned directory if the issue is project/user quota rather than code behavior.
+3. Re-run `RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --lib -- --test-threads=1`.
+4. Once library tests pass, run `cargo test --all-targets` and `cargo clippy --all-targets -- -D warnings`.
+5. Keep `.gitignore` narrow: source docs, scripts, tests, JSON contracts, and `tests/fixtures/**/*.ndjson` must remain visible; generated runtime logs and target outputs must remain ignored.
+6. Update `score.md` with exact command outcomes and commit only intentional source/doc/test changes.
+
+
+## Completed This Execute Turn
+
+- Audited `.gitignore` and `git status --ignored`.
+- Removed broad ignore rules that hid source-owned `docs/`, `tests/`, and JSON contract files.
+- Added narrower ignores for runtime/generated artifacts such as `target/validation-*`, `state/`, `tlog/`, `log/`, `.supervisor-state.json`, and generated report JSON.
+- Added an exception for `tests/fixtures/**/*.ndjson` so graph mutation fixtures are visible.
+- Applied `cargo fmt` formatting across existing Rust source and test files.
+- Verified `cargo fmt --check` passes with wrappers disabled.
+- Ran focused library tests; 167 passed and 24 failed due to filesystem write/quota errors (`Disk quota exceeded`, `TlogIo`, `PolicyIo`, `SandboxIo`).
+- Removed ignored bulky artifacts including `ai.tar.gz`, validation logs, and incremental build directories, reducing local project disk use by about 1.3 GB, but the quota/write-path failures remained.
 
 ## Non-Goals For The Next Execute Turn
 

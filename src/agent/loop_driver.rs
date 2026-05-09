@@ -6,8 +6,11 @@ use std::thread;
 use std::time::Duration;
 
 use crate::agent::config::AgentLoopConfig;
+use crate::agent::cycle::AgentCycle;
+use crate::agent::objective::AgentObjective;
 use crate::agent::router::RouterClient;
 use crate::agent::sse::ChunkLogger;
+use crate::agent::worker_client::WorkerClient;
 use crate::capability::llm::openai::{OpenAiChatRequest, OpenAiMessage};
 
 /// Outer cycle loop driver. Mirrors agentLoop / runCycle from chatgpt-agent-loop/agent-loop.mjs.
@@ -44,7 +47,10 @@ impl LoopDriver {
         );
 
         match sync_mcp_workspace(&self.config.mcp_connector_url, &self.config.project_dir) {
-            Ok(_) => eprintln!("agent: MCP workspace synced ({})", self.config.mcp_connector_url),
+            Ok(_) => eprintln!(
+                "agent: MCP workspace synced ({})",
+                self.config.mcp_connector_url
+            ),
             Err(e) => {
                 eprintln!("agent: MCP workspace sync failed: {e}");
                 return;
@@ -124,7 +130,12 @@ impl LoopDriver {
             };
 
             let prompt = if is_planning {
-                planning_prompt(&goal, agent_id, self.config.agent_count, &self.config.working_dir)
+                planning_prompt(
+                    &goal,
+                    agent_id,
+                    self.config.agent_count,
+                    &self.config.working_dir,
+                )
             } else {
                 execute_prompt(turn, agent_id, self.config.agent_count)
             };
@@ -152,13 +163,9 @@ impl LoopDriver {
                     format!("{label}-retry-{attempt}")
                 };
 
-                let mut logger = ChunkLogger::new(
-                    &self.config.sse_chunks_dir,
-                    tag,
-                    cycle_num,
-                    &attempt_label,
-                )
-                .map_err(|e| e.to_string())?;
+                let mut logger =
+                    ChunkLogger::new(&self.config.sse_chunks_dir, tag, cycle_num, &attempt_label)
+                        .map_err(|e| e.to_string())?;
 
                 let request = OpenAiChatRequest::new(vec![OpenAiMessage::user(prompt.clone())]);
                 let has_target_url = router.target_url().is_some();
@@ -209,18 +216,72 @@ impl LoopDriver {
             }
         }
 
+        // All loop turns completed — run evidence certification against the worker.
+        self.run_certification(cycle_num, tag);
+
         Ok(())
+    }
+
+    /// Run an AgentCycle against the worker to stamp evidence gates to the tlog.
+    /// Called after each successful loop cycle.
+    fn run_certification(&self, cycle_num: u64, tag: &str) {
+        let Some(worker_port) = self.config.worker_port else {
+            return;
+        };
+
+        // If a supervisor is configured, reload the worker to get a fresh state.
+        if let Some(sup_port) = self.config.supervisor_port {
+            eprintln!("[{tag}] cert: reloading worker via supervisor (port {sup_port})");
+            match supervisor_reload(sup_port) {
+                Ok(_) => {
+                    eprintln!("[{tag}] cert: waiting for worker on port {worker_port}");
+                    if !wait_for_worker_healthy(worker_port, 30) {
+                        eprintln!("[{tag}] cert: worker did not become healthy after reload — skipping");
+                        return;
+                    }
+                }
+                Err(e) => {
+                    eprintln!("[{tag}] cert: supervisor reload failed: {e} — continuing with current worker state");
+                }
+            }
+        }
+
+        let router = match RouterClient::from_env() {
+            Ok(r) => r,
+            Err(e) => {
+                eprintln!("[{tag}] cert: router init failed: {e}");
+                return;
+            }
+        };
+
+        let worker = WorkerClient::new(worker_port);
+        let objective = build_cert_objective(&self.config.project_dir);
+
+        eprintln!(
+            "[{tag}] cert: cycle {cycle_num} — domain={}…",
+            objective.domain_hint.chars().take(80).collect::<String>().replace('\n', " "),
+        );
+
+        let mut cycle = AgentCycle::new(router, worker, objective)
+            .with_max_steps(self.config.cert_max_steps);
+
+        match cycle.run() {
+            Ok(summary) => eprintln!(
+                "[{tag}] cert: done  steps={}  success={}  stop={}  phase={}  tlog_len={}",
+                summary.step_count,
+                summary.success,
+                summary.stop_reason,
+                summary.final_phase,
+                summary.final_tlog_len,
+            ),
+            Err(e) => eprintln!("[{tag}] cert: AgentCycle failed: {e}"),
+        }
     }
 }
 
 // ── Prompt builders ───────────────────────────────────────────────────────────
 
-fn planning_prompt(
-    goal: &str,
-    agent_id: u32,
-    agent_count: u32,
-    working_dir: &Path,
-) -> String {
+fn planning_prompt(goal: &str, agent_id: u32, agent_count: u32, working_dir: &Path) -> String {
     let agent_line = agent_identity(agent_id, agent_count);
     format!(
         "{agent_line}\n\
@@ -318,4 +379,86 @@ fn sync_mcp_workspace(mcp_url: &str, project_dir: &Path) -> Result<(), String> {
     }
 
     Ok(())
+}
+
+// ── Certification helpers ─────────────────────────────────────────────────────
+
+/// Build an AgentObjective from the project files produced by the loop cycle.
+fn build_cert_objective(project_dir: &Path) -> AgentObjective {
+    let goal = read_file_truncated(&project_dir.join("GOAL.md"), 800);
+    let plan = read_file_truncated(&project_dir.join("plan.md"), 400);
+    let score = read_file_truncated(&project_dir.join("score.md"), 300);
+
+    let domain = if plan.is_empty() {
+        goal
+    } else {
+        format!("{goal}\n\nCompleted work:\n{plan}")
+    };
+
+    let metric = if score.is_empty() {
+        "All objectives in GOAL.md completed".into()
+    } else {
+        score
+    };
+
+    AgentObjective::new(domain, metric)
+}
+
+fn read_file_truncated(path: &Path, max_chars: usize) -> String {
+    fs::read_to_string(path)
+        .map(|s| {
+            let count = s.chars().count();
+            if count > max_chars {
+                let truncated: String = s.chars().take(max_chars).collect();
+                format!("{truncated}…")
+            } else {
+                s
+            }
+        })
+        .unwrap_or_default()
+}
+
+/// POST /reload to the supervisor and return when it responds 200/204.
+fn supervisor_reload(supervisor_port: u16) -> Result<(), String> {
+    let mut stream = TcpStream::connect(("127.0.0.1", supervisor_port))
+        .map_err(|e| format!("supervisor connect: {e}"))?;
+    stream.set_read_timeout(Some(Duration::from_secs(10))).ok();
+    stream.set_write_timeout(Some(Duration::from_secs(5))).ok();
+
+    let request = format!(
+        "POST /reload HTTP/1.1\r\nHost: 127.0.0.1:{supervisor_port}\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"
+    );
+    stream
+        .write_all(request.as_bytes())
+        .map_err(|e| format!("supervisor write: {e}"))?;
+    stream.flush().ok();
+
+    let mut response = String::new();
+    stream.read_to_string(&mut response).ok();
+
+    let status: u16 = response
+        .lines()
+        .next()
+        .and_then(|l| l.split_whitespace().nth(1))
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(0);
+
+    if status == 200 || status == 204 {
+        Ok(())
+    } else {
+        Err(format!("supervisor /reload returned HTTP {status}"))
+    }
+}
+
+/// Poll the worker health endpoint until it responds OK or the timeout expires.
+fn wait_for_worker_healthy(port: u16, timeout_secs: u64) -> bool {
+    let client = WorkerClient::new(port);
+    let deadline = std::time::Instant::now() + Duration::from_secs(timeout_secs);
+    while std::time::Instant::now() < deadline {
+        if client.health().unwrap_or(false) {
+            return true;
+        }
+        thread::sleep(Duration::from_millis(500));
+    }
+    false
 }

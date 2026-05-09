@@ -1,0 +1,22 @@
+# Graph Mutation CLI Workflow Fixture
+
+files:
+  ops.ndjson
+  old-graph.ndjson
+  new-graph.ndjson
+  source/src/lib.rs
+  expected-patch.diff
+
+commands:
+  graph_mutation verify-ops ops.ndjson
+  graph_mutation generate-patch old-graph.ndjson source ops.ndjson patch.diff patch-receipt.ndjson
+  graph_mutation verify-landing old-graph.ndjson new-graph.ndjson ops.ndjson mutation-receipt.ndjson
+  graph_mutation verify-receipts patch-receipt.ndjson mutation-receipt.ndjson
+
+
+integrity:
+  ops.ndjson sha256 550f07baac8b60bd66f63d89c3f602da77c58437bceef8a9ce0a9e9a61d2ccb1
+  old-graph.ndjson sha256 c005e0155ede42754f2b9c7e37eac2f1da1b268a0e5ce83d439eeb62e94654e1
+  new-graph.ndjson sha256 dd16113ec6a5910977907345c2cea72567d692ea2a89e9e5e216e545b21b3468
+  source/src/lib.rs sha256 f334ea00880bc9f3f958220d14eefc216769a299b1db33e7dd8f699feb933b2c
+  expected-patch.diff sha256 f96d292a3e31b39b16354c6a0d3f42b25dc9ac6a40186a89c5c81fe7e7a703cc
