@@ -5,8 +5,9 @@ use ai::{
 };
 use std::io::{Read, Write};
 use std::net::TcpListener;
+use std::sync::mpsc;
 use std::thread;
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 fn receipt_path(name: &str) -> std::path::PathBuf {
     let nonce = SystemTime::now()
@@ -213,6 +214,53 @@ fn mcp_executor_records_connection_failure_as_receipt() {
     assert!(receipt.is_valid_for(&request));
     assert_eq!(receipt.exit_status, 1);
     assert!(!receipt.timed_out);
+    assert_eq!(receipt.response_bytes, 0);
+    assert_ne!(receipt.response_hash, 0);
+    assert_eq!(executor.replay_receipt(&receipt, "shell", args), Ok(true));
+    assert_eq!(verify_mcp_call_receipts(&[receipt]), Ok(1));
+}
+
+#[test]
+fn mcp_executor_records_worker_timeout_as_receipt() {
+    let listener = TcpListener::bind("127.0.0.1:0").expect("bind local mcp worker");
+    let port = listener.local_addr().expect("local addr").port();
+    let worker_url = format!("http://127.0.0.1:{port}/mcp_worker");
+    let (release_tx, release_rx) = mpsc::channel::<()>();
+
+    let server = thread::spawn(move || {
+        let (mut stream, _) = listener.accept().expect("accept mcp request");
+        let mut request_bytes = [0u8; 4096];
+        let read = stream.read(&mut request_bytes).expect("read mcp request");
+        let request = String::from_utf8_lossy(&request_bytes[..read]);
+
+        assert!(request.contains("POST /mcp_worker HTTP/1.1"));
+        assert!(request.contains("\"method\":\"tools/call\""));
+        assert!(request.contains("\"name\":\"shell\""));
+
+        let _ = release_rx.recv_timeout(Duration::from_secs(2));
+    });
+
+    let args = r#"{"cwd":".","command":"sleep"}"#;
+    let executor = LiveMcpCallExecutor::new(worker_url)
+        .with_allowed_tool("shell")
+        .with_timeout_ms(100)
+        .with_max_output_bytes(4096);
+    let request = executor
+        .request_for("shell", args)
+        .expect("request should be admissible");
+    let receipt = executor
+        .execute_call("shell", args)
+        .expect("worker timeout should still produce a typed receipt");
+
+    let _ = release_tx.send(());
+    server.join().expect("server thread should finish");
+
+    assert!(!receipt.is_success());
+    assert!(receipt.is_contract_valid());
+    assert!(receipt.effect_is_normalized());
+    assert!(receipt.is_valid_for(&request));
+    assert_eq!(receipt.exit_status, 1);
+    assert!(receipt.timed_out);
     assert_eq!(receipt.response_bytes, 0);
     assert_ne!(receipt.response_hash, 0);
     assert_eq!(executor.replay_receipt(&receipt, "shell", args), Ok(true));

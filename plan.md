@@ -2192,3 +2192,51 @@ Candidate priorities:
 ```
 
 Do not add speculative production code solely to create a test branch.
+
+## Completed Execution Slice After MCP Timeout Receipt Step 3
+
+Completed deterministic MCP timeout receipt coverage with a controlled local worker fixture. The test does not require live MCP services and does not depend on an external router or connector.
+
+Implementation details:
+
+```text
+- Added mcp_executor_records_worker_timeout_as_receipt() to tests/mcp_receipt_contract.rs.
+- The fixture starts a local loopback worker, accepts the request, verifies the MCP request shape, and intentionally withholds the HTTP response.
+- The server thread is released through an explicit channel after the client has produced the timeout receipt, avoiding a permanently blocked fixture thread.
+- LiveMcpCallExecutor is configured with a short deterministic timeout and records the reqwest timeout as a typed McpCallReceipt.
+- The receipt is non-success with exit_status=1, timed_out=true, response_bytes=0, non-zero response_hash, normalized process effect, valid request binding, replay acceptance, and verify_mcp_call_receipts() acceptance.
+- This branch is distinct from both no-listener connection failure and HTTP 500 worker-response failure.
+```
+
+This completes the current MCP failure-mode evidence set for success, admission rejection, HTTP worker failure, no-listener connection failure, and worker timeout under focused deterministic tests.
+
+## Validation Evidence From MCP Timeout Receipt Step 3
+
+```text
+command: RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo fmt --check
+exit: 0
+log: target/validation-logs/fmt-mcp-timeout-step3.log
+exit file: target/validation-logs/fmt-mcp-timeout-step3.exit
+```
+
+```text
+command: RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test mcp_receipt_contract -- --test-threads=1
+exit: 0
+result: 9 passed; 0 failed
+log: target/validation-logs/mcp-receipt-timeout-step3.log
+exit file: target/validation-logs/mcp-receipt-timeout-step3.exit
+```
+
+## Next Execution Slice After MCP Timeout Receipt Step 3
+
+Shift away from MCP failure receipt coverage unless new executable evidence identifies another concrete uncovered branch. The next preferred P4 slice is focused router/API failure-classification coverage where an uncovered deterministic branch exists.
+
+Candidate priorities:
+
+```text
+1. Inspect router/API classifier tests and add focused deterministic branch coverage for an uncovered failure classification.
+2. Capture live wrapper-configured observe-validation evidence only when wrapper services and artifacts are available.
+3. Return to compact receiver manifest checks only if new metric keys or receiver workflows are introduced.
+```
+
+Do not add speculative production behavior solely to create a coverage target.
