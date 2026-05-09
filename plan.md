@@ -13,7 +13,7 @@ Current implementation snapshot, 2026-05-09 America/Toronto / 2026-05-09 UTC:
 - P1 validation evidence reporting is complete.
 - P2 agent loop reliability is complete.
 - P3 runtime and receipt correctness is complete for the current scope.
-- P4 graph source-of-truth integration now includes persisted graph evidence classification, deterministic fixture-backed positive evidence for landed graph mutations with receipt snapshots, and a compact graph-only report mode.
+- P4 graph source-of-truth integration now includes persisted graph evidence classification, deterministic fixture-backed positive evidence for landed graph mutations with receipt snapshots, a compact graph-only report mode, and documented/tested root runtime, wrapper, and editor subproject boundaries.
 
 ## Operating Rules For Agent Turns
 
@@ -95,10 +95,18 @@ Current implementation snapshot, 2026-05-09 America/Toronto / 2026-05-09 UTC:
    - Existing graph CLI contract tests cover verify-ops, generate-patch, verify-landing, verify-receipts, stable usage, workflow fixture integrity, copyable workflow fixtures, and executable manifest flow.
    - Current evidence: `cargo test --test graph_mutation_cli_contract -- --test-threads=1` passed; 10 tests.
 
-5. **Next P4 slice**
-   - Clarify `canon-rustc-v3` and `graph-editor` repository/subproject boundaries if implementation work crosses those directories.
+5. **Clarify graph subproject boundaries — complete**
+   - Added a Subproject Boundary Contract to `docs/03-graph-source-of-truth.md`.
+   - The contract assigns ownership across `ai/` root runtime, `canon-rustc-v3/`, and `graph-editor/`.
+   - Runtime owns graph schema constants, typed mutation operations, deterministic patch generation, receipt verification, validation/report evidence, and TLog admission rules.
+   - `canon-rustc-v3/` owns compiler-wrapper capture, rustc integration, graph emission, wrapper telemetry, and wrapper validation probes.
+   - `graph-editor/` owns human-facing graph inspection/editing workflows and editor-local UX.
+   - Added `tests/test_graph_source_boundary_contract.py` so future boundary changes require explicit documentation and contract coverage.
+
+6. **Next P4 slice**
    - Consider adding a dedicated standalone validator script if report-only mode grows beyond graph fixture evidence.
    - Keep wrapper telemetry optional unless `CANON_RUSTC_WRAPPER` or `CANON_RUSTC_V3_ARTIFACT_DIR` is configured.
+   - If future graph implementation crosses subproject boundaries, update the boundary contract and test before changing behavior.
 
 ### P5 — Domain intelligence layer
 
@@ -109,52 +117,39 @@ Current implementation snapshot, 2026-05-09 America/Toronto / 2026-05-09 UTC:
 ## Validation Evidence From Current Implementation Step
 
 ```text
-python3 -m unittest tests/test_observe_validation_contract.py
+python3 -m unittest tests/test_graph_source_boundary_contract.py
 exit: 0
-result: 18 passed; 0 failed
-log: target/validation-logs/observe-validation-contract-p4-impl-step3.log
+result: 5 passed; 0 failed
+log: target/validation-logs/graph-source-boundary-contract-p4-impl-step4.log
 ```
 
 ```text
-CANON_OBSERVE_REPORT=target/observe/graph-fixture-report-step3.ndjson python3 scripts/observe_validation.sh --graph-fixture-report
+python3 -m unittest tests/test_observe_validation_contract.py
 exit: 0
-result: event=graph_fixture_report, validation_status=pass, graph_evidence_status=graph_mutation_landed_with_receipt_snapshot, graph_workflow_fixture_receipt_snapshot_present=true
-log: target/validation-logs/graph-fixture-report-p4-impl-step3.log
+result: 18 passed; 0 failed
+log: target/validation-logs/observe-validation-contract-p4-impl-step4.log
+```
+
+```text
+RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo fmt --check
+exit: 0
+log: target/validation-logs/fmt-p4-impl-step4.log
 ```
 
 ```text
 TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test graph_mutation_cli_contract -- --test-threads=1
 exit: 0
 result: 10 passed; 0 failed
-log: target/validation-logs/graph-mutation-cli-contract-p4-impl-step3.log
-```
-
-```text
-RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo fmt --check
-exit: 0
-log: target/validation-logs/fmt-p4-impl-step3.log
-```
-
-```text
-TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --lib -- --test-threads=1
-exit: 0
-result: 209 passed; 0 failed
-log: target/validation-logs/test-lib-p4-impl-step3.log
-```
-
-```text
-TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo clippy --all-targets -- -D warnings
-exit: 0
-log: target/validation-logs/clippy-p4-impl-step3.log
+log: target/validation-logs/graph-mutation-cli-contract-p4-impl-step4.log
 ```
 
 ## Next Execute-Turn Recommendation
 
-Continue P4 by clarifying subproject boundaries for `canon-rustc-v3` and `graph-editor`, or proceed to the next graph integration slice that requires those boundaries. Keep graph wrapper telemetry optional and keep deterministic fixture evidence available through `--graph-fixture-report`.
+Continue P4 with the next graph integration slice. Keep graph wrapper telemetry optional, keep deterministic fixture evidence available through `--graph-fixture-report`, and require any future cross-subproject behavior change to update the boundary contract plus its test first.
 
 ## Planning-Turn Handoff
 
-P0, P1, P2, and current P3 scope are complete. P4 now has source-derived graph evidence classification, deterministic fixture-backed positive landed-with-receipt-snapshot evidence, and a compact graph-only report path that avoids broad cargo validation.
+P0, P1, P2, and current P3 scope are complete. P4 now has source-derived graph evidence classification, deterministic fixture-backed positive landed-with-receipt-snapshot evidence, a compact graph-only report path that avoids broad cargo validation, and a tested subproject boundary contract for root runtime, wrapper, and editor responsibilities.
 
 ## Current Non-Goals
 

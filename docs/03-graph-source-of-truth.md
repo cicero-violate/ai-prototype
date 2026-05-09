@@ -58,6 +58,41 @@ mutation receipt          ← TLog entry
 
 The external mutation/query agent never touches source directly. It emits typed operations against the graph. The patch generator translates those operations into source patches using the byte offsets already in the graph. The wrapper re-runs and produces a new graph. The diff between the two graphs is the mutation receipt.
 
+## Subproject Boundary Contract
+
+The graph stack spans three repositories/subprojects. Their boundaries are part
+of the correctness contract, not a naming convention.
+
+```text
+ai/ root runtime
+  owns: graph schema constants, typed mutation operations, deterministic patch
+        generation, receipt verification, validation/report evidence, and TLog
+        admission rules
+  may read: graph.json, graph workflow fixtures, graph mutation receipts
+  must not own: compiler-wrapper capture internals or interactive graph editing UI
+
+canon-rustc-v3/
+  owns: compiler-wrapper capture, rustc integration, graph.json emission, wrapper
+        telemetry, and wrapper validation probes
+  may read: root graph schema/version contract
+  must not own: runtime state-machine transitions, TLog admission, policy
+        promotion, or mutation/query UI behavior
+
+graph-editor/
+  owns: human-facing graph inspection/editing workflows and editor-local UX
+  may read: graph.json, typed graph operation contracts, mutation receipts
+  must not own: compiler-wrapper capture, runtime state-machine transitions,
+        TLog admission, or policy promotion
+```
+
+Cross-boundary changes must preserve directionality: `canon-rustc-v3` emits
+semantic graph evidence, `ai/` verifies and records typed evidence, and
+`graph-editor` presents or proposes operations against that evidence. No
+subproject may silently replace another subproject's authority. If a future
+change requires a boundary exception, the exception must be recorded in this
+document and covered by a contract test before implementation behavior depends
+on it.
+
 ## Separation of Concerns
 
 ```text
