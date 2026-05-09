@@ -28,6 +28,25 @@ COMMAND_NORMALIZATION_METRIC_KEYS = (
     "validation_command_row_duplicate_count",
 )
 
+FULL_SUMMARY_REQUIRED_COMMANDS = (
+    ("cargo_test_all_targets", ["cargo", "test", "--all-targets"]),
+    ("panic_surface_validation", ["python3", "scripts/validate_rust_panic_surface.py"]),
+    ("policy_learning_trace_validation", ["python3", "scripts/validate_policy_learning_trace.py"]),
+    ("graph_workflow_fixture_validation", ["python3", "scripts/validate_graph_workflow_fixture.py"]),
+)
+
+FULL_SUMMARY_EXACT_ONCE_MANIFEST_METRICS = (
+    "cargo_test_all_targets",
+    "graph_workflow_fixture_validation",
+)
+
+
+def compact_full_summary_commands() -> list[dict]:
+    return [
+        {"name": name, "cmd": cmd, "status": "pass"}
+        for name, cmd in FULL_SUMMARY_REQUIRED_COMMANDS
+    ]
+
 
 def manifest_metric_names(manifest: str) -> list[str]:
     return [
@@ -240,6 +259,22 @@ class DeltaManifestTest(unittest.TestCase):
     def assert_manifest_key_values(self, manifest: str, values: dict[str, object]) -> None:
         for key, value in values.items():
             self.assertIn(f"{key}: {value}", manifest, key)
+
+    def assert_compact_full_summary_command_receipt(self, receipt: dict) -> None:
+        command_names = {command["name"] for command in receipt["validation_commands"]}
+        self.assertEqual(receipt["validation_command_count"], len(FULL_SUMMARY_REQUIRED_COMMANDS))
+        self.assertEqual(receipt["validation_test_count"], len(FULL_SUMMARY_REQUIRED_COMMANDS))
+        self.assertIn("graph_workflow_fixture_validation", command_names)
+
+    def assert_compact_full_summary_manifest_commands(self, manifest: str) -> None:
+        self.assert_manifest_key_values(manifest, {
+            "cargo_test_all_targets": "pass",
+            "graph_workflow_fixture_validation": "pass",
+        })
+        self.assert_manifest_metrics_render_once(
+            manifest,
+            FULL_SUMMARY_EXACT_ONCE_MANIFEST_METRICS,
+        )
 
     def test_pass_with_commands_and_tests(self) -> None:
         self.write_report(test_count=2)
@@ -461,12 +496,7 @@ class DeltaManifestTest(unittest.TestCase):
         )
 
     def test_accepts_compact_full_summary_artifact_replay(self) -> None:
-        commands = [
-            {"name": "cargo_test_all_targets", "cmd": ["cargo", "test", "--all-targets"], "status": "pass"},
-            {"name": "panic_surface_validation", "cmd": ["python3", "scripts/validate_rust_panic_surface.py"], "status": "pass"},
-            {"name": "policy_learning_trace_validation", "cmd": ["python3", "scripts/validate_policy_learning_trace.py"], "status": "pass"},
-            {"name": "graph_workflow_fixture_validation", "cmd": ["python3", "scripts/validate_graph_workflow_fixture.py"], "status": "pass"},
-        ]
+        commands = compact_full_summary_commands()
         self.write_report(commands=commands, command_count=4, test_count=4, extra={
             "full_summary_report_only": True,
             "full_summary_report_command": "--full-summary-report",
@@ -492,25 +522,15 @@ class DeltaManifestTest(unittest.TestCase):
         self.assertEqual(done.returncode, 0, done.stderr)
         receipt = json.loads(self.receipt.read_text(encoding="utf-8"))
         manifest = self.out.read_text(encoding="utf-8")
-        self.assertEqual(receipt["validation_command_count"], 4)
-        self.assertEqual(receipt["validation_test_count"], 4)
+        self.assert_compact_full_summary_command_receipt(receipt)
         self.assertFalse(receipt["missing_signal_flags"]["missing_graph_workflow_fixture_receipt_snapshot"])
-        self.assertIn("graph_workflow_fixture_validation", {command["name"] for command in receipt["validation_commands"]})
         self.assertEqual(receipt["connector_transport_artifact_classification"], "transport_interrupted_artifacts_complete")
         self.assertTrue(receipt["runtime_manifest_base_matches_delta_base"])
         self.assert_manifest_key_values(manifest, {
-            "cargo_test_all_targets": "pass",
             "connector_transport_artifact_classification": "transport_interrupted_artifacts_complete",
             "runtime_manifest_base_matches_delta_base": True,
-            "graph_workflow_fixture_validation": "pass",
         })
-        self.assert_manifest_metrics_render_once(
-            manifest,
-            (
-                "cargo_test_all_targets",
-                "graph_workflow_fixture_validation",
-            ),
-        )
+        self.assert_compact_full_summary_manifest_commands(manifest)
 
     def test_generates_manifest_from_actual_full_summary_report_artifact(self) -> None:
         scripts_dir = self.repo / "scripts"
@@ -572,17 +592,16 @@ class DeltaManifestTest(unittest.TestCase):
         self.assertTrue(receipt["runtime_manifest_base_matches_delta_base"])
         self.assert_command_normalization_receipt(
             receipt,
-            count=4,
+            count=len(FULL_SUMMARY_REQUIRED_COMMANDS),
             source="summary_validation_commands",
-            summary_input=4,
-            summary_distinct=4,
+            summary_input=len(FULL_SUMMARY_REQUIRED_COMMANDS),
+            summary_distinct=len(FULL_SUMMARY_REQUIRED_COMMANDS),
             summary_duplicate=0,
             row_input=0,
             row_distinct=0,
             row_duplicate=0,
         )
-        self.assertEqual(receipt["validation_test_count"], 4)
-        self.assertIn("graph_workflow_fixture_validation", {command["name"] for command in receipt["validation_commands"]})
+        self.assert_compact_full_summary_command_receipt(receipt)
         for command in receipt["validation_commands"]:
             self.assertIn("cmd", command)
             self.assertTrue(command["cmd"])
@@ -595,22 +614,14 @@ class DeltaManifestTest(unittest.TestCase):
             "full_summary_report_command": "--full-summary-report",
             "connector_transport_artifact_classification": "transport_interrupted_artifacts_complete",
             "runtime_manifest_base_matches_delta_base": True,
-            "cargo_test_all_targets": "pass",
-            "graph_workflow_fixture_validation": "pass",
         })
-        self.assert_manifest_metrics_render_once(
-            manifest,
-            (
-                "cargo_test_all_targets",
-                "graph_workflow_fixture_validation",
-            ),
-        )
+        self.assert_compact_full_summary_manifest_commands(manifest)
         self.assert_command_normalization_manifest(
             manifest,
-            count=4,
+            count=len(FULL_SUMMARY_REQUIRED_COMMANDS),
             source="summary_validation_commands",
-            summary_input=4,
-            summary_distinct=4,
+            summary_input=len(FULL_SUMMARY_REQUIRED_COMMANDS),
+            summary_distinct=len(FULL_SUMMARY_REQUIRED_COMMANDS),
             summary_duplicate=0,
             row_input=0,
             row_distinct=0,

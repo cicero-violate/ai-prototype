@@ -2828,3 +2828,51 @@ Planning/scoring turn constraints remain unchanged:
 - commit planning/scoring changes as a standalone commit
 - stage only plan.md and score.md when unrelated files are dirty
 ```
+
+## Completed Implementation Step 1 After Planning Checkpoint 9e8537d
+
+Completed behavior-preserving compact full-summary receiver test boilerplate reduction.
+
+Implementation details:
+
+```text
+- Added FULL_SUMMARY_REQUIRED_COMMANDS and FULL_SUMMARY_EXACT_ONCE_MANIFEST_METRICS constants in tests/test_write_delta_manifest.py.
+- Added compact_full_summary_commands() to centralize the required compact full-summary command fixture.
+- Added assert_compact_full_summary_command_receipt() to centralize receipt-side command-count, test-count, and graph workflow command presence assertions.
+- Added assert_compact_full_summary_manifest_commands() to centralize manifest value and exact-once metric assertions for compact full-summary commands.
+- Reused the shared helpers in synthetic compact full-summary replay coverage and actual --full-summary-report artifact manifest coverage.
+```
+
+This implementation step does not change runtime behavior. It reduces duplicated compact receiver test assertions while preserving the exact evidence obligations for `cargo_test_all_targets` and `graph_workflow_fixture_validation`.
+
+## Validation Evidence From Compact Full-Summary Helper Step 1
+
+```text
+command: python3 -m py_compile tests/test_write_delta_manifest.py scripts/write_delta_manifest.py
+exit: 0
+log: target/validation-logs/py-compile-compact-full-summary-helper-step1.log
+exit file: target/validation-logs/py-compile-compact-full-summary-helper-step1.exit
+```
+
+```text
+command: python3 -m unittest tests.test_write_delta_manifest
+exit: 0
+result: 23 passed; 0 failed
+log: target/validation-logs/write-delta-manifest-compact-full-summary-helper-step1.log
+exit file: target/validation-logs/write-delta-manifest-compact-full-summary-helper-step1.exit
+```
+
+## Next Execution Slice After Compact Full-Summary Helper Step 1
+
+No additional deterministic branch is currently identified. Continue only when a new compact receiver field, live-wrapper prerequisite, or source-inspected failure branch appears.
+
+Candidate priorities:
+
+```text
+1. Capture live wrapper-configured observe-validation evidence only when CANON_RUSTC_WRAPPER and CANON_RUSTC_V3_ARTIFACT_DIR are deliberately available for a clean non-compact run.
+2. Add compact receiver manifest exact-once checks only if a future compact receiver workflow introduces new metric keys or rendering semantics.
+3. Add deterministic failure-classification coverage only for newly identified uncovered branches.
+4. Continue behavior-preserving test-boilerplate reductions only when they preserve explicit receipt, manifest, and exact-once evidence semantics.
+```
+
+Do not make compact replay modes depend on live wrapper validation.
