@@ -7,13 +7,13 @@ Canon Agent is a Rust prototype for a deterministic, auditable, self-improving a
 Current implementation snapshot, 2026-05-09 America/Toronto / 2026-05-09 UTC:
 
 - Branch: `main`.
-- Latest visible commit before this implementation turn: `30bf057 Preserve connector transport artifacts in manifests`.
+- Latest visible commit before this implementation turn: `2b72315 Clean up current planning state`.
 - Working directory: `/workspace/ai_sandbox/canon-mini-agent/prototype/ai`.
 - P0 validation baseline is complete.
 - P1 validation evidence reporting is complete.
 - P2 agent loop reliability is complete.
 - P3 runtime and receipt correctness is complete for the current scope.
-- P4 graph source-of-truth integration now includes persisted graph evidence classification, deterministic fixture-backed positive evidence for landed graph mutations with receipt snapshots, command-sequenced workflow fixture validation, a compact graph-only report mode, documented/tested root runtime, wrapper, and editor subproject boundaries, a standalone graph workflow fixture validator consumed by observe-validation, full observe-validation command evidence for that validator, explicit wrapper telemetry configuration classification, normal-path observe-validation summary evidence for graph fixture, wrapper configuration, receipt replay classification, and missing-signal coherence, executable configured-wrapper classifier branch coverage, source-derived runtime performance signal evidence from observe-validation command durations, runtime archive missing-signal derivation from inspected archive contents, runtime manifest base-match derivation from archived manifest metadata, explicit router/offline availability classification in observe-validation summary evidence, optional wrapper graph validation missing-signal derivation, generated graph JSON evidence classification, compact runtime archive report integration, separated validation status fields, compact command-execution reports, connector transport artifact classification, and delta manifest preservation of transport artifact state. The working tree is expected to be clean at the start of implementation step 4.
+- P4 graph source-of-truth integration now includes persisted graph evidence classification, deterministic fixture-backed positive evidence for landed graph mutations with receipt snapshots, command-sequenced workflow fixture validation, a compact graph-only report mode, documented/tested root runtime, wrapper, and editor subproject boundaries, a standalone graph workflow fixture validator consumed by observe-validation, full observe-validation command evidence for that validator, explicit wrapper telemetry configuration classification, normal-path observe-validation summary evidence for graph fixture, wrapper configuration, receipt replay classification, and missing-signal coherence, executable configured-wrapper classifier branch coverage, source-derived runtime performance signal evidence from observe-validation command durations, runtime archive missing-signal derivation from inspected archive contents, runtime manifest base-match derivation from archived manifest metadata, explicit router/offline availability classification in observe-validation summary evidence, optional wrapper graph validation missing-signal derivation, generated graph JSON evidence classification, compact runtime archive report integration, separated validation status fields, compact command-execution reports, connector transport artifact classification, and delta manifest preservation of transport artifact state. The working tree is expected to be clean at the start of implementation step 5.
 
 ## Current P4 Completion Summary
 
@@ -25,7 +25,7 @@ The current source-of-truth plan state is:
 4. Connector transport artifact classification is landed and distinguishes complete versus incomplete artifacts after transport interruption.
 5. Delta manifests preserve connector transport artifact evidence, so downstream receipts do not rely only on `connector_transport_instability_present`.
 
-Current next implementation target: reduce remaining plan/score documentation drift and keep validation evidence concise enough that future execution turns can identify the next source change without re-reading the full historical log.
+Current next implementation target: use the compact full-summary report as the short deterministic evidence path for command execution status, missing-signal status, connector transport artifact classification, compact runtime evidence, and delta manifest preservation.
 
 ## Operating Rules For Agent Turns
 
@@ -916,9 +916,46 @@ log: target/validation-logs/plan-doc-sanity-step4.log
 exit file: target/validation-logs/plan-doc-sanity-step4.exit
 ```
 
-## Next Execution Slice After Planning Cleanup Step 4
+## Completed Execution Slice After Planning Cleanup Step 4
 
-Continue P4 by choosing the next source-backed evidence gap rather than reworking already-landed plan text. Candidate next slices: add a compact full-summary artifact replay fixture for observe-validation, or capture a fresh synthetic full-observe artifact path that proves command execution, missing-signal status, connector transport artifact classification, runtime archive compact report evidence, and delta manifest preservation in one short deterministic workflow. Preserve compact command-execution report mode, separated status fields, compact runtime report integration, direct archive precedence, optional wrapper semantics, generated graph JSON classification, graph fixture evidence, receipt replay inventory, runtime performance evidence, and delta-manifest preservation of transport artifact state.
+Completed compact full-summary artifact replay. `scripts/observe_validation.sh --full-summary-report` now emits a deterministic `validation_summary` row without running long cargo validation. The row proves command execution status, missing-signal status, connector transport artifact classification, compact runtime archive evidence, runtime manifest base-match evidence, runtime performance signal presence, and command rows that are accepted by the delta manifest closure validator.
+
+## Validation Evidence From Full-Summary Replay Step 5
+
+```text
+python3 -m unittest tests/test_observe_validation_contract.py
+exit: 0
+result: 39 passed; 0 failed
+log: target/validation-logs/observe-validation-contract-full-summary-step5.log
+exit file: target/validation-logs/observe-validation-contract-full-summary-step5.exit
+```
+
+```text
+python3 -m unittest tests/test_write_delta_manifest.py
+exit: 0
+result: 12 passed; 0 failed
+log: target/validation-logs/write-delta-manifest-full-summary-step5.log
+exit file: target/validation-logs/write-delta-manifest-full-summary-step5.exit
+```
+
+```text
+python3 -m py_compile scripts/observe_validation.sh scripts/write_delta_manifest.py tests/test_observe_validation_contract.py tests/test_write_delta_manifest.py
+exit: 0
+log: target/validation-logs/py-compile-full-summary-step5.log
+exit file: target/validation-logs/py-compile-full-summary-step5.exit
+```
+
+```text
+CANON_OBSERVE_REPORT=target/observe/full-summary-step5.ndjson CANON_DELTA_BASE=$(git rev-parse HEAD) CANON_CONNECTOR_TRANSPORT_STATUS=502 CANON_CONNECTOR_TRANSPORT_REPORT=target/observe/full-summary-step5.ndjson CANON_CONNECTOR_TRANSPORT_EXIT_FILE=target/validation-logs/full-summary-step5.exit python3 scripts/observe_validation.sh --full-summary-report
+exit: 0
+summary: event=validation_summary, validation_status=pass, command_execution_status=pass, missing_signal_status=pass, connector_transport_artifact_classification=transport_interrupted_artifacts_complete, runtime_archive_evidence_source=compact_report, validation_command_count=3, validation_test_count=3
+log: target/validation-logs/full-summary-step5.log
+exit file: target/validation-logs/full-summary-step5-command.exit
+```
+
+## Next Execution Slice After Full-Summary Replay Step 5
+
+Continue P4 by using the compact full-summary report as a reusable fixture in any remaining receiver/archive workflows that still require long observe-validation artifacts. Candidate next slice: generate a delta manifest from an actual `--full-summary-report` artifact in a focused integration test or script-level contract. Preserve compact command-execution report mode, separated status fields, compact runtime report integration, direct archive precedence, optional wrapper semantics, generated graph JSON classification, graph fixture evidence, receipt replay inventory, runtime performance evidence, connector transport artifact classification, and delta-manifest preservation of transport artifact state.
 
 ## Current Non-Goals
 

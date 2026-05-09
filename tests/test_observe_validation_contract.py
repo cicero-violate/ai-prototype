@@ -374,13 +374,18 @@ class ObserveValidationContractTest(unittest.TestCase):
     def test_command_execution_report_mode_is_report_only(self) -> None:
         for token in (
             "--command-execution-report",
+            "--full-summary-report",
             "def command_execution_report_fixture()",
             "def emit_command_execution_report()",
+            "def emit_full_summary_report()",
             "command_execution_report_only",
             "command_execution_report_command",
+            "full_summary_report_only",
+            "full_summary_report_command",
             "CANON_COMMAND_EXECUTION_FIXTURE",
-            "usage: observe_validation.sh [--graph-fixture-report|--runtime-archive-report|--command-execution-report]",
+            "usage: observe_validation.sh [--graph-fixture-report|--runtime-archive-report|--command-execution-report|--full-summary-report]",
             "return emit_command_execution_report()",
+            "return emit_full_summary_report()",
         ):
             self.assertIn(token, self.script)
 
@@ -479,6 +484,45 @@ class ObserveValidationContractTest(unittest.TestCase):
             self.assertTrue(row["connector_transport_interrupted"])
             self.assertTrue(row["connector_transport_report_complete"])
             self.assertTrue(row["connector_transport_exit_file_present"])
+
+    def test_full_summary_report_mode_emits_compact_validation_summary(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            report = root / "full-summary-report.ndjson"
+            exit_file = root / "full-summary.exit"
+            exit_file.write_text("0\n", encoding="utf-8")
+            env = os.environ.copy()
+            env["CANON_OBSERVE_REPORT"] = str(report)
+            env["CANON_DELTA_BASE"] = "compact-base"
+            env["CANON_CONNECTOR_TRANSPORT_STATUS"] = "502"
+            env["CANON_CONNECTOR_TRANSPORT_REPORT"] = str(report)
+            env["CANON_CONNECTOR_TRANSPORT_EXIT_FILE"] = str(exit_file)
+            done = subprocess.run(
+                [sys.executable, str(OBSERVE), "--full-summary-report"],
+                cwd=ROOT,
+                env=env,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                check=False,
+            )
+            self.assertEqual(done.returncode, 0, done.stderr)
+            row = json.loads(report.read_text(encoding="utf-8").splitlines()[-1])
+            self.assertEqual(row["event"], "validation_summary")
+            self.assertTrue(row["full_summary_report_only"])
+            self.assertEqual(row["full_summary_report_command"], "--full-summary-report")
+            self.assertEqual(row["validation_status"], "pass")
+            self.assertEqual(row["command_execution_status"], "pass")
+            self.assertEqual(row["missing_signal_status"], "pass")
+            self.assertEqual(row["missing_signal_count"], 0)
+            self.assertEqual(row["runtime_archive_evidence_source"], "compact_report")
+            self.assertTrue(row["runtime_manifest_base_matches_delta_base"])
+            self.assertEqual(row["connector_transport_artifact_classification"], "transport_interrupted_artifacts_complete")
+            self.assertTrue(row["connector_transport_report_complete"])
+            self.assertTrue(row["connector_transport_exit_file_present"])
+            self.assertEqual(row["validation_command_count"], 3)
+            self.assertEqual(row["validation_test_count"], 3)
+            self.assertTrue(all("cmd" in command for command in row["validation_commands"]))
 
     def test_external_surface_evidence_is_source_derived(self) -> None:
         for token in (
@@ -889,7 +933,7 @@ class ObserveValidationContractTest(unittest.TestCase):
             "graph_fixture_report_only",
             "graph_fixture_report_command",
             "graph_fixture_validator",
-            "usage: observe_validation.sh [--graph-fixture-report|--runtime-archive-report|--command-execution-report]",
+            "usage: observe_validation.sh [--graph-fixture-report|--runtime-archive-report|--command-execution-report|--full-summary-report]",
             "return emit_graph_fixture_report()",
         ):
             self.assertIn(token, self.script + self.graph_fixture_validator)

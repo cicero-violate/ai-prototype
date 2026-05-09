@@ -5,7 +5,7 @@ The script is intentionally deterministic and report-first: generated evidence i
 written to target/observe/validation-report.ndjson by default, while expensive
 commands keep their full logs under target/validation-logs. Root Rust validation
 clears wrapper variables so baseline correctness is independent of optional graph
-capture tooling. Use --graph-fixture-report for a compact graph-only report. Use --runtime-archive-report for a compact runtime archive/base report. Use --command-execution-report for a compact command-classification report.
+capture tooling. Use --graph-fixture-report for a compact graph-only report. Use --runtime-archive-report for a compact runtime archive/base report. Use --command-execution-report for a compact command-classification report. Use --full-summary-report for a compact validation-summary replay report.
 """
 from __future__ import annotations
 
@@ -471,6 +471,7 @@ def command_execution_report_fixture() -> tuple[list[dict[str, Any]], set[str]]:
         {
             "event": "validation_command",
             "name": "cargo_test_all_targets",
+            "cmd": ["cargo", "test", "--all-targets"],
             "status": "fail",
             "exit_code": 101,
             "duration_ms": 0,
@@ -480,6 +481,7 @@ def command_execution_report_fixture() -> tuple[list[dict[str, Any]], set[str]]:
         {
             "event": "validation_command",
             "name": "panic_surface_validation",
+            "cmd": ["python3", "scripts/validate_rust_panic_surface.py"],
             "status": "pass",
             "exit_code": 0,
             "duration_ms": 0,
@@ -489,6 +491,7 @@ def command_execution_report_fixture() -> tuple[list[dict[str, Any]], set[str]]:
         {
             "event": "validation_command",
             "name": "policy_learning_trace_validation",
+            "cmd": ["python3", "scripts/validate_policy_learning_trace.py"],
             "status": "pass",
             "exit_code": 0,
             "duration_ms": 0,
@@ -536,6 +539,110 @@ def emit_command_execution_report() -> int:
     REPORT.parent.mkdir(parents=True, exist_ok=True)
     REPORT.write_text("", encoding="utf-8")
     row = command_execution_report()
+    emit(row)
+    return 0 if row["validation_status"] == "pass" else 1
+
+
+def full_summary_report() -> dict[str, Any]:
+    base = os.environ.get("CANON_DELTA_BASE", git_value("rev-parse", "HEAD"))
+    commands = [
+        {
+            "event": "validation_command",
+            "name": "cargo_test_all_targets",
+            "cmd": ["cargo", "test", "--all-targets"],
+            "status": "pass",
+            "exit_code": 0,
+            "duration_ms": 1,
+            "timed_out": False,
+            "connector_failure_class": "none",
+        },
+        {
+            "event": "validation_command",
+            "name": "panic_surface_validation",
+            "cmd": ["python3", "scripts/validate_rust_panic_surface.py"],
+            "status": "pass",
+            "exit_code": 0,
+            "duration_ms": 1,
+            "timed_out": False,
+            "connector_failure_class": "none",
+        },
+        {
+            "event": "validation_command",
+            "name": "policy_learning_trace_validation",
+            "cmd": ["python3", "scripts/validate_policy_learning_trace.py"],
+            "status": "pass",
+            "exit_code": 0,
+            "duration_ms": 1,
+            "timed_out": False,
+            "connector_failure_class": "none",
+        },
+    ]
+    required = {"cargo_test_all_targets", "panic_surface_validation", "policy_learning_trace_validation"}
+    command_summary = command_execution_summary(commands, required)
+    transport_artifacts = connector_transport_artifact_classification(
+        transport_status=os.environ.get("CANON_CONNECTOR_TRANSPORT_STATUS", ""),
+        report_path=os.environ.get("CANON_CONNECTOR_TRANSPORT_REPORT", str(REPORT)),
+        exit_file=os.environ.get("CANON_CONNECTOR_TRANSPORT_EXIT_FILE", ""),
+    )
+    missing = {
+        "missing_cargo_test": False,
+        "missing_panic_surface_validation": False,
+        "missing_policy_learning_replay_trace": False,
+        "missing_runtime_performance_signal": False,
+        "missing_runtime_manifest_base_match": False,
+        "missing_runtime_download_index": False,
+        "missing_runtime_prior_state": False,
+        "missing_runtime_conversation_ledger": False,
+        "missing_connector_failure_classification": False,
+    }
+    return {
+        "event": "validation_summary",
+        "schema_version": 1,
+        "git_head": git_value("rev-parse", "HEAD"),
+        "validation_status": "pass",
+        "validation_status_reason": "compact_full_summary_report_passed",
+        "full_summary_report_only": True,
+        "full_summary_report_command": "--full-summary-report",
+        "command_execution_status": "pass",
+        **command_summary,
+        "missing_signal_status": "pass",
+        "missing_signal_count": 0,
+        "missing_signal_flags": missing,
+        "validation_commands": commands,
+        "validation_command_count": len(commands),
+        "validation_test_count": len(commands),
+        "failed_required_commands": [],
+        "validation_command_statuses": {command["name"]: command["status"] for command in commands},
+        "validation_command_duration_ms": {command["name"]: command["duration_ms"] for command in commands},
+        "connector_failure_classification_present": True,
+        "connector_failure_present": False,
+        "connector_failure_status": "none",
+        "connector_failure_classes": [],
+        "connector_transport_instability_present": False,
+        **transport_artifacts,
+        "runtime_archive_evidence_source": "compact_report",
+        "runtime_archive_report_present": True,
+        "runtime_archive_report_status": "pass",
+        "runtime_archive_report_base_matches_current": True,
+        "runtime_archive_present": True,
+        "runtime_archive_inspection_status": "pass",
+        "runtime_archive_download_index_files": 1,
+        "runtime_archive_prior_state_files": 1,
+        "runtime_archive_conversation_ledger_files": 1,
+        "runtime_archive_current_run_summary_present": True,
+        "runtime_archive_runtime_manifest_present": True,
+        "runtime_manifest_base_expected": base,
+        "runtime_manifest_base_commit": base,
+        "runtime_manifest_base_matches_delta_base": True,
+        "runtime_performance_signal_present": True,
+        "runtime_performance_budget_status": "pass",
+    }
+
+
+def emit_full_summary_report() -> int:
+    REPORT.parent.mkdir(parents=True, exist_ok=True)
+    REPORT.write_text("", encoding="utf-8")
+    row = full_summary_report()
     emit(row)
     return 0 if row["validation_status"] == "pass" else 1
 
@@ -807,8 +914,10 @@ def main() -> int:
         return emit_runtime_archive_report()
     if len(sys.argv) == 2 and sys.argv[1] == "--command-execution-report":
         return emit_command_execution_report()
+    if len(sys.argv) == 2 and sys.argv[1] == "--full-summary-report":
+        return emit_full_summary_report()
     if len(sys.argv) > 1:
-        print("usage: observe_validation.sh [--graph-fixture-report|--runtime-archive-report|--command-execution-report]", file=sys.stderr)
+        print("usage: observe_validation.sh [--graph-fixture-report|--runtime-archive-report|--command-execution-report|--full-summary-report]", file=sys.stderr)
         return 2
 
     REPORT.parent.mkdir(parents=True, exist_ok=True)

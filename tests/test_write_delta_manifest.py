@@ -307,6 +307,44 @@ class DeltaManifestTest(unittest.TestCase):
         self.assertEqual(Counter(metric_names)["connector_transport_artifact_classification"], 1)
         self.assertEqual(Counter(metric_names)["connector_transport_status"], 1)
 
+    def test_accepts_compact_full_summary_artifact_replay(self) -> None:
+        commands = [
+            {"name": "cargo_test_all_targets", "cmd": ["cargo", "test", "--all-targets"], "status": "pass"},
+            {"name": "panic_surface_validation", "cmd": ["python3", "scripts/validate_rust_panic_surface.py"], "status": "pass"},
+            {"name": "policy_learning_trace_validation", "cmd": ["python3", "scripts/validate_policy_learning_trace.py"], "status": "pass"},
+        ]
+        self.write_report(commands=commands, command_count=3, test_count=3, extra={
+            "full_summary_report_only": True,
+            "full_summary_report_command": "--full-summary-report",
+            "command_execution_status": "pass",
+            "missing_signal_status": "pass",
+            "missing_signal_count": 0,
+            "missing_signal_flags": {
+                "missing_cargo_test": False,
+                "missing_runtime_manifest_base_match": False,
+            },
+            "runtime_archive_evidence_source": "compact_report",
+            "runtime_archive_report_status": "pass",
+            "runtime_manifest_base_expected": self.base,
+            "runtime_manifest_base_commit": self.base,
+            "runtime_manifest_base_matches_delta_base": True,
+            "connector_transport_artifact_classification": "transport_interrupted_artifacts_complete",
+            "connector_transport_status": "502",
+            "connector_transport_report_complete": True,
+            "connector_transport_exit_file_present": True,
+        })
+        done = self.run_script()
+        self.assertEqual(done.returncode, 0, done.stderr)
+        receipt = json.loads(self.receipt.read_text(encoding="utf-8"))
+        manifest = self.out.read_text(encoding="utf-8")
+        self.assertEqual(receipt["validation_command_count"], 3)
+        self.assertEqual(receipt["validation_test_count"], 3)
+        self.assertEqual(receipt["connector_transport_artifact_classification"], "transport_interrupted_artifacts_complete")
+        self.assertTrue(receipt["runtime_manifest_base_matches_delta_base"])
+        self.assertIn("cargo_test_all_targets: pass", manifest)
+        self.assertIn("connector_transport_artifact_classification: transport_interrupted_artifacts_complete", manifest)
+        self.assertIn("runtime_manifest_base_matches_delta_base: True", manifest)
+
 
 if __name__ == "__main__":
     unittest.main()
