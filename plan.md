@@ -34,7 +34,8 @@ objective
 1. Close P4 by treating graph editing as an actual mutation path, not only validation/report evidence.
 2. Start P5 by stabilizing domain record contracts before wiring behavior.
 3. Add an explicit self-modification lane inside verified evolution.
-4. Keep business automation first, finance intelligence second, and trading sandbox-only.
+4. Use Python to inspect `state/rustc/ai/graph.json` before designing graph edits.
+5. Keep business automation first, finance intelligence second, and trading sandbox-only.
 
 ## P4 - Graph Editing
 
@@ -56,6 +57,7 @@ graph.json
 
 Next work:
 
+- Add a reusable Python graph-analysis script or command that reads `state/rustc/ai/graph.json`, summarizes schema version, graph hash, node kinds, edge relations, intent labels, and candidate mutation targets.
 - Prove one end-to-end agent-driven graph edit against a small fixture.
 - Keep stale-op, overlap, receipt hash, and re-capture checks mandatory.
 - Admit graph mutation receipts through the same evidence path as other capabilities.
@@ -64,6 +66,7 @@ Next work:
 
 Done when:
 
+- Python graph analysis is part of the normal graph-edit planning workflow.
 - A graph edit can be planned, patched, re-captured, verified, and recorded as evidence.
 - The receipt proves the intended graph change landed.
 - Failed, stale, or partial mutations produce explicit failure receipts.
@@ -177,6 +180,7 @@ TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo 
 For graph-editing work:
 
 ```bash
+python3 scripts/analyze_graph_json.py state/rustc/ai/graph.json
 TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test graph_mutation_cli_contract -- --test-threads=1
 python3 -m unittest tests/test_graph_workflow_fixture_validator.py
 CANON_OBSERVE_REPORT=target/observe/graph-fixture-report.ndjson python3 scripts/observe_validation.sh --graph-fixture-report
