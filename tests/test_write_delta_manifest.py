@@ -191,8 +191,12 @@ class DeltaManifestTest(unittest.TestCase):
         )
         for key in COMMAND_NORMALIZATION_METRIC_KEYS:
             self.assertIn(f"{key}: {expected[key]}", manifest)
+
+        self.assert_manifest_metrics_render_once(manifest, COMMAND_NORMALIZATION_METRIC_KEYS)
+
+    def assert_manifest_metrics_render_once(self, manifest: str, metric_keys: tuple[str, ...]) -> None:
         metric_counts = Counter(manifest_metric_names(manifest))
-        for key in COMMAND_NORMALIZATION_METRIC_KEYS:
+        for key in metric_keys:
             self.assertEqual(metric_counts[key], 1, key)
 
     def test_pass_with_commands_and_tests(self) -> None:
@@ -284,9 +288,13 @@ class DeltaManifestTest(unittest.TestCase):
             "runtime_archive_runtime_manifest_present: True",
         ):
             self.assertIn(token, manifest)
-        metric_names = manifest_metric_names(manifest)
-        self.assertEqual(Counter(metric_names)["runtime_archive_inspection_status"], 1)
-        self.assertEqual(Counter(metric_names)["runtime_archive_prior_state_files"], 1)
+        self.assert_manifest_metrics_render_once(
+            manifest,
+            (
+                "runtime_archive_inspection_status",
+                "runtime_archive_prior_state_files",
+            ),
+        )
 
     def test_preserves_policy_learning_and_panic_surface_evidence_once(self) -> None:
         self.write_report(extra={
@@ -317,9 +325,13 @@ class DeltaManifestTest(unittest.TestCase):
             "panic_surface_test_total: 319",
         ):
             self.assertIn(token, manifest)
-        metric_names = manifest_metric_names(manifest)
-        self.assertEqual(Counter(metric_names)["router_test_count"], 1)
-        self.assertEqual(Counter(metric_names)["policy_learning_trace_validation_result"], 1)
+        self.assert_manifest_metrics_render_once(
+            manifest,
+            (
+                "router_test_count",
+                "policy_learning_trace_validation_result",
+            ),
+        )
 
     def test_preserves_external_surface_evidence_files_and_tokens_once(self) -> None:
         self.write_report(extra={
@@ -350,10 +362,14 @@ class DeltaManifestTest(unittest.TestCase):
         self.assertIn("external_observation_stream_evidence_files", manifest)
         self.assertIn("external_api_action_evidence_tokens", manifest)
         self.assertIn("SemanticVerificationReceipt", manifest)
-        metric_names = manifest_metric_names(manifest)
-        self.assertEqual(Counter(metric_names)["external_observation_stream_evidence_files"], 1)
-        self.assertEqual(Counter(metric_names)["external_api_action_evidence_tokens"], 1)
-        self.assertEqual(Counter(metric_names)["semantic_artifact_verification_evidence_files"], 1)
+        self.assert_manifest_metrics_render_once(
+            manifest,
+            (
+                "external_observation_stream_evidence_files",
+                "external_api_action_evidence_tokens",
+                "semantic_artifact_verification_evidence_files",
+            ),
+        )
 
     def test_preserves_connector_transport_artifact_classification_once(self) -> None:
         self.write_report(extra={
@@ -397,9 +413,13 @@ class DeltaManifestTest(unittest.TestCase):
             "connector_transport_artifact_classification_options",
         ):
             self.assertIn(token, manifest)
-        metric_names = manifest_metric_names(manifest)
-        self.assertEqual(Counter(metric_names)["connector_transport_artifact_classification"], 1)
-        self.assertEqual(Counter(metric_names)["connector_transport_status"], 1)
+        self.assert_manifest_metrics_render_once(
+            manifest,
+            (
+                "connector_transport_artifact_classification",
+                "connector_transport_status",
+            ),
+        )
 
     def test_accepts_compact_full_summary_artifact_replay(self) -> None:
         commands = [
@@ -570,8 +590,6 @@ class DeltaManifestTest(unittest.TestCase):
         self.assertEqual(done.returncode, 0, done.stderr)
         receipt = json.loads(self.receipt.read_text(encoding="utf-8"))
         manifest = self.out.read_text(encoding="utf-8")
-        metric_names = manifest_metric_names(manifest)
-
         self.assertEqual(receipt["validation_command_count"], 2)
         self.assertEqual([command["name"] for command in receipt["validation_commands"]], ["unit", "compile"])
         self.assertEqual(receipt["command_execution_status"], "pass")
@@ -579,23 +597,25 @@ class DeltaManifestTest(unittest.TestCase):
         self.assertEqual(receipt["runtime_archive_evidence_source"], "compact_report")
         self.assertTrue(receipt["runtime_archive_report_present"])
         self.assertTrue(receipt["runtime_archive_present"])
-        for key in (
-            "validation_status",
-            "command_execution_status",
-            "missing_signal_status",
-            "missing_signal_count",
-            "runtime_archive_evidence_source",
-            "runtime_archive_report_present",
-            "runtime_archive_report_status",
-            "runtime_archive_report_base_matches_current",
-            "runtime_archive_present",
-            "runtime_manifest_base_expected",
-            "runtime_manifest_base_commit",
-            "runtime_manifest_base_matches_delta_base",
-            "full_summary_report_only",
-            "full_summary_report_command",
-        ):
-            self.assertEqual(Counter(metric_names)[key], 1, key)
+        self.assert_manifest_metrics_render_once(
+            manifest,
+            (
+                "validation_status",
+                "command_execution_status",
+                "missing_signal_status",
+                "missing_signal_count",
+                "runtime_archive_evidence_source",
+                "runtime_archive_report_present",
+                "runtime_archive_report_status",
+                "runtime_archive_report_base_matches_current",
+                "runtime_archive_present",
+                "runtime_manifest_base_expected",
+                "runtime_manifest_base_commit",
+                "runtime_manifest_base_matches_delta_base",
+                "full_summary_report_only",
+                "full_summary_report_command",
+            ),
+        )
         self.assert_command_normalization_manifest(
             manifest,
             count=2,

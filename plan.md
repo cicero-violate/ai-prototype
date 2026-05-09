@@ -1777,3 +1777,60 @@ log: target/validation-logs/score-contract-command-manifest-values-step2-final.l
 ## Next Execution Slice After Command Normalization Manifest Value Helper Step 2
 
 Continue P4 by applying the same value-plus-exact-once helper pattern to the next compact receiver metric family when new manifest keys are introduced. If no new metric family is ready, the next small slice should look for remaining manifest metric assertions that can be centralized without changing production behavior.
+
+
+
+## Completed Execution Slice After Generic Manifest Metric Helper Step 3
+
+Completed the next concrete P4 maintainability slice by centralizing the remaining exact-once manifest metric assertions in `tests/test_write_delta_manifest.py` without changing production behavior.
+
+Implementation details:
+
+```text
+- Added DeltaManifestTest.assert_manifest_metrics_render_once() as a generic exact-once manifest metric helper.
+- Routed command-normalization manifest checks through the generic exact-once helper.
+- Replaced repeated direct Counter(manifest_metric_names(...)) assertions for runtime archive, policy learning, external surface, connector transport, and compact row-fallback metrics.
+- Confirmed no direct Counter(manifest_metric_names(...)) assertions remain in tests/test_write_delta_manifest.py.
+```
+
+This extends the helper pattern from command-normalization metadata to broader compact receiver manifest coverage, reducing repeated assertion mechanics while preserving existing exact-once evidence.
+
+## Validation Evidence From Generic Manifest Metric Helper Step 3
+
+```text
+command: python3 -m unittest tests/test_write_delta_manifest.py
+exit: 0
+result: 23 passed; 0 failed
+log: target/validation-logs/write-delta-manifest-generic-manifest-helper-step3.log
+```
+
+```text
+command: python3 -m unittest tests/test_observe_validation_contract.py
+exit: 0
+result: 39 passed; 0 failed
+log: target/validation-logs/observe-validation-contract-generic-manifest-helper-step3.log
+```
+
+```text
+command: python3 -m py_compile scripts/observe_validation.sh scripts/write_delta_manifest.py tests/test_write_delta_manifest.py tests/test_observe_validation_contract.py
+exit: 0
+log: target/validation-logs/py-compile-generic-manifest-helper-step3.log
+```
+
+```text
+command: cargo test --test planning_contract -- --test-threads=1
+exit: 0
+result: 2 passed; 0 failed
+log: target/validation-logs/planning-contract-generic-manifest-helper-step3-final.log
+```
+
+```text
+command: cargo test --test score_contract -- --test-threads=1
+exit: 0
+result: 5 passed; 0 failed
+log: target/validation-logs/score-contract-generic-manifest-helper-step3-final.log
+```
+
+## Next Execution Slice After Generic Manifest Metric Helper Step 3
+
+Continue P4 by centralizing manifest value assertions where a metric family has repeated expected-value checks, or by applying the generic exact-once helper to future compact receiver metric families as new keys are introduced. Keep the next slice test-focused unless a production receiver gap is identified by executable evidence.
