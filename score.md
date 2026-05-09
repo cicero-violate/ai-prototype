@@ -1,3 +1,5 @@
+When you read this. Update this score.
+
 # Canon Agent Score
 
 ```text
