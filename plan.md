@@ -6,11 +6,11 @@ Canon Agent is a Rust prototype for a deterministic, auditable, self-improving a
 
 The current working tree contains a broad, pre-existing implementation batch plus this planning/scoring refresh. This planning turn intentionally updates only `plan.md` and `score.md`; all source, test, example, and runtime implementation changes remain unowned by this turn and should be handled by the next execution turn.
 
-Current planning snapshot, 2026-05-08 23:24:15 EDT America/Toronto / 2026-05-09T03:24:15Z UTC:
+Current planning snapshot, 2026-05-08 23:28:08 EDT America/Toronto / 2026-05-09T03:28:08Z UTC:
 
 - Branch: `main`.
 - Latest visible planning commit before this turn: `a767fa2 Update Canon Agent planning and scoring`.
-- `plan.md` and `score.md` had no local diff at the start of this refresh.
+- `plan.md` and `score.md` were reviewed during this planning/scoring refresh and will be committed separately from existing implementation dirtiness.
 - Dirty implementation files are still present and must not be conflated with this planning/scoring commit.
 - The next execution turn should begin with diff review, not new feature work.
 
@@ -114,7 +114,7 @@ Latest known validation evidence from the prior implementation step:
 
 ## Planning-Turn Handoff
 
-This turn does not change implementation priority or score ceilings. The correct next move is still validation closure, not additional architecture expansion. Treat any existing source/test/example modifications as an execution-turn batch requiring review, validation, scoring, and a separate commit. The current planning pass confirms that the repository still has the same broad implementation dirtiness and that this commit should remain limited to `plan.md` and `score.md`.
+This turn does not change implementation priority or score ceilings. The correct next move is still validation closure, not additional architecture expansion. Treat any existing source/test/example modifications as an execution-turn batch requiring review, validation, scoring, and a separate commit. The current planning pass confirms that the repository still has broad implementation dirtiness and that this commit remains limited to `plan.md` and `score.md`.
 
 ## Current Non-Goals
 

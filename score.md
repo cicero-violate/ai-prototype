@@ -6,12 +6,12 @@ Date: 2026-05-08 America/Toronto / 2026-05-09 UTC
 Turn type: planning/scoring
 Scope reviewed: repository status, recent commit history, existing `plan.md`, existing `score.md`, `GOAL.md`, planning contract, and score contract.
 
-This turn is intentionally limited to planning and scoring. The working tree already contains broad implementation changes outside this turn's scope. Those files were not modified here and should be reviewed during the next execution turn.
+This turn is intentionally limited to planning and scoring. The working tree already contains broad implementation changes outside this turn's scope. Those files were not modified by this planning update and should be reviewed during the next execution turn.
 
 Current timestamp evidence:
 
 ```text
-2026-05-08 23:24:15 EDT America/Toronto / 2026-05-09T03:24:15Z UTC
+2026-05-08 23:28:08 EDT America/Toronto / 2026-05-09T03:28:08Z UTC
 branch: main
 latest visible prior commit: a767fa2 Update Canon Agent planning and scoring
 ```
@@ -86,10 +86,10 @@ Correctness, robustness, and determinism remain capped until `cargo test --all-t
 - Reviewed the existing planning and scoring files.
 - Reviewed `GOAL.md` to keep the plan aligned with the Canon Agent architecture statement.
 - Reviewed planning and score contract tests to confirm the planning/scoring artifacts still correspond to exposed runtime surfaces.
-- Confirmed `plan.md` and `score.md` had no local diff before this refresh.
+- Reviewed `plan.md` and `score.md` and refreshed planning/scoring handoff language.
 - Updated `plan.md` to make planning-turn boundaries explicit.
 - Updated `score.md` to distinguish prior implementation evidence from this planning/scoring turn.
-- Refreshed the prior-commit and timestamp evidence for this planning/scoring pass.
+- Refreshed timestamp evidence for this planning/scoring pass.
 - Confirmed the requested working directory resolves as the connector workspace root.
 - Preserved the priority that the next execution turn should complete all-target validation before moving to new feature work.
 - Reaffirmed that current score ceilings remain unchanged until final all-target validation evidence is captured.
