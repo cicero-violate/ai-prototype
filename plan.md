@@ -7,13 +7,13 @@ Canon Agent is a Rust prototype for a deterministic, auditable, self-improving a
 Current implementation snapshot, 2026-05-09 America/Toronto / 2026-05-09 UTC:
 
 - Branch: `main`.
-- Latest visible commit before this implementation turn: `4783cbf Refresh planning and scoring handoff`.
+- Latest visible commit before this implementation turn: `4b48b96 Capture normal observe graph evidence`.
 - Working directory: `/workspace/ai_sandbox/canon-mini-agent/prototype/ai`.
 - P0 validation baseline is complete.
 - P1 validation evidence reporting is complete.
 - P2 agent loop reliability is complete.
 - P3 runtime and receipt correctness is complete for the current scope.
-- P4 graph source-of-truth integration now includes persisted graph evidence classification, deterministic fixture-backed positive evidence for landed graph mutations with receipt snapshots, command-sequenced workflow fixture validation, a compact graph-only report mode, documented/tested root runtime, wrapper, and editor subproject boundaries, a standalone graph workflow fixture validator consumed by observe-validation, full observe-validation command evidence for that validator, explicit wrapper telemetry configuration classification, and normal-path observe-validation summary evidence for graph fixture, wrapper configuration, receipt replay classification, and missing-signal coherence.
+- P4 graph source-of-truth integration now includes persisted graph evidence classification, deterministic fixture-backed positive evidence for landed graph mutations with receipt snapshots, command-sequenced workflow fixture validation, a compact graph-only report mode, documented/tested root runtime, wrapper, and editor subproject boundaries, a standalone graph workflow fixture validator consumed by observe-validation, full observe-validation command evidence for that validator, explicit wrapper telemetry configuration classification, normal-path observe-validation summary evidence for graph fixture, wrapper configuration, receipt replay classification, and missing-signal coherence, and executable configured-wrapper classifier branch coverage.
 
 ## Operating Rules For Agent Turns
 
@@ -148,10 +148,20 @@ Current implementation snapshot, 2026-05-09 America/Toronto / 2026-05-09 UTC:
      - `receipt_replay_classifications=[duplicated_receipt, forged_receipt, missing_receipt, reordered_receipt, stale_receipt]`
    - Focused checks also passed for observe-validation contract coverage, graph workflow fixture validator coverage, and graph fixture report-only evidence.
 
-11. **Next P4 slice**
+11. **Add executable configured-wrapper classifier coverage — complete**
+   - Added `test_wrapper_graph_configuration_classifier_executes_all_status_branches` to `tests/test_observe_validation_contract.py`.
+   - The test imports the Python observe-validation script through an explicit `SourceFileLoader` because the script keeps its historical `.sh` filename while containing Python.
+   - The test executes `wrapper_graph_configuration_status()` and `wrapper_graph_configuration_reason()` for all wrapper configuration branches:
+     - `not_configured`
+     - `artifact_dir_configured_without_wrapper`
+     - `wrapper_configured_missing`
+     - `wrapper_configured_available`
+   - This gives focused configured-wrapper classification evidence without requiring live wrapper telemetry or a wrapper-configured long observe-validation run.
+
+12. **Next P4 slice**
    - Keep wrapper telemetry optional unless `CANON_RUSTC_WRAPPER` or `CANON_RUSTC_V3_ARTIFACT_DIR` is configured.
    - If future graph implementation crosses subproject boundaries, update the boundary contract and test before changing behavior.
-   - Prefer either a wrapper-configured observe-validation run when environment support exists, or a narrow executable contract that verifies configured-but-missing wrapper status without requiring live wrapper telemetry.
+   - Prefer a wrapper-configured observe-validation run only when environment support exists; otherwise continue tightening focused contracts around wrapper telemetry availability, graph source-of-truth evidence, or known missing-signal reduction.
 
 ### P5 — Domain intelligence layer
 
@@ -204,11 +214,11 @@ log: target/validation-logs/graph-mutation-cli-contract-p4-impl-step8.log
 
 ## Current Implementation-Turn Result
 
-This implementation turn executed the planned normal-path P4 evidence slice. Normal full observe-validation produced ignored report/exit artifacts despite connector transport failure. The report confirmed graph fixture command evidence, wrapper configuration classification, receipt replay classification inventory, and missing-signal fields together in one summary row. Overall validation remains `fail` because unrelated known missing signals are still present, not because the P4 graph fixture or wrapper configuration evidence failed.
+Implementation step 2 executed the planned configured-wrapper classification slice. Because no usable wrapper telemetry environment is configured, the turn added focused executable branch coverage for the pure wrapper configuration classifier and reason mapping instead of requiring a long wrapper-configured observe-validation run. The observe-validation contract now executes all status branches and confirms each emitted reason remains explicit.
 
 ## Execution-Turn Handoff
 
-P0, P1, P2, and current P3 scope are complete. P4 has source-derived graph evidence classification, deterministic fixture-backed positive landed-with-receipt-snapshot evidence with command-sequenced workflow validation, a compact graph-only report path that avoids broad cargo validation, a tested subproject boundary contract for root runtime/wrapper/editor responsibilities, a standalone graph workflow fixture validator consumed by observe-validation, full observe-validation command evidence for that validator, explicit optional wrapper telemetry configuration classification, and normal-path observe-validation summary evidence for graph fixture, wrapper configuration, receipt replay classification, and missing-signal coherence. The next implementation value is either configured-wrapper evidence when the environment supports it or a narrow executable contract for configured-but-missing wrapper classification.
+P0, P1, P2, and current P3 scope are complete. P4 has source-derived graph evidence classification, deterministic fixture-backed positive landed-with-receipt-snapshot evidence with command-sequenced workflow validation, a compact graph-only report path that avoids broad cargo validation, a tested subproject boundary contract for root runtime/wrapper/editor responsibilities, a standalone graph workflow fixture validator consumed by observe-validation, full observe-validation command evidence for that validator, explicit optional wrapper telemetry configuration classification, normal-path observe-validation summary evidence for graph fixture, wrapper configuration, receipt replay classification, and missing-signal coherence, and executable branch coverage for all wrapper configuration statuses. The next implementation value is either live wrapper-configured evidence when the environment supports it or reduction/contracting of remaining known missing signals.
 
 ## Validation Evidence From Implementation Step 1
 
@@ -256,6 +266,35 @@ CANON_OBSERVE_REPORT=target/observe/graph-fixture-report-step1.ndjson python3 sc
 exit: 0
 result: validation_status=pass, graph_evidence_status=graph_mutation_landed_with_receipt_snapshot, graph_workflow_fixture_receipt_snapshot_present=true
 log: target/validation-logs/graph-fixture-report-step1.log
+```
+
+## Validation Evidence From Implementation Step 2
+
+```text
+python3 -m unittest tests/test_observe_validation_contract.py
+exit: 0
+result: 19 passed; 0 failed
+log: target/validation-logs/observe-validation-contract-step2.log
+```
+
+```text
+python3 -m unittest tests/test_graph_workflow_fixture_validator.py
+exit: 0
+result: 2 passed; 0 failed
+log: target/validation-logs/graph-workflow-fixture-validator-step2.log
+```
+
+```text
+CANON_OBSERVE_REPORT=target/observe/graph-fixture-report-step2.ndjson python3 scripts/observe_validation.sh --graph-fixture-report
+exit: 0
+result: validation_status=pass, graph_evidence_status=graph_mutation_landed_with_receipt_snapshot, graph_workflow_fixture_receipt_snapshot_present=true
+log: target/validation-logs/graph-fixture-report-step2.log
+```
+
+```text
+python3 -m py_compile scripts/observe_validation.sh tests/test_observe_validation_contract.py
+exit: 0
+log: target/validation-logs/py-compile-step2.log
 ```
 
 ## Current Non-Goals

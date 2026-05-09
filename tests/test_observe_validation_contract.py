@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import importlib.util
 import re
+import sys
 import unittest
+from importlib.machinery import SourceFileLoader
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -17,6 +20,14 @@ class ObserveValidationContractTest(unittest.TestCase):
         cls.script = OBSERVE.read_text(encoding="utf-8")
         cls.graph_fixture_validator = GRAPH_FIXTURE_VALIDATOR.read_text(encoding="utf-8")
         cls.config = CARGO_CONFIG.read_text(encoding="utf-8")
+        loader = SourceFileLoader("observe_validation_contract_module", str(OBSERVE))
+        spec = importlib.util.spec_from_loader(loader.name, loader)
+        assert spec is not None
+        module = importlib.util.module_from_spec(spec)
+        assert spec.loader is not None
+        sys.path.insert(0, str(OBSERVE.parent))
+        spec.loader.exec_module(module)
+        cls.observe_module = module
 
     def test_root_cargo_validation_clears_wrappers(self) -> None:
         self.assertIn('root_rust_env = {"RUSTC_WRAPPER": "", "RUSTC_WORKSPACE_WRAPPER": ""}', self.script)
@@ -42,6 +53,41 @@ class ObserveValidationContractTest(unittest.TestCase):
         self.assertIn('wrapper_configured_available', self.script)
         self.assertIn('status": "skipped_env_missing"', self.script)
         self.assertIn('CANON_RUSTC_WRAPPER not found', self.script)
+
+    def test_wrapper_graph_configuration_classifier_executes_all_status_branches(self) -> None:
+        cases = (
+            ({"wrapper": "", "artifact_dir": "", "wrapper_available": False}, "not_configured"),
+            (
+                {"wrapper": "", "artifact_dir": "target/observe/wrapper-artifacts", "wrapper_available": False},
+                "artifact_dir_configured_without_wrapper",
+            ),
+            ({"wrapper": "/missing/canon-rustc-v3", "artifact_dir": "", "wrapper_available": False}, "wrapper_configured_missing"),
+            (
+                {"wrapper": "/missing/canon-rustc-v3", "artifact_dir": "target/observe/wrapper-artifacts", "wrapper_available": False},
+                "wrapper_configured_missing",
+            ),
+            ({"wrapper": "/bin/echo", "artifact_dir": "", "wrapper_available": True}, "wrapper_configured_available"),
+            (
+                {"wrapper": "/bin/echo", "artifact_dir": "target/observe/wrapper-artifacts", "wrapper_available": True},
+                "wrapper_configured_available",
+            ),
+        )
+
+        expected_reasons = {
+            "not_configured": "CANON_RUSTC_WRAPPER and CANON_RUSTC_V3_ARTIFACT_DIR are unset",
+            "artifact_dir_configured_without_wrapper": "CANON_RUSTC_V3_ARTIFACT_DIR is set but CANON_RUSTC_WRAPPER is unset",
+            "wrapper_configured_missing": "CANON_RUSTC_WRAPPER is set but the path does not exist",
+            "wrapper_configured_available": "CANON_RUSTC_WRAPPER is set and exists",
+        }
+
+        for kwargs, expected_status in cases:
+            with self.subTest(kwargs=kwargs):
+                status = self.observe_module.wrapper_graph_configuration_status(**kwargs)
+                self.assertEqual(status, expected_status)
+                self.assertEqual(
+                    self.observe_module.wrapper_graph_configuration_reason(status),
+                    expected_reasons[expected_status],
+                )
 
     def test_missing_signals_separate_root_wrapper_and_graph(self) -> None:
         for flag in (
