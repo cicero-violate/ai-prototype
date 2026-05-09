@@ -598,6 +598,70 @@ class DeltaManifestTest(unittest.TestCase):
         self.assertNotEqual(done.returncode, 0)
         self.assertIn("conflicting validation command evidence", done.stderr)
 
+    def test_accepts_duplicate_summary_commands_with_distinct_count(self) -> None:
+        command = {
+            "name": "unit",
+            "cmd": ["python3", "-m", "unittest"],
+            "status": "pass",
+            "exit_code": 0,
+            "duration_ms": 7,
+            "timed_out": False,
+            "connector_failure_class": "none",
+        }
+        self.write_report(
+            commands=[command, command],
+            command_count=1,
+            test_count=2,
+        )
+
+        done = self.run_script()
+        self.assertEqual(done.returncode, 0, done.stderr)
+        receipt = json.loads(self.receipt.read_text(encoding="utf-8"))
+        self.assertEqual(receipt["validation_command_count"], 1)
+        self.assertEqual([command["name"] for command in receipt["validation_commands"]], ["unit"])
+
+    def test_rejects_duplicate_summary_commands_with_inflated_count(self) -> None:
+        command = {
+            "name": "unit",
+            "cmd": ["python3", "-m", "unittest"],
+            "status": "pass",
+            "exit_code": 0,
+            "duration_ms": 7,
+            "timed_out": False,
+            "connector_failure_class": "none",
+        }
+        self.write_report(
+            commands=[command, command],
+            command_count=2,
+            test_count=2,
+        )
+
+        done = self.run_script()
+        self.assertNotEqual(done.returncode, 0)
+        self.assertIn("validation_command_count 2 != command rows 1", done.stderr)
+
+    def test_rejects_conflicting_duplicate_summary_commands(self) -> None:
+        first = {
+            "name": "unit",
+            "cmd": ["python3", "-m", "unittest"],
+            "status": "pass",
+            "exit_code": 0,
+            "duration_ms": 7,
+            "timed_out": False,
+            "connector_failure_class": "none",
+        }
+        second = dict(first)
+        second["duration_ms"] = 8
+        self.write_report(
+            commands=[first, second],
+            command_count=2,
+            test_count=2,
+        )
+
+        done = self.run_script()
+        self.assertNotEqual(done.returncode, 0)
+        self.assertIn("conflicting summary validation_commands command evidence for command unit", done.stderr)
+
     def test_accepts_duplicate_validation_command_rows_with_distinct_count(self) -> None:
         command = {
             "event": "validation_command",
@@ -681,7 +745,7 @@ class DeltaManifestTest(unittest.TestCase):
 
         done = self.run_script()
         self.assertNotEqual(done.returncode, 0)
-        self.assertIn("conflicting validation_command rows for command unit", done.stderr)
+        self.assertIn("conflicting validation_command rows command evidence for command unit", done.stderr)
 
 
 if __name__ == "__main__":

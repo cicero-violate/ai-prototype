@@ -79,7 +79,7 @@ def command_fingerprint(command: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def reject_conflicting_duplicate_command_rows(commands: list[dict[str, Any]]) -> None:
+def reject_conflicting_duplicate_commands(commands: list[dict[str, Any]], source: str) -> None:
     by_name: dict[str, dict[str, Any]] = {}
     for command in commands:
         name = command.get("name")
@@ -88,11 +88,11 @@ def reject_conflicting_duplicate_command_rows(commands: list[dict[str, Any]]) ->
         fingerprint = command_fingerprint(command)
         previous = by_name.get(name)
         if previous is not None and previous != fingerprint:
-            fail(f"conflicting validation_command rows for command {name}")
+            fail(f"conflicting {source} command evidence for command {name}")
         by_name[name] = fingerprint
 
 
-def distinct_command_rows(commands: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def distinct_commands(commands: list[dict[str, Any]]) -> list[dict[str, Any]]:
     by_name: dict[str, dict[str, Any]] = {}
     distinct: list[dict[str, Any]] = []
     for command in commands:
@@ -110,8 +110,10 @@ def distinct_command_rows(commands: list[dict[str, Any]]) -> list[dict[str, Any]
 def validate_commands(summary: dict[str, Any], rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     summary_commands = list(summary.get("validation_commands") or [])
     row_commands = command_rows(rows)
-    reject_conflicting_duplicate_command_rows(row_commands)
-    row_commands = distinct_command_rows(row_commands)
+    reject_conflicting_duplicate_commands(summary_commands, "summary validation_commands")
+    reject_conflicting_duplicate_commands(row_commands, "validation_command rows")
+    summary_commands = distinct_commands(summary_commands)
+    row_commands = distinct_commands(row_commands)
     if summary_commands and row_commands:
         summary_fingerprints = [command_fingerprint(command) for command in summary_commands]
         row_fingerprints = [command_fingerprint(command) for command in row_commands]
