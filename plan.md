@@ -16,12 +16,12 @@ Current implementation surfaces include:
 
 Current planning/scoring baseline:
 
-- Working tree is not clean at this planning turn: `src/validation_harness.rs` has a pre-existing unstaged modification.
-- This planning turn must not touch, stage, or commit that implementation change.
+- Working tree is not clean at this planning turn. There are pre-existing unstaged implementation changes across API transport, capability records/providers, verification, graph mutation, library exports, runtime verification, scoring code, validation harness, and validation-harness tests.
+- This planning turn must not touch, stage, or commit those implementation changes.
 - This turn updates only `plan.md` and `score.md`.
 - No validation suite is run during this planning turn.
-- Scores remain capped until an execution turn captures fresh validation evidence.
-- The next execution turn should first inspect `src/validation_harness.rs`, decide whether it is intentional or should be reverted, then run quota-safe validation.
+- Scores remain capped until an execution turn captures fresh validation evidence for the current implementation tree.
+- The next execution turn should first inspect the existing implementation diff, decide whether it is intentional/incomplete, then run quota-safe validation.
 
 ## Operating Rules For Agent Turns
 
@@ -29,6 +29,7 @@ Current planning/scoring baseline:
    - Update `plan.md` and `score.md` only.
    - Do not modify implementation files.
    - Commit planning/scoring changes as a standalone commit.
+   - Stage by explicit path: `git add plan.md score.md`.
 
 2. **Execution turns**
    - Work the highest-priority incomplete item below.
@@ -41,14 +42,28 @@ Current planning/scoring baseline:
    - Before committing: inspect the exact intended diff.
    - Stage by explicit path, not by broad `git add .`.
    - Do not stage pre-existing unrelated dirty files.
+   - If implementation files are already dirty, preserve them unless the turn is explicitly scoped to resolve them.
 
 ## Implementation Priority
 
-### P0 — Re-establish clean validation baseline
+### P0 — Re-establish implementation and validation baseline
 
 1. **Resolve dirty implementation state**
-   - Inspect `src/validation_harness.rs` before any implementation work.
-   - Decide whether the change is prior intentional work, an incomplete edit, or should be reverted.
+   - Inspect the current implementation diff before any new implementation work:
+     - `src/api/transport.rs`
+     - `src/capability/judgment/record.rs`
+     - `src/capability/llm/ollama.rs`
+     - `src/capability/llm/openai.rs`
+     - `src/capability/llm/record.rs`
+     - `src/capability/tooling/record/artifact.rs`
+     - `src/capability/verification/proof.rs`
+     - `src/graph_mutation.rs`
+     - `src/lib.rs`
+     - `src/runtime/verify.rs`
+     - `src/score.rs`
+     - `src/validation_harness.rs`
+     - `tests/validation_harness_contract.rs`
+   - Decide whether these changes are a coherent prior implementation batch, partial work, or should be split/reverted.
    - Record the decision in `score.md` on the execution turn.
 
 2. **Use quota-safe validation paths**
@@ -158,15 +173,15 @@ Current planning/scoring baseline:
 ## Next Execute-Turn Recommendation
 
 1. Confirm `git status --short`.
-2. Inspect the pre-existing `src/validation_harness.rs` modification.
-3. Decide whether to preserve, test, or revert that implementation change.
+2. Inspect the full current implementation diff.
+3. Decide whether the dirty implementation files are intentional, partial, or should be split/reverted.
 4. Create `target/test-tmp`.
 5. Run the P0 validation commands with wrappers disabled and quota-safe `TMPDIR`.
 6. Classify failures using P0 categories.
 7. Update `score.md` with exact command outcomes.
 8. Commit only intentional validation/scoring or implementation changes.
 
-Do not change source code before the baseline unless a validation failure identifies a specific implementation defect or the existing `src/validation_harness.rs` dirty state is intentionally resolved.
+Do not add new source behavior before the baseline unless a validation failure identifies a specific implementation defect or the existing dirty state is intentionally resolved.
 
 ## Current Non-Goals
 
