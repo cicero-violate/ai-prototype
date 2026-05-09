@@ -2590,3 +2590,50 @@ Candidate priorities:
 
 Do not make compact replay modes depend on live wrapper validation.
 
+
+## Completed Execution Slice After Full Summary Graph Command Step 1
+
+Completed compact full-summary command evidence alignment with the current P4 graph workflow fixture validation contract.
+
+Implementation details:
+
+```text
+- Updated scripts/observe_validation.sh full_summary_report() to include graph_workflow_fixture_validation in compact validation_commands.
+- Added graph_workflow_fixture_validation to the compact required command set.
+- Updated tests/test_observe_validation_contract.py to expect four compact validation commands instead of three.
+- Added assertions that compact full-summary output includes graph_workflow_fixture_validation in validation_command_statuses and required_command_names.
+- Preserved artifact-only compact replay semantics and continued to assert wrapper graph validation fields do not leak into compact full-summary output.
+```
+
+This closes a source-inspected compact receiver inconsistency: normal observe-validation already records graph workflow fixture validation as required P4 command evidence, while compact full-summary replay previously omitted it.
+
+## Validation Evidence From Full Summary Graph Command Step 1
+
+```text
+command: python3 -m py_compile scripts/observe_validation.sh tests/test_observe_validation_contract.py
+exit: 0
+log: target/validation-logs/py-compile-full-summary-graph-command-step1.log
+exit file: target/validation-logs/py-compile-full-summary-graph-command-step1.exit
+```
+
+```text
+command: python3 -m unittest tests.test_observe_validation_contract
+exit: 0
+result: 40 passed; 0 failed
+log: target/validation-logs/observe-validation-contract-full-summary-graph-command-step1.log
+exit file: target/validation-logs/observe-validation-contract-full-summary-graph-command-step1.exit
+```
+
+## Next Execution Slice After Full Summary Graph Command Step 1
+
+No additional deterministic branch is currently identified. Continue only when a new compact receiver field, live-wrapper prerequisite, or source-inspected failure branch appears.
+
+Candidate priorities:
+
+```text
+1. Capture live wrapper-configured observe-validation evidence only when CANON_RUSTC_WRAPPER and CANON_RUSTC_V3_ARTIFACT_DIR are deliberately available for a clean non-compact run.
+2. Add compact receiver manifest exact-once checks only if a future compact receiver workflow introduces new metric keys or rendering semantics.
+3. Add deterministic failure-classification coverage only for newly identified uncovered branches.
+```
+
+Do not make compact replay modes depend on live wrapper validation.

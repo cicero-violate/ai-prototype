@@ -536,9 +536,15 @@ class ObserveValidationContractTest(unittest.TestCase):
             self.assertEqual(row["connector_transport_artifact_classification"], "transport_interrupted_artifacts_complete")
             self.assertTrue(row["connector_transport_report_complete"])
             self.assertTrue(row["connector_transport_exit_file_present"])
-            self.assertEqual(row["validation_command_count"], 3)
-            self.assertEqual(row["validation_test_count"], 3)
+            self.assertEqual(row["validation_command_count"], 4)
+            self.assertEqual(row["validation_test_count"], 4)
             self.assertTrue(all("cmd" in command for command in row["validation_commands"]))
+            self.assertIn("graph_workflow_fixture_validation", row["validation_command_statuses"])
+            self.assertEqual(
+                row["validation_command_statuses"]["graph_workflow_fixture_validation"],
+                "pass",
+            )
+            self.assertIn("graph_workflow_fixture_validation", row["required_command_names"])
             self.assertNotIn("wrapper_graph_validation_result", row)
             self.assertNotIn("wrapper_graph_validation_requested", row)
 

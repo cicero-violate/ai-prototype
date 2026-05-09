@@ -576,8 +576,23 @@ def full_summary_report() -> dict[str, Any]:
             "timed_out": False,
             "connector_failure_class": "none",
         },
+        {
+            "event": "validation_command",
+            "name": "graph_workflow_fixture_validation",
+            "cmd": ["python3", "scripts/validate_graph_workflow_fixture.py"],
+            "status": "pass",
+            "exit_code": 0,
+            "duration_ms": 1,
+            "timed_out": False,
+            "connector_failure_class": "none",
+        },
     ]
-    required = {"cargo_test_all_targets", "panic_surface_validation", "policy_learning_trace_validation"}
+    required = {
+        "cargo_test_all_targets",
+        "panic_surface_validation",
+        "policy_learning_trace_validation",
+        "graph_workflow_fixture_validation",
+    }
     command_summary = command_execution_summary(commands, required)
     transport_artifacts = connector_transport_artifact_classification(
         transport_status=os.environ.get("CANON_CONNECTOR_TRANSPORT_STATUS", ""),

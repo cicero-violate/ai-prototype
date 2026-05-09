@@ -657,3 +657,92 @@ Immediate next action:
 
 Wait for deliberate V3 wrapper prerequisites, a new compact receiver field, or a newly identified deterministic uncovered branch before making additional implementation changes.
 
+
+## Implementation Step 1 — Full Summary Graph Command Evidence
+
+Date: 2026-05-09 America/Toronto / 2026-05-09 UTC
+Turn type: implementation step 1 after full-summary wrapper isolation
+Scope executed: compact full-summary command evidence alignment with graph workflow fixture validation.
+
+Current timestamp evidence:
+
+```text
+branch: main
+latest visible commit before this implementation turn: fa777ea Add full summary wrapper isolation contract
+working directory: /workspace/ai_sandbox/canon-mini-agent/prototype/ai
+working tree at turn start: clean
+```
+
+Implementation, test, and planning/scoring files owned by this turn:
+
+```text
+scripts/observe_validation.sh
+tests/test_observe_validation_contract.py
+plan.md
+score.md
+```
+
+Generated validation logs and exit files remain ignored and are not committed.
+
+Score movement: correctness, determinism, transparency, and future-proofing improve slightly because compact full-summary replay now includes the graph workflow fixture validation command in the same required command evidence family as normal observe-validation. Wrapper isolation remains intact.
+
+```text
+I  Intelligence      = 7.0
+E  Efficiency        = 7.91
+C  Correctness       = 9.90
+A  Alignment         = 8.8
+R  Robustness        = 10.0
+P  Performance       = 6.45
+S  Scalability       = 6.82
+D  Determinism       = 9.66
+T  Transparency      = 10.0
+Co Collaboration     = 8.0
+Em Empowerment       = 7.8
+B  Benefit           = 8.1
+L  Learning          = 7.1
+St Structure         = 9.75
+Si Simplicity        = 7.36
+F  Future-Proofing   = 9.23
+```
+
+Approximate geometric mean:
+
+```text
+G ≈ 8.32 / 10
+```
+
+Completed work this turn:
+
+- Read the latest `plan.md` and `score.md` state.
+- Inspected compact observe-validation report modes and normal validation command evidence.
+- Identified a compact full-summary inconsistency: normal observe-validation tracks `graph_workflow_fixture_validation`, but compact full-summary replay only modeled three required commands.
+- Added `graph_workflow_fixture_validation` to compact full-summary `validation_commands` and `required_command_names`.
+- Updated contract assertions to require four compact validation commands and explicit graph workflow fixture command status evidence.
+- Preserved compact full-summary wrapper isolation by continuing to assert no live wrapper graph validation fields are emitted.
+
+Validation evidence captured this turn:
+
+```text
+command: python3 -m py_compile scripts/observe_validation.sh tests/test_observe_validation_contract.py
+exit: 0
+log: target/validation-logs/py-compile-full-summary-graph-command-step1.log
+exit file: target/validation-logs/py-compile-full-summary-graph-command-step1.exit
+```
+
+```text
+command: python3 -m unittest tests.test_observe_validation_contract
+exit: 0
+result: 40 passed; 0 failed
+log: target/validation-logs/observe-validation-contract-full-summary-graph-command-step1.log
+exit file: target/validation-logs/observe-validation-contract-full-summary-graph-command-step1.exit
+```
+
+Current risks / gaps:
+
+- No fresh live wrapper-configured observe-validation run has been captured in this environment.
+- Live wrapper graph telemetry still requires deliberate V3 wrapper inputs and a non-compact full observe-validation run.
+- Compact full-summary replay remains artifact-only and intentionally omits live wrapper validation fields even when wrapper environment variables are present.
+
+Immediate next action:
+
+Wait for deliberate V3 wrapper prerequisites, a new compact receiver field, or a newly identified deterministic uncovered branch before making additional implementation changes.
