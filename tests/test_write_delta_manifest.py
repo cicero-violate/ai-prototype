@@ -199,6 +199,10 @@ class DeltaManifestTest(unittest.TestCase):
         for key in metric_keys:
             self.assertEqual(metric_counts[key], 1, key)
 
+    def assert_manifest_contains_tokens(self, manifest: str, tokens: tuple[str, ...]) -> None:
+        for token in tokens:
+            self.assertIn(token, manifest)
+
     def test_pass_with_commands_and_tests(self) -> None:
         self.write_report(test_count=2)
         done = self.run_script()
@@ -279,15 +283,14 @@ class DeltaManifestTest(unittest.TestCase):
         self.assertEqual(receipt["runtime_archive_inspection_status"], "pass")
         self.assertEqual(receipt["runtime_archive_download_index_files"], 11)
         self.assertEqual(receipt["runtime_archive_prior_state_files"], 7)
-        for token in (
+        self.assert_manifest_contains_tokens(manifest, (
             "runtime_archive_inspection_status: pass",
             "runtime_archive_download_index_files: 11",
             "runtime_archive_prior_state_files: 7",
             "runtime_archive_conversation_ledger_files: 5",
             "runtime_archive_current_run_summary_present: True",
             "runtime_archive_runtime_manifest_present: True",
-        ):
-            self.assertIn(token, manifest)
+        ))
         self.assert_manifest_metrics_render_once(
             manifest,
             (
@@ -317,14 +320,13 @@ class DeltaManifestTest(unittest.TestCase):
         self.assertEqual(receipt["policy_learning_trace_validation_result"], "pass")
         self.assertEqual(receipt["policy_learning_trace_missing_count"], 0)
         self.assertEqual(receipt["panic_surface_production_unwrap_count"], 0)
-        for token in (
+        self.assert_manifest_contains_tokens(manifest, (
             "policy_learning_trace_validation_result: pass",
             "policy_learning_trace_status: pass",
             "policy_learning_trace_missing_count: 0",
             "panic_surface_production_unwrap_count: 0",
             "panic_surface_test_total: 319",
-        ):
-            self.assertIn(token, manifest)
+        ))
         self.assert_manifest_metrics_render_once(
             manifest,
             (
@@ -405,14 +407,13 @@ class DeltaManifestTest(unittest.TestCase):
         self.assertEqual(receipt["connector_transport_status"], "502")
         self.assertTrue(receipt["connector_transport_report_complete"])
         self.assertTrue(receipt["connector_transport_exit_file_present"])
-        for token in (
+        self.assert_manifest_contains_tokens(manifest, (
             "connector_transport_artifact_classification: transport_interrupted_artifacts_complete",
             "connector_transport_status: 502",
             "connector_transport_report_complete: True",
             "connector_transport_exit_file_present: True",
             "connector_transport_artifact_classification_options",
-        ):
-            self.assertIn(token, manifest)
+        ))
         self.assert_manifest_metrics_render_once(
             manifest,
             (
@@ -531,7 +532,7 @@ class DeltaManifestTest(unittest.TestCase):
         for command in receipt["validation_commands"]:
             self.assertIn("cmd", command)
             self.assertTrue(command["cmd"])
-        for token in (
+        self.assert_manifest_contains_tokens(manifest, (
             "validation_status: pass",
             "command_execution_status: pass",
             "missing_signal_status: pass",
@@ -541,8 +542,7 @@ class DeltaManifestTest(unittest.TestCase):
             "connector_transport_artifact_classification: transport_interrupted_artifacts_complete",
             "runtime_manifest_base_matches_delta_base: True",
             "cargo_test_all_targets: pass",
-        ):
-            self.assertIn(token, manifest)
+        ))
         self.assert_command_normalization_manifest(
             manifest,
             count=3,

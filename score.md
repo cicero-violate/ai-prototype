@@ -3,14 +3,14 @@
 ## Current Progress Snapshot
 
 Date: 2026-05-09 America/Toronto / 2026-05-09 UTC
-Turn type: implementation step 3 after planning turn
-Scope executed: centralized remaining exact-once manifest metric assertions into a reusable generic helper while preserving existing coverage.
+Turn type: implementation step 4 after planning turn
+Scope executed: centralized repeated manifest token-presence assertions into a reusable helper while preserving existing receiver coverage.
 
 Current timestamp evidence:
 
 ```text
 branch: main
-latest visible commit before this implementation turn: 3dc1c06 Verify command normalization manifest values
+latest visible commit before this implementation turn: f6e06e1 Centralize manifest metric exact-once assertions
 working directory: /workspace/ai_sandbox/canon-mini-agent/prototype/ai
 working tree at turn start: clean
 ```
@@ -29,7 +29,7 @@ Generated validation logs, observe reports, runtime fixture archives, graph repo
 
 ## Scorecard
 
-Scores are approximate implementation-readiness scores on a 0-10 scale. Structure, simplicity, and future-proofing improve slightly because exact-once manifest metric checks now use one reusable helper across command-normalization and other compact receiver metric families.
+Scores are approximate implementation-readiness scores on a 0-10 scale. Structure and simplicity improve slightly because repeated manifest token-presence checks now use one helper while exact-once metric rendering checks remain centralized.
 
 ```text
 I  Intelligence      = 7.0
@@ -45,9 +45,9 @@ Co Collaboration     = 8.0
 Em Empowerment       = 7.8
 B  Benefit           = 8.1
 L  Learning          = 7.1
-St Structure         = 9.70
-Si Simplicity        = 7.30
-F  Future-Proofing   = 9.12
+St Structure         = 9.72
+Si Simplicity        = 7.32
+F  Future-Proofing   = 9.13
 ```
 
 Approximate geometric mean:
@@ -58,11 +58,11 @@ G ≈ 8.26 / 10
 
 ## Completed Work This Turn
 
-- Read `plan.md`, `score.md`, git status, recent commits, and the current P4 manifest-helper plan.
-- Added `DeltaManifestTest.assert_manifest_metrics_render_once()` for generic exact-once manifest metric assertions.
-- Routed `assert_command_normalization_manifest()` through the generic helper.
-- Replaced repeated direct `Counter(manifest_metric_names(...))` assertions for runtime archive, policy learning, external surface, connector transport, and compact row-fallback metrics.
-- Confirmed no direct `Counter(manifest_metric_names(...))` assertions remain in `tests/test_write_delta_manifest.py`.
+- Read `plan.md`, `score.md`, git status, recent commits, and the current P4 manifest value assertion plan.
+- Added `DeltaManifestTest.assert_manifest_contains_tokens()` for generic manifest token-presence assertions.
+- Replaced repeated manifest token assertion loops for runtime archive, policy learning/panic surface, connector transport, and full-summary compact manifest checks.
+- Confirmed no repeated `for token in` manifest assertion loops remain outside the helper in `tests/test_write_delta_manifest.py`.
+- Preserved exact-once metric rendering checks through `assert_manifest_metrics_render_once()`.
 - Updated `plan.md` with the completed execution slice and next action.
 
 ## Validation Evidence Captured This Turn
@@ -71,34 +71,34 @@ G ≈ 8.26 / 10
 command: python3 -m unittest tests/test_write_delta_manifest.py
 exit: 0
 result: 23 passed; 0 failed
-log: target/validation-logs/write-delta-manifest-generic-manifest-helper-step3.log
+log: target/validation-logs/write-delta-manifest-token-helper-step4.log
 ```
 
 ```text
 command: python3 -m unittest tests/test_observe_validation_contract.py
 exit: 0
 result: 39 passed; 0 failed
-log: target/validation-logs/observe-validation-contract-generic-manifest-helper-step3.log
+log: target/validation-logs/observe-validation-contract-token-helper-step4.log
 ```
 
 ```text
 command: python3 -m py_compile scripts/observe_validation.sh scripts/write_delta_manifest.py tests/test_write_delta_manifest.py tests/test_observe_validation_contract.py
 exit: 0
-log: target/validation-logs/py-compile-generic-manifest-helper-step3.log
+log: target/validation-logs/py-compile-token-helper-step4.log
 ```
 
 ```text
 command: cargo test --test planning_contract -- --test-threads=1
 exit: 0
 result: 2 passed; 0 failed
-log: target/validation-logs/planning-contract-generic-manifest-helper-step3-final.log
+log: target/validation-logs/planning-contract-token-helper-step4-final.log
 ```
 
 ```text
 command: cargo test --test score_contract -- --test-threads=1
 exit: 0
 result: 5 passed; 0 failed
-log: target/validation-logs/score-contract-generic-manifest-helper-step3-final.log
+log: target/validation-logs/score-contract-token-helper-step4-final.log
 ```
 
 ## Connector / Environment Notes
@@ -113,13 +113,13 @@ log: target/validation-logs/score-contract-generic-manifest-helper-step3-final.l
 - No live wrapper-configured observe-validation run has been captured in this environment.
 - Live router/MCP/Ollama/OpenAI paths still depend on environment services and can fail independently of core runtime correctness.
 - Future cross-subproject graph behavior changes still require updating the boundary contract and executable test first.
-- Some manifest expected-value assertions remain intentionally direct because they cover broad token presence rather than exact-once metric rendering.
+- Some manifest value checks remain intentionally direct single assertions because they are isolated, not coherent repeated metric families.
 
 ## Next Score Update Triggers
 
 Raise scores only after fresh evidence:
 
-- **Structure / Simplicity:** additional manifest value assertions are centralized where they form coherent metric families without reducing coverage.
+- **Structure / Simplicity:** coherent manifest value checks are converted to key/value map helpers where that increases clarity without reducing coverage.
 - **Performance:** command-duration performance evidence is strengthened with external benchmark or latency trend data.
 - **Scalability:** multi-agent coordination and router failure scenarios are tested.
 - **Learning:** policy promotion remains externally evaluated and self-approval remains impossible under tests.
@@ -127,4 +127,4 @@ Raise scores only after fresh evidence:
 
 ## Immediate Next Action
 
-Continue P4 by centralizing manifest value assertions where a metric family has repeated expected-value checks, or apply the generic exact-once helper to future compact receiver metric families as new keys are introduced.
+Continue P4 by identifying coherent manifest value families that can be checked by key/value maps rather than raw token strings, or move to the next receiver evidence gap only when executable evidence identifies one.

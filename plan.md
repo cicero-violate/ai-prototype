@@ -1834,3 +1834,60 @@ log: target/validation-logs/score-contract-generic-manifest-helper-step3-final.l
 ## Next Execution Slice After Generic Manifest Metric Helper Step 3
 
 Continue P4 by centralizing manifest value assertions where a metric family has repeated expected-value checks, or by applying the generic exact-once helper to future compact receiver metric families as new keys are introduced. Keep the next slice test-focused unless a production receiver gap is identified by executable evidence.
+
+
+
+## Completed Execution Slice After Manifest Token Helper Step 4
+
+Completed the next concrete P4 maintainability slice by centralizing repeated manifest token-presence assertions in `tests/test_write_delta_manifest.py` without changing production behavior.
+
+Implementation details:
+
+```text
+- Added DeltaManifestTest.assert_manifest_contains_tokens() as a generic manifest token-presence helper.
+- Replaced repeated for-token assertion loops for runtime archive, policy learning/panic surface, connector transport, and full-summary compact manifest checks.
+- Confirmed no repeated for-token manifest assertion loops remain outside the helper.
+- Preserved existing exact-once metric checks through assert_manifest_metrics_render_once().
+```
+
+This reduces repeated assertion mechanics for coherent manifest value checks while keeping the tests explicit about which manifest tokens each compact receiver path must render.
+
+## Validation Evidence From Manifest Token Helper Step 4
+
+```text
+command: python3 -m unittest tests/test_write_delta_manifest.py
+exit: 0
+result: 23 passed; 0 failed
+log: target/validation-logs/write-delta-manifest-token-helper-step4.log
+```
+
+```text
+command: python3 -m unittest tests/test_observe_validation_contract.py
+exit: 0
+result: 39 passed; 0 failed
+log: target/validation-logs/observe-validation-contract-token-helper-step4.log
+```
+
+```text
+command: python3 -m py_compile scripts/observe_validation.sh scripts/write_delta_manifest.py tests/test_write_delta_manifest.py tests/test_observe_validation_contract.py
+exit: 0
+log: target/validation-logs/py-compile-token-helper-step4.log
+```
+
+```text
+command: cargo test --test planning_contract -- --test-threads=1
+exit: 0
+result: 2 passed; 0 failed
+log: target/validation-logs/planning-contract-token-helper-step4-final.log
+```
+
+```text
+command: cargo test --test score_contract -- --test-threads=1
+exit: 0
+result: 5 passed; 0 failed
+log: target/validation-logs/score-contract-token-helper-step4-final.log
+```
+
+## Next Execution Slice After Manifest Token Helper Step 4
+
+Continue P4 by identifying coherent manifest value families that can be checked by key/value maps rather than raw token strings, or pause the manifest-test refactor and move to the next receiver evidence gap only when executable evidence identifies one. Keep the next slice small and test-focused unless production behavior must change.
