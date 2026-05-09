@@ -2590,6 +2590,53 @@ Candidate priorities:
 
 Do not make compact replay modes depend on live wrapper validation.
 
+## Completed Implementation Step 5 After Compact Full-Summary All-Commands Step 4
+
+Completed compact full-summary command-normalization helper coverage.
+
+Implementation details:
+
+```text
+- Added assert_compact_full_summary_command_normalization() in tests/test_write_delta_manifest.py.
+- Centralized receipt-side and manifest-side command-normalization assertions for compact full-summary summary-provided validation commands.
+- Applied the helper to both synthetic compact full-summary artifact replay and actual generated --full-summary-report artifact manifest coverage.
+- Preserved the shared required-command fixture, full required-command exact-once manifest checks, missing-signal closure, runtime manifest base-match evidence, connector transport evidence, and artifact-only wrapper isolation.
+```
+
+This implementation step remains test-only and behavior-preserving. It closes a compact receiver coverage gap where the actual artifact path had command-normalization assertions while the synthetic compact full-summary path did not assert the same normalization receipt and manifest metrics.
+
+## Validation Evidence From Compact Full-Summary Normalization Helper Step 5
+
+```text
+command: python3 -m py_compile tests/test_write_delta_manifest.py scripts/write_delta_manifest.py
+exit: 0
+log: target/validation-logs/py-compile-compact-full-summary-normalization-helper-step5.log
+exit file: target/validation-logs/py-compile-compact-full-summary-normalization-helper-step5.exit
+```
+
+```text
+command: python3 -m unittest tests.test_write_delta_manifest
+exit: 0
+result: 23 passed; 0 failed
+log: target/validation-logs/write-delta-manifest-compact-full-summary-normalization-helper-step5.log
+exit file: target/validation-logs/write-delta-manifest-compact-full-summary-normalization-helper-step5.exit
+```
+
+## Next Execution Slice After Compact Full-Summary Normalization Helper Step 5
+
+No additional deterministic branch is currently identified. Continue only when a new compact receiver field, live-wrapper prerequisite, or source-inspected failure branch appears.
+
+Candidate priorities:
+
+```text
+1. Capture live wrapper-configured observe-validation evidence only when CANON_RUSTC_WRAPPER and CANON_RUSTC_V3_ARTIFACT_DIR are deliberately available for a clean non-compact run.
+2. Add compact receiver manifest exact-once checks only if a future compact receiver workflow introduces new metric keys or rendering semantics.
+3. Add deterministic failure-classification coverage only for newly identified uncovered branches.
+4. Continue behavior-preserving test-boilerplate reductions only when they preserve explicit receipt, manifest, full command-set, command-normalization, missing-signal, runtime manifest, connector transport, and exact-once evidence semantics.
+```
+
+Do not make compact replay modes depend on live wrapper validation.
+
 ## Completed Implementation Step 4 After Compact Full-Summary Extra Helper Step 3
 
 Completed full required-command exact-once manifest coverage for compact full-summary receiver tests.

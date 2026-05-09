@@ -303,6 +303,34 @@ class DeltaManifestTest(unittest.TestCase):
             FULL_SUMMARY_EXACT_ONCE_MANIFEST_METRICS,
         )
 
+    def assert_compact_full_summary_command_normalization(
+        self,
+        receipt: dict,
+        manifest: str,
+    ) -> None:
+        self.assert_command_normalization_receipt(
+            receipt,
+            count=len(FULL_SUMMARY_REQUIRED_COMMANDS),
+            source="summary_validation_commands",
+            summary_input=len(FULL_SUMMARY_REQUIRED_COMMANDS),
+            summary_distinct=len(FULL_SUMMARY_REQUIRED_COMMANDS),
+            summary_duplicate=0,
+            row_input=0,
+            row_distinct=0,
+            row_duplicate=0,
+        )
+        self.assert_command_normalization_manifest(
+            manifest,
+            count=len(FULL_SUMMARY_REQUIRED_COMMANDS),
+            source="summary_validation_commands",
+            summary_input=len(FULL_SUMMARY_REQUIRED_COMMANDS),
+            summary_distinct=len(FULL_SUMMARY_REQUIRED_COMMANDS),
+            summary_duplicate=0,
+            row_input=0,
+            row_distinct=0,
+            row_duplicate=0,
+        )
+
     def test_pass_with_commands_and_tests(self) -> None:
         self.write_report(test_count=2)
         done = self.run_script()
@@ -543,6 +571,7 @@ class DeltaManifestTest(unittest.TestCase):
             "runtime_manifest_base_matches_delta_base": True,
         })
         self.assert_compact_full_summary_manifest_commands(manifest)
+        self.assert_compact_full_summary_command_normalization(receipt, manifest)
 
     def test_generates_manifest_from_actual_full_summary_report_artifact(self) -> None:
         scripts_dir = self.repo / "scripts"
@@ -602,17 +631,6 @@ class DeltaManifestTest(unittest.TestCase):
         self.assertEqual(receipt["runtime_manifest_base_expected"], self.base)
         self.assertEqual(receipt["runtime_manifest_base_commit"], self.base)
         self.assertTrue(receipt["runtime_manifest_base_matches_delta_base"])
-        self.assert_command_normalization_receipt(
-            receipt,
-            count=len(FULL_SUMMARY_REQUIRED_COMMANDS),
-            source="summary_validation_commands",
-            summary_input=len(FULL_SUMMARY_REQUIRED_COMMANDS),
-            summary_distinct=len(FULL_SUMMARY_REQUIRED_COMMANDS),
-            summary_duplicate=0,
-            row_input=0,
-            row_distinct=0,
-            row_duplicate=0,
-        )
         self.assert_compact_full_summary_command_receipt(receipt)
         for command in receipt["validation_commands"]:
             self.assertIn("cmd", command)
@@ -628,17 +646,7 @@ class DeltaManifestTest(unittest.TestCase):
             "runtime_manifest_base_matches_delta_base": True,
         })
         self.assert_compact_full_summary_manifest_commands(manifest)
-        self.assert_command_normalization_manifest(
-            manifest,
-            count=len(FULL_SUMMARY_REQUIRED_COMMANDS),
-            source="summary_validation_commands",
-            summary_input=len(FULL_SUMMARY_REQUIRED_COMMANDS),
-            summary_distinct=len(FULL_SUMMARY_REQUIRED_COMMANDS),
-            summary_duplicate=0,
-            row_input=0,
-            row_distinct=0,
-            row_duplicate=0,
-        )
+        self.assert_compact_full_summary_command_normalization(receipt, manifest)
 
     def test_compact_preserved_fields_render_once_with_command_rows_fallback(self) -> None:
         commands = [
