@@ -20,6 +20,8 @@ import time
 from pathlib import Path
 from typing import Any
 
+from validate_graph_workflow_fixture import graph_fixture_report
+
 ROOT = Path(__file__).resolve().parents[1]
 REPORT = Path(os.environ.get("CANON_OBSERVE_REPORT", "target/observe/validation-report.ndjson"))
 LOG_DIR = ROOT / "target" / "validation-logs"
@@ -152,76 +154,12 @@ def unique_files(mapping: dict[str, list[str]]) -> list[str]:
 
 
 def inspect_graph_workflow_fixture() -> dict[str, Any]:
-    fixture = ROOT / "tests" / "fixtures" / "graph_mutation_cli_workflow"
-    manifest = fixture / "MANIFEST.txt"
-    result: dict[str, Any] = {
-        "graph_workflow_fixture_present": fixture.exists() and manifest.exists(),
-        "graph_workflow_fixture_status": "missing",
-        "graph_workflow_fixture_evidence_files": [],
-        "graph_workflow_fixture_integrity_valid": False,
-        "graph_workflow_fixture_commands_present": False,
-        "graph_workflow_fixture_landing_command_present": False,
-        "graph_workflow_fixture_ledger_command_present": False,
-        "graph_workflow_fixture_receipt_snapshot_present": False,
-        "graph_workflow_fixture_integrity_rows": [],
+    report = graph_fixture_report(ROOT)
+    return {
+        key: value
+        for key, value in report.items()
+        if key.startswith("graph_workflow_fixture_")
     }
-    if not fixture.exists() or not manifest.exists():
-        return result
-
-    files: list[str] = []
-    commands: list[str] = []
-    integrity_rows: list[dict[str, str]] = []
-    section = ""
-    for raw_line in manifest.read_text(encoding="utf-8").splitlines():
-        line = raw_line.strip()
-        if not line or line.startswith("#"):
-            continue
-        if line in {"files:", "commands:", "integrity:"}:
-            section = line.rstrip(":")
-            continue
-        if section == "files" and raw_line.startswith("  "):
-            files.append(line)
-        elif section == "commands" and raw_line.startswith("  "):
-            commands.append(line)
-        elif section == "integrity" and raw_line.startswith("  "):
-            parts = line.split()
-            if len(parts) == 3:
-                integrity_rows.append({"file": parts[0], "algorithm": parts[1], "hash": parts[2].lower()})
-
-    evidence_files = [str((fixture / file).relative_to(ROOT)) for file in files if (fixture / file).exists()]
-    evidence_files.append(str(manifest.relative_to(ROOT)))
-    integrity_valid = bool(integrity_rows) and all(
-        row["algorithm"] == "sha256"
-        and (fixture / row["file"]).exists()
-        and sha256_file(fixture / row["file"]) == row["hash"]
-        for row in integrity_rows
-    )
-    landing_command_present = any("verify-landing" in command for command in commands)
-    ledger_command_present = any("verify-receipts" in command for command in commands)
-    commands_present = all(
-        any(expected in command for command in commands)
-        for expected in ("verify-ops", "generate-patch", "verify-landing", "verify-receipts")
-    )
-    receipt_snapshot_present = (
-        integrity_valid
-        and commands_present
-        and landing_command_present
-        and ledger_command_present
-        and {"old-graph.ndjson", "new-graph.ndjson", "ops.ndjson", "expected-patch.diff"}.issubset(set(files))
-    )
-    result.update(
-        {
-            "graph_workflow_fixture_status": "pass" if receipt_snapshot_present else "fail",
-            "graph_workflow_fixture_evidence_files": sorted(set(evidence_files)),
-            "graph_workflow_fixture_integrity_valid": integrity_valid,
-            "graph_workflow_fixture_commands_present": commands_present,
-            "graph_workflow_fixture_landing_command_present": landing_command_present,
-            "graph_workflow_fixture_ledger_command_present": ledger_command_present,
-            "graph_workflow_fixture_receipt_snapshot_present": receipt_snapshot_present,
-            "graph_workflow_fixture_integrity_rows": integrity_rows,
-        }
-    )
-    return result
 
 
 def graph_evidence_classification(
@@ -324,32 +262,13 @@ def ignored_artifact_counts() -> dict[str, int]:
 def emit_graph_fixture_report() -> int:
     REPORT.parent.mkdir(parents=True, exist_ok=True)
     REPORT.write_text("", encoding="utf-8")
-    fixture = inspect_graph_workflow_fixture()
-    status = "pass" if fixture.get("graph_workflow_fixture_receipt_snapshot_present") else "fail"
     row = {
-        "event": "graph_fixture_report",
-        "schema_version": 1,
-        "git_head": git_value("rev-parse", "HEAD"),
-        "validation_status": status,
-        "graph_evidence_classification_present": True,
-        "graph_evidence_status": "graph_mutation_landed_with_receipt_snapshot"
-        if status == "pass"
-        else "graph_mutation_evidence_contract_missing",
-        "graph_evidence_status_options": [
-            "graph_mutation_evidence_contract_missing",
-            "graph_mutation_landed_with_receipt_snapshot",
-        ],
+        **graph_fixture_report(ROOT),
         "graph_fixture_report_only": True,
         "graph_fixture_report_command": "--graph-fixture-report",
-        **fixture,
-        "missing_signal_flags": {
-            "missing_graph_workflow_fixture_receipt_snapshot": not fixture.get(
-                "graph_workflow_fixture_receipt_snapshot_present", False
-            ),
-        },
     }
     emit(row)
-    return 0 if status == "pass" else 1
+    return 0 if row["validation_status"] == "pass" else 1
 
 
 def main() -> int:

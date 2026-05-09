@@ -7,13 +7,13 @@ Canon Agent is a Rust prototype for a deterministic, auditable, self-improving a
 Current implementation snapshot, 2026-05-09 America/Toronto / 2026-05-09 UTC:
 
 - Branch: `main`.
-- Latest visible commit before this implementation turn: `38fc0bc Emit fixture-backed graph evidence status`.
+- Latest visible commit before this implementation turn: `24e8193 Document graph subproject boundaries`.
 - Working directory: `/workspace/ai_sandbox/canon-mini-agent/prototype/ai`.
 - P0 validation baseline is complete.
 - P1 validation evidence reporting is complete.
 - P2 agent loop reliability is complete.
 - P3 runtime and receipt correctness is complete for the current scope.
-- P4 graph source-of-truth integration now includes persisted graph evidence classification, deterministic fixture-backed positive evidence for landed graph mutations with receipt snapshots, a compact graph-only report mode, and documented/tested root runtime, wrapper, and editor subproject boundaries.
+- P4 graph source-of-truth integration now includes persisted graph evidence classification, deterministic fixture-backed positive evidence for landed graph mutations with receipt snapshots, a compact graph-only report mode, documented/tested root runtime, wrapper, and editor subproject boundaries, and a standalone graph workflow fixture validator consumed by observe-validation.
 
 ## Operating Rules For Agent Turns
 
@@ -103,10 +103,17 @@ Current implementation snapshot, 2026-05-09 America/Toronto / 2026-05-09 UTC:
    - `graph-editor/` owns human-facing graph inspection/editing workflows and editor-local UX.
    - Added `tests/test_graph_source_boundary_contract.py` so future boundary changes require explicit documentation and contract coverage.
 
-6. **Next P4 slice**
-   - Consider adding a dedicated standalone validator script if report-only mode grows beyond graph fixture evidence.
+6. **Add standalone graph workflow fixture validator — complete**
+   - Added `scripts/validate_graph_workflow_fixture.py` to validate graph workflow fixture manifests, required files, required commands, SHA-256 integrity rows, landing/ledger commands, and receipt-snapshot evidence.
+   - The validator emits a JSON `graph_fixture_report` with `graph_fixture_validator`, `graph_workflow_fixture_*` fields, `graph_evidence_status`, and missing-signal flags.
+   - `scripts/observe_validation.sh` now delegates graph fixture inspection and graph-only report rows to the standalone validator while preserving the existing NDJSON report contract.
+   - Added `tests/test_graph_workflow_fixture_validator.py` for positive current-fixture evidence and negative missing-fixture evidence.
+   - Updated observe-validation contract coverage to treat graph fixture detail fields as validator-owned evidence consumed by observe-validation.
+
+7. **Next P4 slice**
    - Keep wrapper telemetry optional unless `CANON_RUSTC_WRAPPER` or `CANON_RUSTC_V3_ARTIFACT_DIR` is configured.
    - If future graph implementation crosses subproject boundaries, update the boundary contract and test before changing behavior.
+   - Consider a full observe-validation run with wrapper telemetry configured only when environment support is available and timeout risk is acceptable.
 
 ### P5 — Domain intelligence layer
 
@@ -117,39 +124,46 @@ Current implementation snapshot, 2026-05-09 America/Toronto / 2026-05-09 UTC:
 ## Validation Evidence From Current Implementation Step
 
 ```text
-python3 -m unittest tests/test_graph_source_boundary_contract.py
+python3 -m unittest tests/test_graph_workflow_fixture_validator.py
 exit: 0
-result: 5 passed; 0 failed
-log: target/validation-logs/graph-source-boundary-contract-p4-impl-step4.log
+result: 2 passed; 0 failed
+log: target/validation-logs/graph-workflow-fixture-validator-p4-impl-step5.log
 ```
 
 ```text
 python3 -m unittest tests/test_observe_validation_contract.py
 exit: 0
 result: 18 passed; 0 failed
-log: target/validation-logs/observe-validation-contract-p4-impl-step4.log
+log: target/validation-logs/observe-validation-contract-p4-impl-step5.log
+```
+
+```text
+CANON_OBSERVE_REPORT=target/observe/graph-fixture-report-step5.ndjson python3 scripts/observe_validation.sh --graph-fixture-report
+exit: 0
+result: validation_status=pass, graph_evidence_status=graph_mutation_landed_with_receipt_snapshot, graph_fixture_validator=scripts/validate_graph_workflow_fixture.py, graph_workflow_fixture_receipt_snapshot_present=true
+log: target/validation-logs/graph-fixture-report-p4-impl-step5.log
 ```
 
 ```text
 RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo fmt --check
 exit: 0
-log: target/validation-logs/fmt-p4-impl-step4.log
+log: target/validation-logs/fmt-p4-impl-step5.log
 ```
 
 ```text
 TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test graph_mutation_cli_contract -- --test-threads=1
 exit: 0
 result: 10 passed; 0 failed
-log: target/validation-logs/graph-mutation-cli-contract-p4-impl-step4.log
+log: target/validation-logs/graph-mutation-cli-contract-p4-impl-step5.log
 ```
 
 ## Next Execute-Turn Recommendation
 
-Continue P4 with the next graph integration slice. Keep graph wrapper telemetry optional, keep deterministic fixture evidence available through `--graph-fixture-report`, and require any future cross-subproject behavior change to update the boundary contract plus its test first.
+Continue P4 with the next graph integration slice. Keep graph wrapper telemetry optional, keep deterministic fixture evidence available through the standalone validator and `--graph-fixture-report`, and require any future cross-subproject behavior change to update the boundary contract plus its test first.
 
 ## Planning-Turn Handoff
 
-P0, P1, P2, and current P3 scope are complete. P4 now has source-derived graph evidence classification, deterministic fixture-backed positive landed-with-receipt-snapshot evidence, a compact graph-only report path that avoids broad cargo validation, and a tested subproject boundary contract for root runtime, wrapper, and editor responsibilities.
+P0, P1, P2, and current P3 scope are complete. P4 now has source-derived graph evidence classification, deterministic fixture-backed positive landed-with-receipt-snapshot evidence, a compact graph-only report path that avoids broad cargo validation, a tested subproject boundary contract for root runtime/wrapper/editor responsibilities, and a standalone graph workflow fixture validator consumed by observe-validation.
 
 ## Current Non-Goals
 

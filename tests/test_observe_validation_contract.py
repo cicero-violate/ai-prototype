@@ -8,12 +8,14 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 OBSERVE = ROOT / "scripts" / "observe_validation.sh"
 CARGO_CONFIG = ROOT / ".cargo" / "config.toml"
+GRAPH_FIXTURE_VALIDATOR = ROOT / "scripts" / "validate_graph_workflow_fixture.py"
 
 
 class ObserveValidationContractTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.script = OBSERVE.read_text(encoding="utf-8")
+        cls.graph_fixture_validator = GRAPH_FIXTURE_VALIDATOR.read_text(encoding="utf-8")
         cls.config = CARGO_CONFIG.read_text(encoding="utf-8")
 
     def test_root_cargo_validation_clears_wrappers(self) -> None:
@@ -203,6 +205,7 @@ class ObserveValidationContractTest(unittest.TestCase):
             "graph_mutation_cli_contract",
             "graph_mutation_cli_workflow",
             "def inspect_graph_workflow_fixture()",
+            "from validate_graph_workflow_fixture import graph_fixture_report",
             "graph_workflow_fixture_present",
             "graph_workflow_fixture_status",
             "graph_workflow_fixture_evidence_files",
@@ -215,7 +218,7 @@ class ObserveValidationContractTest(unittest.TestCase):
             "fixture_receipt_snapshot_present",
             "graph_mutation_cli_workflow",
         ):
-            self.assertIn(token, self.script)
+            self.assertIn(token, self.script + self.graph_fixture_validator)
 
     def test_graph_fixture_report_mode_is_report_only(self) -> None:
         for token in (
@@ -224,10 +227,11 @@ class ObserveValidationContractTest(unittest.TestCase):
             "graph_fixture_report",
             "graph_fixture_report_only",
             "graph_fixture_report_command",
+            "graph_fixture_validator",
             "usage: observe_validation.sh [--graph-fixture-report]",
             "return emit_graph_fixture_report()",
         ):
-            self.assertIn(token, self.script)
+            self.assertIn(token, self.script + self.graph_fixture_validator)
 
     def test_ignored_artifact_counts_are_emitted(self) -> None:
         for token in (
