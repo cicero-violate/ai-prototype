@@ -845,6 +845,111 @@ Immediate next action:
 
 Proceed only with deliberate V3 wrapper prerequisites, a new compact receiver field or metric, a newly identified deterministic uncovered branch, or another behavior-preserving boilerplate reduction that preserves exact-once evidence.
 
+## Implementation Step 2 — Compact Full-Summary Command-Set Helper Strengthening
+
+Date: 2026-05-09 America/Toronto / 2026-05-09 UTC
+Turn type: implementation step 2 after compact full-summary helper refactor
+Scope executed: behavior-preserving compact full-summary command-set assertion strengthening.
+
+Current timestamp evidence:
+
+```text
+branch: main
+latest visible commit before this implementation turn: 40906ec Refactor compact full summary test helpers
+working directory: /workspace/ai_sandbox/canon-mini-agent/prototype/ai
+working tree at turn start: clean
+```
+
+Implementation, test, and planning/scoring files owned by this turn:
+
+```text
+tests/test_write_delta_manifest.py
+plan.md
+score.md
+```
+
+Generated validation logs and exit files remain ignored and are not committed.
+
+Score movement: structure and simplicity improve slightly because compact full-summary required-command fixture, command-count assertions, and command-name assertions now derive from one source. Correctness, robustness, determinism, and transparency remain unchanged because runtime behavior and evidence requirements did not change.
+
+```text
+I  Intelligence      = 7.0
+E  Efficiency        = 7.91
+C  Correctness       = 9.92
+A  Alignment         = 8.8
+R  Robustness        = 10.0
+P  Performance       = 6.45
+S  Scalability       = 6.82
+D  Determinism       = 9.66
+T  Transparency      = 10.0
+Co Collaboration     = 8.0
+Em Empowerment       = 7.8
+B  Benefit           = 8.1
+L  Learning          = 7.1
+St Structure         = 9.77
+Si Simplicity        = 7.38
+F  Future-Proofing   = 9.26
+```
+
+Approximate geometric mean remains:
+
+```text
+G ≈ 8.32 / 10
+```
+
+Completed work this turn:
+
+- Read the latest `plan.md` and `score.md` state.
+- Confirmed the plan still allowed behavior-preserving compact receiver boilerplate reductions.
+- Added `compact_full_summary_command_names()` beside the shared compact full-summary command fixture.
+- Strengthened `assert_compact_full_summary_command_receipt()` to verify exact required command order, not only graph command presence.
+- Replaced hardcoded synthetic compact full-summary command/test counts with `len(FULL_SUMMARY_REQUIRED_COMMANDS)`.
+- Preserved existing manifest exact-once metric evidence and artifact-only compact replay behavior.
+
+Validation evidence captured this turn:
+
+```text
+command: python3 -m py_compile tests/test_write_delta_manifest.py scripts/write_delta_manifest.py
+exit: 0
+log: target/validation-logs/py-compile-compact-full-summary-command-set-step2.log
+exit file: target/validation-logs/py-compile-compact-full-summary-command-set-step2.exit
+```
+
+```text
+command: python3 -m unittest tests.test_write_delta_manifest
+exit: 0
+result: 23 passed; 0 failed
+log: target/validation-logs/write-delta-manifest-compact-full-summary-command-set-step2.log
+exit file: target/validation-logs/write-delta-manifest-compact-full-summary-command-set-step2.exit
+```
+
+```text
+command: RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test planning_contract -- --test-threads=1
+exit: 0
+result: 2 passed; 0 failed
+log: target/validation-logs/planning-contract-compact-full-summary-command-set-step2.log
+exit file: target/validation-logs/planning-contract-compact-full-summary-command-set-step2.exit
+```
+
+```text
+command: RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test score_contract -- --test-threads=1
+exit: 0
+result: 5 passed; 0 failed
+log: target/validation-logs/score-contract-compact-full-summary-command-set-step2.log
+exit file: target/validation-logs/score-contract-compact-full-summary-command-set-step2.exit
+```
+
+Current risks / gaps:
+
+- No fresh live wrapper-configured observe-validation run has been captured in this environment.
+- Live wrapper graph telemetry still requires deliberate V3 wrapper inputs and a non-compact full observe-validation run.
+- Compact full-summary replay remains artifact-only and intentionally omits live wrapper validation fields even when wrapper environment variables are present.
+- No additional deterministic branch is currently identified after this command-set helper strengthening.
+
+Immediate next action:
+
+Proceed only with deliberate V3 wrapper prerequisites, a new compact receiver field or metric, a newly identified deterministic uncovered branch, or another behavior-preserving boilerplate reduction that preserves receipt, manifest, command-set, and exact-once evidence.
+
 
 ## Implementation Step 1 — Full Summary Graph Command Evidence
 

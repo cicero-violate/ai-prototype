@@ -48,6 +48,10 @@ def compact_full_summary_commands() -> list[dict]:
     ]
 
 
+def compact_full_summary_command_names() -> list[str]:
+    return [name for name, _cmd in FULL_SUMMARY_REQUIRED_COMMANDS]
+
+
 def manifest_metric_names(manifest: str) -> list[str]:
     return [
         line[2:].split(":", 1)[0]
@@ -261,10 +265,10 @@ class DeltaManifestTest(unittest.TestCase):
             self.assertIn(f"{key}: {value}", manifest, key)
 
     def assert_compact_full_summary_command_receipt(self, receipt: dict) -> None:
-        command_names = {command["name"] for command in receipt["validation_commands"]}
+        command_names = [command["name"] for command in receipt["validation_commands"]]
         self.assertEqual(receipt["validation_command_count"], len(FULL_SUMMARY_REQUIRED_COMMANDS))
         self.assertEqual(receipt["validation_test_count"], len(FULL_SUMMARY_REQUIRED_COMMANDS))
-        self.assertIn("graph_workflow_fixture_validation", command_names)
+        self.assertEqual(command_names, compact_full_summary_command_names())
 
     def assert_compact_full_summary_manifest_commands(self, manifest: str) -> None:
         self.assert_manifest_key_values(manifest, {
@@ -497,7 +501,11 @@ class DeltaManifestTest(unittest.TestCase):
 
     def test_accepts_compact_full_summary_artifact_replay(self) -> None:
         commands = compact_full_summary_commands()
-        self.write_report(commands=commands, command_count=4, test_count=4, extra={
+        self.write_report(
+            commands=commands,
+            command_count=len(FULL_SUMMARY_REQUIRED_COMMANDS),
+            test_count=len(FULL_SUMMARY_REQUIRED_COMMANDS),
+            extra={
             "full_summary_report_only": True,
             "full_summary_report_command": "--full-summary-report",
             "command_execution_status": "pass",
