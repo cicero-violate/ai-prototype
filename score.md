@@ -2,7 +2,7 @@
 
 ## Current Progress Snapshot
 
-Date: 2026-05-08
+Date: 2026-05-08 America/Toronto / 2026-05-09 UTC
 Turn type: planning/scoring
 Scope reviewed: repository status, recent commit history, existing `plan.md`, existing `score.md`, `GOAL.md`, planning contract, and score contract.
 
@@ -11,9 +11,9 @@ This turn is intentionally limited to planning and scoring. The working tree alr
 Current timestamp evidence:
 
 ```text
-2026-05-08 America/Toronto / 2026-05-09T03:15:51Z UTC
+2026-05-08 23:24:15 EDT America/Toronto / 2026-05-09T03:24:15Z UTC
 branch: main
-latest visible prior commit: 390769c Update Canon Agent planning and scoring
+latest visible prior commit: a767fa2 Update Canon Agent planning and scoring
 ```
 
 ## Current Git State
@@ -90,6 +90,7 @@ Correctness, robustness, and determinism remain capped until `cargo test --all-t
 - Updated `plan.md` to make planning-turn boundaries explicit.
 - Updated `score.md` to distinguish prior implementation evidence from this planning/scoring turn.
 - Refreshed the prior-commit and timestamp evidence for this planning/scoring pass.
+- Confirmed the requested working directory resolves as the connector workspace root.
 - Preserved the priority that the next execution turn should complete all-target validation before moving to new feature work.
 - Reaffirmed that current score ceilings remain unchanged until final all-target validation evidence is captured.
 
