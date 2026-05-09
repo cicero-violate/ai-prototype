@@ -511,6 +511,8 @@ class ObserveValidationContractTest(unittest.TestCase):
             env["CANON_CONNECTOR_TRANSPORT_STATUS"] = "502"
             env["CANON_CONNECTOR_TRANSPORT_REPORT"] = str(report)
             env["CANON_CONNECTOR_TRANSPORT_EXIT_FILE"] = str(exit_file)
+            env["CANON_RUSTC_WRAPPER"] = "/missing/canon-rustc-v3"
+            env["CANON_RUSTC_V3_ARTIFACT_DIR"] = str(root / "wrapper-artifacts")
             done = subprocess.run(
                 [sys.executable, str(OBSERVE), "--full-summary-report"],
                 cwd=ROOT,
@@ -537,6 +539,8 @@ class ObserveValidationContractTest(unittest.TestCase):
             self.assertEqual(row["validation_command_count"], 3)
             self.assertEqual(row["validation_test_count"], 3)
             self.assertTrue(all("cmd" in command for command in row["validation_commands"]))
+            self.assertNotIn("wrapper_graph_validation_result", row)
+            self.assertNotIn("wrapper_graph_validation_requested", row)
 
     def test_external_surface_evidence_is_source_derived(self) -> None:
         for token in (

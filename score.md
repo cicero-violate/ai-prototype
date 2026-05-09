@@ -545,3 +545,115 @@ Immediate next action:
 
 Wait for deliberate V3 wrapper prerequisites or a newly identified deterministic uncovered branch before making additional implementation changes.
 
+## Implementation Step 5 — Full Summary Wrapper Isolation
+
+Date: 2026-05-09 America/Toronto / 2026-05-09 UTC
+Turn type: implementation step 5 after wrapper V2 boundary coverage
+Scope executed: deterministic compact full-summary observe-validation contract coverage for wrapper-env isolation.
+
+Current timestamp evidence:
+
+```text
+branch: main
+latest visible commit before this implementation turn: 828e80b Add wrapper V2 boundary contract
+working directory: /workspace/ai_sandbox/canon-mini-agent/prototype/ai
+working tree at turn start: clean
+```
+
+Implementation, test, and planning/scoring files owned by this turn:
+
+```text
+tests/test_observe_validation_contract.py
+plan.md
+score.md
+```
+
+Generated validation logs and exit files remain ignored and are not committed.
+
+Score movement: determinism and future-proofing improve slightly because compact full-summary replay now has explicit evidence that wrapper environment variables cannot cause live wrapper validation fields to leak into artifact-only summary output. Correctness is unchanged because this is test coverage for existing behavior.
+
+```text
+I  Intelligence      = 7.0
+E  Efficiency        = 7.91
+C  Correctness       = 9.89
+A  Alignment         = 8.8
+R  Robustness        = 10.0
+P  Performance       = 6.45
+S  Scalability       = 6.82
+D  Determinism       = 9.65
+T  Transparency      = 10.0
+Co Collaboration     = 8.0
+Em Empowerment       = 7.8
+B  Benefit           = 8.1
+L  Learning          = 7.1
+St Structure         = 9.75
+Si Simplicity        = 7.36
+F  Future-Proofing   = 9.22
+```
+
+Approximate geometric mean:
+
+```text
+G ≈ 8.32 / 10
+```
+
+Completed work this turn:
+
+- Read the latest `plan.md` and `score.md` state.
+- Inspected compact observe-validation modes for a deterministic branch after the prior wrapper V2 boundary step.
+- Added missing V3 wrapper environment variables to the full-summary compact replay test.
+- Asserted compact full-summary output does not include wrapper validation fields, proving the mode remains artifact-only.
+- Preserved production observe-validation behavior and avoided live wrapper execution.
+
+Validation evidence captured this turn:
+
+```text
+command: python3 -m py_compile scripts/observe_validation.sh tests/test_observe_validation_contract.py
+exit: 0
+log: target/validation-logs/py-compile-full-summary-wrapper-isolation-step5.log
+exit file: target/validation-logs/py-compile-full-summary-wrapper-isolation-step5.exit
+```
+
+```text
+command: python3 -m unittest tests.test_observe_validation_contract
+exit: 0
+result: 40 passed; 0 failed
+log: target/validation-logs/observe-validation-contract-full-summary-wrapper-isolation-step5.log
+exit file: target/validation-logs/observe-validation-contract-full-summary-wrapper-isolation-step5.exit
+```
+
+Planning/scoring contract validation after documentation updates:
+
+```text
+command: RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test planning_contract -- --test-threads=1
+exit: 0
+result: 2 passed; 0 failed
+log: target/validation-logs/planning-contract-full-summary-wrapper-isolation-step5.log
+exit file: target/validation-logs/planning-contract-full-summary-wrapper-isolation-step5.exit
+```
+
+```text
+command: RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test score_contract -- --test-threads=1
+exit: 0
+result: 5 passed; 0 failed
+log: target/validation-logs/score-contract-full-summary-wrapper-isolation-step5.log
+exit file: target/validation-logs/score-contract-full-summary-wrapper-isolation-step5.exit
+```
+
+Transient connector note:
+
+```text
+initial combined planning/score contract shell call: connector 502 before usable command evidence was returned
+resolution: reran planning_contract and score_contract separately; both exited 0
+```
+
+Current risks / gaps:
+
+- No fresh live wrapper-configured observe-validation run has been captured in this environment.
+- Live wrapper graph telemetry still requires deliberate V3 wrapper inputs and a non-compact full observe-validation run.
+- Compact full-summary replay intentionally omits live wrapper fields even when wrapper environment variables are present.
+
+Immediate next action:
+
+Wait for deliberate V3 wrapper prerequisites, a new compact receiver field, or a newly identified deterministic uncovered branch before making additional implementation changes.
+

@@ -2544,3 +2544,49 @@ Candidate priorities:
 
 Do not treat legacy V2 wrapper artifact configuration as V3 wrapper readiness.
 
+## Completed Execution Slice After Full Summary Wrapper Isolation Step 5
+
+Completed deterministic compact full-summary isolation coverage for wrapper configuration.
+
+Implementation details:
+
+```text
+- Updated test_full_summary_report_mode_emits_compact_validation_summary() in tests/test_observe_validation_contract.py.
+- The test now sets missing CANON_RUSTC_WRAPPER and CANON_RUSTC_V3_ARTIFACT_DIR values while running --full-summary-report.
+- It asserts the compact validation_summary still passes and does not emit wrapper_graph_validation_result or wrapper_graph_validation_requested fields.
+- This confirms compact full-summary replay remains artifact-only and does not attempt live wrapper validation from environment variables.
+```
+
+This adds a concrete boundary assertion for a compact receiver workflow without adding metric keys or changing production observe-validation behavior.
+
+## Validation Evidence From Full Summary Wrapper Isolation Step 5
+
+```text
+command: python3 -m py_compile scripts/observe_validation.sh tests/test_observe_validation_contract.py
+exit: 0
+log: target/validation-logs/py-compile-full-summary-wrapper-isolation-step5.log
+exit file: target/validation-logs/py-compile-full-summary-wrapper-isolation-step5.exit
+```
+
+```text
+command: python3 -m unittest tests.test_observe_validation_contract
+exit: 0
+result: 40 passed; 0 failed
+log: target/validation-logs/observe-validation-contract-full-summary-wrapper-isolation-step5.log
+exit file: target/validation-logs/observe-validation-contract-full-summary-wrapper-isolation-step5.exit
+```
+
+## Next Execution Slice After Full Summary Wrapper Isolation Step 5
+
+No additional deterministic branch is currently identified. Continue only when a new compact receiver field, live-wrapper prerequisite, or source-inspected failure branch appears.
+
+Candidate priorities:
+
+```text
+1. Capture live wrapper-configured observe-validation evidence only when CANON_RUSTC_WRAPPER and CANON_RUSTC_V3_ARTIFACT_DIR are deliberately available for a clean run.
+2. Add compact receiver manifest exact-once checks only if a future compact receiver workflow introduces new metric keys or rendering semantics.
+3. Add deterministic failure-classification coverage only for newly identified uncovered branches.
+```
+
+Do not make compact replay modes depend on live wrapper validation.
+
