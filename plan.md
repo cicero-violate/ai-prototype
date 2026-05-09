@@ -3099,3 +3099,45 @@ Planning/scoring hygiene for this turn:
 - Stage only plan.md and score.md.
 - Commit the planning/scoring changes as a standalone commit.
 ```
+
+## Completed Implementation Step 1 After Planning/Scoring Turn c00513e
+
+Executed the smallest concrete plan trigger available: source-inspected deterministic command-normalization coverage cleanup in `tests/test_write_delta_manifest.py`.
+
+Implementation details:
+
+```text
+- Re-read the latest plan and score state.
+- Confirmed live wrapper-configured observe-validation prerequisites were not deliberately available in this turn.
+- Inspected delta-manifest command-normalization tests for deterministic branch coverage.
+- Found existing duplicate `validation_command` row coverage and strengthened its closure by making the expected nonzero validation test count explicit in all duplicate-row cases.
+- Avoided runtime behavior changes; this is test-evidence clarification only.
+```
+
+Validation evidence:
+
+```text
+command: python3 -m py_compile tests/test_write_delta_manifest.py scripts/write_delta_manifest.py
+exit: 0
+log: target/validation-logs/py-compile-row-duplicate-closure-step1.log
+exit file: target/validation-logs/py-compile-row-duplicate-closure-step1.exit
+```
+
+```text
+command: python3 -m unittest tests.test_write_delta_manifest
+exit: 0
+result: 23 passed; 0 failed
+log: target/validation-logs/write-delta-manifest-row-duplicate-closure-step1.log
+exit file: target/validation-logs/write-delta-manifest-row-duplicate-closure-step1.exit
+```
+
+Next execution slice:
+
+```text
+No further deterministic implementation branch is identified from this turn.
+Proceed only if:
+1. deliberate CANON_RUSTC_WRAPPER and CANON_RUSTC_V3_ARTIFACT_DIR inputs are available for live wrapper validation;
+2. compact receiver artifacts gain a new field, metric key, missing flag, or rendering semantic;
+3. source inspection exposes uncovered deterministic failure-classification or persistence-error coverage;
+4. another behavior-preserving test-helper cleanup improves evidence clarity without weakening exact-once assertions.
+```

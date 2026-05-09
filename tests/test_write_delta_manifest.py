@@ -920,7 +920,7 @@ class DeltaManifestTest(unittest.TestCase):
 
     def test_accepts_duplicate_validation_command_rows_with_distinct_count(self) -> None:
         command = validation_command_fixture(event=True)
-        summary = validation_summary_fixture(head=self.head, command_count=1)
+        summary = validation_summary_fixture(head=self.head, command_count=1, test_count=2)
         self.report.write_text(
             "\n".join(json.dumps(row) for row in [command, command, summary]) + "\n",
             encoding="utf-8",
@@ -956,7 +956,7 @@ class DeltaManifestTest(unittest.TestCase):
 
     def test_rejects_duplicate_validation_command_rows_with_inflated_count(self) -> None:
         command = validation_command_fixture(event=True)
-        summary = validation_summary_fixture(head=self.head, command_count=2)
+        summary = validation_summary_fixture(head=self.head, command_count=2, test_count=2)
         self.report.write_text(
             "\n".join(json.dumps(row) for row in [command, command, summary]) + "\n",
             encoding="utf-8",
@@ -969,7 +969,7 @@ class DeltaManifestTest(unittest.TestCase):
     def test_rejects_conflicting_duplicate_validation_command_rows(self) -> None:
         first = validation_command_fixture(event=True)
         second = validation_command_fixture(event=True, duration_ms=8)
-        summary = validation_summary_fixture(head=self.head, command_count=2)
+        summary = validation_summary_fixture(head=self.head, command_count=2, test_count=2)
         self.report.write_text(
             "\n".join(json.dumps(row) for row in [first, second, summary]) + "\n",
             encoding="utf-8",

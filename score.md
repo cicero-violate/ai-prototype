@@ -1683,3 +1683,75 @@ Next scoring trigger:
 ```text
 Adjust scores only after new externally checkable evidence is captured, such as a live wrapper validation run, a new compact receiver contract, or a deterministic uncovered-branch test.
 ```
+
+## Implementation Step 1 - Row Duplicate Closure Clarification
+
+Completed work:
+
+```text
+- Read the latest plan.md and score.md state.
+- Inspected delta-manifest command-normalization coverage.
+- Confirmed duplicate validation_command row behavior was already covered.
+- Strengthened the duplicate-row accept, inflated-count rejection, and conflicting-row rejection tests by explicitly setting validation_test_count=2.
+- Made no runtime behavior changes.
+```
+
+Validation evidence captured this turn:
+
+```text
+command: python3 -m py_compile tests/test_write_delta_manifest.py scripts/write_delta_manifest.py
+exit: 0
+log: target/validation-logs/py-compile-row-duplicate-closure-step1.log
+exit file: target/validation-logs/py-compile-row-duplicate-closure-step1.exit
+```
+
+```text
+command: python3 -m unittest tests.test_write_delta_manifest
+exit: 0
+result: 23 passed; 0 failed
+log: target/validation-logs/write-delta-manifest-row-duplicate-closure-step1.log
+exit file: target/validation-logs/write-delta-manifest-row-duplicate-closure-step1.exit
+```
+
+Score update:
+
+```text
+I  Intelligence      = 7.0
+E  Efficiency        = 7.92
+C  Correctness       = 9.92
+A  Alignment         = 8.8
+R  Robustness        = 10.0
+P  Performance       = 6.45
+S  Scalability       = 6.82
+D  Determinism       = 9.67
+T  Transparency      = 10.0
+Co Collaboration     = 8.0
+Em Empowerment       = 7.8
+B  Benefit           = 8.1
+L  Learning          = 7.1
+St Structure         = 9.75
+Si Simplicity        = 7.36
+F  Future-Proofing   = 9.26
+```
+
+Approximate geometric mean:
+
+```text
+G ≈ 8.32 / 10
+```
+
+Rationale:
+
+```text
+- Determinism improves slightly because duplicate-row tests now explicitly close over nonzero test-count evidence rather than relying on the helper default.
+- Efficiency improves slightly because future readers do not need to infer the validation_test_count precondition in row-duplicate cases.
+- Runtime correctness score is unchanged because implementation behavior was not modified.
+```
+
+Current risks / gaps:
+
+```text
+- No fresh live wrapper-configured observe-validation evidence was captured.
+- No new compact receiver field or missing-signal semantic was introduced.
+- The next implementation turn should avoid speculative changes unless a concrete trigger appears.
+```
