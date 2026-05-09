@@ -6,10 +6,10 @@ Canon Agent is a Rust prototype for a deterministic, auditable, self-improving a
 
 The current working tree contains a broad, pre-existing implementation batch plus this planning/scoring refresh. This planning turn intentionally updates only `plan.md` and `score.md`; all source, test, example, and runtime implementation changes remain unowned by this turn and should be handled by the next execution turn.
 
-Current planning snapshot, 2026-05-08 America/Toronto / 2026-05-09T03:09:57Z UTC:
+Current planning snapshot, 2026-05-08 America/Toronto / 2026-05-09T03:15:51Z UTC:
 
 - Branch: `main`.
-- Latest visible planning commit before this turn: `6ccb3e3 Update Canon Agent planning and scoring`.
+- Latest visible planning commit before this turn: `390769c Update Canon Agent planning and scoring`.
 - `plan.md` and `score.md` had no local diff at the start of this refresh.
 - Dirty implementation files are still present and must not be conflated with this planning/scoring commit.
 - The next execution turn should begin with diff review, not new feature work.
