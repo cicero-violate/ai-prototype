@@ -67,8 +67,23 @@ def command_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return [row for row in rows if row.get("event") == "validation_command"]
 
 
+def command_fingerprint(command: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "name": command.get("name"),
+        "cmd": command.get("cmd"),
+        "status": command.get("status"),
+    }
+
+
 def validate_commands(summary: dict[str, Any], rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    commands = list(summary.get("validation_commands") or command_rows(rows))
+    summary_commands = list(summary.get("validation_commands") or [])
+    row_commands = command_rows(rows)
+    if summary_commands and row_commands:
+        summary_fingerprints = [command_fingerprint(command) for command in summary_commands]
+        row_fingerprints = [command_fingerprint(command) for command in row_commands]
+        if summary_fingerprints != row_fingerprints:
+            fail("conflicting validation command evidence between summary and command rows")
+    commands = summary_commands or row_commands
     if not commands:
         fail("no validation commands")
     for index, command in enumerate(commands):

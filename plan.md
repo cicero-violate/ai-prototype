@@ -1141,3 +1141,57 @@ log: target/validation-logs/score-contract-row-command-step2.log
 ## Next Execution Slice After Row-Command Manifest Step 2
 
 Continue P4 by looking for the next receiver/archive/report assumption that can be made executable with a short deterministic fixture. Candidate next slice: strengthen manifest closure around contradictory validation command sources, such as rejecting or classifying reports where summary `validation_commands` conflict with `validation_command` rows or where command-count metadata does not match the command evidence selected by the writer.
+
+## Completed Execution Slice After Command-Conflict Manifest Step 3
+
+Completed deterministic manifest closure for contradictory validation command evidence. `scripts/write_delta_manifest.py` now compares command fingerprints when both summary `validation_commands` and `validation_command` report rows are present. Matching duplicate evidence remains accepted, while conflicting name/cmd/status evidence is rejected before a receipt or manifest can be generated.
+
+The command fingerprint used for conflict detection is intentionally small and closure-oriented:
+
+```text
+name
+cmd
+status
+```
+
+`tests/test_write_delta_manifest.py` now covers both matching duplicate command evidence and conflicting duplicate command evidence. This closes the prior gap where the manifest writer preferred summary commands over row commands without explicitly classifying or rejecting disagreement.
+
+## Validation Evidence From Command-Conflict Manifest Step 3
+
+```text
+python3 -m unittest tests/test_write_delta_manifest.py
+exit: 0
+result: 16 passed; 0 failed
+log: target/validation-logs/write-delta-manifest-command-conflict-step3.log
+```
+
+```text
+python3 -m unittest tests/test_observe_validation_contract.py
+exit: 0
+result: 39 passed; 0 failed
+log: target/validation-logs/observe-validation-contract-command-conflict-step3.log
+```
+
+```text
+python3 -m py_compile scripts/observe_validation.sh scripts/write_delta_manifest.py tests/test_write_delta_manifest.py tests/test_observe_validation_contract.py
+exit: 0
+log: target/validation-logs/py-compile-command-conflict-step3.log
+```
+
+```text
+cargo test --test planning_contract -- --test-threads=1
+exit: 0
+result: 2 passed; 0 failed
+log: target/validation-logs/planning-contract-command-conflict-step3.log
+```
+
+```text
+cargo test --test score_contract -- --test-threads=1
+exit: 0
+result: 5 passed; 0 failed
+log: target/validation-logs/score-contract-command-conflict-step3.log
+```
+
+## Next Execution Slice After Command-Conflict Manifest Step 3
+
+Continue P4 by strengthening manifest closure around command metadata completeness beyond name/cmd/status. Candidate next slice: reject or classify reports where duplicate command evidence agrees on name/cmd/status but disagrees on execution-relevant metadata such as `exit_code`, `duration_ms`, `timed_out`, or `connector_failure_class`.

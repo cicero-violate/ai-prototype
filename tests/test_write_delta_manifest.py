@@ -486,6 +486,60 @@ class DeltaManifestTest(unittest.TestCase):
         self.assertIn("unit: pass :: ['python3', '-m', 'unittest']", manifest)
         self.assertIn("compile: pass :: ['python3', '-m', 'py_compile']", manifest)
 
+    def test_accepts_matching_summary_and_row_command_evidence(self) -> None:
+        commands = [
+            {"name": "unit", "cmd": ["python3", "-m", "unittest"], "status": "pass"},
+            {"name": "compile", "cmd": ["python3", "-m", "py_compile"], "status": "pass"},
+        ]
+        rows = [
+            {"event": "validation_command", **command}
+            for command in commands
+        ]
+        summary = {
+            "event": "validation_summary",
+            "git_head": self.head,
+            "validation_status": "pass",
+            "validation_commands": commands,
+            "validation_command_count": len(commands),
+            "validation_test_count": len(commands),
+        }
+        self.report.write_text(
+            "\n".join(json.dumps(row) for row in [*rows, summary]) + "\n",
+            encoding="utf-8",
+        )
+
+        done = self.run_script()
+        self.assertEqual(done.returncode, 0, done.stderr)
+        receipt = json.loads(self.receipt.read_text(encoding="utf-8"))
+        self.assertEqual(receipt["validation_command_count"], 2)
+        self.assertEqual([command["name"] for command in receipt["validation_commands"]], ["unit", "compile"])
+
+    def test_rejects_conflicting_summary_and_row_command_evidence(self) -> None:
+        row_commands = [
+            {"event": "validation_command", "name": "unit", "cmd": ["python3", "-m", "unittest"], "status": "pass"},
+            {"event": "validation_command", "name": "compile", "cmd": ["python3", "-m", "py_compile"], "status": "pass"},
+        ]
+        summary_commands = [
+            {"name": "unit", "cmd": ["python3", "-m", "unittest"], "status": "pass"},
+            {"name": "compile", "cmd": ["python3", "-m", "py_compile"], "status": "fail"},
+        ]
+        summary = {
+            "event": "validation_summary",
+            "git_head": self.head,
+            "validation_status": "pass",
+            "validation_commands": summary_commands,
+            "validation_command_count": len(summary_commands),
+            "validation_test_count": len(summary_commands),
+        }
+        self.report.write_text(
+            "\n".join(json.dumps(row) for row in [*row_commands, summary]) + "\n",
+            encoding="utf-8",
+        )
+
+        done = self.run_script()
+        self.assertNotEqual(done.returncode, 0)
+        self.assertIn("conflicting validation command evidence", done.stderr)
+
 
 if __name__ == "__main__":
     unittest.main()
