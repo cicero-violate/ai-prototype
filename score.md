@@ -2223,3 +2223,92 @@ Current risks / gaps:
 - Live graph telemetry still requires deliberate wrapper and artifact-dir inputs.
 - Compact full-summary replay remains artifact-only by design.
 ```
+
+## Implementation Step 2 - Full Summary Runtime Archive Manifest Exact-Once Coverage
+
+Completed work:
+
+```text
+- Read the latest plan.md and score.md state.
+- Confirmed no live wrapper validation prerequisites were configured.
+- Inspected compact full-summary artifact replay and delta manifest metric rendering tests.
+- Added exact-once manifest rendering assertions for runtime archive preserved metrics in the actual generated full-summary artifact path.
+- Made no runtime behavior changes.
+```
+
+Validation evidence captured this turn:
+
+```text
+command: python3 -m py_compile scripts/write_delta_manifest.py tests/test_write_delta_manifest.py
+exit: 0
+log: target/validation-logs/py-compile-full-summary-runtime-archive-exact-once-step2.log
+exit file: target/validation-logs/py-compile-full-summary-runtime-archive-exact-once-step2.exit
+```
+
+```text
+command: python3 -m unittest tests.test_write_delta_manifest
+exit: 0
+result: 23 passed; 0 failed
+log: target/validation-logs/write-delta-manifest-full-summary-runtime-archive-exact-once-step2.log
+exit file: target/validation-logs/write-delta-manifest-full-summary-runtime-archive-exact-once-step2.exit
+```
+
+```text
+command: TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test planning_contract -- --test-threads=1
+exit: 0
+result: 2 passed; 0 failed
+log: target/validation-logs/planning-contract-full-summary-runtime-archive-exact-once-step2.log
+exit file: target/validation-logs/planning-contract-full-summary-runtime-archive-exact-once-step2.exit
+```
+
+```text
+command: TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test score_contract -- --test-threads=1
+exit: 0
+result: 5 passed; 0 failed
+log: target/validation-logs/score-contract-full-summary-runtime-archive-exact-once-step2.log
+exit file: target/validation-logs/score-contract-full-summary-runtime-archive-exact-once-step2.exit
+```
+
+Score update:
+
+```text
+I  Intelligence      = 7.0
+E  Efficiency        = 7.92
+C  Correctness       = 9.97
+A  Alignment         = 8.8
+R  Robustness        = 10.0
+P  Performance       = 6.45
+S  Scalability       = 6.82
+D  Determinism       = 9.72
+T  Transparency      = 10.0
+Co Collaboration     = 8.0
+Em Empowerment       = 7.8
+B  Benefit           = 8.1
+L  Learning          = 7.1
+St Structure         = 9.75
+Si Simplicity        = 7.36
+F  Future-Proofing   = 9.31
+```
+
+Approximate geometric mean:
+
+```text
+G ≈ 8.33 / 10
+```
+
+Rationale:
+
+```text
+- Correctness improves slightly because actual compact full-summary artifact replay now proves exact-once manifest rendering for runtime archive preserved metrics.
+- Determinism improves slightly because rendered runtime archive report fields have explicit exact-count assertions.
+- Future-proofing improves slightly because duplicate or missing preserved runtime archive manifest metrics now fail the focused delta-manifest test.
+- Runtime behavior and performance remain unchanged.
+```
+
+Current risks / gaps:
+
+```text
+- No fresh live wrapper-configured observe-validation evidence was captured.
+- Live graph telemetry still requires deliberate wrapper and artifact-dir inputs.
+- Compact full-summary replay remains artifact-only by design, now with stronger runtime archive preserved metric rendering assertions.
+```

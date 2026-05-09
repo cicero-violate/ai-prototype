@@ -645,6 +645,25 @@ class DeltaManifestTest(unittest.TestCase):
             "connector_transport_artifact_classification": "transport_interrupted_artifacts_complete",
             "runtime_manifest_base_matches_delta_base": True,
         })
+        self.assert_manifest_metrics_render_once(
+            manifest,
+            (
+                "runtime_archive_evidence_source",
+                "runtime_archive_report_present",
+                "runtime_archive_report_status",
+                "runtime_archive_report_base_matches_current",
+                "runtime_archive_present",
+                "runtime_archive_inspection_status",
+                "runtime_archive_download_index_files",
+                "runtime_archive_prior_state_files",
+                "runtime_archive_conversation_ledger_files",
+                "runtime_archive_current_run_summary_present",
+                "runtime_archive_runtime_manifest_present",
+                "runtime_manifest_base_expected",
+                "runtime_manifest_base_commit",
+                "runtime_manifest_base_matches_delta_base",
+            ),
+        )
         self.assert_compact_full_summary_manifest_commands(manifest)
         self.assert_compact_full_summary_command_normalization(receipt, manifest)
 
