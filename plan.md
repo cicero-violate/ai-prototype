@@ -1076,3 +1076,68 @@ log: target/validation-logs/py-compile-actual-full-summary-step1.log
 ## Next Execution Slice After Actual Full-Summary Manifest Step 1
 
 Continue P4 by finding any remaining receiver/archive/report workflows that still depend on long observe-validation artifacts and convert one more such consumer to compact deterministic evidence. Candidate next slice: add a short contract proving compact runtime archive/full-summary preserved fields are not duplicated in the rendered manifest and remain stable when command rows are sourced from report rows instead of only the summary `validation_commands` field.
+
+## Completed Execution Slice After Row-Command Manifest Step 2
+
+Completed the short receiver/archive contract for compact report stability. `tests/test_write_delta_manifest.py` now proves that delta manifest generation remains valid when validation commands are sourced from `validation_command` report rows instead of the summary `validation_commands` field.
+
+The new contract also proves compact full-summary/runtime preserved fields render exactly once in the manifest:
+
+```text
+validation_status
+command_execution_status
+missing_signal_status
+missing_signal_count
+runtime_archive_evidence_source
+runtime_archive_report_present
+runtime_archive_report_status
+runtime_archive_report_base_matches_current
+runtime_archive_present
+runtime_manifest_base_expected
+runtime_manifest_base_commit
+runtime_manifest_base_matches_delta_base
+full_summary_report_only
+full_summary_report_command
+```
+
+No manifest writer change was required for this slice; the existing fallback and de-duplication logic already satisfied the new executable contract.
+
+## Validation Evidence From Row-Command Manifest Step 2
+
+```text
+python3 -m unittest tests/test_write_delta_manifest.py
+exit: 0
+result: 14 passed; 0 failed
+log: target/validation-logs/write-delta-manifest-row-command-step2.log
+```
+
+```text
+python3 -m unittest tests/test_observe_validation_contract.py
+exit: 0
+result: 39 passed; 0 failed
+log: target/validation-logs/observe-validation-contract-row-command-step2.log
+```
+
+```text
+python3 -m py_compile scripts/observe_validation.sh scripts/write_delta_manifest.py tests/test_write_delta_manifest.py tests/test_observe_validation_contract.py
+exit: 0
+log: target/validation-logs/py-compile-row-command-step2.log
+```
+
+```text
+cargo test --test planning_contract -- --test-threads=1
+exit: 0
+result: 2 passed; 0 failed
+log: target/validation-logs/planning-contract-row-command-step2.log
+```
+
+```text
+cargo test --test score_contract -- --test-threads=1
+exit: 0
+result: 5 passed; 0 failed
+log: target/validation-logs/score-contract-row-command-step2.log
+```
+
+## Next Execution Slice After Row-Command Manifest Step 2
+
+Continue P4 by looking for the next receiver/archive/report assumption that can be made executable with a short deterministic fixture. Candidate next slice: strengthen manifest closure around contradictory validation command sources, such as rejecting or classifying reports where summary `validation_commands` conflict with `validation_command` rows or where command-count metadata does not match the command evidence selected by the writer.

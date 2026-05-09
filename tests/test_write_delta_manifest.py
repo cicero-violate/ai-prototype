@@ -421,6 +421,71 @@ class DeltaManifestTest(unittest.TestCase):
         ):
             self.assertIn(token, manifest)
 
+    def test_compact_preserved_fields_render_once_with_command_rows_fallback(self) -> None:
+        commands = [
+            {"event": "validation_command", "name": "unit", "cmd": ["python3", "-m", "unittest"], "status": "pass"},
+            {"event": "validation_command", "name": "compile", "cmd": ["python3", "-m", "py_compile"], "status": "pass"},
+        ]
+        summary = {
+            "event": "validation_summary",
+            "git_head": self.head,
+            "validation_status": "pass",
+            "validation_command_count": len(commands),
+            "validation_test_count": len(commands),
+            "command_execution_status": "pass",
+            "missing_signal_status": "pass",
+            "missing_signal_count": 0,
+            "missing_signal_flags": {"missing_cargo_test": False},
+            "runtime_archive_evidence_source": "compact_report",
+            "runtime_archive_report_present": True,
+            "runtime_archive_report_status": "pass",
+            "runtime_archive_report_base_matches_current": True,
+            "runtime_archive_present": True,
+            "runtime_manifest_base_expected": self.base,
+            "runtime_manifest_base_commit": self.base,
+            "runtime_manifest_base_matches_delta_base": True,
+            "full_summary_report_only": True,
+            "full_summary_report_command": "--full-summary-report",
+        }
+        self.report.write_text(
+            "\n".join(json.dumps(row) for row in [*commands, summary]) + "\n",
+            encoding="utf-8",
+        )
+
+        done = self.run_script()
+        self.assertEqual(done.returncode, 0, done.stderr)
+        receipt = json.loads(self.receipt.read_text(encoding="utf-8"))
+        manifest = self.out.read_text(encoding="utf-8")
+        metric_names = [line[2:].split(":", 1)[0] for line in manifest.splitlines()
+                        if line.startswith("- ") and ":" in line]
+
+        self.assertEqual(receipt["validation_command_count"], 2)
+        self.assertEqual([command["name"] for command in receipt["validation_commands"]], ["unit", "compile"])
+        self.assertEqual(receipt["command_execution_status"], "pass")
+        self.assertEqual(receipt["missing_signal_status"], "pass")
+        self.assertEqual(receipt["runtime_archive_evidence_source"], "compact_report")
+        self.assertTrue(receipt["runtime_archive_report_present"])
+        self.assertTrue(receipt["runtime_archive_present"])
+        for key in (
+            "validation_status",
+            "command_execution_status",
+            "missing_signal_status",
+            "missing_signal_count",
+            "runtime_archive_evidence_source",
+            "runtime_archive_report_present",
+            "runtime_archive_report_status",
+            "runtime_archive_report_base_matches_current",
+            "runtime_archive_present",
+            "runtime_manifest_base_expected",
+            "runtime_manifest_base_commit",
+            "runtime_manifest_base_matches_delta_base",
+            "full_summary_report_only",
+            "full_summary_report_command",
+        ):
+            self.assertEqual(Counter(metric_names)[key], 1, key)
+        self.assertIn("unit: pass :: ['python3', '-m', 'unittest']", manifest)
+        self.assertIn("compile: pass :: ['python3', '-m', 'py_compile']", manifest)
+
 
 if __name__ == "__main__":
     unittest.main()
