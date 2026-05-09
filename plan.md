@@ -3583,3 +3583,93 @@ Proceed only if:
 3. source inspection exposes uncovered deterministic failure-classification, replay, persistence, or report fallback coverage;
 4. another behavior-preserving test-helper cleanup improves evidence clarity without weakening explicit assertions.
 ```
+
+## Completed Implementation Step 4 After Ignored Artifact Manifest Metrics caae769
+
+Executed the next concrete plan trigger: compact receiver artifact metric exactness coverage for a source-inspected connector preserved metric family.
+
+Implementation details:
+
+```text
+- Re-read the latest plan.md and score.md state.
+- Confirmed live wrapper-configured observe-validation prerequisites were not set in the environment.
+- Inspected connector failure and connector transport preserved summary keys in `scripts/write_delta_manifest.py` and current delta manifest coverage.
+- Found that connector transport classification/status had focused exact-once assertions, but the broader preserved connector failure/transport field family did not.
+- Expanded the focused connector preservation test in `tests/test_write_delta_manifest.py` to assert exact-once manifest rendering for connector failure classification presence, failure presence/status/classes, transport instability, transport options, reason, interruption, report path/presence/completeness, and exit file/path presence.
+```
+
+No runtime behavior changed. This step closes an exact-once manifest coverage gap for connector failure and connector transport preserved metrics.
+
+Validation evidence:
+
+```text
+command: python3 -m py_compile scripts/write_delta_manifest.py tests/test_write_delta_manifest.py
+exit: 0
+log: target/validation-logs/py-compile-connector-preserved-metrics-step4.log
+exit file: target/validation-logs/py-compile-connector-preserved-metrics-step4.exit
+```
+
+```text
+command: python3 -m unittest tests.test_write_delta_manifest
+exit: 0
+result: 24 passed; 0 failed
+log: target/validation-logs/write-delta-manifest-connector-preserved-metrics-step4.log
+exit file: target/validation-logs/write-delta-manifest-connector-preserved-metrics-step4.exit
+```
+
+Next execution slice:
+
+```text
+No additional deterministic implementation branch is identified from this turn.
+Proceed only if:
+1. deliberate CANON_RUSTC_WRAPPER and CANON_RUSTC_V3_ARTIFACT_DIR inputs are available for live wrapper validation;
+2. compact receiver artifacts gain a new field, metric key, missing flag, or rendering semantic;
+3. source inspection exposes uncovered deterministic failure-classification, replay, persistence, or report fallback coverage;
+4. another behavior-preserving test-helper cleanup improves evidence clarity without weakening explicit assertions.
+```
+
+## Planning / Scoring Checkpoint After Connector Preserved Metrics caae769
+
+Turn type: planning/scoring checkpoint.
+Scope: no implementation changes; refreshed source-of-truth plan and score state only.
+
+Current timestamp evidence:
+
+```text
+branch: main
+latest visible commit before this planning turn: caae769 Cover ignored artifact manifest metrics
+working directory: /workspace/ai_sandbox/canon-mini-agent/prototype/ai
+working tree at checkpoint start: plan.md and score.md dirty from planning/scoring updates; tests/test_write_delta_manifest.py dirty from prior implementation work and intentionally not owned by this turn
+```
+
+Current implementation posture:
+
+```text
+- P0 validation baseline remains complete.
+- P1 validation evidence reporting remains complete.
+- P2 agent loop reliability remains complete.
+- P3 runtime and receipt correctness remains complete for the current scope.
+- P4 graph/source-of-truth and compact receiver evidence work remains in progress, with recent deterministic progress on exact-once preserved manifest metric coverage for runtime archive, ignored artifact, connector failure, and connector transport summary fields.
+```
+
+Planning decision for the next execution turn:
+
+```text
+No additional deterministic implementation branch is selected during this planning checkpoint.
+The next execution turn should first re-check the dirty implementation test file and current source before choosing work.
+Proceed only if one of these triggers is present:
+1. deliberate CANON_RUSTC_WRAPPER and CANON_RUSTC_V3_ARTIFACT_DIR inputs are available for live wrapper validation;
+2. compact receiver artifacts gain a new field, metric key, missing flag, or rendering semantic needing exact-value / exact-once manifest coverage;
+3. source inspection exposes an uncovered deterministic failure-classification, replay, persistence, API adapter, or report fallback branch;
+4. behavior-preserving test-helper cleanup improves evidence clarity without weakening explicit assertions.
+```
+
+Planning/scoring files owned by this checkpoint:
+
+```text
+plan.md
+score.md
+```
+
+Implementation files intentionally not modified by this checkpoint.
+

@@ -2401,3 +2401,157 @@ Current risks / gaps:
 - Live graph telemetry still requires deliberate wrapper and artifact-dir inputs.
 - Compact full-summary replay remains artifact-only by design, now with stronger runtime archive and ignored artifact preserved metric rendering assertions.
 ```
+
+## Implementation Step 4 - Connector Preserved Manifest Metric Coverage
+
+Completed work:
+
+```text
+- Read the latest plan.md and score.md state.
+- Confirmed no live wrapper validation prerequisites were configured.
+- Inspected delta manifest connector preserved summary keys and focused metric rendering coverage.
+- Expanded exact-once manifest rendering assertions for connector failure and connector transport preserved metrics.
+- Made no runtime behavior changes.
+```
+
+Validation evidence captured this turn:
+
+```text
+command: python3 -m py_compile scripts/write_delta_manifest.py tests/test_write_delta_manifest.py
+exit: 0
+log: target/validation-logs/py-compile-connector-preserved-metrics-step4.log
+exit file: target/validation-logs/py-compile-connector-preserved-metrics-step4.exit
+```
+
+```text
+command: python3 -m unittest tests.test_write_delta_manifest
+exit: 0
+result: 24 passed; 0 failed
+log: target/validation-logs/write-delta-manifest-connector-preserved-metrics-step4.log
+exit file: target/validation-logs/write-delta-manifest-connector-preserved-metrics-step4.exit
+```
+
+Score update:
+
+```text
+I  Intelligence      = 7.0
+E  Efficiency        = 7.92
+C  Correctness       = 9.974
+A  Alignment         = 8.8
+R  Robustness        = 10.0
+P  Performance       = 6.45
+S  Scalability       = 6.82
+D  Determinism       = 9.725
+T  Transparency      = 10.0
+Co Collaboration     = 8.0
+Em Empowerment       = 7.8
+B  Benefit           = 8.1
+L  Learning          = 7.1
+St Structure         = 9.75
+Si Simplicity        = 7.36
+F  Future-Proofing   = 9.314
+```
+
+Approximate geometric mean:
+
+```text
+G ≈ 8.33 / 10
+```
+
+Rationale:
+
+```text
+- Correctness improves slightly because connector preserved metric rendering is now checked across the full failure/transport field family.
+- Determinism improves slightly because connector preserved metrics have exact-once manifest rendering assertions.
+- Future-proofing improves slightly because duplicate or missing connector preserved manifest metrics now fail a focused delta-manifest test.
+- Runtime behavior and performance remain unchanged.
+```
+
+Current risks / gaps:
+
+```text
+- No fresh live wrapper-configured observe-validation evidence was captured.
+- Live graph telemetry still requires deliberate wrapper and artifact-dir inputs.
+- Compact full-summary replay remains artifact-only by design, now with stronger runtime archive, ignored artifact, and connector preserved metric rendering assertions.
+```
+
+## Planning / Scoring Checkpoint After Connector Preserved Metrics caae769
+
+Turn type: planning/scoring checkpoint.
+Scope: no implementation changes; refreshed planning/scoring state only.
+
+Current timestamp evidence:
+
+```text
+branch: main
+latest visible commit before this planning turn: caae769 Cover ignored artifact manifest metrics
+working directory: /workspace/ai_sandbox/canon-mini-agent/prototype/ai
+working tree at checkpoint start: plan.md and score.md dirty from planning/scoring updates; tests/test_write_delta_manifest.py dirty from prior implementation work and intentionally not owned by this turn
+```
+
+Files owned by this checkpoint:
+
+```text
+plan.md
+score.md
+```
+
+Files intentionally not owned or staged by this checkpoint:
+
+```text
+tests/test_write_delta_manifest.py
+```
+
+No validation score increase is claimed for this checkpoint alone. The current score posture remains the latest implementation-backed posture:
+
+```text
+I  Intelligence      = 7.0
+E  Efficiency        = 7.92
+C  Correctness       = 9.974
+A  Alignment         = 8.8
+R  Robustness        = 10.0
+P  Performance       = 6.45
+S  Scalability       = 6.82
+D  Determinism       = 9.725
+T  Transparency      = 10.0
+Co Collaboration     = 8.0
+Em Empowerment       = 7.8
+B  Benefit           = 8.1
+L  Learning          = 7.1
+St Structure         = 9.75
+Si Simplicity        = 7.36
+F  Future-Proofing   = 9.314
+```
+
+Approximate geometric mean remains:
+
+```text
+G ≈ 8.33 / 10
+```
+
+Checkpoint validation evidence:
+
+```text
+command: TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test planning_contract -- --test-threads=1
+exit: 0
+result: 2 passed; 0 failed
+log: target/validation-logs/planning-contract-planning-checkpoint-connector-preserved.log
+exit file: target/validation-logs/planning-contract-planning-checkpoint-connector-preserved.exit
+```
+
+```text
+command: TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test score_contract -- --test-threads=1
+exit: 0
+result: 5 passed; 0 failed
+log: target/validation-logs/score-contract-planning-checkpoint-connector-preserved.log
+exit file: target/validation-logs/score-contract-planning-checkpoint-connector-preserved.exit
+```
+
+Checkpoint validation posture:
+
+```text
+- No implementation validation was run during this planning-only checkpoint.
+- Prior implementation validation for connector preserved manifest metrics remains the current evidence basis.
+- Next execution turn should re-check the dirty implementation test file before selecting or committing implementation work.
+```
+
