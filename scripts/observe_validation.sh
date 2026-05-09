@@ -193,6 +193,25 @@ def graph_evidence_classification(
     return "graph_mutation_landed_with_receipt_snapshot"
 
 
+def wrapper_graph_configuration_status(*, wrapper: str, artifact_dir: str, wrapper_available: bool) -> str:
+    if not wrapper and not artifact_dir:
+        return "not_configured"
+    if artifact_dir and not wrapper:
+        return "artifact_dir_configured_without_wrapper"
+    if wrapper and not wrapper_available:
+        return "wrapper_configured_missing"
+    return "wrapper_configured_available"
+
+
+def wrapper_graph_configuration_reason(status: str) -> str:
+    return {
+        "not_configured": "CANON_RUSTC_WRAPPER and CANON_RUSTC_V3_ARTIFACT_DIR are unset",
+        "artifact_dir_configured_without_wrapper": "CANON_RUSTC_V3_ARTIFACT_DIR is set but CANON_RUSTC_WRAPPER is unset",
+        "wrapper_configured_missing": "CANON_RUSTC_WRAPPER is set but the path does not exist",
+        "wrapper_configured_available": "CANON_RUSTC_WRAPPER is set and exists",
+    }[status]
+
+
 def inspect_runtime_archive(path: str | None) -> dict[str, Any]:
     if not path:
         return {
@@ -319,6 +338,12 @@ def main() -> int:
     artifact_dir = os.environ.get("CANON_RUSTC_V3_ARTIFACT_DIR", "")
     wrapper_graph_validation_requested = bool(wrapper or artifact_dir)
     wrapper_graph_validation_available = bool(wrapper and Path(wrapper).exists())
+    wrapper_configuration_status = wrapper_graph_configuration_status(
+        wrapper=wrapper,
+        artifact_dir=artifact_dir,
+        wrapper_available=wrapper_graph_validation_available,
+    )
+    wrapper_configuration_reason = wrapper_graph_configuration_reason(wrapper_configuration_status)
     if wrapper_graph_validation_requested and wrapper_graph_validation_available:
         commands.append(run("wrapper_graph_validation", ["cargo", "test", "--all-targets"], timeout=test_timeout_seconds()))
         wrapper_graph_validation_result = commands[-1]["status"]
@@ -494,6 +519,14 @@ def main() -> int:
         "wrapper_graph_validation_result": wrapper_graph_validation_result,
         "wrapper_graph_validation_requested": wrapper_graph_validation_requested,
         "wrapper_graph_validation_available": wrapper_graph_validation_available,
+        "wrapper_graph_configuration_status": wrapper_configuration_status,
+        "wrapper_graph_configuration_reason": wrapper_configuration_reason,
+        "wrapper_graph_configuration_status_options": [
+            "not_configured",
+            "artifact_dir_configured_without_wrapper",
+            "wrapper_configured_missing",
+            "wrapper_configured_available",
+        ],
         "rustc_wrapper_configured": bool(wrapper),
         "rustc_wrapper_path_exists": bool(wrapper and Path(wrapper).exists()),
         "state_graph_present": state_graph_present,
