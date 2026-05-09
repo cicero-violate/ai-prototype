@@ -3,24 +3,23 @@
 ## Current Progress Snapshot
 
 Date: 2026-05-09 America/Toronto / 2026-05-09 UTC
-Turn type: implementation step 5
-Scope executed: added exact-once manifest rendering checks for command normalization metadata.
+Turn type: planning/scoring turn after implementation step 5
+Scope executed: updated planning and scoring artifacts only; no implementation code changed.
 
 Current timestamp evidence:
 
 ```text
 branch: main
-latest visible commit before this implementation turn: 854b01b Verify full summary command normalization
+latest visible commit before this planning turn: e472f7c Check command normalization metric rendering
 working directory: /workspace/ai_sandbox/canon-mini-agent/prototype/ai
 working tree at turn start: clean
 ```
 
 ## Current Git State
 
-Implementation, test, and planning/scoring files owned by this turn:
+Planning/scoring files owned by this turn:
 
 ```text
-tests/test_write_delta_manifest.py
 plan.md
 score.md
 ```
@@ -29,7 +28,7 @@ Generated validation logs, observe reports, runtime fixture archives, graph repo
 
 ## Scorecard
 
-Scores are approximate implementation-readiness scores on a 0-10 scale. Transparency and correctness remain at the current high-water mark, now with exact-once manifest rendering evidence for command normalization metadata across compact full-summary and row-fallback paths.
+Scores are approximate implementation-readiness scores on a 0-10 scale. Scores are held steady during this planning-only turn; transparency and correctness remain at the prior high-water mark from exact-once manifest rendering evidence for command normalization metadata across compact full-summary and row-fallback paths.
 
 ```text
 I  Intelligence      = 7.0
@@ -58,54 +57,35 @@ G ≈ 8.24 / 10
 
 ## Completed Work This Turn
 
-- Read `plan.md`, `score.md`, git status, recent commits, and current command normalization rendering plan.
-- Added `COMMAND_NORMALIZATION_METRIC_KEYS` to `tests/test_write_delta_manifest.py`.
-- Added `manifest_metric_names()` to centralize manifest metric-name extraction.
-- Updated compact full-summary artifact manifest coverage to assert every command normalization metric renders exactly once.
-- Updated compact row-fallback manifest coverage to assert every command normalization metric renders exactly once.
-- Updated `plan.md` with the completed execution slice and next action.
+- Read `plan.md`, `score.md`, git status, recent commits, and current command-normalization rendering plan.
+- Confirmed the latest visible commit is `e472f7c Check command normalization metric rendering`.
+- Added a planning-only section to `plan.md` for the next implementation slice.
+- Updated `score.md` to reflect planning/scoring status without claiming new implementation work.
+- Kept the next implementation recommendation focused on refactoring command-normalization receipt and manifest assertions into reusable helpers.
 
 ## Validation Evidence Captured This Turn
 
-```text
-command: python3 -m unittest tests/test_write_delta_manifest.py
-exit: 0
-result: 23 passed; 0 failed
-log: target/validation-logs/write-delta-manifest-normalization-render-once-step5.log
-```
-
-```text
-command: python3 -m unittest tests/test_observe_validation_contract.py
-exit: 0
-result: 39 passed; 0 failed
-log: target/validation-logs/observe-validation-contract-normalization-render-once-step5.log
-```
-
-```text
-command: python3 -m py_compile scripts/observe_validation.sh scripts/write_delta_manifest.py tests/test_write_delta_manifest.py tests/test_observe_validation_contract.py
-exit: 0
-log: target/validation-logs/py-compile-normalization-render-once-step5.log
-```
+Validation for this planning/scoring turn is limited to planning and score artifact contracts.
 
 ```text
 command: cargo test --test planning_contract -- --test-threads=1
 exit: 0
 result: 2 passed; 0 failed
-log: target/validation-logs/planning-contract-normalization-render-once-step5.log
+log: target/validation-logs/planning-contract-planning-turn-after-render-once-step5.log
 ```
 
 ```text
 command: cargo test --test score_contract -- --test-threads=1
 exit: 0
 result: 5 passed; 0 failed
-log: target/validation-logs/score-contract-normalization-render-once-step5.log
+log: target/validation-logs/score-contract-planning-turn-after-render-once-step5.log
 ```
 
 ## Connector / Environment Notes
 
-- This turn did not require a long full observe-validation run.
+- This planning-only turn did not require a long full observe-validation run.
 - No live wrapper-configured, router, Ollama, or OpenAI path was required for baseline evidence.
-- The implementation was focused test coverage over manifest rendering of normalized command evidence metadata.
+- No implementation code was changed in this turn.
 
 ## Current Risks / Gaps
 
@@ -127,4 +107,4 @@ Raise scores only after fresh evidence:
 
 ## Immediate Next Action
 
-Continue P4 by refactoring command normalization receipt/manifest assertions into reusable helpers, or apply exact-once metric checks to the next compact receiver workflow that adds manifest keys.
+Continue P4 by refactoring command normalization receipt/manifest assertions into reusable helpers while preserving exact-once metric coverage for compact full-summary and row-fallback manifest paths.

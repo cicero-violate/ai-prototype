@@ -1611,3 +1611,53 @@ log: target/validation-logs/score-contract-normalization-render-once-step5.log
 ## Next Execution Slice After Command Normalization Render-Once Step 5
 
 Continue P4 by improving maintainability of command normalization tests or by applying exact-once manifest metric checks to future compact receiver workflows when new metric keys are added. Candidate next slice: extract reusable assertion helpers for command normalization receipt/manifest checks to reduce duplicated test boilerplate before extending the manifest workflow further.
+
+
+## Planning Turn After Command Normalization Render-Once Step 5
+
+This is a planning-only turn. The repository is at commit `e472f7c Check command normalization metric rendering`, and the next implementation slice should preserve the current command-normalization coverage while reducing duplicated test assertion structure.
+
+Recommended next implementation slice:
+
+```text
+Refactor command-normalization receipt and manifest assertions into reusable helpers, preserving exact-once coverage for compact full-summary and row-fallback manifest paths.
+```
+
+Acceptance criteria:
+
+```text
+1. Command normalization metric keys remain centralized.
+2. Receipt and manifest assertions are expressed through reusable helpers.
+3. Compact full-summary manifest coverage still proves every command normalization metric renders exactly once.
+4. Compact row-fallback manifest coverage still proves every command normalization metric renders exactly once.
+5. Existing write-delta-manifest and observe-validation contract coverage remains green.
+6. Planning and score contracts remain green after plan/score updates.
+```
+
+Suggested validation commands:
+
+```text
+python3 -m unittest tests/test_write_delta_manifest.py
+python3 -m unittest tests/test_observe_validation_contract.py
+python3 -m py_compile scripts/observe_validation.sh scripts/write_delta_manifest.py tests/test_write_delta_manifest.py tests/test_observe_validation_contract.py
+cargo test --test planning_contract -- --test-threads=1
+cargo test --test score_contract -- --test-threads=1
+```
+
+## Validation Evidence From Planning Turn After Command Normalization Render-Once Step 5
+
+This turn updates planning and scoring artifacts only. Validation after writing `plan.md` and `score.md`:
+
+```text
+command: cargo test --test planning_contract -- --test-threads=1
+exit: 0
+result: 2 passed; 0 failed
+log: target/validation-logs/planning-contract-planning-turn-after-render-once-step5.log
+```
+
+```text
+command: cargo test --test score_contract -- --test-threads=1
+exit: 0
+result: 5 passed; 0 failed
+log: target/validation-logs/score-contract-planning-turn-after-render-once-step5.log
+```
