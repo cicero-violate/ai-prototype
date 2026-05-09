@@ -21,7 +21,8 @@ Current planning/scoring baseline:
 - This planning turn must not touch or stage that implementation change.
 - This turn updates only `plan.md` and `score.md`.
 - No fresh validation suite was run in this planning turn.
-- The implementation roadmap remains stable, but scoring now explicitly records the dirty implementation file as external to this planning turn.
+- The implementation roadmap remains stable; scoring explicitly records the dirty implementation file as external to this planning turn.
+- Repository inspection for this turn also reviewed the latest commit history and source/test inventory so the next execution turn can focus on validation rather than rediscovery.
 - Next execution turn should first decide whether to preserve, inspect, test, or revert the existing `src/validation_harness.rs` change, then run a full quota-safe validation baseline.
 
 ## Operating Rules For Agent Turns
@@ -163,6 +164,8 @@ Resolve implementation-tree ambiguity, then run and record the validation baseli
 7. Commit only intentional validation/scoring or implementation changes.
 
 Do not change source code before the baseline unless a validation failure identifies a specific implementation defect or the existing `src/validation_harness.rs` dirty state is intentionally resolved.
+
+Planning-turn commit scope for the current turn remains restricted to `plan.md` and `score.md`; `src/validation_harness.rs` is intentionally left untouched and unstaged.
 
 ## Current Non-Goals
 

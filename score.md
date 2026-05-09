@@ -4,9 +4,9 @@
 
 Date: 2026-05-08
 Turn type: planning/scoring
-Scope reviewed: repository root listing, current `git status --short`, existing `plan.md`, existing `score.md`, and source/test tree inventory.
+Scope reviewed: repository root listing, current `git status --short`, recent commit history, existing `plan.md`, existing `score.md`, and source/test tree inventory.
 
-This turn did not implement source changes and did not run a fresh validation suite. It refreshed the implementation plan and score posture, corrected the working-tree baseline to account for a pre-existing implementation modification, and kept the next execution step focused on dirty-state resolution plus evidence capture.
+This turn did not implement source changes and did not run a fresh validation suite. It refreshed the implementation plan and score posture, re-confirmed the working-tree baseline with a pre-existing implementation modification, and kept the next execution step focused on dirty-state resolution plus evidence capture.
 
 ## Current Git State
 
@@ -28,6 +28,13 @@ M score.md
 No implementation files should be staged or committed by this planning/scoring turn. In particular, `src/validation_harness.rs` must remain unstaged unless a later execution turn explicitly claims responsibility for that implementation change.
 
 Pre-edit review showed no need to change implementation files; the only intended edits are this planning/scoring refresh.
+
+Current planning/scoring edit policy:
+
+```text
+stage: plan.md score.md
+do not stage: src/validation_harness.rs
+```
 
 ## Scorecard
 
@@ -122,6 +129,8 @@ status: needs fresh reliable result with quota-safe TMPDIR and wrappers disabled
 ```
 
 No correctness/robustness score increase should occur until current validation output is captured.
+
+This planning turn intentionally did not run validation commands because the user requested a planning/scoring loop turn. The next execution turn should run the commands listed in `plan.md` P0 and record exact exit status plus tail output here.
 
 ## Next Score Update Triggers
 
