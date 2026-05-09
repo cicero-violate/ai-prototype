@@ -545,8 +545,21 @@ class DeltaManifestTest(unittest.TestCase):
         self.assert_manifest_metrics_render_once(
             manifest,
             (
+                "connector_failure_classification_present",
+                "connector_failure_present",
+                "connector_failure_status",
+                "connector_failure_classes",
+                "connector_transport_instability_present",
                 "connector_transport_artifact_classification",
+                "connector_transport_artifact_classification_options",
+                "connector_transport_artifact_classification_reason",
                 "connector_transport_status",
+                "connector_transport_interrupted",
+                "connector_transport_report_path",
+                "connector_transport_report_present",
+                "connector_transport_report_complete",
+                "connector_transport_exit_file",
+                "connector_transport_exit_file_present",
             ),
         )
 
