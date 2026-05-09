@@ -458,8 +458,17 @@ class DeltaManifestTest(unittest.TestCase):
         self.assert_manifest_metrics_render_once(
             manifest,
             (
-                "router_test_count",
                 "policy_learning_trace_validation_result",
+                "policy_learning_trace_status",
+                "policy_learning_trace_function",
+                "policy_learning_trace_check_count",
+                "policy_learning_trace_missing_count",
+                "panic_surface_production_unwrap_count",
+                "panic_surface_production_expect_count",
+                "panic_surface_production_panic_count",
+                "panic_surface_test_total",
+                "panic_surface_example_total",
+                "router_test_count",
             ),
         )
 

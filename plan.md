@@ -3784,3 +3784,63 @@ Proceed only if:
 3. source inspection exposes an uncovered deterministic failure-classification, replay, persistence, API adapter, graph evidence, or report fallback branch;
 4. behavior-preserving test-helper cleanup improves evidence clarity without weakening explicit assertions.
 ```
+
+## Completed Implementation Step 2 After Connector Preserved Metrics ced114c
+
+Executed the next concrete plan trigger: compact receiver preserved metric exactness coverage for a source-inspected policy-learning, panic-surface, and router metric family.
+
+Implementation details:
+
+```text
+- Re-read the latest plan.md and score.md state.
+- Confirmed the working tree was clean at turn start.
+- Inspected PRESERVED_SUMMARY_KEYS in scripts/write_delta_manifest.py and focused delta manifest tests.
+- Found that policy-learning, panic-surface, and router preserved fields had receipt/value coverage but only partial exact-once manifest rendering checks.
+- Expanded test_preserves_policy_learning_and_panic_surface_evidence_once to require exact-once manifest rendering for every policy-learning trace, panic-surface, and router preserved metric in that fixture.
+```
+
+No runtime behavior changed. This step strengthens regression coverage for preserved validation-health metrics in compact receiver manifests.
+
+Validation evidence:
+
+```text
+command: python3 -m py_compile scripts/write_delta_manifest.py tests/test_write_delta_manifest.py
+exit: 0
+log: target/validation-logs/py-compile-policy-panic-preserved-metrics-impl-step2.log
+exit file: target/validation-logs/py-compile-policy-panic-preserved-metrics-impl-step2.exit
+```
+
+```text
+command: python3 -m unittest tests.test_write_delta_manifest
+exit: 0
+result: 24 passed; 0 failed
+log: target/validation-logs/write-delta-manifest-policy-panic-preserved-metrics-impl-step2.log
+exit file: target/validation-logs/write-delta-manifest-policy-panic-preserved-metrics-impl-step2.exit
+```
+
+```text
+command: TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test planning_contract -- --test-threads=1
+exit: 0
+result: 2 passed; 0 failed
+log: target/validation-logs/planning-contract-policy-panic-preserved-metrics-impl-step2.log
+exit file: target/validation-logs/planning-contract-policy-panic-preserved-metrics-impl-step2.exit
+```
+
+```text
+command: TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test score_contract -- --test-threads=1
+exit: 0
+result: 5 passed; 0 failed
+log: target/validation-logs/score-contract-policy-panic-preserved-metrics-impl-step2.log
+exit file: target/validation-logs/score-contract-policy-panic-preserved-metrics-impl-step2.exit
+```
+
+Next execution slice:
+
+```text
+Continue P4 compact receiver evidence hardening only if source inspection exposes another preserved metric family with partial exact-value or exact-once manifest coverage.
+Otherwise proceed only if:
+1. deliberate CANON_RUSTC_WRAPPER and CANON_RUSTC_V3_ARTIFACT_DIR inputs are available for live wrapper validation;
+2. compact receiver artifacts gain a new field, metric key, missing flag, or rendering semantic;
+3. source inspection exposes an uncovered deterministic failure-classification, replay, persistence, API adapter, graph evidence, or report fallback branch;
+4. behavior-preserving test-helper cleanup improves evidence clarity without weakening explicit assertions.
+```
