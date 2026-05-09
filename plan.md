@@ -3064,3 +3064,38 @@ Candidate priorities:
 ```
 
 Do not make compact replay modes depend on live wrapper validation.
+
+## Planning Turn 2026-05-09 - Planning/Scoring Only
+
+This turn is constrained to planning and scoring. No implementation files should be changed.
+
+Current assessment:
+
+```text
+- The repository already has complete current-scope validation evidence for the compact full-summary receiver helper step.
+- The most recent plan identifies no active deterministic implementation branch.
+- Live wrapper-configured observe-validation evidence remains blocked on deliberate CANON_RUSTC_WRAPPER and CANON_RUSTC_V3_ARTIFACT_DIR inputs.
+- Compact artifact-only replay should remain isolated from live wrapper validation fields.
+```
+
+Implementation plan for the next agent execution turn:
+
+```text
+1. Re-check git status and recent validation notes before touching implementation files.
+2. Proceed only if a concrete trigger appears:
+   - live wrapper prerequisites are explicitly available for a clean non-compact observe-validation run;
+   - a compact receiver workflow introduces a new field, metric key, missing flag, or rendering semantic;
+   - source inspection reveals an uncovered deterministic failure-classification or persistence-error branch;
+   - a behavior-preserving test-helper refactor removes duplication without weakening exact-once evidence.
+3. If no trigger appears, do not modify runtime, scripts, or tests.
+4. Keep compact replay artifact-only and do not couple it to wrapper-configured live validation.
+5. Record validation evidence and score movement only after externally checkable commands pass.
+```
+
+Planning/scoring hygiene for this turn:
+
+```text
+- Update only plan.md and score.md.
+- Stage only plan.md and score.md.
+- Commit the planning/scoring changes as a standalone commit.
+```
