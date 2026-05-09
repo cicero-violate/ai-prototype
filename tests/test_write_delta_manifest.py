@@ -423,7 +423,13 @@ class DeltaManifestTest(unittest.TestCase):
             manifest,
             (
                 "runtime_archive_inspection_status",
+                "runtime_archive_download_index_files",
                 "runtime_archive_prior_state_files",
+                "runtime_archive_conversation_ledger_files",
+                "runtime_archive_delta_receipt_files",
+                "runtime_archive_audit_files",
+                "runtime_archive_current_run_summary_present",
+                "runtime_archive_runtime_manifest_present",
             ),
         )
 
