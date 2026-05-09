@@ -550,6 +550,37 @@ class DeltaManifestTest(unittest.TestCase):
             ),
         )
 
+    def test_preserves_ignored_artifact_counts_once(self) -> None:
+        self.write_report(extra={
+            "ignored_artifact_count": 9,
+            "ignored_target_artifact_count": 5,
+            "ignored_runtime_artifact_count": 3,
+            "ignored_validation_artifact_count": 4,
+        })
+        done = self.run_script()
+        self.assertEqual(done.returncode, 0, done.stderr)
+        receipt = json.loads(self.receipt.read_text(encoding="utf-8"))
+        manifest = self.out.read_text(encoding="utf-8")
+        self.assertEqual(receipt["ignored_artifact_count"], 9)
+        self.assertEqual(receipt["ignored_target_artifact_count"], 5)
+        self.assertEqual(receipt["ignored_runtime_artifact_count"], 3)
+        self.assertEqual(receipt["ignored_validation_artifact_count"], 4)
+        self.assert_manifest_key_values(manifest, {
+            "ignored_artifact_count": 9,
+            "ignored_target_artifact_count": 5,
+            "ignored_runtime_artifact_count": 3,
+            "ignored_validation_artifact_count": 4,
+        })
+        self.assert_manifest_metrics_render_once(
+            manifest,
+            (
+                "ignored_artifact_count",
+                "ignored_target_artifact_count",
+                "ignored_runtime_artifact_count",
+                "ignored_validation_artifact_count",
+            ),
+        )
+
     def test_accepts_compact_full_summary_artifact_replay(self) -> None:
         commands = compact_full_summary_commands()
         self.write_report(

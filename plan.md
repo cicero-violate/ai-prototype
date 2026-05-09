@@ -3523,3 +3523,63 @@ Proceed only if:
 3. source inspection exposes uncovered deterministic failure-classification, replay, persistence, or report fallback coverage;
 4. another behavior-preserving test-helper cleanup improves evidence clarity without weakening explicit assertions.
 ```
+
+## Completed Implementation Step 3 After Full Summary Runtime Archive Manifest Metrics 5f5c3a9
+
+Executed the next concrete plan trigger: compact receiver artifact metric exactness coverage for another source-inspected preserved metric family.
+
+Implementation details:
+
+```text
+- Re-read the latest plan.md and score.md state.
+- Confirmed live wrapper-configured observe-validation prerequisites were not set in the environment.
+- Inspected `PRESERVED_SUMMARY_KEYS` in `scripts/write_delta_manifest.py` and current delta manifest coverage.
+- Found that ignored artifact count metrics were preserved in receipts and manifests, but lacked focused receipt value and exact-once manifest rendering assertions.
+- Added focused coverage in `tests/test_write_delta_manifest.py` for ignored artifact count, ignored target artifact count, ignored runtime artifact count, and ignored validation artifact count.
+```
+
+No runtime behavior changed. This step closes an exact-value and exact-once manifest coverage gap for ignored artifact preserved metrics.
+
+Validation evidence:
+
+```text
+command: python3 -m py_compile scripts/write_delta_manifest.py tests/test_write_delta_manifest.py
+exit: 0
+log: target/validation-logs/py-compile-ignored-artifact-metrics-step3.log
+exit file: target/validation-logs/py-compile-ignored-artifact-metrics-step3.exit
+```
+
+```text
+command: python3 -m unittest tests.test_write_delta_manifest
+exit: 0
+result: 24 passed; 0 failed
+log: target/validation-logs/write-delta-manifest-ignored-artifact-metrics-step3.log
+exit file: target/validation-logs/write-delta-manifest-ignored-artifact-metrics-step3.exit
+```
+
+```text
+command: TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test planning_contract -- --test-threads=1
+exit: 0
+result: 2 passed; 0 failed
+log: target/validation-logs/planning-contract-ignored-artifact-metrics-step3.log
+exit file: target/validation-logs/planning-contract-ignored-artifact-metrics-step3.exit
+```
+
+```text
+command: TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test score_contract -- --test-threads=1
+exit: 0
+result: 5 passed; 0 failed
+log: target/validation-logs/score-contract-ignored-artifact-metrics-step3.log
+exit file: target/validation-logs/score-contract-ignored-artifact-metrics-step3.exit
+```
+
+Next execution slice:
+
+```text
+No additional deterministic implementation branch is identified from this turn.
+Proceed only if:
+1. deliberate CANON_RUSTC_WRAPPER and CANON_RUSTC_V3_ARTIFACT_DIR inputs are available for live wrapper validation;
+2. compact receiver artifacts gain a new field, metric key, missing flag, or rendering semantic;
+3. source inspection exposes uncovered deterministic failure-classification, replay, persistence, or report fallback coverage;
+4. another behavior-preserving test-helper cleanup improves evidence clarity without weakening explicit assertions.
+```
