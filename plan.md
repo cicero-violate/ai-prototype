@@ -7,13 +7,13 @@ Canon Agent is a Rust prototype for a deterministic, auditable, self-improving a
 Current implementation snapshot, 2026-05-09 America/Toronto / 2026-05-09 UTC:
 
 - Branch: `main`.
-- Latest visible commit before this implementation turn: `de3b16f Classify observe command execution`.
+- Latest visible commit before this implementation turn: `d943a80 Add command execution report mode`.
 - Working directory: `/workspace/ai_sandbox/canon-mini-agent/prototype/ai`.
 - P0 validation baseline is complete.
 - P1 validation evidence reporting is complete.
 - P2 agent loop reliability is complete.
 - P3 runtime and receipt correctness is complete for the current scope.
-- P4 graph source-of-truth integration now includes persisted graph evidence classification, deterministic fixture-backed positive evidence for landed graph mutations with receipt snapshots, command-sequenced workflow fixture validation, a compact graph-only report mode, documented/tested root runtime, wrapper, and editor subproject boundaries, a standalone graph workflow fixture validator consumed by observe-validation, full observe-validation command evidence for that validator, explicit wrapper telemetry configuration classification, normal-path observe-validation summary evidence for graph fixture, wrapper configuration, receipt replay classification, and missing-signal coherence, executable configured-wrapper classifier branch coverage, source-derived runtime performance signal evidence from observe-validation command durations, runtime archive missing-signal derivation from inspected archive contents, runtime manifest base-match derivation from archived manifest metadata, explicit router/offline availability classification in observe-validation summary evidence, and optional wrapper graph validation missing-signal derivation. The current implementation/test work adds a compact command-execution report-only mode so required command classification can be replayed and inspected without invoking long cargo validation.
+- P4 graph source-of-truth integration now includes persisted graph evidence classification, deterministic fixture-backed positive evidence for landed graph mutations with receipt snapshots, command-sequenced workflow fixture validation, a compact graph-only report mode, documented/tested root runtime, wrapper, and editor subproject boundaries, a standalone graph workflow fixture validator consumed by observe-validation, full observe-validation command evidence for that validator, explicit wrapper telemetry configuration classification, normal-path observe-validation summary evidence for graph fixture, wrapper configuration, receipt replay classification, and missing-signal coherence, executable configured-wrapper classifier branch coverage, source-derived runtime performance signal evidence from observe-validation command durations, runtime archive missing-signal derivation from inspected archive contents, runtime manifest base-match derivation from archived manifest metadata, explicit router/offline availability classification in observe-validation summary evidence, and optional wrapper graph validation missing-signal derivation. The current implementation/test work adds connector transport artifact classification so transport interruption can be represented separately from validation command outcomes when report and exit artifacts are present.
 
 ## Operating Rules For Agent Turns
 
@@ -809,9 +809,39 @@ log: target/validation-logs/command-execution-report-step1.log
 exit file: target/validation-logs/command-execution-report-step1.exit
 ```
 
-## Next Execution Slice After Command Report Step 1
+## Completed Execution Slice After Command Report Step 1
 
-Continue P4 by refining connector transport instability reporting from emitted command/report/exit artifacts. A good next slice is to classify transport interruption separately from validation command outcome when a long shell call returns a connector 502 but ignored artifacts contain a complete report/exit file. Preserve compact command-execution report mode, separated status fields, compact runtime report integration, direct archive precedence, optional wrapper semantics, generated graph JSON classification, graph fixture evidence, receipt replay inventory, and runtime performance evidence.
+Completed connector transport artifact classification. Observe-validation now emits `connector_transport_artifact_classification` fields in both full validation summaries and compact command-execution reports. The classifier distinguishes normal artifact states from transport interruption with complete artifacts versus transport interruption with incomplete artifacts. This separates connector transport instability from validation command outcomes when ignored report/exit artifacts are available.
+
+## Validation Evidence From Transport Artifact Implementation Step 2
+
+```text
+python3 -m unittest tests/test_observe_validation_contract.py
+exit: 0
+result: 38 passed; 0 failed
+log: target/validation-logs/observe-validation-contract-transport-artifacts-step2.log
+exit file: target/validation-logs/observe-validation-contract-transport-artifacts-step2.exit
+```
+
+```text
+python3 -m py_compile scripts/observe_validation.sh tests/test_observe_validation_contract.py
+exit: 0
+log: target/validation-logs/py-compile-transport-artifacts-step2.log
+exit file: target/validation-logs/py-compile-transport-artifacts-step2.exit
+```
+
+```text
+CANON_OBSERVE_REPORT=target/observe/command-execution-transport-artifacts-step2.ndjson CANON_CONNECTOR_TRANSPORT_STATUS=502 CANON_CONNECTOR_TRANSPORT_REPORT=target/observe/command-execution-transport-artifacts-step2.ndjson CANON_CONNECTOR_TRANSPORT_EXIT_FILE=target/validation-logs/transport-artifacts-step2.exit python3 scripts/observe_validation.sh --command-execution-report
+exit: 1
+expected result: validation_status=fail for deterministic command hard-failure fixture, while transport artifacts are classified complete
+summary: command_execution_classification=required_command_hard_failure, connector_transport_artifact_classification=transport_interrupted_artifacts_complete, connector_transport_report_complete=true, connector_transport_exit_file_present=true
+log: target/validation-logs/command-execution-transport-artifacts-step2.log
+exit file: target/validation-logs/command-execution-transport-artifacts-step2.exit
+```
+
+## Next Execution Slice After Transport Artifact Step 2
+
+Continue P4 by integrating connector transport artifact classification into any higher-level validation/status documentation or report consumers that still rely only on `connector_transport_instability_present`. A good next slice is to add a compact artifact replay fixture for full-observe summaries, or to reduce any stale plan text that still frames generated graph JSON classification as uncommitted work. Preserve compact command-execution report mode, separated status fields, compact runtime report integration, direct archive precedence, optional wrapper semantics, generated graph JSON classification, graph fixture evidence, receipt replay inventory, and runtime performance evidence.
 
 ## Current Non-Goals
 

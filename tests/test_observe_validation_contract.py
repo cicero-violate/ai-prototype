@@ -407,6 +407,79 @@ class ObserveValidationContractTest(unittest.TestCase):
             self.assertEqual(row["command_execution_status"], "fail")
             self.assertIn("cargo_test_all_targets", row["required_command_hard_failed"])
 
+    def test_connector_transport_artifact_classifier_executes_artifact_states(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            report = root / "validation-report.ndjson"
+            exit_file = root / "validation.exit"
+            report.write_text('{"event":"validation_summary","validation_status":"fail"}\n', encoding="utf-8")
+            exit_file.write_text("1\n", encoding="utf-8")
+
+            complete = self.observe_module.connector_transport_artifact_classification(
+                transport_status="502",
+                report_path=str(report),
+                exit_file=str(exit_file),
+            )
+            self.assertEqual(
+                complete["connector_transport_artifact_classification"],
+                "transport_interrupted_artifacts_complete",
+            )
+            self.assertTrue(complete["connector_transport_interrupted"])
+            self.assertTrue(complete["connector_transport_report_complete"])
+            self.assertTrue(complete["connector_transport_exit_file_present"])
+
+            incomplete = self.observe_module.connector_transport_artifact_classification(
+                transport_status="502",
+                report_path=str(root / "missing.ndjson"),
+                exit_file=str(root / "missing.exit"),
+            )
+            self.assertEqual(
+                incomplete["connector_transport_artifact_classification"],
+                "transport_interrupted_artifacts_incomplete",
+            )
+            self.assertTrue(incomplete["connector_transport_interrupted"])
+            self.assertFalse(incomplete["connector_transport_report_complete"])
+
+            ok = self.observe_module.connector_transport_artifact_classification(
+                transport_status="",
+                report_path=str(report),
+                exit_file=str(exit_file),
+            )
+            self.assertEqual(
+                ok["connector_transport_artifact_classification"],
+                "transport_ok_artifacts_present",
+            )
+
+    def test_command_execution_report_emits_transport_artifact_classification(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            report = root / "command-execution-report.ndjson"
+            exit_file = root / "full-observe.exit"
+            exit_file.write_text("1\n", encoding="utf-8")
+            env = os.environ.copy()
+            env["CANON_OBSERVE_REPORT"] = str(report)
+            env["CANON_CONNECTOR_TRANSPORT_STATUS"] = "502"
+            env["CANON_CONNECTOR_TRANSPORT_REPORT"] = str(report)
+            env["CANON_CONNECTOR_TRANSPORT_EXIT_FILE"] = str(exit_file)
+            done = subprocess.run(
+                [sys.executable, str(OBSERVE), "--command-execution-report"],
+                cwd=ROOT,
+                env=env,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                check=False,
+            )
+            self.assertEqual(done.returncode, 1, done.stderr)
+            row = json.loads(report.read_text(encoding="utf-8").splitlines()[-1])
+            self.assertEqual(
+                row["connector_transport_artifact_classification"],
+                "transport_interrupted_artifacts_complete",
+            )
+            self.assertTrue(row["connector_transport_interrupted"])
+            self.assertTrue(row["connector_transport_report_complete"])
+            self.assertTrue(row["connector_transport_exit_file_present"])
+
     def test_external_surface_evidence_is_source_derived(self) -> None:
         for token in (
             "def source_evidence()",

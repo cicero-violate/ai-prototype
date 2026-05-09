@@ -414,6 +414,52 @@ def command_execution_summary(
     }
 
 
+def connector_transport_artifact_classification(
+    *,
+    transport_status: str,
+    report_path: str,
+    exit_file: str,
+) -> dict[str, Any]:
+    transport_interrupted = transport_status in {"502", "transport_error", "connector_502"}
+    report = Path(report_path) if report_path else REPORT
+    exit_path = Path(exit_file) if exit_file else Path("")
+    report_present = report.exists()
+    exit_file_present = exit_path.exists() if exit_file else False
+    active_report_pending_emit = report == REPORT and exit_file_present
+    report_complete = (
+        bool(read_last_ndjson(report)) if report_present else False
+    ) or active_report_pending_emit
+    if transport_interrupted and report_complete and exit_file_present:
+        classification = "transport_interrupted_artifacts_complete"
+        reason = "connector transport was interrupted but report and exit artifacts are present"
+    elif transport_interrupted:
+        classification = "transport_interrupted_artifacts_incomplete"
+        reason = "connector transport was interrupted and report or exit artifacts are missing"
+    elif report_complete or exit_file_present:
+        classification = "transport_ok_artifacts_present"
+        reason = "no connector transport interruption was reported and artifacts are present"
+    else:
+        classification = "transport_ok_no_artifacts"
+        reason = "no connector transport interruption was reported and no artifacts were requested"
+    return {
+        "connector_transport_artifact_classification": classification,
+        "connector_transport_artifact_classification_options": [
+            "transport_ok_no_artifacts",
+            "transport_ok_artifacts_present",
+            "transport_interrupted_artifacts_complete",
+            "transport_interrupted_artifacts_incomplete",
+        ],
+        "connector_transport_artifact_classification_reason": reason,
+        "connector_transport_status": transport_status or "none",
+        "connector_transport_interrupted": transport_interrupted,
+        "connector_transport_report_path": str(report),
+        "connector_transport_report_present": report_present,
+        "connector_transport_report_complete": report_complete,
+        "connector_transport_exit_file": str(exit_path) if exit_file else "",
+        "connector_transport_exit_file_present": exit_file_present,
+    }
+
+
 def command_execution_report_fixture() -> tuple[list[dict[str, Any]], set[str]]:
     fixture_path = os.environ.get("CANON_COMMAND_EXECUTION_FIXTURE", "")
     if fixture_path:
@@ -463,6 +509,11 @@ def command_execution_report() -> dict[str, Any]:
         for command in commands
         if command.get("connector_failure_class", "none") != "none"
     })
+    transport_artifacts = connector_transport_artifact_classification(
+        transport_status=os.environ.get("CANON_CONNECTOR_TRANSPORT_STATUS", ""),
+        report_path=os.environ.get("CANON_CONNECTOR_TRANSPORT_REPORT", str(REPORT)),
+        exit_file=os.environ.get("CANON_CONNECTOR_TRANSPORT_EXIT_FILE", ""),
+    )
     return {
         "event": "command_execution_report",
         "schema_version": 1,
@@ -476,6 +527,7 @@ def command_execution_report() -> dict[str, Any]:
         "connector_failure_classification_present": True,
         "connector_failure_present": bool(connector_failure_classes),
         "connector_failure_classes": connector_failure_classes,
+        **transport_artifacts,
         **summary,
     }
 
@@ -859,6 +911,11 @@ def main() -> int:
     connector_failure_present = bool(connector_failure_classes)
     connector_failure_status = "present" if connector_failure_present else "none"
     connector_transport_instability_present = connector_failure_present and all(c.get("status") != "fail" for c in commands)
+    connector_transport_artifacts = connector_transport_artifact_classification(
+        transport_status=os.environ.get("CANON_CONNECTOR_TRANSPORT_STATUS", ""),
+        report_path=os.environ.get("CANON_CONNECTOR_TRANSPORT_REPORT", str(REPORT)),
+        exit_file=os.environ.get("CANON_CONNECTOR_TRANSPORT_EXIT_FILE", ""),
+    )
 
     evidence = {
         "external_observation_stream_test_present": bool(unique_files(external_observation)),
@@ -962,6 +1019,7 @@ def main() -> int:
         "connector_failure_status": connector_failure_status,
         "connector_failure_classes": connector_failure_classes,
         "connector_transport_instability_present": connector_transport_instability_present,
+        **connector_transport_artifacts,
         "router_offline_test_classification_present": True,
         "router_offline_test_classification_options": [
             "router_offline_unavailable",
