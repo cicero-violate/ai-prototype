@@ -1949,3 +1949,51 @@ log: target/validation-logs/score-contract-key-value-helper-step5-final.log
 ## Next Execution Slice After Manifest Key-Value Helper Step 5
 
 The manifest assertion refactor is now at a stable stopping point. Continue P4 only if executable evidence identifies a receiver transparency gap. Otherwise, move to the next evidence-backed gap in the runtime, such as capturing a live wrapper-configured observe-validation run when environment services are ready, or adding tests for router/MCP failure classification if those paths are available.
+
+
+## Planning Turn Update — 2026-05-09 After Manifest Key-Value Helper Step 5
+
+This planning/scoring turn made no implementation changes. The repository was clean at turn start and the latest visible commit was:
+
+```text
+df4f2bc Centralize manifest key value assertions
+```
+
+Current assessment:
+
+```text
+- P0 validation baseline: complete.
+- P1 validation evidence reporting: complete.
+- P2 agent loop reliability: complete.
+- P3 runtime and receipt correctness: complete for current scope.
+- P4 graph/source-of-truth and observe-validation evidence: in progress but the recent manifest assertion refactor chain is complete.
+```
+
+The key planning change is to stop spending execution turns on cosmetic manifest-test refactoring unless a new receiver metric family or executable evidence gap requires it. The reusable manifest assertion surfaces now cover receipt preservation, exact-once metric rendering, token presence, and coherent key/value checks. Further refactoring would have diminishing value compared with new evidence capture.
+
+### Next Execution Target
+
+Preferred next P4 target: add deterministic tests for router/MCP failure classification if the route/classifier code can be exercised without live services. This keeps progress source-derived and short-running, matching the recent compact-evidence strategy.
+
+Fallback target: capture a live wrapper-configured observe-validation run only if the environment exposes the wrapper artifacts and services needed to do it without inventing evidence.
+
+Acceptance criteria for the preferred router/MCP slice:
+
+```text
+1. Exercise at least one router/MCP failure classification branch with deterministic fixture or unit-test evidence.
+2. Preserve current optional wrapper semantics and generated graph JSON fixture-substitution semantics.
+3. Preserve compact runtime archive report integration and missing-signal/status separation.
+4. Keep long full observe-validation optional unless required by the implementation change.
+5. Update score.md with exact command, exit, result, and log evidence.
+6. Commit implementation changes separately from this planning/scoring commit.
+```
+
+### Commit Hygiene For Next Execution Turn
+
+```text
+- Start with git status --short.
+- Stage explicit paths only.
+- Do not commit generated target/observe, target/validation-logs, runtime archives, graph reports, __pycache__, or build output.
+- If router/MCP tests require environment services, prefer deterministic fixture coverage over a brittle live-service dependency.
+- If no deterministic router/MCP classification gap is found, return to planning rather than changing production behavior speculatively.
+```
