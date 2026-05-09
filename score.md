@@ -3258,6 +3258,83 @@ Current risks / gaps:
 - P4 remains open only for additional source-justified compact evidence/reporting hardening.
 ```
 
+## Planning / Scoring Checkpoint After Commit c6c53b4
+
+Date: 2026-05-09 America/Toronto / 2026-05-09 UTC
+Turn type: planning/scoring checkpoint
+Scope executed: no implementation changes; updated planning and scoring state only.
+
+Current timestamp evidence:
+
+```text
+branch: main
+latest visible commit before this planning turn: c6c53b4 Preserve full summary ignored artifact counts
+working directory: /workspace/ai_sandbox/canon-mini-agent/prototype/ai
+working tree at checkpoint start: clean
+```
+
+Planning/scoring files owned by this turn:
+
+```text
+plan.md
+score.md
+```
+
+Implementation files intentionally not modified this turn. Prior implementation evidence from full-summary ignored-artifact count preservation remains the current validation basis. No score increase is claimed from this checkpoint alone.
+
+Checkpoint score posture:
+
+```text
+I  Intelligence      = 7.0
+E  Efficiency        = 7.92
+C  Correctness       = 9.989
+A  Alignment         = 8.8
+R  Robustness        = 10.0
+P  Performance       = 6.45
+S  Scalability       = 6.82
+D  Determinism       = 9.750
+T  Transparency      = 10.0
+Co Collaboration     = 8.0
+Em Empowerment       = 7.8
+B  Benefit           = 8.1
+L  Learning          = 7.1
+St Structure         = 9.75
+Si Simplicity        = 7.36
+F  Future-Proofing   = 9.334
+```
+
+Approximate geometric mean remains:
+
+```text
+G ≈ 8.33 / 10
+```
+
+Planning conclusion:
+
+```text
+- P0, P1, P2, and current-scope P3 remain complete.
+- P4 remains open only for source-justified compact evidence/reporting hardening, deterministic uncovered branch coverage, or live wrapper validation when explicit wrapper inputs are available.
+- The next implementation turn should first inspect compact observe-validation emitters, preserved summary keys, actual full-summary artifact receipt tests, and delta manifest exact-once rendering tests for another gap.
+```
+
+Validation evidence captured for this checkpoint:
+
+```text
+command: TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test planning_contract -- --test-threads=1
+exit: 0
+result: 2 passed; 0 failed
+log: target/validation-logs/planning-contract-planning-checkpoint-c6c53b4.log
+exit file: target/validation-logs/planning-contract-planning-checkpoint-c6c53b4.exit
+```
+
+```text
+command: TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test score_contract -- --test-threads=1
+exit: 0
+result: 5 passed; 0 failed
+log: target/validation-logs/score-contract-planning-checkpoint-c6c53b4.log
+exit file: target/validation-logs/score-contract-planning-checkpoint-c6c53b4.exit
+```
+
 ## Implementation Step 2 - Full Summary Router Test Count Preservation
 
 Completed work:

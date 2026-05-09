@@ -4126,6 +4126,61 @@ Otherwise proceed only if:
 4. behavior-preserving test-helper cleanup improves evidence clarity without weakening explicit assertions.
 ```
 
+## Planning / Scoring Checkpoint After Commit c6c53b4
+
+Planning-only review for the next agent loop turn.
+
+Reviewed state:
+
+```text
+- Working directory: /workspace/ai_sandbox/canon-mini-agent/prototype/ai
+- Branch: main
+- Latest visible commit before this planning turn: c6c53b4 Preserve full summary ignored artifact counts
+- Git status at planning review start: clean
+- Scope of this turn: planning/scoring only
+```
+
+Planning conclusion:
+
+```text
+- P0 validation baseline remains complete.
+- P1 validation evidence reporting remains complete.
+- P2 agent loop reliability remains complete.
+- P3 runtime and receipt correctness remains complete for the current scope.
+- P4 graph/source-of-truth and compact evidence hardening remains in progress, but the latest ignored-artifact compact full-summary receiver slice is complete.
+- No implementation files should be changed during this planning turn.
+```
+
+Current implementation plan:
+
+```text
+1. Preserve the current checkpoint as planning/scoring-only evidence.
+2. Keep the next implementation turn constrained to source-justified P4 hardening.
+3. Before writing implementation code, compare compact observe-validation report emitters, PRESERVED_SUMMARY_KEYS, actual full-summary artifact receipts, and delta manifest rendering tests for another exact-value or exact-once coverage gap.
+4. If no compact evidence gap exists, inspect deterministic failure-classification, replay, persistence, API adapter, graph evidence, or report fallback branches for a focused uncovered branch.
+5. Do not run live wrapper-configured validation unless deliberate CANON_RUSTC_WRAPPER and CANON_RUSTC_V3_ARTIFACT_DIR inputs are supplied by the environment.
+```
+
+Next execution triggers:
+
+```text
+Proceed only when at least one of these is true:
+1. A preserved metric, preserved missing-signal flag, or compact report field lacks exact emitted value coverage, receipt preservation coverage, manifest rendering coverage, or exact-once rendering coverage.
+2. A compact receiver artifact adds or changes a field, metric key, missing flag, status string, or rendering semantic.
+3. Source inspection exposes an uncovered deterministic branch in replay, persistence, API transport, API server mapping, MCP receipt classification, graph evidence, or observe-validation fallback behavior.
+4. Wrapper graph validation inputs are intentionally configured and available.
+5. Test-helper cleanup removes duplication while preserving or strengthening explicit assertions.
+```
+
+Non-goals for the next execution turn:
+
+```text
+- Do not raise scores without fresh validation evidence.
+- Do not change runtime behavior for documentation-only cleanup.
+- Do not commit generated validation logs, target output, runtime archives, SSE chunks, tokens, or local session artifacts.
+- Do not broaden validation to long live-service paths unless the task specifically requires it.
+```
+
 ## Completed Implementation Step 2 After Full-Summary Runtime Archive Zero Counts d5aae21
 
 Executed the next concrete plan trigger: compact full-summary preserved metric emission and exact receiver coverage for router test count evidence.
