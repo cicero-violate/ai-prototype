@@ -17,11 +17,12 @@ Current implementation surfaces include:
 
 Current planning/scoring baseline:
 
-- Working tree was clean at the start of this planning refresh.
+- Working tree was not clean at the start of this planning refresh: `src/validation_harness.rs` had a pre-existing unstaged modification.
+- This planning turn must not touch or stage that implementation change.
 - This turn updates only `plan.md` and `score.md`.
 - No fresh validation suite was run in this planning turn.
-- The planning artifacts already matched the current roadmap; this turn keeps the implementation plan stable and records that no implementation work was attempted.
-- Next execution turn should prioritize a full quota-safe validation baseline and then update `score.md` with exact evidence.
+- The implementation roadmap remains stable, but scoring now explicitly records the dirty implementation file as external to this planning turn.
+- Next execution turn should first decide whether to preserve, inspect, test, or revert the existing `src/validation_harness.rs` change, then run a full quota-safe validation baseline.
 
 ## Operating Rules For Agent Turns
 
@@ -151,16 +152,17 @@ Current planning/scoring baseline:
 
 ## Next Execute-Turn Recommendation
 
-Run and record the validation baseline:
+Resolve implementation-tree ambiguity, then run and record the validation baseline:
 
 1. Confirm `git status --short` before editing.
-2. Create `target/test-tmp`.
-3. Run `cargo fmt --check`, library tests, all-target tests, and clippy using wrapper-disabled, quota-safe commands.
-4. Classify any failures using the categories in P0.
-5. Update `score.md` with exact command outcomes.
-6. Commit only intentional validation/scoring or implementation changes.
+2. Inspect the pre-existing `src/validation_harness.rs` modification and determine whether it is intentional work from a prior turn or should be reverted by an execution turn.
+3. Create `target/test-tmp`.
+4. Run `cargo fmt --check`, library tests, all-target tests, and clippy using wrapper-disabled, quota-safe commands.
+5. Classify any failures using the categories in P0.
+6. Update `score.md` with exact command outcomes.
+7. Commit only intentional validation/scoring or implementation changes.
 
-Do not change source code before the baseline unless a validation failure identifies a specific implementation defect.
+Do not change source code before the baseline unless a validation failure identifies a specific implementation defect or the existing `src/validation_harness.rs` dirty state is intentionally resolved.
 
 ## Current Non-Goals
 

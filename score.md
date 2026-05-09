@@ -6,15 +6,17 @@ Date: 2026-05-08
 Turn type: planning/scoring
 Scope reviewed: repository root listing, current `git status --short`, existing `plan.md`, existing `score.md`, and source/test tree inventory.
 
-This turn did not implement source changes and did not run a fresh validation suite. It refreshed the implementation plan and score posture, verified that `plan.md` and `score.md` were already aligned with the current roadmap, and kept the next execution step focused on evidence capture.
+This turn did not implement source changes and did not run a fresh validation suite. It refreshed the implementation plan and score posture, corrected the working-tree baseline to account for a pre-existing implementation modification, and kept the next execution step focused on dirty-state resolution plus evidence capture.
 
 ## Current Git State
 
 Observed at the start of this planning refresh:
 
 ```text
-clean working tree
+M src/validation_harness.rs
 ```
+
+The `src/validation_harness.rs` modification was already present before this planning/scoring update and is not part of this turn's intended change set.
 
 Expected changes for this turn:
 
@@ -23,9 +25,9 @@ M plan.md
 M score.md
 ```
 
-No implementation files should be staged or committed by this planning/scoring turn.
+No implementation files should be staged or committed by this planning/scoring turn. In particular, `src/validation_harness.rs` must remain unstaged unless a later execution turn explicitly claims responsibility for that implementation change.
 
-Pre-edit diff check showed no pending changes to `plan.md` or `score.md`; the only intended edits are this planning/scoring refresh.
+Pre-edit review showed no need to change implementation files; the only intended edits are this planning/scoring refresh.
 
 ## Scorecard
 
@@ -56,7 +58,7 @@ Approximate geometric mean:
 G ≈ 7.01 / 10
 ```
 
-Collaboration and simplicity receive a minor planning-score improvement because the working tree is clean and the refreshed plan removes stale dirty-state references. Correctness and robustness remain capped until fresh validation evidence is captured.
+Collaboration and simplicity remain useful but are no longer credited for a clean working tree because an implementation file is already dirty. Correctness and robustness remain capped until fresh validation evidence is captured.
 
 ## Basis For Scoring
 
@@ -72,6 +74,7 @@ Collaboration and simplicity receive a minor planning-score improvement because 
 ### Current Risks / Gaps
 
 - Fresh full validation was not run during this planning turn.
+- The working tree contains a pre-existing implementation modification in `src/validation_harness.rs`; this must be resolved or explicitly incorporated before reliable implementation scoring.
 - Previous validation evidence indicated `/tmp`/filesystem quota-related failures; the current validation plan depends on consistently using `TMPDIR="$PWD/target/test-tmp"`.
 - Full `cargo test --all-targets` and `cargo clippy --all-targets -- -D warnings` still need reliable, current pass/fail evidence.
 - Complexity is high; broad exported surfaces and many receipt families require stronger end-to-end validation summaries.
@@ -90,7 +93,7 @@ Collaboration and simplicity receive a minor planning-score improvement because 
 - **Scalability (6.2):** Multi-agent coordination exists, but file coordination and external router dependencies need stress/failure validation.
 - **Determinism (8.0):** Determinism is central and well represented; live LLM/tool paths remain variable unless fully receipt-bounded.
 - **Transparency (8.0):** Documentation, NDJSON logs, receipts, and validation reports provide good audit surfaces.
-- **Collaboration (7.6):** Planning/scoring files provide loop coordination, and the current tree began clean.
+- **Collaboration (7.6):** Planning/scoring files provide loop coordination, but the current tree has a pre-existing dirty implementation file that must be handled carefully.
 - **Empowerment (7.1):** The system can support autonomous implementation loops when router/MCP dependencies are available.
 - **Benefit (7.0):** Strong potential as an auditable runtime; production utility depends on validation hardening.
 - **Learning (6.9):** Learning and policy promotion concepts exist, but need complete candidate-to-policy fixtures.
@@ -132,4 +135,4 @@ Raise scores only after fresh evidence:
 
 ## Immediate Next Action
 
-The next execution turn should run the wrapper-disabled, quota-safe validation baseline, update this file with exact command outcomes, and commit only intentional changes.
+The next execution turn should inspect and resolve the pre-existing `src/validation_harness.rs` modification, then run the wrapper-disabled, quota-safe validation baseline, update this file with exact command outcomes, and commit only intentional changes.
