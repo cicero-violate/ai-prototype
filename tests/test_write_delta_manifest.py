@@ -528,8 +528,21 @@ class DeltaManifestTest(unittest.TestCase):
         self.assertEqual(done.returncode, 0, done.stderr)
         receipt = json.loads(self.receipt.read_text(encoding="utf-8"))
         self.assertEqual(receipt["validation_command_count"], 2)
+        self.assertEqual(receipt["validation_command_distinct_count"], 2)
+        self.assertEqual(receipt["validation_command_source"], "summary_validation_commands")
+        self.assertEqual(receipt["validation_command_summary_input_count"], 2)
+        self.assertEqual(receipt["validation_command_summary_distinct_count"], 2)
+        self.assertEqual(receipt["validation_command_summary_duplicate_count"], 0)
+        self.assertEqual(receipt["validation_command_row_input_count"], 2)
+        self.assertEqual(receipt["validation_command_row_distinct_count"], 2)
+        self.assertEqual(receipt["validation_command_row_duplicate_count"], 0)
         self.assertEqual([command["name"] for command in receipt["validation_commands"]], ["unit", "compile"])
         self.assertEqual([command["duration_ms"] for command in receipt["validation_commands"]], [7, 3])
+        manifest = self.out.read_text(encoding="utf-8")
+        self.assertIn("validation_command_distinct_count: 2", manifest)
+        self.assertIn("validation_command_source: summary_validation_commands", manifest)
+        self.assertIn("validation_command_summary_input_count: 2", manifest)
+        self.assertIn("validation_command_row_input_count: 2", manifest)
 
     def test_rejects_conflicting_summary_and_row_command_evidence(self) -> None:
         row_commands = [
@@ -618,7 +631,18 @@ class DeltaManifestTest(unittest.TestCase):
         self.assertEqual(done.returncode, 0, done.stderr)
         receipt = json.loads(self.receipt.read_text(encoding="utf-8"))
         self.assertEqual(receipt["validation_command_count"], 1)
+        self.assertEqual(receipt["validation_command_distinct_count"], 1)
+        self.assertEqual(receipt["validation_command_source"], "summary_validation_commands")
+        self.assertEqual(receipt["validation_command_summary_input_count"], 2)
+        self.assertEqual(receipt["validation_command_summary_distinct_count"], 1)
+        self.assertEqual(receipt["validation_command_summary_duplicate_count"], 1)
+        self.assertEqual(receipt["validation_command_row_input_count"], 0)
+        self.assertEqual(receipt["validation_command_row_distinct_count"], 0)
+        self.assertEqual(receipt["validation_command_row_duplicate_count"], 0)
         self.assertEqual([command["name"] for command in receipt["validation_commands"]], ["unit"])
+        manifest = self.out.read_text(encoding="utf-8")
+        self.assertIn("validation_command_summary_duplicate_count: 1", manifest)
+        self.assertIn("validation_command_row_input_count: 0", manifest)
 
     def test_rejects_duplicate_summary_commands_with_inflated_count(self) -> None:
         command = {
@@ -689,7 +713,18 @@ class DeltaManifestTest(unittest.TestCase):
         self.assertEqual(done.returncode, 0, done.stderr)
         receipt = json.loads(self.receipt.read_text(encoding="utf-8"))
         self.assertEqual(receipt["validation_command_count"], 1)
+        self.assertEqual(receipt["validation_command_distinct_count"], 1)
+        self.assertEqual(receipt["validation_command_source"], "validation_command_rows")
+        self.assertEqual(receipt["validation_command_summary_input_count"], 0)
+        self.assertEqual(receipt["validation_command_summary_distinct_count"], 0)
+        self.assertEqual(receipt["validation_command_summary_duplicate_count"], 0)
+        self.assertEqual(receipt["validation_command_row_input_count"], 2)
+        self.assertEqual(receipt["validation_command_row_distinct_count"], 1)
+        self.assertEqual(receipt["validation_command_row_duplicate_count"], 1)
         self.assertEqual([command["name"] for command in receipt["validation_commands"]], ["unit"])
+        manifest = self.out.read_text(encoding="utf-8")
+        self.assertIn("validation_command_source: validation_command_rows", manifest)
+        self.assertIn("validation_command_row_duplicate_count: 1", manifest)
 
     def test_rejects_duplicate_validation_command_rows_with_inflated_count(self) -> None:
         command = {

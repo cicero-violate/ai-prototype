@@ -3,14 +3,14 @@
 ## Current Progress Snapshot
 
 Date: 2026-05-09 America/Toronto / 2026-05-09 UTC
-Turn type: implementation step 2
-Scope executed: closed duplicate command-name inflation in summary-provided validation command evidence.
+Turn type: implementation step 3
+Scope executed: added explicit command evidence normalization metadata to delta manifest receipts and manifests.
 
 Current timestamp evidence:
 
 ```text
 branch: main
-latest visible commit before this implementation turn: 26201cf Deduplicate manifest command row evidence
+latest visible commit before this implementation turn: 711f460 Deduplicate summary manifest command evidence
 working directory: /workspace/ai_sandbox/canon-mini-agent/prototype/ai
 working tree at turn start: clean
 ```
@@ -30,7 +30,7 @@ Generated validation logs, observe reports, runtime fixture archives, graph repo
 
 ## Scorecard
 
-Scores are approximate implementation-readiness scores on a 0-10 scale. Correctness, robustness, and determinism move upward slightly because duplicate command-name closure now covers both summary-provided command arrays and row-derived command evidence.
+Scores are approximate implementation-readiness scores on a 0-10 scale. Transparency rises because receipts and manifests now expose command evidence source counts, distinct counts, and duplicate counts after normalization; correctness and robustness remain at the prior high-water mark for this manifest closure area.
 
 ```text
 I  Intelligence      = 7.0
@@ -59,11 +59,12 @@ G ≈ 8.23 / 10
 
 ## Completed Work This Turn
 
-- Read `plan.md`, `score.md`, git status, recent commits, and current duplicate command-count closure.
-- Generalized command duplicate handling in `scripts/write_delta_manifest.py` from row-only helpers to shared command-source helpers.
-- Applied conflicting duplicate-name rejection to summary-provided `validation_commands`.
-- Applied identical duplicate-name deduplication to summary-provided `validation_commands` before count validation and receipt generation.
-- Added summary duplicate acceptance, inflated-count rejection, and conflicting-metadata rejection tests.
+- Read `plan.md`, `score.md`, git status, recent commits, and current command evidence normalization plan.
+- Added command normalization metadata generation to `scripts/write_delta_manifest.py`.
+- Updated validation closure to return both distinct commands and command metadata.
+- Emitted normalization metadata in receipt JSON.
+- Rendered normalization metadata in `DELTA_MANIFEST.md` validation results.
+- Added focused assertions proving the metadata appears in receipts and manifests for mixed summary/row evidence, duplicate summary evidence, and duplicate row evidence.
 - Updated `plan.md` with the completed execution slice and next action.
 
 ## Validation Evidence Captured This Turn
@@ -72,45 +73,45 @@ G ≈ 8.23 / 10
 command: python3 -m unittest tests/test_write_delta_manifest.py
 exit: 0
 result: 23 passed; 0 failed
-log: target/validation-logs/write-delta-manifest-summary-duplicates-step2.log
+log: target/validation-logs/write-delta-manifest-command-normalization-step3.log
 ```
 
 ```text
 command: python3 -m unittest tests/test_observe_validation_contract.py
 exit: 0
 result: 39 passed; 0 failed
-log: target/validation-logs/observe-validation-contract-summary-duplicates-step2.log
+log: target/validation-logs/observe-validation-contract-command-normalization-step3.log
 ```
 
 ```text
 command: python3 -m py_compile scripts/observe_validation.sh scripts/write_delta_manifest.py tests/test_write_delta_manifest.py tests/test_observe_validation_contract.py
 exit: 0
-log: target/validation-logs/py-compile-summary-duplicates-step2.log
+log: target/validation-logs/py-compile-command-normalization-step3.log
 ```
 
 ```text
 command: cargo test --test planning_contract -- --test-threads=1
 exit: 0
 result: 2 passed; 0 failed
-log: target/validation-logs/planning-contract-summary-duplicates-step2.log
+log: target/validation-logs/planning-contract-command-normalization-step3.log
 ```
 
 ```text
 command: cargo test --test score_contract -- --test-threads=1
 exit: 0
 result: 5 passed; 0 failed
-log: target/validation-logs/score-contract-summary-duplicates-step2.log
+log: target/validation-logs/score-contract-command-normalization-step3.log
 ```
 
 ## Connector / Environment Notes
 
 - This turn did not require a long full observe-validation run.
 - No live wrapper-configured, router, Ollama, or OpenAI path was required for baseline evidence.
-- The implementation was a deterministic manifest closure check over summary and row command evidence.
+- The implementation was a deterministic receipt/manifest metadata extension over normalized command evidence.
 
 ## Current Risks / Gaps
 
-- Receipts and manifests currently expose only the final distinct command list; future receiver transparency would improve if source counts and deduplication counts were preserved explicitly.
+- Command normalization metadata has not yet been proven through the actual compact full-summary artifact manifest-generation path.
 - Connector 502 transport errors can still interrupt long shell calls, but receiver/archive evidence continues to move toward short compact artifacts.
 - No live wrapper-configured observe-validation run has been captured in this environment.
 - Live router/MCP/Ollama/OpenAI paths still depend on environment services and can fail independently of core runtime correctness.
@@ -120,7 +121,7 @@ log: target/validation-logs/score-contract-summary-duplicates-step2.log
 
 Raise scores only after fresh evidence:
 
-- **Transparency / Correctness:** receipt and manifest output preserve source command counts, distinct command counts, and deduplication metadata after normalization.
+- **Transparency / Correctness:** command normalization metadata survives actual compact full-summary artifact manifest generation.
 - **Performance:** command-duration performance evidence is strengthened with external benchmark or latency trend data.
 - **Scalability:** multi-agent coordination and router failure scenarios are tested.
 - **Learning:** policy promotion remains externally evaluated and self-approval remains impossible under tests.
@@ -128,4 +129,4 @@ Raise scores only after fresh evidence:
 
 ## Immediate Next Action
 
-Continue P4 by adding explicit command evidence normalization metadata to receipt and manifest output, so deduplicated evidence remains auditable to receivers.
+Continue P4 by extending the actual compact full-summary artifact manifest generation test to assert command normalization metadata in the generated receipt and manifest.

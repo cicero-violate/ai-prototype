@@ -107,11 +107,27 @@ def distinct_commands(commands: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return distinct
 
 
-def validate_commands(summary: dict[str, Any], rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def command_normalization_metadata(
+    summary_commands: list[dict[str, Any]], row_commands: list[dict[str, Any]], selected_source: str
+) -> dict[str, Any]:
+    return {
+        "validation_command_source": selected_source,
+        "validation_command_summary_input_count": len(summary_commands),
+        "validation_command_summary_distinct_count": len(distinct_commands(summary_commands)),
+        "validation_command_summary_duplicate_count": len(summary_commands) - len(distinct_commands(summary_commands)),
+        "validation_command_row_input_count": len(row_commands),
+        "validation_command_row_distinct_count": len(distinct_commands(row_commands)),
+        "validation_command_row_duplicate_count": len(row_commands) - len(distinct_commands(row_commands)),
+    }
+
+
+def validate_commands(summary: dict[str, Any], rows: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     summary_commands = list(summary.get("validation_commands") or [])
     row_commands = command_rows(rows)
     reject_conflicting_duplicate_commands(summary_commands, "summary validation_commands")
     reject_conflicting_duplicate_commands(row_commands, "validation_command rows")
+    raw_summary_commands = list(summary_commands)
+    raw_row_commands = list(row_commands)
     summary_commands = distinct_commands(summary_commands)
     row_commands = distinct_commands(row_commands)
     if summary_commands and row_commands:
@@ -119,6 +135,7 @@ def validate_commands(summary: dict[str, Any], rows: list[dict[str, Any]]) -> li
         row_fingerprints = [command_fingerprint(command) for command in row_commands]
         if summary_fingerprints != row_fingerprints:
             fail("conflicting validation command evidence between summary and command rows")
+    selected_source = "summary_validation_commands" if summary_commands else "validation_command_rows"
     commands = summary_commands or row_commands
     if not commands:
         fail("no validation commands")
@@ -129,7 +146,9 @@ def validate_commands(summary: dict[str, Any], rows: list[dict[str, Any]]) -> li
             fail(f"validation command {command.get('name')} has no status")
         if "cmd" not in command:
             fail(f"validation command {command.get('name')} has no cmd field")
-    return commands
+    metadata = command_normalization_metadata(raw_summary_commands, raw_row_commands, selected_source)
+    metadata["validation_command_distinct_count"] = len(commands)
+    return commands, metadata
 
 
 def positive_int(value: Any, name: str) -> int:
@@ -144,13 +163,13 @@ def positive_int(value: Any, name: str) -> int:
 
 def validation_closure(
     summary: dict[str, Any], rows: list[dict[str, Any]], head: str
-) -> tuple[list[dict[str, Any]], str | None]:
+) -> tuple[list[dict[str, Any]], dict[str, Any], str | None]:
     report_head = summary.get("git_head")
     if not report_head:
         fail("validation report has no git_head")
     if report_head != head:
         fail(f"stale validation report: report head {report_head} != manifest head {head}")
-    commands = validate_commands(summary, rows)
+    commands, command_metadata = validate_commands(summary, rows)
     command_count = positive_int(summary.get("validation_command_count"), "validation_command_count")
     if command_count == 0:
         fail("validation_command_count must be greater than zero")
@@ -160,7 +179,7 @@ def validation_closure(
     reason = summary.get("zero_test_reason")
     if test_count == 0 and not reason:
         fail("validation_test_count is zero without zero_test_reason")
-    return commands, reason
+    return commands, command_metadata, reason
 
 
 def changed_files(base: str, head: str) -> list[str]:
@@ -278,7 +297,7 @@ def receipt(args: argparse.Namespace) -> dict[str, Any]:
     summary = last_event(rows, "validation_summary")
     if not summary:
         fail("validation report has no validation_summary event")
-    commands, zero_reason = validation_closure(summary, rows, args.head)
+    commands, command_metadata, zero_reason = validation_closure(summary, rows, args.head)
     files = changed_files(args.base, args.head)
     bundle_verify, bundle_heads, bundle_required = verify_bundle(args.bundle, args.base, args.head)
 
@@ -291,6 +310,7 @@ def receipt(args: argparse.Namespace) -> dict[str, Any]:
         "validation_status": summary.get("validation_status", "unknown"),
         "validation_commands": commands,
         "validation_command_count": summary.get("validation_command_count"),
+        **command_metadata,
         "validation_test_count": summary.get("validation_test_count"),
         "zero_test_reason": zero_reason,
         "failed_required_commands": summary.get("failed_required_commands", []),
@@ -327,6 +347,14 @@ def write_manifest(path: str | Path, receipt_data: dict[str, Any]) -> None:
     metric_keys = [
         "validation_status",
         "validation_command_count",
+        "validation_command_distinct_count",
+        "validation_command_source",
+        "validation_command_summary_input_count",
+        "validation_command_summary_distinct_count",
+        "validation_command_summary_duplicate_count",
+        "validation_command_row_input_count",
+        "validation_command_row_distinct_count",
+        "validation_command_row_duplicate_count",
         "validation_test_count",
         "zero_test_reason",
         "failed_required_commands",
