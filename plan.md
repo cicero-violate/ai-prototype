@@ -3402,3 +3402,64 @@ result: 5 passed; 0 failed
 log: target/validation-logs/score-contract-planning-checkpoint-fc6159d.log
 exit file: target/validation-logs/score-contract-planning-checkpoint-fc6159d.exit
 ```
+
+## Completed Implementation Step 1 After Planning Checkpoint b21d127
+
+Executed the next concrete plan trigger: source-inspected deterministic compact runtime archive evidence fallback coverage.
+
+Implementation details:
+
+```text
+- Re-read the latest plan.md and score.md state.
+- Confirmed live wrapper-configured observe-validation prerequisites were not set in the environment.
+- Inspected runtime archive compact-report evidence paths in `scripts/observe_validation.sh` and current contract coverage.
+- Found direct coverage for usable compact report, base-mismatched compact report, missing/invalid compact report, and direct archive precedence.
+- Added focused direct coverage for the remaining unconfigured compact-report path where no `CANON_RUNTIME_ARCHIVE_REPORT`-style report path is provided.
+- Verified that runtime archive evidence source remains `none`, report status remains `skipped_env_missing`, report presence remains false, and archive inspection status remains `skipped_env_missing`.
+```
+
+No runtime behavior changed. This step closes the compact runtime archive report unconfigured-status branch.
+
+Validation evidence:
+
+```text
+command: python3 -m py_compile scripts/observe_validation.sh tests/test_observe_validation_contract.py
+exit: 0
+log: target/validation-logs/py-compile-runtime-archive-unconfigured-report-step1.log
+exit file: target/validation-logs/py-compile-runtime-archive-unconfigured-report-step1.exit
+```
+
+```text
+command: python3 -m unittest tests.test_observe_validation_contract
+exit: 0
+result: 43 passed; 0 failed
+log: target/validation-logs/observe-validation-contract-runtime-archive-unconfigured-report-step1.log
+exit file: target/validation-logs/observe-validation-contract-runtime-archive-unconfigured-report-step1.exit
+```
+
+```text
+command: TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test planning_contract -- --test-threads=1
+exit: 0
+result: 2 passed; 0 failed
+log: target/validation-logs/planning-contract-runtime-archive-unconfigured-report-step1.log
+exit file: target/validation-logs/planning-contract-runtime-archive-unconfigured-report-step1.exit
+```
+
+```text
+command: TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test score_contract -- --test-threads=1
+exit: 0
+result: 5 passed; 0 failed
+log: target/validation-logs/score-contract-runtime-archive-unconfigured-report-step1.log
+exit file: target/validation-logs/score-contract-runtime-archive-unconfigured-report-step1.exit
+```
+
+Next execution slice:
+
+```text
+No additional deterministic implementation branch is identified from this turn.
+Proceed only if:
+1. deliberate CANON_RUSTC_WRAPPER and CANON_RUSTC_V3_ARTIFACT_DIR inputs are available for live wrapper validation;
+2. compact receiver artifacts gain a new field, metric key, missing flag, or rendering semantic;
+3. source inspection exposes uncovered deterministic failure-classification, replay, persistence, or report fallback coverage;
+4. another behavior-preserving test-helper cleanup improves evidence clarity without weakening explicit assertions.
+```
