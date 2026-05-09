@@ -371,6 +371,42 @@ class ObserveValidationContractTest(unittest.TestCase):
         ):
             self.assertIn(token, self.script)
 
+    def test_command_execution_report_mode_is_report_only(self) -> None:
+        for token in (
+            "--command-execution-report",
+            "def command_execution_report_fixture()",
+            "def emit_command_execution_report()",
+            "command_execution_report_only",
+            "command_execution_report_command",
+            "CANON_COMMAND_EXECUTION_FIXTURE",
+            "usage: observe_validation.sh [--graph-fixture-report|--runtime-archive-report|--command-execution-report]",
+            "return emit_command_execution_report()",
+        ):
+            self.assertIn(token, self.script)
+
+    def test_command_execution_report_mode_emits_compact_classification(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            report = Path(tmpdir) / "command-execution-report.ndjson"
+            env = os.environ.copy()
+            env["CANON_OBSERVE_REPORT"] = str(report)
+            done = subprocess.run(
+                [sys.executable, str(OBSERVE), "--command-execution-report"],
+                cwd=ROOT,
+                env=env,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                check=False,
+            )
+            self.assertEqual(done.returncode, 1, done.stderr)
+            row = json.loads(report.read_text(encoding="utf-8").splitlines()[-1])
+            self.assertEqual(row["event"], "command_execution_report")
+            self.assertTrue(row["command_execution_report_only"])
+            self.assertEqual(row["command_execution_report_command"], "--command-execution-report")
+            self.assertEqual(row["command_execution_classification"], "required_command_hard_failure")
+            self.assertEqual(row["command_execution_status"], "fail")
+            self.assertIn("cargo_test_all_targets", row["required_command_hard_failed"])
+
     def test_external_surface_evidence_is_source_derived(self) -> None:
         for token in (
             "def source_evidence()",
@@ -780,7 +816,7 @@ class ObserveValidationContractTest(unittest.TestCase):
             "graph_fixture_report_only",
             "graph_fixture_report_command",
             "graph_fixture_validator",
-            "usage: observe_validation.sh [--graph-fixture-report|--runtime-archive-report]",
+            "usage: observe_validation.sh [--graph-fixture-report|--runtime-archive-report|--command-execution-report]",
             "return emit_graph_fixture_report()",
         ):
             self.assertIn(token, self.script + self.graph_fixture_validator)

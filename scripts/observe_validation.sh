@@ -5,7 +5,7 @@ The script is intentionally deterministic and report-first: generated evidence i
 written to target/observe/validation-report.ndjson by default, while expensive
 commands keep their full logs under target/validation-logs. Root Rust validation
 clears wrapper variables so baseline correctness is independent of optional graph
-capture tooling. Use --graph-fixture-report for a compact graph-only report. Use --runtime-archive-report for a compact runtime archive/base report.
+capture tooling. Use --graph-fixture-report for a compact graph-only report. Use --runtime-archive-report for a compact runtime archive/base report. Use --command-execution-report for a compact command-classification report.
 """
 from __future__ import annotations
 
@@ -412,6 +412,82 @@ def command_execution_summary(
         "required_command_passed": required_passed,
         "required_command_failed": required_failed,
     }
+
+
+def command_execution_report_fixture() -> tuple[list[dict[str, Any]], set[str]]:
+    fixture_path = os.environ.get("CANON_COMMAND_EXECUTION_FIXTURE", "")
+    if fixture_path:
+        fixture = read_json(ROOT / fixture_path)
+        commands = fixture.get("commands", [])
+        required = set(fixture.get("required", []))
+        return commands, required
+    commands = [
+        {
+            "event": "validation_command",
+            "name": "cargo_test_all_targets",
+            "status": "fail",
+            "exit_code": 101,
+            "duration_ms": 0,
+            "timed_out": False,
+            "connector_failure_class": "none",
+        },
+        {
+            "event": "validation_command",
+            "name": "panic_surface_validation",
+            "status": "pass",
+            "exit_code": 0,
+            "duration_ms": 0,
+            "timed_out": False,
+            "connector_failure_class": "none",
+        },
+        {
+            "event": "validation_command",
+            "name": "policy_learning_trace_validation",
+            "status": "pass",
+            "exit_code": 0,
+            "duration_ms": 0,
+            "timed_out": False,
+            "connector_failure_class": "none",
+        },
+    ]
+    required = {"cargo_test_all_targets", "panic_surface_validation", "policy_learning_trace_validation"}
+    return commands, required
+
+
+def command_execution_report() -> dict[str, Any]:
+    commands, required = command_execution_report_fixture()
+    summary = command_execution_summary(commands, required)
+    command_execution_status = "pass" if not summary["required_command_failed"] else "fail"
+    connector_failure_classes = sorted({
+        command.get("connector_failure_class", "none")
+        for command in commands
+        if command.get("connector_failure_class", "none") != "none"
+    })
+    return {
+        "event": "command_execution_report",
+        "schema_version": 1,
+        "validation_status": command_execution_status,
+        "command_execution_report_only": True,
+        "command_execution_report_command": "--command-execution-report",
+        "command_execution_status": command_execution_status,
+        "command_execution_fixture_env": "CANON_COMMAND_EXECUTION_FIXTURE",
+        "validation_commands": commands,
+        "validation_command_count": len(commands),
+        "connector_failure_classification_present": True,
+        "connector_failure_present": bool(connector_failure_classes),
+        "connector_failure_classes": connector_failure_classes,
+        **summary,
+    }
+
+
+def emit_command_execution_report() -> int:
+    REPORT.parent.mkdir(parents=True, exist_ok=True)
+    REPORT.write_text("", encoding="utf-8")
+    row = command_execution_report()
+    emit(row)
+    return 0 if row["validation_status"] == "pass" else 1
+
+
 def wrapper_graph_configuration_status(*, wrapper: str, artifact_dir: str, wrapper_available: bool) -> str:
     if not wrapper and not artifact_dir:
         return "not_configured"
@@ -677,8 +753,10 @@ def main() -> int:
         return emit_graph_fixture_report()
     if len(sys.argv) == 2 and sys.argv[1] == "--runtime-archive-report":
         return emit_runtime_archive_report()
+    if len(sys.argv) == 2 and sys.argv[1] == "--command-execution-report":
+        return emit_command_execution_report()
     if len(sys.argv) > 1:
-        print("usage: observe_validation.sh [--graph-fixture-report|--runtime-archive-report]", file=sys.stderr)
+        print("usage: observe_validation.sh [--graph-fixture-report|--runtime-archive-report|--command-execution-report]", file=sys.stderr)
         return 2
 
     REPORT.parent.mkdir(parents=True, exist_ok=True)
