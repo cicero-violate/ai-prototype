@@ -1719,3 +1719,61 @@ log: target/validation-logs/score-contract-helper-refactor-step1-final.log
 ## Next Execution Slice After Command Normalization Helper Refactor Step 1
 
 Continue P4 by applying the same reusable assertion pattern to the next compact receiver metric family when new manifest keys are added, or add a small regression check that command-normalization manifest snippets include the expected values while the helper continues to enforce exact-once rendering.
+
+
+
+## Completed Execution Slice After Command Normalization Manifest Value Helper Step 2
+
+Completed the next concrete P4 regression slice by extending the reusable command-normalization manifest helper to prove both rendered metric values and exact-once rendering from the same expected metadata map.
+
+Implementation details:
+
+```text
+- Replaced assert_command_normalization_metrics_render_once() with assert_command_normalization_manifest().
+- assert_command_normalization_manifest() derives expected manifest values from expected_command_normalization_metrics().
+- The helper checks every command-normalization metric renders with its expected value.
+- The helper also checks every command-normalization metric key renders exactly once.
+- Replaced remaining direct command-normalization manifest value assertions in summary, row-fallback, duplicate-summary, and duplicate-row tests.
+```
+
+This closes the small regression gap left after step 1: helper-based tests now verify that command-normalization manifest snippets contain the correct values, not only that the metric names render exactly once.
+
+## Validation Evidence From Command Normalization Manifest Value Helper Step 2
+
+```text
+command: python3 -m unittest tests/test_write_delta_manifest.py
+exit: 0
+result: 23 passed; 0 failed
+log: target/validation-logs/write-delta-manifest-command-manifest-values-step2.log
+```
+
+```text
+command: python3 -m unittest tests/test_observe_validation_contract.py
+exit: 0
+result: 39 passed; 0 failed
+log: target/validation-logs/observe-validation-contract-command-manifest-values-step2.log
+```
+
+```text
+command: python3 -m py_compile scripts/observe_validation.sh scripts/write_delta_manifest.py tests/test_write_delta_manifest.py tests/test_observe_validation_contract.py
+exit: 0
+log: target/validation-logs/py-compile-command-manifest-values-step2.log
+```
+
+```text
+command: cargo test --test planning_contract -- --test-threads=1
+exit: 0
+result: 2 passed; 0 failed
+log: target/validation-logs/planning-contract-command-manifest-values-step2-final.log
+```
+
+```text
+command: cargo test --test score_contract -- --test-threads=1
+exit: 0
+result: 5 passed; 0 failed
+log: target/validation-logs/score-contract-command-manifest-values-step2-final.log
+```
+
+## Next Execution Slice After Command Normalization Manifest Value Helper Step 2
+
+Continue P4 by applying the same value-plus-exact-once helper pattern to the next compact receiver metric family when new manifest keys are introduced. If no new metric family is ready, the next small slice should look for remaining manifest metric assertions that can be centralized without changing production behavior.

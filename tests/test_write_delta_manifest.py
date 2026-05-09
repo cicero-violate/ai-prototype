@@ -166,7 +166,31 @@ class DeltaManifestTest(unittest.TestCase):
         ).items():
             self.assertEqual(receipt[key], value, key)
 
-    def assert_command_normalization_metrics_render_once(self, manifest: str) -> None:
+    def assert_command_normalization_manifest(
+        self,
+        manifest: str,
+        *,
+        count: int,
+        source: str,
+        summary_input: int,
+        summary_distinct: int,
+        summary_duplicate: int,
+        row_input: int,
+        row_distinct: int,
+        row_duplicate: int,
+    ) -> None:
+        expected = expected_command_normalization_metrics(
+            count=count,
+            source=source,
+            summary_input=summary_input,
+            summary_distinct=summary_distinct,
+            summary_duplicate=summary_duplicate,
+            row_input=row_input,
+            row_distinct=row_distinct,
+            row_duplicate=row_duplicate,
+        )
+        for key in COMMAND_NORMALIZATION_METRIC_KEYS:
+            self.assertIn(f"{key}: {expected[key]}", manifest)
         metric_counts = Counter(manifest_metric_names(manifest))
         for key in COMMAND_NORMALIZATION_METRIC_KEYS:
             self.assertEqual(metric_counts[key], 1, key)
@@ -496,18 +520,20 @@ class DeltaManifestTest(unittest.TestCase):
             "full_summary_report_command: --full-summary-report",
             "connector_transport_artifact_classification: transport_interrupted_artifacts_complete",
             "runtime_manifest_base_matches_delta_base: True",
-            "validation_command_distinct_count: 3",
-            "validation_command_source: summary_validation_commands",
-            "validation_command_summary_input_count: 3",
-            "validation_command_summary_distinct_count: 3",
-            "validation_command_summary_duplicate_count: 0",
-            "validation_command_row_input_count: 0",
-            "validation_command_row_distinct_count: 0",
-            "validation_command_row_duplicate_count: 0",
             "cargo_test_all_targets: pass",
         ):
             self.assertIn(token, manifest)
-        self.assert_command_normalization_metrics_render_once(manifest)
+        self.assert_command_normalization_manifest(
+            manifest,
+            count=3,
+            source="summary_validation_commands",
+            summary_input=3,
+            summary_distinct=3,
+            summary_duplicate=0,
+            row_input=0,
+            row_distinct=0,
+            row_duplicate=0,
+        )
 
     def test_compact_preserved_fields_render_once_with_command_rows_fallback(self) -> None:
         commands = [
@@ -570,7 +596,17 @@ class DeltaManifestTest(unittest.TestCase):
             "full_summary_report_command",
         ):
             self.assertEqual(Counter(metric_names)[key], 1, key)
-        self.assert_command_normalization_metrics_render_once(manifest)
+        self.assert_command_normalization_manifest(
+            manifest,
+            count=2,
+            source="validation_command_rows",
+            summary_input=0,
+            summary_distinct=0,
+            summary_duplicate=0,
+            row_input=2,
+            row_distinct=2,
+            row_duplicate=0,
+        )
         self.assertIn("unit: pass :: ['python3', '-m', 'unittest']", manifest)
         self.assertIn("compile: pass :: ['python3', '-m', 'py_compile']", manifest)
 
@@ -629,10 +665,17 @@ class DeltaManifestTest(unittest.TestCase):
         self.assertEqual([command["name"] for command in receipt["validation_commands"]], ["unit", "compile"])
         self.assertEqual([command["duration_ms"] for command in receipt["validation_commands"]], [7, 3])
         manifest = self.out.read_text(encoding="utf-8")
-        self.assertIn("validation_command_distinct_count: 2", manifest)
-        self.assertIn("validation_command_source: summary_validation_commands", manifest)
-        self.assertIn("validation_command_summary_input_count: 2", manifest)
-        self.assertIn("validation_command_row_input_count: 2", manifest)
+        self.assert_command_normalization_manifest(
+            manifest,
+            count=2,
+            source="summary_validation_commands",
+            summary_input=2,
+            summary_distinct=2,
+            summary_duplicate=0,
+            row_input=2,
+            row_distinct=2,
+            row_duplicate=0,
+        )
 
     def test_rejects_conflicting_summary_and_row_command_evidence(self) -> None:
         row_commands = [
@@ -733,8 +776,17 @@ class DeltaManifestTest(unittest.TestCase):
         )
         self.assertEqual([command["name"] for command in receipt["validation_commands"]], ["unit"])
         manifest = self.out.read_text(encoding="utf-8")
-        self.assertIn("validation_command_summary_duplicate_count: 1", manifest)
-        self.assertIn("validation_command_row_input_count: 0", manifest)
+        self.assert_command_normalization_manifest(
+            manifest,
+            count=1,
+            source="summary_validation_commands",
+            summary_input=2,
+            summary_distinct=1,
+            summary_duplicate=1,
+            row_input=0,
+            row_distinct=0,
+            row_duplicate=0,
+        )
 
     def test_rejects_duplicate_summary_commands_with_inflated_count(self) -> None:
         command = {
@@ -817,8 +869,17 @@ class DeltaManifestTest(unittest.TestCase):
         )
         self.assertEqual([command["name"] for command in receipt["validation_commands"]], ["unit"])
         manifest = self.out.read_text(encoding="utf-8")
-        self.assertIn("validation_command_source: validation_command_rows", manifest)
-        self.assertIn("validation_command_row_duplicate_count: 1", manifest)
+        self.assert_command_normalization_manifest(
+            manifest,
+            count=1,
+            source="validation_command_rows",
+            summary_input=0,
+            summary_distinct=0,
+            summary_duplicate=0,
+            row_input=2,
+            row_distinct=1,
+            row_duplicate=1,
+        )
 
     def test_rejects_duplicate_validation_command_rows_with_inflated_count(self) -> None:
         command = {
