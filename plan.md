@@ -3141,3 +3141,56 @@ Proceed only if:
 3. source inspection exposes uncovered deterministic failure-classification or persistence-error coverage;
 4. another behavior-preserving test-helper cleanup improves evidence clarity without weakening exact-once assertions.
 ```
+
+## Completed Implementation Step 2 After Row Duplicate Closure 4a2a6c0
+
+Executed the next concrete plan trigger: source-inspected deterministic failure/classification coverage for graph evidence status selection.
+
+Implementation details:
+
+```text
+- Re-read the latest plan and score state.
+- Confirmed live wrapper-configured observe-validation prerequisites were not set in the environment.
+- Inspected observe-validation graph evidence coverage.
+- Found that `graph_evidence_classification` status values were asserted by string presence but not directly branch-executed.
+- Added `test_graph_evidence_classifier_executes_all_status_branches` in `tests/test_observe_validation_contract.py`.
+- Covered all graph evidence classifier outcomes:
+  - graph_mutation_evidence_contract_missing
+  - graph_mutation_landed_with_receipt_snapshot via fixture receipt snapshot
+  - graph_wrapper_absent_by_configuration
+  - graph_wrapper_configured_missing
+  - graph_wrapper_configured_no_telemetry
+  - graph_mutation_evidence_emitted_not_landed
+  - graph_mutation_landed_without_receipt_ledger
+  - graph_mutation_landed_with_receipt_snapshot via live evidence path
+```
+
+No runtime behavior changed. This step converts graph evidence classification from token-presence-only coverage into executable deterministic branch coverage.
+
+Validation evidence:
+
+```text
+command: python3 -m py_compile scripts/observe_validation.sh tests/test_observe_validation_contract.py
+exit: 0
+log: target/validation-logs/py-compile-graph-evidence-branch-step2.log
+exit file: target/validation-logs/py-compile-graph-evidence-branch-step2.exit
+```
+
+```text
+command: python3 -m unittest tests.test_observe_validation_contract
+exit: 0
+result: 41 passed; 0 failed
+log: target/validation-logs/observe-validation-contract-graph-evidence-branch-step2.log
+exit file: target/validation-logs/observe-validation-contract-graph-evidence-branch-step2.exit
+```
+
+Next execution slice:
+
+```text
+No additional deterministic implementation branch is identified from this turn.
+Proceed only if:
+1. deliberate CANON_RUSTC_WRAPPER and CANON_RUSTC_V3_ARTIFACT_DIR inputs are available for live wrapper validation;
+2. compact receiver artifacts gain a new field, metric key, missing flag, or rendering semantic;
+3. source inspection exposes uncovered deterministic failure-classification or persistence-error coverage;
+4. another behavior-preserving test-helper cleanup improves evidence clarity without weakening exact-once assertions.
+```

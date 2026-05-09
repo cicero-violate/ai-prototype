@@ -950,6 +950,113 @@ class ObserveValidationContractTest(unittest.TestCase):
         ):
             self.assertIn(token, self.script + self.graph_fixture_validator)
 
+    def test_graph_evidence_classifier_executes_all_status_branches(self) -> None:
+        cases = (
+            (
+                {
+                    "requested": False,
+                    "wrapper_available": False,
+                    "state_graph_present": False,
+                    "source_contract_present": False,
+                    "landing_contract_present": False,
+                    "ledger_contract_present": False,
+                    "fixture_receipt_snapshot_present": False,
+                },
+                "graph_mutation_evidence_contract_missing",
+            ),
+            (
+                {
+                    "requested": False,
+                    "wrapper_available": False,
+                    "state_graph_present": False,
+                    "source_contract_present": True,
+                    "landing_contract_present": True,
+                    "ledger_contract_present": True,
+                    "fixture_receipt_snapshot_present": True,
+                },
+                "graph_mutation_landed_with_receipt_snapshot",
+            ),
+            (
+                {
+                    "requested": False,
+                    "wrapper_available": False,
+                    "state_graph_present": False,
+                    "source_contract_present": True,
+                    "landing_contract_present": False,
+                    "ledger_contract_present": False,
+                    "fixture_receipt_snapshot_present": False,
+                },
+                "graph_wrapper_absent_by_configuration",
+            ),
+            (
+                {
+                    "requested": True,
+                    "wrapper_available": False,
+                    "state_graph_present": False,
+                    "source_contract_present": True,
+                    "landing_contract_present": False,
+                    "ledger_contract_present": False,
+                    "fixture_receipt_snapshot_present": False,
+                },
+                "graph_wrapper_configured_missing",
+            ),
+            (
+                {
+                    "requested": True,
+                    "wrapper_available": True,
+                    "state_graph_present": False,
+                    "source_contract_present": True,
+                    "landing_contract_present": False,
+                    "ledger_contract_present": False,
+                    "fixture_receipt_snapshot_present": False,
+                },
+                "graph_wrapper_configured_no_telemetry",
+            ),
+            (
+                {
+                    "requested": True,
+                    "wrapper_available": True,
+                    "state_graph_present": True,
+                    "source_contract_present": True,
+                    "landing_contract_present": False,
+                    "ledger_contract_present": False,
+                    "fixture_receipt_snapshot_present": False,
+                },
+                "graph_mutation_evidence_emitted_not_landed",
+            ),
+            (
+                {
+                    "requested": True,
+                    "wrapper_available": True,
+                    "state_graph_present": True,
+                    "source_contract_present": True,
+                    "landing_contract_present": True,
+                    "ledger_contract_present": False,
+                    "fixture_receipt_snapshot_present": False,
+                },
+                "graph_mutation_landed_without_receipt_ledger",
+            ),
+            (
+                {
+                    "requested": True,
+                    "wrapper_available": True,
+                    "state_graph_present": True,
+                    "source_contract_present": True,
+                    "landing_contract_present": True,
+                    "ledger_contract_present": True,
+                    "fixture_receipt_snapshot_present": False,
+                },
+                "graph_mutation_landed_with_receipt_snapshot",
+            ),
+        )
+
+        for kwargs, expected in cases:
+            with self.subTest(kwargs=kwargs):
+                self.assertEqual(
+                    self.observe_module.graph_evidence_classification(**kwargs),
+                    expected,
+                )
+
     def test_graph_fixture_report_mode_is_report_only(self) -> None:
         for token in (
             "--graph-fixture-report",
