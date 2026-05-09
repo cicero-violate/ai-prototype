@@ -143,6 +143,30 @@ class ObserveValidationContractTest(unittest.TestCase):
         ):
             self.assertIn(token, self.script)
 
+    def test_connector_failure_classification_is_emitted(self) -> None:
+        for token in (
+            "connector_failure_classification_present",
+            "connector_failure_present",
+            "connector_failure_status",
+            "connector_failure_classes",
+            "connector_transport_instability_present",
+            "missing_connector_failure_classification",
+            "connector_failure_class",
+            "environment_failure",
+            "command_timeout",
+        ):
+            self.assertIn(token, self.script)
+
+    def test_ignored_artifact_counts_are_emitted(self) -> None:
+        for token in (
+            "ignored_artifact_count",
+            "ignored_target_artifact_count",
+            "ignored_runtime_artifact_count",
+            "ignored_validation_artifact_count",
+            "git status --ignored",
+        ):
+            self.assertIn(token, self.script)
+
     def test_router_tests_are_not_required_when_unavailable(self) -> None:
         self.assertIn('missing_router_offline_tests', self.script)
         self.assertIn('if router_test.get("available"):', self.script)

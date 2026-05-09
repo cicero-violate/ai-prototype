@@ -4,7 +4,7 @@
 
 Canon Agent is a Rust prototype for a deterministic, auditable, self-improving agent runtime. The target architecture remains a formally constrained state-machine kernel with a capability layer around it. The kernel owns correctness, state transitions, durable records, replay boundaries, and audit evidence. LLMs and tools operate inside the capability layer and must produce typed, reviewable evidence rather than governing the runtime directly.
 
-Current implementation snapshot, 2026-05-08 23:43:56 EDT America/Toronto / 2026-05-09T03:43:56Z UTC:
+Current implementation snapshot, 2026-05-09 00:00:31 EDT America/Toronto / 2026-05-09T04:00:31Z UTC:
 
 - Branch: `main`.
 - Latest visible prior commit before this implementation turn: `8f3a15a Update Canon Agent planning and scoring`.
@@ -69,12 +69,18 @@ Fresh validation evidence from implementation step 1:
    - Format, lib tests, and clippy have been refreshed and passed with exit `0`.
    - Correctness, robustness, and determinism score ceilings may be raised from this point.
 
-### P1 — Make validation evidence first-class
+### P1 — Make validation evidence first-class — complete
 
-1. Strengthen observe-validation reporting under ignored `target/observe/validation-report.ndjson`.
-2. Include git hygiene, command outcomes, graph telemetry presence/absence, runtime archive counts, ignored artifact counts, and missing-signal flags.
-3. Keep score updates evidence-backed; raise correctness/robustness/determinism only from fresh passing gates.
-4. Add explicit connector-failure classification to validation reporting so a completed detached run can distinguish runtime pass from shell transport instability.
+1. Added source-backed observe-validation reporting under ignored `target/observe/validation-report.ndjson` via `scripts/observe_validation.sh`.
+2. The compact report now emits git hygiene, command outcomes, graph telemetry presence/absence, runtime archive counts, ignored artifact counts, missing-signal flags, and connector-failure classification fields.
+3. Restored source-backed helper validators and manifest writer scripts so validation evidence can be generated and consumed from tracked code instead of stale pycache artifacts.
+4. Added contract coverage for connector-failure classification and ignored artifact counts.
+5. Validation evidence from implementation step 2:
+   - `python3 -m unittest tests/test_observe_validation_contract.py tests/test_panic_surface_contract.py tests/test_policy_learning_trace_contract.py tests/test_write_delta_manifest.py` passed; 29 tests.
+   - `RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo fmt --check` passed.
+   - `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --lib -- --test-threads=1` passed; 191 tests.
+   - `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo clippy --all-targets -- -D warnings` passed.
+6. Observe smoke evidence emitted connector and missing-signal fields, but the full all-target command inside the smoke failed due environment quota pressure (`Disk quota exceeded` in the cargo-test log), not a semantic assertion failure.
 
 ### P2 — Agent loop reliability
 
@@ -102,15 +108,15 @@ Fresh validation evidence from implementation step 1:
 
 ## Next Execute-Turn Recommendation
 
-1. Begin P1 by making validation evidence first-class and compact enough for connector-limited runs.
-2. Preserve the current redirected validation-log pattern and exit-file pattern for expensive checks.
-3. Add/extend tests for validation report contents before changing behavior.
-4. Keep generated validation logs ignored and out of commits.
-5. Run `cargo fmt --check`, targeted tests for validation reporting, and `cargo clippy --all-targets -- -D warnings` after P1 changes.
+1. Begin P2 by hardening agent-loop retry behavior and evidence preservation.
+2. Add fixtures for truncated streams, missing `[DONE]`, missing `message_stream_complete`, and length-finished output.
+3. Keep generated validation logs ignored and preserve the compact report/exit-file pattern for expensive checks.
+4. Continue using `TMPDIR="$PWD/target/test-tmp"` for Rust tests in quota-sensitive sandboxes.
+5. Run targeted loop-mode tests, `cargo fmt --check`, `cargo test --lib -- --test-threads=1`, and `cargo clippy --all-targets -- -D warnings` after P2 changes.
 
 ## Planning-Turn Handoff
 
-P0 is complete. The correct next move is P1 validation-evidence reporting, not additional broad runtime architecture. The implementation batch that had been pending across multiple planning-only turns is now validated and should be committed with this turn's planning/scoring updates.
+P0 and P1 are complete. The correct next move is P2 agent-loop reliability, specifically retry and stream-completion evidence preservation.
 
 ## Current Non-Goals
 

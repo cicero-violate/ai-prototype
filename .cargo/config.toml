@@ -1,9 +1,9 @@
 [build]
 # This config must not force a host-specific rustc binary or wrapper. Build the
 # wrapper, then opt in per run:
+# CANON_RUSTC_WRAPPER=/path/to/canon-rustc-v3 \
 # CANON_RUSTC_V3_ARTIFACT_DIR=state/rustc \
 # RUSTC_WRAPPER="$PWD/target/debug/canon-rustc-v3" cargo check
-rustc-wrapper = "canon-rustc-v3/target/debug/canon-rustc-v3"
 
 rustflags = [
 "-Dwarnings",
