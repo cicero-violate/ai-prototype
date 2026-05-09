@@ -2814,3 +2814,93 @@ Current risks / gaps:
 - Live graph telemetry still requires deliberate wrapper and artifact-dir inputs.
 - This step is test/assertion hardening only; it does not add new runtime capabilities.
 ```
+
+## Implementation Step 3 - External/Semantic Preserved Manifest Metric Exactness
+
+Completed work:
+
+```text
+- Read the latest plan.md and score.md state.
+- Confirmed the repository was clean at turn start.
+- Inspected scripts/write_delta_manifest.py preserved summary keys and delta manifest tests.
+- Identified partial exact-once coverage for external observation stream, external API action, and semantic artifact verification preserved metrics.
+- Expanded the focused delta-manifest test to assert exact-once rendering for the full external/API/semantic preserved metric family.
+- Made no runtime behavior changes.
+```
+
+Validation evidence captured this turn:
+
+```text
+command: python3 -m py_compile scripts/write_delta_manifest.py tests/test_write_delta_manifest.py
+exit: 0
+log: target/validation-logs/py-compile-external-semantic-preserved-metrics-impl-step3.log
+exit file: target/validation-logs/py-compile-external-semantic-preserved-metrics-impl-step3.exit
+```
+
+```text
+command: python3 -m unittest tests.test_write_delta_manifest
+exit: 0
+result: 24 passed; 0 failed
+log: target/validation-logs/write-delta-manifest-external-semantic-preserved-metrics-impl-step3.log
+exit file: target/validation-logs/write-delta-manifest-external-semantic-preserved-metrics-impl-step3.exit
+```
+
+```text
+command: TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test planning_contract -- --test-threads=1
+exit: 0
+result: 2 passed; 0 failed
+log: target/validation-logs/planning-contract-external-semantic-preserved-metrics-impl-step3.log
+exit file: target/validation-logs/planning-contract-external-semantic-preserved-metrics-impl-step3.exit
+```
+
+```text
+command: TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test score_contract -- --test-threads=1
+exit: 0
+result: 5 passed; 0 failed
+log: target/validation-logs/score-contract-external-semantic-preserved-metrics-impl-step3.log
+exit file: target/validation-logs/score-contract-external-semantic-preserved-metrics-impl-step3.exit
+```
+
+Score update:
+
+```text
+I  Intelligence      = 7.0
+E  Efficiency        = 7.92
+C  Correctness       = 9.980
+A  Alignment         = 8.8
+R  Robustness        = 10.0
+P  Performance       = 6.45
+S  Scalability       = 6.82
+D  Determinism       = 9.731
+T  Transparency      = 10.0
+Co Collaboration     = 8.0
+Em Empowerment       = 7.8
+B  Benefit           = 8.1
+L  Learning          = 7.1
+St Structure         = 9.75
+Si Simplicity        = 7.36
+F  Future-Proofing   = 9.320
+```
+
+Approximate geometric mean:
+
+```text
+G ≈ 8.33 / 10
+```
+
+Rationale:
+
+```text
+- Correctness improves slightly because external/API/semantic preserved metrics now have complete exact manifest rendering checks in their focused fixture.
+- Determinism improves slightly because duplicate rendering for these external evidence metrics now fails focused unit coverage.
+- Future-proofing improves slightly because future metric drift in this preserved family has a stronger regression guard.
+- Runtime behavior and performance remain unchanged.
+```
+
+Current risks / gaps:
+
+```text
+- No fresh live wrapper-configured observe-validation evidence was captured.
+- Live graph telemetry still requires deliberate wrapper and artifact-dir inputs.
+- This step is test/assertion hardening only; it does not add new runtime capabilities.
+```

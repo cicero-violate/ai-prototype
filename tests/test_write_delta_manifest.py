@@ -504,9 +504,15 @@ class DeltaManifestTest(unittest.TestCase):
         self.assert_manifest_metrics_render_once(
             manifest,
             (
+                "external_observation_stream_test_present",
                 "external_observation_stream_evidence_files",
+                "external_observation_stream_evidence_tokens",
+                "external_api_action_test_present",
+                "external_api_action_evidence_files",
                 "external_api_action_evidence_tokens",
+                "semantic_artifact_verification_test_present",
                 "semantic_artifact_verification_evidence_files",
+                "semantic_artifact_verification_evidence_tokens",
             ),
         )
 
