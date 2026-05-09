@@ -2730,3 +2730,57 @@ Candidate priorities:
 ```
 
 Do not make compact replay modes depend on live wrapper validation.
+
+## Completed Execution Slice After Full Summary Graph Missing-Flag Step 5
+
+Completed compact full-summary missing-signal consistency for graph workflow fixture validation evidence.
+
+Implementation details:
+
+```text
+- Added missing_graph_workflow_fixture_receipt_snapshot=false to compact full_summary_report() missing_signal_flags.
+- Updated observe-validation compact full-summary coverage to assert the graph workflow fixture receipt-snapshot missing flag is explicitly false.
+- Updated delta-manifest compact full-summary receiver coverage to assert the flag is preserved in both synthetic and actual --full-summary-report artifact paths.
+- Preserved compact artifact-only replay behavior and wrapper isolation.
+```
+
+This closes a source-inspected compact summary consistency gap: compact full-summary now requires graph_workflow_fixture_validation and also records that the corresponding graph fixture receipt-snapshot signal is not missing.
+
+## Validation Evidence From Full Summary Graph Missing-Flag Step 5
+
+```text
+command: python3 -m py_compile scripts/observe_validation.sh tests/test_observe_validation_contract.py tests/test_write_delta_manifest.py scripts/write_delta_manifest.py
+exit: 0
+log: target/validation-logs/py-compile-full-summary-graph-missing-flag-step5.log
+exit file: target/validation-logs/py-compile-full-summary-graph-missing-flag-step5.exit
+```
+
+```text
+command: python3 -m unittest tests.test_observe_validation_contract
+exit: 0
+result: 40 passed; 0 failed
+log: target/validation-logs/observe-validation-contract-full-summary-graph-missing-flag-step5.log
+exit file: target/validation-logs/observe-validation-contract-full-summary-graph-missing-flag-step5.exit
+```
+
+```text
+command: python3 -m unittest tests.test_write_delta_manifest
+exit: 0
+result: 23 passed; 0 failed
+log: target/validation-logs/write-delta-manifest-full-summary-graph-missing-flag-step5.log
+exit file: target/validation-logs/write-delta-manifest-full-summary-graph-missing-flag-step5.exit
+```
+
+## Next Execution Slice After Full Summary Graph Missing-Flag Step 5
+
+No additional deterministic branch is currently identified. Continue only when a new compact receiver field, live-wrapper prerequisite, or source-inspected failure branch appears.
+
+Candidate priorities:
+
+```text
+1. Capture live wrapper-configured observe-validation evidence only when CANON_RUSTC_WRAPPER and CANON_RUSTC_V3_ARTIFACT_DIR are deliberately available for a clean non-compact run.
+2. Add compact receiver manifest exact-once checks only if a future compact receiver workflow introduces new metric keys or rendering semantics.
+3. Add deterministic failure-classification coverage only for newly identified uncovered branches.
+```
+
+Do not make compact replay modes depend on live wrapper validation.

@@ -603,6 +603,7 @@ def full_summary_report() -> dict[str, Any]:
         "missing_cargo_test": False,
         "missing_panic_surface_validation": False,
         "missing_policy_learning_replay_trace": False,
+        "missing_graph_workflow_fixture_receipt_snapshot": False,
         "missing_runtime_performance_signal": False,
         "missing_runtime_manifest_base_match": False,
         "missing_runtime_download_index": False,

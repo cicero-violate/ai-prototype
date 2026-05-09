@@ -531,6 +531,7 @@ class ObserveValidationContractTest(unittest.TestCase):
             self.assertEqual(row["command_execution_status"], "pass")
             self.assertEqual(row["missing_signal_status"], "pass")
             self.assertEqual(row["missing_signal_count"], 0)
+            self.assertFalse(row["missing_signal_flags"]["missing_graph_workflow_fixture_receipt_snapshot"])
             self.assertEqual(row["runtime_archive_evidence_source"], "compact_report")
             self.assertTrue(row["runtime_manifest_base_matches_delta_base"])
             self.assertEqual(row["connector_transport_artifact_classification"], "transport_interrupted_artifacts_complete")

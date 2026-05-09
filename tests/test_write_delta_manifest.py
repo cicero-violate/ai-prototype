@@ -476,6 +476,7 @@ class DeltaManifestTest(unittest.TestCase):
             "missing_signal_flags": {
                 "missing_cargo_test": False,
                 "missing_runtime_manifest_base_match": False,
+                "missing_graph_workflow_fixture_receipt_snapshot": False,
             },
             "runtime_archive_evidence_source": "compact_report",
             "runtime_archive_report_status": "pass",
@@ -493,6 +494,7 @@ class DeltaManifestTest(unittest.TestCase):
         manifest = self.out.read_text(encoding="utf-8")
         self.assertEqual(receipt["validation_command_count"], 4)
         self.assertEqual(receipt["validation_test_count"], 4)
+        self.assertFalse(receipt["missing_signal_flags"]["missing_graph_workflow_fixture_receipt_snapshot"])
         self.assertIn("graph_workflow_fixture_validation", {command["name"] for command in receipt["validation_commands"]})
         self.assertEqual(receipt["connector_transport_artifact_classification"], "transport_interrupted_artifacts_complete")
         self.assertTrue(receipt["runtime_manifest_base_matches_delta_base"])
@@ -559,6 +561,7 @@ class DeltaManifestTest(unittest.TestCase):
         self.assertEqual(receipt["validation_status"], "pass")
         self.assertEqual(receipt["command_execution_status"], "pass")
         self.assertEqual(receipt["missing_signal_status"], "pass")
+        self.assertFalse(receipt["missing_signal_flags"]["missing_graph_workflow_fixture_receipt_snapshot"])
         self.assertEqual(receipt["runtime_archive_evidence_source"], "compact_report")
         self.assertEqual(
             receipt["connector_transport_artifact_classification"],
