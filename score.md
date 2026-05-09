@@ -334,3 +334,109 @@ Immediate next action:
 
 Search for live wrapper-configured observe-validation evidence when prerequisites are available, or keep implementation limited to newly identified deterministic uncovered branches.
 
+## Implementation Step 2 — Command Fixture Refactor
+
+Date: 2026-05-09 America/Toronto / 2026-05-09 UTC
+Turn type: implementation step 2 after API server TLogIo persistence coverage
+Scope executed: behavior-preserving test fixture refactor for command-normalization manifest tests.
+
+Current timestamp evidence:
+
+```text
+branch: main
+latest visible commit before this implementation turn: 5792cc2 Add API server TLog persistence failure coverage
+working directory: /workspace/ai_sandbox/canon-mini-agent/prototype/ai
+working tree at turn start: clean
+```
+
+Implementation, test, and planning/scoring files owned by this turn:
+
+```text
+tests/test_write_delta_manifest.py
+plan.md
+score.md
+```
+
+Generated validation logs and exit files remain ignored and are not committed.
+
+Score movement: structure and simplicity improve slightly because repeated command-normalization fixtures were consolidated while preserving focused exact-value assertions. Correctness remains unchanged because this turn did not alter production manifest behavior.
+
+```text
+I  Intelligence      = 7.0
+E  Efficiency        = 7.91
+C  Correctness       = 9.89
+A  Alignment         = 8.8
+R  Robustness        = 10.0
+P  Performance       = 6.45
+S  Scalability       = 6.82
+D  Determinism       = 9.63
+T  Transparency      = 10.0
+Co Collaboration     = 8.0
+Em Empowerment       = 7.8
+B  Benefit           = 8.1
+L  Learning          = 7.1
+St Structure         = 9.75
+Si Simplicity        = 7.36
+F  Future-Proofing   = 9.20
+```
+
+Approximate geometric mean:
+
+```text
+G ≈ 8.32 / 10
+```
+
+Completed work this turn:
+
+- Read the latest `plan.md` and `score.md` state.
+- Determined that live wrapper-configured observe-validation evidence is still not a safe deterministic implementation target in this environment.
+- Selected the remaining concrete plan item: reduce duplicated command-normalization test boilerplate without changing behavior.
+- Added `validation_command_fixture()` and `validation_summary_fixture()` to `tests/test_write_delta_manifest.py`.
+- Replaced repeated command dictionaries in duplicate summary-command and validation_command-row tests.
+- Preserved exact receipt and manifest metric assertions.
+
+Validation evidence captured this turn:
+
+```text
+command: python3 -m py_compile tests/test_write_delta_manifest.py scripts/write_delta_manifest.py
+exit: 0
+log: target/validation-logs/py-compile-command-fixture-refactor-step2.log
+exit file: target/validation-logs/py-compile-command-fixture-refactor-step2.exit
+```
+
+```text
+command: python3 -m unittest tests.test_write_delta_manifest
+exit: 0
+result: 23 passed; 0 failed
+log: target/validation-logs/write-delta-manifest-command-fixture-refactor-step2.log
+exit file: target/validation-logs/write-delta-manifest-command-fixture-refactor-step2.exit
+```
+
+Planning/scoring contract validation after documentation updates:
+
+```text
+command: RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test planning_contract -- --test-threads=1
+exit: 0
+result: 2 passed; 0 failed
+log: target/validation-logs/planning-contract-command-fixture-refactor-step2.log
+exit file: target/validation-logs/planning-contract-command-fixture-refactor-step2.exit
+```
+
+```text
+command: RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test score_contract -- --test-threads=1
+exit: 0
+result: 5 passed; 0 failed
+log: target/validation-logs/score-contract-command-fixture-refactor-step2.log
+exit file: target/validation-logs/score-contract-command-fixture-refactor-step2.exit
+```
+
+Current risks / gaps:
+
+- No fresh live wrapper-configured observe-validation run has been captured in this environment.
+- Compact receiver manifest exact-once checks are current for existing metric keys; no new receiver workflow was introduced in this turn.
+- Future command-normalization behavior changes must still preserve exact rendered-value and exact-once manifest checks.
+
+Immediate next action:
+
+Wait for a concrete missing-evidence branch or available live wrapper-configured observe-validation prerequisites before making additional implementation changes.
+

@@ -61,6 +61,40 @@ def expected_command_normalization_metrics(
     }
 
 
+def validation_command_fixture(*, event: bool = False, duration_ms: int = 7) -> dict:
+    command = {
+        "name": "unit",
+        "cmd": ["python3", "-m", "unittest"],
+        "status": "pass",
+        "exit_code": 0,
+        "duration_ms": duration_ms,
+        "timed_out": False,
+        "connector_failure_class": "none",
+    }
+    if event:
+        command["event"] = "validation_command"
+    return command
+
+
+def validation_summary_fixture(
+    *,
+    head: str,
+    command_count: int,
+    test_count: int = 2,
+    commands: list[dict] | None = None,
+) -> dict:
+    summary = {
+        "event": "validation_summary",
+        "git_head": head,
+        "validation_status": "pass",
+        "validation_command_count": command_count,
+        "validation_test_count": test_count,
+    }
+    if commands is not None:
+        summary["validation_commands"] = commands
+    return summary
+
+
 class DeltaManifestTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
@@ -771,15 +805,7 @@ class DeltaManifestTest(unittest.TestCase):
         self.assertIn("conflicting validation command evidence", done.stderr)
 
     def test_accepts_duplicate_summary_commands_with_distinct_count(self) -> None:
-        command = {
-            "name": "unit",
-            "cmd": ["python3", "-m", "unittest"],
-            "status": "pass",
-            "exit_code": 0,
-            "duration_ms": 7,
-            "timed_out": False,
-            "connector_failure_class": "none",
-        }
+        command = validation_command_fixture()
         self.write_report(
             commands=[command, command],
             command_count=1,
@@ -815,15 +841,7 @@ class DeltaManifestTest(unittest.TestCase):
         )
 
     def test_rejects_duplicate_summary_commands_with_inflated_count(self) -> None:
-        command = {
-            "name": "unit",
-            "cmd": ["python3", "-m", "unittest"],
-            "status": "pass",
-            "exit_code": 0,
-            "duration_ms": 7,
-            "timed_out": False,
-            "connector_failure_class": "none",
-        }
+        command = validation_command_fixture()
         self.write_report(
             commands=[command, command],
             command_count=2,
@@ -835,17 +853,8 @@ class DeltaManifestTest(unittest.TestCase):
         self.assertIn("validation_command_count 2 != command rows 1", done.stderr)
 
     def test_rejects_conflicting_duplicate_summary_commands(self) -> None:
-        first = {
-            "name": "unit",
-            "cmd": ["python3", "-m", "unittest"],
-            "status": "pass",
-            "exit_code": 0,
-            "duration_ms": 7,
-            "timed_out": False,
-            "connector_failure_class": "none",
-        }
-        second = dict(first)
-        second["duration_ms"] = 8
+        first = validation_command_fixture()
+        second = validation_command_fixture(duration_ms=8)
         self.write_report(
             commands=[first, second],
             command_count=2,
@@ -857,23 +866,8 @@ class DeltaManifestTest(unittest.TestCase):
         self.assertIn("conflicting summary validation_commands command evidence for command unit", done.stderr)
 
     def test_accepts_duplicate_validation_command_rows_with_distinct_count(self) -> None:
-        command = {
-            "event": "validation_command",
-            "name": "unit",
-            "cmd": ["python3", "-m", "unittest"],
-            "status": "pass",
-            "exit_code": 0,
-            "duration_ms": 7,
-            "timed_out": False,
-            "connector_failure_class": "none",
-        }
-        summary = {
-            "event": "validation_summary",
-            "git_head": self.head,
-            "validation_status": "pass",
-            "validation_command_count": 1,
-            "validation_test_count": 2,
-        }
+        command = validation_command_fixture(event=True)
+        summary = validation_summary_fixture(head=self.head, command_count=1)
         self.report.write_text(
             "\n".join(json.dumps(row) for row in [command, command, summary]) + "\n",
             encoding="utf-8",
@@ -908,23 +902,8 @@ class DeltaManifestTest(unittest.TestCase):
         )
 
     def test_rejects_duplicate_validation_command_rows_with_inflated_count(self) -> None:
-        command = {
-            "event": "validation_command",
-            "name": "unit",
-            "cmd": ["python3", "-m", "unittest"],
-            "status": "pass",
-            "exit_code": 0,
-            "duration_ms": 7,
-            "timed_out": False,
-            "connector_failure_class": "none",
-        }
-        summary = {
-            "event": "validation_summary",
-            "git_head": self.head,
-            "validation_status": "pass",
-            "validation_command_count": 2,
-            "validation_test_count": 2,
-        }
+        command = validation_command_fixture(event=True)
+        summary = validation_summary_fixture(head=self.head, command_count=2)
         self.report.write_text(
             "\n".join(json.dumps(row) for row in [command, command, summary]) + "\n",
             encoding="utf-8",
@@ -935,25 +914,9 @@ class DeltaManifestTest(unittest.TestCase):
         self.assertIn("validation_command_count 2 != command rows 1", done.stderr)
 
     def test_rejects_conflicting_duplicate_validation_command_rows(self) -> None:
-        first = {
-            "event": "validation_command",
-            "name": "unit",
-            "cmd": ["python3", "-m", "unittest"],
-            "status": "pass",
-            "exit_code": 0,
-            "duration_ms": 7,
-            "timed_out": False,
-            "connector_failure_class": "none",
-        }
-        second = dict(first)
-        second["duration_ms"] = 8
-        summary = {
-            "event": "validation_summary",
-            "git_head": self.head,
-            "validation_status": "pass",
-            "validation_command_count": 2,
-            "validation_test_count": 2,
-        }
+        first = validation_command_fixture(event=True)
+        second = validation_command_fixture(event=True, duration_ms=8)
+        summary = validation_summary_fixture(head=self.head, command_count=2)
         self.report.write_text(
             "\n".join(json.dumps(row) for row in [first, second, summary]) + "\n",
             encoding="utf-8",
