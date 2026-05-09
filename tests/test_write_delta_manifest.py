@@ -713,6 +713,9 @@ class DeltaManifestTest(unittest.TestCase):
         self.assertEqual(receipt["policy_learning_trace_missing_count"], 0)
         self.assertEqual(receipt["panic_surface_production_unwrap_count"], 0)
         self.assertEqual(receipt["panic_surface_test_total"], 319)
+        self.assertEqual(receipt["external_observation_stream_evidence_files"], ["src/api/protocol.rs"])
+        self.assertTrue(receipt["external_api_action_test_present"])
+        self.assertIn("SemanticVerificationReceipt", receipt["semantic_artifact_verification_evidence_tokens"])
         self.assertEqual(receipt["router_test_count"], 0)
         self.assert_compact_full_summary_command_receipt(receipt)
         for command in receipt["validation_commands"]:
@@ -730,6 +733,9 @@ class DeltaManifestTest(unittest.TestCase):
             "policy_learning_trace_missing_count": 0,
             "panic_surface_production_unwrap_count": 0,
             "panic_surface_test_total": 319,
+            "external_observation_stream_test_present": True,
+            "external_api_action_test_present": True,
+            "semantic_artifact_verification_test_present": True,
             "router_test_count": 0,
             "connector_transport_artifact_classification": "transport_interrupted_artifacts_complete",
             "runtime_manifest_base_matches_delta_base": True,
@@ -763,9 +769,21 @@ class DeltaManifestTest(unittest.TestCase):
                 "panic_surface_production_panic_count",
                 "panic_surface_test_total",
                 "panic_surface_example_total",
+                "external_observation_stream_test_present",
+                "external_observation_stream_evidence_files",
+                "external_observation_stream_evidence_tokens",
+                "external_api_action_test_present",
+                "external_api_action_evidence_files",
+                "external_api_action_evidence_tokens",
+                "semantic_artifact_verification_test_present",
+                "semantic_artifact_verification_evidence_files",
+                "semantic_artifact_verification_evidence_tokens",
                 "router_test_count",
             ),
         )
+        self.assertIn("ObservationCursor", manifest)
+        self.assertIn("CommandEnvelope::new", manifest)
+        self.assertIn("SemanticVerificationReceipt", manifest)
         self.assert_compact_full_summary_manifest_commands(manifest)
         self.assert_compact_full_summary_command_normalization(receipt, manifest)
 

@@ -561,6 +561,21 @@ class ObserveValidationContractTest(unittest.TestCase):
             self.assertEqual(row["policy_learning_trace_missing_count"], 0)
             self.assertEqual(row["panic_surface_production_unwrap_count"], 0)
             self.assertEqual(row["panic_surface_test_total"], 319)
+            self.assertTrue(row["external_observation_stream_test_present"])
+            self.assertEqual(row["external_observation_stream_evidence_files"], ["src/api/protocol.rs"])
+            self.assertIn("ObservationCursor", row["external_observation_stream_evidence_tokens"])
+            self.assertTrue(row["external_api_action_test_present"])
+            self.assertEqual(row["external_api_action_evidence_files"], ["src/api/protocol.rs"])
+            self.assertIn("CommandEnvelope::new", row["external_api_action_evidence_tokens"])
+            self.assertTrue(row["semantic_artifact_verification_test_present"])
+            self.assertEqual(
+                row["semantic_artifact_verification_evidence_files"],
+                ["src/capability/verification/semantic.rs"],
+            )
+            self.assertIn(
+                "SemanticVerificationReceipt",
+                row["semantic_artifact_verification_evidence_tokens"],
+            )
             self.assertEqual(row["router_test_count"], 0)
             self.assertEqual(row["connector_transport_artifact_classification"], "transport_interrupted_artifacts_complete")
             self.assertTrue(row["connector_transport_report_complete"])

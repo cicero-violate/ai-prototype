@@ -7,13 +7,13 @@ Canon Agent is a Rust prototype for a deterministic, auditable, self-improving a
 Current implementation snapshot, 2026-05-09 America/Toronto / 2026-05-09 UTC:
 
 - Branch: `main`.
-- Latest visible commit before this implementation turn: `682ea9a Preserve full summary router test count`.
+- Latest visible commit before this implementation turn: `1d1f09c Preserve full summary policy panic evidence`.
 - Working directory: `/workspace/ai_sandbox/canon-mini-agent/prototype/ai`.
 - P0 validation baseline is complete.
 - P1 validation evidence reporting is complete.
 - P2 agent loop reliability is complete.
 - P3 runtime and receipt correctness is complete for the current scope.
-- P4 graph source-of-truth integration now includes persisted graph evidence classification, deterministic fixture-backed positive evidence for landed graph mutations with receipt snapshots, command-sequenced workflow fixture validation, a compact graph-only report mode, documented/tested root runtime, wrapper, and editor subproject boundaries, a standalone graph workflow fixture validator consumed by observe-validation, full observe-validation command evidence for that validator, explicit wrapper telemetry configuration classification, normal-path observe-validation summary evidence for graph fixture, wrapper configuration, receipt replay classification, and missing-signal coherence, executable configured-wrapper classifier branch coverage, source-derived runtime performance signal evidence from observe-validation command durations, runtime archive missing-signal derivation from inspected archive contents, runtime manifest base-match derivation from archived manifest metadata, explicit router/offline availability classification in observe-validation summary evidence, optional wrapper graph validation missing-signal derivation, generated graph JSON evidence classification, compact runtime archive report integration, separated validation status fields, compact command-execution reports, connector transport artifact classification, delta manifest preservation of transport artifact state, compact full-summary artifact replay, actual full-summary artifact manifest generation, row command fallback preservation, summary/row command conflict rejection, command execution metadata conflict rejection, and duplicate row command conflict rejection, and distinct command-count closure for exact duplicate row evidence, and duplicate command-name closure for summary-provided validation commands, and explicit command evidence normalization metadata in receipts and manifests, and actual compact full-summary artifact coverage for command normalization metadata, and exact-once manifest rendering checks for command normalization metrics. The working tree was clean at the start of implementation step 3 after full-summary router test count preservation.
+- P4 graph source-of-truth integration now includes persisted graph evidence classification, deterministic fixture-backed positive evidence for landed graph mutations with receipt snapshots, command-sequenced workflow fixture validation, a compact graph-only report mode, documented/tested root runtime, wrapper, and editor subproject boundaries, a standalone graph workflow fixture validator consumed by observe-validation, full observe-validation command evidence for that validator, explicit wrapper telemetry configuration classification, normal-path observe-validation summary evidence for graph fixture, wrapper configuration, receipt replay classification, and missing-signal coherence, executable configured-wrapper classifier branch coverage, source-derived runtime performance signal evidence from observe-validation command durations, runtime archive missing-signal derivation from inspected archive contents, runtime manifest base-match derivation from archived manifest metadata, explicit router/offline availability classification in observe-validation summary evidence, optional wrapper graph validation missing-signal derivation, generated graph JSON evidence classification, compact runtime archive report integration, separated validation status fields, compact command-execution reports, connector transport artifact classification, delta manifest preservation of transport artifact state, compact full-summary artifact replay, actual full-summary artifact manifest generation, row command fallback preservation, summary/row command conflict rejection, command execution metadata conflict rejection, and duplicate row command conflict rejection, and distinct command-count closure for exact duplicate row evidence, and duplicate command-name closure for summary-provided validation commands, and explicit command evidence normalization metadata in receipts and manifests, and actual compact full-summary artifact coverage for command normalization metadata, and exact-once manifest rendering checks for command normalization metrics. The working tree was clean at the start of implementation step 4 after full-summary policy/panic evidence preservation.
 
 ## Current P4 Completion Summary
 
@@ -25,7 +25,7 @@ The current source-of-truth plan state is:
 4. Connector transport artifact classification is landed and distinguishes complete versus incomplete artifacts after transport interruption.
 5. Delta manifests preserve connector transport artifact evidence, so downstream receipts do not rely only on `connector_transport_instability_present`.
 
-Current next implementation target: continue P4 only if source inspection exposes another deterministic evidence/reporting gap, partial exact-value or exact-once manifest metric family, compact receiver semantic drift risk, or behavior-preserving test-helper cleanup that improves clarity without weakening assertions. The compact full-summary report now emits and preserves explicit zero-count runtime archive delta-receipt/audit metrics, explicit router_test_count evidence, and explicit policy-learning/panic-surface evidence.
+Current next implementation target: continue P4 only if source inspection exposes another deterministic evidence/reporting gap, partial exact-value or exact-once manifest metric family, compact receiver semantic drift risk, or behavior-preserving test-helper cleanup that improves clarity without weakening assertions. The compact full-summary report now emits and preserves explicit zero-count runtime archive delta-receipt/audit metrics, explicit router_test_count evidence, explicit policy-learning/panic-surface evidence, and explicit external/semantic surface evidence.
 
 
 ## Planning Turn Refresh - 2026-05-09
@@ -4249,6 +4249,74 @@ exit: 0
 result: 5 passed; 0 failed
 log: target/validation-logs/score-contract-full-summary-policy-panic-impl-step3.log
 exit file: target/validation-logs/score-contract-full-summary-policy-panic-impl-step3.exit
+```
+
+Next execution slice:
+
+```text
+Continue P4 only if source inspection exposes another preserved metric/missing-signal family with incomplete emission, receipt preservation, exact manifest value coverage, or exact-once rendering coverage.
+Otherwise proceed only if:
+1. deliberate CANON_RUSTC_WRAPPER and CANON_RUSTC_V3_ARTIFACT_DIR inputs are available for live wrapper validation;
+2. compact receiver artifacts gain a new field, metric key, missing flag, or rendering semantic;
+3. source inspection exposes an uncovered deterministic failure-classification, replay, persistence, API adapter, graph evidence, or report fallback branch;
+4. behavior-preserving test-helper cleanup improves evidence clarity without weakening explicit assertions.
+```
+
+## Completed Implementation Step 4 After Full-Summary Policy/Panic Evidence 1d1f09c
+
+Executed the next concrete plan trigger: compact full-summary preserved metric emission and exact receiver coverage for external observation, external API action, and semantic artifact evidence.
+
+Implementation details:
+
+```text
+- Re-read plan.md and score.md.
+- Confirmed the working tree was clean at turn start.
+- Inspected scripts/write_delta_manifest.py PRESERVED_SUMMARY_KEYS against observe-validation compact full-summary emission and actual full-summary artifact receiver tests.
+- Found that external_observation_stream_*, external_api_action_*, and semantic_artifact_verification_* preserved metrics had focused receiver coverage, but compact full-summary report mode did not emit them.
+- Updated scripts/observe_validation.sh full_summary_report() to emit deterministic compact external/semantic evidence files and token maps.
+- Strengthened tests/test_observe_validation_contract.py to assert compact full-summary report rows include representative external/semantic evidence values.
+- Strengthened tests/test_write_delta_manifest.py to assert the actual full-summary artifact receipt preserves those fields, includes representative tokens, and the generated manifest renders every external/semantic metric exactly once.
+```
+
+Behavior impact:
+
+```text
+- No runtime agent behavior changed.
+- Compact full-summary validation artifacts now preserve explicit external observation, external API action, and semantic artifact evidence instead of omitting those preserved evidence fields.
+- Downstream delta manifests have stronger exact-once coverage for actual compact full-summary external/semantic evidence.
+```
+
+Validation evidence:
+
+```text
+command: python3 -m py_compile scripts/observe_validation.sh scripts/write_delta_manifest.py tests/test_observe_validation_contract.py tests/test_write_delta_manifest.py
+exit: 0
+log: target/validation-logs/py-compile-full-summary-external-semantic-impl-step4.log
+exit file: target/validation-logs/py-compile-full-summary-external-semantic-impl-step4.exit
+```
+
+```text
+command: python3 -m unittest tests.test_write_delta_manifest tests.test_observe_validation_contract
+exit: 0
+result: 67 passed; 0 failed
+log: target/validation-logs/python-full-summary-external-semantic-impl-step4.log
+exit file: target/validation-logs/python-full-summary-external-semantic-impl-step4.exit
+```
+
+```text
+command: TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test planning_contract -- --test-threads=1
+exit: 0
+result: 2 passed; 0 failed
+log: target/validation-logs/planning-contract-full-summary-external-semantic-impl-step4.log
+exit file: target/validation-logs/planning-contract-full-summary-external-semantic-impl-step4.exit
+```
+
+```text
+command: TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test score_contract -- --test-threads=1
+exit: 0
+result: 5 passed; 0 failed
+log: target/validation-logs/score-contract-full-summary-external-semantic-impl-step4.log
+exit file: target/validation-logs/score-contract-full-summary-external-semantic-impl-step4.exit
 ```
 
 Next execution slice:

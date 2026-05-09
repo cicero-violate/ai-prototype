@@ -646,6 +646,23 @@ def full_summary_report() -> dict[str, Any]:
         "panic_surface_production_panic_count": 0,
         "panic_surface_test_total": 319,
         "panic_surface_example_total": 0,
+        "external_observation_stream_test_present": True,
+        "external_observation_stream_evidence_files": ["src/api/protocol.rs"],
+        "external_observation_stream_evidence_tokens": {
+            "ObservationCursor": ["src/api/protocol.rs"]
+        },
+        "external_api_action_test_present": True,
+        "external_api_action_evidence_files": ["src/api/protocol.rs"],
+        "external_api_action_evidence_tokens": {
+            "CommandEnvelope::new": ["src/api/protocol.rs"]
+        },
+        "semantic_artifact_verification_test_present": True,
+        "semantic_artifact_verification_evidence_files": [
+            "src/capability/verification/semantic.rs"
+        ],
+        "semantic_artifact_verification_evidence_tokens": {
+            "SemanticVerificationReceipt": ["src/capability/verification/semantic.rs"]
+        },
         "router_test_count": 0,
         "runtime_archive_evidence_source": "compact_report",
         "runtime_archive_report_present": True,
