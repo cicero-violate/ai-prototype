@@ -193,6 +193,36 @@ def graph_evidence_classification(
     return "graph_mutation_landed_with_receipt_snapshot"
 
 
+def router_offline_classification(router_test: dict[str, Any]) -> dict[str, Any]:
+    available = bool(router_test.get("available"))
+    status = str(router_test.get("status") or "unknown")
+    evidence_files = router_test.get("evidence_files") or []
+    if not isinstance(evidence_files, list):
+        evidence_files = []
+
+    if not available:
+        classification = "router_offline_unavailable"
+        reason = "router offline test harness is not configured in this environment"
+        missing = False
+    elif status == "pass":
+        classification = "router_offline_available_passed"
+        reason = "router offline test harness is available and passed"
+        missing = False
+    else:
+        classification = "router_offline_available_not_passed"
+        reason = "router offline test harness is available but did not pass"
+        missing = True
+
+    return {
+        "router_offline_test_available": available,
+        "router_offline_test_status": status,
+        "router_offline_test_classification": classification,
+        "router_offline_test_reason": reason,
+        "router_offline_test_evidence_files": evidence_files,
+        "router_offline_test_missing": missing,
+    }
+
+
 
 def numeric_values(values: list[Any]) -> list[int]:
     numbers: list[int] = []
@@ -542,10 +572,11 @@ def main() -> int:
         "missing_receipt_replay_classification_report": not evidence[
             "receipt_replay_classification_test_present"
         ],
-        "missing_router_offline_tests": True,
         "missing_connector_failure_classification": False,
     }
     router_test = {"available": False, "status": "skipped_env_missing"}
+    router_offline = router_offline_classification(router_test)
+    missing["missing_router_offline_tests"] = router_offline["router_offline_test_missing"]
     required = {"cargo_test_all_targets", "panic_surface_validation"}
     required.add("policy_learning_trace_validation")
     if router_test.get("available"):
@@ -574,6 +605,13 @@ def main() -> int:
         "connector_failure_status": connector_failure_status,
         "connector_failure_classes": connector_failure_classes,
         "connector_transport_instability_present": connector_transport_instability_present,
+        "router_offline_test_classification_present": True,
+        "router_offline_test_classification_options": [
+            "router_offline_unavailable",
+            "router_offline_available_passed",
+            "router_offline_available_not_passed",
+        ],
+        **router_offline,
         "receipt_replay_classification_present": evidence[
             "receipt_replay_classification_test_present"
         ],

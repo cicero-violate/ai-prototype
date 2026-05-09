@@ -4,16 +4,16 @@
 
 Canon Agent is a Rust prototype for a deterministic, auditable, self-improving agent runtime. The target architecture remains a formally constrained state-machine kernel with a capability layer around it. The kernel owns correctness, state transitions, durable records, replay boundaries, and audit evidence. LLMs and tools operate inside the capability layer and must produce typed, reviewable evidence rather than governing the runtime directly.
 
-Current planning snapshot, 2026-05-09 America/Toronto / 2026-05-09 UTC:
+Current implementation snapshot, 2026-05-09 America/Toronto / 2026-05-09 UTC:
 
 - Branch: `main`.
-- Latest visible commit before this planning turn: `441485d Derive runtime manifest base match`.
+- Latest visible commit before this implementation turn: `57c49b8 Update planning and scoring`.
 - Working directory: `/workspace/ai_sandbox/canon-mini-agent/prototype/ai`.
 - P0 validation baseline is complete.
 - P1 validation evidence reporting is complete.
 - P2 agent loop reliability is complete.
 - P3 runtime and receipt correctness is complete for the current scope.
-- P4 graph source-of-truth integration now includes persisted graph evidence classification, deterministic fixture-backed positive evidence for landed graph mutations with receipt snapshots, command-sequenced workflow fixture validation, a compact graph-only report mode, documented/tested root runtime, wrapper, and editor subproject boundaries, a standalone graph workflow fixture validator consumed by observe-validation, full observe-validation command evidence for that validator, explicit wrapper telemetry configuration classification, normal-path observe-validation summary evidence for graph fixture, wrapper configuration, receipt replay classification, and missing-signal coherence, executable configured-wrapper classifier branch coverage, source-derived runtime performance signal evidence from observe-validation command durations, runtime archive missing-signal derivation from inspected archive contents, and runtime manifest base-match derivation from archived manifest metadata.
+- P4 graph source-of-truth integration now includes persisted graph evidence classification, deterministic fixture-backed positive evidence for landed graph mutations with receipt snapshots, command-sequenced workflow fixture validation, a compact graph-only report mode, documented/tested root runtime, wrapper, and editor subproject boundaries, a standalone graph workflow fixture validator consumed by observe-validation, full observe-validation command evidence for that validator, explicit wrapper telemetry configuration classification, normal-path observe-validation summary evidence for graph fixture, wrapper configuration, receipt replay classification, and missing-signal coherence, executable configured-wrapper classifier branch coverage, source-derived runtime performance signal evidence from observe-validation command durations, runtime archive missing-signal derivation from inspected archive contents, runtime manifest base-match derivation from archived manifest metadata, and explicit router/offline availability classification in observe-validation summary evidence.
 
 ## Operating Rules For Agent Turns
 
@@ -178,12 +178,19 @@ Current planning snapshot, 2026-05-09 America/Toronto / 2026-05-09 UTC:
    - Added observe-validation contract coverage for archived manifest base extraction and matching behavior.
    - Ran observe-validation with an ignored synthetic runtime archive and `CANON_DELTA_BASE=base-step5`. The report confirmed `runtime_manifest_base_matches_delta_base=true`, `runtime_manifest_base_commit=base-step5`, `missing_runtime_manifest_base_match=false`, and `missing_signal_count=3`.
 
-15. **Next P4 slice — selected for next execution turn**
+15. **Classify router/offline missing-signal state — complete**
    - Keep wrapper telemetry optional unless `CANON_RUSTC_WRAPPER` or `CANON_RUSTC_V3_ARTIFACT_DIR` is configured.
    - If future graph implementation crosses subproject boundaries, update the boundary contract and test before changing behavior.
-   - Target the router/offline missing-signal gap next, because it can likely be converted from an unexplained required missing flag into a source-derived classification without requiring live wrapper telemetry.
-   - Preserve the current optional-wrapper semantics: absence of `CANON_RUSTC_WRAPPER` and `CANON_RUSTC_V3_ARTIFACT_DIR` must remain auditable but should not be conflated with graph fixture correctness.
-   - Prefer a narrow implementation that adds executable contract coverage for router/offline classification and updates observe-validation summary fields before changing validation status semantics.
+   - Added `router_offline_classification()` to classify router/offline state as `router_offline_unavailable`, `router_offline_available_passed`, or `router_offline_available_not_passed`.
+   - Observe-validation summary rows now emit router/offline classification status, reason, availability, evidence files, and classification options.
+   - `missing_router_offline_tests` now derives from the router/offline classifier instead of being hardcoded true.
+   - In the current environment, the router offline harness is unavailable, so summary evidence records `router_offline_unavailable`, `router_offline_test_status=skipped_env_missing`, and `missing_router_offline_tests=false` without requiring a live router harness.
+   - Added executable branch coverage for unavailable, available/pass, and available/fail classifier states.
+
+16. **Next P4 slice**
+   - Continue reducing known missing-signal gaps where evidence can be source-derived without weakening optional wrapper telemetry semantics.
+   - Candidate next target: clearer separation of optional wrapper telemetry and wrapper graph validation from required validation status when wrapper variables are unset.
+   - Preserve graph fixture, receipt replay, runtime archive, runtime manifest, router/offline, and performance evidence semantics while reducing remaining missing-signal count.
 
 ### P5 — Domain intelligence layer
 
@@ -221,24 +228,35 @@ result: validation_status=fail from forced short timeout/fail status; wrapper_gr
 log: target/validation-logs/full-observe-step8-timeout-smoke.log
 ```
 
-## Current Planning Turn Decision
+## Validation Evidence From Implementation Step 1
 
-This turn intentionally performs planning and scoring only. No implementation files should be changed.
+```text
+python3 -m unittest tests/test_observe_validation_contract.py
+exit: 0
+result: 24 passed; 0 failed
+log: target/validation-logs/observe-validation-contract-router-step1.log
+```
 
-Planned next execution slice:
+```text
+python3 -m py_compile scripts/observe_validation.sh tests/test_observe_validation_contract.py
+exit: 0
+log: target/validation-logs/py-compile-router-step1.log
+```
 
-1. Inspect the current observe-validation missing-signal calculation for router/offline evidence.
-2. Identify whether existing tests, fixtures, or command rows already prove router/offline coverage and can be surfaced as structured evidence.
-3. Add or update focused contract tests for any new classification fields.
-4. Keep wrapper telemetry optional and do not require a live wrapper-configured run for this slice.
-5. Re-run focused observe-validation contract tests, graph fixture report-only validation, and a normal or short-timeout observe-validation smoke as appropriate.
+```text
+CANON_OBSERVE_REPORT=target/observe/graph-fixture-report-router-step1.ndjson python3 scripts/observe_validation.sh --graph-fixture-report
+exit: 0
+result: validation_status=pass; graph_evidence_status=graph_mutation_landed_with_receipt_snapshot; graph_workflow_fixture_receipt_snapshot_present=true
+log: target/validation-logs/graph-fixture-report-router-step1.log
+```
 
-Success criteria for the next execution turn:
-
-- `missing_router_offline_tests` is either reduced through source-derived evidence or replaced by a clearer classification that distinguishes absent tests from not-applicable environment state.
-- Observe-validation summary rows expose the classification and supporting evidence fields.
-- Existing graph fixture, runtime archive, runtime manifest, receipt replay, and performance evidence fields remain stable.
-- All changes are backed by executable tests and committed with implementation, test, and score updates.
+```text
+CANON_TEST_TIMEOUT_SECONDS=1 CANON_OBSERVE_REPORT=target/observe/full-observe-router-step1-timeout-smoke.ndjson python3 scripts/observe_validation.sh
+connector result: 502 transport error during long command; ignored artifacts were produced
+exit file: target/validation-logs/full-observe-router-step1-timeout-smoke.exit = 1
+result: validation_status=fail from known unrelated missing signals; router/offline summary classification emitted
+summary: router_offline_test_classification=router_offline_unavailable; router_offline_test_status=skipped_env_missing; missing_router_offline_tests=false; missing_signal_count=6; graph_evidence_status=graph_mutation_landed_with_receipt_snapshot; graph_workflow_fixture_validation_result=pass; wrapper_graph_configuration_status=not_configured
+```
 
 ```text
 RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo fmt --check

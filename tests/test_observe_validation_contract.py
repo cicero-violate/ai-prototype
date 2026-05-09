@@ -392,6 +392,54 @@ class ObserveValidationContractTest(unittest.TestCase):
         self.assertIn('missing_router_offline_tests', self.script)
         self.assertIn('if router_test.get("available"):', self.script)
         self.assertIn('required.add("router_offline_tests")', self.script)
+        self.assertIn("def router_offline_classification(", self.script)
+        self.assertIn("router_offline_test_classification_present", self.script)
+        self.assertIn("router_offline_test_classification_options", self.script)
+        self.assertIn("router_offline_unavailable", self.script)
+        self.assertIn("router_offline_available_passed", self.script)
+        self.assertIn("router_offline_available_not_passed", self.script)
+        self.assertIn('missing["missing_router_offline_tests"] = router_offline["router_offline_test_missing"]', self.script)
+
+    def test_router_offline_classifier_executes_all_status_branches(self) -> None:
+        cases = (
+            (
+                {"available": False, "status": "skipped_env_missing"},
+                {
+                    "router_offline_test_available": False,
+                    "router_offline_test_status": "skipped_env_missing",
+                    "router_offline_test_classification": "router_offline_unavailable",
+                    "router_offline_test_reason": "router offline test harness is not configured in this environment",
+                    "router_offline_test_missing": False,
+                },
+            ),
+            (
+                {"available": True, "status": "pass", "evidence_files": ["tests/router_offline_contract.rs"]},
+                {
+                    "router_offline_test_available": True,
+                    "router_offline_test_status": "pass",
+                    "router_offline_test_classification": "router_offline_available_passed",
+                    "router_offline_test_reason": "router offline test harness is available and passed",
+                    "router_offline_test_missing": False,
+                    "router_offline_test_evidence_files": ["tests/router_offline_contract.rs"],
+                },
+            ),
+            (
+                {"available": True, "status": "fail"},
+                {
+                    "router_offline_test_available": True,
+                    "router_offline_test_status": "fail",
+                    "router_offline_test_classification": "router_offline_available_not_passed",
+                    "router_offline_test_reason": "router offline test harness is available but did not pass",
+                    "router_offline_test_missing": True,
+                },
+            ),
+        )
+
+        for router_test, expected in cases:
+            with self.subTest(router_test=router_test):
+                result = self.observe_module.router_offline_classification(router_test)
+                for key, value in expected.items():
+                    self.assertEqual(result[key], value)
 
 
 if __name__ == "__main__":
