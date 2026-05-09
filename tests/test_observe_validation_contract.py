@@ -173,6 +173,38 @@ class ObserveValidationContractTest(unittest.TestCase):
         ):
             self.assertIn(token, self.script)
 
+
+    def test_graph_evidence_classification_report_is_emitted(self) -> None:
+        for token in (
+            "def graph_evidence_classification(",
+            "graph_evidence_classification_present",
+            "graph_evidence_status",
+            "graph_evidence_status_options",
+            "graph_wrapper_absent_by_configuration",
+            "graph_wrapper_configured_missing",
+            "graph_wrapper_configured_no_telemetry",
+            "graph_mutation_evidence_contract_missing",
+            "graph_mutation_evidence_emitted_not_landed",
+            "graph_mutation_landed_without_receipt_ledger",
+            "graph_mutation_landed_with_receipt_snapshot",
+            "graph_source_contract_present",
+            "graph_source_contract_evidence_files",
+            "graph_source_contract_evidence_tokens",
+            "graph_workflow_contract_present",
+            "graph_workflow_contract_evidence_files",
+            "graph_workflow_contract_evidence_tokens",
+            "missing_graph_source_contract_report",
+            "missing_graph_workflow_contract_report",
+            "GRAPH_MUTATION_SCHEMA_VERSION",
+            "GraphMutationReceipt",
+            "GraphPatchReceipt",
+            "verify_graph_mutation_landing",
+            "verify_graph_receipt_ledger_files_ndjson",
+            "graph_mutation_cli_contract",
+            "graph_mutation_cli_workflow",
+        ):
+            self.assertIn(token, self.script)
+
     def test_ignored_artifact_counts_are_emitted(self) -> None:
         for token in (
             "ignored_artifact_count",

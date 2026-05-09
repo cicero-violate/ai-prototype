@@ -4,34 +4,16 @@
 
 Canon Agent is a Rust prototype for a deterministic, auditable, self-improving agent runtime. The target architecture remains a formally constrained state-machine kernel with a capability layer around it. The kernel owns correctness, state transitions, durable records, replay boundaries, and audit evidence. LLMs and tools operate inside the capability layer and must produce typed, reviewable evidence rather than governing the runtime directly.
 
-Current implementation snapshot, 2026-05-09 00:54:25 EDT America/Toronto / 2026-05-09T04:54:25Z UTC:
+Current implementation snapshot, 2026-05-09 00:57:10 EDT America/Toronto / 2026-05-09T04:57:10Z UTC:
 
 - Branch: `main`.
-- Latest visible prior commit before this implementation turn: `723e7f7 Add supervisor reload replay continuity test`.
-- The requested working directory resolves to the connector workspace root: `/workspace/ai_sandbox/canon-mini-agent/prototype/ai`.
-- This implementation step added persisted validation-report evidence for compact receipt replay classifications.
-- The observe-validation summary row now records the receipt replay classification inventory, source evidence files, source evidence tokens, and a missing-signal flag for classification report availability.
-- The pre-existing implementation batch has now been reviewed at diff level and validated.
-- P0 validation baseline is closed with fresh all-target, fmt, lib-test, and clippy evidence.
-- Connector 502s occurred during long-running validation polling, but redirected/detached validation evidence completed with exit files and final test summaries.
-
-Fresh validation evidence from implementation step 1:
-
-- `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets` passed through detached redirected execution.
-  - exit: `0`
-  - log: `target/validation-logs/test-all-detached.log`
-  - exit file: `target/validation-logs/test-all-detached.exit`
-  - evidence: 22 `test result:` sections, including `191 passed`, integration suites, `352 passed` for `validation_harness_contract`, worker process contract, and example test binaries.
-- `RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo fmt --check` passed.
-  - exit: `0`
-  - log: `target/validation-logs/fmt-exec-step-1.log`
-- `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --lib -- --test-threads=1` passed.
-  - exit: `0`
-  - result: `191 passed; 0 failed`
-  - log: `target/validation-logs/test-lib-exec-step-1.log`
-- `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo clippy --all-targets -- -D warnings` passed.
-  - exit: `0`
-  - log: `target/validation-logs/clippy-exec-step-1.log`
+- Latest visible commit before this implementation turn: `d42dfea Emit receipt replay classifications in validation summary`.
+- Working directory: `/workspace/ai_sandbox/canon-mini-agent/prototype/ai`.
+- P0 validation baseline is complete.
+- P1 validation evidence reporting is complete.
+- P2 agent loop reliability is complete.
+- P3 runtime and receipt correctness is complete for the current scope.
+- P4 graph source-of-truth integration has started with persisted observe-validation graph evidence classification.
 
 ## Operating Rules For Agent Turns
 
@@ -57,133 +39,54 @@ Fresh validation evidence from implementation step 1:
 
 ### P0 — Finish validation baseline — complete
 
-1. **Implementation batch review**
-   - The dirty implementation batch was inspected at diff level before validation.
-   - Diff shape is primarily validation-harness/reporting, receipt/proof metadata, record construction, API/transport verification, and test initialization hardening.
-   - No implementation files were reverted during this execution step.
-
-2. **Validation gate**
-   - All-target validation now has final exit evidence and final `test result:` summaries.
-   - The detached all-target run completed with exit `0` after connector 502s interrupted streaming/polling attempts.
-   - The previous incomplete all-target evidence is superseded by `target/validation-logs/test-all-detached.log` and `.exit`.
-
-3. **Complete baseline refresh**
-   - Format, lib tests, and clippy have been refreshed and passed with exit `0`.
-   - Correctness, robustness, and determinism score ceilings may be raised from this point.
+- All-target validation has final exit evidence and final `test result:` summaries from prior implementation work.
+- Format, lib tests, and clippy have passed in the current baseline.
+- Correctness, robustness, and determinism score ceilings may remain raised while the validation baseline is preserved.
 
 ### P1 — Make validation evidence first-class — complete
 
-1. Added source-backed observe-validation reporting under ignored `target/observe/validation-report.ndjson` via `scripts/observe_validation.sh`.
-2. The compact report now emits git hygiene, command outcomes, graph telemetry presence/absence, runtime archive counts, ignored artifact counts, missing-signal flags, and connector-failure classification fields.
-3. Restored source-backed helper validators and manifest writer scripts so validation evidence can be generated and consumed from tracked code instead of stale pycache artifacts.
-4. Added contract coverage for connector-failure classification and ignored artifact counts.
-5. Validation evidence from implementation step 2:
-   - `python3 -m unittest tests/test_observe_validation_contract.py tests/test_panic_surface_contract.py tests/test_policy_learning_trace_contract.py tests/test_write_delta_manifest.py` passed; 29 tests.
-   - `RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo fmt --check` passed.
-   - `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --lib -- --test-threads=1` passed; 191 tests.
-   - `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo clippy --all-targets -- -D warnings` passed.
-6. Observe smoke evidence emitted connector and missing-signal fields, but the full all-target command inside the smoke failed due environment quota pressure (`Disk quota exceeded` in the cargo-test log), not a semantic assertion failure.
+- Observe-validation reporting emits source-backed validation summary evidence under ignored `target/observe/validation-report.ndjson`.
+- The compact report includes git hygiene, command outcomes, graph telemetry presence/absence, runtime archive counts, ignored artifact counts, missing-signal flags, connector-failure classification fields, and receipt replay classification inventory.
+- Helper validators and manifest writer scripts are tracked source rather than stale generated artifacts.
 
 ### P2 — Agent loop reliability — complete
 
-1. Hardened streaming retry behavior and evidence preservation for the SSE/router boundary.
-   - `finish_reason=length` is now classified as `length_finished`, incomplete, and never retry-safe.
-   - Missing `[DONE]` is retry-safe only for a new chat without a target URL.
-   - Missing `message_stream_complete` is retry-safe only for a new chat without a target URL.
-   - Any observed target URL blocks retry so the runtime preserves thread/evidence continuity instead of creating duplicate work.
-2. Added SSE fixtures for:
-   - complete stream with `[DONE]` and `message_stream_complete`
-   - truncated stream missing `[DONE]`
-   - stream missing `message_stream_complete`
-   - stream with target URL but missing stream-complete metadata
-   - `finish_reason=length`
-   - partial chunked transfer body preservation
-3. Clarified project-loop mode versus phase-driven worker certification in the loop-driver boundary comments and production logs.
-4. Added loop-driver fixtures for:
-   - retry attempt labels preserving original labels and numbering retries
-   - project-planning/project-execution/worker-certification mode classification
-   - project prompts staying separate from AgentCycle certification
-   - certification objective truncation preserving compact project evidence
-5. Validation evidence from implementation step 5:
-   - `cargo test agent::loop_driver::tests --lib -- --test-threads=1` passed; 4 tests.
-   - `cargo fmt --check` passed.
-   - `cargo test --lib -- --test-threads=1` passed; 201 tests.
-   - `cargo clippy --all-targets -- -D warnings` passed.
+- Streaming retry behavior preserves evidence continuity across incomplete SSE/router cases.
+- Retry decisions are constrained by target URL presence, missing `[DONE]`, missing `message_stream_complete`, and `finish_reason=length` classifications.
+- Loop-driver mode classification distinguishes project planning, project execution, and worker certification prompts.
 
-### P3 — Runtime and receipt correctness — in progress
+### P3 — Runtime and receipt correctness — complete for current scope
 
-1. Expand replay and receipt invariants for forged, duplicated, reordered, stale, and missing receipts — consumer integration complete.
-   - Primary source surface discovered during this planning turn: `src/recovery.rs` for validation receipts and `src/validation_harness.rs` for receipt hashing/typed evidence contracts.
-   - Added a deterministic `ReceiptChainEntry` / `ReceiptReplayReport` verifier in `src/recovery.rs`.
-   - Added compact `ReceiptReplayFailure` classifications for `forged_receipt`, `duplicated_receipt`, `reordered_receipt`, `stale_receipt`, and `missing_receipt`.
-   - Added focused recovery tests for valid replay plus forged receipt hash, forged run identity, duplicated receipt, reordered receipts, stale extra receipts, missing receipts, and compact classification strings.
-   - Validation evidence from implementation step 1:
-     - `cargo fmt --check` passed; exit `0`; log `target/validation-logs/fmt-step1.log`.
-     - `cargo test recovery::tests --lib -- --test-threads=1` passed; 8 tests; exit `0`; log `target/validation-logs/recovery-tests-step1.log`.
-     - `cargo test --lib -- --test-threads=1` passed; 209 tests; exit `0`; log `target/validation-logs/test-lib-step1.log`.
-     - `cargo clippy --all-targets -- -D warnings` passed; exit `0`; log `target/validation-logs/clippy-step1.log`.
-   - Environment note: broad validation returned a connector-level `502`, but redirected logs and exit files showed lib tests and clippy completed with exit `0`.
-   - Implementation step 2 wired receipt-chain verification into the durable API transport receipt consumer.
-   - Added `verify_api_transport_receipt_chain` and `verify_api_transport_receipt_chain_with_expected_count` so API transport ledgers expose compact replay reports and optional expected-count missing-tail checks.
-   - Added `api_transport_receipt_replay_classification` and `api_transport_receipt_replay_classification_with_expected_count` so consumer-facing failures expose `forged_receipt`, `duplicated_receipt`, `reordered_receipt`, `stale_receipt`, and `missing_receipt` strings.
-   - Existing `verify_api_transport_receipts` now uses the receipt-chain verifier and maps compact receipt failures to stable `CanonError` values.
-   - Added API transport contract coverage for valid receipt-chain replay plus missing, stale, duplicated, reordered, and forged API transport receipt ledgers.
-   - Validation evidence from implementation step 2:
-     - `cargo test --test api_transport_contract -- --test-threads=1` passed; 19 tests; exit `0`; log `target/validation-logs/api-transport-contract-step2.log`.
-     - `cargo fmt --check` passed; exit `0`; log `target/validation-logs/fmt-step2.log`.
-     - `cargo test --lib -- --test-threads=1` passed; 209 tests; exit `0`; log `target/validation-logs/test-lib-step2.log`.
-     - `cargo clippy --all-targets -- -D warnings` passed; exit `0`; log `target/validation-logs/clippy-step2.log`.
-   - Environment note: broad validation and clippy streaming returned connector-level `502`, but redirected exit files and logs showed completed commands with exit `0`.
-   - Validation evidence from current implementation step:
-     - `cargo test --test api_transport_contract -- --test-threads=1` passed; 19 tests; exit `0`; log `target/validation-logs/api-transport-contract-impl-step1.log`.
-     - `cargo fmt --check` passed; exit `0`; log `target/validation-logs/fmt-impl-step1.log`.
-     - `cargo test --lib -- --test-threads=1` passed; 209 tests; exit `0`; log `target/validation-logs/test-lib-impl-step1.log`.
-     - `cargo clippy --all-targets -- -D warnings` passed; exit `0`; log `target/validation-logs/clippy-impl-step1.log`.
-2. Keep policy promotion externally verified; never let the LLM approve its own candidates.
-   - Any future policy-learning admission must remain gated by external evaluator evidence.
-   - LLM-authored candidates may propose changes but cannot self-certify them into learning data.
-3. Tighten API/worker compatibility for batch command limits, invalid envelopes, durable resume behavior, and supervisor reload.
-   - Added route-level worker API contract coverage for oversized `SubmitEvidenceBatch` payloads exceeding `API_COMMAND_BATCH_LIMIT`.
-   - Added route-level worker API contract coverage for malformed batch payloads that decode incorrectly.
-   - Added route-level worker API contract coverage for tampered batch envelope hashes.
-   - Each new test asserts `400 BAD_REQUEST`, unchanged worker state snapshot, and no durable TLog write.
-   - Validation evidence from current implementation step:
-     - `cargo test --test api_server_contract -- --test-threads=1` passed; 8 tests; exit `0`; log `target/validation-logs/api-server-contract-impl-step2.log`.
-     - `cargo fmt --check` passed; exit `0`; log `target/validation-logs/fmt-impl-step2.log`.
-     - `cargo test --lib -- --test-threads=1` passed; 209 tests; exit `0`; log `target/validation-logs/test-lib-impl-step2.log`.
-     - `cargo clippy --all-targets -- -D warnings` passed; exit `0`; log `target/validation-logs/clippy-impl-step2.log`.
-   - Added route-level worker API durable-resume coverage that rebuilds a session from a persisted TLog through `resume_durable_runtime` and verifies duplicate command replay without appending disk state.
-   - Validation evidence from current implementation step:
-     - `cargo test --test api_server_contract -- --test-threads=1` passed; 9 tests; exit `0`; log `target/validation-logs/api-server-contract-impl-step3.log`.
-     - `cargo fmt --check` passed; exit `0`; log `target/validation-logs/fmt-impl-step3.log`.
-     - `cargo test --lib -- --test-threads=1` passed; 209 tests; exit `0`; log `target/validation-logs/test-lib-impl-step3.log`.
-     - `cargo clippy --all-targets -- -D warnings` passed; exit `0`; log `target/validation-logs/clippy-impl-step3.log`.
-   - Added supervisor reload edge coverage that submits a command to generation 1, reloads to generation 2, and resubmits the same command to verify replay continuity across workers.
-   - The reload test now asserts generation 2 sees the same TLog length, returns `replayed`, preserves original event sequence/hash, and does not grow the durable TLog file.
-   - Validation evidence from current implementation step:
-     - `cargo test --test supervisor_binary_contract -- --test-threads=1` passed; 2 tests; exit `0`; log `target/validation-logs/supervisor-binary-contract-impl-step4.log`.
-     - `cargo fmt --check` passed; exit `0`; log `target/validation-logs/fmt-impl-step4.log`.
-     - `cargo test --lib -- --test-threads=1` passed; 209 tests; exit `0`; log `target/validation-logs/test-lib-impl-step4.log`.
-     - `cargo clippy --all-targets -- -D warnings` passed; exit `0`; log `target/validation-logs/clippy-impl-step4.log`.
-   - P3 API/worker compatibility slices for batch command limits, invalid envelopes, durable resume, and supervisor reload now have targeted coverage.
-4. Persist compact receipt-chain classification evidence in validation/report rows.
-   - Added source-derived receipt replay classification inventory fields to `scripts/observe_validation.sh`.
-   - The persisted `validation_summary` row now emits `receipt_replay_classification_present`, `receipt_replay_classifications`, `receipt_replay_classification_evidence_files`, and `receipt_replay_classification_evidence_tokens`.
-   - Added `missing_receipt_replay_classification_report` to missing-signal flags so report consumers can distinguish unavailable classification evidence from ordinary validation failures.
-   - Added Python contract coverage for the new report schema tokens and all five compact classes: `forged_receipt`, `duplicated_receipt`, `reordered_receipt`, `stale_receipt`, and `missing_receipt`.
-   - Smoke report evidence with `CANON_TEST_TIMEOUT_SECONDS=1` confirmed the new summary fields are emitted and `missing_receipt_replay_classification_report` is `false`; the smoke validation status itself was expectedly `fail` because the timeout was intentionally too short.
-   - Validation evidence from current implementation step:
-     - `python3 -m unittest tests/test_observe_validation_contract.py` passed; 16 tests; exit `0`; log `target/validation-logs/observe-validation-contract-impl-step5.log`.
-     - `cargo test --test api_transport_contract -- --test-threads=1` passed; 19 tests; exit `0`; log `target/validation-logs/api-transport-contract-impl-step5.log`.
-     - `cargo fmt --check` passed; exit `0`; log `target/validation-logs/fmt-impl-step5.log`.
-     - `cargo test --lib -- --test-threads=1` passed; 209 tests; exit `0`; log `target/validation-logs/test-lib-impl-step5.log`.
-     - `cargo clippy --all-targets -- -D warnings` passed; exit `0`; log `target/validation-logs/clippy-impl-step5.log`.
+- Receipt-chain invariant verification covers valid replay and compact classifications for forged, duplicated, reordered, stale, and missing receipts.
+- API transport consumers expose compact replay reports and expected-count missing-tail checks.
+- Worker API route coverage exists for oversized batches, malformed batch payloads, tampered envelope hashes, durable resume replay, and supervisor reload replay continuity.
+- Observe-validation summary evidence persists compact receipt-chain classification inventory and missing-signal state.
+- Remaining optional P3 extension: add a durable runtime ledger format for failed replay attempts if future consumers require failed-replay rows beyond source-derived validation summary evidence.
 
-### P4 — Graph source-of-truth integration
+### P4 — Graph source-of-truth integration — in progress
 
-1. Keep graph telemetry observable but optional unless wrapper variables are configured.
-2. Verify graph mutation ops, patch receipts, snapshot contracts, and landing receipts as one end-to-end flow.
-3. Clarify `canon-rustc-v3` and `graph-editor` repository/subproject boundaries.
+1. **Persist graph evidence classification in validation/report rows — complete**
+   - Added source-derived graph evidence inventory fields to `scripts/observe_validation.sh`.
+   - Added deterministic graph evidence status classifications:
+     - `graph_wrapper_absent_by_configuration`
+     - `graph_wrapper_configured_missing`
+     - `graph_wrapper_configured_no_telemetry`
+     - `graph_mutation_evidence_contract_missing`
+     - `graph_mutation_evidence_emitted_not_landed`
+     - `graph_mutation_landed_without_receipt_ledger`
+     - `graph_mutation_landed_with_receipt_snapshot`
+   - Added summary fields for graph source contract and graph workflow contract evidence files/tokens.
+   - Added missing-signal flags for graph source/workflow contract report absence.
+   - Added observe-validation contract coverage for the new graph evidence report schema.
+
+2. **Verify graph mutation ops, patch receipts, snapshot contracts, and landing receipts end-to-end — partially complete**
+   - Existing graph CLI contract tests cover verify-ops, generate-patch, verify-landing, verify-receipts, stable usage, workflow fixture integrity, copyable workflow fixtures, and executable manifest flow.
+   - Current evidence: `cargo test --test graph_mutation_cli_contract -- --test-threads=1` passed; 10 tests.
+
+3. **Next P4 slice**
+   - Add a runtime smoke or deterministic fixture that causes observe-validation to emit `graph_mutation_landed_with_receipt_snapshot` without requiring an external wrapper.
+   - Keep wrapper telemetry optional unless `CANON_RUSTC_WRAPPER` or `CANON_RUSTC_V3_ARTIFACT_DIR` is configured.
+   - Clarify `canon-rustc-v3` and `graph-editor` repository/subproject boundaries if implementation work crosses those directories.
 
 ### P5 — Domain intelligence layer
 
@@ -191,17 +94,48 @@ Fresh validation evidence from implementation step 1:
 2. Define record contracts before behavior.
 3. Keep trading separate from production business automation.
 
+## Validation Evidence From Current Implementation Step
+
+```text
+python3 -m unittest tests/test_observe_validation_contract.py
+exit: 0
+result: 17 passed; 0 failed
+log: target/validation-logs/observe-validation-contract-p4-impl-step1.log
+```
+
+```text
+TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test graph_mutation_cli_contract -- --test-threads=1
+exit: 0
+result: 10 passed; 0 failed
+log: target/validation-logs/graph-mutation-cli-contract-impl-step1.log
+```
+
+```text
+RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo fmt --check
+exit: 0
+log: target/validation-logs/fmt-p4-impl-step1.log
+```
+
+```text
+TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --lib -- --test-threads=1
+exit: 0
+result: 209 passed; 0 failed
+log: target/validation-logs/test-lib-p4-impl-step1.log
+```
+
+```text
+TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo clippy --all-targets -- -D warnings
+exit: 0
+log: target/validation-logs/clippy-p4-impl-step1.log
+```
+
 ## Next Execute-Turn Recommendation
 
-1. Continue by moving to P4 graph source-of-truth integration unless another P3 report consumer needs deeper receipt replay rows.
-2. Keep compact receipt-chain classifications source-derived in observe-validation until a durable runtime receipt ledger format is added for failed replay attempts.
-3. Keep policy promotion externally verified; never let the LLM approve its own candidates.
-4. Continue using `TMPDIR="$PWD/target/test-tmp"` for Rust tests in quota-sensitive sandboxes.
-5. Run targeted tests for the next consumer, `cargo fmt --check`, `cargo test --lib -- --test-threads=1`, and `cargo clippy --all-targets -- -D warnings` after the next P3 slice.
+Continue P4 with a deterministic observe-validation smoke/fixture that demonstrates the positive graph evidence state (`graph_mutation_landed_with_receipt_snapshot`) without requiring live wrapper telemetry. Keep the next slice narrow and preserve optional wrapper behavior.
 
 ## Planning-Turn Handoff
 
-P0, P1, and P2 are complete. P3 now has receipt-chain invariant verification, API transport consumption, worker/supervisor boundary coverage, and persisted observe-validation summary evidence for compact replay classifications. The next execution turn should move to the next P4 graph source-of-truth slice unless a deeper P3 runtime receipt ledger for failed replay attempts is required.
+P0, P1, P2, and current P3 scope are complete. P4 has begun with source-derived graph evidence classification in persisted validation summary rows. The next implementation turn should add one deterministic positive graph evidence fixture/report path or tighten the existing graph workflow evidence into an executable observe smoke.
 
 ## Current Non-Goals
 

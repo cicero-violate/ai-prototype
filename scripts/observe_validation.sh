@@ -126,6 +126,13 @@ def source_evidence() -> dict[str, list[str]]:
             "reordered_receipt",
             "stale_receipt",
             "missing_receipt",
+            "GRAPH_MUTATION_SCHEMA_VERSION",
+            "GraphMutationReceipt",
+            "GraphPatchReceipt",
+            "verify_graph_mutation_landing",
+            "verify_graph_receipt_ledger_files_ndjson",
+            "graph_mutation_cli_contract",
+            "graph_mutation_cli_workflow",
             "learning_policy_llm_feedback_loop_drives_judgment",
         ):
             if token in text:
@@ -142,6 +149,30 @@ def unique_files(mapping: dict[str, list[str]]) -> list[str]:
     for paths in mapping.values():
         files.update(paths)
     return sorted(files)
+
+
+def graph_evidence_classification(
+    *,
+    requested: bool,
+    wrapper_available: bool,
+    state_graph_present: bool,
+    source_contract_present: bool,
+    landing_contract_present: bool,
+    ledger_contract_present: bool,
+) -> str:
+    if not requested:
+        return "graph_wrapper_absent_by_configuration"
+    if not wrapper_available:
+        return "graph_wrapper_configured_missing"
+    if not state_graph_present:
+        return "graph_wrapper_configured_no_telemetry"
+    if not source_contract_present:
+        return "graph_mutation_evidence_contract_missing"
+    if not landing_contract_present:
+        return "graph_mutation_evidence_emitted_not_landed"
+    if not ledger_contract_present:
+        return "graph_mutation_landed_without_receipt_ledger"
+    return "graph_mutation_landed_with_receipt_snapshot"
 
 
 def inspect_runtime_archive(path: str | None) -> dict[str, Any]:
@@ -274,6 +305,23 @@ def main() -> int:
             "missing_receipt",
         ],
     )
+    graph_source_contract = token_files(
+        evidence,
+        [
+            "GRAPH_MUTATION_SCHEMA_VERSION",
+            "GraphMutationReceipt",
+            "GraphPatchReceipt",
+            "verify_graph_mutation_landing",
+            "verify_graph_receipt_ledger_files_ndjson",
+        ],
+    )
+    graph_workflow_contract = token_files(
+        evidence,
+        [
+            "graph_mutation_cli_contract",
+            "graph_mutation_cli_workflow",
+        ],
+    )
 
     failed_required = [c["name"] for c in commands if c.get("status") not in {"pass", "skipped_env_missing"}]
     command_statuses = {c["name"]: c.get("status") for c in commands}
@@ -287,13 +335,25 @@ def main() -> int:
         "external_api_action_test_present": bool(unique_files(external_api)),
         "semantic_artifact_verification_test_present": bool(unique_files(semantic_artifact)),
         "receipt_replay_classification_test_present": all(receipt_replay_classification.values()),
+        "graph_source_contract_present": all(graph_source_contract.values()),
+        "graph_workflow_contract_present": all(graph_workflow_contract.values()),
     }
+    graph_evidence_status = graph_evidence_classification(
+        requested=wrapper_graph_validation_requested,
+        wrapper_available=wrapper_graph_validation_available,
+        state_graph_present=state_graph_present,
+        source_contract_present=evidence["graph_source_contract_present"],
+        landing_contract_present=bool(graph_source_contract.get("verify_graph_mutation_landing")),
+        ledger_contract_present=bool(graph_source_contract.get("verify_graph_receipt_ledger_files_ndjson")),
+    )
 
     missing = {
         "missing_cargo_test": "cargo_test_all_targets" not in command_statuses,
         "missing_wrapper_graph_validation": wrapper_graph_validation_result == "skipped_not_requested",
-        "missing_generated_graph_json": not any((ROOT / "state").glob("**/graph.json")),
+        "missing_generated_graph_json": not state_graph_present,
         "missing_rustc_wrapper_telemetry": not wrapper_graph_validation_available,
+        "missing_graph_source_contract_report": not evidence["graph_source_contract_present"],
+        "missing_graph_workflow_contract_report": not evidence["graph_workflow_contract_present"],
         "missing_panic_surface_validation": "panic_surface_validation" not in command_statuses,
         "missing_policy_learning_replay_trace": "policy_learning_trace_validation" not in command_statuses,
         "missing_runtime_performance_signal": True,
@@ -349,6 +409,23 @@ def main() -> int:
             receipt_replay_classification
         ),
         "receipt_replay_classification_evidence_tokens": receipt_replay_classification,
+        "graph_evidence_classification_present": True,
+        "graph_evidence_status": graph_evidence_status,
+        "graph_evidence_status_options": [
+            "graph_wrapper_absent_by_configuration",
+            "graph_wrapper_configured_missing",
+            "graph_wrapper_configured_no_telemetry",
+            "graph_mutation_evidence_contract_missing",
+            "graph_mutation_evidence_emitted_not_landed",
+            "graph_mutation_landed_without_receipt_ledger",
+            "graph_mutation_landed_with_receipt_snapshot",
+        ],
+        "graph_source_contract_present": evidence["graph_source_contract_present"],
+        "graph_source_contract_evidence_files": unique_files(graph_source_contract),
+        "graph_source_contract_evidence_tokens": graph_source_contract,
+        "graph_workflow_contract_present": evidence["graph_workflow_contract_present"],
+        "graph_workflow_contract_evidence_files": unique_files(graph_workflow_contract),
+        "graph_workflow_contract_evidence_tokens": graph_workflow_contract,
         "missing_signal_flags": missing,
         "missing_signal_count": sum(1 for value in missing.values() if value),
         "git_status_clean": not bool(git_status),
@@ -367,7 +444,7 @@ def main() -> int:
         "wrapper_graph_validation_available": wrapper_graph_validation_available,
         "rustc_wrapper_configured": bool(wrapper),
         "rustc_wrapper_path_exists": bool(wrapper and Path(wrapper).exists()),
-        "state_graph_present": any((ROOT / "state").glob("**/graph.json")),
+        "state_graph_present": state_graph_present,
         "runtime_performance_metrics": {},
         "runtime_performance_signal_present": False,
         "runtime_performance_budget_status": "missing_signal",
