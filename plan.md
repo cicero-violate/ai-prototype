@@ -2,62 +2,77 @@
 
 ## Current State
 
-The `ai` project is a Rust prototype for a deterministic, auditable, self-improving agent runtime. The core architecture is already broad and mostly organized:
+The `ai` project is a Rust prototype for a deterministic, auditable, self-improving agent runtime. The core architecture is organized around a state-machine kernel, typed capability records, durable runtime evidence, and agent-loop orchestration.
 
-- Kernel/state-machine surface under `src/kernel`.
+Current implementation surfaces include:
+
+- Kernel/state-machine modules under `src/kernel`.
 - Runtime reducer, transition table, durable state, command ledger, writer, diff, verification, and recovery support under `src/runtime`.
 - Capability records for observation, context, memory, LLM, judgment, planning, tooling, verification, eval, policy, learning, and orchestration.
-- API protocol, server routes, and transport receipt contracts under `src/api`.
+- API protocol, routes, server, and transport receipt contracts under `src/api`.
 - Loop-mode agent driver under `src/agent`, plus `agent`, `worker`, `supervisor`, graph mutation, and root validation binaries.
 - Contract tests for API, transport, planning, scoring, supervisor/worker behavior, graph mutation CLI, MCP receipts, validation harness, panic surface, policy-learning traces, and helper scripts.
-- Documentation for architecture, evolution loop, graph source-of-truth, Ollama judgment, runtime usage, and domain strategy.
+- Architecture/evolution/graph/Ollama/runtime/domain documentation.
 - Domain intelligence docs intentionally kept outside the compiled Rust API until contracts stabilize.
 
-Recent repository state shows existing non-planning implementation changes outside this turn:
+Current working tree contains pre-existing non-planning changes. Planning/scoring turns must not overwrite or stage those implementation edits unless explicitly instructed.
 
-- Modified: `USAGE.md`
-- Modified: `canon-rustc-v3/src/graph.rs`
+Observed dirty state before this planning refresh:
 
-Planning/scoring turns should avoid overwriting or mixing those implementation edits unless explicitly instructed.
+```text
+ M README.md
+ M USAGE.md
+ M build_test.sh
+ M canon-rustc-v3/src/graph.rs
+ M plan.md
+ M src/agent/loop_driver.rs
+?? USAGE_1.md
+?? txt.txt
+```
+
+This turn should stage and commit only `plan.md` and `score.md`.
 
 ## Implementation Priority
 
-### P0 — Restore clean validation baseline
+### P0 — Re-establish clean validation baseline
 
-1. **Resolve filesystem/quota write failures**
-   - Investigate why library tests still hit OS error 122 (`Disk quota exceeded`) even after generated artifacts were removed and normal free-space checks appeared healthy.
-   - Determine whether failures come from user/project quota, too many small files, test temp paths, runtime archive paths, or nested project artifacts.
-   - Prefer redirecting test temp/runtime writes to a known writable, cleaned directory if the problem is environmental rather than semantic.
+1. **Use quota-safe validation paths**
+   - Status: library-test filesystem failures were previously isolated to `/tmp`-style write paths.
+   - Finding: `/tmp` writes can return OS error 122 (`Disk quota exceeded`) even while ordinary free-space checks appear healthy.
+   - Current convention: create `target/test-tmp` and run Rust checks with `TMPDIR="$PWD/target/test-tmp"`.
+   - Keep `RUSTC_WRAPPER=""` and `RUSTC_WORKSPACE_WRAPPER=""` unless graph telemetry is explicitly being validated.
 
-2. **Run baseline validation with wrappers disabled**
-   - Required commands from `ai/`:
+2. **Run and record baseline validation**
+   - Required commands from repository root:
+     - `mkdir -p target/test-tmp`
      - `RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo fmt --check`
-     - `RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --lib -- --test-threads=1`
-     - `RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`
-     - `RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo clippy --all-targets -- -D warnings`
-   - Record exact pass/fail output in `score.md`; do not infer success from partial connector output.
+     - `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --lib -- --test-threads=1`
+     - `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`
+     - `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo clippy --all-targets -- -D warnings`
+   - If connector output limits interfere, capture logs to `target/` and report the exact exit status plus the final relevant failure lines.
+   - Do not infer pass/fail from truncated connector output.
 
-3. **Keep repository hygiene tight**
-   - Keep generated runtime artifacts ignored: `target/`, `state/`, `tlog/`, `log/`, runtime archives, SSE chunks, validation scratch output, token caches, and signed URL caches.
-   - Keep source-owned docs, tests, JSON contracts, and `tests/fixtures/**/*.ndjson` visible.
-   - Do not commit bulky generated artifacts or nested runtime logs.
+3. **Separate planning from implementation work**
+   - Planning turns: update `plan.md` and `score.md` only; commit only those files.
+   - Execute turns: work the highest-priority incomplete plan item; update `score.md` with exact evidence.
+   - Before every commit: inspect `git status --short`, stage only intentional files, then commit.
 
 ### P1 — Make validation evidence first-class
 
 1. **Strengthen observe-validation reporting**
-   - Ensure `scripts/observe_validation.sh` is executable and produces `target/observe/validation-report.ndjson`.
-   - Report git hygiene, validation command results, graph telemetry presence/absence, runtime archive counts, ignored artifact counts, and missing-signal flags.
-   - Keep missing graph telemetry as an explicit signal, not a silent pass.
+   - Ensure `scripts/observe_validation.sh` is executable and writes `target/observe/validation-report.ndjson`.
+   - Report git hygiene, validation commands, graph telemetry presence/absence, runtime archive counts, ignored artifact counts, and missing-signal flags.
+   - Treat missing graph telemetry as an explicit signal when wrappers are not configured, not as a hidden pass.
 
-2. **Improve score update discipline**
-   - Every execute turn should update `score.md` with commands run, final status, failure class, and next action.
-   - Planning turns should update `plan.md` and `score.md` only, then commit those two files.
-   - Execute turns should align to the highest-priority incomplete item in this plan.
+2. **Keep score updates evidence-backed**
+   - `score.md` must record commands run, status, failure class, and next action.
+   - Scores should rise only after fresh passing evidence.
+   - Scores should fall when fresh failures reveal semantic defects rather than environment-only defects.
 
-3. **Protect concurrent work**
-   - Before committing, inspect `git status --short`.
-   - Stage only files intentionally modified in the current turn.
-   - Do not amend or commit unrelated implementation files left by another turn unless explicitly requested.
+3. **Keep generated artifacts contained**
+   - Keep generated runtime artifacts ignored: `target/`, `state/`, `tlog/`, `log/`, runtime archives, SSE chunks, validation scratch output, token caches, and signed URL caches.
+   - Keep source-owned docs, tests, JSON contracts, and `tests/fixtures/**/*.ndjson` visible.
+   - Do not commit bulky generated artifacts or nested runtime logs.
 
 ### P2 — Agent loop reliability
 
@@ -70,15 +85,15 @@ Planning/scoring turns should avoid overwriting or mixing those implementation e
    - Document when `agent` uses project-loop mode versus phase-driven worker mode.
    - Add coverage for missing `GOAL.md`, unreachable MCP connector, unreachable router-server, malformed worker responses, and supervisor reload behavior.
 
-3. **Keep coordination files authoritative**
-   - `plan.md` is the current prioritized implementation roadmap.
-   - `score.md` is the current evidence-backed progress snapshot.
-   - Avoid parallel status sources unless they are generated from these files or explicitly linked.
+3. **Make coordination files authoritative**
+   - `plan.md` is the prioritized implementation roadmap.
+   - `score.md` is the evidence-backed progress snapshot.
+   - Avoid parallel status sources unless generated from or explicitly linked to these files.
 
 ### P3 — Runtime and receipt correctness
 
 1. **Expand replay and receipt invariants**
-   - Add/extend tests for hash-chain continuity, event ordering, schema version mismatches, and replay failure modes.
+   - Add or extend tests for hash-chain continuity, event ordering, schema version mismatches, and replay failure modes.
    - Confirm every external effect has a typed receipt and replay verifier.
    - Add negative tests for forged, duplicated, reordered, stale, and missing receipts.
 
@@ -95,7 +110,7 @@ Planning/scoring turns should avoid overwriting or mixing those implementation e
 
 1. **Make graph telemetry observable but optional**
    - Keep graph capture disabled unless `CANON_RUSTC_WRAPPER`/`RUSTC_WRAPPER` are explicitly configured.
-   - Treat absence of `state/rustc/*/graph.json` as a clear missing signal.
+   - Treat absence of `state/rustc/*/graph.json` as a clear missing signal in validation reports.
 
 2. **Unify graph mutation evidence**
    - Verify graph mutation ops, graph patch receipts, snapshot contracts, and mutation landing receipts as one end-to-end flow.
@@ -121,18 +136,13 @@ Planning/scoring turns should avoid overwriting or mixing those implementation e
 
 ## Next Execute-Turn Recommendation
 
-Focus on quota-safe validation and the baseline test result:
+Complete validation baseline first:
 
-1. Inspect failed write paths from the latest `cargo test --lib -- --test-threads=1` run.
-2. Check project/user quota indicators beyond `df`, including inode exhaustion and per-user/project limits if available.
-3. Remove or relocate any unnecessary generated runtime files still under the repository.
-4. Configure tests to write temp/runtime artifacts to a cleaned, known-writable path when appropriate.
-5. Re-run:
-   - `RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --lib -- --test-threads=1`
-6. If library tests pass, continue with:
-   - `RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`
-   - `RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo clippy --all-targets -- -D warnings`
-7. Update `score.md` with exact command outcomes and commit only intentional changes.
+1. Preserve unrelated working-tree changes.
+2. Create `target/test-tmp`.
+3. Run `cargo fmt --check`, library tests, all-target tests, and clippy using the wrapper-disabled, quota-safe commands above.
+4. If any command fails, classify the failure as environment, semantic test failure, compile failure, lint failure, or connector/output failure.
+5. Update `score.md` with exact command outcomes and commit only intentional implementation/scoring changes.
 
 ## Current Non-Goals
 
