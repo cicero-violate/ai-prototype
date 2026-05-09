@@ -92,10 +92,26 @@ def reject_conflicting_duplicate_command_rows(commands: list[dict[str, Any]]) ->
         by_name[name] = fingerprint
 
 
+def distinct_command_rows(commands: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    by_name: dict[str, dict[str, Any]] = {}
+    distinct: list[dict[str, Any]] = []
+    for command in commands:
+        name = command.get("name")
+        if not name:
+            distinct.append(command)
+            continue
+        if name in by_name:
+            continue
+        by_name[name] = command_fingerprint(command)
+        distinct.append(command)
+    return distinct
+
+
 def validate_commands(summary: dict[str, Any], rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     summary_commands = list(summary.get("validation_commands") or [])
     row_commands = command_rows(rows)
     reject_conflicting_duplicate_command_rows(row_commands)
+    row_commands = distinct_command_rows(row_commands)
     if summary_commands and row_commands:
         summary_fingerprints = [command_fingerprint(command) for command in summary_commands]
         row_fingerprints = [command_fingerprint(command) for command in row_commands]

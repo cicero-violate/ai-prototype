@@ -7,13 +7,13 @@ Canon Agent is a Rust prototype for a deterministic, auditable, self-improving a
 Current implementation snapshot, 2026-05-09 America/Toronto / 2026-05-09 UTC:
 
 - Branch: `main`.
-- Latest visible commit before this planning turn: `bc429d7 Check duplicate manifest command rows`.
+- Latest visible commit before this implementation turn: `b4f5777 Update planning score state`.
 - Working directory: `/workspace/ai_sandbox/canon-mini-agent/prototype/ai`.
 - P0 validation baseline is complete.
 - P1 validation evidence reporting is complete.
 - P2 agent loop reliability is complete.
 - P3 runtime and receipt correctness is complete for the current scope.
-- P4 graph source-of-truth integration now includes persisted graph evidence classification, deterministic fixture-backed positive evidence for landed graph mutations with receipt snapshots, command-sequenced workflow fixture validation, a compact graph-only report mode, documented/tested root runtime, wrapper, and editor subproject boundaries, a standalone graph workflow fixture validator consumed by observe-validation, full observe-validation command evidence for that validator, explicit wrapper telemetry configuration classification, normal-path observe-validation summary evidence for graph fixture, wrapper configuration, receipt replay classification, and missing-signal coherence, executable configured-wrapper classifier branch coverage, source-derived runtime performance signal evidence from observe-validation command durations, runtime archive missing-signal derivation from inspected archive contents, runtime manifest base-match derivation from archived manifest metadata, explicit router/offline availability classification in observe-validation summary evidence, optional wrapper graph validation missing-signal derivation, generated graph JSON evidence classification, compact runtime archive report integration, separated validation status fields, compact command-execution reports, connector transport artifact classification, delta manifest preservation of transport artifact state, compact full-summary artifact replay, actual full-summary artifact manifest generation, row command fallback preservation, summary/row command conflict rejection, command execution metadata conflict rejection, and duplicate row command conflict rejection. The working tree is clean at the start of this planning turn.
+- P4 graph source-of-truth integration now includes persisted graph evidence classification, deterministic fixture-backed positive evidence for landed graph mutations with receipt snapshots, command-sequenced workflow fixture validation, a compact graph-only report mode, documented/tested root runtime, wrapper, and editor subproject boundaries, a standalone graph workflow fixture validator consumed by observe-validation, full observe-validation command evidence for that validator, explicit wrapper telemetry configuration classification, normal-path observe-validation summary evidence for graph fixture, wrapper configuration, receipt replay classification, and missing-signal coherence, executable configured-wrapper classifier branch coverage, source-derived runtime performance signal evidence from observe-validation command durations, runtime archive missing-signal derivation from inspected archive contents, runtime manifest base-match derivation from archived manifest metadata, explicit router/offline availability classification in observe-validation summary evidence, optional wrapper graph validation missing-signal derivation, generated graph JSON evidence classification, compact runtime archive report integration, separated validation status fields, compact command-execution reports, connector transport artifact classification, delta manifest preservation of transport artifact state, compact full-summary artifact replay, actual full-summary artifact manifest generation, row command fallback preservation, summary/row command conflict rejection, command execution metadata conflict rejection, and duplicate row command conflict rejection, and distinct command-count closure for exact duplicate row evidence. The working tree was clean at the start of implementation step 1.
 
 ## Current P4 Completion Summary
 
@@ -25,7 +25,7 @@ The current source-of-truth plan state is:
 4. Connector transport artifact classification is landed and distinguishes complete versus incomplete artifacts after transport interruption.
 5. Delta manifests preserve connector transport artifact evidence, so downstream receipts do not rely only on `connector_transport_instability_present`.
 
-Current next implementation target: add a short manifest closure contract for command-count semantics over exact duplicate `validation_command` rows, especially whether repeated identical row evidence may count as multiple validation commands or must be classified/deduplicated.
+Current next implementation target: continue P4 by strengthening command-count and command identity closure for summary-provided `validation_commands`, so summary arrays cannot contain duplicate names or inflate command coverage independently of row evidence.
 
 ## Operating Rules For Agent Turns
 
@@ -1311,3 +1311,59 @@ log: target/validation-logs/score-contract-duplicate-rows-step5.log
 ## Next Execution Slice After Duplicate-Row Manifest Step 5
 
 Continue P4 by strengthening command-count closure around duplicate row evidence. Candidate next slice: require `validation_command_count` to match the number of distinct command names or explicitly classify/allow exact duplicate rows, so repeated identical command rows cannot inflate command coverage without clear evidence semantics.
+
+
+## Completed Execution Slice After Distinct Command-Count Manifest Step 1
+
+Completed deterministic manifest closure for exact duplicate `validation_command` rows. `scripts/write_delta_manifest.py` now deduplicates identical row evidence by command name after rejecting conflicting duplicate rows. Exact duplicate row evidence may support one distinct command, but it can no longer inflate `validation_command_count` or receipt command lists.
+
+The row-only command evidence path now applies this order:
+
+```text
+collect validation_command rows
+reject conflicting duplicate command names
+deduplicate identical duplicate command names
+validate summary validation_command_count against distinct commands
+```
+
+`tests/test_write_delta_manifest.py` now proves both sides of the new semantics: repeated identical row evidence is accepted when `validation_command_count` names one distinct command, and rejected when the summary attempts to count the duplicate row as a second command.
+
+## Validation Evidence From Distinct Command-Count Manifest Step 1
+
+```text
+python3 -m unittest tests/test_write_delta_manifest.py
+exit: 0
+result: 20 passed; 0 failed
+log: target/validation-logs/write-delta-manifest-distinct-command-count-step1.log
+```
+
+```text
+python3 -m unittest tests/test_observe_validation_contract.py
+exit: 0
+result: 39 passed; 0 failed
+log: target/validation-logs/observe-validation-contract-distinct-command-count-step1.log
+```
+
+```text
+python3 -m py_compile scripts/observe_validation.sh scripts/write_delta_manifest.py tests/test_write_delta_manifest.py tests/test_observe_validation_contract.py
+exit: 0
+log: target/validation-logs/py-compile-distinct-command-count-step1.log
+```
+
+```text
+cargo test --test planning_contract -- --test-threads=1
+exit: 0
+result: 2 passed; 0 failed
+log: target/validation-logs/planning-contract-distinct-command-count-step1.log
+```
+
+```text
+cargo test --test score_contract -- --test-threads=1
+exit: 0
+result: 5 passed; 0 failed
+log: target/validation-logs/score-contract-distinct-command-count-step1.log
+```
+
+## Next Execution Slice After Distinct Command-Count Manifest Step 1
+
+Continue P4 by applying the same duplicate command-name closure to summary-provided `validation_commands`, not only row-derived command evidence. Candidate next slice: reject duplicate summary command names with conflicting evidence and deduplicate or reject identical duplicate summary commands before validating `validation_command_count`.

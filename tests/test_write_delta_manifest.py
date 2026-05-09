@@ -598,7 +598,36 @@ class DeltaManifestTest(unittest.TestCase):
         self.assertNotEqual(done.returncode, 0)
         self.assertIn("conflicting validation command evidence", done.stderr)
 
-    def test_accepts_duplicate_validation_command_rows_with_identical_evidence(self) -> None:
+    def test_accepts_duplicate_validation_command_rows_with_distinct_count(self) -> None:
+        command = {
+            "event": "validation_command",
+            "name": "unit",
+            "cmd": ["python3", "-m", "unittest"],
+            "status": "pass",
+            "exit_code": 0,
+            "duration_ms": 7,
+            "timed_out": False,
+            "connector_failure_class": "none",
+        }
+        summary = {
+            "event": "validation_summary",
+            "git_head": self.head,
+            "validation_status": "pass",
+            "validation_command_count": 1,
+            "validation_test_count": 2,
+        }
+        self.report.write_text(
+            "\n".join(json.dumps(row) for row in [command, command, summary]) + "\n",
+            encoding="utf-8",
+        )
+
+        done = self.run_script()
+        self.assertEqual(done.returncode, 0, done.stderr)
+        receipt = json.loads(self.receipt.read_text(encoding="utf-8"))
+        self.assertEqual(receipt["validation_command_count"], 1)
+        self.assertEqual([command["name"] for command in receipt["validation_commands"]], ["unit"])
+
+    def test_rejects_duplicate_validation_command_rows_with_inflated_count(self) -> None:
         command = {
             "event": "validation_command",
             "name": "unit",
@@ -622,10 +651,8 @@ class DeltaManifestTest(unittest.TestCase):
         )
 
         done = self.run_script()
-        self.assertEqual(done.returncode, 0, done.stderr)
-        receipt = json.loads(self.receipt.read_text(encoding="utf-8"))
-        self.assertEqual(receipt["validation_command_count"], 2)
-        self.assertEqual([command["name"] for command in receipt["validation_commands"]], ["unit", "unit"])
+        self.assertNotEqual(done.returncode, 0)
+        self.assertIn("validation_command_count 2 != command rows 1", done.stderr)
 
     def test_rejects_conflicting_duplicate_validation_command_rows(self) -> None:
         first = {
