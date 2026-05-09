@@ -440,3 +440,108 @@ Immediate next action:
 
 Wait for a concrete missing-evidence branch or available live wrapper-configured observe-validation prerequisites before making additional implementation changes.
 
+## Implementation Step 3 — Wrapper V2 Boundary Coverage
+
+Date: 2026-05-09 America/Toronto / 2026-05-09 UTC
+Turn type: implementation step 3 after command fixture refactor
+Scope executed: deterministic observe-validation contract coverage for legacy V2 artifact configuration not satisfying V3 wrapper telemetry prerequisites.
+
+Current timestamp evidence:
+
+```text
+branch: main
+latest visible commit before this implementation turn: 93ac5b5 Refactor command normalization test fixtures
+working directory: /workspace/ai_sandbox/canon-mini-agent/prototype/ai
+working tree at turn start: clean
+```
+
+Implementation, test, and planning/scoring files owned by this turn:
+
+```text
+tests/test_observe_validation_contract.py
+plan.md
+score.md
+```
+
+Generated validation logs and exit files remain ignored and are not committed.
+
+Score movement: determinism, future-proofing, and transparency improve slightly because observe-validation now has explicit contract coverage that legacy V2 artifact configuration cannot be misclassified as V3 wrapper graph readiness. No production runtime behavior changed.
+
+```text
+I  Intelligence      = 7.0
+E  Efficiency        = 7.91
+C  Correctness       = 9.89
+A  Alignment         = 8.8
+R  Robustness        = 10.0
+P  Performance       = 6.45
+S  Scalability       = 6.82
+D  Determinism       = 9.64
+T  Transparency      = 10.0
+Co Collaboration     = 8.0
+Em Empowerment       = 7.8
+B  Benefit           = 8.1
+L  Learning          = 7.1
+St Structure         = 9.75
+Si Simplicity        = 7.36
+F  Future-Proofing   = 9.21
+```
+
+Approximate geometric mean:
+
+```text
+G ≈ 8.32 / 10
+```
+
+Completed work this turn:
+
+- Read the latest `plan.md` and `score.md` state.
+- Checked wrapper-related environment variables and confirmed `CANON_RUSTC_WRAPPER` and `CANON_RUSTC_V3_ARTIFACT_DIR` were absent while a legacy `CANON_RUSTC_V2_ARTIFACT_DIR` value was present.
+- Added contract coverage that the observe-validation script does not consume `CANON_RUSTC_V2_ARTIFACT_DIR` as a V3 wrapper telemetry input.
+- Added a classifier assertion that absent V3 wrapper inputs remain `not_configured` with the explicit V3 reason string.
+- Preserved optional wrapper semantics and avoided a fabricated live wrapper run.
+
+Validation evidence captured this turn:
+
+```text
+command: python3 -m py_compile scripts/observe_validation.sh tests/test_observe_validation_contract.py
+exit: 0
+log: target/validation-logs/py-compile-wrapper-v2-boundary-step3.log
+exit file: target/validation-logs/py-compile-wrapper-v2-boundary-step3.exit
+```
+
+```text
+command: python3 -m unittest tests.test_observe_validation_contract
+exit: 0
+result: 40 passed; 0 failed
+log: target/validation-logs/observe-validation-contract-wrapper-v2-boundary-step3.log
+exit file: target/validation-logs/observe-validation-contract-wrapper-v2-boundary-step3.exit
+```
+
+Planning/scoring contract validation after documentation updates:
+
+```text
+command: RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test planning_contract -- --test-threads=1
+exit: 0
+result: 2 passed; 0 failed
+log: target/validation-logs/planning-contract-wrapper-v2-boundary-step3.log
+exit file: target/validation-logs/planning-contract-wrapper-v2-boundary-step3.exit
+```
+
+```text
+command: RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test score_contract -- --test-threads=1
+exit: 0
+result: 5 passed; 0 failed
+log: target/validation-logs/score-contract-wrapper-v2-boundary-step3.log
+exit file: target/validation-logs/score-contract-wrapper-v2-boundary-step3.exit
+```
+
+Current risks / gaps:
+
+- No fresh live wrapper-configured observe-validation run has been captured in this environment.
+- Live wrapper graph telemetry still requires deliberate V3 wrapper inputs: `CANON_RUSTC_WRAPPER` and/or `CANON_RUSTC_V3_ARTIFACT_DIR`.
+- Legacy V2 artifact state is now explicitly non-authoritative for V3 wrapper readiness.
+
+Immediate next action:
+
+Wait for deliberate V3 wrapper prerequisites or a newly identified deterministic uncovered branch before making additional implementation changes.
+

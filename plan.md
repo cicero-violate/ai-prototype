@@ -2498,3 +2498,49 @@ Candidate priorities:
 
 Avoid speculative implementation solely to increase score values.
 
+## Completed Execution Slice After Wrapper V2 Boundary Step 3
+
+Completed deterministic observe-validation wrapper boundary coverage for legacy V2 artifact configuration.
+
+Implementation details:
+
+```text
+- Added an assertion that scripts/observe_validation.sh does not consume CANON_RUSTC_V2_ARTIFACT_DIR as a wrapper telemetry input.
+- Added test_legacy_v2_artifact_dir_does_not_request_v3_wrapper_validation() in tests/test_observe_validation_contract.py.
+- The test verifies the classifier remains not_configured when V3 wrapper inputs are absent, matching the explicit V3-only reason string.
+- This prevents the environment's legacy CANON_RUSTC_V2_ARTIFACT_DIR value from being mistaken for V3 wrapper graph telemetry readiness.
+```
+
+This turns the step-3 live-wrapper prerequisite check into a concrete deterministic boundary assertion without requiring a live wrapper-configured observe-validation run.
+
+## Validation Evidence From Wrapper V2 Boundary Step 3
+
+```text
+command: python3 -m py_compile scripts/observe_validation.sh tests/test_observe_validation_contract.py
+exit: 0
+log: target/validation-logs/py-compile-wrapper-v2-boundary-step3.log
+exit file: target/validation-logs/py-compile-wrapper-v2-boundary-step3.exit
+```
+
+```text
+command: python3 -m unittest tests.test_observe_validation_contract
+exit: 0
+result: 40 passed; 0 failed
+log: target/validation-logs/observe-validation-contract-wrapper-v2-boundary-step3.log
+exit file: target/validation-logs/observe-validation-contract-wrapper-v2-boundary-step3.exit
+```
+
+## Next Execution Slice After Wrapper V2 Boundary Step 3
+
+No additional deterministic branch is currently identified. Continue only when a new source-inspected branch or failing evidence appears.
+
+Candidate priorities:
+
+```text
+1. Capture live wrapper-configured observe-validation evidence only when CANON_RUSTC_WRAPPER and CANON_RUSTC_V3_ARTIFACT_DIR are deliberately available for a clean run.
+2. Add compact receiver manifest exact-once checks only when a new compact receiver workflow introduces new metric keys or rendering semantics.
+3. Add deterministic failure-classification coverage only for newly identified uncovered branches.
+```
+
+Do not treat legacy V2 wrapper artifact configuration as V3 wrapper readiness.
+

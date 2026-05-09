@@ -47,6 +47,7 @@ class ObserveValidationContractTest(unittest.TestCase):
     def test_wrapper_graph_capture_is_explicit_and_optional(self) -> None:
         self.assertIn('os.environ.get("CANON_RUSTC_WRAPPER", "")', self.script)
         self.assertIn('CANON_RUSTC_V3_ARTIFACT_DIR', self.script)
+        self.assertNotIn('CANON_RUSTC_V2_ARTIFACT_DIR', self.script)
         self.assertIn('wrapper_graph_validation_requested', self.script)
         self.assertIn('def wrapper_graph_configuration_status(', self.script)
         self.assertIn('def wrapper_graph_validation_classification(', self.script)
@@ -103,6 +104,19 @@ class ObserveValidationContractTest(unittest.TestCase):
                     self.observe_module.wrapper_graph_configuration_reason(status),
                     expected_reasons[expected_status],
                 )
+
+    def test_legacy_v2_artifact_dir_does_not_request_v3_wrapper_validation(self) -> None:
+        status = self.observe_module.wrapper_graph_configuration_status(
+            wrapper="",
+            artifact_dir="",
+            wrapper_available=False,
+        )
+
+        self.assertEqual(status, "not_configured")
+        self.assertEqual(
+            self.observe_module.wrapper_graph_configuration_reason(status),
+            "CANON_RUSTC_WRAPPER and CANON_RUSTC_V3_ARTIFACT_DIR are unset",
+        )
 
     def test_wrapper_graph_validation_classifier_executes_all_status_branches(self) -> None:
         cases = (
