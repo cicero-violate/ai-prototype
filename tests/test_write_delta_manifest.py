@@ -17,6 +17,25 @@ OBSERVE = ROOT / "scripts" / "observe_validation.sh"
 sys.path.insert(0, str(SCRIPT.parent))
 import write_delta_manifest  # noqa: E402
 
+COMMAND_NORMALIZATION_METRIC_KEYS = (
+    "validation_command_distinct_count",
+    "validation_command_source",
+    "validation_command_summary_input_count",
+    "validation_command_summary_distinct_count",
+    "validation_command_summary_duplicate_count",
+    "validation_command_row_input_count",
+    "validation_command_row_distinct_count",
+    "validation_command_row_duplicate_count",
+)
+
+
+def manifest_metric_names(manifest: str) -> list[str]:
+    return [
+        line[2:].split(":", 1)[0]
+        for line in manifest.splitlines()
+        if line.startswith("- ") and ":" in line
+    ]
+
 
 class DeltaManifestTest(unittest.TestCase):
     @classmethod
@@ -187,8 +206,7 @@ class DeltaManifestTest(unittest.TestCase):
             "runtime_archive_runtime_manifest_present: True",
         ):
             self.assertIn(token, manifest)
-        metric_names = [line[2:].split(":", 1)[0] for line in manifest.splitlines()
-                        if line.startswith("- ") and ":" in line]
+        metric_names = manifest_metric_names(manifest)
         self.assertEqual(Counter(metric_names)["runtime_archive_inspection_status"], 1)
         self.assertEqual(Counter(metric_names)["runtime_archive_prior_state_files"], 1)
 
@@ -221,8 +239,7 @@ class DeltaManifestTest(unittest.TestCase):
             "panic_surface_test_total: 319",
         ):
             self.assertIn(token, manifest)
-        metric_names = [line[2:].split(":", 1)[0] for line in manifest.splitlines()
-                        if line.startswith("- ") and ":" in line]
+        metric_names = manifest_metric_names(manifest)
         self.assertEqual(Counter(metric_names)["router_test_count"], 1)
         self.assertEqual(Counter(metric_names)["policy_learning_trace_validation_result"], 1)
 
@@ -255,8 +272,7 @@ class DeltaManifestTest(unittest.TestCase):
         self.assertIn("external_observation_stream_evidence_files", manifest)
         self.assertIn("external_api_action_evidence_tokens", manifest)
         self.assertIn("SemanticVerificationReceipt", manifest)
-        metric_names = [line[2:].split(":", 1)[0] for line in manifest.splitlines()
-                        if line.startswith("- ") and ":" in line]
+        metric_names = manifest_metric_names(manifest)
         self.assertEqual(Counter(metric_names)["external_observation_stream_evidence_files"], 1)
         self.assertEqual(Counter(metric_names)["external_api_action_evidence_tokens"], 1)
         self.assertEqual(Counter(metric_names)["semantic_artifact_verification_evidence_files"], 1)
@@ -303,8 +319,7 @@ class DeltaManifestTest(unittest.TestCase):
             "connector_transport_artifact_classification_options",
         ):
             self.assertIn(token, manifest)
-        metric_names = [line[2:].split(":", 1)[0] for line in manifest.splitlines()
-                        if line.startswith("- ") and ":" in line]
+        metric_names = manifest_metric_names(manifest)
         self.assertEqual(Counter(metric_names)["connector_transport_artifact_classification"], 1)
         self.assertEqual(Counter(metric_names)["connector_transport_status"], 1)
 
@@ -436,6 +451,9 @@ class DeltaManifestTest(unittest.TestCase):
             "cargo_test_all_targets: pass",
         ):
             self.assertIn(token, manifest)
+        metric_names = manifest_metric_names(manifest)
+        for key in COMMAND_NORMALIZATION_METRIC_KEYS:
+            self.assertEqual(Counter(metric_names)[key], 1, key)
 
     def test_compact_preserved_fields_render_once_with_command_rows_fallback(self) -> None:
         commands = [
@@ -472,8 +490,7 @@ class DeltaManifestTest(unittest.TestCase):
         self.assertEqual(done.returncode, 0, done.stderr)
         receipt = json.loads(self.receipt.read_text(encoding="utf-8"))
         manifest = self.out.read_text(encoding="utf-8")
-        metric_names = [line[2:].split(":", 1)[0] for line in manifest.splitlines()
-                        if line.startswith("- ") and ":" in line]
+        metric_names = manifest_metric_names(manifest)
 
         self.assertEqual(receipt["validation_command_count"], 2)
         self.assertEqual([command["name"] for command in receipt["validation_commands"]], ["unit", "compile"])
@@ -498,6 +515,8 @@ class DeltaManifestTest(unittest.TestCase):
             "full_summary_report_only",
             "full_summary_report_command",
         ):
+            self.assertEqual(Counter(metric_names)[key], 1, key)
+        for key in COMMAND_NORMALIZATION_METRIC_KEYS:
             self.assertEqual(Counter(metric_names)[key], 1, key)
         self.assertIn("unit: pass :: ['python3', '-m', 'unittest']", manifest)
         self.assertIn("compile: pass :: ['python3', '-m', 'py_compile']", manifest)
