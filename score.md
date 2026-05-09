@@ -1828,3 +1828,76 @@ Current risks / gaps:
 - Live graph telemetry still requires deliberate wrapper and artifact-dir inputs.
 - Compact full-summary replay remains artifact-only by design.
 ```
+
+## Implementation Step 3 - Connector Transport No-Artifacts Branch Coverage
+
+Completed work:
+
+```text
+- Read the latest plan.md and score.md state.
+- Confirmed no live wrapper validation prerequisites were configured.
+- Inspected connector transport artifact classification coverage.
+- Added direct assertion coverage for the `transport_ok_no_artifacts` classifier branch.
+- Made no runtime behavior changes.
+```
+
+Validation evidence captured this turn:
+
+```text
+command: python3 -m py_compile scripts/observe_validation.sh tests/test_observe_validation_contract.py
+exit: 0
+log: target/validation-logs/py-compile-connector-transport-no-artifacts-step3.log
+exit file: target/validation-logs/py-compile-connector-transport-no-artifacts-step3.exit
+```
+
+```text
+command: python3 -m unittest tests.test_observe_validation_contract
+exit: 0
+result: 41 passed; 0 failed
+log: target/validation-logs/observe-validation-contract-connector-transport-no-artifacts-step3.log
+exit file: target/validation-logs/observe-validation-contract-connector-transport-no-artifacts-step3.exit
+```
+
+Score update:
+
+```text
+I  Intelligence      = 7.0
+E  Efficiency        = 7.92
+C  Correctness       = 9.94
+A  Alignment         = 8.8
+R  Robustness        = 10.0
+P  Performance       = 6.45
+S  Scalability       = 6.82
+D  Determinism       = 9.69
+T  Transparency      = 10.0
+Co Collaboration     = 8.0
+Em Empowerment       = 7.8
+B  Benefit           = 8.1
+L  Learning          = 7.1
+St Structure         = 9.75
+Si Simplicity        = 7.36
+F  Future-Proofing   = 9.28
+```
+
+Approximate geometric mean:
+
+```text
+G ≈ 8.32 / 10
+```
+
+Rationale:
+
+```text
+- Correctness improves slightly because all advertised connector transport artifact classifier outputs are now directly tested.
+- Determinism improves because the no-artifacts branch has an explicit input vector and expected output.
+- Future-proofing improves slightly because classifier option drift is more likely to be caught by focused tests.
+- Runtime behavior and performance remain unchanged.
+```
+
+Current risks / gaps:
+
+```text
+- No fresh live wrapper-configured observe-validation evidence was captured.
+- Live graph telemetry still requires deliberate wrapper and artifact-dir inputs.
+- Compact full-summary replay remains artifact-only by design.
+```

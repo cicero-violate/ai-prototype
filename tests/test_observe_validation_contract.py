@@ -469,6 +469,19 @@ class ObserveValidationContractTest(unittest.TestCase):
                 "transport_ok_artifacts_present",
             )
 
+            no_artifacts = self.observe_module.connector_transport_artifact_classification(
+                transport_status="",
+                report_path=str(root / "missing.ndjson"),
+                exit_file="",
+            )
+            self.assertEqual(
+                no_artifacts["connector_transport_artifact_classification"],
+                "transport_ok_no_artifacts",
+            )
+            self.assertFalse(no_artifacts["connector_transport_interrupted"])
+            self.assertFalse(no_artifacts["connector_transport_report_complete"])
+            self.assertFalse(no_artifacts["connector_transport_exit_file_present"])
+
     def test_command_execution_report_emits_transport_artifact_classification(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
