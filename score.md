@@ -23,6 +23,6 @@ F  Future-Proofing   =
 Approximate geometric mean:
 
 ```text
-G ≈ 8.31 / 10
+G ≈ XX.XX / 10
 ```
 
