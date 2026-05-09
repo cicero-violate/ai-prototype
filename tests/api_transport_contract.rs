@@ -1,10 +1,13 @@
 use ai::{
+    api_transport_receipt_replay_classification,
+    api_transport_receipt_replay_classification_with_expected_count,
     append_api_transport_receipt_ndjson, decode_api_transport_receipt_ndjson,
     encode_api_transport_receipt_ndjson, handle_transport_frame_once,
     load_api_transport_ledger_ndjson, load_api_transport_receipts_ndjson, tick,
-    verify_api_transport_receipts, verify_tlog, ApiTransportDisposition, ApiTransportFrame,
-    ApiTransportLedger, ApiTransportReceipt, ApiTransportSession, CanonError, Command,
-    CommandEnvelope, CommandLedger, ObservationRecord, Phase, RuntimeConfig, State, TLog,
+    verify_api_transport_receipt_chain, verify_api_transport_receipts, verify_tlog,
+    ApiTransportDisposition, ApiTransportFrame, ApiTransportLedger, ApiTransportReceipt,
+    ApiTransportSession, CanonError, Command, CommandEnvelope, CommandLedger, ObservationRecord,
+    Phase, RuntimeConfig, State, TLog,
 };
 
 fn transport_receipt_path(name: &str) -> std::path::PathBuf {
@@ -18,6 +21,38 @@ fn observation_frame() -> ApiTransportFrame {
     let record = ObservationRecord::new(1, 1, 0xabc, 1);
     let envelope = CommandEnvelope::new(11, Command::SubmitEvidence(record.submission()));
     ApiTransportFrame::new(101, envelope)
+}
+
+fn accepted_transport_receipts(count: u64) -> (TLog, Vec<ApiTransportReceipt>) {
+    let cfg = RuntimeConfig::default();
+    let mut state = State::default();
+    let mut tlog = TLog::default();
+    let mut command_ledger = CommandLedger::default();
+    let mut transport_ledger = ApiTransportLedger::default();
+    assert!(tick(&mut state, &mut tlog, cfg).is_ok());
+
+    for seq in 1..=count {
+        let frame = ApiTransportFrame::new(
+            100 + seq,
+            CommandEnvelope::new(
+                200 + seq,
+                Command::SubmitEvidence(
+                    ObservationRecord::new(seq, 1, 0xabc + seq, 1).submission(),
+                ),
+            ),
+        );
+        assert!(handle_transport_frame_once(
+            &mut state,
+            &mut tlog,
+            cfg,
+            &mut command_ledger,
+            &mut transport_ledger,
+            frame,
+        )
+        .is_ok());
+    }
+
+    (tlog, transport_ledger.receipts().to_vec())
 }
 
 #[test]
@@ -340,6 +375,96 @@ fn transport_receipt_decode_rejects_payload_hash_tamper() {
     assert_eq!(
         decode_api_transport_receipt_ndjson(&tampered),
         Err(CanonError::InvalidTlogRecord)
+    );
+}
+
+#[test]
+fn transport_receipt_chain_reports_valid_replay() {
+    let (tlog, receipts) = accepted_transport_receipts(2);
+    let report = match verify_api_transport_receipt_chain(&tlog, &receipts) {
+        Ok(report) => report,
+        Err(err) => panic!("transport receipts should verify: {err:?}"),
+    };
+
+    assert_eq!(report.receipt_count, 2);
+    assert_eq!(report.first_seq, 1);
+    assert_eq!(report.last_seq, 2);
+    assert_ne!(report.final_hash, 0);
+    assert_eq!(
+        api_transport_receipt_replay_classification(&tlog, &receipts),
+        None
+    );
+}
+
+#[test]
+fn transport_receipt_chain_classifies_missing_receipt() {
+    let (tlog, mut receipts) = accepted_transport_receipts(2);
+    receipts.pop();
+
+    assert_eq!(
+        api_transport_receipt_replay_classification_with_expected_count(&tlog, &receipts, 2),
+        Some("missing_receipt")
+    );
+    assert!(verify_api_transport_receipts(&tlog, &receipts).is_ok());
+}
+
+#[test]
+fn transport_receipt_chain_classifies_stale_receipt() {
+    let (mut tlog, receipts) = accepted_transport_receipts(2);
+    tlog.pop();
+
+    assert_eq!(
+        api_transport_receipt_replay_classification(&tlog, &receipts),
+        Some("stale_receipt")
+    );
+    assert_eq!(
+        verify_api_transport_receipts(&tlog, &receipts),
+        Err(CanonError::InvalidReplay)
+    );
+}
+
+#[test]
+fn transport_receipt_chain_classifies_duplicated_receipt() {
+    let (tlog, mut receipts) = accepted_transport_receipts(2);
+    receipts[1] = receipts[0];
+
+    assert_eq!(
+        api_transport_receipt_replay_classification(&tlog, &receipts),
+        Some("duplicated_receipt")
+    );
+    assert_eq!(
+        verify_api_transport_receipts(&tlog, &receipts),
+        Err(CanonError::InvalidApiCommand)
+    );
+}
+
+#[test]
+fn transport_receipt_chain_classifies_reordered_receipts() {
+    let (tlog, mut receipts) = accepted_transport_receipts(2);
+    receipts.swap(0, 1);
+
+    assert_eq!(
+        api_transport_receipt_replay_classification(&tlog, &receipts),
+        Some("reordered_receipt")
+    );
+    assert_eq!(
+        verify_api_transport_receipts(&tlog, &receipts),
+        Err(CanonError::InvalidReplay)
+    );
+}
+
+#[test]
+fn transport_receipt_chain_classifies_forged_receipt() {
+    let (tlog, mut receipts) = accepted_transport_receipts(2);
+    receipts[0].receipt_hash = receipts[0].receipt_hash.wrapping_add(1);
+
+    assert_eq!(
+        api_transport_receipt_replay_classification(&tlog, &receipts),
+        Some("forged_receipt")
+    );
+    assert_eq!(
+        verify_api_transport_receipts(&tlog, &receipts),
+        Err(CanonError::InvalidApiCommand)
     );
 }
 

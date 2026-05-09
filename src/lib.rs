@@ -27,9 +27,12 @@ pub use crate::api::server::{
     ServerError, StateDto, WorkerAppState,
 };
 pub use crate::api::transport::{
+    api_transport_receipt_replay_classification,
+    api_transport_receipt_replay_classification_with_expected_count,
     append_api_transport_receipt_ndjson, decode_api_transport_receipt_ndjson,
     encode_api_transport_receipt_ndjson, handle_transport_frame_once,
     load_api_transport_ledger_ndjson, load_api_transport_receipts_ndjson,
+    verify_api_transport_receipt_chain, verify_api_transport_receipt_chain_with_expected_count,
     verify_api_transport_receipts, ApiTransportDisposition, ApiTransportFrame, ApiTransportLedger,
     ApiTransportReceipt, ApiTransportResponse, ApiTransportSession, API_TRANSPORT_RECEIPT_RECORD,
     API_TRANSPORT_RECEIPT_SCHEMA_VERSION, API_TRANSPORT_ROUTE_COMMAND,

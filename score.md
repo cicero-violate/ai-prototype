@@ -3,33 +3,28 @@
 ## Current Progress Snapshot
 
 Date: 2026-05-08 America/Toronto / 2026-05-09 UTC
-Turn type: planning/scoring
-Scope executed: refreshed implementation plan and score based on the current dirty P3 API transport receipt consumer integration state; no implementation files modified.
+Turn type: implementation step 1
+Scope executed: completed and validated the P3 API transport receipt consumer integration batch.
 
 Current timestamp evidence:
 
 ```text
-2026-05-09 00:37:34 EDT America/Toronto / 2026-05-09T04:37:34Z UTC
+2026-05-09 00:39:38 EDT America/Toronto / 2026-05-09T04:39:38Z UTC
 branch: main
-latest visible prior commit before this planning turn: a4f819f Add receipt replay invariant verifier
+latest visible prior commit before this implementation turn: abbe0df Update Canon Agent planning and scoring
 working directory: /workspace/ai_sandbox/canon-mini-agent/prototype/ai
 ```
 
 ## Current Git State
 
-Planning/scoring files owned by this commit:
-
-```text
-plan.md
-score.md
-```
-
-Pre-existing dirty implementation files intentionally preserved outside this planning commit:
+Implementation, test, and planning/scoring files owned by this commit:
 
 ```text
 src/api/transport.rs
 src/lib.rs
 tests/api_transport_contract.rs
+plan.md
+score.md
 ```
 
 Generated validation logs and exit files are intentionally left under ignored `target/validation-logs/` and are not committed.
@@ -65,13 +60,7 @@ G ≈ 7.60 / 10
 
 ## Completed Work This Turn
 
-- Read the current repository status, recent commits, `plan.md`, `score.md`, `Cargo.toml`, and the source tree.
-- Confirmed this is a planning/scoring turn and avoided edits to implementation files.
-- Preserved the existing dirty P3 API transport receipt consumer integration batch for a future implementation commit.
-- Updated the handoff so the next execution turn has a concrete P3 path.
-
-## Most Recent Implementation Work Reflected In This Score
-
+- Read `plan.md`, `score.md`, current repository status, and the existing P3 API transport implementation diff.
 - Wired `verify_receipt_chain` into the durable API transport receipt consumer.
 - Added API transport receipt-chain APIs:
   - `verify_api_transport_receipt_chain`
@@ -87,39 +76,38 @@ G ≈ 7.60 / 10
   - duplicated receipt
   - reordered receipts
   - forged receipt hash
+- Re-ran focused validation, formatting, lib tests, and clippy before commit.
 
 ## Validation Evidence Captured This Turn
-
-No new validation was run during this planning/scoring turn. The current score relies on the most recent validation evidence from the dirty implementation batch already present in the working tree:
 
 ```text
 command: TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test api_transport_contract -- --test-threads=1
 exit: 0
 result: 19 passed; 0 failed
-log: target/validation-logs/api-transport-contract-step2.log
-exit file: target/validation-logs/api-transport-contract-step2.exit
+log: target/validation-logs/api-transport-contract-impl-step1.log
+exit file: target/validation-logs/api-transport-contract-impl-step1.exit
 ```
 
 ```text
 command: RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo fmt --check
 exit: 0
-log: target/validation-logs/fmt-step2.log
-exit file: target/validation-logs/fmt-step2.exit
+log: target/validation-logs/fmt-impl-step1.log
+exit file: target/validation-logs/fmt-impl-step1.exit
 ```
 
 ```text
 command: TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --lib -- --test-threads=1
 exit: 0
-result: 209 passed; 0 failed; finished in 0.42s
-log: target/validation-logs/test-lib-step2.log
-exit file: target/validation-logs/test-lib-step2.exit
+result: 209 passed; 0 failed; finished in 0.41s
+log: target/validation-logs/test-lib-impl-step1.log
+exit file: target/validation-logs/test-lib-impl-step1.exit
 ```
 
 ```text
 command: TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo clippy --all-targets -- -D warnings
 exit: 0
-log: target/validation-logs/clippy-step2.log
-exit file: target/validation-logs/clippy-step2.exit
+log: target/validation-logs/clippy-impl-step1.log
+exit file: target/validation-logs/clippy-impl-step1.exit
 ```
 
 ## Connector / Environment Notes
@@ -127,6 +115,7 @@ exit file: target/validation-logs/clippy-step2.exit
 - The first targeted API transport contract run returned connector-level `502` and exposed test failures from an over-strict consumer integration.
 - The implementation was adjusted so self-contained durable transport ledgers verify their own chain, while expected-count APIs classify missing-tail evidence when a caller has that external expectation.
 - Broad validation and clippy streaming returned connector-level `502`, but redirected exit files and logs showed commands completed with exit `0`.
+- This turn's validation commands completed normally through redirected logs and exit files.
 
 ## Current Risks / Gaps
 

@@ -11,6 +11,9 @@ use crate::api::protocol::{CommandEnvelope, CommandLedger, ControlEventResponse}
 use crate::api::routes::handle_envelope_once;
 use crate::error::CanonError;
 use crate::kernel::{ControlEvent, RuntimeConfig, State, TLog};
+use crate::recovery::{
+    verify_receipt_chain, ReceiptChainEntry, ReceiptReplayFailure, ReceiptReplayReport,
+};
 use crate::runtime::verify_tlog;
 
 pub const API_TRANSPORT_SCHEMA_VERSION: u64 = 1;
@@ -479,19 +482,93 @@ pub fn verify_api_transport_receipts(
     tlog: &TLog,
     receipts: &[ApiTransportReceipt],
 ) -> Result<(), CanonError> {
-    let mut seen_request_ids = Vec::new();
-    for receipt in receipts {
-        if !receipt.is_contract_valid() || request_id_seen(&seen_request_ids, receipt.request_id) {
-            return Err(CanonError::InvalidApiCommand);
-        }
-        event_for_transport_receipt(tlog, *receipt)?;
-        seen_request_ids.push(receipt.request_id);
-    }
+    verify_api_transport_receipt_chain(tlog, receipts)
+        .map_err(api_receipt_replay_error_to_canon)?;
     Ok(())
 }
 
-fn request_id_seen(seen_request_ids: &[u64], request_id: u64) -> bool {
-    seen_request_ids.contains(&request_id)
+pub fn verify_api_transport_receipt_chain(
+    tlog: &TLog,
+    receipts: &[ApiTransportReceipt],
+) -> Result<ReceiptReplayReport, ReceiptReplayFailure> {
+    verify_api_transport_receipt_chain_with_expected_count(tlog, receipts, receipts.len())
+}
+
+pub fn verify_api_transport_receipt_chain_with_expected_count(
+    tlog: &TLog,
+    receipts: &[ApiTransportReceipt],
+    expected_receipt_count: usize,
+) -> Result<ReceiptReplayReport, ReceiptReplayFailure> {
+    let expected_last_seq = expected_receipt_count as u64;
+    let run_id = api_transport_receipt_run_id(tlog);
+    let mut prev_chain_hash = 0;
+    let mut chain_entries = Vec::new();
+    let mut last_event_index = None;
+
+    for receipt in receipts {
+        if !receipt.is_contract_valid() {
+            return Err(ReceiptReplayFailure::ForgedReceipt);
+        }
+
+        let event_index = tlog
+            .iter()
+            .position(|event| event.self_hash == receipt.event_hash && receipt.matches_event(event))
+            .ok_or(ReceiptReplayFailure::StaleReceipt)?;
+
+        if last_event_index == Some(event_index) {
+            return Err(ReceiptReplayFailure::DuplicatedReceipt);
+        }
+
+        if last_event_index.is_some_and(|last| event_index < last) {
+            return Err(ReceiptReplayFailure::ReorderedReceipt);
+        }
+
+        let entry = ReceiptChainEntry::new(
+            chain_entries.len() as u64 + 1,
+            run_id,
+            receipt.receipt_hash,
+            prev_chain_hash,
+        );
+        prev_chain_hash = entry.receipt_hash;
+        chain_entries.push(entry);
+        last_event_index = Some(event_index);
+    }
+
+    verify_receipt_chain(run_id, expected_last_seq, &chain_entries)
+}
+
+pub fn api_transport_receipt_replay_classification(
+    tlog: &TLog,
+    receipts: &[ApiTransportReceipt],
+) -> Option<&'static str> {
+    verify_api_transport_receipt_chain(tlog, receipts)
+        .err()
+        .map(ReceiptReplayFailure::classification)
+}
+
+pub fn api_transport_receipt_replay_classification_with_expected_count(
+    tlog: &TLog,
+    receipts: &[ApiTransportReceipt],
+    expected_receipt_count: usize,
+) -> Option<&'static str> {
+    verify_api_transport_receipt_chain_with_expected_count(tlog, receipts, expected_receipt_count)
+        .err()
+        .map(ReceiptReplayFailure::classification)
+}
+
+fn api_receipt_replay_error_to_canon(error: ReceiptReplayFailure) -> CanonError {
+    match error {
+        ReceiptReplayFailure::ForgedReceipt | ReceiptReplayFailure::DuplicatedReceipt => {
+            CanonError::InvalidApiCommand
+        }
+        ReceiptReplayFailure::MissingReceipt
+        | ReceiptReplayFailure::ReorderedReceipt
+        | ReceiptReplayFailure::StaleReceipt => CanonError::InvalidReplay,
+    }
+}
+
+fn api_transport_receipt_run_id(tlog: &TLog) -> u64 {
+    tlog.last().map(|event| event.self_hash).unwrap_or(0).max(1)
 }
 
 fn transport_frame_hash(
