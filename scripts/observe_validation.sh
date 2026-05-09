@@ -645,6 +645,8 @@ def full_summary_report() -> dict[str, Any]:
         "runtime_archive_download_index_files": 1,
         "runtime_archive_prior_state_files": 1,
         "runtime_archive_conversation_ledger_files": 1,
+        "runtime_archive_delta_receipt_files": 0,
+        "runtime_archive_audit_files": 0,
         "runtime_archive_current_run_summary_present": True,
         "runtime_archive_runtime_manifest_present": True,
         "runtime_manifest_base_expected": base,

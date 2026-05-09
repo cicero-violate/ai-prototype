@@ -706,6 +706,8 @@ class DeltaManifestTest(unittest.TestCase):
         self.assertEqual(receipt["runtime_manifest_base_expected"], self.base)
         self.assertEqual(receipt["runtime_manifest_base_commit"], self.base)
         self.assertTrue(receipt["runtime_manifest_base_matches_delta_base"])
+        self.assertEqual(receipt["runtime_archive_delta_receipt_files"], 0)
+        self.assertEqual(receipt["runtime_archive_audit_files"], 0)
         self.assert_compact_full_summary_command_receipt(receipt)
         for command in receipt["validation_commands"]:
             self.assertIn("cmd", command)
@@ -732,6 +734,8 @@ class DeltaManifestTest(unittest.TestCase):
                 "runtime_archive_download_index_files",
                 "runtime_archive_prior_state_files",
                 "runtime_archive_conversation_ledger_files",
+                "runtime_archive_delta_receipt_files",
+                "runtime_archive_audit_files",
                 "runtime_archive_current_run_summary_present",
                 "runtime_archive_runtime_manifest_present",
                 "runtime_manifest_base_expected",

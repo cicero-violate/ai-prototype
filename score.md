@@ -3168,3 +3168,92 @@ Current risks / gaps:
 - Live graph telemetry still requires deliberate wrapper and artifact-dir inputs.
 - P4 remains open for additional compact receiver/report evidence hardening only when source inspection justifies it.
 ```
+
+## Implementation Step 1 - Full Summary Runtime Archive Zero-Count Metric Preservation
+
+Completed work:
+
+```text
+- Inspected preserved summary keys and compact full-summary receiver tests.
+- Identified that runtime_archive_delta_receipt_files and runtime_archive_audit_files were preserved metric keys, but compact full-summary report mode omitted them when their values were zero.
+- Updated compact full-summary report output to emit explicit zero values for both fields.
+- Added observe-validation contract coverage for the emitted zero values.
+- Added delta-manifest receiver coverage that the actual full-summary artifact receipt preserves both fields and renders both manifest metrics exactly once.
+```
+
+Validation evidence captured this turn:
+
+```text
+command: python3 -m py_compile scripts/observe_validation.sh scripts/write_delta_manifest.py tests/test_observe_validation_contract.py tests/test_write_delta_manifest.py
+exit: 0
+log: target/validation-logs/py-compile-full-summary-runtime-archive-metrics-impl-step1.log
+exit file: target/validation-logs/py-compile-full-summary-runtime-archive-metrics-impl-step1.exit
+```
+
+```text
+command: python3 -m unittest tests.test_write_delta_manifest tests.test_observe_validation_contract
+exit: 0
+result: 67 passed; 0 failed
+log: target/validation-logs/python-full-summary-runtime-archive-metrics-impl-step1.log
+exit file: target/validation-logs/python-full-summary-runtime-archive-metrics-impl-step1.exit
+```
+
+```text
+command: TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test planning_contract -- --test-threads=1
+exit: 0
+result: 2 passed; 0 failed
+log: target/validation-logs/planning-contract-full-summary-runtime-archive-metrics-impl-step1.log
+exit file: target/validation-logs/planning-contract-full-summary-runtime-archive-metrics-impl-step1.exit
+```
+
+```text
+command: TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test score_contract -- --test-threads=1
+exit: 0
+result: 5 passed; 0 failed
+log: target/validation-logs/score-contract-full-summary-runtime-archive-metrics-impl-step1.log
+exit file: target/validation-logs/score-contract-full-summary-runtime-archive-metrics-impl-step1.exit
+```
+
+Score update:
+
+```text
+I  Intelligence      = 7.0
+E  Efficiency        = 7.92
+C  Correctness       = 9.985
+A  Alignment         = 8.8
+R  Robustness        = 10.0
+P  Performance       = 6.45
+S  Scalability       = 6.82
+D  Determinism       = 9.738
+T  Transparency      = 10.0
+Co Collaboration     = 8.0
+Em Empowerment       = 7.8
+B  Benefit           = 8.1
+L  Learning          = 7.1
+St Structure         = 9.75
+Si Simplicity        = 7.36
+F  Future-Proofing   = 9.326
+```
+
+Approximate geometric mean:
+
+```text
+G ≈ 8.33 / 10
+```
+
+Rationale:
+
+```text
+- Correctness improves slightly because compact full-summary reports now emit all covered runtime archive count fields, including explicit zero-count delta-receipt and audit evidence.
+- Determinism improves slightly because the receiver now has exact-once manifest checks for those actual artifact metrics.
+- Future-proofing improves slightly because omission of zero-count runtime archive evidence in compact full-summary artifacts now fails focused contract tests.
+- Runtime behavior and performance remain unchanged.
+```
+
+Current risks / gaps:
+
+```text
+- No fresh live wrapper-configured observe-validation evidence was captured.
+- Live graph telemetry still requires deliberate wrapper and artifact-dir inputs.
+- P4 remains open only for additional source-justified compact evidence/reporting hardening.
+```
