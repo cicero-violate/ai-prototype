@@ -3084,3 +3084,87 @@ Current risks / gaps:
 - Live graph telemetry still requires deliberate wrapper and artifact-dir inputs.
 - This step is test/assertion hardening only; it does not add new runtime capabilities.
 ```
+
+## Planning Turn - 2026-05-09 Current Plan/Score Refresh
+
+Completed work:
+
+```text
+- Inspected repository status, latest commits, GOAL.md, Cargo.toml, source/test layout, and the existing plan/score tails.
+- Confirmed the latest implementation commit is d698526 Cover runtime manifest base manifest metrics.
+- Kept this turn limited to plan.md and score.md.
+- Refreshed plan.md to align the current snapshot and next execution triggers with the latest committed implementation state.
+```
+
+Validation evidence captured this turn:
+
+```text
+command: git status --short
+exit: 0
+result: clean at planning review start
+```
+
+```text
+command: git log --oneline -5
+exit: 0
+result: latest visible commit d698526 Cover runtime manifest base manifest metrics
+```
+
+```text
+command: TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test planning_contract -- --test-threads=1
+exit: 0
+result: 2 passed; 0 failed
+log: target/validation-logs/planning-contract-planning-refresh.log
+exit file: target/validation-logs/planning-contract-planning-refresh.exit
+```
+
+```text
+command: TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test score_contract -- --test-threads=1
+exit: 0
+result: 5 passed; 0 failed
+log: target/validation-logs/score-contract-planning-refresh.log
+exit file: target/validation-logs/score-contract-planning-refresh.exit
+```
+
+Score update:
+
+```text
+I  Intelligence      = 7.0
+E  Efficiency        = 7.92
+C  Correctness       = 9.984
+A  Alignment         = 8.8
+R  Robustness        = 10.0
+P  Performance       = 6.45
+S  Scalability       = 6.82
+D  Determinism       = 9.735
+T  Transparency      = 10.0
+Co Collaboration     = 8.0
+Em Empowerment       = 7.8
+B  Benefit           = 8.1
+L  Learning          = 7.1
+St Structure         = 9.75
+Si Simplicity        = 7.36
+F  Future-Proofing   = 9.324
+```
+
+Approximate geometric mean:
+
+```text
+G ≈ 8.33 / 10
+```
+
+Rationale:
+
+```text
+- Planning/scoring only; no implementation behavior changed.
+- Scores remain stable after the latest exactness-coverage implementation slice.
+- Current next execution target is constrained to verified evidence/reporting gaps, live wrapper validation with deliberate inputs, or assertion-preserving cleanup.
+```
+
+Current risks / gaps:
+
+```text
+- No fresh live wrapper-configured observe-validation evidence was captured.
+- Live graph telemetry still requires deliberate wrapper and artifact-dir inputs.
+- P4 remains open for additional compact receiver/report evidence hardening only when source inspection justifies it.
+```

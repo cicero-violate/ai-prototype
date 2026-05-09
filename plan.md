@@ -7,13 +7,13 @@ Canon Agent is a Rust prototype for a deterministic, auditable, self-improving a
 Current implementation snapshot, 2026-05-09 America/Toronto / 2026-05-09 UTC:
 
 - Branch: `main`.
-- Latest visible commit before this implementation turn: `854b01b Verify full summary command normalization`.
+- Latest visible commit before this planning turn: `d698526 Cover runtime manifest base manifest metrics`.
 - Working directory: `/workspace/ai_sandbox/canon-mini-agent/prototype/ai`.
 - P0 validation baseline is complete.
 - P1 validation evidence reporting is complete.
 - P2 agent loop reliability is complete.
 - P3 runtime and receipt correctness is complete for the current scope.
-- P4 graph source-of-truth integration now includes persisted graph evidence classification, deterministic fixture-backed positive evidence for landed graph mutations with receipt snapshots, command-sequenced workflow fixture validation, a compact graph-only report mode, documented/tested root runtime, wrapper, and editor subproject boundaries, a standalone graph workflow fixture validator consumed by observe-validation, full observe-validation command evidence for that validator, explicit wrapper telemetry configuration classification, normal-path observe-validation summary evidence for graph fixture, wrapper configuration, receipt replay classification, and missing-signal coherence, executable configured-wrapper classifier branch coverage, source-derived runtime performance signal evidence from observe-validation command durations, runtime archive missing-signal derivation from inspected archive contents, runtime manifest base-match derivation from archived manifest metadata, explicit router/offline availability classification in observe-validation summary evidence, optional wrapper graph validation missing-signal derivation, generated graph JSON evidence classification, compact runtime archive report integration, separated validation status fields, compact command-execution reports, connector transport artifact classification, delta manifest preservation of transport artifact state, compact full-summary artifact replay, actual full-summary artifact manifest generation, row command fallback preservation, summary/row command conflict rejection, command execution metadata conflict rejection, and duplicate row command conflict rejection, and distinct command-count closure for exact duplicate row evidence, and duplicate command-name closure for summary-provided validation commands, and explicit command evidence normalization metadata in receipts and manifests, and actual compact full-summary artifact coverage for command normalization metadata, and exact-once manifest rendering checks for command normalization metrics. The working tree was clean at the start of implementation step 5.
+- P4 graph source-of-truth integration now includes persisted graph evidence classification, deterministic fixture-backed positive evidence for landed graph mutations with receipt snapshots, command-sequenced workflow fixture validation, a compact graph-only report mode, documented/tested root runtime, wrapper, and editor subproject boundaries, a standalone graph workflow fixture validator consumed by observe-validation, full observe-validation command evidence for that validator, explicit wrapper telemetry configuration classification, normal-path observe-validation summary evidence for graph fixture, wrapper configuration, receipt replay classification, and missing-signal coherence, executable configured-wrapper classifier branch coverage, source-derived runtime performance signal evidence from observe-validation command durations, runtime archive missing-signal derivation from inspected archive contents, runtime manifest base-match derivation from archived manifest metadata, explicit router/offline availability classification in observe-validation summary evidence, optional wrapper graph validation missing-signal derivation, generated graph JSON evidence classification, compact runtime archive report integration, separated validation status fields, compact command-execution reports, connector transport artifact classification, delta manifest preservation of transport artifact state, compact full-summary artifact replay, actual full-summary artifact manifest generation, row command fallback preservation, summary/row command conflict rejection, command execution metadata conflict rejection, and duplicate row command conflict rejection, and distinct command-count closure for exact duplicate row evidence, and duplicate command-name closure for summary-provided validation commands, and explicit command evidence normalization metadata in receipts and manifests, and actual compact full-summary artifact coverage for command normalization metadata, and exact-once manifest rendering checks for command normalization metrics. The working tree was clean at the start of this planning turn.
 
 ## Current P4 Completion Summary
 
@@ -25,7 +25,40 @@ The current source-of-truth plan state is:
 4. Connector transport artifact classification is landed and distinguishes complete versus incomplete artifacts after transport interruption.
 5. Delta manifests preserve connector transport artifact evidence, so downstream receipts do not rely only on `connector_transport_instability_present`.
 
-Current next implementation target: continue P4 by reducing duplicated command-normalization test boilerplate or extending exact-once metric checks to any additional compact receiver workflows that add manifest metric keys.
+Current next implementation target: continue P4 only if source inspection exposes another deterministic evidence/reporting gap, partial exact-value or exact-once manifest metric family, compact receiver semantic drift risk, or behavior-preserving test-helper cleanup that improves clarity without weakening assertions.
+
+
+## Planning Turn Refresh - 2026-05-09
+
+Reviewed state:
+
+```text
+- Working directory: /workspace/ai_sandbox/canon-mini-agent/prototype/ai
+- Branch: main
+- Git status at planning review start: clean
+- Latest commit: d698526 Cover runtime manifest base manifest metrics
+- Scope of this turn: planning/scoring only
+```
+
+Planning conclusion:
+
+```text
+- P0, P1, P2, and current-scope P3 remain complete.
+- P4 remains in progress, but the latest compact receiver evidence-hardening slice is complete.
+- No implementation files should be changed in this planning turn.
+- The next execution turn should first inspect preserved summary keys, observe-validation compact reports, and delta manifest receiver tests for any additional exactness/persistence gaps before writing code.
+```
+
+Next execution guardrails:
+
+```text
+Proceed only when at least one of these is true:
+1. A preserved metric or missing-signal family lacks exact receipt value, exact manifest value, or exact-once rendering coverage.
+2. A compact receiver artifact adds or changes a field, metric key, missing flag, or rendering semantic.
+3. Live wrapper validation inputs are intentionally supplied for CANON_RUSTC_WRAPPER and CANON_RUSTC_V3_ARTIFACT_DIR.
+4. Source inspection exposes an uncovered deterministic failure-classification, replay, persistence, API adapter, graph evidence, or report fallback branch.
+5. Test-helper cleanup reduces duplication while preserving or strengthening explicit assertions.
+```
 
 ## Operating Rules For Agent Turns
 
