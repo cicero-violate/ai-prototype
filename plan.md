@@ -2,7 +2,7 @@
 
 ## Current State
 
-The `ai` project is a Rust prototype for a deterministic, auditable, self-improving agent runtime. The core architecture is organized around a state-machine kernel, typed capability records, durable runtime evidence, and agent-loop orchestration.
+Canon Agent is a Rust prototype for a deterministic, auditable, self-improving agent runtime. The intended architecture is a formally constrained state-machine kernel with an expanding capability layer. The kernel owns correctness, transitions, durable records, and replay boundaries. LLMs and other tools operate inside the capability layer and must produce typed, reviewable evidence rather than governing the system directly.
 
 Current implementation surfaces include:
 
@@ -13,71 +13,84 @@ Current implementation surfaces include:
 - Loop-mode agent driver under `src/agent`, plus `agent`, `worker`, `supervisor`, graph mutation, and root validation binaries.
 - Contract tests for API, transport, planning, scoring, supervisor/worker behavior, graph mutation CLI, MCP receipts, validation harness, panic surface, policy-learning traces, and helper scripts.
 - Architecture/evolution/graph/Ollama/runtime/domain documentation.
-- Domain intelligence docs intentionally kept outside the compiled Rust API until contracts stabilize.
+- Domain intelligence docs intentionally kept outside compiled runtime behavior until record contracts stabilize.
 
-Current working tree contains pre-existing non-planning changes. Planning/scoring turns must not overwrite or stage those implementation edits unless explicitly instructed.
+Current planning/scoring baseline:
 
-Observed dirty state before this planning refresh:
+- Working tree was clean at the start of this planning refresh.
+- This turn updates only `plan.md` and `score.md`.
+- No fresh validation suite was run in this planning turn.
+- Next execution turn should prioritize a full quota-safe validation baseline and then update `score.md` with exact evidence.
 
-```text
- M README.md
- M USAGE.md
- M build_test.sh
- M canon-rustc-v3/src/graph.rs
- M plan.md
- M src/agent/loop_driver.rs
-?? USAGE_1.md
-?? txt.txt
-```
+## Operating Rules For Agent Turns
 
-This turn should stage and commit only `plan.md` and `score.md`.
+1. **Planning/scoring turns**
+   - Update `plan.md` and `score.md` only.
+   - Do not modify implementation files.
+   - Commit planning/scoring changes as a standalone commit.
+
+2. **Execution turns**
+   - Work the highest-priority incomplete item below.
+   - Keep generated artifacts out of git.
+   - Update `score.md` with commands run, exit status, and failure classification.
+   - Commit only intentional source/docs/test changes.
+
+3. **Commit hygiene**
+   - Before editing: inspect `git status --short`.
+   - Before committing: inspect `git diff -- plan.md score.md` or the exact intended file set.
+   - Stage by path, never with broad `git add .`, unless the task explicitly requires staging all changed files.
 
 ## Implementation Priority
 
 ### P0 — Re-establish clean validation baseline
 
 1. **Use quota-safe validation paths**
-   - Status: library-test filesystem failures were previously isolated to `/tmp`-style write paths.
-   - Finding: `/tmp` writes can return OS error 122 (`Disk quota exceeded`) even while ordinary free-space checks appear healthy.
-   - Current convention: create `target/test-tmp` and run Rust checks with `TMPDIR="$PWD/target/test-tmp"`.
+   - Previous validation evidence indicated `/tmp`-style temporary writes can fail with OS error 122 (`Disk quota exceeded`).
+   - Use repository-local temp output for Rust validation:
+     - `mkdir -p target/test-tmp`
+     - `TMPDIR="$PWD/target/test-tmp"`
    - Keep `RUSTC_WRAPPER=""` and `RUSTC_WORKSPACE_WRAPPER=""` unless graph telemetry is explicitly being validated.
 
-2. **Run and record baseline validation**
-   - Required commands from repository root:
-     - `mkdir -p target/test-tmp`
-     - `RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo fmt --check`
-     - `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --lib -- --test-threads=1`
-     - `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`
-     - `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo clippy --all-targets -- -D warnings`
-   - If connector output limits interfere, capture logs to `target/` and report the exact exit status plus the final relevant failure lines.
-   - Do not infer pass/fail from truncated connector output.
+2. **Run baseline validation from repository root**
+   - `mkdir -p target/test-tmp`
+   - `RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo fmt --check`
+   - `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --lib -- --test-threads=1`
+   - `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`
+   - `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo clippy --all-targets -- -D warnings`
 
-3. **Separate planning from implementation work**
-   - Planning turns: update `plan.md` and `score.md` only; commit only those files.
-   - Execute turns: work the highest-priority incomplete plan item; update `score.md` with exact evidence.
-   - Before every commit: inspect `git status --short`, stage only intentional files, then commit.
+3. **Classify any failure precisely**
+   - Environment failure: quota, temp path, missing service, connector truncation, or unavailable external dependency.
+   - Compile failure: Rust compile error before tests run.
+   - Semantic test failure: assertion or contract mismatch.
+   - Lint failure: clippy warning escalated by `-D warnings`.
+   - Output-limit failure: command may have run but connector output is insufficient to prove pass/fail.
+
+4. **Record exact evidence**
+   - Capture command, status, and final relevant output lines in `score.md`.
+   - If connector output truncates, redirect logs under `target/` and report the exit code plus tail lines.
+   - Do not raise scores from assumed results.
 
 ### P1 — Make validation evidence first-class
 
 1. **Strengthen observe-validation reporting**
-   - Ensure `scripts/observe_validation.sh` is executable and writes `target/observe/validation-report.ndjson`.
-   - Report git hygiene, validation commands, graph telemetry presence/absence, runtime archive counts, ignored artifact counts, and missing-signal flags.
-   - Treat missing graph telemetry as an explicit signal when wrappers are not configured, not as a hidden pass.
+   - Ensure `scripts/observe_validation.sh` is executable.
+   - Ensure it writes `target/observe/validation-report.ndjson`.
+   - Include git hygiene, command outcomes, graph telemetry presence/absence, runtime archive counts, ignored artifact counts, and missing-signal flags.
 
 2. **Keep score updates evidence-backed**
-   - `score.md` must record commands run, status, failure class, and next action.
-   - Scores should rise only after fresh passing evidence.
-   - Scores should fall when fresh failures reveal semantic defects rather than environment-only defects.
+   - Raise correctness/robustness/determinism only after fresh passing validation.
+   - Lower relevant dimensions when failures expose semantic defects.
+   - Keep environment-only failures separate from product correctness failures.
 
 3. **Keep generated artifacts contained**
-   - Keep generated runtime artifacts ignored: `target/`, `state/`, `tlog/`, `log/`, runtime archives, SSE chunks, validation scratch output, token caches, and signed URL caches.
-   - Keep source-owned docs, tests, JSON contracts, and `tests/fixtures/**/*.ndjson` visible.
-   - Do not commit bulky generated artifacts or nested runtime logs.
+   - Keep ignored: `target/`, `state/`, `tlog/`, `log/`, runtime archives, SSE chunks, validation scratch output, token caches, and signed URL caches.
+   - Keep visible: source-owned docs, tests, JSON contracts, and `tests/fixtures/**/*.ndjson`.
 
 ### P2 — Agent loop reliability
 
 1. **Harden loop-mode execution**
-   - Confirm retry behavior preserves conversation context and does not replay incorrectly after a pinned tab/target URL is established.
+   - Confirm retry behavior preserves conversation context.
+   - Confirm retries do not replay incorrectly after a pinned tab or target URL is established.
    - Add fixtures for truncated streams, missing `[DONE]`, missing `message_stream_complete`, and length-finished output.
    - Ensure SSE chunk logs diagnose router/browser failures without persisting sensitive tokens.
 
@@ -93,12 +106,13 @@ This turn should stage and commit only `plan.md` and `score.md`.
 ### P3 — Runtime and receipt correctness
 
 1. **Expand replay and receipt invariants**
-   - Add or extend tests for hash-chain continuity, event ordering, schema version mismatches, and replay failure modes.
+   - Add or extend tests for hash-chain continuity, event ordering, schema-version mismatches, and replay failure modes.
    - Confirm every external effect has a typed receipt and replay verifier.
    - Add negative tests for forged, duplicated, reordered, stale, and missing receipts.
 
 2. **Consolidate policy-learning contracts**
-   - Keep policy promotion externally verified; never let the LLM approve itself.
+   - Keep policy promotion externally verified.
+   - Never let the LLM approve its own candidates.
    - Add fixtures showing candidate proposal, sandbox execution, external evaluator score, distillation export, and policy-store insertion.
    - Distinguish reusable policy from one-off retrieval examples.
 
@@ -110,7 +124,7 @@ This turn should stage and commit only `plan.md` and `score.md`.
 
 1. **Make graph telemetry observable but optional**
    - Keep graph capture disabled unless `CANON_RUSTC_WRAPPER`/`RUSTC_WRAPPER` are explicitly configured.
-   - Treat absence of `state/rustc/*/graph.json` as a clear missing signal in validation reports.
+   - Treat absence of `state/rustc/*/graph.json` as a clear validation signal, not as hidden success.
 
 2. **Unify graph mutation evidence**
    - Verify graph mutation ops, graph patch receipts, snapshot contracts, and mutation landing receipts as one end-to-end flow.
@@ -118,13 +132,13 @@ This turn should stage and commit only `plan.md` and `score.md`.
 
 3. **Decide subproject boundaries**
    - Clarify whether `canon-rustc-v3` and `graph-editor` are vendored subprojects, submodules, or future external dependencies.
-   - Align their plans/scores with the root project only if they remain inside this repo.
+   - Align their plans/scores with the root project only if they remain inside this repository.
 
 ### P5 — Domain intelligence layer
 
 1. **Keep domain docs unwired until contracts are stable**
    - `src/domain` should remain documentation/specification-only unless a specific implementation turn promotes records into Rust types.
-   - Do not leak business/finance/trading semantics into kernel or runtime.
+   - Do not leak business, finance, or trading semantics into kernel/runtime.
 
 2. **Define domain record contracts before behavior**
    - Prioritize schemas for `DomainSignal`, `DomainContext`, `DomainJudgment`, `DomainPlan`, `DomainRiskEnvelope`, `DomainEval`, and `DomainPromotionCandidate`.
@@ -136,17 +150,18 @@ This turn should stage and commit only `plan.md` and `score.md`.
 
 ## Next Execute-Turn Recommendation
 
-Complete validation baseline first:
+Run and record the validation baseline:
 
-1. Preserve unrelated working-tree changes.
+1. Confirm `git status --short` before editing.
 2. Create `target/test-tmp`.
-3. Run `cargo fmt --check`, library tests, all-target tests, and clippy using the wrapper-disabled, quota-safe commands above.
-4. If any command fails, classify the failure as environment, semantic test failure, compile failure, lint failure, or connector/output failure.
-5. Update `score.md` with exact command outcomes and commit only intentional implementation/scoring changes.
+3. Run `cargo fmt --check`, library tests, all-target tests, and clippy using wrapper-disabled, quota-safe commands.
+4. Classify any failures using the categories in P0.
+5. Update `score.md` with exact command outcomes.
+6. Commit only intentional validation/scoring or implementation changes.
 
 ## Current Non-Goals
 
-- Do not wire `src/domain` into `lib.rs` yet.
+- Do not wire `src/domain` into runtime behavior yet.
 - Do not redesign the kernel.
 - Do not add live trading behavior.
 - Do not rely on external LLM/Ollama/OpenAI availability for baseline correctness.

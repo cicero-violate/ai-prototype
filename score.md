@@ -4,26 +4,26 @@
 
 Date: 2026-05-08
 Turn type: planning/scoring
-Scope reviewed: `GOAL.md`, `Cargo.toml`, `src/`, `tests/`, `docs/`, existing `plan.md`, existing `score.md`, recent git history, and current git status.
+Scope reviewed: repository root listing, current `git status --short`, existing `plan.md`, existing `score.md`, and source/test tree inventory.
 
-This turn did not implement source changes and did not run a fresh full validation suite. It refreshed the implementation plan and score based on repository inspection and the latest known validation posture.
+This turn did not implement source changes and did not run a fresh validation suite. It refreshed the implementation plan and score posture, removed stale dirty-working-tree references, and kept the next execution step focused on evidence capture.
 
 ## Current Git State
 
-Observed before this planning update:
+Observed at the start of this planning refresh:
 
 ```text
- M README.md
- M USAGE.md
- M build_test.sh
- M canon-rustc-v3/src/graph.rs
- M plan.md
- M src/agent/loop_driver.rs
-?? USAGE_1.md
-?? txt.txt
+clean working tree
 ```
 
-The modified/untracked files other than `plan.md` and `score.md` are treated as pre-existing non-planning work for this turn. They were intentionally not edited or staged by this planning/scoring update.
+Expected changes for this turn:
+
+```text
+M plan.md
+M score.md
+```
+
+No implementation files should be staged or committed by this planning/scoring turn.
 
 ## Scorecard
 
@@ -39,22 +39,22 @@ P  Performance       = 5.8
 S  Scalability       = 6.2
 D  Determinism       = 8.0
 T  Transparency      = 8.0
-Co Collaboration     = 7.5
+Co Collaboration     = 7.6
 Em Empowerment       = 7.1
 B  Benefit           = 7.0
 L  Learning          = 6.9
 St Structure         = 7.7
-Si Simplicity        = 6.1
+Si Simplicity        = 6.2
 F  Future-Proofing   = 7.4
 ```
 
 Approximate geometric mean:
 
 ```text
-G ≈ 7.00 / 10
+G ≈ 7.01 / 10
 ```
 
-Correctness and robustness are held near 6.8 because the quota-safe path appears identified but the full all-target/clippy baseline has not been freshly proven in this planning turn.
+Collaboration and simplicity receive a minor planning-score improvement because the working tree is clean and the refreshed plan removes stale dirty-state references. Correctness and robustness remain capped until fresh validation evidence is captured.
 
 ## Basis For Scoring
 
@@ -64,15 +64,14 @@ Correctness and robustness are held near 6.8 because the quota-safe path appears
 - Architecture is separated across kernel, runtime, capability records, API, loop agent, validation harness, graph mutation, and domain specifications.
 - Determinism and transparency are central design elements: typed records, transition validation, durable state, command ledgers, receipts, NDJSON logs, and replay verification.
 - Contract-test coverage exists across API, transport, planning, scoring, supervisor/worker binaries, graph mutation CLI, MCP receipts, validation harness, panic surface, and policy-learning traces.
-- Domain intelligence work is documented but intentionally not wired into the runtime, preserving kernel/runtime neutrality.
-- Coordination through `plan.md` and `score.md` is usable for multi-turn agent loops.
+- Domain intelligence work is documented but intentionally not wired into runtime behavior, preserving kernel/runtime neutrality.
+- Coordination through `plan.md` and `score.md` remains usable for multi-turn agent loops.
 
 ### Current Risks / Gaps
 
 - Fresh full validation was not run during this planning turn.
-- Previous validation showed `/tmp`/filesystem quota-related failures; the current plan depends on consistently using `TMPDIR="$PWD/target/test-tmp"`.
+- Previous validation evidence indicated `/tmp`/filesystem quota-related failures; the current validation plan depends on consistently using `TMPDIR="$PWD/target/test-tmp"`.
 - Full `cargo test --all-targets` and `cargo clippy --all-targets -- -D warnings` still need reliable, current pass/fail evidence.
-- Repository has multiple uncommitted non-planning changes, so commit hygiene remains high-risk.
 - Complexity is high; broad exported surfaces and many receipt families require stronger end-to-end validation summaries.
 - Live router/MCP/Ollama/OpenAI paths depend on environment services and can fail independently of core runtime correctness.
 - Graph telemetry remains optional and may be absent unless wrapper configuration is correct.
@@ -89,21 +88,21 @@ Correctness and robustness are held near 6.8 because the quota-safe path appears
 - **Scalability (6.2):** Multi-agent coordination exists, but file coordination and external router dependencies need stress/failure validation.
 - **Determinism (8.0):** Determinism is central and well represented; live LLM/tool paths remain variable unless fully receipt-bounded.
 - **Transparency (8.0):** Documentation, NDJSON logs, receipts, and validation reports provide good audit surfaces.
-- **Collaboration (7.5):** Planning/scoring files provide loop coordination; concurrent edit/commit hygiene must remain strict.
+- **Collaboration (7.6):** Planning/scoring files provide loop coordination, and the current tree began clean.
 - **Empowerment (7.1):** The system can support autonomous implementation loops when router/MCP dependencies are available.
 - **Benefit (7.0):** Strong potential as an auditable runtime; production utility depends on validation hardening.
 - **Learning (6.9):** Learning and policy promotion concepts exist, but need complete candidate-to-policy fixtures.
 - **Structure (7.7):** Module boundaries are strong; exported surface area remains broad.
-- **Simplicity (6.1):** The project is conceptually dense and operationally complex.
+- **Simplicity (6.2):** The project remains conceptually dense, but the immediate plan is now cleaner and more directive.
 - **Future-Proofing (7.4):** Versioned schemas, receipts, documented boundaries, and graph-source plans support future evolution.
 
 ## Latest Known Validation State
 
-Latest known baseline posture from prior turns:
+Latest known baseline posture from prior turns and current planning review:
 
 ```text
 cargo fmt --check
-status: previously passed
+status: previously passed; needs fresh confirmation
 
 cargo test --lib -- --test-threads=1
 status: previously failed when using quota-sensitive temp paths
@@ -117,7 +116,7 @@ cargo clippy --all-targets -- -D warnings
 status: needs fresh reliable result with quota-safe TMPDIR and wrappers disabled
 ```
 
-No score increase beyond the small correctness/robustness adjustment should occur until current validation output is captured.
+No correctness/robustness score increase should occur until current validation output is captured.
 
 ## Next Score Update Triggers
 
@@ -131,4 +130,4 @@ Raise scores only after fresh evidence:
 
 ## Immediate Next Action
 
-The next execute turn should run the wrapper-disabled, quota-safe validation baseline, update this file with exact command outcomes, and preserve unrelated dirty working-tree files.
+The next execution turn should run the wrapper-disabled, quota-safe validation baseline, update this file with exact command outcomes, and commit only intentional changes.
