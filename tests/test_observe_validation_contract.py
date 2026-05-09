@@ -46,13 +46,23 @@ class ObserveValidationContractTest(unittest.TestCase):
         self.assertIn('CANON_RUSTC_V3_ARTIFACT_DIR', self.script)
         self.assertIn('wrapper_graph_validation_requested', self.script)
         self.assertIn('def wrapper_graph_configuration_status(', self.script)
+        self.assertIn('def wrapper_graph_validation_classification(', self.script)
         self.assertIn('wrapper_graph_configuration_status', self.script)
         self.assertIn('wrapper_graph_configuration_reason', self.script)
         self.assertIn('wrapper_graph_configuration_status_options', self.script)
+        self.assertIn('wrapper_graph_validation_classification_present', self.script)
+        self.assertIn('wrapper_graph_validation_classification_options', self.script)
         self.assertIn('not_configured', self.script)
         self.assertIn('artifact_dir_configured_without_wrapper', self.script)
         self.assertIn('wrapper_configured_missing', self.script)
         self.assertIn('wrapper_configured_available', self.script)
+        self.assertIn('wrapper_graph_optional_not_configured', self.script)
+        self.assertIn('wrapper_graph_requested_without_wrapper', self.script)
+        self.assertIn('wrapper_graph_requested_wrapper_missing', self.script)
+        self.assertIn('wrapper_graph_requested_passed', self.script)
+        self.assertIn('wrapper_graph_requested_not_passed', self.script)
+        self.assertIn('"missing_wrapper_graph_validation": wrapper_graph_validation["wrapper_graph_validation_missing"]', self.script)
+        self.assertIn('"missing_rustc_wrapper_telemetry": wrapper_graph_validation["wrapper_graph_telemetry_missing"]', self.script)
         self.assertIn('status": "skipped_env_missing"', self.script)
         self.assertIn('CANON_RUSTC_WRAPPER not found', self.script)
 
@@ -90,6 +100,79 @@ class ObserveValidationContractTest(unittest.TestCase):
                     self.observe_module.wrapper_graph_configuration_reason(status),
                     expected_reasons[expected_status],
                 )
+
+    def test_wrapper_graph_validation_classifier_executes_all_status_branches(self) -> None:
+        cases = (
+            (
+                {
+                    "configuration_status": "not_configured",
+                    "validation_result": "skipped_not_requested",
+                    "validation_available": False,
+                },
+                {
+                    "wrapper_graph_validation_classification": "wrapper_graph_optional_not_configured",
+                    "wrapper_graph_validation_classification_reason": "wrapper graph validation is optional and was not requested",
+                    "wrapper_graph_validation_required": False,
+                    "wrapper_graph_telemetry_required": False,
+                    "wrapper_graph_validation_missing": False,
+                    "wrapper_graph_telemetry_missing": False,
+                },
+            ),
+            (
+                {
+                    "configuration_status": "artifact_dir_configured_without_wrapper",
+                    "validation_result": "skipped_env_missing",
+                    "validation_available": False,
+                },
+                {
+                    "wrapper_graph_validation_classification": "wrapper_graph_requested_without_wrapper",
+                    "wrapper_graph_validation_missing": True,
+                    "wrapper_graph_telemetry_missing": True,
+                },
+            ),
+            (
+                {
+                    "configuration_status": "wrapper_configured_missing",
+                    "validation_result": "skipped_env_missing",
+                    "validation_available": False,
+                },
+                {
+                    "wrapper_graph_validation_classification": "wrapper_graph_requested_wrapper_missing",
+                    "wrapper_graph_validation_missing": True,
+                    "wrapper_graph_telemetry_missing": True,
+                },
+            ),
+            (
+                {
+                    "configuration_status": "wrapper_configured_available",
+                    "validation_result": "pass",
+                    "validation_available": True,
+                },
+                {
+                    "wrapper_graph_validation_classification": "wrapper_graph_requested_passed",
+                    "wrapper_graph_validation_missing": False,
+                    "wrapper_graph_telemetry_missing": False,
+                },
+            ),
+            (
+                {
+                    "configuration_status": "wrapper_configured_available",
+                    "validation_result": "fail",
+                    "validation_available": True,
+                },
+                {
+                    "wrapper_graph_validation_classification": "wrapper_graph_requested_not_passed",
+                    "wrapper_graph_validation_missing": True,
+                    "wrapper_graph_telemetry_missing": True,
+                },
+            ),
+        )
+
+        for kwargs, expected in cases:
+            with self.subTest(kwargs=kwargs):
+                result = self.observe_module.wrapper_graph_validation_classification(**kwargs)
+                for key, value in expected.items():
+                    self.assertEqual(result[key], value)
 
     def test_missing_signals_separate_root_wrapper_and_graph(self) -> None:
         for flag in (

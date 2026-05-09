@@ -328,6 +328,48 @@ def wrapper_graph_configuration_reason(status: str) -> str:
     }[status]
 
 
+def wrapper_graph_validation_classification(
+    *,
+    configuration_status: str,
+    validation_result: str,
+    validation_available: bool,
+) -> dict[str, Any]:
+    if configuration_status == "not_configured":
+        classification = "wrapper_graph_optional_not_configured"
+        reason = "wrapper graph validation is optional and was not requested"
+        missing_validation = False
+        missing_telemetry = False
+    elif configuration_status == "artifact_dir_configured_without_wrapper":
+        classification = "wrapper_graph_requested_without_wrapper"
+        reason = "wrapper graph validation was requested through artifact directory but wrapper path is unset"
+        missing_validation = True
+        missing_telemetry = True
+    elif configuration_status == "wrapper_configured_missing":
+        classification = "wrapper_graph_requested_wrapper_missing"
+        reason = "wrapper graph validation was requested but wrapper path is missing"
+        missing_validation = True
+        missing_telemetry = True
+    elif validation_available and validation_result == "pass":
+        classification = "wrapper_graph_requested_passed"
+        reason = "wrapper graph validation was requested and passed"
+        missing_validation = False
+        missing_telemetry = False
+    else:
+        classification = "wrapper_graph_requested_not_passed"
+        reason = "wrapper graph validation was requested but did not pass"
+        missing_validation = True
+        missing_telemetry = True
+
+    return {
+        "wrapper_graph_validation_classification": classification,
+        "wrapper_graph_validation_classification_reason": reason,
+        "wrapper_graph_validation_required": configuration_status != "not_configured",
+        "wrapper_graph_telemetry_required": configuration_status != "not_configured",
+        "wrapper_graph_validation_missing": missing_validation,
+        "wrapper_graph_telemetry_missing": missing_telemetry,
+    }
+
+
 def inspect_runtime_archive(path: str | None) -> dict[str, Any]:
     if not path:
         return {
@@ -478,6 +520,11 @@ def main() -> int:
         emit({"event": "validation_command", "name": "wrapper_graph_validation", "status": "skipped_env_missing", "reason": "CANON_RUSTC_WRAPPER not found", "connector_failure_class": "environment_failure"})
     else:
         wrapper_graph_validation_result = "skipped_not_requested"
+    wrapper_graph_validation = wrapper_graph_validation_classification(
+        configuration_status=wrapper_configuration_status,
+        validation_result=wrapper_graph_validation_result,
+        validation_available=wrapper_graph_validation_available,
+    )
 
     state_graph_present = any((ROOT / "state").glob("**/graph.json"))
     graph_workflow_fixture = graph_workflow_fixture_fields(graph_workflow_fixture_report)
@@ -548,9 +595,9 @@ def main() -> int:
 
     missing = {
         "missing_cargo_test": "cargo_test_all_targets" not in command_statuses,
-        "missing_wrapper_graph_validation": wrapper_graph_validation_result == "skipped_not_requested",
+        "missing_wrapper_graph_validation": wrapper_graph_validation["wrapper_graph_validation_missing"],
         "missing_generated_graph_json": not state_graph_present,
-        "missing_rustc_wrapper_telemetry": not wrapper_graph_validation_available,
+        "missing_rustc_wrapper_telemetry": wrapper_graph_validation["wrapper_graph_telemetry_missing"],
         "missing_graph_source_contract_report": not evidence["graph_source_contract_present"],
         "missing_graph_workflow_contract_report": not evidence["graph_workflow_contract_present"],
         "missing_graph_workflow_fixture_receipt_snapshot": not graph_workflow_fixture.get(
@@ -659,6 +706,15 @@ def main() -> int:
         "wrapper_graph_validation_available": wrapper_graph_validation_available,
         "wrapper_graph_configuration_status": wrapper_configuration_status,
         "wrapper_graph_configuration_reason": wrapper_configuration_reason,
+        "wrapper_graph_validation_classification_present": True,
+        "wrapper_graph_validation_classification_options": [
+            "wrapper_graph_optional_not_configured",
+            "wrapper_graph_requested_without_wrapper",
+            "wrapper_graph_requested_wrapper_missing",
+            "wrapper_graph_requested_passed",
+            "wrapper_graph_requested_not_passed",
+        ],
+        **wrapper_graph_validation,
         "wrapper_graph_configuration_status_options": [
             "not_configured",
             "artifact_dir_configured_without_wrapper",
