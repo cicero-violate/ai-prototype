@@ -155,6 +155,10 @@ def unique_files(mapping: dict[str, list[str]]) -> list[str]:
 
 def inspect_graph_workflow_fixture() -> dict[str, Any]:
     report = graph_fixture_report(ROOT)
+    return graph_workflow_fixture_fields(report)
+
+
+def graph_workflow_fixture_fields(report: dict[str, Any]) -> dict[str, Any]:
     return {
         key: value
         for key, value in report.items()
@@ -303,10 +307,13 @@ def main() -> int:
 
     panic_report = ROOT / "target" / "observe" / "panic-surface.json"
     policy_report = ROOT / "target" / "observe" / "policy-learning-trace.json"
+    graph_workflow_fixture_report_path = ROOT / "target" / "observe" / "graph-workflow-fixture.json"
     commands.append(run("panic_surface_validation", ["python3", "scripts/validate_rust_panic_surface.py", "--root", ".", "--report", str(panic_report.relative_to(ROOT))], timeout=test_timeout_seconds()))
     commands.append(run("policy_learning_trace_validation", ["python3", "scripts/validate_policy_learning_trace.py", "--root", ".", "--report", str(policy_report.relative_to(ROOT))], timeout=test_timeout_seconds()))
+    commands.append(run("graph_workflow_fixture_validation", ["python3", "scripts/validate_graph_workflow_fixture.py", "--root", ".", "--report", str(graph_workflow_fixture_report_path.relative_to(ROOT))], timeout=test_timeout_seconds()))
     panic_surface = read_json(panic_report)
     policy_learning_trace = read_json(policy_report)
+    graph_workflow_fixture_report = read_json(graph_workflow_fixture_report_path)
 
     wrapper = os.environ.get("CANON_RUSTC_WRAPPER", "")
     artifact_dir = os.environ.get("CANON_RUSTC_V3_ARTIFACT_DIR", "")
@@ -322,7 +329,7 @@ def main() -> int:
         wrapper_graph_validation_result = "skipped_not_requested"
 
     state_graph_present = any((ROOT / "state").glob("**/graph.json"))
-    graph_workflow_fixture = inspect_graph_workflow_fixture()
+    graph_workflow_fixture = graph_workflow_fixture_fields(graph_workflow_fixture_report)
 
     run("ollama_judgment_example", ["cargo", "run", "--example", "ollama_judgment"], env=root_rust_env, timeout=test_timeout_seconds()) if os.environ.get("CANON_OLLAMA_BASE_URL") else None
 
@@ -467,6 +474,9 @@ def main() -> int:
         "graph_workflow_contract_present": evidence["graph_workflow_contract_present"],
         "graph_workflow_contract_evidence_files": unique_files(graph_workflow_contract),
         "graph_workflow_contract_evidence_tokens": graph_workflow_contract,
+        "graph_workflow_fixture_validation_result": graph_workflow_fixture_report.get("validation_status"),
+        "graph_workflow_fixture_report_path": str(graph_workflow_fixture_report_path.relative_to(ROOT)),
+        "graph_fixture_validator": graph_workflow_fixture_report.get("graph_fixture_validator"),
         **graph_workflow_fixture,
         "missing_signal_flags": missing,
         "missing_signal_count": sum(1 for value in missing.values() if value),
