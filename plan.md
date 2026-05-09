@@ -1253,3 +1253,61 @@ log: target/validation-logs/score-contract-command-metadata-step4.log
 ## Next Execution Slice After Command-Metadata Manifest Step 4
 
 Continue P4 by strengthening validation report closure around duplicate command identity. Candidate next slice: reject or classify duplicate `validation_command` rows with the same command name but conflicting evidence, even when the summary omits `validation_commands`.
+
+## Completed Execution Slice After Duplicate-Row Manifest Step 5
+
+Completed deterministic manifest closure for duplicate `validation_command` rows. `scripts/write_delta_manifest.py` now checks row-level duplicate command names before selecting summary or row command evidence. Exact duplicate row evidence remains accepted, while duplicate rows with the same command name and conflicting fingerprints are rejected before a receipt or manifest can be generated.
+
+The duplicate-row check uses the same command fingerprint as summary/row conflict detection:
+
+```text
+name
+cmd
+status
+exit_code
+duration_ms
+timed_out
+connector_failure_class
+```
+
+`tests/test_write_delta_manifest.py` now covers exact duplicate row evidence and conflicting duplicate row evidence when the summary omits `validation_commands`. This closes the prior gap where row-only command evidence could contain conflicting duplicate command names.
+
+## Validation Evidence From Duplicate-Row Manifest Step 5
+
+```text
+python3 -m unittest tests/test_write_delta_manifest.py
+exit: 0
+result: 19 passed; 0 failed
+log: target/validation-logs/write-delta-manifest-duplicate-rows-step5.log
+```
+
+```text
+python3 -m unittest tests/test_observe_validation_contract.py
+exit: 0
+result: 39 passed; 0 failed
+log: target/validation-logs/observe-validation-contract-duplicate-rows-step5.log
+```
+
+```text
+python3 -m py_compile scripts/observe_validation.sh scripts/write_delta_manifest.py tests/test_write_delta_manifest.py tests/test_observe_validation_contract.py
+exit: 0
+log: target/validation-logs/py-compile-duplicate-rows-step5.log
+```
+
+```text
+cargo test --test planning_contract -- --test-threads=1
+exit: 0
+result: 2 passed; 0 failed
+log: target/validation-logs/planning-contract-duplicate-rows-step5.log
+```
+
+```text
+cargo test --test score_contract -- --test-threads=1
+exit: 0
+result: 5 passed; 0 failed
+log: target/validation-logs/score-contract-duplicate-rows-step5.log
+```
+
+## Next Execution Slice After Duplicate-Row Manifest Step 5
+
+Continue P4 by strengthening command-count closure around duplicate row evidence. Candidate next slice: require `validation_command_count` to match the number of distinct command names or explicitly classify/allow exact duplicate rows, so repeated identical command rows cannot inflate command coverage without clear evidence semantics.
