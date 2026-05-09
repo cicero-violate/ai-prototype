@@ -4,11 +4,12 @@
 
 Canon Agent is a Rust prototype for a deterministic, auditable, self-improving agent runtime. The target architecture remains a formally constrained state-machine kernel with a capability layer around it. The kernel owns correctness, state transitions, durable records, replay boundaries, and audit evidence. LLMs and tools operate inside the capability layer and must produce typed, reviewable evidence rather than governing the runtime directly.
 
-Current implementation snapshot, 2026-05-09 00:12:54 EDT America/Toronto / 2026-05-09T04:12:54Z UTC:
+Current implementation snapshot, 2026-05-09 00:15:21 EDT America/Toronto / 2026-05-09T04:15:21Z UTC:
 
 - Branch: `main`.
-- Latest visible prior commit before this implementation turn: `8f3a15a Update Canon Agent planning and scoring`.
+- Latest visible prior commit before this planning turn: `b76a0db Clarify loop driver retry evidence`.
 - The requested working directory resolves to the connector workspace root: `/workspace/ai_sandbox/canon-mini-agent/prototype/ai`.
+- This is a planning/scoring turn. No implementation files are in scope.
 - The pre-existing implementation batch has now been reviewed at diff level and validated.
 - P0 validation baseline is closed with fresh all-target, fmt, lib-test, and clippy evidence.
 - Connector 502s occurred during long-running validation polling, but redirected/detached validation evidence completed with exit files and final test summaries.
@@ -108,11 +109,18 @@ Fresh validation evidence from implementation step 1:
    - `cargo test --lib -- --test-threads=1` passed; 201 tests.
    - `cargo clippy --all-targets -- -D warnings` passed.
 
-### P3 — Runtime and receipt correctness
+### P3 — Runtime and receipt correctness — next execution target
 
 1. Expand replay and receipt invariants for forged, duplicated, reordered, stale, and missing receipts.
+   - Primary source surface discovered during this planning turn: `src/recovery.rs` for validation receipts and `src/validation_harness.rs` for receipt hashing/typed evidence contracts.
+   - First execution slice should add focused failing/passing tests before changing receipt logic.
+   - Required negative cases: forged receipt identity/hash, duplicated receipt, reordered receipt sequence, stale receipt, and missing receipt.
+   - Required success case: valid receipt chain/replay remains accepted and produces compact evidence.
 2. Keep policy promotion externally verified; never let the LLM approve its own candidates.
+   - Any future policy-learning admission must remain gated by external evaluator evidence.
+   - LLM-authored candidates may propose changes but cannot self-certify them into learning data.
 3. Tighten API/worker compatibility for batch command limits, invalid envelopes, durable resume behavior, and supervisor reload.
+   - Treat these as follow-on P3 slices after the receipt/replay invariant tests are established.
 
 ### P4 — Graph source-of-truth integration
 
@@ -128,15 +136,16 @@ Fresh validation evidence from implementation step 1:
 
 ## Next Execute-Turn Recommendation
 
-1. Begin P3 by expanding runtime and receipt correctness invariants.
-2. Prioritize replay/receipt tests for forged, duplicated, reordered, stale, and missing receipts.
-3. Keep policy promotion externally verified; never let the LLM approve its own candidates.
-4. Continue using `TMPDIR="$PWD/target/test-tmp"` for Rust tests in quota-sensitive sandboxes.
-5. Run targeted receipt/replay tests, `cargo fmt --check`, `cargo test --lib -- --test-threads=1`, and `cargo clippy --all-targets -- -D warnings` after the next P3 slice.
+1. Begin P3 with targeted receipt/replay invariant tests.
+2. Inspect `src/recovery.rs` first, then locate the narrowest existing test module or add one near the receipt/replay code.
+3. Add tests for forged, duplicated, reordered, stale, missing, and valid receipt-chain behavior.
+4. Only then adjust implementation logic needed to make the invariant set pass.
+5. Continue using `TMPDIR="$PWD/target/test-tmp"` for Rust tests in quota-sensitive sandboxes.
+6. Run targeted receipt/replay tests, `cargo fmt --check`, `cargo test --lib -- --test-threads=1`, and `cargo clippy --all-targets -- -D warnings` after the next P3 slice.
 
 ## Planning-Turn Handoff
 
-P0, P1, and P2 are complete. The correct next move is P3 runtime and receipt correctness, beginning with replay/receipt invariant expansion.
+P0, P1, and P2 are complete. This planning turn keeps implementation unchanged and directs the next execution turn to P3 runtime and receipt correctness, beginning with replay/receipt invariant expansion.
 
 ## Current Non-Goals
 
