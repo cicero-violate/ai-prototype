@@ -2784,3 +2784,47 @@ Candidate priorities:
 ```
 
 Do not make compact replay modes depend on live wrapper validation.
+
+## Planning Checkpoint After Full Summary Graph Missing-Flag Coverage
+
+Date: 2026-05-09 America/Toronto / 2026-05-09 UTC
+Turn type: planning/scoring checkpoint
+Latest visible implementation commit before this planning turn: `6c57194 Add full summary graph missing flag coverage`
+
+This planning turn makes no implementation changes. The active source-of-truth state remains the compact full-summary graph missing-flag closure from step 5:
+
+```text
+- compact full-summary requires graph_workflow_fixture_validation evidence
+- compact full-summary carries missing_graph_workflow_fixture_receipt_snapshot=false
+- delta-manifest compact replay preserves that missing-signal closure
+- wrapper-configured graph telemetry remains optional and intentionally outside compact artifact-only replay
+```
+
+Current implementation posture:
+
+```text
+P0 validation baseline                                      complete
+P1 first-class validation evidence                          complete
+P2 agent loop reliability                                   complete
+P3 runtime and receipt correctness                          complete for current scope
+P4 graph source-of-truth integration                         in progress, no active deterministic branch identified
+P5 domain intelligence layer                                 pending stable contracts
+```
+
+Next execution should start only when at least one concrete trigger exists:
+
+```text
+1. Live wrapper-configured observe-validation prerequisites are deliberately available.
+2. A compact receiver workflow introduces a new field, metric key, missing flag, or rendering semantic.
+3. A source-inspected branch exposes deterministic failure-classification or persistence-error coverage that is not already tested.
+4. A behavior-preserving refactor can reduce duplicated command-normalization or compact receiver test boilerplate without weakening exact-once evidence.
+```
+
+Planning/scoring turn constraints remain unchanged:
+
+```text
+- update only plan.md and score.md
+- do not modify implementation files
+- commit planning/scoring changes as a standalone commit
+- stage only plan.md and score.md when unrelated files are dirty
+```

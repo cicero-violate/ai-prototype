@@ -657,6 +657,88 @@ Immediate next action:
 
 Wait for deliberate V3 wrapper prerequisites, a new compact receiver field, or a newly identified deterministic uncovered branch before making additional implementation changes.
 
+## Planning / Scoring Checkpoint After Commit 6c57194
+
+Date: 2026-05-09 America/Toronto / 2026-05-09 UTC
+Turn type: planning/scoring checkpoint
+Scope executed: no implementation changes; updated planning and scoring state only.
+
+Current timestamp evidence:
+
+```text
+branch: main
+latest visible commit before this planning turn: 6c57194 Add full summary graph missing flag coverage
+working directory: /workspace/ai_sandbox/canon-mini-agent/prototype/ai
+working tree at checkpoint start: clean
+```
+
+Planning/scoring files owned by this turn:
+
+```text
+plan.md
+score.md
+```
+
+Implementation files intentionally not modified this turn. Prior implementation evidence from compact full-summary graph missing-flag coverage remains the current validation basis. No score increase is claimed from this checkpoint alone.
+
+Checkpoint score posture:
+
+```text
+I  Intelligence      = 7.0
+E  Efficiency        = 7.91
+C  Correctness       = 9.92
+A  Alignment         = 8.8
+R  Robustness        = 10.0
+P  Performance       = 6.45
+S  Scalability       = 6.82
+D  Determinism       = 9.66
+T  Transparency      = 10.0
+Co Collaboration     = 8.0
+Em Empowerment       = 7.8
+B  Benefit           = 8.1
+L  Learning          = 7.1
+St Structure         = 9.75
+Si Simplicity        = 7.36
+F  Future-Proofing   = 9.26
+```
+
+Approximate geometric mean remains:
+
+```text
+G ≈ 8.32 / 10
+```
+
+Current risks / gaps remain:
+
+```text
+- no fresh live wrapper-configured observe-validation run has been captured in this environment
+- live wrapper graph telemetry still requires deliberate V3 wrapper inputs and a non-compact full observe-validation run
+- compact full-summary replay remains artifact-only and intentionally omits live wrapper validation fields even when wrapper environment variables are present
+- no additional deterministic branch is currently identified after commit 6c57194
+```
+
+Immediate next action:
+
+Proceed only with deliberate V3 wrapper prerequisites, a new compact receiver field or metric, a newly identified deterministic uncovered branch, or a behavior-preserving boilerplate reduction that preserves exact-once evidence.
+
+Validation evidence captured for this planning/scoring checkpoint:
+
+```text
+command: RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test planning_contract -- --test-threads=1
+exit: 0
+result: 2 passed; 0 failed
+log: target/validation-logs/planning-contract-planning-checkpoint-6c57194.log
+exit file: target/validation-logs/planning-contract-planning-checkpoint-6c57194.exit
+```
+
+```text
+command: RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test score_contract -- --test-threads=1
+exit: 0
+result: 5 passed; 0 failed
+log: target/validation-logs/score-contract-planning-checkpoint-6c57194.log
+exit file: target/validation-logs/score-contract-planning-checkpoint-6c57194.exit
+```
+
 
 ## Implementation Step 1 — Full Summary Graph Command Evidence
 
