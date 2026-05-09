@@ -5,7 +5,7 @@ The script is intentionally deterministic and report-first: generated evidence i
 written to target/observe/validation-report.ndjson by default, while expensive
 commands keep their full logs under target/validation-logs. Root Rust validation
 clears wrapper variables so baseline correctness is independent of optional graph
-capture tooling. Use --graph-fixture-report for a compact graph-only report.
+capture tooling. Use --graph-fixture-report for a compact graph-only report. Use --runtime-archive-report for a compact runtime archive/base report.
 """
 from __future__ import annotations
 
@@ -458,6 +458,47 @@ def inspect_runtime_archive(path: str | None) -> dict[str, Any]:
     return counts
 
 
+def runtime_archive_missing_flags(runtime: dict[str, Any], base: str | None) -> dict[str, bool]:
+    return {
+        "missing_runtime_manifest_base_match": not bool(
+            base and runtime.get("runtime_manifest_base_commit") == base
+        ),
+        "missing_runtime_download_index": runtime.get("runtime_archive_download_index_files", 0) <= 0,
+        "missing_runtime_prior_state": runtime.get("runtime_archive_prior_state_files", 0) <= 0,
+        "missing_runtime_conversation_ledger": runtime.get("runtime_archive_conversation_ledger_files", 0) <= 0,
+        "missing_runtime_inspection_contract": False,
+    }
+
+
+def runtime_archive_report_row(path: str | None, base: str | None) -> dict[str, Any]:
+    runtime = inspect_runtime_archive(path)
+    missing = runtime_archive_missing_flags(runtime, base)
+    return {
+        "event": "runtime_archive_report",
+        "schema_version": 1,
+        "runtime_archive_report_only": True,
+        "runtime_archive_report_command": "--runtime-archive-report",
+        "runtime_manifest_base_expected": base,
+        "runtime_manifest_base_matches_delta_base": bool(
+            base and runtime.get("runtime_manifest_base_commit") == base
+        ),
+        **runtime,
+        **missing,
+        "runtime_archive_missing_signal_flags": missing,
+        "runtime_archive_missing_signal_count": sum(1 for value in missing.values() if value),
+        "validation_status": "pass" if not any(missing.values()) else "fail",
+    }
+
+
+def emit_runtime_archive_report() -> int:
+    row = runtime_archive_report_row(
+        os.environ.get("CANON_RUNTIME_ARCHIVE"),
+        os.environ.get("CANON_DELTA_BASE"),
+    )
+    emit(row)
+    return 0 if row["validation_status"] == "pass" else 1
+
+
 def git_value(*args: str) -> str:
     done = subprocess.run(["git", *args], cwd=ROOT, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False)
     return done.stdout.strip()
@@ -496,8 +537,10 @@ def emit_graph_fixture_report() -> int:
 def main() -> int:
     if len(sys.argv) == 2 and sys.argv[1] == "--graph-fixture-report":
         return emit_graph_fixture_report()
+    if len(sys.argv) == 2 and sys.argv[1] == "--runtime-archive-report":
+        return emit_runtime_archive_report()
     if len(sys.argv) > 1:
-        print("usage: observe_validation.sh [--graph-fixture-report]", file=sys.stderr)
+        print("usage: observe_validation.sh [--graph-fixture-report|--runtime-archive-report]", file=sys.stderr)
         return 2
 
     REPORT.parent.mkdir(parents=True, exist_ok=True)
@@ -644,13 +687,7 @@ def main() -> int:
         "missing_panic_surface_validation": "panic_surface_validation" not in command_statuses,
         "missing_policy_learning_replay_trace": "policy_learning_trace_validation" not in command_statuses,
         "missing_runtime_performance_signal": not runtime_performance["runtime_performance_signal_present"],
-        "missing_runtime_manifest_base_match": not bool(
-            base and runtime.get("runtime_manifest_base_commit") == base
-        ),
-        "missing_runtime_download_index": runtime.get("runtime_archive_download_index_files", 0) <= 0,
-        "missing_runtime_prior_state": runtime.get("runtime_archive_prior_state_files", 0) <= 0,
-        "missing_runtime_conversation_ledger": runtime.get("runtime_archive_conversation_ledger_files", 0) <= 0,
-        "missing_runtime_inspection_contract": False,
+        **runtime_archive_missing_flags(runtime, base),
         "missing_external_observation_stream_test": not evidence["external_observation_stream_test_present"],
         "missing_external_api_action_test": not evidence["external_api_action_test_present"],
         "missing_semantic_artifact_verification_test": not evidence["semantic_artifact_verification_test_present"],

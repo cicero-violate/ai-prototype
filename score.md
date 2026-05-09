@@ -3,14 +3,14 @@
 ## Current Progress Snapshot
 
 Date: 2026-05-09 America/Toronto / 2026-05-09 UTC
-Turn type: implementation step 1
-Scope executed: implemented and validated generated graph JSON evidence classification for observe-validation missing-signal derivation.
+Turn type: implementation step 2
+Scope executed: added compact runtime archive/base report mode and reusable runtime missing-flag derivation for short focused evidence.
 
 Current timestamp evidence:
 
 ```text
 branch: main
-latest visible commit before this implementation turn: 572dd50 Update planning and scoring
+latest visible commit before this implementation turn: f37bc7b Classify generated graph json evidence
 working directory: /workspace/ai_sandbox/canon-mini-agent/prototype/ai
 ```
 
@@ -25,104 +25,98 @@ plan.md
 score.md
 ```
 
-Generated validation logs, graph reports, observe reports, `__pycache__`, runtime archives, and exit files are intentionally left under ignored paths and are not committed.
+Generated validation logs, graph reports, observe reports, runtime fixture archives, `__pycache__`, and exit files are intentionally left under ignored paths and are not committed.
 
 ## Scorecard
 
-Scores are approximate implementation-readiness scores on a 0-10 scale. Correctness and robustness improve because generated graph JSON absence is now classified by explicit evidence instead of a raw state-file absence check.
+Scores are approximate implementation-readiness scores on a 0-10 scale. Correctness, robustness, structure, and efficiency improve because runtime archive/base evidence can now be proven through a compact deterministic report path instead of requiring a long full observe-validation run.
 
 ```text
 I  Intelligence      = 7.0
-E  Efficiency        = 7.4
-C  Correctness       = 9.3
+E  Efficiency        = 7.5
+C  Correctness       = 9.4
 A  Alignment         = 8.7
-R  Robustness        = 9.4
-P  Performance       = 6.3
+R  Robustness        = 9.5
+P  Performance       = 6.4
 S  Scalability       = 6.6
-D  Determinism       = 9.2
+D  Determinism       = 9.3
 T  Transparency      = 10.0
 Co Collaboration     = 8.0
 Em Empowerment       = 7.6
-B  Benefit           = 7.9
+B  Benefit           = 8.0
 L  Learning          = 7.1
-St Structure         = 9.2
+St Structure         = 9.3
 Si Simplicity        = 6.7
-F  Future-Proofing   = 8.7
+F  Future-Proofing   = 8.8
 ```
 
 Approximate geometric mean:
 
 ```text
-G ≈ 8.04 / 10
+G ≈ 8.08 / 10
 ```
 
 ## Completed Work This Turn
 
-- Read `plan.md`, `score.md`, current git status, latest commits, and the existing generated-graph-JSON implementation diff.
-- Added/kept `generated_graph_json_classification()` in `scripts/observe_validation.sh`.
-- Derived `missing_generated_graph_json` from the classifier instead of directly from `not state_graph_present`.
-- Added observe-validation summary fields for generated graph JSON classification presence, options, reason, missing boolean, and fixture substitution boolean.
-- Preserved required missing behavior when wrapper graph capture is requested and live generated graph JSON is absent.
-- Preserved non-missing behavior when live generated graph JSON is present.
-- Added executable branch coverage for all generated graph JSON classifier outcomes.
-- Verified graph fixture report-only behavior remains stable.
-- Ran a forced-short-timeout full observe-validation smoke; the connector returned 502, but ignored artifacts showed the generated graph JSON summary fields were emitted and `missing_signal_flags.missing_generated_graph_json=false` in the current live-graph-present environment.
+- Read `plan.md`, `score.md`, current git status, latest commits, and runtime archive/base sections in `scripts/observe_validation.sh` and `tests/test_observe_validation_contract.py`.
+- Added `runtime_archive_missing_flags()` so runtime archive/base missing-signal derivation is shared between full observe-validation and compact runtime report mode.
+- Added `runtime_archive_report_row()` and `emit_runtime_archive_report()` to emit a single compact runtime archive/base report row.
+- Added `--runtime-archive-report` CLI mode and expanded usage text while preserving `--graph-fixture-report`.
+- Added executable contract coverage that builds a synthetic runtime archive, runs `scripts/observe_validation.sh --runtime-archive-report`, and verifies all targeted runtime archive/base missing flags clear.
+- Verified the graph fixture report-only path still passes after CLI expansion.
+- Verified graph workflow fixture validator remains stable.
 
 ## Validation Evidence Captured This Turn
 
 ```text
 command: python3 -m unittest tests/test_observe_validation_contract.py
 exit: 0
-result: 26 passed; 0 failed
-log: target/validation-logs/observe-validation-contract-generated-json-step1.log
-exit file: target/validation-logs/observe-validation-contract-generated-json-step1.exit
+result: 27 passed; 0 failed
+log: target/validation-logs/observe-validation-contract-runtime-report-step2.log
+exit file: target/validation-logs/observe-validation-contract-runtime-report-step2.exit
+```
+
+```text
+command: CANON_DELTA_BASE=runtime-base-step2 CANON_RUNTIME_ARCHIVE=target/runtime-archive-step2-report.tar CANON_OBSERVE_REPORT=target/observe/runtime-archive-report-step2.ndjson python3 scripts/observe_validation.sh --runtime-archive-report
+exit: 0
+result: validation_status=pass; runtime_archive_inspection_status=pass; runtime_manifest_base_matches_delta_base=true; runtime_archive_missing_signal_count=0
+report: target/observe/runtime-archive-report-step2.ndjson
+log: target/validation-logs/runtime-archive-report-step2.log
+summary: missing_runtime_manifest_base_match=false; missing_runtime_download_index=false; missing_runtime_prior_state=false; missing_runtime_conversation_ledger=false; missing_runtime_inspection_contract=false
+```
+
+```text
+command: CANON_OBSERVE_REPORT=target/observe/graph-fixture-report-runtime-step2.ndjson python3 scripts/observe_validation.sh --graph-fixture-report
+exit: 0
+result: validation_status=pass; graph_evidence_status=graph_mutation_landed_with_receipt_snapshot
+log: target/validation-logs/graph-fixture-report-runtime-step2.log
+exit file: target/validation-logs/graph-fixture-report-runtime-step2.exit
+```
+
+```text
+command: python3 -m py_compile scripts/observe_validation.sh tests/test_observe_validation_contract.py
+exit: 0
+log: target/validation-logs/py-compile-runtime-report-step2.log
+exit file: target/validation-logs/py-compile-runtime-report-step2.exit
 ```
 
 ```text
 command: python3 -m unittest tests/test_graph_workflow_fixture_validator.py
 exit: 0
 result: 2 passed; 0 failed
-log: target/validation-logs/graph-workflow-fixture-validator-generated-json-step1.log
-exit file: target/validation-logs/graph-workflow-fixture-validator-generated-json-step1.exit
-```
-
-```text
-command: CANON_OBSERVE_REPORT=target/observe/graph-fixture-report-generated-json-step1.ndjson python3 scripts/observe_validation.sh --graph-fixture-report
-exit: 0
-result: validation_status=pass; graph_evidence_status=graph_mutation_landed_with_receipt_snapshot; graph_workflow_fixture_receipt_snapshot_present=true
-log: target/validation-logs/graph-fixture-report-generated-json-step1.log
-exit file: target/validation-logs/graph-fixture-report-generated-json-step1.exit
-report: target/observe/graph-fixture-report-generated-json-step1.ndjson
-```
-
-```text
-command: python3 -m py_compile scripts/observe_validation.sh tests/test_observe_validation_contract.py
-exit: 0
-log: target/validation-logs/py-compile-generated-json-step1.log
-exit file: target/validation-logs/py-compile-generated-json-step1.exit
-```
-
-```text
-command: CANON_TEST_TIMEOUT_SECONDS=1 CANON_OBSERVE_REPORT=target/observe/full-observe-generated-json-step1-timeout-smoke.ndjson python3 scripts/observe_validation.sh
-connector result: 502 transport error during long command; ignored artifacts were produced
-exit file: target/validation-logs/full-observe-generated-json-step1-timeout-smoke.exit
-exit: 1
-result: validation_status=fail from known unrelated missing signals; generated graph JSON classification evidence present
-report: target/observe/full-observe-generated-json-step1-timeout-smoke.ndjson
-summary: generated_graph_json_classification_present=true; generated_graph_json_classification=generated_graph_json_present; generated_graph_json_missing=false; missing_signal_flags.missing_generated_graph_json=false; generated_graph_json_fixture_substitution=false; graph_evidence_status=graph_mutation_landed_with_receipt_snapshot; graph_workflow_fixture_validation_result=pass; graph_workflow_fixture_receipt_snapshot_present=true; wrapper_graph_validation_requested=false; wrapper_graph_configuration_status=not_configured; missing_signal_count=4
+log: target/validation-logs/graph-workflow-fixture-validator-runtime-step2.log
+exit file: target/validation-logs/graph-workflow-fixture-validator-runtime-step2.exit
 ```
 
 ## Connector / Environment Notes
 
-- The long observe-validation smoke again returned connector 502 during the shell call, but ignored artifacts showed the script wrote its exit file and NDJSON report.
-- The full observe exit was `1`; this remains classified as expected current-state fail from remaining known missing signals, not as a generated graph JSON classification failure.
-- The current environment has live generated graph JSON evidence under `state/`, so the full smoke classified the state as `generated_graph_json_present` rather than fixture substitution.
-- Fixture substitution remains covered by focused classifier branch tests.
-- Generated validation logs, reports, runtime archives, and exit files remain ignored and unstaged.
+- This turn avoided a long full observe-validation run and used compact deterministic report evidence instead.
+- The runtime archive used for direct report validation was generated under ignored `target/` paths and is not committed.
+- Generated validation logs, reports, runtime fixture directories, runtime archive tar files, and exit files remain ignored and unstaged.
 
 ## Current Risks / Gaps
 
-- Overall observe-validation still fails due remaining known missing signals unrelated to this P4 slice: runtime manifest base match, runtime download index, runtime prior state, and runtime conversation ledger.
+- Full observe-validation still reports runtime archive/base missing signals unless `CANON_RUNTIME_ARCHIVE` and `CANON_DELTA_BASE` are supplied.
 - No live wrapper-configured observe-validation run has been captured in this environment.
 - Live router/MCP/Ollama/OpenAI paths still depend on environment services and can fail independently of core runtime correctness.
 - Future cross-subproject graph behavior changes still require updating the boundary contract and executable test first.
@@ -131,7 +125,7 @@ summary: generated_graph_json_classification_present=true; generated_graph_json_
 
 Raise scores only after fresh evidence:
 
-- **Correctness / Robustness:** remaining runtime archive/base missing signals are reduced with executable tests or source-derived observe evidence.
+- **Correctness / Robustness:** compact runtime archive report evidence is integrated into full observe-validation summary semantics where appropriate, or another remaining missing-signal class is reduced with source-derived evidence.
 - **Performance:** command-duration performance evidence is strengthened with external benchmark or latency trend data.
 - **Scalability:** multi-agent coordination and router failure scenarios are tested.
 - **Learning:** policy promotion remains externally evaluated and self-approval remains impossible under tests.
@@ -139,4 +133,4 @@ Raise scores only after fresh evidence:
 
 ## Immediate Next Action
 
-Continue P4 by reducing the remaining known runtime archive/base missing-signal gap. Prefer a reusable runtime archive report fixture or source-derived validation row that can prove runtime manifest base match, download index, prior state, and conversation ledger evidence in a short focused test.
+Continue P4 by integrating compact runtime archive/base report evidence into full observe-validation summary semantics where appropriate, or choose another remaining missing-signal class that can be reduced with a focused fixture/report path and executable contract coverage.

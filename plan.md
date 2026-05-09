@@ -587,9 +587,51 @@ result: validation_status=fail from known unrelated missing signals; generated g
 summary: generated_graph_json_classification_present=true, generated_graph_json_classification=generated_graph_json_present, generated_graph_json_missing=false, missing_signal_flags.missing_generated_graph_json=false, generated_graph_json_fixture_substitution=false, wrapper_graph_validation_requested=false, wrapper_graph_configuration_status=not_configured, graph_evidence_status=graph_mutation_landed_with_receipt_snapshot, graph_workflow_fixture_validation_result=pass, graph_workflow_fixture_receipt_snapshot_present=true, missing_signal_count=4
 ```
 
-## Next Execution Slice After Generated Graph JSON Step 1
+## Completed Execution Slice After Generated Graph JSON Step 1
 
-Continue P4 by reducing the remaining known runtime archive/base evidence gaps without weakening graph, wrapper, router/offline, receipt replay, runtime performance, or generated graph JSON semantics. Prefer a reusable runtime archive report fixture or source-derived validation row that can prove `runtime_manifest_base_match`, `runtime_download_index`, `runtime_prior_state`, and `runtime_conversation_ledger` in short focused tests before attempting another long full observe-validation run.
+Completed P4 runtime archive/base evidence slice by adding compact `--runtime-archive-report` mode and a reusable `runtime_archive_missing_flags()` helper. The report mode proves `runtime_manifest_base_match`, `runtime_download_index`, `runtime_prior_state`, and `runtime_conversation_ledger` in a short focused path without running full cargo validation.
+
+
+## Validation Evidence From Runtime Archive Report Implementation Step 2
+
+```text
+python3 -m unittest tests/test_observe_validation_contract.py
+exit: 0
+result: 27 passed; 0 failed
+log: target/validation-logs/observe-validation-contract-runtime-report-step2.log
+```
+
+```text
+CANON_DELTA_BASE=runtime-base-step2 CANON_RUNTIME_ARCHIVE=target/runtime-archive-step2-report.tar CANON_OBSERVE_REPORT=target/observe/runtime-archive-report-step2.ndjson python3 scripts/observe_validation.sh --runtime-archive-report
+exit: 0
+result: validation_status=pass, runtime_archive_inspection_status=pass, runtime_manifest_base_matches_delta_base=true, runtime_archive_missing_signal_count=0
+summary: missing_runtime_manifest_base_match=false, missing_runtime_download_index=false, missing_runtime_prior_state=false, missing_runtime_conversation_ledger=false
+log: target/validation-logs/runtime-archive-report-step2.log
+```
+
+```text
+CANON_OBSERVE_REPORT=target/observe/graph-fixture-report-runtime-step2.ndjson python3 scripts/observe_validation.sh --graph-fixture-report
+exit: 0
+result: validation_status=pass, graph_evidence_status=graph_mutation_landed_with_receipt_snapshot
+log: target/validation-logs/graph-fixture-report-runtime-step2.log
+```
+
+```text
+python3 -m py_compile scripts/observe_validation.sh tests/test_observe_validation_contract.py
+exit: 0
+log: target/validation-logs/py-compile-runtime-report-step2.log
+```
+
+```text
+python3 -m unittest tests/test_graph_workflow_fixture_validator.py
+exit: 0
+result: 2 passed; 0 failed
+log: target/validation-logs/graph-workflow-fixture-validator-runtime-step2.log
+```
+
+## Next Execution Slice After Runtime Archive Report Step 2
+
+Continue P4 by integrating the compact runtime archive report evidence into full observe-validation summary semantics where appropriate, or by adding a focused fixture/report path for another remaining missing-signal class. Preserve the existing report-only modes, optional wrapper classification, generated graph JSON classification, graph fixture evidence, receipt replay inventory, and runtime performance evidence.
 
 ## Current Non-Goals
 

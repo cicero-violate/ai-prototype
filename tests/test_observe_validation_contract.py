@@ -2,7 +2,10 @@
 from __future__ import annotations
 
 import importlib.util
+import json
+import os
 import re
+import subprocess
 import sys
 import tarfile
 import tempfile
@@ -378,6 +381,10 @@ class ObserveValidationContractTest(unittest.TestCase):
             "missing_runtime_prior_state",
             "missing_runtime_conversation_ledger",
             "missing_runtime_inspection_contract",
+            "runtime_archive_report_only",
+            "runtime_archive_report_command",
+            "--runtime-archive-report",
+            "runtime_archive_missing_signal_flags",
         ):
             self.assertIn(token, self.script)
 
@@ -409,10 +416,62 @@ class ObserveValidationContractTest(unittest.TestCase):
         self.assertTrue(result["runtime_archive_current_run_summary_present"])
         self.assertTrue(result["runtime_archive_runtime_manifest_present"])
         self.assertEqual(result["runtime_manifest_base_commit"], "base-123")
-        self.assertIn('"missing_runtime_download_index": runtime.get("runtime_archive_download_index_files", 0) <= 0', self.script)
-        self.assertIn('"missing_runtime_prior_state": runtime.get("runtime_archive_prior_state_files", 0) <= 0', self.script)
-        self.assertIn('"missing_runtime_conversation_ledger": runtime.get("runtime_archive_conversation_ledger_files", 0) <= 0', self.script)
+        missing = self.observe_module.runtime_archive_missing_flags(result, "base-123")
+        self.assertFalse(missing["missing_runtime_download_index"])
+        self.assertFalse(missing["missing_runtime_prior_state"])
+        self.assertFalse(missing["missing_runtime_conversation_ledger"])
+        self.assertFalse(missing["missing_runtime_manifest_base_match"])
 
+
+    def test_runtime_archive_report_mode_emits_passing_compact_runtime_evidence(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            files = {
+                "runtime/download-index.json": "{}",
+                "runtime/prior-state.json": "{}",
+                "runtime/conversation-ledger.ndjson": "",
+                "runtime/current-run-summary.json": "{}",
+                "runtime/runtime-manifest.json": '{"base_commit":"base-report"}',
+            }
+            for rel, content in files.items():
+                path = root / rel
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(content, encoding="utf-8")
+            archive = root / "runtime.tar"
+            with tarfile.open(archive, "w") as tf:
+                for rel in files:
+                    tf.add(root / rel, arcname=rel)
+            report = root / "runtime-report.ndjson"
+            env = os.environ.copy()
+            env.update({
+                "CANON_RUNTIME_ARCHIVE": str(archive),
+                "CANON_DELTA_BASE": "base-report",
+                "CANON_OBSERVE_REPORT": str(report),
+            })
+
+            done = subprocess.run(
+                [sys.executable, str(OBSERVE), "--runtime-archive-report"],
+                cwd=ROOT,
+                env=env,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                check=False,
+            )
+
+            self.assertEqual(done.returncode, 0, done.stderr)
+            rows = [json.loads(line) for line in report.read_text(encoding="utf-8").splitlines()]
+            row = rows[-1]
+            self.assertEqual(row["event"], "runtime_archive_report")
+            self.assertTrue(row["runtime_archive_report_only"])
+            self.assertEqual(row["runtime_archive_report_command"], "--runtime-archive-report")
+            self.assertEqual(row["validation_status"], "pass")
+            self.assertTrue(row["runtime_manifest_base_matches_delta_base"])
+            self.assertEqual(row["runtime_archive_missing_signal_count"], 0)
+            self.assertFalse(row["runtime_archive_missing_signal_flags"]["missing_runtime_manifest_base_match"])
+            self.assertFalse(row["runtime_archive_missing_signal_flags"]["missing_runtime_download_index"])
+            self.assertFalse(row["runtime_archive_missing_signal_flags"]["missing_runtime_prior_state"])
+            self.assertFalse(row["runtime_archive_missing_signal_flags"]["missing_runtime_conversation_ledger"])
 
     def test_runtime_manifest_base_match_uses_archive_manifest_commit(self) -> None:
         with tempfile.TemporaryDirectory() as td:
@@ -522,7 +581,7 @@ class ObserveValidationContractTest(unittest.TestCase):
             "graph_fixture_report_only",
             "graph_fixture_report_command",
             "graph_fixture_validator",
-            "usage: observe_validation.sh [--graph-fixture-report]",
+            "usage: observe_validation.sh [--graph-fixture-report|--runtime-archive-report]",
             "return emit_graph_fixture_report()",
         ):
             self.assertIn(token, self.script + self.graph_fixture_validator)
