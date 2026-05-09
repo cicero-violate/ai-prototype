@@ -7,7 +7,7 @@ Canon Agent is a Rust prototype for a deterministic, auditable, self-improving a
 Current implementation snapshot, 2026-05-09 America/Toronto / 2026-05-09 UTC:
 
 - Branch: `main`.
-- Latest visible commit before this implementation turn: `8b2e285 Strengthen graph fixture flow validation`.
+- Latest visible commit before this planning turn: `b7ddf63 Classify wrapper telemetry configuration`.
 - Working directory: `/workspace/ai_sandbox/canon-mini-agent/prototype/ai`.
 - P0 validation baseline is complete.
 - P1 validation evidence reporting is complete.
@@ -140,7 +140,7 @@ Current implementation snapshot, 2026-05-09 America/Toronto / 2026-05-09 UTC:
 2. Define record contracts before behavior.
 3. Keep trading separate from production business automation.
 
-## Validation Evidence From Current Implementation Step
+## Validation Evidence From Latest Implementation Step
 
 ```text
 python3 -m unittest tests/test_observe_validation_contract.py
@@ -183,13 +183,18 @@ result: 10 passed; 0 failed
 log: target/validation-logs/graph-mutation-cli-contract-p4-impl-step8.log
 ```
 
-## Next Execute-Turn Recommendation
+## Current Planning-Turn Decision
 
-Continue P4 with the next graph integration slice. Keep graph wrapper telemetry optional and explicitly classified, keep deterministic fixture evidence available through command-sequenced standalone validator evidence, full observe-validation command evidence, and `--graph-fixture-report`, and require any future cross-subproject behavior change to update the boundary contract plus its test first.
+This planning turn makes no implementation changes. The next execution turn should continue P4 by preserving the existing deterministic graph evidence path while improving confidence in one of the remaining integration gaps. Recommended order:
+
+1. Attempt a normal-timeout full observe-validation run and capture whether the graph fixture command evidence, wrapper configuration classification, receipt-chain inventory, and missing-signal fields all remain coherent outside the forced-short-timeout smoke path.
+2. If normal full observe-validation is too slow or blocked by environment constraints, add a focused validation path or contract test that covers the same summary fields without requiring broad cargo validation.
+3. Keep wrapper telemetry optional unless `CANON_RUSTC_WRAPPER` or `CANON_RUSTC_V3_ARTIFACT_DIR` is configured; configured-but-unavailable states must remain explicit validation evidence, not silent absence.
+4. Require any future root runtime / `canon-rustc-v3/` / `graph-editor/` boundary change to update `docs/03-graph-source-of-truth.md` and `tests/test_graph_source_boundary_contract.py` before behavior changes.
 
 ## Planning-Turn Handoff
 
-P0, P1, P2, and current P3 scope are complete. P4 now has source-derived graph evidence classification, deterministic fixture-backed positive landed-with-receipt-snapshot evidence with command-sequenced workflow validation, a compact graph-only report path that avoids broad cargo validation, a tested subproject boundary contract for root runtime/wrapper/editor responsibilities, a standalone graph workflow fixture validator consumed by observe-validation, full observe-validation command evidence for that validator, and explicit optional wrapper telemetry configuration classification.
+P0, P1, P2, and current P3 scope are complete. P4 has source-derived graph evidence classification, deterministic fixture-backed positive landed-with-receipt-snapshot evidence with command-sequenced workflow validation, a compact graph-only report path that avoids broad cargo validation, a tested subproject boundary contract for root runtime/wrapper/editor responsibilities, a standalone graph workflow fixture validator consumed by observe-validation, full observe-validation command evidence for that validator, and explicit optional wrapper telemetry configuration classification. The next implementation value is not a new feature by default; it is stronger full-path evidence that these classifications hold under normal validation conditions or an intentionally focused equivalent if the environment cannot support full observe-validation.
 
 ## Current Non-Goals
 
