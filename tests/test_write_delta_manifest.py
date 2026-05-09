@@ -35,9 +35,8 @@ FULL_SUMMARY_REQUIRED_COMMANDS = (
     ("graph_workflow_fixture_validation", ["python3", "scripts/validate_graph_workflow_fixture.py"]),
 )
 
-FULL_SUMMARY_EXACT_ONCE_MANIFEST_METRICS = (
-    "cargo_test_all_targets",
-    "graph_workflow_fixture_validation",
+FULL_SUMMARY_EXACT_ONCE_MANIFEST_METRICS = tuple(
+    name for name, _cmd in FULL_SUMMARY_REQUIRED_COMMANDS
 )
 
 
@@ -295,10 +294,10 @@ class DeltaManifestTest(unittest.TestCase):
         self.assertEqual(command_names, compact_full_summary_command_names())
 
     def assert_compact_full_summary_manifest_commands(self, manifest: str) -> None:
-        self.assert_manifest_key_values(manifest, {
-            "cargo_test_all_targets": "pass",
-            "graph_workflow_fixture_validation": "pass",
-        })
+        self.assert_manifest_key_values(
+            manifest,
+            {name: "pass" for name in compact_full_summary_command_names()},
+        )
         self.assert_manifest_metrics_render_once(
             manifest,
             FULL_SUMMARY_EXACT_ONCE_MANIFEST_METRICS,
