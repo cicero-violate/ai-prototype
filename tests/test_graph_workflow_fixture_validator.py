@@ -37,6 +37,9 @@ class GraphWorkflowFixtureValidatorTest(unittest.TestCase):
             self.assertTrue(data["graph_workflow_fixture_receipt_snapshot_present"])
             self.assertTrue(data["graph_workflow_fixture_integrity_valid"])
             self.assertTrue(data["graph_workflow_fixture_commands_present"])
+            self.assertTrue(data["graph_workflow_fixture_command_sequence_valid"])
+            self.assertTrue(data["graph_workflow_fixture_generated_outputs_present"])
+            self.assertTrue(data["graph_workflow_fixture_receipt_ledger_flow_valid"])
             self.assertEqual(data["graph_workflow_fixture_missing"], [])
 
     def test_missing_fixture_fails_with_explicit_missing_signal(self) -> None:

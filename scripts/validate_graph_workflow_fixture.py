@@ -21,6 +21,11 @@ REQUIRED_WORKFLOW_COMMANDS = (
     "verify-landing",
     "verify-receipts",
 )
+REQUIRED_GENERATED_OUTPUTS = (
+    "patch.diff",
+    "patch-receipt.ndjson",
+    "mutation-receipt.ndjson",
+)
 
 
 def sha256_file(path: Path) -> str | None:
@@ -53,6 +58,9 @@ def inspect_graph_workflow_fixture(root: Path) -> dict[str, Any]:
         "graph_workflow_fixture_landing_command_present": False,
         "graph_workflow_fixture_ledger_command_present": False,
         "graph_workflow_fixture_receipt_snapshot_present": False,
+        "graph_workflow_fixture_command_sequence_valid": False,
+        "graph_workflow_fixture_generated_outputs_present": False,
+        "graph_workflow_fixture_receipt_ledger_flow_valid": False,
         "graph_workflow_fixture_integrity_rows": [],
         "graph_workflow_fixture_missing": ["MANIFEST.txt"],
     }
@@ -101,9 +109,23 @@ def inspect_graph_workflow_fixture(root: Path) -> dict[str, Any]:
     landing_command_present = any("verify-landing" in command for command in commands)
     ledger_command_present = any("verify-receipts" in command for command in commands)
     commands_present = not missing_commands
+    command_kinds = [command.split()[1] for command in commands if len(command.split()) >= 2]
+    command_sequence_valid = command_kinds == list(REQUIRED_WORKFLOW_COMMANDS)
+    generated_outputs_present = all(
+        any(output in command for command in commands) for output in REQUIRED_GENERATED_OUTPUTS
+    )
+    receipt_ledger_flow_valid = any(
+        "verify-receipts" in command
+        and "patch-receipt.ndjson" in command
+        and "mutation-receipt.ndjson" in command
+        for command in commands
+    )
     receipt_snapshot_present = (
         integrity_valid
         and commands_present
+        and command_sequence_valid
+        and generated_outputs_present
+        and receipt_ledger_flow_valid
         and landing_command_present
         and ledger_command_present
         and not missing_required_files
@@ -119,6 +141,9 @@ def inspect_graph_workflow_fixture(root: Path) -> dict[str, Any]:
             "graph_workflow_fixture_landing_command_present": landing_command_present,
             "graph_workflow_fixture_ledger_command_present": ledger_command_present,
             "graph_workflow_fixture_receipt_snapshot_present": receipt_snapshot_present,
+            "graph_workflow_fixture_command_sequence_valid": command_sequence_valid,
+            "graph_workflow_fixture_generated_outputs_present": generated_outputs_present,
+            "graph_workflow_fixture_receipt_ledger_flow_valid": receipt_ledger_flow_valid,
             "graph_workflow_fixture_integrity_rows": integrity_rows,
             "graph_workflow_fixture_missing": missing,
         }
