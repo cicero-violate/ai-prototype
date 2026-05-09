@@ -1,5 +1,5 @@
 use crate::capability::{CapabilityId, CapabilityRegistry, PacketEffect};
-use crate::kernel::{mix, Packet};
+use crate::kernel::{Packet, mix};
 
 use super::hash::{tool_command_hash, tool_input_hash};
 use super::types::ToolKind;

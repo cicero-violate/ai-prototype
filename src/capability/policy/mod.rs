@@ -3,6 +3,6 @@
 pub mod store;
 
 pub use self::store::{
-    PolicyEntry, PolicyLookupReceipt, PolicyProofReceipt, PolicyStore, PolicyStoreError,
-    POLICY_FEEDBACK_HASH, POLICY_PROMOTION_SOURCE_SEQ,
+    POLICY_FEEDBACK_HASH, POLICY_PROMOTION_SOURCE_SEQ, PolicyEntry, PolicyLookupReceipt,
+    PolicyProofReceipt, PolicyStore, PolicyStoreError,
 };

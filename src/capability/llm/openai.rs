@@ -14,24 +14,25 @@ use std::time::Duration;
 
 use crate::capability::context::ContextRecord;
 use crate::capability::llm::record::{
-    retry_budget_decision_receiptable, retry_budget_decision_valid, retry_budget_exhausted,
-    retry_budget_policy_valid, LlmRecord, LlmStructuredAdapter,
+    LlmRecord, LlmStructuredAdapter, retry_budget_decision_receiptable,
+    retry_budget_decision_valid, retry_budget_exhausted, retry_budget_policy_valid,
 };
 use crate::capability::llm::transport::{
-    chat_completions_path as shared_chat_completions_path, parse_local_http_endpoint,
-    provider_text_hash, request_identity_hash as shared_request_identity_hash,
-    retry_policy_hash as shared_retry_policy_hash, LocalEndpointError, LocalLlmEndpoint,
+    LocalEndpointError, LocalLlmEndpoint, chat_completions_path as shared_chat_completions_path,
+    parse_local_http_endpoint, provider_text_hash,
+    request_identity_hash as shared_request_identity_hash,
+    retry_policy_hash as shared_retry_policy_hash,
 };
 use crate::capability::policy::PolicyStore;
 use crate::capability::verification::{
-    verify_verification_proof_record_bindings, CanonicalEffect, CanonicalEffectProof,
-    CanonicalEffectReceipt, ProofSubjectKind, VerificationProofBinding, VerificationProofRecord,
-    PROOF_FLAG_PHASE_VERIFIED, PROOF_FLAG_PROVENANCE_VERIFIED, PROOF_FLAG_RECEIPT_VERIFIED,
-    PROOF_FLAG_TAMPER_REJECTED,
+    CanonicalEffect, CanonicalEffectProof, CanonicalEffectReceipt, PROOF_FLAG_PHASE_VERIFIED,
+    PROOF_FLAG_PROVENANCE_VERIFIED, PROOF_FLAG_RECEIPT_VERIFIED, PROOF_FLAG_TAMPER_REJECTED,
+    ProofSubjectKind, VerificationProofBinding, VerificationProofRecord,
+    verify_verification_proof_record_bindings,
 };
-use crate::codec::ndjson::{load_tlog_ndjson, TLOG_RECORD_EVENT};
+use crate::codec::ndjson::{TLOG_RECORD_EVENT, load_tlog_ndjson};
 use crate::kernel::{
-    mix, Cause, ControlEvent, Decision, EventKind, Evidence, GateId, GateStatus, Phase, TLog,
+    Cause, ControlEvent, Decision, EventKind, Evidence, GateId, GateStatus, Phase, TLog, mix,
 };
 
 pub const OPENAI_COMPAT_PROVIDER: &str = "openai-compatible";
@@ -425,10 +426,42 @@ impl OpenAiToolCall {
     }
 }
 
+/// Router-server browser routing options.
+///
+/// The router-server accepts an optional `browser` object alongside standard
+/// OpenAI fields. `new_chat` opens a fresh provider tab. `target_url` pins the
+/// turn to a specific existing tab URL (returned from a previous turn's response).
+/// Both fields are ignored by non-router OpenAI-compatible endpoints.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct OpenAiBrowserOptions {
+    /// Open a new chat tab for this turn. Mutually exclusive with `target_url`.
+    pub new_chat: bool,
+    /// Reuse the tab at this URL. Obtained from a previous `OpenAiChatResponse::target_url`.
+    pub target_url: Option<String>,
+}
+
+impl OpenAiBrowserOptions {
+    pub fn new_chat() -> Self {
+        Self {
+            new_chat: true,
+            target_url: None,
+        }
+    }
+
+    pub fn continue_at(target_url: impl Into<String>) -> Self {
+        Self {
+            new_chat: false,
+            target_url: Some(target_url.into()),
+        }
+    }
+}
+
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct OpenAiChatRequest {
     pub messages: Vec<OpenAiMessage>,
     pub tools: Vec<OpenAiTool>,
+    /// Router-server browser routing. `None` uses the router's default tab selection.
+    pub browser: Option<OpenAiBrowserOptions>,
 }
 
 impl OpenAiChatRequest {
@@ -436,11 +469,17 @@ impl OpenAiChatRequest {
         Self {
             messages,
             tools: Vec::new(),
+            browser: None,
         }
     }
 
     pub fn with_tools(mut self, tools: Vec<OpenAiTool>) -> Self {
         self.tools = tools;
+        self
+    }
+
+    pub fn with_browser(mut self, browser: OpenAiBrowserOptions) -> Self {
+        self.browser = Some(browser);
         self
     }
 }
@@ -454,6 +493,9 @@ pub struct OpenAiChatResponse {
     pub total_tokens: u32,
     pub response_hash: u64,
     pub raw_hash: u64,
+    /// The ChatGPT tab URL the router used for this turn.
+    /// Pass to the next turn via `OpenAiBrowserOptions::continue_at` to maintain conversation continuity.
+    pub target_url: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -1149,6 +1191,24 @@ impl OpenAiClient {
             }
             json.push(']');
         }
+        if let Some(browser) = &request.browser {
+            json.push_str(",\"browser\":{");
+            if browser.new_chat {
+                json.push_str("\"new_chat\":true");
+                if browser.target_url.is_some() {
+                    json.push(',');
+                }
+            }
+            if let Some(url) = &browser.target_url {
+                if !browser.new_chat {
+                    json.push_str("\"new_chat\":false,");
+                }
+                json.push_str("\"target_url\":\"");
+                json.push_str(&json_escape(url));
+                json.push('"');
+            }
+            json.push('}');
+        }
         json.push_str(",\"stream\":false}");
         Ok(json)
     }
@@ -1422,6 +1482,9 @@ fn parse_chat_response_body(body: &str) -> Result<OpenAiChatResponse, OpenAiErro
     let total_tokens = json_u32_field(body, "\"total_tokens\"")
         .unwrap_or_else(|| prompt_tokens.saturating_add(completion_tokens))
         .max(1);
+    // The router-server embeds `"browser":{"target_url":"..."}` in the response.
+    // Extract it so callers can pin subsequent turns to the same ChatGPT tab.
+    let target_url = json_string_field(body, "\"target_url\"").filter(|s| !s.is_empty());
     Ok(OpenAiChatResponse {
         id,
         response_hash: hash_text(&content),
@@ -1430,6 +1493,7 @@ fn parse_chat_response_body(body: &str) -> Result<OpenAiChatResponse, OpenAiErro
         prompt_tokens,
         completion_tokens,
         total_tokens,
+        target_url,
     })
 }
 

@@ -8,10 +8,10 @@ pub mod evolution;
 pub mod record;
 
 pub use self::evolution::{
-    encode_candidate_receipt_ndjson, CandidateReceipt, CandidateReceiptInput, CandidateVerdict,
-    SelectionRecord, EVOLUTION_LEDGER_RECORD, EVOLUTION_LEDGER_SCHEMA_VERSION,
+    CandidateReceipt, CandidateReceiptInput, CandidateVerdict, EVOLUTION_LEDGER_RECORD,
+    EVOLUTION_LEDGER_SCHEMA_VERSION, SelectionRecord, encode_candidate_receipt_ndjson,
 };
 pub use self::record::{
-    EvalDecision, EvalDimension, EvalRecord, EvalScorecardReceipt, EVAL_SCORECARD_RECORD,
-    EVAL_SCORECARD_SCHEMA_VERSION,
+    EVAL_SCORECARD_RECORD, EVAL_SCORECARD_SCHEMA_VERSION, EvalDecision, EvalDimension, EvalRecord,
+    EvalScorecardReceipt,
 };

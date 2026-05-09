@@ -361,9 +361,11 @@ mod tests {
     #[test]
     fn ndjson_encoder_rejects_invalid_receipt() {
         let mut receipt = candidate(1, 91, CandidateVerdict::Pass, true);
-        assert!(encode_candidate_receipt_ndjson(&receipt)
-            .unwrap()
-            .starts_with("[1,"));
+        assert!(
+            encode_candidate_receipt_ndjson(&receipt)
+                .unwrap()
+                .starts_with("[1,")
+        );
         receipt.proof_hash ^= 1;
         assert!(encode_candidate_receipt_ndjson(&receipt).is_none());
     }

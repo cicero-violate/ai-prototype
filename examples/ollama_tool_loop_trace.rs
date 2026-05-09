@@ -1,9 +1,9 @@
 use ai::api::routes::handle_envelope;
 use ai::{
-    append_sandbox_process_receipt_ndjson, tick, verify_tlog, write_tlog_ndjson, Command,
-    CommandEnvelope, ContextRecord, ControlEvent, GateStatus, LiveSandboxProcessExecutor,
-    MemoryFact, MemoryIndex, OllamaClient, OllamaMessage, Phase, PolicyStore, RuntimeConfig, State,
-    TLog,
+    Command, CommandEnvelope, ContextRecord, ControlEvent, GateStatus, LiveMcpCallExecutor,
+    McpCallReceipt, MemoryFact, MemoryIndex, OllamaClient, OllamaMessage, Phase, PolicyStore,
+    RuntimeConfig, State, TLog, append_mcp_call_receipt_ndjson, tick, verify_tlog,
+    write_tlog_ndjson,
 };
 use std::path::Path;
 
@@ -12,8 +12,8 @@ const TOOL_CALL_TARGET: usize = 5;
 #[derive(Clone, Copy)]
 struct ToolSpec {
     intent: &'static str,
-    command: &'static str,
-    args: &'static [&'static str],
+    tool_name: &'static str,
+    args_json: &'static str,
     aliases: &'static [&'static str],
 }
 
@@ -27,9 +27,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let tlog_dir = Path::new("tlog");
     std::fs::create_dir_all(tlog_dir)?;
     let tlog_path = tlog_dir.join("ollama_tool_loop_trace.tlog.ndjson");
-    let process_receipt_path = tlog_dir.join("ollama_tool_loop_trace.process_receipts.ndjson");
+    let mcp_receipt_path = tlog_dir.join("ollama_tool_loop_trace.mcp_receipts.ndjson");
     std::fs::remove_file(&tlog_path).ok();
-    std::fs::remove_file(&process_receipt_path).ok();
+    std::fs::remove_file(&mcp_receipt_path).ok();
 
     println!(
         "ollama base_url={} model={}",
@@ -48,13 +48,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         if state.phase == Phase::Judgment && state.gates.judgment.status != GateStatus::Pass {
             submit_ollama_judgment(&client, &policy, &mut state, &mut tlog, cfg)?;
         } else if state.phase == Phase::Execute && tool_calls == 0 {
-            tool_calls = submit_ollama_tool_calls(
-                &client,
-                &process_receipt_path,
-                &mut state,
-                &mut tlog,
-                cfg,
-            )?;
+            tool_calls =
+                submit_ollama_tool_calls(&client, &mcp_receipt_path, &mut state, &mut tlog, cfg)?;
         } else {
             tick(&mut state, &mut tlog, cfg)?;
         }
@@ -67,13 +62,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     verify_tlog(&tlog)?;
     write_tlog_ndjson(&tlog_path, &tlog)?;
     println!(
-        "done phase={:?} success={} events={} tool_calls={} tlog_path={} process_receipt_path={}",
+        "done phase={:?} success={} events={} tool_calls={} tlog_path={} mcp_receipt_path={}",
         state.phase,
         state.is_success(),
         tlog.len(),
         tool_calls,
         tlog_path.display(),
-        process_receipt_path.display()
+        mcp_receipt_path.display()
     );
 
     Ok(())
@@ -113,20 +108,15 @@ fn submit_ollama_judgment(
 
 fn submit_ollama_tool_calls(
     client: &OllamaClient,
-    process_receipt_path: &Path,
+    mcp_receipt_path: &Path,
     state: &mut State,
     tlog: &mut TLog,
     cfg: RuntimeConfig,
 ) -> Result<usize, Box<dyn std::error::Error>> {
-    let sandbox_root =
-        std::env::temp_dir().join(format!("canon-ollama-tool-loop-{}", std::process::id()));
-    let executor = LiveSandboxProcessExecutor::new(&sandbox_root)
-        .with_allowed_command("/usr/bin/printf")
-        .with_allowed_command("/usr/bin/pwd")
-        .with_allowed_command("/usr/bin/uname")
-        .with_allowed_command("/usr/bin/whoami")
-        .with_allowed_command("/usr/bin/true")
-        .with_locked_env("CANON_SANDBOX", "1")
+    let mcp_worker_url = std::env::var("AI_MCP_WORKER_URL")
+        .unwrap_or_else(|_| "http://127.0.0.1:38469/mcp_worker".to_string());
+    let executor = LiveMcpCallExecutor::new(mcp_worker_url.clone())
+        .with_allowed_tool("shell")
         .with_timeout_ms(1000)
         .with_max_output_bytes(4096);
 
@@ -155,38 +145,46 @@ fn submit_ollama_tool_calls(
             return Err(format!("unsupported tool intent: {}", response.content.trim()).into());
         }
         println!(
-            "tool_intent_mapped index={} mapped={} command={} args={:?}",
-            tool_call_index, spec.intent, spec.command, spec.args
+            "tool_intent_mapped index={} mapped={} mcp_worker_url={} tool_name={} args_json={}",
+            tool_call_index, spec.intent, mcp_worker_url, spec.tool_name, spec.args_json
         );
 
         let receipt = executor
-            .execute_process(spec.command, spec.args, "")
-            .map_err(|err| format!("tool execution failed: {err:?}"))?;
+            .execute_call(spec.tool_name, spec.args_json)
+            .map_err(|err| format!("mcp tool execution failed: {err:?}"))?;
 
         println!(
-            "tool_receipt index={} command={} exit_status={} timed_out={} stdout_bytes={} stdout_hash={} receipt_hash={}",
+            "mcp_tool_receipt index={} tool_name={} exit_status={} timed_out={} response_bytes={} response_hash={} receipt_hash={}",
             tool_call_index,
-            spec.command,
+            spec.tool_name,
             receipt.exit_status,
             receipt.timed_out,
-            receipt.stdout_bytes,
-            receipt.stdout_hash,
+            receipt.response_bytes,
+            receipt.response_hash,
             receipt.receipt_hash
         );
-        append_sandbox_process_receipt_ndjson(process_receipt_path, &receipt)
-            .map_err(|err| format!("failed to persist process receipt: {err:?}"))?;
+        append_mcp_call_receipt_ndjson(mcp_receipt_path, &receipt)
+            .map_err(|err| format!("failed to persist mcp receipt: {err:?}"))?;
         receipts.push(receipt);
     }
 
-    let batch_hash = receipts
-        .iter()
-        .fold(0x5_7001_ca11_u64, |hash, receipt| {
-            hash ^ receipt.receipt_hash
-        })
-        .max(1);
-    let envelope = CommandEnvelope::new(batch_hash, Command::SubmitProcessReceiptBatch(receipts));
+    let receipt = combined_mcp_execution_receipt(&receipts)?;
+    let envelope = CommandEnvelope::new(
+        receipt.receipt_hash,
+        Command::SubmitEvidence(receipt.submission()),
+    );
     handle_envelope(state, tlog, cfg, envelope)?;
     Ok(TOOL_CALL_TARGET)
+}
+
+fn combined_mcp_execution_receipt(
+    receipts: &[McpCallReceipt],
+) -> Result<&McpCallReceipt, Box<dyn std::error::Error>> {
+    receipts
+        .iter()
+        .rev()
+        .find(|receipt| receipt.is_success())
+        .ok_or_else(|| "no successful mcp tool receipt".into())
 }
 
 fn print_event(event: &ControlEvent) {
@@ -211,32 +209,32 @@ fn tool_spec(index: usize) -> Result<ToolSpec, Box<dyn std::error::Error>> {
     let spec = match index {
         1 => ToolSpec {
             intent: "RUN_PRINTF",
-            command: "/usr/bin/printf",
-            args: &["tool 1: printf\n"],
+            tool_name: "shell",
+            args_json: r#"{"cwd":".","command":"printf 'tool 1: printf\n'"}"#,
             aliases: &["PRINTF"],
         },
         2 => ToolSpec {
             intent: "RUN_PWD",
-            command: "/usr/bin/pwd",
-            args: &[],
+            tool_name: "shell",
+            args_json: r#"{"cwd":".","command":"pwd"}"#,
             aliases: &["PWD"],
         },
         3 => ToolSpec {
             intent: "RUN_UNAME",
-            command: "/usr/bin/uname",
-            args: &["-s"],
+            tool_name: "shell",
+            args_json: r#"{"cwd":".","command":"uname -s"}"#,
             aliases: &["UNAME"],
         },
         4 => ToolSpec {
             intent: "RUN_WHOAMI",
-            command: "/usr/bin/whoami",
-            args: &[],
+            tool_name: "shell",
+            args_json: r#"{"cwd":".","command":"whoami"}"#,
             aliases: &["WHOAMI"],
         },
         5 => ToolSpec {
             intent: "RUN_TRUE",
-            command: "/usr/bin/true",
-            args: &[],
+            tool_name: "shell",
+            args_json: r#"{"cwd":".","command":"true"}"#,
             aliases: &["TRUE"],
         },
         _ => return Err(format!("missing tool spec for index {index}").into()),

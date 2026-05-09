@@ -1,3 +1,4 @@
+pub mod autorefactor;
 pub mod graph;
 pub mod ops;
 pub mod patch;

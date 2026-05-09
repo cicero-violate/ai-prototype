@@ -8,7 +8,7 @@ use std::time::{Duration, Instant};
 use crate::capability::{
     CapabilityId, CapabilityRegistry, EvidenceProducer, EvidenceSubmission, PacketEffect,
 };
-use crate::kernel::{mix, Evidence, GateId};
+use crate::kernel::{Evidence, GateId, mix};
 
 use super::hash::{
     argv_hash, bounded_file_bytes, bytes_hash, ensure_process_token, ensure_relative_process_path,
@@ -17,8 +17,8 @@ use super::hash::{
 };
 use super::request::SandboxProcessRequest;
 use super::types::{
-    Effect, ToolSandboxError, SANDBOX_PROCESS_RECEIPT_RECORD,
-    SANDBOX_PROCESS_RECEIPT_SCHEMA_VERSION,
+    Effect, SANDBOX_PROCESS_RECEIPT_RECORD, SANDBOX_PROCESS_RECEIPT_SCHEMA_VERSION,
+    ToolSandboxError,
 };
 
 #[derive(Clone, Debug, PartialEq, Eq)]

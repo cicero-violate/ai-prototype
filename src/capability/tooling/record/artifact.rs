@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 
 use crate::capability::{CapabilityRegistry, EvidenceSubmission, PacketEffect};
 use crate::kernel::{
-    mix, Cause, ControlEvent, Decision, EventKind, Evidence, GateId, GateStatus, Packet, Phase,
+    Cause, ControlEvent, Decision, EventKind, Evidence, GateId, GateStatus, Packet, Phase, mix,
 };
 
 use super::hash::{

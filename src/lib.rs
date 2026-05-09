@@ -5,6 +5,7 @@
 //! turns evidence into control events; codec only serializes/deserializes; API is
 //! the outer surface.
 
+pub mod agent;
 pub mod api;
 pub mod capability;
 pub mod codec;

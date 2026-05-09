@@ -6,7 +6,7 @@ use std::time::Duration;
 use crate::capability::{
     CapabilityId, CapabilityRegistry, EvidenceProducer, EvidenceSubmission, PacketEffect,
 };
-use crate::kernel::{mix, Evidence, GateId};
+use crate::kernel::{Evidence, GateId, mix};
 
 use super::hash::{
     bytes_hash, parse_u64_ndjson_fields, string_hash, sync_dir, tool_effect_kind_from_u64,

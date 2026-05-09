@@ -5,7 +5,7 @@
 //! kernel-visible `TaskReady` evidence used by the runtime.
 
 use crate::capability::{EvidenceProducer, EvidenceSubmission, PacketEffect};
-use crate::kernel::{mix, Evidence, GateId, Packet};
+use crate::kernel::{Evidence, GateId, Packet, mix};
 
 const PLAN_SCHEMA_VERSION: u64 = 2;
 const MAX_PLAN_TASKS: u8 = 8;

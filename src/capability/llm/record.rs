@@ -4,7 +4,7 @@ use crate::capability::context::ContextRecord;
 use crate::capability::judgment::JudgmentRecord;
 use crate::capability::policy::PolicyStore;
 use crate::capability::{EvidenceProducer, EvidenceSubmission};
-use crate::kernel::{mix, Evidence, GateId};
+use crate::kernel::{Evidence, GateId, mix};
 
 const LLM_JUDGMENT_SCHEMA_VERSION: u64 = 1;
 const LLM_JUDGMENT_SCHEMA_HASH: u64 = 0x4f1bbcdd2f5d7a91;

@@ -1,5 +1,6 @@
+use ai::{Command, CommandEnvelope, EvidenceSubmission};
 use std::net::TcpListener;
-use std::process::{Command, Stdio};
+use std::process::{Command as ProcessCommand, Stdio};
 use std::thread;
 use std::time::{Duration, Instant};
 
@@ -10,6 +11,28 @@ fn free_port() -> u16 {
 
 fn temp_tlog_dir(name: &str) -> std::path::PathBuf {
     std::env::temp_dir().join(format!("ai-supervisor-bin-{name}-{}", std::process::id()))
+}
+
+fn worker_command_body(command_id: u64, payload_hash: u64) -> serde_json::Value {
+    let submission = EvidenceSubmission::with_payload(
+        ai::GateId::Invariant,
+        ai::Evidence::InvariantProof,
+        true,
+        payload_hash,
+    );
+    let envelope = CommandEnvelope::new(command_id, Command::SubmitEvidence(submission));
+    serde_json::json!({
+        "command_id": envelope.command_id,
+        "command_hash": envelope.command_hash,
+        "payload_tag": "SubmitEvidence",
+        "payload": {
+            "gate": "Invariant",
+            "evidence": "InvariantProof",
+            "passed": true,
+            "effect": "None",
+            "payload_hash": payload_hash
+        }
+    })
 }
 
 fn wait_for_json(url: &str) -> serde_json::Value {
@@ -27,7 +50,7 @@ fn wait_for_json(url: &str) -> serde_json::Value {
 
 #[test]
 fn supervisor_help_does_not_require_environment() {
-    let output = Command::new(env!("CARGO_BIN_EXE_supervisor"))
+    let output = ProcessCommand::new(env!("CARGO_BIN_EXE_supervisor"))
         .arg("--help")
         .output()
         .expect("supervisor --help should run");
@@ -45,7 +68,7 @@ fn supervisor_spawns_worker_and_reloads_generation() {
     let tlog_dir = temp_tlog_dir("reload");
     let _ = std::fs::remove_dir_all(&tlog_dir);
 
-    let mut child = Command::new(env!("CARGO_BIN_EXE_supervisor"))
+    let mut child = ProcessCommand::new(env!("CARGO_BIN_EXE_supervisor"))
         .env("SUPERVISOR_PORT", supervisor_port.to_string())
         .env("AI_TLOG_DIR", &tlog_dir)
         .env("AI_WORKER_BIN", env!("CARGO_BIN_EXE_worker"))
@@ -66,6 +89,30 @@ fn supervisor_spawns_worker_and_reloads_generation() {
             .status()
             .is_success()
     );
+
+    let first_state_url = format!("http://127.0.0.1:{first_port}/v1/state");
+    let initial_state = wait_for_json(&first_state_url);
+    let initial_tlog_len = initial_state["tlog_len"]
+        .as_u64()
+        .expect("initial tlog len");
+
+    let command_url = format!("http://127.0.0.1:{first_port}/v1/command");
+    let command_response: serde_json::Value = reqwest::blocking::Client::new()
+        .post(&command_url)
+        .json(&worker_command_body(31, 0x7a11))
+        .send()
+        .expect("worker command response")
+        .json()
+        .expect("worker command json");
+    assert_eq!(command_response["ok"], true);
+    assert_eq!(command_response["request_id"], 1);
+    assert_eq!(command_response["disposition"], "accepted");
+
+    let after_command = wait_for_json(&first_state_url);
+    assert!(after_command["tlog_len"].as_u64().expect("tlog len") > initial_tlog_len);
+    assert!(std::fs::read_dir(&tlog_dir)
+        .expect("tlog dir should exist")
+        .any(|entry| entry.expect("tlog entry").path().is_file()));
 
     let reload_url = format!("http://127.0.0.1:{supervisor_port}/reload");
     let reload: serde_json::Value = reqwest::blocking::Client::new()
@@ -94,7 +141,7 @@ fn supervisor_spawns_worker_and_reloads_generation() {
 
     #[cfg(unix)]
     {
-        let status = Command::new("kill")
+        let status = ProcessCommand::new("kill")
             .arg("-TERM")
             .arg(child.id().to_string())
             .status()

@@ -1,7 +1,7 @@
 //! Deterministic routing records owned by the orchestration capability.
 
 use crate::capability::{EvidenceSubmission, PacketEffect};
-use crate::kernel::{mix, Evidence, GateId, GateStatus, State, EXECUTION_GATE_ORDER};
+use crate::kernel::{EXECUTION_GATE_ORDER, Evidence, GateId, GateStatus, State, mix};
 
 const ORCHESTRATION_ROUTE_VERSION: u64 = 1;
 

@@ -80,6 +80,8 @@ pub struct StateDto {
     pub tlog_len: usize,
     pub objective_id: u64,
     pub task_id: u64,
+    pub failure: Option<String>,
+    pub recovery_action: Option<String>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
@@ -235,7 +237,9 @@ fn evidence_from_str(value: &str) -> Result<Evidence, ServerError> {
         "PlanRecord" => Ok(Evidence::PlanRecord),
         "TaskReady" => Ok(Evidence::TaskReady),
         "ExecutionReceipt" => Ok(Evidence::ExecutionReceipt),
+        "ArtifactReceipt" => Ok(Evidence::ArtifactReceipt),
         "VerificationReport" => Ok(Evidence::VerificationReport),
+        "LineageProof" => Ok(Evidence::LineageProof),
         "EvalScore" => Ok(Evidence::EvalScore),
         "PersistedRecord" => Ok(Evidence::PersistedRecord),
         _ => Err(ServerError::InvalidPayload),
@@ -249,6 +253,8 @@ fn state_dto(session: &ApiTransportSession) -> StateDto {
         tlog_len: session.tlog().len(),
         objective_id: state.packet.objective_id,
         task_id: state.packet.active_task_id,
+        failure: state.failure.map(|failure| format!("{failure:?}")),
+        recovery_action: state.recovery_action.map(|action| format!("{action:?}")),
     }
 }
 

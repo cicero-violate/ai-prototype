@@ -122,8 +122,8 @@ fn root_validate_validation_footprint_mode_is_executable_contract() {
     assert_root_validate_catalog_compact_mode_contract(
         "--validation-footprint",
         &[
-            "\"schema\":\"canon_validation_footprint_v1\\",
-            "\"record_type\":\"validation_footprint_summary\\",
+            "\"schema\":\"canon_validation_footprint_v1\"",
+            "\"record_type\":\"validation_footprint_summary\"",
             "\"cargo_step_count\":7",
             "\"python_step_count\":0",
             "\"total_declared_steps\":7",
@@ -134,7 +134,7 @@ fn root_validate_validation_footprint_mode_is_executable_contract() {
             ),
             "\"runtime_budget_required\":true",
             "\"max_project_agent_elapsed_ms_p95\":10000",
-            "\"verdict\":\"pass\\",
+            "\"verdict\":\"pass\"",
         ],
     );
 }
@@ -212,39 +212,39 @@ fn root_validate_validation_command_footprint_planning_modes_are_executable_cont
     assert_root_validate_catalog_compact_mode_contract(
         "--validation-command-footprint-planning",
         &[
-            "\"schema\":\"canon_validation_command_footprint_planning_v1\\",
-            "\"record_type\":\"validation_command_footprint_planning\\",
+            "\"schema\":\"canon_validation_command_footprint_planning_v1\"",
+            "\"record_type\":\"validation_command_footprint_planning\"",
             "\"current_total_declared_steps\":7",
             "\"target_total_declared_steps\":6",
             "\"command_reduction_target\":1",
             "\"expected_count_guarded_steps\":2",
-            "\"safety_status\":\"pass\\",
-            "\"planning_status\":\"action_required\\",
-            "\"verdict\":\"pass\\",
+            "\"safety_status\":\"pass\"",
+            "\"planning_status\":\"action_required\"",
+            "\"verdict\":\"pass\"",
         ],
     );
     assert_root_validate_catalog_compact_mode_contract(
         "--validation-command-footprint-target-met-smoke",
         &[
-            "\"schema\":\"canon_validation_command_footprint_planning_v1\\",
-            "\"record_type\":\"validation_command_footprint_target_met_smoke\\",
+            "\"schema\":\"canon_validation_command_footprint_planning_v1\"",
+            "\"record_type\":\"validation_command_footprint_target_met_smoke\"",
             "\"target_total_declared_steps\":7",
             "\"command_reduction_target\":0",
-            "\"safety_status\":\"pass\\",
-            "\"planning_status\":\"met\\",
-            "\"verdict\":\"pass\\",
+            "\"safety_status\":\"pass\"",
+            "\"planning_status\":\"met\"",
+            "\"verdict\":\"pass\"",
         ],
     );
     assert_root_validate_catalog_compact_mode_contract(
         "--validation-command-footprint-unsafe-target-smoke",
         &[
-            "\"schema\":\"canon_validation_command_footprint_planning_v1\\",
-            "\"record_type\":\"validation_command_footprint_unsafe_target_smoke\\",
+            "\"schema\":\"canon_validation_command_footprint_planning_v1\"",
+            "\"record_type\":\"validation_command_footprint_unsafe_target_smoke\"",
             "\"target_total_declared_steps\":1",
             "\"command_reduction_target\":6",
-            "\"safety_status\":\"fail\\",
-            "\"planning_status\":\"unsafe_target\\",
-            "\"verdict\":\"fail\\",
+            "\"safety_status\":\"fail\"",
+            "\"planning_status\":\"unsafe_target\"",
+            "\"verdict\":\"fail\"",
         ],
     );
 }
@@ -319,31 +319,31 @@ fn root_validate_validation_command_footprint_trend_modes_are_executable_contrac
     assert_root_validate_catalog_compact_mode_contract(
         "--validation-command-footprint-trend-smoke",
         &[
-            "\"schema\":\"canon_validation_command_footprint_trend_v1\\",
-            "\"record_type\":\"validation_command_footprint_trend_smoke\\",
+            "\"schema\":\"canon_validation_command_footprint_trend_v1\"",
+            "\"record_type\":\"validation_command_footprint_trend_smoke\"",
             "\"baseline_target_total_declared_steps\":6",
             "\"current_target_total_declared_steps\":7",
             "\"target_total_declared_step_delta\":1",
             "\"baseline_command_reduction_target\":1",
             "\"current_command_reduction_target\":0",
             "\"command_reduction_target_delta\":-1",
-            "\"trend_status\":\"pass\\",
-            "\"verdict\":\"pass\\",
+            "\"trend_status\":\"pass\"",
+            "\"verdict\":\"pass\"",
         ],
     );
     assert_root_validate_catalog_compact_mode_contract(
         "--validation-command-footprint-regression-smoke",
         &[
-            "\"schema\":\"canon_validation_command_footprint_trend_v1\\",
-            "\"record_type\":\"validation_command_footprint_regression_smoke\\",
+            "\"schema\":\"canon_validation_command_footprint_trend_v1\"",
+            "\"record_type\":\"validation_command_footprint_regression_smoke\"",
             "\"baseline_target_total_declared_steps\":7",
             "\"current_target_total_declared_steps\":6",
             "\"target_total_declared_step_delta\":-1",
             "\"baseline_command_reduction_target\":0",
             "\"current_command_reduction_target\":1",
             "\"command_reduction_target_delta\":1",
-            "\"trend_status\":\"regressed\\",
-            "\"verdict\":\"fail\\",
+            "\"trend_status\":\"regressed\"",
+            "\"verdict\":\"fail\"",
         ],
     );
 }
@@ -370,7 +370,7 @@ fn validation_footprint_negative_contract_fails_without_lockfile_flag() {
     assert_eq!(receipt.lockfile_compat_step_count, 6);
     assert_eq!(receipt.verdict, "fail");
     assert!(!receipt.passed());
-    assert!(receipt.to_json().contains("\"verdict\":\"fail\\"));
+    assert!(receipt.to_json().contains("\"verdict\":\"fail\""));
 }
 
 #[test]
@@ -1374,19 +1374,19 @@ fn root_validate_catalog_compact_mode_contract_helper_covers_non_fixture_smokes(
     assert_root_validate_catalog_compact_mode_contract(
         "--validation-cost-smoke",
         &[
-            "\"record_type\":\"validation_cost_footprint_smoke\\",
+            "\"record_type\":\"validation_cost_footprint_smoke\"",
             "\"observed_regression_bps\":500",
-            "\"footprint_status\":\"pass\\",
-            "\"verdict\":\"pass\\",
+            "\"footprint_status\":\"pass\"",
+            "\"verdict\":\"pass\"",
         ],
     );
     assert_root_validate_catalog_compact_mode_contract(
         "--policy-orchestration-capacity-smoke",
         &[
-            "\"record_type\":\"policy_orchestration_capacity_smoke\\",
+            "\"record_type\":\"policy_orchestration_capacity_smoke\"",
             "\"estimated_avoided_llm_calls_per_full_batch\":4",
-            "\"capacity_status\":\"pass\\",
-            "\"verdict\":\"pass\\",
+            "\"capacity_status\":\"pass\"",
+            "\"verdict\":\"pass\"",
         ],
     );
 }
@@ -1424,7 +1424,7 @@ fn validation_fixture_catalog_receipt_summarizes_retained_fixture_inventory() {
     assert!(receipt.passed());
     assert!(receipt
         .to_json()
-        .contains("\"schema\":\"canon_validation_fixture_catalog_v1\\"));
+        .contains("\"schema\":\"canon_validation_fixture_catalog_v1\""));
 }
 
 #[test]
@@ -1451,8 +1451,8 @@ fn root_validate_validation_fixture_catalog_mode_is_executable_contract() {
 
     assert!(output.status.success());
     let stdout = String::from_utf8_lossy(&output.stdout);
-    assert!(stdout.contains("\"schema\":\"canon_validation_fixture_catalog_v1\\"));
-    assert!(stdout.contains("\"record_type\":\"validation_fixture_catalog\\"));
+    assert!(stdout.contains("\"schema\":\"canon_validation_fixture_catalog_v1\""));
+    assert!(stdout.contains("\"record_type\":\"validation_fixture_catalog\""));
     assert!(stdout.contains(&format!(
         "\"fixture_count\":{}",
         EXPECTED_VALIDATION_FIXTURE_COUNT
@@ -1501,7 +1501,7 @@ fn validation_fixture_catalog_detail_receipt_exposes_per_fixture_rows() {
     }));
     assert!(detail
         .to_json()
-        .contains("\"schema\":\"canon_validation_fixture_catalog_detail_v1\\"));
+        .contains("\"schema\":\"canon_validation_fixture_catalog_detail_v1\""));
     assert!(detail
         .to_text()
         .contains("schema=canon_validation_fixture_catalog_detail_v1"));
@@ -1583,7 +1583,7 @@ fn validation_duration_planning_receipt_summarizes_retained_duration_and_footpri
     assert!(receipt.passed());
     assert!(receipt
         .to_json()
-        .contains("\"schema\":\"canon_validation_duration_planning_v1\\"));
+        .contains("\"schema\":\"canon_validation_duration_planning_v1\""));
 }
 
 #[test]
@@ -1628,15 +1628,15 @@ fn root_validate_validation_duration_planning_mode_is_executable_contract() {
     assert_root_validate_catalog_compact_mode_contract(
         "--validation-duration-planning",
         &[
-            "\"schema\":\"canon_validation_duration_planning_v1\\",
-            "\"record_type\":\"validation_duration_planning_summary\\",
+            "\"schema\":\"canon_validation_duration_planning_v1\"",
+            "\"record_type\":\"validation_duration_planning_summary\"",
             "\"retained_project_agent_elapsed_ms_p95\":3150",
             "\"retained_budget_headroom_ms\":6850",
             "\"total_declared_steps\":7",
-            "\"runtime_budget_status\":\"pass\\",
-            "\"footprint_verdict\":\"pass\\",
-            "\"planning_status\":\"pass\\",
-            "\"verdict\":\"pass\\",
+            "\"runtime_budget_status\":\"pass\"",
+            "\"footprint_verdict\":\"pass\"",
+            "\"planning_status\":\"pass\"",
+            "\"verdict\":\"pass\"",
         ],
     );
 }
@@ -1646,14 +1646,14 @@ fn root_validate_validation_duration_planning_budget_exhaustion_smoke_is_executa
     assert_root_validate_catalog_compact_mode_contract(
         "--validation-duration-planning-budget-exhaustion-smoke",
         &[
-            "\"schema\":\"canon_validation_duration_planning_v1\\",
-            "\"record_type\":\"validation_duration_planning_budget_exhaustion_smoke\\",
+            "\"schema\":\"canon_validation_duration_planning_v1\"",
+            "\"record_type\":\"validation_duration_planning_budget_exhaustion_smoke\"",
             "\"retained_project_agent_elapsed_ms_p95\":10001",
             "\"retained_budget_headroom_ms\":-1",
-            "\"runtime_budget_status\":\"fail\\",
-            "\"footprint_verdict\":\"pass\\",
-            "\"planning_status\":\"fail\\",
-            "\"verdict\":\"fail\\",
+            "\"runtime_budget_status\":\"fail\"",
+            "\"footprint_verdict\":\"pass\"",
+            "\"planning_status\":\"fail\"",
+            "\"verdict\":\"fail\"",
         ],
     );
 }
@@ -1687,14 +1687,14 @@ fn root_validate_validation_duration_planning_trend_smoke_is_executable_contract
     assert_root_validate_catalog_compact_mode_contract(
         "--validation-duration-planning-trend-smoke",
         &[
-            "\"schema\":\"canon_validation_duration_planning_trend_v1\\",
-            "\"record_type\":\"validation_duration_planning_trend_smoke\\",
+            "\"schema\":\"canon_validation_duration_planning_trend_v1\"",
+            "\"record_type\":\"validation_duration_planning_trend_smoke\"",
             "\"baseline_retained_project_agent_elapsed_ms_p95\":3150",
             "\"current_retained_project_agent_elapsed_ms_p95\":3000",
             "\"retained_duration_delta_ms\":-150",
             "\"retained_budget_headroom_delta_ms\":150",
-            "\"trend_status\":\"pass\\",
-            "\"verdict\":\"pass\\",
+            "\"trend_status\":\"pass\"",
+            "\"verdict\":\"pass\"",
         ],
     );
 }
@@ -1728,14 +1728,14 @@ fn root_validate_validation_duration_planning_regression_smoke_is_executable_con
     assert_root_validate_catalog_compact_mode_contract(
         "--validation-duration-planning-regression-smoke",
         &[
-            "\"schema\":\"canon_validation_duration_planning_trend_v1\\",
-            "\"record_type\":\"validation_duration_planning_regression_smoke\\",
+            "\"schema\":\"canon_validation_duration_planning_trend_v1\"",
+            "\"record_type\":\"validation_duration_planning_regression_smoke\"",
             "\"baseline_retained_project_agent_elapsed_ms_p95\":3150",
             "\"current_retained_project_agent_elapsed_ms_p95\":3301",
             "\"retained_duration_delta_ms\":151",
             "\"retained_budget_headroom_delta_ms\":-151",
-            "\"trend_status\":\"regressed\\",
-            "\"verdict\":\"fail\\",
+            "\"trend_status\":\"regressed\"",
+            "\"verdict\":\"fail\"",
         ],
     );
 }
@@ -1749,7 +1749,7 @@ fn runtime_performance_receipt_json_contains_required_contract_fields() {
     for field in RuntimePerformanceReceipt::required_json_fields() {
         assert!(json.contains(&format!("\"{field}\":")), "missing {field}");
     }
-    assert!(json.contains("\"step\":\"runtime_performance_metrics\\"));
+    assert!(json.contains("\"step\":\"runtime_performance_metrics\""));
 }
 
 #[test]
@@ -1775,7 +1775,7 @@ fn runtime_performance_receipt_budget_failure_is_configurable_from_rust() {
     assert_eq!(receipt.runtime_performance_budget_status, "fail");
     assert!(!receipt.passed());
     let json = receipt.to_json();
-    assert!(json.contains("\"runtime_performance_budget_status\":\"fail\\"));
+    assert!(json.contains("\"runtime_performance_budget_status\":\"fail\""));
     assert!(json.contains("\"max_project_agent_elapsed_ms_p95\":49"));
 }
 
@@ -1883,8 +1883,8 @@ fn runtime_performance_budget_smoke_receipt_records_controlled_failure() {
     assert!(receipt.receipt_json_contract_valid);
 
     let json = receipt.to_json();
-    assert!(json.contains("\"step\":\"runtime_performance_budget_smoke\\"));
-    assert!(json.contains("\"runtime_performance_budget_status\":\"fail\\"));
+    assert!(json.contains("\"step\":\"runtime_performance_budget_smoke\""));
+    assert!(json.contains("\"runtime_performance_budget_status\":\"fail\""));
     assert!(json.contains("\"controlled_failure_observed\":true"));
 }
 
@@ -1893,13 +1893,13 @@ fn root_validate_runtime_trend_smoke_mode_is_executable_contract() {
     assert_root_validate_catalog_compact_mode_contract(
         "--runtime-trend-smoke",
         &[
-            "\"schema\":\"canon_runtime_performance_trend_v1\\",
-            "\"record_type\":\"runtime_performance_trend_smoke\\",
+            "\"schema\":\"canon_runtime_performance_trend_v1\"",
+            "\"record_type\":\"runtime_performance_trend_smoke\"",
             "\"baseline_project_agent_elapsed_ms_p95\":3000",
             "\"current_project_agent_elapsed_ms_p95\":3150",
             "\"observed_regression_bps\":500",
-            "\"budget_status\":\"pass\\",
-            "\"trend_status\":\"pass\\",
+            "\"budget_status\":\"pass\"",
+            "\"trend_status\":\"pass\"",
         ],
     );
 }
@@ -1909,13 +1909,13 @@ fn root_validate_runtime_trend_regression_smoke_mode_is_executable_contract() {
     assert_root_validate_catalog_compact_mode_contract(
         "--runtime-trend-regression-smoke",
         &[
-            "\"schema\":\"canon_runtime_performance_trend_v1\\",
-            "\"record_type\":\"runtime_performance_trend_regression_smoke\\",
+            "\"schema\":\"canon_runtime_performance_trend_v1\"",
+            "\"record_type\":\"runtime_performance_trend_regression_smoke\"",
             "\"baseline_project_agent_elapsed_ms_p95\":3000",
             "\"current_project_agent_elapsed_ms_p95\":3301",
             "\"observed_regression_bps\":1003",
-            "\"budget_status\":\"pass\\",
-            "\"trend_status\":\"fail\\",
+            "\"budget_status\":\"pass\"",
+            "\"trend_status\":\"fail\"",
         ],
     );
 }
@@ -1925,8 +1925,8 @@ fn root_validate_runtime_budget_smoke_mode_is_executable_contract() {
     assert_root_validate_catalog_compact_mode_contract(
         "--runtime-budget-smoke",
         &[
-            "\"step\":\"runtime_performance_budget_smoke\\",
-            "\"runtime_performance_budget_status\":\"fail\\",
+            "\"step\":\"runtime_performance_budget_smoke\"",
+            "\"runtime_performance_budget_status\":\"fail\"",
             "\"controlled_failure_observed\":true",
             "\"receipt_json_contract_valid\":true",
         ],
@@ -2216,7 +2216,7 @@ fn runtime_performance_trend_comparator_accepts_fixture_baseline() {
     assert!(trend.passed());
     assert!(trend
         .to_json()
-        .contains("\"schema\":\"canon_runtime_performance_trend_v1\\"));
+        .contains("\"schema\":\"canon_runtime_performance_trend_v1\""));
 }
 
 #[test]
@@ -2246,7 +2246,7 @@ fn runtime_performance_trend_comparator_detects_fixture_regression() {
         fixture_text(&fixture, "expected_regressed_trend_status")
     );
     assert!(!trend.passed());
-    assert!(trend.to_json().contains("\"trend_status\":\"fail\\"));
+    assert!(trend.to_json().contains("\"trend_status\":\"fail\""));
 }
 
 #[test]
@@ -2290,7 +2290,7 @@ fn validation_cost_footprint_comparator_accepts_retained_receipts_without_runnin
     assert!(receipt.passed());
     assert!(receipt
         .to_json()
-        .contains("\"schema\":\"canon_validation_cost_footprint_v1\\"));
+        .contains("\"schema\":\"canon_validation_cost_footprint_v1\""));
 }
 
 #[test]
@@ -2316,7 +2316,7 @@ fn validation_cost_footprint_comparator_binds_dispatch_catalog_hashes() {
     assert_eq!(receipt.verdict, "pass");
     assert!(receipt
         .to_json()
-        .contains("\"baseline_dispatch_catalog_hash\":\"dispatch-hash-v1\\"));
+        .contains("\"baseline_dispatch_catalog_hash\":\"dispatch-hash-v1\""));
     assert!(receipt
         .to_json()
         .contains("\"dispatch_catalog_changed\":false"));
@@ -2434,14 +2434,14 @@ fn root_validate_validation_cost_smoke_mode_is_executable_contract() {
     assert_root_validate_catalog_compact_mode_contract(
         "--validation-cost-smoke",
         &[
-            "\"schema\":\"canon_validation_cost_footprint_v1\\",
-            "\"record_type\":\"validation_cost_footprint_smoke\\",
+            "\"schema\":\"canon_validation_cost_footprint_v1\"",
+            "\"record_type\":\"validation_cost_footprint_smoke\"",
             "\"observed_regression_bps\":500",
             "\"total_declared_step_delta\":0",
             "\"expected_count_guarded_test_delta\":0",
             "\"command_set_changed\":false",
-            "\"footprint_status\":\"pass\\",
-            "\"verdict\":\"pass\\",
+            "\"footprint_status\":\"pass\"",
+            "\"verdict\":\"pass\"",
         ],
     );
 }
@@ -2471,16 +2471,16 @@ fn root_validate_validation_cost_growth_smoke_mode_is_executable_contract() {
     assert_root_validate_catalog_compact_mode_contract(
         "--validation-cost-growth-smoke",
         &[
-            "\"schema\":\"canon_validation_cost_footprint_v1\\",
-            "\"record_type\":\"validation_cost_footprint_growth_smoke\\",
+            "\"schema\":\"canon_validation_cost_footprint_v1\"",
+            "\"record_type\":\"validation_cost_footprint_growth_smoke\"",
             "\"observed_regression_bps\":0",
             "\"total_declared_step_delta\":1",
             "\"expected_count_guarded_test_delta\":1",
             "\"command_set_changed\":true",
-            "\"budget_status\":\"pass\\",
-            "\"trend_status\":\"pass\\",
-            "\"footprint_status\":\"fail\\",
-            "\"verdict\":\"fail\\",
+            "\"budget_status\":\"pass\"",
+            "\"trend_status\":\"pass\"",
+            "\"footprint_status\":\"fail\"",
+            "\"verdict\":\"fail\"",
         ],
     );
 }
@@ -2531,8 +2531,8 @@ fn root_validate_policy_capacity_cost_summary_smoke_mode_is_executable_contract(
     assert_root_validate_catalog_compact_mode_contract(
         "--policy-capacity-cost-summary-smoke",
         &[
-            "\"schema\":\"canon_policy_capacity_cost_summary_v1\\",
-            "\"record_type\":\"policy_capacity_cost_summary_smoke\\",
+            "\"schema\":\"canon_policy_capacity_cost_summary_v1\"",
+            "\"record_type\":\"policy_capacity_cost_summary_smoke\"",
             "\"retained_policy_hit_rate_bps\":5000",
             "\"estimated_avoided_llm_calls_per_full_batch\":4",
             "\"estimated_llm_fallbacks_per_full_batch\":4",
@@ -2540,10 +2540,10 @@ fn root_validate_policy_capacity_cost_summary_smoke_mode_is_executable_contract(
             "\"validation_total_declared_step_delta\":0",
             "\"validation_expected_count_guarded_test_delta\":0",
             "\"validation_dispatch_catalog_changed\":false",
-            "\"policy_capacity_status\":\"pass\\",
-            "\"validation_cost_verdict\":\"pass\\",
-            "\"summary_status\":\"pass\\",
-            "\"verdict\":\"pass\\",
+            "\"policy_capacity_status\":\"pass\"",
+            "\"validation_cost_verdict\":\"pass\"",
+            "\"summary_status\":\"pass\"",
+            "\"verdict\":\"pass\"",
         ],
     );
 }
@@ -2574,17 +2574,17 @@ fn root_validate_policy_capacity_cost_summary_growth_smoke_mode_is_executable_co
     assert_root_validate_catalog_compact_mode_contract(
         "--policy-capacity-cost-summary-growth-smoke",
         &[
-            "\"schema\":\"canon_policy_capacity_cost_summary_v1\\",
-            "\"record_type\":\"policy_capacity_cost_summary_growth_smoke\\",
+            "\"schema\":\"canon_policy_capacity_cost_summary_v1\"",
+            "\"record_type\":\"policy_capacity_cost_summary_growth_smoke\"",
             "\"retained_policy_hit_rate_bps\":5000",
             "\"estimated_avoided_llm_calls_per_full_batch\":4",
             "\"validation_observed_regression_bps\":0",
             "\"validation_total_declared_step_delta\":1",
             "\"validation_expected_count_guarded_test_delta\":1",
-            "\"policy_capacity_status\":\"pass\\",
-            "\"validation_cost_verdict\":\"fail\\",
-            "\"summary_status\":\"fail\\",
-            "\"verdict\":\"fail\\",
+            "\"policy_capacity_status\":\"pass\"",
+            "\"validation_cost_verdict\":\"fail\"",
+            "\"summary_status\":\"fail\"",
+            "\"verdict\":\"fail\"",
         ],
     );
 }
@@ -2633,8 +2633,8 @@ fn root_validate_policy_capacity_cost_summary_trend_smoke_mode_is_executable_con
     assert_root_validate_catalog_compact_mode_contract(
         "--policy-capacity-cost-summary-trend-smoke",
         &[
-            "\"schema\":\"canon_policy_capacity_cost_summary_trend_v1\\",
-            "\"record_type\":\"policy_capacity_cost_summary_trend_smoke\\",
+            "\"schema\":\"canon_policy_capacity_cost_summary_trend_v1\"",
+            "\"record_type\":\"policy_capacity_cost_summary_trend_smoke\"",
             "\"baseline_retained_policy_hit_rate_bps\":5000",
             "\"current_retained_policy_hit_rate_bps\":10000",
             "\"retained_policy_hit_rate_delta_bps\":5000",
@@ -2642,8 +2642,8 @@ fn root_validate_policy_capacity_cost_summary_trend_smoke_mode_is_executable_con
             "\"current_estimated_avoided_llm_calls_per_full_batch\":8",
             "\"avoided_llm_call_delta_per_full_batch\":4",
             "\"validation_observed_regression_delta_bps\":0",
-            "\"trend_status\":\"pass\\",
-            "\"verdict\":\"pass\\",
+            "\"trend_status\":\"pass\"",
+            "\"verdict\":\"pass\"",
         ],
     );
 }
@@ -2687,16 +2687,16 @@ fn root_validate_policy_capacity_cost_summary_regression_smoke_mode_is_executabl
     assert_root_validate_catalog_compact_mode_contract(
         "--policy-capacity-cost-summary-regression-smoke",
         &[
-            "\"schema\":\"canon_policy_capacity_cost_summary_trend_v1\\",
-            "\"record_type\":\"policy_capacity_cost_summary_regression_smoke\\",
+            "\"schema\":\"canon_policy_capacity_cost_summary_trend_v1\"",
+            "\"record_type\":\"policy_capacity_cost_summary_regression_smoke\"",
             "\"baseline_retained_policy_hit_rate_bps\":10000",
             "\"current_retained_policy_hit_rate_bps\":5000",
             "\"retained_policy_hit_rate_delta_bps\":-5000",
             "\"baseline_estimated_avoided_llm_calls_per_full_batch\":8",
             "\"current_estimated_avoided_llm_calls_per_full_batch\":4",
             "\"avoided_llm_call_delta_per_full_batch\":-4",
-            "\"trend_status\":\"regressed\\",
-            "\"verdict\":\"fail\\",
+            "\"trend_status\":\"regressed\"",
+            "\"verdict\":\"fail\"",
         ],
     );
 }
@@ -2907,16 +2907,16 @@ fn root_validate_policy_orchestration_capacity_trend_smoke_mode_is_executable_co
     assert_root_validate_catalog_compact_mode_contract(
         "--policy-orchestration-capacity-trend-smoke",
         &[
-            "\"schema\":\"canon_policy_orchestration_capacity_trend_v1\\",
-            "\"record_type\":\"policy_orchestration_capacity_trend_smoke\\",
+            "\"schema\":\"canon_policy_orchestration_capacity_trend_v1\"",
+            "\"record_type\":\"policy_orchestration_capacity_trend_smoke\"",
             "\"baseline_hit_rate_bps\":5000",
             "\"current_hit_rate_bps\":10000",
             "\"hit_rate_delta_bps\":5000",
             "\"baseline_estimated_avoided_llm_calls_per_full_batch\":4",
             "\"current_estimated_avoided_llm_calls_per_full_batch\":8",
             "\"avoided_llm_call_delta_per_full_batch\":4",
-            "\"trend_status\":\"pass\\",
-            "\"verdict\":\"pass\\",
+            "\"trend_status\":\"pass\"",
+            "\"verdict\":\"pass\"",
         ],
     );
 }
@@ -2960,18 +2960,18 @@ fn root_validate_policy_orchestration_capacity_regression_smoke_mode_is_executab
     assert_root_validate_catalog_compact_mode_contract(
         "--policy-orchestration-capacity-regression-smoke",
         &[
-            "\"schema\":\"canon_policy_orchestration_capacity_trend_v1\\",
-            "\"record_type\":\"policy_orchestration_capacity_regression_smoke\\",
+            "\"schema\":\"canon_policy_orchestration_capacity_trend_v1\"",
+            "\"record_type\":\"policy_orchestration_capacity_regression_smoke\"",
             "\"baseline_hit_rate_bps\":10000",
             "\"current_hit_rate_bps\":5000",
             "\"hit_rate_delta_bps\":-5000",
             "\"baseline_estimated_avoided_llm_calls_per_full_batch\":8",
             "\"current_estimated_avoided_llm_calls_per_full_batch\":4",
             "\"avoided_llm_call_delta_per_full_batch\":-4",
-            "\"baseline_capacity_status\":\"pass\\",
-            "\"current_capacity_status\":\"pass\\",
-            "\"trend_status\":\"regressed\\",
-            "\"verdict\":\"fail\\",
+            "\"baseline_capacity_status\":\"pass\"",
+            "\"current_capacity_status\":\"pass\"",
+            "\"trend_status\":\"regressed\"",
+            "\"verdict\":\"fail\"",
         ],
     );
 }
@@ -3030,16 +3030,16 @@ fn root_validate_policy_orchestration_capacity_smoke_mode_is_executable_contract
     assert_root_validate_catalog_compact_mode_contract(
         "--policy-orchestration-capacity-smoke",
         &[
-            "\"schema\":\"canon_policy_orchestration_capacity_v1\\",
-            "\"record_type\":\"policy_orchestration_capacity_smoke\\",
+            "\"schema\":\"canon_policy_orchestration_capacity_v1\"",
+            "\"record_type\":\"policy_orchestration_capacity_smoke\"",
             "\"batch_capacity_limit\":8",
             "\"hit_rate_bps\":5000",
             "\"estimated_policy_hits_per_full_batch\":4",
             "\"estimated_llm_fallbacks_per_full_batch\":4",
             "\"estimated_avoided_llm_calls_per_full_batch\":4",
-            "\"capacity_status\":\"pass\\",
-            "\"policy_reuse_verdict\":\"pass\\",
-            "\"verdict\":\"pass\\",
+            "\"capacity_status\":\"pass\"",
+            "\"policy_reuse_verdict\":\"pass\"",
+            "\"verdict\":\"pass\"",
         ],
     );
 }
@@ -3201,12 +3201,12 @@ fn root_validate_policy_validation_health_trend_smoke_mode_is_executable_contrac
     assert_root_validate_catalog_compact_mode_contract(
         "--policy-validation-health-trend-smoke",
         &[
-            "\"schema\":\"canon_policy_validation_health_trend_v1\\",
-            "\"record_type\":\"policy_validation_health_trend_smoke\\",
+            "\"schema\":\"canon_policy_validation_health_trend_v1\"",
+            "\"record_type\":\"policy_validation_health_trend_smoke\"",
             "\"policy_hit_rate_delta_bps\":5000",
             "\"capacity_avoided_llm_call_delta_per_full_batch\":4",
-            "\"trend_status\":\"pass\\",
-            "\"verdict\":\"pass\\",
+            "\"trend_status\":\"pass\"",
+            "\"verdict\":\"pass\"",
         ],
     );
 }
@@ -3271,20 +3271,20 @@ fn root_validate_policy_validation_health_smoke_mode_is_executable_contract() {
     assert_root_validate_catalog_compact_mode_contract(
         "--policy-validation-health-smoke",
         &[
-            "\"schema\":\"canon_policy_validation_health_v1\\",
-            "\"record_type\":\"policy_validation_health_smoke\\",
+            "\"schema\":\"canon_policy_validation_health_v1\"",
+            "\"record_type\":\"policy_validation_health_smoke\"",
             "\"policy_hit_rate_bps\":5000",
             "\"avoided_llm_call_count\":1",
-            "\"policy_reuse_verdict\":\"pass\\",
-            "\"validation_budget_status\":\"pass\\",
-            "\"validation_trend_status\":\"pass\\",
-            "\"validation_footprint_status\":\"pass\\",
-            "\"validation_cost_verdict\":\"pass\\",
+            "\"policy_reuse_verdict\":\"pass\"",
+            "\"validation_budget_status\":\"pass\"",
+            "\"validation_trend_status\":\"pass\"",
+            "\"validation_footprint_status\":\"pass\"",
+            "\"validation_cost_verdict\":\"pass\"",
             "\"command_set_changed\":false",
             "\"baseline_dispatch_catalog_hash\":",
             "\"current_dispatch_catalog_hash\":",
             "\"dispatch_catalog_changed\":false",
-            "\"verdict\":\"pass\\",
+            "\"verdict\":\"pass\"",
         ],
     );
 }
@@ -4050,12 +4050,12 @@ fn root_validate_policy_reuse_smoke_mode_is_executable_contract() {
     assert_root_validate_catalog_compact_mode_contract(
         "--policy-reuse-smoke",
         &[
-            "\"record_type\":\"policy_reuse_smoke\\",
+            "\"record_type\":\"policy_reuse_smoke\"",
             "\"policy_hit_count\":1",
             "\"policy_miss_count\":1",
             "\"avoided_llm_call_count\":1",
             "\"hit_rate_bps\":5000",
-            "\"verdict\":\"pass\\",
+            "\"verdict\":\"pass\"",
         ],
     );
 }
@@ -4083,12 +4083,12 @@ fn root_validate_policy_reuse_trend_smoke_mode_is_executable_contract() {
     assert_root_validate_catalog_compact_mode_contract(
         "--policy-reuse-trend-smoke",
         &[
-            "\"record_type\":\"policy_reuse_trend_smoke\\",
+            "\"record_type\":\"policy_reuse_trend_smoke\"",
             "\"baseline_hit_rate_bps\":5000",
             "\"current_hit_rate_bps\":10000",
             "\"avoided_llm_call_delta\":1",
-            "\"trend_status\":\"improved_or_stable\\",
-            "\"verdict\":\"pass\\",
+            "\"trend_status\":\"improved_or_stable\"",
+            "\"verdict\":\"pass\"",
         ],
     );
 }
@@ -4117,12 +4117,12 @@ fn root_validate_policy_reuse_regression_smoke_mode_is_executable_contract() {
     assert_root_validate_catalog_compact_mode_contract(
         "--policy-reuse-regression-smoke",
         &[
-            "\"record_type\":\"policy_reuse_regression_smoke\\",
+            "\"record_type\":\"policy_reuse_regression_smoke\"",
             "\"baseline_hit_rate_bps\":10000",
             "\"current_hit_rate_bps\":5000",
             "\"avoided_llm_call_delta\":-1",
-            "\"trend_status\":\"regressed\\",
-            "\"verdict\":\"fail\\",
+            "\"trend_status\":\"regressed\"",
+            "\"verdict\":\"fail\"",
         ],
     );
 }
@@ -4170,7 +4170,7 @@ fn root_validate_policy_reuse_ledger_summary_smoke_mode_is_executable_contract()
     assert_root_validate_catalog_compact_mode_contract(
         "--policy-reuse-ledger-summary-smoke",
         &[
-            "\"record_type\":\"policy_reuse_ledger_summary_smoke\\",
+            "\"record_type\":\"policy_reuse_ledger_summary_smoke\"",
             "\"policy_hits\":1",
             "\"policy_misses\":1",
             "\"llm_fallbacks\":1",
@@ -4189,7 +4189,7 @@ fn root_validate_policy_reuse_ledger_summary_regression_smoke_mode_is_executable
     assert_root_validate_catalog_compact_mode_contract(
         "--policy-reuse-ledger-summary-regression-smoke",
         &[
-            "\"record_type\":\"policy_reuse_ledger_summary_regression_smoke\\",
+            "\"record_type\":\"policy_reuse_ledger_summary_regression_smoke\"",
             "\"policy_hits\":2",
             "\"policy_misses\":1",
             "\"llm_fallbacks\":1",
@@ -4250,7 +4250,7 @@ fn root_validate_policy_reuse_scale_trace_smoke_mode_is_executable_contract() {
     assert_root_validate_catalog_compact_mode_contract(
         "--policy-reuse-scale-trace-smoke",
         &[
-            "\"record_type\":\"policy_reuse_scale_trace_smoke\\",
+            "\"record_type\":\"policy_reuse_scale_trace_smoke\"",
             "\"batch_size\":6",
             "\"policy_hits\":4",
             "\"policy_misses\":2",
@@ -4271,7 +4271,7 @@ fn root_validate_policy_reuse_scale_trace_regression_smoke_mode_is_executable_co
     assert_root_validate_catalog_compact_mode_contract(
         "--policy-reuse-scale-trace-regression-smoke",
         &[
-            "\"record_type\":\"policy_reuse_scale_trace_regression_smoke\\",
+            "\"record_type\":\"policy_reuse_scale_trace_regression_smoke\"",
             "\"batch_size\":4",
             "\"policy_hits\":2",
             "\"policy_misses\":2",
@@ -4337,14 +4337,14 @@ fn root_validate_policy_reuse_performance_cost_trend_smoke_mode_is_executable_co
     assert_root_validate_catalog_compact_mode_contract(
         "--policy-reuse-performance-cost-trend-smoke",
         &[
-            "\"record_type\":\"policy_reuse_performance_cost_trend_smoke\\",
+            "\"record_type\":\"policy_reuse_performance_cost_trend_smoke\"",
             "\"batch_size\":6",
             "\"avoided_llm_calls_per_batch\":4",
             "\"reuse_rate_bps\":6666",
-            "\"validation_expected_count_guarded_tests\":210",
-            "\"estimated_ms_per_guarded_test\":14",
-            "\"runtime_budget_status\":\"pass\\",
-            "\"validation_cost_verdict\":\"pass\\",
+            "\"validation_expected_count_guarded_tests\":274",
+            "\"estimated_ms_per_guarded_test\":10",
+            "\"runtime_budget_status\":\"pass\"",
+            "\"validation_cost_verdict\":\"pass\"",
             "\"cost_regression_flag\":false",
             "\"source_scale_trace_hash\":",
             "\"source_validation_duration_hash\":",
@@ -4360,14 +4360,14 @@ fn root_validate_policy_reuse_performance_cost_trend_regression_smoke_mode_is_ex
     assert_root_validate_catalog_compact_mode_contract(
         "--policy-reuse-performance-cost-trend-regression-smoke",
         &[
-            "\"record_type\":\"policy_reuse_performance_cost_trend_regression_smoke\\",
+            "\"record_type\":\"policy_reuse_performance_cost_trend_regression_smoke\"",
             "\"batch_size\":6",
             "\"avoided_llm_calls_per_batch\":4",
             "\"reuse_rate_bps\":6666",
-            "\"validation_expected_count_guarded_tests\":210",
-            "\"estimated_ms_per_guarded_test\":15",
-            "\"runtime_budget_status\":\"pass\\",
-            "\"validation_cost_verdict\":\"fail\\",
+            "\"validation_expected_count_guarded_tests\":274",
+            "\"estimated_ms_per_guarded_test\":12",
+            "\"runtime_budget_status\":\"pass\"",
+            "\"validation_cost_verdict\":\"fail\"",
             "\"cost_regression_flag\":true",
             "\"source_scale_trace_hash\":",
             "\"source_validation_duration_hash\":",
@@ -4432,7 +4432,7 @@ fn root_validate_policy_reuse_cost_catalog_smoke_mode_is_executable_contract() {
     assert_root_validate_catalog_compact_mode_contract(
         "--policy-reuse-cost-catalog-smoke",
         &[
-            "\"record_type\":\"policy_reuse_cost_catalog_smoke\\",
+            "\"record_type\":\"policy_reuse_cost_catalog_smoke\"",
             "\"catalog_version\":1",
             "\"evidence_family_count\":6",
             "\"healthy_mode_count\":4",
@@ -4441,7 +4441,7 @@ fn root_validate_policy_reuse_cost_catalog_smoke_mode_is_executable_contract() {
             "\"required_healthy_modes_present\":true",
             "\"required_regression_modes_present\":true",
             "\"summary_complete\":true",
-            "\"missing_required_modes\":\"none\\",
+            "\"missing_required_modes\":\"none\"",
             "\"source_policy_reuse_hash\":",
             "\"source_scale_trace_hash\":",
             "\"source_performance_cost_trend_hash\":",
@@ -4459,7 +4459,7 @@ fn root_validate_policy_reuse_cost_catalog_incomplete_smoke_mode_is_executable_c
     assert_root_validate_catalog_compact_mode_contract(
         "--policy-reuse-cost-catalog-incomplete-smoke",
         &[
-            "\"record_type\":\"policy_reuse_cost_catalog_incomplete_smoke\\",
+            "\"record_type\":\"policy_reuse_cost_catalog_incomplete_smoke\"",
             "\"catalog_version\":1",
             "\"evidence_family_count\":6",
             "\"healthy_mode_count\":4",
@@ -4468,7 +4468,7 @@ fn root_validate_policy_reuse_cost_catalog_incomplete_smoke_mode_is_executable_c
             "\"required_healthy_modes_present\":true",
             "\"required_regression_modes_present\":false",
             "\"summary_complete\":false",
-            "\"missing_required_modes\":\"required_regression_modes\\",
+            "\"missing_required_modes\":\"required_regression_modes\"",
             "\"catalog_hash\":",
             "\"receipt_hash\":",
         ],
@@ -4537,7 +4537,7 @@ fn root_validate_policy_reuse_evaluator_savings_smoke_mode_is_executable_contrac
     assert_root_validate_catalog_compact_mode_contract(
         "--policy-reuse-evaluator-savings-smoke",
         &[
-            "\"record_type\":\"policy_reuse_evaluator_savings_smoke\\",
+            "\"record_type\":\"policy_reuse_evaluator_savings_smoke\"",
             "\"savings_version\":1",
             "\"source_catalog_hash\":",
             "\"source_performance_cost_trend_hash\":",
@@ -4550,7 +4550,7 @@ fn root_validate_policy_reuse_evaluator_savings_smoke_mode_is_executable_contrac
             "\"actual_llm_calls\":1",
             "\"llm_call_reduction_ratio_bps\":5000",
             "\"validation_passed\":true",
-            "\"regression_reason\":\"none\\",
+            "\"regression_reason\":\"none\"",
             "\"savings_hash\":",
             "\"receipt_hash\":",
         ],
@@ -4562,12 +4562,12 @@ fn root_validate_policy_reuse_evaluator_savings_regression_smoke_mode_is_executa
     assert_root_validate_catalog_compact_mode_contract(
         "--policy-reuse-evaluator-savings-regression-smoke",
         &[
-            "\"record_type\":\"policy_reuse_evaluator_savings_regression_smoke\\",
+            "\"record_type\":\"policy_reuse_evaluator_savings_regression_smoke\"",
             "\"savings_version\":1",
             "\"llm_calls_avoided\":1",
             "\"estimated_reasoning_cost_units_avoided\":100",
             "\"validation_passed\":false",
-            "\"regression_reason\":\"catalog_incomplete\\",
+            "\"regression_reason\":\"catalog_incomplete\"",
             "\"savings_hash\":",
             "\"receipt_hash\":",
         ],
@@ -4647,8 +4647,8 @@ fn root_validate_policy_reuse_scaling_projection_smoke_mode_is_executable_contra
     assert_root_validate_catalog_compact_mode_contract(
         "--policy-reuse-scaling-projection-smoke",
         &[
-            "\"schema\":\"canon_policy_reuse_scaling_projection_v1\\",
-            "\"record_type\":\"policy_reuse_scaling_projection_smoke\\",
+            "\"schema\":\"canon_policy_reuse_scaling_projection_v1\"",
+            "\"record_type\":\"policy_reuse_scaling_projection_smoke\"",
             "\"projection_version\":1",
             "\"source_evaluator_savings_hash\":",
             "\"source_orchestration_capacity_hash\":",
@@ -4661,7 +4661,7 @@ fn root_validate_policy_reuse_scaling_projection_smoke_mode_is_executable_contra
             "\"projected_reasoning_cost_units_avoided_per_full_batch\":400",
             "\"projected_llm_fallbacks_per_full_batch\":4",
             "\"projection_passed\":true",
-            "\"regression_reason\":\"none\\",
+            "\"regression_reason\":\"none\"",
             "\"projection_hash\":",
             "\"receipt_hash\":",
         ],
@@ -4673,13 +4673,13 @@ fn root_validate_policy_reuse_scaling_projection_regression_smoke_mode_is_execut
     assert_root_validate_catalog_compact_mode_contract(
         "--policy-reuse-scaling-projection-regression-smoke",
         &[
-            "\"schema\":\"canon_policy_reuse_scaling_projection_v1\\",
-            "\"record_type\":\"policy_reuse_scaling_projection_regression_smoke\\",
+            "\"schema\":\"canon_policy_reuse_scaling_projection_v1\"",
+            "\"record_type\":\"policy_reuse_scaling_projection_regression_smoke\"",
             "\"projection_version\":1",
             "\"projected_llm_calls_avoided_per_full_batch\":4",
             "\"projected_reasoning_cost_units_avoided_per_full_batch\":400",
             "\"projection_passed\":false",
-            "\"regression_reason\":\"evaluator_savings_failed\\",
+            "\"regression_reason\":\"evaluator_savings_failed\"",
             "\"projection_hash\":",
             "\"receipt_hash\":",
         ],
@@ -4772,8 +4772,8 @@ fn root_validate_policy_reuse_distillation_readiness_smoke_mode_is_executable_co
     assert_root_validate_catalog_compact_mode_contract(
         "--policy-reuse-distillation-readiness-smoke",
         &[
-            "\"schema\":\"canon_policy_reuse_distillation_readiness_v1\\",
-            "\"record_type\":\"policy_reuse_distillation_readiness_smoke\\",
+            "\"schema\":\"canon_policy_reuse_distillation_readiness_v1\"",
+            "\"record_type\":\"policy_reuse_distillation_readiness_smoke\"",
             "\"readiness_version\":1",
             "\"source_policy_reuse_hash\":",
             "\"source_cost_catalog_hash\":",
@@ -4789,7 +4789,7 @@ fn root_validate_policy_reuse_distillation_readiness_smoke_mode_is_executable_co
             "\"scaling_projection_passed\":true",
             "\"validation_health_passed\":true",
             "\"distillation_ready\":true",
-            "\"regression_reason\":\"none\\",
+            "\"regression_reason\":\"none\"",
             "\"readiness_hash\":",
             "\"receipt_hash\":",
         ],
@@ -4802,15 +4802,15 @@ fn root_validate_policy_reuse_distillation_readiness_regression_smoke_mode_is_ex
     assert_root_validate_catalog_compact_mode_contract(
         "--policy-reuse-distillation-readiness-regression-smoke",
         &[
-            "\"schema\":\"canon_policy_reuse_distillation_readiness_v1\\",
-            "\"record_type\":\"policy_reuse_distillation_readiness_regression_smoke\\",
+            "\"schema\":\"canon_policy_reuse_distillation_readiness_v1\"",
+            "\"record_type\":\"policy_reuse_distillation_readiness_regression_smoke\"",
             "\"readiness_version\":1",
             "\"catalog_complete\":false",
             "\"evaluator_savings_passed\":false",
             "\"scaling_projection_passed\":false",
             "\"validation_health_passed\":true",
             "\"distillation_ready\":false",
-            "\"regression_reason\":\"catalog_incomplete\\",
+            "\"regression_reason\":\"catalog_incomplete\"",
             "\"readiness_hash\":",
             "\"receipt_hash\":",
         ],
@@ -4890,8 +4890,8 @@ fn root_validate_policy_reuse_evidence_surface_index_smoke_mode_is_executable_co
     assert_root_validate_catalog_compact_mode_contract(
         "--policy-reuse-evidence-surface-index-smoke",
         &[
-            "\"schema\":\"canon_policy_reuse_evidence_surface_index_v1\\",
-            "\"record_type\":\"policy_reuse_evidence_surface_index_smoke\\",
+            "\"schema\":\"canon_policy_reuse_evidence_surface_index_v1\"",
+            "\"record_type\":\"policy_reuse_evidence_surface_index_smoke\"",
             "\"index_version\":1",
             "\"evidence_family_count\":7",
             "\"healthy_mode_count\":7",
@@ -4907,7 +4907,7 @@ fn root_validate_policy_reuse_evidence_surface_index_smoke_mode_is_executable_co
             "\"required_regression_modes_present\":true",
             "\"required_dependency_groups_present\":true",
             "\"index_complete\":true",
-            "\"missing_surface\":\"none\\",
+            "\"missing_surface\":\"none\"",
             "\"surface_hash\":",
             "\"receipt_hash\":",
         ],
@@ -4920,8 +4920,8 @@ fn root_validate_policy_reuse_evidence_surface_index_regression_smoke_mode_is_ex
     assert_root_validate_catalog_compact_mode_contract(
         "--policy-reuse-evidence-surface-index-regression-smoke",
         &[
-            "\"schema\":\"canon_policy_reuse_evidence_surface_index_v1\\",
-            "\"record_type\":\"policy_reuse_evidence_surface_index_regression_smoke\\",
+            "\"schema\":\"canon_policy_reuse_evidence_surface_index_v1\"",
+            "\"record_type\":\"policy_reuse_evidence_surface_index_regression_smoke\"",
             "\"index_version\":1",
             "\"evidence_family_count\":7",
             "\"healthy_mode_count\":7",
@@ -4932,7 +4932,7 @@ fn root_validate_policy_reuse_evidence_surface_index_regression_smoke_mode_is_ex
             "\"required_regression_modes_present\":false",
             "\"required_dependency_groups_present\":true",
             "\"index_complete\":false",
-            "\"missing_surface\":\"required_regression_modes\\",
+            "\"missing_surface\":\"required_regression_modes\"",
             "\"surface_hash\":",
             "\"receipt_hash\":",
         ],
@@ -5011,8 +5011,8 @@ fn root_validate_policy_reuse_evidence_bundle_smoke_mode_is_executable_contract(
     assert_root_validate_catalog_compact_mode_contract(
         "--policy-reuse-evidence-bundle-smoke",
         &[
-            "\"schema\":\"canon_policy_reuse_evidence_bundle_v1\\",
-            "\"record_type\":\"policy_reuse_evidence_bundle_smoke\\",
+            "\"schema\":\"canon_policy_reuse_evidence_bundle_v1\"",
+            "\"record_type\":\"policy_reuse_evidence_bundle_smoke\"",
             "\"bundle_version\":1",
             "\"source_surface_index_hash\":",
             "\"source_policy_reuse_hash\":",
@@ -5026,7 +5026,7 @@ fn root_validate_policy_reuse_evidence_bundle_smoke_mode_is_executable_contract(
             "\"surface_index_complete\":true",
             "\"source_hashes_complete\":true",
             "\"bundle_complete\":true",
-            "\"regression_reason\":\"none\\",
+            "\"regression_reason\":\"none\"",
             "\"bundle_hash\":",
             "\"receipt_hash\":",
         ],
@@ -5038,8 +5038,8 @@ fn root_validate_policy_reuse_evidence_bundle_regression_smoke_mode_is_executabl
     assert_root_validate_catalog_compact_mode_contract(
         "--policy-reuse-evidence-bundle-regression-smoke",
         &[
-            "\"schema\":\"canon_policy_reuse_evidence_bundle_v1\\",
-            "\"record_type\":\"policy_reuse_evidence_bundle_regression_smoke\\",
+            "\"schema\":\"canon_policy_reuse_evidence_bundle_v1\"",
+            "\"record_type\":\"policy_reuse_evidence_bundle_regression_smoke\"",
             "\"bundle_version\":1",
             "\"bundled_evidence_family_count\":7",
             "\"bundled_root_mode_count\":13",
@@ -5047,7 +5047,7 @@ fn root_validate_policy_reuse_evidence_bundle_regression_smoke_mode_is_executabl
             "\"surface_index_complete\":false",
             "\"source_hashes_complete\":true",
             "\"bundle_complete\":false",
-            "\"regression_reason\":\"surface_index_incomplete\\",
+            "\"regression_reason\":\"surface_index_incomplete\"",
             "\"bundle_hash\":",
             "\"receipt_hash\":",
         ],
@@ -5109,8 +5109,8 @@ fn root_validate_policy_reuse_evidence_quickcheck_smoke_mode_is_executable_contr
     assert_root_validate_catalog_compact_mode_contract(
         "--policy-reuse-evidence-quickcheck-smoke",
         &[
-            "\"schema\":\"canon_policy_reuse_evidence_quickcheck_v1\\",
-            "\"record_type\":\"policy_reuse_evidence_quickcheck_smoke\\",
+            "\"schema\":\"canon_policy_reuse_evidence_quickcheck_v1\"",
+            "\"record_type\":\"policy_reuse_evidence_quickcheck_smoke\"",
             "\"quickcheck_version\":1",
             "\"source_bundle_hash\":",
             "\"validation_harness_expected_tests\":200",
@@ -5120,7 +5120,7 @@ fn root_validate_policy_reuse_evidence_quickcheck_smoke_mode_is_executable_contr
             "\"bundle_complete\":true",
             "\"commands_complete\":true",
             "\"quickcheck_passed\":true",
-            "\"missing_command\":\"none\\",
+            "\"missing_command\":\"none\"",
             "\"quickcheck_hash\":",
             "\"receipt_hash\":",
         ],
@@ -5132,8 +5132,8 @@ fn root_validate_policy_reuse_evidence_quickcheck_regression_smoke_mode_is_execu
     assert_root_validate_catalog_compact_mode_contract(
         "--policy-reuse-evidence-quickcheck-regression-smoke",
         &[
-            "\"schema\":\"canon_policy_reuse_evidence_quickcheck_v1\\",
-            "\"record_type\":\"policy_reuse_evidence_quickcheck_regression_smoke\\",
+            "\"schema\":\"canon_policy_reuse_evidence_quickcheck_v1\"",
+            "\"record_type\":\"policy_reuse_evidence_quickcheck_regression_smoke\"",
             "\"quickcheck_version\":1",
             "\"validation_harness_expected_tests\":200",
             "\"required_command_count\":4",
@@ -5141,7 +5141,7 @@ fn root_validate_policy_reuse_evidence_quickcheck_regression_smoke_mode_is_execu
             "\"bundle_complete\":true",
             "\"commands_complete\":false",
             "\"quickcheck_passed\":false",
-            "\"missing_command\":\"validation_harness_contract\\",
+            "\"missing_command\":\"validation_harness_contract\"",
             "\"quickcheck_hash\":",
             "\"receipt_hash\":",
         ],
@@ -5204,18 +5204,18 @@ fn root_validate_policy_reuse_evidence_maturity_smoke_mode_is_executable_contrac
     assert_root_validate_catalog_compact_mode_contract(
         "--policy-reuse-evidence-maturity-smoke",
         &[
-            "\"schema\":\"canon_policy_reuse_evidence_maturity_v1\\",
-            "\"record_type\":\"policy_reuse_evidence_maturity_smoke\\",
+            "\"schema\":\"canon_policy_reuse_evidence_maturity_v1\"",
+            "\"record_type\":\"policy_reuse_evidence_maturity_smoke\"",
             "\"maturity_version\":1",
             "\"source_quickcheck_hash\":",
             "\"source_bundle_hash\":",
             "\"validated_layer_count\":5",
             "\"required_layer_count\":5",
-            "\"maturity_stage\":\"candidate\\",
+            "\"maturity_stage\":\"candidate\"",
             "\"quickcheck_passed\":true",
             "\"bundle_complete\":true",
             "\"promotion_eligible\":true",
-            "\"regression_reason\":\"none\\",
+            "\"regression_reason\":\"none\"",
             "\"maturity_hash\":",
             "\"receipt_hash\":",
         ],
@@ -5227,16 +5227,16 @@ fn root_validate_policy_reuse_evidence_maturity_regression_smoke_mode_is_executa
     assert_root_validate_catalog_compact_mode_contract(
         "--policy-reuse-evidence-maturity-regression-smoke",
         &[
-            "\"schema\":\"canon_policy_reuse_evidence_maturity_v1\\",
-            "\"record_type\":\"policy_reuse_evidence_maturity_regression_smoke\\",
+            "\"schema\":\"canon_policy_reuse_evidence_maturity_v1\"",
+            "\"record_type\":\"policy_reuse_evidence_maturity_regression_smoke\"",
             "\"maturity_version\":1",
             "\"validated_layer_count\":4",
             "\"required_layer_count\":5",
-            "\"maturity_stage\":\"immature\\",
+            "\"maturity_stage\":\"immature\"",
             "\"quickcheck_passed\":false",
             "\"bundle_complete\":true",
             "\"promotion_eligible\":false",
-            "\"regression_reason\":\"quickcheck_failed\\",
+            "\"regression_reason\":\"quickcheck_failed\"",
             "\"maturity_hash\":",
             "\"receipt_hash\":",
         ],
@@ -5300,17 +5300,17 @@ fn root_validate_policy_reuse_evidence_summary_smoke_mode_is_executable_contract
     assert_root_validate_catalog_compact_mode_contract(
         "--policy-reuse-evidence-summary-smoke",
         &[
-            "\"schema\":\"canon_policy_reuse_evidence_summary_v1\\",
-            "\"record_type\":\"policy_reuse_evidence_summary_smoke\\",
+            "\"schema\":\"canon_policy_reuse_evidence_summary_v1\"",
+            "\"record_type\":\"policy_reuse_evidence_summary_smoke\"",
             "\"summary_version\":1",
             "\"source_maturity_hash\":",
             "\"source_quickcheck_hash\":",
             "\"source_bundle_hash\":",
-            "\"maturity_stage\":\"candidate\\",
+            "\"maturity_stage\":\"candidate\"",
             "\"promotion_eligible\":true",
-            "\"summary_status\":\"pass\\",
-            "\"evaluator_action\":\"accept_summary\\",
-            "\"regression_reason\":\"none\\",
+            "\"summary_status\":\"pass\"",
+            "\"evaluator_action\":\"accept_summary\"",
+            "\"regression_reason\":\"none\"",
             "\"summary_hash\":",
             "\"receipt_hash\":",
         ],
@@ -5322,14 +5322,14 @@ fn root_validate_policy_reuse_evidence_summary_regression_smoke_mode_is_executab
     assert_root_validate_catalog_compact_mode_contract(
         "--policy-reuse-evidence-summary-regression-smoke",
         &[
-            "\"schema\":\"canon_policy_reuse_evidence_summary_v1\\",
-            "\"record_type\":\"policy_reuse_evidence_summary_regression_smoke\\",
+            "\"schema\":\"canon_policy_reuse_evidence_summary_v1\"",
+            "\"record_type\":\"policy_reuse_evidence_summary_regression_smoke\"",
             "\"summary_version\":1",
-            "\"maturity_stage\":\"immature\\",
+            "\"maturity_stage\":\"immature\"",
             "\"promotion_eligible\":false",
-            "\"summary_status\":\"fail\\",
-            "\"evaluator_action\":\"inspect_maturity\\",
-            "\"regression_reason\":\"maturity_immature\\",
+            "\"summary_status\":\"fail\"",
+            "\"evaluator_action\":\"inspect_maturity\"",
+            "\"regression_reason\":\"maturity_immature\"",
             "\"summary_hash\":",
             "\"receipt_hash\":",
         ],
@@ -5389,8 +5389,8 @@ fn root_validate_policy_reuse_evidence_manifest_smoke_mode_is_executable_contrac
     assert_root_validate_catalog_compact_mode_contract(
         "--policy-reuse-evidence-manifest-smoke",
         &[
-            "\"schema\":\"canon_policy_reuse_evidence_manifest_v1\\",
-            "\"record_type\":\"policy_reuse_evidence_manifest_smoke\\",
+            "\"schema\":\"canon_policy_reuse_evidence_manifest_v1\"",
+            "\"record_type\":\"policy_reuse_evidence_manifest_smoke\"",
             "\"manifest_version\":1",
             "\"source_summary_hash\":",
             "\"source_maturity_hash\":",
@@ -5399,7 +5399,7 @@ fn root_validate_policy_reuse_evidence_manifest_smoke_mode_is_executable_contrac
             "\"required_summary_modes_present\":true",
             "\"required_fixture_dependencies_present\":true",
             "\"manifest_complete\":true",
-            "\"missing_surface\":\"none\\",
+            "\"missing_surface\":\"none\"",
             "\"manifest_hash\":",
             "\"receipt_hash\":",
         ],
@@ -5411,15 +5411,15 @@ fn root_validate_policy_reuse_evidence_manifest_regression_smoke_mode_is_executa
     assert_root_validate_catalog_compact_mode_contract(
         "--policy-reuse-evidence-manifest-regression-smoke",
         &[
-            "\"schema\":\"canon_policy_reuse_evidence_manifest_v1\\",
-            "\"record_type\":\"policy_reuse_evidence_manifest_regression_smoke\\",
+            "\"schema\":\"canon_policy_reuse_evidence_manifest_v1\"",
+            "\"record_type\":\"policy_reuse_evidence_manifest_regression_smoke\"",
             "\"manifest_version\":1",
             "\"evaluator_mode_count\":9",
             "\"fixture_dependency_count\":4",
             "\"required_summary_modes_present\":false",
             "\"required_fixture_dependencies_present\":true",
             "\"manifest_complete\":false",
-            "\"missing_surface\":\"required_summary_modes\\",
+            "\"missing_surface\":\"required_summary_modes\"",
             "\"manifest_hash\":",
             "\"receipt_hash\":",
         ],
@@ -5497,8 +5497,8 @@ fn root_validate_policy_reuse_evidence_validation_budget_smoke_mode_is_executabl
     assert_root_validate_catalog_compact_mode_contract(
         "--policy-reuse-evidence-validation-budget-smoke",
         &[
-            "\"schema\":\"canon_policy_reuse_evidence_validation_budget_v1\\",
-            "\"record_type\":\"policy_reuse_evidence_validation_budget_smoke\\",
+            "\"schema\":\"canon_policy_reuse_evidence_validation_budget_v1\"",
+            "\"record_type\":\"policy_reuse_evidence_validation_budget_smoke\"",
             "\"budget_version\":1",
             "\"source_manifest_hash\":",
             "\"source_summary_hash\":",
@@ -5509,8 +5509,8 @@ fn root_validate_policy_reuse_evidence_validation_budget_smoke_mode_is_executabl
             "\"avoided_full_harness_tests\":196",
             "\"manifest_complete\":true",
             "\"budget_within_limit\":true",
-            "\"budget_status\":\"pass\\",
-            "\"regression_reason\":\"none\\",
+            "\"budget_status\":\"pass\"",
+            "\"regression_reason\":\"none\"",
             "\"budget_hash\":",
             "\"receipt_hash\":",
         ],
@@ -5523,8 +5523,8 @@ fn root_validate_policy_reuse_evidence_validation_budget_regression_smoke_mode_i
     assert_root_validate_catalog_compact_mode_contract(
         "--policy-reuse-evidence-validation-budget-regression-smoke",
         &[
-            "\"schema\":\"canon_policy_reuse_evidence_validation_budget_v1\\",
-            "\"record_type\":\"policy_reuse_evidence_validation_budget_regression_smoke\\",
+            "\"schema\":\"canon_policy_reuse_evidence_validation_budget_v1\"",
+            "\"record_type\":\"policy_reuse_evidence_validation_budget_regression_smoke\"",
             "\"budget_version\":1",
             "\"targeted_command_count\":2",
             "\"targeted_test_count\":12",
@@ -5533,8 +5533,8 @@ fn root_validate_policy_reuse_evidence_validation_budget_regression_smoke_mode_i
             "\"avoided_full_harness_tests\":188",
             "\"manifest_complete\":true",
             "\"budget_within_limit\":false",
-            "\"budget_status\":\"fail\\",
-            "\"regression_reason\":\"budget_exceeded\\",
+            "\"budget_status\":\"fail\"",
+            "\"regression_reason\":\"budget_exceeded\"",
             "\"budget_hash\":",
             "\"receipt_hash\":",
         ],
@@ -5609,8 +5609,8 @@ fn root_validate_policy_reuse_evidence_rollout_readiness_smoke_mode_is_executabl
     assert_root_validate_catalog_compact_mode_contract(
         "--policy-reuse-evidence-rollout-readiness-smoke",
         &[
-            "\"schema\":\"canon_policy_reuse_evidence_rollout_readiness_v1\\",
-            "\"record_type\":\"policy_reuse_evidence_rollout_readiness_smoke\\",
+            "\"schema\":\"canon_policy_reuse_evidence_rollout_readiness_v1\"",
+            "\"record_type\":\"policy_reuse_evidence_rollout_readiness_smoke\"",
             "\"readiness_version\":1",
             "\"source_validation_budget_hash\":",
             "\"source_manifest_hash\":",
@@ -5618,11 +5618,11 @@ fn root_validate_policy_reuse_evidence_rollout_readiness_smoke_mode_is_executabl
             "\"source_summary_hash\":",
             "\"validation_budget_passed\":true",
             "\"manifest_complete\":true",
-            "\"maturity_stage\":\"candidate\\",
-            "\"summary_status\":\"pass\\",
+            "\"maturity_stage\":\"candidate\"",
+            "\"summary_status\":\"pass\"",
             "\"rollout_ready\":true",
-            "\"readiness_status\":\"ready\\",
-            "\"not_ready_reason\":\"none\\",
+            "\"readiness_status\":\"ready\"",
+            "\"not_ready_reason\":\"none\"",
             "\"readiness_hash\":",
             "\"receipt_hash\":",
         ],
@@ -5635,16 +5635,16 @@ fn root_validate_policy_reuse_evidence_rollout_readiness_regression_smoke_mode_i
     assert_root_validate_catalog_compact_mode_contract(
         "--policy-reuse-evidence-rollout-readiness-regression-smoke",
         &[
-            "\"schema\":\"canon_policy_reuse_evidence_rollout_readiness_v1\\",
-            "\"record_type\":\"policy_reuse_evidence_rollout_readiness_regression_smoke\\",
+            "\"schema\":\"canon_policy_reuse_evidence_rollout_readiness_v1\"",
+            "\"record_type\":\"policy_reuse_evidence_rollout_readiness_regression_smoke\"",
             "\"readiness_version\":1",
             "\"validation_budget_passed\":false",
             "\"manifest_complete\":true",
-            "\"maturity_stage\":\"candidate\\",
-            "\"summary_status\":\"pass\\",
+            "\"maturity_stage\":\"candidate\"",
+            "\"summary_status\":\"pass\"",
             "\"rollout_ready\":false",
-            "\"readiness_status\":\"not_ready\\",
-            "\"not_ready_reason\":\"validation_budget_failed\\",
+            "\"readiness_status\":\"not_ready\"",
+            "\"not_ready_reason\":\"validation_budget_failed\"",
             "\"readiness_hash\":",
             "\"receipt_hash\":",
         ],
@@ -5716,19 +5716,19 @@ fn root_validate_policy_reuse_evidence_learning_admission_smoke_mode_is_executab
     assert_root_validate_catalog_compact_mode_contract(
         "--policy-reuse-evidence-learning-admission-smoke",
         &[
-            "\"schema\":\"canon_policy_reuse_evidence_learning_admission_v1\\",
-            "\"record_type\":\"policy_reuse_evidence_learning_admission_smoke\\",
+            "\"schema\":\"canon_policy_reuse_evidence_learning_admission_v1\"",
+            "\"record_type\":\"policy_reuse_evidence_learning_admission_smoke\"",
             "\"admission_version\":1",
             "\"source_rollout_readiness_hash\":",
             "\"source_validation_budget_hash\":",
             "\"source_summary_hash\":",
             "\"rollout_ready\":true",
             "\"validation_budget_passed\":true",
-            "\"summary_status\":\"pass\\",
+            "\"summary_status\":\"pass\"",
             "\"external_evidence_required\":false",
             "\"learning_data_admissible\":true",
-            "\"admission_status\":\"admissible\\",
-            "\"not_admissible_reason\":\"none\\",
+            "\"admission_status\":\"admissible\"",
+            "\"not_admissible_reason\":\"none\"",
             "\"admission_hash\":",
             "\"receipt_hash\":",
         ],
@@ -5741,16 +5741,16 @@ fn root_validate_policy_reuse_evidence_learning_admission_regression_smoke_mode_
     assert_root_validate_catalog_compact_mode_contract(
         "--policy-reuse-evidence-learning-admission-regression-smoke",
         &[
-            "\"schema\":\"canon_policy_reuse_evidence_learning_admission_v1\\",
-            "\"record_type\":\"policy_reuse_evidence_learning_admission_regression_smoke\\",
+            "\"schema\":\"canon_policy_reuse_evidence_learning_admission_v1\"",
+            "\"record_type\":\"policy_reuse_evidence_learning_admission_regression_smoke\"",
             "\"admission_version\":1",
             "\"rollout_ready\":false",
             "\"validation_budget_passed\":false",
-            "\"summary_status\":\"pass\\",
+            "\"summary_status\":\"pass\"",
             "\"external_evidence_required\":false",
             "\"learning_data_admissible\":false",
-            "\"admission_status\":\"not_admissible\\",
-            "\"not_admissible_reason\":\"rollout_not_ready\\",
+            "\"admission_status\":\"not_admissible\"",
+            "\"not_admissible_reason\":\"rollout_not_ready\"",
             "\"admission_hash\":",
             "\"receipt_hash\":",
         ],
@@ -5830,19 +5830,19 @@ fn root_validate_policy_reuse_evidence_retrieval_readiness_smoke_mode_is_executa
     assert_root_validate_catalog_compact_mode_contract(
         "--policy-reuse-evidence-retrieval-readiness-smoke",
         &[
-            "\"schema\":\"canon_policy_reuse_evidence_retrieval_readiness_v1\\",
-            "\"record_type\":\"policy_reuse_evidence_retrieval_readiness_smoke\\",
+            "\"schema\":\"canon_policy_reuse_evidence_retrieval_readiness_v1\"",
+            "\"record_type\":\"policy_reuse_evidence_retrieval_readiness_smoke\"",
             "\"retrieval_version\":1",
             "\"source_learning_admission_hash\":",
             "\"source_rollout_readiness_hash\":",
             "\"source_summary_hash\":",
             "\"learning_data_admissible\":true",
             "\"rollout_ready\":true",
-            "\"summary_status\":\"pass\\",
+            "\"summary_status\":\"pass\"",
             "\"retrieval_storage_write_performed\":false",
             "\"retrieval_example_ready\":true",
-            "\"retrieval_status\":\"ready\\",
-            "\"not_ready_reason\":\"none\\",
+            "\"retrieval_status\":\"ready\"",
+            "\"not_ready_reason\":\"none\"",
             "\"retrieval_hash\":",
             "\"receipt_hash\":",
         ],
@@ -5855,16 +5855,16 @@ fn root_validate_policy_reuse_evidence_retrieval_readiness_regression_smoke_mode
     assert_root_validate_catalog_compact_mode_contract(
         "--policy-reuse-evidence-retrieval-readiness-regression-smoke",
         &[
-            "\"schema\":\"canon_policy_reuse_evidence_retrieval_readiness_v1\\",
-            "\"record_type\":\"policy_reuse_evidence_retrieval_readiness_regression_smoke\\",
+            "\"schema\":\"canon_policy_reuse_evidence_retrieval_readiness_v1\"",
+            "\"record_type\":\"policy_reuse_evidence_retrieval_readiness_regression_smoke\"",
             "\"retrieval_version\":1",
             "\"learning_data_admissible\":false",
             "\"rollout_ready\":false",
-            "\"summary_status\":\"pass\\",
+            "\"summary_status\":\"pass\"",
             "\"retrieval_storage_write_performed\":false",
             "\"retrieval_example_ready\":false",
-            "\"retrieval_status\":\"not_ready\\",
-            "\"not_ready_reason\":\"learning_not_admissible\\",
+            "\"retrieval_status\":\"not_ready\"",
+            "\"not_ready_reason\":\"learning_not_admissible\"",
             "\"retrieval_hash\":",
             "\"receipt_hash\":",
         ],
@@ -5972,8 +5972,8 @@ fn root_validate_policy_reuse_evidence_compact_validation_smoke_mode_is_executab
     assert_root_validate_catalog_compact_mode_contract(
         "--policy-reuse-evidence-compact-validation-smoke",
         &[
-            "\"schema\":\"canon_policy_reuse_evidence_compact_validation_v1\\",
-            "\"record_type\":\"policy_reuse_evidence_compact_validation_smoke\\",
+            "\"schema\":\"canon_policy_reuse_evidence_compact_validation_v1\"",
+            "\"record_type\":\"policy_reuse_evidence_compact_validation_smoke\"",
             "\"compact_validation_version\":1",
             "\"source_retrieval_readiness_hash\":",
             "\"source_learning_admission_hash\":",
@@ -5987,8 +5987,8 @@ fn root_validate_policy_reuse_evidence_compact_validation_smoke_mode_is_executab
             "\"full_harness_test_count\":204",
             "\"avoided_full_harness_tests\":198",
             "\"compact_validation_passed\":true",
-            "\"compact_validation_status\":\"pass\\",
-            "\"failure_reason\":\"none\\",
+            "\"compact_validation_status\":\"pass\"",
+            "\"failure_reason\":\"none\"",
             "\"compact_hash\":",
             "\"receipt_hash\":",
         ],
@@ -6001,8 +6001,8 @@ fn root_validate_policy_reuse_evidence_compact_validation_regression_smoke_mode_
     assert_root_validate_catalog_compact_mode_contract(
         "--policy-reuse-evidence-compact-validation-regression-smoke",
         &[
-            "\"schema\":\"canon_policy_reuse_evidence_compact_validation_v1\\",
-            "\"record_type\":\"policy_reuse_evidence_compact_validation_regression_smoke\\",
+            "\"schema\":\"canon_policy_reuse_evidence_compact_validation_v1\"",
+            "\"record_type\":\"policy_reuse_evidence_compact_validation_regression_smoke\"",
             "\"compact_validation_version\":1",
             "\"retrieval_ready\":false",
             "\"learning_data_admissible\":false",
@@ -6013,8 +6013,8 @@ fn root_validate_policy_reuse_evidence_compact_validation_regression_smoke_mode_
             "\"full_harness_test_count\":204",
             "\"avoided_full_harness_tests\":190",
             "\"compact_validation_passed\":false",
-            "\"compact_validation_status\":\"fail\\",
-            "\"failure_reason\":\"retrieval_not_ready\\",
+            "\"compact_validation_status\":\"fail\"",
+            "\"failure_reason\":\"retrieval_not_ready\"",
             "\"compact_hash\":",
             "\"receipt_hash\":",
         ],
@@ -6115,8 +6115,8 @@ fn root_validate_policy_reuse_evidence_batch_readiness_smoke_mode_is_executable_
     assert_root_validate_catalog_compact_mode_contract(
         "--policy-reuse-evidence-batch-readiness-smoke",
         &[
-            "\"schema\":\"canon_policy_reuse_evidence_batch_readiness_v1\\",
-            "\"record_type\":\"policy_reuse_evidence_batch_readiness_smoke\\",
+            "\"schema\":\"canon_policy_reuse_evidence_batch_readiness_v1\"",
+            "\"record_type\":\"policy_reuse_evidence_batch_readiness_smoke\"",
             "\"batch_readiness_version\":1",
             "\"source_compact_validation_hash\":",
             "\"source_retrieval_readiness_hash\":",
@@ -6125,8 +6125,8 @@ fn root_validate_policy_reuse_evidence_batch_readiness_smoke_mode_is_executable_
             "\"retrieval_ready\":true",
             "\"scaling_projection_passed\":true",
             "\"batch_ready\":true",
-            "\"batch_readiness_status\":\"ready\\",
-            "\"not_ready_reason\":\"none\\",
+            "\"batch_readiness_status\":\"ready\"",
+            "\"not_ready_reason\":\"none\"",
             "\"batch_hash\":",
             "\"receipt_hash\":",
         ],
@@ -6139,15 +6139,15 @@ fn root_validate_policy_reuse_evidence_batch_readiness_regression_smoke_mode_is_
     assert_root_validate_catalog_compact_mode_contract(
         "--policy-reuse-evidence-batch-readiness-regression-smoke",
         &[
-            "\"schema\":\"canon_policy_reuse_evidence_batch_readiness_v1\\",
-            "\"record_type\":\"policy_reuse_evidence_batch_readiness_regression_smoke\\",
+            "\"schema\":\"canon_policy_reuse_evidence_batch_readiness_v1\"",
+            "\"record_type\":\"policy_reuse_evidence_batch_readiness_regression_smoke\"",
             "\"batch_readiness_version\":1",
             "\"compact_validation_passed\":false",
             "\"retrieval_ready\":false",
             "\"scaling_projection_passed\":false",
             "\"batch_ready\":false",
-            "\"batch_readiness_status\":\"not_ready\\",
-            "\"not_ready_reason\":\"compact_validation_failed\\",
+            "\"batch_readiness_status\":\"not_ready\"",
+            "\"not_ready_reason\":\"compact_validation_failed\"",
             "\"batch_hash\":",
             "\"receipt_hash\":",
         ],
@@ -6227,8 +6227,8 @@ fn root_validate_policy_reuse_evidence_batch_execution_plan_smoke_mode_is_execut
     assert_root_validate_catalog_compact_mode_contract(
         "--policy-reuse-evidence-batch-execution-plan-smoke",
         &[
-            "\"schema\":\"canon_policy_reuse_evidence_batch_execution_plan_v1\\",
-            "\"record_type\":\"policy_reuse_evidence_batch_execution_plan_smoke\\",
+            "\"schema\":\"canon_policy_reuse_evidence_batch_execution_plan_v1\"",
+            "\"record_type\":\"policy_reuse_evidence_batch_execution_plan_smoke\"",
             "\"execution_plan_version\":1",
             "\"source_batch_readiness_hash\":",
             "\"source_compact_validation_hash\":",
@@ -6237,8 +6237,8 @@ fn root_validate_policy_reuse_evidence_batch_execution_plan_smoke_mode_is_execut
             "\"no_execute_plan\":true",
             "\"execution_performed\":false",
             "\"plan_ready\":true",
-            "\"plan_status\":\"planned\\",
-            "\"not_plannable_reason\":\"none\\",
+            "\"plan_status\":\"planned\"",
+            "\"not_plannable_reason\":\"none\"",
             "\"plan_hash\":",
             "\"receipt_hash\":",
         ],
@@ -6251,16 +6251,16 @@ fn root_validate_policy_reuse_evidence_batch_execution_plan_regression_smoke_mod
     assert_root_validate_catalog_compact_mode_contract(
         "--policy-reuse-evidence-batch-execution-plan-regression-smoke",
         &[
-            "\"schema\":\"canon_policy_reuse_evidence_batch_execution_plan_v1\\",
-            "\"record_type\":\"policy_reuse_evidence_batch_execution_plan_regression_smoke\\",
+            "\"schema\":\"canon_policy_reuse_evidence_batch_execution_plan_v1\"",
+            "\"record_type\":\"policy_reuse_evidence_batch_execution_plan_regression_smoke\"",
             "\"execution_plan_version\":1",
             "\"batch_ready\":false",
             "\"compact_validation_passed\":false",
             "\"no_execute_plan\":true",
             "\"execution_performed\":false",
             "\"plan_ready\":false",
-            "\"plan_status\":\"not_plannable\\",
-            "\"not_plannable_reason\":\"batch_not_ready\\",
+            "\"plan_status\":\"not_plannable\"",
+            "\"not_plannable_reason\":\"batch_not_ready\"",
             "\"plan_hash\":",
             "\"receipt_hash\":",
         ],
@@ -6348,8 +6348,8 @@ fn root_validate_policy_reuse_evidence_batch_evaluation_admission_smoke_mode_is_
     assert_root_validate_catalog_compact_mode_contract(
         "--policy-reuse-evidence-batch-evaluation-admission-smoke",
         &[
-            "\"schema\":\"canon_policy_reuse_evidence_batch_evaluation_admission_v1\\",
-            "\"record_type\":\"policy_reuse_evidence_batch_evaluation_admission_smoke\\",
+            "\"schema\":\"canon_policy_reuse_evidence_batch_evaluation_admission_v1\"",
+            "\"record_type\":\"policy_reuse_evidence_batch_evaluation_admission_smoke\"",
             "\"admission_version\":1",
             "\"source_batch_execution_plan_hash\":",
             "\"source_batch_readiness_hash\":",
@@ -6358,8 +6358,8 @@ fn root_validate_policy_reuse_evidence_batch_evaluation_admission_smoke_mode_is_
             "\"no_execute_plan\":true",
             "\"execution_performed\":false",
             "\"batch_evaluation_admitted\":true",
-            "\"admission_status\":\"admitted\\",
-            "\"not_admitted_reason\":\"none\\",
+            "\"admission_status\":\"admitted\"",
+            "\"not_admitted_reason\":\"none\"",
             "\"admission_hash\":",
             "\"receipt_hash\":",
         ],
@@ -6372,16 +6372,16 @@ fn root_validate_policy_reuse_evidence_batch_evaluation_admission_regression_smo
     assert_root_validate_catalog_compact_mode_contract(
         "--policy-reuse-evidence-batch-evaluation-admission-regression-smoke",
         &[
-            "\"schema\":\"canon_policy_reuse_evidence_batch_evaluation_admission_v1\\",
-            "\"record_type\":\"policy_reuse_evidence_batch_evaluation_admission_regression_smoke\\",
+            "\"schema\":\"canon_policy_reuse_evidence_batch_evaluation_admission_v1\"",
+            "\"record_type\":\"policy_reuse_evidence_batch_evaluation_admission_regression_smoke\"",
             "\"admission_version\":1",
             "\"plan_ready\":false",
             "\"batch_ready\":false",
             "\"no_execute_plan\":true",
             "\"execution_performed\":false",
             "\"batch_evaluation_admitted\":false",
-            "\"admission_status\":\"not_admitted\\",
-            "\"not_admitted_reason\":\"plan_not_ready\\",
+            "\"admission_status\":\"not_admitted\"",
+            "\"not_admitted_reason\":\"plan_not_ready\"",
             "\"admission_hash\":",
             "\"receipt_hash\":",
         ],
@@ -6473,8 +6473,8 @@ fn root_validate_policy_reuse_evidence_batch_run_request_smoke_mode_is_executabl
     assert_root_validate_catalog_compact_mode_contract(
         "--policy-reuse-evidence-batch-run-request-smoke",
         &[
-            "\"schema\":\"canon_policy_reuse_evidence_batch_run_request_v1\\",
-            "\"record_type\":\"policy_reuse_evidence_batch_run_request_smoke\\",
+            "\"schema\":\"canon_policy_reuse_evidence_batch_run_request_v1\"",
+            "\"record_type\":\"policy_reuse_evidence_batch_run_request_smoke\"",
             "\"request_version\":1",
             "\"source_batch_evaluation_admission_hash\":",
             "\"source_batch_execution_plan_hash\":",
@@ -6483,8 +6483,8 @@ fn root_validate_policy_reuse_evidence_batch_run_request_smoke_mode_is_executabl
             "\"no_execute_request\":true",
             "\"execution_performed\":false",
             "\"batch_request_ready\":true",
-            "\"request_status\":\"request_ready\\",
-            "\"not_requestable_reason\":\"none\\",
+            "\"request_status\":\"request_ready\"",
+            "\"not_requestable_reason\":\"none\"",
             "\"request_hash\":",
             "\"receipt_hash\":",
         ],
@@ -6497,16 +6497,16 @@ fn root_validate_policy_reuse_evidence_batch_run_request_regression_smoke_mode_i
     assert_root_validate_catalog_compact_mode_contract(
         "--policy-reuse-evidence-batch-run-request-regression-smoke",
         &[
-            "\"schema\":\"canon_policy_reuse_evidence_batch_run_request_v1\\",
-            "\"record_type\":\"policy_reuse_evidence_batch_run_request_regression_smoke\\",
+            "\"schema\":\"canon_policy_reuse_evidence_batch_run_request_v1\"",
+            "\"record_type\":\"policy_reuse_evidence_batch_run_request_regression_smoke\"",
             "\"request_version\":1",
             "\"batch_evaluation_admitted\":false",
             "\"plan_ready\":false",
             "\"no_execute_request\":true",
             "\"execution_performed\":false",
             "\"batch_request_ready\":false",
-            "\"request_status\":\"not_requestable\\",
-            "\"not_requestable_reason\":\"admission_not_granted\\",
+            "\"request_status\":\"not_requestable\"",
+            "\"not_requestable_reason\":\"admission_not_granted\"",
             "\"request_hash\":",
             "\"receipt_hash\":",
         ],
@@ -6602,8 +6602,8 @@ fn root_validate_policy_reuse_evidence_external_evaluator_result_smoke_mode_is_e
     assert_root_validate_catalog_compact_mode_contract(
         "--policy-reuse-evidence-external-evaluator-result-smoke",
         &[
-            "\"schema\":\"canon_policy_reuse_evidence_external_evaluator_result_v1\\",
-            "\"record_type\":\"policy_reuse_evidence_external_evaluator_result_smoke\\",
+            "\"schema\":\"canon_policy_reuse_evidence_external_evaluator_result_v1\"",
+            "\"record_type\":\"policy_reuse_evidence_external_evaluator_result_smoke\"",
             "\"evaluator_result_version\":1",
             "\"source_batch_run_request_hash\":",
             "\"source_batch_evaluation_admission_hash\":",
@@ -6612,8 +6612,8 @@ fn root_validate_policy_reuse_evidence_external_evaluator_result_smoke_mode_is_e
             "\"external_evaluator_independent\":true",
             "\"llm_self_approved\":false",
             "\"evaluator_result_passed\":true",
-            "\"evaluator_status\":\"passed\\",
-            "\"evaluator_failure_reason\":\"none\\",
+            "\"evaluator_status\":\"passed\"",
+            "\"evaluator_failure_reason\":\"none\"",
             "\"evaluator_hash\":",
             "\"receipt_hash\":",
         ],
@@ -6626,16 +6626,16 @@ fn root_validate_policy_reuse_evidence_external_evaluator_result_regression_smok
     assert_root_validate_catalog_compact_mode_contract(
         "--policy-reuse-evidence-external-evaluator-result-regression-smoke",
         &[
-            "\"schema\":\"canon_policy_reuse_evidence_external_evaluator_result_v1\\",
-            "\"record_type\":\"policy_reuse_evidence_external_evaluator_result_regression_smoke\\",
+            "\"schema\":\"canon_policy_reuse_evidence_external_evaluator_result_v1\"",
+            "\"record_type\":\"policy_reuse_evidence_external_evaluator_result_regression_smoke\"",
             "\"evaluator_result_version\":1",
             "\"batch_request_ready\":false",
             "\"batch_evaluation_admitted\":false",
             "\"external_evaluator_independent\":true",
             "\"llm_self_approved\":false",
             "\"evaluator_result_passed\":false",
-            "\"evaluator_status\":\"failed\\",
-            "\"evaluator_failure_reason\":\"external_evaluator_failed\\",
+            "\"evaluator_status\":\"failed\"",
+            "\"evaluator_failure_reason\":\"external_evaluator_failed\"",
             "\"evaluator_hash\":",
             "\"receipt_hash\":",
         ],
@@ -6726,8 +6726,8 @@ fn root_validate_policy_reuse_evidence_learning_candidate_smoke_mode_is_executab
     assert_root_validate_catalog_compact_mode_contract(
         "--policy-reuse-evidence-learning-candidate-smoke",
         &[
-            "\"schema\":\"canon_policy_reuse_evidence_learning_candidate_v1\\",
-            "\"record_type\":\"policy_reuse_evidence_learning_candidate_smoke\\",
+            "\"schema\":\"canon_policy_reuse_evidence_learning_candidate_v1\"",
+            "\"record_type\":\"policy_reuse_evidence_learning_candidate_smoke\"",
             "\"learning_candidate_version\":1",
             "\"source_external_evaluator_result_hash\":",
             "\"source_batch_run_request_hash\":",
@@ -6736,8 +6736,8 @@ fn root_validate_policy_reuse_evidence_learning_candidate_smoke_mode_is_executab
             "\"policy_promotion_performed\":false",
             "\"retrieval_write_performed\":false",
             "\"learning_candidate_ready\":true",
-            "\"candidate_status\":\"candidate\\",
-            "\"not_candidate_reason\":\"none\\",
+            "\"candidate_status\":\"candidate\"",
+            "\"not_candidate_reason\":\"none\"",
             "\"candidate_hash\":",
             "\"receipt_hash\":",
         ],
@@ -6750,16 +6750,16 @@ fn root_validate_policy_reuse_evidence_learning_candidate_regression_smoke_mode_
     assert_root_validate_catalog_compact_mode_contract(
         "--policy-reuse-evidence-learning-candidate-regression-smoke",
         &[
-            "\"schema\":\"canon_policy_reuse_evidence_learning_candidate_v1\\",
-            "\"record_type\":\"policy_reuse_evidence_learning_candidate_regression_smoke\\",
+            "\"schema\":\"canon_policy_reuse_evidence_learning_candidate_v1\"",
+            "\"record_type\":\"policy_reuse_evidence_learning_candidate_regression_smoke\"",
             "\"learning_candidate_version\":1",
             "\"evaluator_result_passed\":false",
             "\"batch_request_ready\":false",
             "\"policy_promotion_performed\":false",
             "\"retrieval_write_performed\":false",
             "\"learning_candidate_ready\":false",
-            "\"candidate_status\":\"not_candidate\\",
-            "\"not_candidate_reason\":\"evaluator_not_passed\\",
+            "\"candidate_status\":\"not_candidate\"",
+            "\"not_candidate_reason\":\"evaluator_not_passed\"",
             "\"candidate_hash\":",
             "\"receipt_hash\":",
         ],
@@ -6860,8 +6860,8 @@ fn root_validate_policy_reuse_evidence_learning_data_admission_smoke_mode_is_exe
     assert_root_validate_catalog_compact_mode_contract(
         "--policy-reuse-evidence-learning-data-admission-smoke",
         &[
-            "\"schema\":\"canon_policy_reuse_evidence_learning_data_admission_v1\\",
-            "\"record_type\":\"policy_reuse_evidence_learning_data_admission_smoke\\",
+            "\"schema\":\"canon_policy_reuse_evidence_learning_data_admission_v1\"",
+            "\"record_type\":\"policy_reuse_evidence_learning_data_admission_smoke\"",
             "\"data_admission_version\":1",
             "\"source_learning_candidate_hash\":",
             "\"source_external_evaluator_result_hash\":",
@@ -6871,8 +6871,8 @@ fn root_validate_policy_reuse_evidence_learning_data_admission_smoke_mode_is_exe
             "\"retrieval_write_performed\":false",
             "\"student_training_performed\":false",
             "\"learning_data_admitted\":true",
-            "\"admission_status\":\"admitted\\",
-            "\"not_admitted_reason\":\"none\\",
+            "\"admission_status\":\"admitted\"",
+            "\"not_admitted_reason\":\"none\"",
             "\"admission_hash\":",
             "\"receipt_hash\":",
         ],
@@ -6885,8 +6885,8 @@ fn root_validate_policy_reuse_evidence_learning_data_admission_regression_smoke_
     assert_root_validate_catalog_compact_mode_contract(
         "--policy-reuse-evidence-learning-data-admission-regression-smoke",
         &[
-            "\"schema\":\"canon_policy_reuse_evidence_learning_data_admission_v1\\",
-            "\"record_type\":\"policy_reuse_evidence_learning_data_admission_regression_smoke\\",
+            "\"schema\":\"canon_policy_reuse_evidence_learning_data_admission_v1\"",
+            "\"record_type\":\"policy_reuse_evidence_learning_data_admission_regression_smoke\"",
             "\"data_admission_version\":1",
             "\"learning_candidate_ready\":false",
             "\"evaluator_result_passed\":false",
@@ -6894,8 +6894,8 @@ fn root_validate_policy_reuse_evidence_learning_data_admission_regression_smoke_
             "\"retrieval_write_performed\":false",
             "\"student_training_performed\":false",
             "\"learning_data_admitted\":false",
-            "\"admission_status\":\"not_admitted\\",
-            "\"not_admitted_reason\":\"candidate_not_ready\\",
+            "\"admission_status\":\"not_admitted\"",
+            "\"not_admitted_reason\":\"candidate_not_ready\"",
             "\"admission_hash\":",
             "\"receipt_hash\":",
         ],
@@ -7535,8 +7535,8 @@ fn root_validate_policy_reuse_evidence_retrieval_use_approval_smoke_mode_is_exec
     assert_root_validate_catalog_compact_mode_contract(
         "--policy-reuse-evidence-retrieval-use-approval-smoke",
         &[
-            "\"schema\":\"canon_policy_reuse_evidence_retrieval_use_approval_v1\\",
-            "\"record_type\":\"policy_reuse_evidence_retrieval_use_approval_smoke\\",
+            "\"schema\":\"canon_policy_reuse_evidence_retrieval_use_approval_v1\"",
+            "\"record_type\":\"policy_reuse_evidence_retrieval_use_approval_smoke\"",
             "\"retrieval_use_approval_version\":1",
             "\"source_retrieval_corpus_admission_hash\":",
             "\"source_retrieval_corpus_readiness_hash\":",
@@ -7547,8 +7547,8 @@ fn root_validate_policy_reuse_evidence_retrieval_use_approval_smoke_mode_is_exec
             "\"policy_promotion_performed\":false",
             "\"student_training_performed\":false",
             "\"retrieval_use_approved\":true",
-            "\"approval_status\":\"approved\\",
-            "\"not_approved_reason\":\"none\\",
+            "\"approval_status\":\"approved\"",
+            "\"not_approved_reason\":\"none\"",
             "\"approval_hash\":",
             "\"receipt_hash\":",
         ],
@@ -7561,8 +7561,8 @@ fn root_validate_policy_reuse_evidence_retrieval_use_approval_regression_smoke_m
     assert_root_validate_catalog_compact_mode_contract(
         "--policy-reuse-evidence-retrieval-use-approval-regression-smoke",
         &[
-            "\"schema\":\"canon_policy_reuse_evidence_retrieval_use_approval_v1\\",
-            "\"record_type\":\"policy_reuse_evidence_retrieval_use_approval_regression_smoke\\",
+            "\"schema\":\"canon_policy_reuse_evidence_retrieval_use_approval_v1\"",
+            "\"record_type\":\"policy_reuse_evidence_retrieval_use_approval_regression_smoke\"",
             "\"retrieval_use_approval_version\":1",
             "\"retrieval_corpus_admitted\":false",
             "\"retrieval_corpus_ready\":false",
@@ -7571,8 +7571,8 @@ fn root_validate_policy_reuse_evidence_retrieval_use_approval_regression_smoke_m
             "\"policy_promotion_performed\":false",
             "\"student_training_performed\":false",
             "\"retrieval_use_approved\":false",
-            "\"approval_status\":\"not_approved\\",
-            "\"not_approved_reason\":\"corpus_not_admitted\\",
+            "\"approval_status\":\"not_approved\"",
+            "\"not_approved_reason\":\"corpus_not_admitted\"",
             "\"approval_hash\":",
             "\"receipt_hash\":",
         ],
@@ -7671,8 +7671,8 @@ fn root_validate_policy_reuse_evidence_retrieval_use_manifest_smoke_mode_is_exec
     assert_root_validate_catalog_compact_mode_contract(
         "--policy-reuse-evidence-retrieval-use-manifest-smoke",
         &[
-            "\"schema\":\"canon_policy_reuse_evidence_retrieval_use_manifest_v1\\",
-            "\"record_type\":\"policy_reuse_evidence_retrieval_use_manifest_smoke\\",
+            "\"schema\":\"canon_policy_reuse_evidence_retrieval_use_manifest_v1\"",
+            "\"record_type\":\"policy_reuse_evidence_retrieval_use_manifest_smoke\"",
             "\"retrieval_use_manifest_version\":1",
             "\"source_retrieval_use_approval_hash\":",
             "\"source_retrieval_corpus_admission_hash\":",
@@ -7683,8 +7683,8 @@ fn root_validate_policy_reuse_evidence_retrieval_use_manifest_smoke_mode_is_exec
             "\"policy_promotion_performed\":false",
             "\"student_training_performed\":false",
             "\"retrieval_use_manifest_ready\":true",
-            "\"manifest_status\":\"manifest_ready\\",
-            "\"not_ready_reason\":\"none\\",
+            "\"manifest_status\":\"manifest_ready\"",
+            "\"not_ready_reason\":\"none\"",
             "\"manifest_hash\":",
             "\"receipt_hash\":",
         ],
@@ -7697,8 +7697,8 @@ fn root_validate_policy_reuse_evidence_retrieval_use_manifest_regression_smoke_m
     assert_root_validate_catalog_compact_mode_contract(
         "--policy-reuse-evidence-retrieval-use-manifest-regression-smoke",
         &[
-            "\"schema\":\"canon_policy_reuse_evidence_retrieval_use_manifest_v1\\",
-            "\"record_type\":\"policy_reuse_evidence_retrieval_use_manifest_regression_smoke\\",
+            "\"schema\":\"canon_policy_reuse_evidence_retrieval_use_manifest_v1\"",
+            "\"record_type\":\"policy_reuse_evidence_retrieval_use_manifest_regression_smoke\"",
             "\"retrieval_use_manifest_version\":1",
             "\"retrieval_use_approved\":false",
             "\"retrieval_corpus_admitted\":false",
@@ -7707,8 +7707,8 @@ fn root_validate_policy_reuse_evidence_retrieval_use_manifest_regression_smoke_m
             "\"policy_promotion_performed\":false",
             "\"student_training_performed\":false",
             "\"retrieval_use_manifest_ready\":false",
-            "\"manifest_status\":\"manifest_not_ready\\",
-            "\"not_ready_reason\":\"use_not_approved\\",
+            "\"manifest_status\":\"manifest_not_ready\"",
+            "\"not_ready_reason\":\"use_not_approved\"",
             "\"manifest_hash\":",
             "\"receipt_hash\":",
         ],
@@ -7810,8 +7810,8 @@ fn root_validate_policy_reuse_evidence_retrieval_query_plan_smoke_mode_is_execut
     assert_root_validate_catalog_compact_mode_contract(
         "--policy-reuse-evidence-retrieval-query-plan-smoke",
         &[
-            "\"schema\":\"canon_policy_reuse_evidence_retrieval_query_plan_v1\\",
-            "\"record_type\":\"policy_reuse_evidence_retrieval_query_plan_smoke\\",
+            "\"schema\":\"canon_policy_reuse_evidence_retrieval_query_plan_v1\"",
+            "\"record_type\":\"policy_reuse_evidence_retrieval_query_plan_smoke\"",
             "\"retrieval_query_plan_version\":1",
             "\"source_retrieval_use_manifest_hash\":",
             "\"source_retrieval_use_approval_hash\":",
@@ -7823,8 +7823,8 @@ fn root_validate_policy_reuse_evidence_retrieval_query_plan_smoke_mode_is_execut
             "\"policy_promotion_performed\":false",
             "\"student_training_performed\":false",
             "\"retrieval_query_plan_ready\":true",
-            "\"query_plan_status\":\"query_plan_ready\\",
-            "\"not_ready_reason\":\"none\\",
+            "\"query_plan_status\":\"query_plan_ready\"",
+            "\"not_ready_reason\":\"none\"",
             "\"query_plan_hash\":",
             "\"receipt_hash\":",
         ],
@@ -7837,8 +7837,8 @@ fn root_validate_policy_reuse_evidence_retrieval_query_plan_regression_smoke_mod
     assert_root_validate_catalog_compact_mode_contract(
         "--policy-reuse-evidence-retrieval-query-plan-regression-smoke",
         &[
-            "\"schema\":\"canon_policy_reuse_evidence_retrieval_query_plan_v1\\",
-            "\"record_type\":\"policy_reuse_evidence_retrieval_query_plan_regression_smoke\\",
+            "\"schema\":\"canon_policy_reuse_evidence_retrieval_query_plan_v1\"",
+            "\"record_type\":\"policy_reuse_evidence_retrieval_query_plan_regression_smoke\"",
             "\"retrieval_query_plan_version\":1",
             "\"retrieval_use_manifest_ready\":false",
             "\"retrieval_use_approved\":false",
@@ -7848,8 +7848,8 @@ fn root_validate_policy_reuse_evidence_retrieval_query_plan_regression_smoke_mod
             "\"policy_promotion_performed\":false",
             "\"student_training_performed\":false",
             "\"retrieval_query_plan_ready\":false",
-            "\"query_plan_status\":\"query_plan_not_ready\\",
-            "\"not_ready_reason\":\"manifest_not_ready\\",
+            "\"query_plan_status\":\"query_plan_not_ready\"",
+            "\"not_ready_reason\":\"manifest_not_ready\"",
             "\"query_plan_hash\":",
             "\"receipt_hash\":",
         ],
@@ -12272,14 +12272,14 @@ fn root_validation_json_receipt_records_graph_cli_test_surface() {
     };
 
     let json = receipt.to_json_line();
-    assert!(json.contains("\"name\":\"validation_harness_contract_tests\\"));
+    assert!(json.contains("\"name\":\"validation_harness_contract_tests\""));
     assert!(json.contains(&format!(
         "\"expected_test_count\":{VALIDATION_HARNESS_EXPECTED_TESTS}"
     )));
     assert!(json.contains(&format!(
         "\"observed_test_count\":{VALIDATION_HARNESS_EXPECTED_TESTS}"
     )));
-    assert!(json.contains("\"name\":\"graph_mutation_cli_contract_tests\\"));
+    assert!(json.contains("\"name\":\"graph_mutation_cli_contract_tests\""));
     assert!(json.contains("\"expected_test_count\":10"));
     assert!(json.contains("\"observed_test_count\":10"));
     assert!(json.contains("\"passed\":true"));

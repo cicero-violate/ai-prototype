@@ -1,7 +1,4 @@
 [workspace]
-# canon-rustc-v3 is a sibling directory and cannot be a workspace member
-# (Cargo requires members to be subdirectories of the workspace root).
-# It is referenced as a path dependency instead — same type sharing, no layout change.
 
 [package]
 name = "graph-editor"
@@ -15,9 +12,12 @@ path = "src/lib.rs"
 name = "graph_patch"
 path = "src/bin/graph_patch.rs"
 
+
+[[bin]]
+name = "auto_refactor_plan"
+path = "src/bin/auto_refactor_plan.rs"
+
 [dependencies]
-# Types shared with the wrapper (graph, facts, flags, emit — no rustc driver).
-canon-rustc-v3 = { path = "../canon-rustc-v3", default-features = false }
 anyhow     = "1"
 serde      = { version = "1", features = ["derive"] }
 serde_json = "1"

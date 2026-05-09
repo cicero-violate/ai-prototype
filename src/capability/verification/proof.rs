@@ -15,8 +15,8 @@ use std::fs::{self, File, OpenOptions};
 use std::io::{BufRead, BufReader, Write};
 use std::path::Path;
 
-use crate::codec::ndjson::{load_tlog_ndjson, TLOG_RECORD_EVENT, TLOG_SCHEMA_VERSION};
-use crate::kernel::{mix, TLog};
+use crate::codec::ndjson::{TLOG_RECORD_EVENT, TLOG_SCHEMA_VERSION, load_tlog_ndjson};
+use crate::kernel::{TLog, mix};
 
 pub const VERIFICATION_PROOF_SCHEMA_VERSION: u64 = 1;
 pub const VERIFICATION_PROOF_RECORD: u64 = 61;
