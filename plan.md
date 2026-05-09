@@ -20,6 +20,7 @@ Current planning/scoring baseline:
 - Working tree was clean at the start of this planning refresh.
 - This turn updates only `plan.md` and `score.md`.
 - No fresh validation suite was run in this planning turn.
+- The planning artifacts already matched the current roadmap; this turn keeps the implementation plan stable and records that no implementation work was attempted.
 - Next execution turn should prioritize a full quota-safe validation baseline and then update `score.md` with exact evidence.
 
 ## Operating Rules For Agent Turns
@@ -158,6 +159,8 @@ Run and record the validation baseline:
 4. Classify any failures using the categories in P0.
 5. Update `score.md` with exact command outcomes.
 6. Commit only intentional validation/scoring or implementation changes.
+
+Do not change source code before the baseline unless a validation failure identifies a specific implementation defect.
 
 ## Current Non-Goals
 
