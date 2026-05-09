@@ -268,6 +268,47 @@ class ObserveValidationContractTest(unittest.TestCase):
         ):
             self.assertIn(token, self.script)
 
+    def test_validation_status_separates_command_execution_from_missing_signal_health(self) -> None:
+        for token in (
+            "missing_signal_status",
+            "command_execution_status",
+            "validation_status_reason",
+            "all_required_commands_and_missing_signals_passed",
+            "required_command_failure_or_timeout",
+            "missing_signal_failure",
+            'validation_status = "pass" if command_execution_status == "pass" and missing_signal_status == "pass" else "fail"',
+        ):
+            self.assertIn(token, self.script)
+
+    def test_validation_status_reason_prefers_required_command_failure_over_missing_signal_failure(self) -> None:
+        def classify(command_execution_status: str, missing_signal_status: str) -> tuple[str, str]:
+            validation_status = "pass" if command_execution_status == "pass" and missing_signal_status == "pass" else "fail"
+            validation_status_reason = (
+                "all_required_commands_and_missing_signals_passed"
+                if validation_status == "pass"
+                else "required_command_failure_or_timeout"
+                if command_execution_status == "fail"
+                else "missing_signal_failure"
+            )
+            return validation_status, validation_status_reason
+
+        self.assertEqual(
+            classify("pass", "pass"),
+            ("pass", "all_required_commands_and_missing_signals_passed"),
+        )
+        self.assertEqual(
+            classify("fail", "pass"),
+            ("fail", "required_command_failure_or_timeout"),
+        )
+        self.assertEqual(
+            classify("pass", "fail"),
+            ("fail", "missing_signal_failure"),
+        )
+        self.assertEqual(
+            classify("fail", "fail"),
+            ("fail", "required_command_failure_or_timeout"),
+        )
+
     def test_external_surface_evidence_is_source_derived(self) -> None:
         for token in (
             "def source_evidence()",

@@ -679,9 +679,59 @@ result: validation_status=fail from command timeout/required command status; com
 summary: runtime_archive_evidence_source=compact_report, runtime_archive_report_status=pass, runtime_archive_report_base_matches_current=true, delta_base_is_ancestor=true, runtime_manifest_base_matches_delta_base=true, missing_runtime_manifest_base_match=false, missing_runtime_download_index=false, missing_runtime_prior_state=false, missing_runtime_conversation_ledger=false, missing_runtime_performance_signal=false, missing_signal_count=0
 ```
 
-## Next Execution Slice After Runtime Archive Report Integration Step 3
+## Completed Execution Slice After Runtime Archive Report Integration Step 3
 
-Continue P4 by improving full observe-validation pass/fail classification so missing-signal success is distinguished from required command timeout/failure status, or by adding a focused fixture/report path for another remaining externally dependent signal. Preserve direct archive precedence over compact reports, base-match validation for report consumption, optional wrapper semantics, generated graph JSON classification, graph fixture evidence, receipt replay inventory, and runtime performance evidence.
+Completed full observe-validation status separation. The summary now emits `missing_signal_status`, `command_execution_status`, and `validation_status_reason` so `missing_signal_count=0` can be represented distinctly from required command timeout/failure status while preserving the existing overall `validation_status` and exit behavior.
+
+
+## Validation Evidence From Status Split Implementation Step 4
+
+```text
+python3 -m unittest tests/test_observe_validation_contract.py
+exit: 0
+result: 32 passed; 0 failed
+log: target/validation-logs/observe-validation-contract-status-split-step4.log
+```
+
+```text
+python3 -m py_compile scripts/observe_validation.sh tests/test_observe_validation_contract.py
+exit: 0
+log: target/validation-logs/py-compile-status-split-step4.log
+```
+
+```text
+CANON_DELTA_BASE=$(git rev-parse HEAD) CANON_RUNTIME_ARCHIVE=target/runtime-archive-step4-head-report.tar CANON_OBSERVE_REPORT=target/observe/runtime-archive-report-step4-head.ndjson python3 scripts/observe_validation.sh --runtime-archive-report
+exit: 0
+result: validation_status=pass, runtime_archive_inspection_status=pass, runtime_manifest_base_matches_delta_base=true, runtime_archive_missing_signal_count=0
+summary: missing_runtime_manifest_base_match=false, missing_runtime_download_index=false, missing_runtime_prior_state=false, missing_runtime_conversation_ledger=false
+log: target/validation-logs/runtime-archive-report-step4-head.log
+```
+
+```text
+CANON_OBSERVE_REPORT=target/observe/graph-fixture-report-status-split-step4.ndjson python3 scripts/observe_validation.sh --graph-fixture-report
+exit: 0
+result: validation_status=pass, graph_evidence_status=graph_mutation_landed_with_receipt_snapshot
+log: target/validation-logs/graph-fixture-report-status-split-step4.log
+```
+
+```text
+python3 -m unittest tests/test_graph_workflow_fixture_validator.py
+exit: 0
+result: 2 passed; 0 failed
+log: target/validation-logs/graph-workflow-fixture-validator-status-split-step4.log
+```
+
+```text
+CANON_TEST_TIMEOUT_SECONDS=1 CANON_DELTA_BASE=$(git rev-parse HEAD) CANON_RUNTIME_ARCHIVE_REPORT=target/observe/runtime-archive-report-step4-head.ndjson CANON_OBSERVE_REPORT=target/observe/full-observe-status-split-step4.ndjson python3 scripts/observe_validation.sh
+connector result: 502 transport error during long command; ignored artifacts were produced
+exit file: target/validation-logs/full-observe-status-split-step4.exit = 1
+result: overall validation_status=fail from required command timeout/failure, while missing-signal health passed
+summary: validation_status=fail, validation_status_reason=required_command_failure_or_timeout, command_execution_status=fail, missing_signal_status=pass, missing_signal_count=0, failed_required_commands=[cargo_test_all_targets], runtime_archive_evidence_source=compact_report, runtime_archive_report_status=pass, missing_runtime_manifest_base_match=false, missing_runtime_download_index=false, missing_runtime_prior_state=false, missing_runtime_conversation_ledger=false
+```
+
+## Next Execution Slice After Status Split Step 4
+
+Continue P4 by adding a focused status report or fixture for required command execution outcomes, especially timeout versus hard failure classification, so connector transport instability and command-level validation failures are auditable without conflating them with missing-signal health. Preserve the separated status fields, compact runtime report integration, direct archive precedence, optional wrapper semantics, generated graph JSON classification, graph fixture evidence, receipt replay inventory, and runtime performance evidence.
 
 ## Current Non-Goals
 

@@ -783,7 +783,17 @@ def main() -> int:
     required.add("policy_learning_trace_validation")
     if router_test.get("available"):
         required.add("router_offline_tests")
-    validation_status = "pass" if not failed_required else "fail"
+    missing_signal_count = sum(1 for value in missing.values() if value)
+    missing_signal_status = "pass" if missing_signal_count == 0 else "fail"
+    command_execution_status = "pass" if not failed_required else "fail"
+    validation_status = "pass" if command_execution_status == "pass" and missing_signal_status == "pass" else "fail"
+    validation_status_reason = (
+        "all_required_commands_and_missing_signals_passed"
+        if validation_status == "pass"
+        else "required_command_failure_or_timeout"
+        if command_execution_status == "fail"
+        else "missing_signal_failure"
+    )
 
     performance_budgets = {
         "CANON_MAX_PROJECT_AGENT_ELAPSED_MS_P95": os.environ.get("CANON_MAX_PROJECT_AGENT_ELAPSED_MS_P95"),
@@ -796,6 +806,9 @@ def main() -> int:
         "schema_version": 1,
         "git_head": git_head,
         "validation_status": validation_status,
+        "validation_status_reason": validation_status_reason,
+        "command_execution_status": command_execution_status,
+        "missing_signal_status": missing_signal_status,
         "validation_commands": commands,
         "validation_command_count": len(commands),
         "validation_test_count": sum(1 for c in commands if c.get("status") == "pass"),
@@ -852,7 +865,7 @@ def main() -> int:
         "graph_fixture_validator": graph_workflow_fixture_report.get("graph_fixture_validator"),
         **graph_workflow_fixture,
         "missing_signal_flags": missing,
-        "missing_signal_count": sum(1 for value in missing.values() if value),
+        "missing_signal_count": missing_signal_count,
         "git_status_clean": not bool(git_status),
         "git_status_short": git_status,
         **ignored_counts,
