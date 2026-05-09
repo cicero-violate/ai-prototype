@@ -151,6 +151,79 @@ def unique_files(mapping: dict[str, list[str]]) -> list[str]:
     return sorted(files)
 
 
+def inspect_graph_workflow_fixture() -> dict[str, Any]:
+    fixture = ROOT / "tests" / "fixtures" / "graph_mutation_cli_workflow"
+    manifest = fixture / "MANIFEST.txt"
+    result: dict[str, Any] = {
+        "graph_workflow_fixture_present": fixture.exists() and manifest.exists(),
+        "graph_workflow_fixture_status": "missing",
+        "graph_workflow_fixture_evidence_files": [],
+        "graph_workflow_fixture_integrity_valid": False,
+        "graph_workflow_fixture_commands_present": False,
+        "graph_workflow_fixture_landing_command_present": False,
+        "graph_workflow_fixture_ledger_command_present": False,
+        "graph_workflow_fixture_receipt_snapshot_present": False,
+        "graph_workflow_fixture_integrity_rows": [],
+    }
+    if not fixture.exists() or not manifest.exists():
+        return result
+
+    files: list[str] = []
+    commands: list[str] = []
+    integrity_rows: list[dict[str, str]] = []
+    section = ""
+    for raw_line in manifest.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#"):
+            continue
+        if line in {"files:", "commands:", "integrity:"}:
+            section = line.rstrip(":")
+            continue
+        if section == "files" and raw_line.startswith("  "):
+            files.append(line)
+        elif section == "commands" and raw_line.startswith("  "):
+            commands.append(line)
+        elif section == "integrity" and raw_line.startswith("  "):
+            parts = line.split()
+            if len(parts) == 3:
+                integrity_rows.append({"file": parts[0], "algorithm": parts[1], "hash": parts[2].lower()})
+
+    evidence_files = [str((fixture / file).relative_to(ROOT)) for file in files if (fixture / file).exists()]
+    evidence_files.append(str(manifest.relative_to(ROOT)))
+    integrity_valid = bool(integrity_rows) and all(
+        row["algorithm"] == "sha256"
+        and (fixture / row["file"]).exists()
+        and sha256_file(fixture / row["file"]) == row["hash"]
+        for row in integrity_rows
+    )
+    landing_command_present = any("verify-landing" in command for command in commands)
+    ledger_command_present = any("verify-receipts" in command for command in commands)
+    commands_present = all(
+        any(expected in command for command in commands)
+        for expected in ("verify-ops", "generate-patch", "verify-landing", "verify-receipts")
+    )
+    receipt_snapshot_present = (
+        integrity_valid
+        and commands_present
+        and landing_command_present
+        and ledger_command_present
+        and {"old-graph.ndjson", "new-graph.ndjson", "ops.ndjson", "expected-patch.diff"}.issubset(set(files))
+    )
+    result.update(
+        {
+            "graph_workflow_fixture_status": "pass" if receipt_snapshot_present else "fail",
+            "graph_workflow_fixture_evidence_files": sorted(set(evidence_files)),
+            "graph_workflow_fixture_integrity_valid": integrity_valid,
+            "graph_workflow_fixture_commands_present": commands_present,
+            "graph_workflow_fixture_landing_command_present": landing_command_present,
+            "graph_workflow_fixture_ledger_command_present": ledger_command_present,
+            "graph_workflow_fixture_receipt_snapshot_present": receipt_snapshot_present,
+            "graph_workflow_fixture_integrity_rows": integrity_rows,
+        }
+    )
+    return result
+
+
 def graph_evidence_classification(
     *,
     requested: bool,
@@ -159,15 +232,18 @@ def graph_evidence_classification(
     source_contract_present: bool,
     landing_contract_present: bool,
     ledger_contract_present: bool,
+    fixture_receipt_snapshot_present: bool,
 ) -> str:
+    if not source_contract_present:
+        return "graph_mutation_evidence_contract_missing"
+    if fixture_receipt_snapshot_present and landing_contract_present and ledger_contract_present:
+        return "graph_mutation_landed_with_receipt_snapshot"
     if not requested:
         return "graph_wrapper_absent_by_configuration"
     if not wrapper_available:
         return "graph_wrapper_configured_missing"
     if not state_graph_present:
         return "graph_wrapper_configured_no_telemetry"
-    if not source_contract_present:
-        return "graph_mutation_evidence_contract_missing"
     if not landing_contract_present:
         return "graph_mutation_evidence_emitted_not_landed"
     if not ledger_contract_present:
@@ -289,6 +365,9 @@ def main() -> int:
     else:
         wrapper_graph_validation_result = "skipped_not_requested"
 
+    state_graph_present = any((ROOT / "state").glob("**/graph.json"))
+    graph_workflow_fixture = inspect_graph_workflow_fixture()
+
     run("ollama_judgment_example", ["cargo", "run", "--example", "ollama_judgment"], env=root_rust_env, timeout=test_timeout_seconds()) if os.environ.get("CANON_OLLAMA_BASE_URL") else None
 
     evidence = source_evidence()
@@ -345,6 +424,9 @@ def main() -> int:
         source_contract_present=evidence["graph_source_contract_present"],
         landing_contract_present=bool(graph_source_contract.get("verify_graph_mutation_landing")),
         ledger_contract_present=bool(graph_source_contract.get("verify_graph_receipt_ledger_files_ndjson")),
+        fixture_receipt_snapshot_present=bool(
+            graph_workflow_fixture.get("graph_workflow_fixture_receipt_snapshot_present")
+        ),
     )
 
     missing = {
@@ -354,6 +436,9 @@ def main() -> int:
         "missing_rustc_wrapper_telemetry": not wrapper_graph_validation_available,
         "missing_graph_source_contract_report": not evidence["graph_source_contract_present"],
         "missing_graph_workflow_contract_report": not evidence["graph_workflow_contract_present"],
+        "missing_graph_workflow_fixture_receipt_snapshot": not graph_workflow_fixture.get(
+            "graph_workflow_fixture_receipt_snapshot_present", False
+        ),
         "missing_panic_surface_validation": "panic_surface_validation" not in command_statuses,
         "missing_policy_learning_replay_trace": "policy_learning_trace_validation" not in command_statuses,
         "missing_runtime_performance_signal": True,
@@ -426,6 +511,7 @@ def main() -> int:
         "graph_workflow_contract_present": evidence["graph_workflow_contract_present"],
         "graph_workflow_contract_evidence_files": unique_files(graph_workflow_contract),
         "graph_workflow_contract_evidence_tokens": graph_workflow_contract,
+        **graph_workflow_fixture,
         "missing_signal_flags": missing,
         "missing_signal_count": sum(1 for value in missing.values() if value),
         "git_status_clean": not bool(git_status),

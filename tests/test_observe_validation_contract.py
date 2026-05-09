@@ -202,6 +202,18 @@ class ObserveValidationContractTest(unittest.TestCase):
             "verify_graph_receipt_ledger_files_ndjson",
             "graph_mutation_cli_contract",
             "graph_mutation_cli_workflow",
+            "def inspect_graph_workflow_fixture()",
+            "graph_workflow_fixture_present",
+            "graph_workflow_fixture_status",
+            "graph_workflow_fixture_evidence_files",
+            "graph_workflow_fixture_integrity_valid",
+            "graph_workflow_fixture_commands_present",
+            "graph_workflow_fixture_landing_command_present",
+            "graph_workflow_fixture_ledger_command_present",
+            "graph_workflow_fixture_receipt_snapshot_present",
+            "missing_graph_workflow_fixture_receipt_snapshot",
+            "fixture_receipt_snapshot_present",
+            "graph_mutation_cli_workflow",
         ):
             self.assertIn(token, self.script)
 
