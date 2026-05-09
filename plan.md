@@ -4,7 +4,7 @@
 
 Canon Agent is a Rust prototype for a deterministic, auditable, self-improving agent runtime. The target architecture remains a formally constrained state-machine kernel with a capability layer around it. The kernel owns correctness, state transitions, durable records, replay boundaries, and audit evidence. LLMs and tools operate inside the capability layer and must produce typed, reviewable evidence rather than governing the runtime directly.
 
-Current implementation snapshot, 2026-05-09 00:06:36 EDT America/Toronto / 2026-05-09T04:06:36Z UTC:
+Current implementation snapshot, 2026-05-09 00:12:54 EDT America/Toronto / 2026-05-09T04:12:54Z UTC:
 
 - Branch: `main`.
 - Latest visible prior commit before this implementation turn: `8f3a15a Update Canon Agent planning and scoring`.
@@ -82,23 +82,31 @@ Fresh validation evidence from implementation step 1:
    - `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo clippy --all-targets -- -D warnings` passed.
 6. Observe smoke evidence emitted connector and missing-signal fields, but the full all-target command inside the smoke failed due environment quota pressure (`Disk quota exceeded` in the cargo-test log), not a semantic assertion failure.
 
-### P2 — Agent loop reliability — in progress
+### P2 — Agent loop reliability — complete
 
 1. Hardened streaming retry behavior and evidence preservation for the SSE/router boundary.
    - `finish_reason=length` is now classified as `length_finished`, incomplete, and never retry-safe.
    - Missing `[DONE]` is retry-safe only for a new chat without a target URL.
    - Missing `message_stream_complete` is retry-safe only for a new chat without a target URL.
    - Any observed target URL blocks retry so the runtime preserves thread/evidence continuity instead of creating duplicate work.
-2. Added fixtures for:
+2. Added SSE fixtures for:
    - complete stream with `[DONE]` and `message_stream_complete`
    - truncated stream missing `[DONE]`
    - stream missing `message_stream_complete`
    - stream with target URL but missing stream-complete metadata
    - `finish_reason=length`
    - partial chunked transfer body preservation
-3. Remaining P2 work:
-   - Clarify project-loop mode versus phase-driven worker mode.
-   - Add higher-level loop-driver fixtures that verify retry attempt labels and evidence files are preserved across retries.
+3. Clarified project-loop mode versus phase-driven worker certification in the loop-driver boundary comments and production logs.
+4. Added loop-driver fixtures for:
+   - retry attempt labels preserving original labels and numbering retries
+   - project-planning/project-execution/worker-certification mode classification
+   - project prompts staying separate from AgentCycle certification
+   - certification objective truncation preserving compact project evidence
+5. Validation evidence from implementation step 5:
+   - `cargo test agent::loop_driver::tests --lib -- --test-threads=1` passed; 4 tests.
+   - `cargo fmt --check` passed.
+   - `cargo test --lib -- --test-threads=1` passed; 201 tests.
+   - `cargo clippy --all-targets -- -D warnings` passed.
 
 ### P3 — Runtime and receipt correctness
 
@@ -120,15 +128,15 @@ Fresh validation evidence from implementation step 1:
 
 ## Next Execute-Turn Recommendation
 
-1. Continue P2 by adding loop-driver-level fixtures for retry attempt labels and evidence-file preservation across incomplete turns.
-2. Clarify project-loop mode versus phase-driven worker mode in code comments or docs where the loop driver selects prompt/evidence behavior.
-3. Keep generated validation logs ignored and preserve the compact report/exit-file pattern for expensive checks.
+1. Begin P3 by expanding runtime and receipt correctness invariants.
+2. Prioritize replay/receipt tests for forged, duplicated, reordered, stale, and missing receipts.
+3. Keep policy promotion externally verified; never let the LLM approve its own candidates.
 4. Continue using `TMPDIR="$PWD/target/test-tmp"` for Rust tests in quota-sensitive sandboxes.
-5. Run targeted loop-mode tests, `cargo fmt --check`, `cargo test --lib -- --test-threads=1`, and `cargo clippy --all-targets -- -D warnings` after the next P2 slice.
+5. Run targeted receipt/replay tests, `cargo fmt --check`, `cargo test --lib -- --test-threads=1`, and `cargo clippy --all-targets -- -D warnings` after the next P3 slice.
 
 ## Planning-Turn Handoff
 
-P0 and P1 are complete. P2 is partially complete at the SSE/router boundary. The correct next move is loop-driver-level retry/evidence preservation coverage.
+P0, P1, and P2 are complete. The correct next move is P3 runtime and receipt correctness, beginning with replay/receipt invariant expansion.
 
 ## Current Non-Goals
 

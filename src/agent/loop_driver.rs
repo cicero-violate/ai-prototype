@@ -13,10 +13,16 @@ use crate::agent::sse::ChunkLogger;
 use crate::agent::worker_client::WorkerClient;
 use crate::capability::llm::openai::{OpenAiChatRequest, OpenAiMessage};
 
-/// Outer cycle loop driver. Mirrors agentLoop / runCycle from chatgpt-agent-loop/agent-loop.mjs.
+/// Outer project-loop driver. Mirrors agentLoop / runCycle from
+/// chatgpt-agent-loop/agent-loop.mjs.
 ///
 /// Reads GOAL.md, syncs MCP workspace, then runs an infinite cycle of
 /// 1 planning turn + N execute turns with per-turn retry logic.
+///
+/// This is deliberately separate from the phase-driven worker/runtime path:
+/// the project loop asks the router model to edit files and commit work, while
+/// `AgentCycle` certification submits typed evidence through the worker so the
+/// deterministic state machine can verify and record the result.
 pub struct LoopDriver {
     pub config: AgentLoopConfig,
 }
@@ -122,7 +128,8 @@ impl LoopDriver {
         let total_turns = self.config.execute_turns + 1; // 1 plan + N execute
 
         for turn in 0..total_turns {
-            let is_planning = turn == 0;
+            let turn_mode = project_turn_mode(turn);
+            let is_planning = turn_mode == LoopMode::ProjectPlanning;
             let label = if is_planning {
                 "plan".to_string()
             } else {
@@ -141,8 +148,9 @@ impl LoopDriver {
             };
 
             eprintln!(
-                "[{tag}] ── turn {}/{total_turns}: {label} (cycle {cycle_num})",
-                turn + 1
+                "[{tag}] ── turn {}/{total_turns}: {label} mode={} (cycle {cycle_num})",
+                turn + 1,
+                turn_mode.label(),
             );
 
             let mut completed = false;
@@ -157,11 +165,7 @@ impl LoopDriver {
                     thread::sleep(Duration::from_millis(self.config.loop_sleep_ms));
                 }
 
-                let attempt_label = if attempt == 0 {
-                    label.clone()
-                } else {
-                    format!("{label}-retry-{attempt}")
-                };
+                let attempt_label = retry_attempt_label(&label, attempt);
 
                 let mut logger =
                     ChunkLogger::new(&self.config.sse_chunks_dir, tag, cycle_num, &attempt_label)
@@ -225,6 +229,7 @@ impl LoopDriver {
     /// Run an AgentCycle against the worker to stamp evidence gates to the tlog.
     /// Called after each successful loop cycle.
     fn run_certification(&self, cycle_num: u64, tag: &str) {
+        let mode = LoopMode::WorkerCertification;
         let Some(worker_port) = self.config.worker_port else {
             return;
         };
@@ -260,7 +265,8 @@ impl LoopDriver {
         let objective = build_cert_objective(&self.config.project_dir);
 
         eprintln!(
-            "[{tag}] cert: cycle {cycle_num} — domain={}…",
+            "[{tag}] cert: cycle {cycle_num} mode={} — domain={}…",
+            mode.label(),
             objective
                 .domain_hint
                 .chars()
@@ -327,6 +333,39 @@ fn agent_tag(agent_id: u32, agent_count: u32) -> String {
         format!("agent-{agent_id}")
     } else {
         "agent".to_string()
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum LoopMode {
+    ProjectPlanning,
+    ProjectExecution,
+    WorkerCertification,
+}
+
+impl LoopMode {
+    fn label(self) -> &'static str {
+        match self {
+            Self::ProjectPlanning => "project_planning",
+            Self::ProjectExecution => "project_execution",
+            Self::WorkerCertification => "worker_certification",
+        }
+    }
+}
+
+fn project_turn_mode(turn: u32) -> LoopMode {
+    if turn == 0 {
+        LoopMode::ProjectPlanning
+    } else {
+        LoopMode::ProjectExecution
+    }
+}
+
+fn retry_attempt_label(label: &str, attempt: u32) -> String {
+    if attempt == 0 {
+        label.to_string()
+    } else {
+        format!("{label}-retry-{attempt}")
     }
 }
 
@@ -468,4 +507,61 @@ fn wait_for_worker_healthy(port: u16, timeout_secs: u64) -> bool {
         thread::sleep(Duration::from_millis(500));
     }
     false
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn retry_attempt_labels_preserve_original_and_number_retries() {
+        assert_eq!(retry_attempt_label("plan", 0), "plan");
+        assert_eq!(retry_attempt_label("plan", 1), "plan-retry-1");
+        assert_eq!(retry_attempt_label("execute-2", 3), "execute-2-retry-3");
+    }
+
+    #[test]
+    fn project_loop_modes_distinguish_planning_execution_and_worker_certification() {
+        assert_eq!(project_turn_mode(0), LoopMode::ProjectPlanning);
+        assert_eq!(project_turn_mode(1), LoopMode::ProjectExecution);
+        assert_eq!(project_turn_mode(9), LoopMode::ProjectExecution);
+        assert_eq!(
+            LoopMode::WorkerCertification.label(),
+            "worker_certification"
+        );
+    }
+
+    #[test]
+    fn project_prompts_do_not_claim_to_be_worker_certification() {
+        let goal = "Ship the next deterministic runtime slice.";
+        let working_dir = Path::new("/workspace/project");
+        let planning = planning_prompt(goal, 0, 1, working_dir);
+        let execute = execute_prompt(2, 0, 1);
+
+        assert!(planning.contains("planning turn for this agent loop"));
+        assert!(planning.contains("Create or update `plan.md`"));
+        assert!(planning.contains("commit the planning/scoring changes"));
+        assert!(execute.contains("executing implementation step 2"));
+        assert!(execute.contains("Read `plan.md`"));
+        assert!(!planning.contains("AgentCycle certification"));
+        assert!(!execute.contains("AgentCycle certification"));
+    }
+
+    #[test]
+    fn certification_objective_uses_truncated_project_evidence() {
+        let root = std::env::temp_dir().join(format!("canon-loop-cert-{}", std::process::id()));
+        fs::create_dir_all(&root).unwrap();
+        fs::write(root.join("GOAL.md"), "goal\n".repeat(1000)).unwrap();
+        fs::write(root.join("plan.md"), "plan\n".repeat(1000)).unwrap();
+        fs::write(root.join("score.md"), "score\n".repeat(1000)).unwrap();
+
+        let objective = build_cert_objective(&root);
+        assert!(objective.domain_hint.contains("Completed work:"));
+        assert!(objective.domain_hint.ends_with('…'));
+        assert!(objective.success_metric.ends_with('…'));
+        assert!(objective.domain_hint.chars().count() < 1_400);
+        assert!(objective.success_metric.chars().count() <= 301);
+
+        let _ = fs::remove_dir_all(root);
+    }
 }
