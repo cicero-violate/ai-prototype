@@ -2304,3 +2304,78 @@ Continue P4 only where focused executable evidence identifies another concrete b
 ```
 
 Avoid additional MCP receipt work unless a new uncovered failure branch appears.
+
+## Completed Execution Slice After API Server Error Mapping Step 5
+
+Completed deterministic API server adapter status-mapping coverage for transport replay errors without constructing invalid HTTP route state.
+
+Implementation details:
+
+```text
+- Added in-module tests in src/api/server.rs for the private error_response() adapter.
+- invalid_replay_transport_error_maps_to_conflict_status() verifies ServerError::Transport(CanonError::InvalidReplay) maps to HTTP 409 CONFLICT and emits an error body containing InvalidReplay.
+- invalid_api_transport_error_maps_to_bad_request_status() verifies other transport command errors, represented by CanonError::InvalidApiCommand, map to HTTP 400 BAD_REQUEST and emit an error body containing InvalidApiCommand.
+- This directly covers the server adapter classification branch while preserving the public HTTP route contract and avoiding artificial invalid request-id state.
+- Hardened tests/api_server_contract.rs tlog fixture paths under target/test-tmp/api-server-tlogs with a process/time nonce and explicit directory creation, preventing write_tlog_ndjson() temporary sibling files from failing when parent directories are absent.
+```
+
+This adds focused API server status-classification evidence while keeping router, MCP, wrapper, Ollama, and OpenAI services out of the validation path.
+
+## Validation Evidence From API Server Error Mapping Step 5
+
+Initial validation exposed a formatting-only issue in the new in-module tests and an existing API server fixture-directory issue in full server contract tests:
+
+```text
+command: RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo fmt --check
+exit: 1
+result: line wrapping required in new server error mapping tests
+log: target/validation-logs/fmt-api-server-error-mapping-step5.log
+exit file: target/validation-logs/fmt-api-server-error-mapping-step5.exit
+```
+
+```text
+command: RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test api_server_contract -- --test-threads=1
+exit: 101
+result: 6 passed; 3 failed due existing TlogIo fixture parent-directory issue in persistence tests
+log: target/validation-logs/api-server-contract-error-mapping-step5.log
+exit file: target/validation-logs/api-server-contract-error-mapping-step5.exit
+```
+
+After formatting cleanup and fixture directory hardening, final passing evidence:
+
+```text
+command: RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo fmt --check
+exit: 0
+log: target/validation-logs/fmt-api-server-error-mapping-step5-final2.log
+exit file: target/validation-logs/fmt-api-server-error-mapping-step5-final2.exit
+```
+
+```text
+command: RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test api_server_contract -- --test-threads=1
+exit: 0
+result: 9 passed; 0 failed
+log: target/validation-logs/api-server-contract-error-mapping-step5-final.log
+exit file: target/validation-logs/api-server-contract-error-mapping-step5-final.exit
+```
+
+```text
+command: RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test api::server::tests --lib -- --test-threads=1
+exit: 0
+result: 2 passed; 0 failed; 209 filtered out
+log: target/validation-logs/api-server-module-error-mapping-step5-final.log
+exit file: target/validation-logs/api-server-module-error-mapping-step5-final.exit
+```
+
+## Next Execution Slice After API Server Error Mapping Step 5
+
+P4 deterministic failure-classification coverage is now strong for current MCP receipt, API transport replay, router/offline classification, and API server status mapping surfaces. Continue only where a concrete uncovered branch exists.
+
+Candidate priorities:
+
+```text
+1. Capture live wrapper-configured observe-validation evidence when wrapper services and artifacts are available.
+2. Inspect compact receiver manifest checks only if new metric keys or receiver workflows are introduced.
+3. Inspect API server persistence error handling only if a deterministic, non-invasive fixture can trigger TlogIo intentionally without compromising test isolation.
+```
+
+Avoid adding speculative runtime behavior solely to create another branch target.

@@ -288,3 +288,28 @@ impl From<ServerError> for (StatusCode, Json<ErrorDto>) {
         error_response(error)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn invalid_replay_transport_error_maps_to_conflict_status() {
+        let (status, Json(body)) =
+            error_response(ServerError::Transport(CanonError::InvalidReplay));
+
+        assert_eq!(status, StatusCode::CONFLICT);
+        assert!(!body.ok);
+        assert!(body.error.contains("InvalidReplay"));
+    }
+
+    #[test]
+    fn invalid_api_transport_error_maps_to_bad_request_status() {
+        let (status, Json(body)) =
+            error_response(ServerError::Transport(CanonError::InvalidApiCommand));
+
+        assert_eq!(status, StatusCode::BAD_REQUEST);
+        assert!(!body.ok);
+        assert!(body.error.contains("InvalidApiCommand"));
+    }
+}

@@ -12,7 +12,9 @@ fn tlog_path(name: &str) -> std::path::PathBuf {
         .duration_since(std::time::UNIX_EPOCH)
         .expect("system time should be after epoch")
         .as_nanos();
-    std::env::temp_dir().join(format!(
+    let dir = std::path::PathBuf::from("target/test-tmp/api-server-tlogs");
+    std::fs::create_dir_all(&dir).expect("api server tlog fixture dir should exist");
+    dir.join(format!(
         "ai-api-server-{name}-{}-{nanos}.ndjson",
         std::process::id(),
     ))
