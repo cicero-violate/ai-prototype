@@ -1195,3 +1195,61 @@ log: target/validation-logs/score-contract-command-conflict-step3.log
 ## Next Execution Slice After Command-Conflict Manifest Step 3
 
 Continue P4 by strengthening manifest closure around command metadata completeness beyond name/cmd/status. Candidate next slice: reject or classify reports where duplicate command evidence agrees on name/cmd/status but disagrees on execution-relevant metadata such as `exit_code`, `duration_ms`, `timed_out`, or `connector_failure_class`.
+
+## Completed Execution Slice After Command-Metadata Manifest Step 4
+
+Completed deterministic manifest closure for duplicate command execution metadata. `scripts/write_delta_manifest.py` now includes execution-relevant metadata in the command fingerprint used when both summary `validation_commands` and `validation_command` report rows are present.
+
+The duplicate command evidence fingerprint now includes:
+
+```text
+name
+cmd
+status
+exit_code
+duration_ms
+timed_out
+connector_failure_class
+```
+
+`tests/test_write_delta_manifest.py` now proves matching duplicate command metadata remains accepted and conflicting duplicate command execution metadata is rejected before a receipt or manifest can be generated. This closes the prior gap where command identity/status agreement could hide disagreement about observed execution details.
+
+## Validation Evidence From Command-Metadata Manifest Step 4
+
+```text
+python3 -m unittest tests/test_write_delta_manifest.py
+exit: 0
+result: 17 passed; 0 failed
+log: target/validation-logs/write-delta-manifest-command-metadata-step4.log
+```
+
+```text
+python3 -m unittest tests/test_observe_validation_contract.py
+exit: 0
+result: 39 passed; 0 failed
+log: target/validation-logs/observe-validation-contract-command-metadata-step4.log
+```
+
+```text
+python3 -m py_compile scripts/observe_validation.sh scripts/write_delta_manifest.py tests/test_write_delta_manifest.py tests/test_observe_validation_contract.py
+exit: 0
+log: target/validation-logs/py-compile-command-metadata-step4.log
+```
+
+```text
+cargo test --test planning_contract -- --test-threads=1
+exit: 0
+result: 2 passed; 0 failed
+log: target/validation-logs/planning-contract-command-metadata-step4.log
+```
+
+```text
+cargo test --test score_contract -- --test-threads=1
+exit: 0
+result: 5 passed; 0 failed
+log: target/validation-logs/score-contract-command-metadata-step4.log
+```
+
+## Next Execution Slice After Command-Metadata Manifest Step 4
+
+Continue P4 by strengthening validation report closure around duplicate command identity. Candidate next slice: reject or classify duplicate `validation_command` rows with the same command name but conflicting evidence, even when the summary omits `validation_commands`.

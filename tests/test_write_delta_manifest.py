@@ -488,8 +488,24 @@ class DeltaManifestTest(unittest.TestCase):
 
     def test_accepts_matching_summary_and_row_command_evidence(self) -> None:
         commands = [
-            {"name": "unit", "cmd": ["python3", "-m", "unittest"], "status": "pass"},
-            {"name": "compile", "cmd": ["python3", "-m", "py_compile"], "status": "pass"},
+            {
+                "name": "unit",
+                "cmd": ["python3", "-m", "unittest"],
+                "status": "pass",
+                "exit_code": 0,
+                "duration_ms": 7,
+                "timed_out": False,
+                "connector_failure_class": "none",
+            },
+            {
+                "name": "compile",
+                "cmd": ["python3", "-m", "py_compile"],
+                "status": "pass",
+                "exit_code": 0,
+                "duration_ms": 3,
+                "timed_out": False,
+                "connector_failure_class": "none",
+            },
         ]
         rows = [
             {"event": "validation_command", **command}
@@ -513,6 +529,7 @@ class DeltaManifestTest(unittest.TestCase):
         receipt = json.loads(self.receipt.read_text(encoding="utf-8"))
         self.assertEqual(receipt["validation_command_count"], 2)
         self.assertEqual([command["name"] for command in receipt["validation_commands"]], ["unit", "compile"])
+        self.assertEqual([command["duration_ms"] for command in receipt["validation_commands"]], [7, 3])
 
     def test_rejects_conflicting_summary_and_row_command_evidence(self) -> None:
         row_commands = [
@@ -522,6 +539,47 @@ class DeltaManifestTest(unittest.TestCase):
         summary_commands = [
             {"name": "unit", "cmd": ["python3", "-m", "unittest"], "status": "pass"},
             {"name": "compile", "cmd": ["python3", "-m", "py_compile"], "status": "fail"},
+        ]
+        summary = {
+            "event": "validation_summary",
+            "git_head": self.head,
+            "validation_status": "pass",
+            "validation_commands": summary_commands,
+            "validation_command_count": len(summary_commands),
+            "validation_test_count": len(summary_commands),
+        }
+        self.report.write_text(
+            "\n".join(json.dumps(row) for row in [*row_commands, summary]) + "\n",
+            encoding="utf-8",
+        )
+
+        done = self.run_script()
+        self.assertNotEqual(done.returncode, 0)
+        self.assertIn("conflicting validation command evidence", done.stderr)
+
+    def test_rejects_conflicting_summary_and_row_command_execution_metadata(self) -> None:
+        row_commands = [
+            {
+                "event": "validation_command",
+                "name": "unit",
+                "cmd": ["python3", "-m", "unittest"],
+                "status": "pass",
+                "exit_code": 0,
+                "duration_ms": 7,
+                "timed_out": False,
+                "connector_failure_class": "none",
+            },
+        ]
+        summary_commands = [
+            {
+                "name": "unit",
+                "cmd": ["python3", "-m", "unittest"],
+                "status": "pass",
+                "exit_code": 0,
+                "duration_ms": 9,
+                "timed_out": False,
+                "connector_failure_class": "none",
+            },
         ]
         summary = {
             "event": "validation_summary",

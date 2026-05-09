@@ -72,6 +72,10 @@ def command_fingerprint(command: dict[str, Any]) -> dict[str, Any]:
         "name": command.get("name"),
         "cmd": command.get("cmd"),
         "status": command.get("status"),
+        "exit_code": command.get("exit_code"),
+        "duration_ms": command.get("duration_ms"),
+        "timed_out": command.get("timed_out"),
+        "connector_failure_class": command.get("connector_failure_class"),
     }
 
 
