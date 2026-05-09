@@ -4,7 +4,15 @@
 
 Canon Agent is a Rust prototype for a deterministic, auditable, self-improving agent runtime. The target architecture remains a formally constrained state-machine kernel with a capability layer around it. The kernel owns correctness, state transitions, durable records, replay boundaries, and audit evidence. LLMs and tools operate inside the capability layer and must produce typed, reviewable evidence rather than governing the runtime directly.
 
-The current working tree contains a broad, pre-existing implementation batch plus planning/scoring edits. This planning turn intentionally updates only `plan.md` and `score.md`; all source, test, example, and runtime implementation changes remain unowned by this turn and should be handled by the next execution turn.
+The current working tree contains a broad, pre-existing implementation batch plus this planning/scoring refresh. This planning turn intentionally updates only `plan.md` and `score.md`; all source, test, example, and runtime implementation changes remain unowned by this turn and should be handled by the next execution turn.
+
+Current planning snapshot, 2026-05-08 America/Toronto / 2026-05-09 UTC:
+
+- Branch: `main`.
+- Latest visible planning commit before this turn: `e663e2b Update Canon Agent planning and scoring`.
+- `plan.md` and `score.md` had no local diff at the start of this refresh.
+- Dirty implementation files are still present and must not be conflated with this planning/scoring commit.
+- The next execution turn should begin with diff review, not new feature work.
 
 Latest known validation evidence from the prior implementation step:
 
@@ -100,7 +108,8 @@ Latest known validation evidence from the prior implementation step:
 2. Inspect the current implementation diff before changing source.
 3. Rerun only the remaining all-target validation gate with wrapper-disabled, quota-safe settings.
 4. Record exact exit status and final output lines in `score.md`.
-5. Move to P1 only after all-target tests have final pass/fail evidence.
+5. If the all-target command passes, commit the reviewed implementation batch separately from planning/scoring.
+6. Move to P1 only after all-target tests have final pass/fail evidence.
 
 ## Current Non-Goals
 

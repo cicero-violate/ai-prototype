@@ -4,9 +4,17 @@
 
 Date: 2026-05-08
 Turn type: planning/scoring
-Scope reviewed: repository status, existing `plan.md`, existing `score.md`, Cargo manifest, and shallow source/test layout.
+Scope reviewed: repository status, recent commit history, existing `plan.md`, existing `score.md`, `GOAL.md`, planning contract, and score contract.
 
 This turn is intentionally limited to planning and scoring. The working tree already contains broad implementation changes outside this turn's scope. Those files were not modified here and should be reviewed during the next execution turn.
+
+Current timestamp evidence:
+
+```text
+2026-05-08 America/Toronto / 2026-05-09T02:53:30Z UTC
+branch: main
+latest visible prior commit: e663e2b Update Canon Agent planning and scoring
+```
 
 ## Current Git State
 
@@ -76,6 +84,9 @@ Correctness, robustness, and determinism remain capped until `cargo test --all-t
 
 - Inspected repository status and confirmed broad pre-existing implementation dirtiness.
 - Reviewed the existing planning and scoring files.
+- Reviewed `GOAL.md` to keep the plan aligned with the Canon Agent architecture statement.
+- Reviewed planning and score contract tests to confirm the planning/scoring artifacts still correspond to exposed runtime surfaces.
+- Confirmed `plan.md` and `score.md` had no local diff before this refresh.
 - Updated `plan.md` to make planning-turn boundaries explicit.
 - Updated `score.md` to distinguish prior implementation evidence from this planning/scoring turn.
 - Preserved the priority that the next execution turn should complete all-target validation before moving to new feature work.
