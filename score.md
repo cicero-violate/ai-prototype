@@ -2994,3 +2994,93 @@ Current risks / gaps:
 - Live graph telemetry still requires deliberate wrapper and artifact-dir inputs.
 - This step is test/assertion hardening only; it does not add new runtime capabilities.
 ```
+
+## Implementation Step 5 - Runtime Manifest Base Preserved Manifest Metric Exactness
+
+Completed work:
+
+```text
+- Read the latest plan.md and score.md state.
+- Confirmed the repository was clean at turn start.
+- Inspected scripts/write_delta_manifest.py preserved summary keys and delta manifest tests.
+- Identified partial exact-value and exact-once coverage for runtime manifest base preserved metrics.
+- Replaced a loose substring manifest assertion with exact manifest key/value checks and exact-once rendering assertions for runtime manifest base-match evidence.
+- Made no runtime behavior changes.
+```
+
+Validation evidence captured this turn:
+
+```text
+command: python3 -m py_compile scripts/write_delta_manifest.py tests/test_write_delta_manifest.py
+exit: 0
+log: target/validation-logs/py-compile-runtime-manifest-base-preserved-metrics-impl-step5.log
+exit file: target/validation-logs/py-compile-runtime-manifest-base-preserved-metrics-impl-step5.exit
+```
+
+```text
+command: python3 -m unittest tests.test_write_delta_manifest
+exit: 0
+result: 24 passed; 0 failed
+log: target/validation-logs/write-delta-manifest-runtime-manifest-base-preserved-metrics-impl-step5.log
+exit file: target/validation-logs/write-delta-manifest-runtime-manifest-base-preserved-metrics-impl-step5.exit
+```
+
+```text
+command: TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test planning_contract -- --test-threads=1
+exit: 0
+result: 2 passed; 0 failed
+log: target/validation-logs/planning-contract-runtime-manifest-base-preserved-metrics-impl-step5.log
+exit file: target/validation-logs/planning-contract-runtime-manifest-base-preserved-metrics-impl-step5.exit
+```
+
+```text
+command: TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test score_contract -- --test-threads=1
+exit: 0
+result: 5 passed; 0 failed
+log: target/validation-logs/score-contract-runtime-manifest-base-preserved-metrics-impl-step5.log
+exit file: target/validation-logs/score-contract-runtime-manifest-base-preserved-metrics-impl-step5.exit
+```
+
+Score update:
+
+```text
+I  Intelligence      = 7.0
+E  Efficiency        = 7.92
+C  Correctness       = 9.984
+A  Alignment         = 8.8
+R  Robustness        = 10.0
+P  Performance       = 6.45
+S  Scalability       = 6.82
+D  Determinism       = 9.735
+T  Transparency      = 10.0
+Co Collaboration     = 8.0
+Em Empowerment       = 7.8
+B  Benefit           = 8.1
+L  Learning          = 7.1
+St Structure         = 9.75
+Si Simplicity        = 7.36
+F  Future-Proofing   = 9.324
+```
+
+Approximate geometric mean:
+
+```text
+G ≈ 8.33 / 10
+```
+
+Rationale:
+
+```text
+- Correctness improves slightly because runtime manifest base-match evidence now uses exact manifest value assertions instead of a loose substring check.
+- Determinism improves slightly because duplicate runtime manifest base metric rendering now fails focused unit coverage.
+- Future-proofing improves slightly because future metric drift in this preserved base-match evidence has a stronger regression guard.
+- Runtime behavior and performance remain unchanged.
+```
+
+Current risks / gaps:
+
+```text
+- No fresh live wrapper-configured observe-validation evidence was captured.
+- Live graph telemetry still requires deliberate wrapper and artifact-dir inputs.
+- This step is test/assertion hardening only; it does not add new runtime capabilities.
+```

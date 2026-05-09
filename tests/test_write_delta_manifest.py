@@ -391,7 +391,17 @@ class DeltaManifestTest(unittest.TestCase):
         manifest = self.out.read_text(encoding="utf-8")
         self.assertEqual(receipt["runtime_manifest_base_expected"], self.base)
         self.assertTrue(receipt["runtime_manifest_base_matches_delta_base"])
-        self.assertIn("runtime_manifest_base_matches_delta_base: True", manifest)
+        self.assert_manifest_key_values(manifest, {
+            "runtime_manifest_base_expected": self.base,
+            "runtime_manifest_base_matches_delta_base": True,
+        })
+        self.assert_manifest_metrics_render_once(
+            manifest,
+            (
+                "runtime_manifest_base_expected",
+                "runtime_manifest_base_matches_delta_base",
+            ),
+        )
 
     def test_preserves_runtime_archive_inspection_evidence_once(self) -> None:
         self.write_report(extra={

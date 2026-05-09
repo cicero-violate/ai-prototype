@@ -3964,3 +3964,63 @@ Otherwise proceed only if:
 3. source inspection exposes an uncovered deterministic failure-classification, replay, persistence, API adapter, graph evidence, or report fallback branch;
 4. behavior-preserving test-helper cleanup improves evidence clarity without weakening explicit assertions.
 ```
+
+## Completed Implementation Step 5 After Runtime Archive Inspection Metrics 532591d
+
+Executed the next concrete plan trigger: compact receiver preserved metric exactness coverage for runtime manifest base-match evidence.
+
+Implementation details:
+
+```text
+- Re-read the latest plan.md and score.md state.
+- Confirmed the working tree was clean at turn start.
+- Inspected PRESERVED_SUMMARY_KEYS in scripts/write_delta_manifest.py and focused delta manifest tests.
+- Found that test_preserves_runtime_archive_base_match_evidence verified receipt/value presence but did not assert exact-once manifest rendering for its preserved runtime manifest base fields.
+- Replaced the loose manifest substring assertion with exact manifest key/value checks and exact-once manifest metric assertions for runtime_manifest_base_expected and runtime_manifest_base_matches_delta_base.
+```
+
+No runtime behavior changed. This step strengthens regression coverage for runtime manifest base evidence in compact receiver manifests.
+
+Validation evidence:
+
+```text
+command: python3 -m py_compile scripts/write_delta_manifest.py tests/test_write_delta_manifest.py
+exit: 0
+log: target/validation-logs/py-compile-runtime-manifest-base-preserved-metrics-impl-step5.log
+exit file: target/validation-logs/py-compile-runtime-manifest-base-preserved-metrics-impl-step5.exit
+```
+
+```text
+command: python3 -m unittest tests.test_write_delta_manifest
+exit: 0
+result: 24 passed; 0 failed
+log: target/validation-logs/write-delta-manifest-runtime-manifest-base-preserved-metrics-impl-step5.log
+exit file: target/validation-logs/write-delta-manifest-runtime-manifest-base-preserved-metrics-impl-step5.exit
+```
+
+```text
+command: TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test planning_contract -- --test-threads=1
+exit: 0
+result: 2 passed; 0 failed
+log: target/validation-logs/planning-contract-runtime-manifest-base-preserved-metrics-impl-step5.log
+exit file: target/validation-logs/planning-contract-runtime-manifest-base-preserved-metrics-impl-step5.exit
+```
+
+```text
+command: TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test score_contract -- --test-threads=1
+exit: 0
+result: 5 passed; 0 failed
+log: target/validation-logs/score-contract-runtime-manifest-base-preserved-metrics-impl-step5.log
+exit file: target/validation-logs/score-contract-runtime-manifest-base-preserved-metrics-impl-step5.exit
+```
+
+Next execution slice:
+
+```text
+Continue P4 compact receiver evidence hardening only if source inspection exposes another preserved metric family with partial exact-value or exact-once manifest coverage.
+Otherwise proceed only if:
+1. deliberate CANON_RUSTC_WRAPPER and CANON_RUSTC_V3_ARTIFACT_DIR inputs are available for live wrapper validation;
+2. compact receiver artifacts gain a new field, metric key, missing flag, or rendering semantic;
+3. source inspection exposes an uncovered deterministic failure-classification, replay, persistence, API adapter, graph evidence, or report fallback branch;
+4. behavior-preserving test-helper cleanup improves evidence clarity without weakening explicit assertions.
+```
