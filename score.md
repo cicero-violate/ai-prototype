@@ -2555,3 +2555,83 @@ Checkpoint validation posture:
 - Next execution turn should re-check the dirty implementation test file before selecting or committing implementation work.
 ```
 
+
+## Planning / Scoring Checkpoint After Commit 143d91a
+
+Turn type: planning/scoring checkpoint.
+Scope: no implementation changes; refreshed planning/scoring state only.
+
+Current timestamp evidence:
+
+```text
+branch: main
+latest visible commit before this planning turn: 143d91a Update planning and score checkpoint
+working directory: /workspace/ai_sandbox/canon-mini-agent/prototype/ai
+working tree at checkpoint start: tests/test_write_delta_manifest.py dirty from prior implementation work and intentionally not owned by this planning turn
+```
+
+Files owned by this checkpoint:
+
+```text
+plan.md
+score.md
+```
+
+Files intentionally not owned or staged by this checkpoint:
+
+```text
+tests/test_write_delta_manifest.py
+```
+
+No score increase is claimed for this checkpoint alone. The current score posture remains the latest implementation-backed posture:
+
+```text
+I  Intelligence      = 7.0
+E  Efficiency        = 7.92
+C  Correctness       = 9.974
+A  Alignment         = 8.8
+R  Robustness        = 10.0
+P  Performance       = 6.45
+S  Scalability       = 6.82
+D  Determinism       = 9.725
+T  Transparency      = 10.0
+Co Collaboration     = 8.0
+Em Empowerment       = 7.8
+B  Benefit           = 8.1
+L  Learning          = 7.1
+St Structure         = 9.75
+Si Simplicity        = 7.36
+F  Future-Proofing   = 9.314
+```
+
+Approximate geometric mean remains:
+
+```text
+G ≈ 8.33 / 10
+```
+
+Checkpoint validation evidence:
+
+```text
+command: TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test planning_contract -- --test-threads=1
+exit: 0
+result: 2 passed; 0 failed
+log: target/validation-logs/planning-contract-planning-checkpoint-143d91a.log
+exit file: target/validation-logs/planning-contract-planning-checkpoint-143d91a.exit
+```
+
+```text
+command: TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test score_contract -- --test-threads=1
+exit: 0
+result: 5 passed; 0 failed
+log: target/validation-logs/score-contract-planning-checkpoint-143d91a.log
+exit file: target/validation-logs/score-contract-planning-checkpoint-143d91a.exit
+```
+
+Checkpoint validation posture:
+
+```text
+- No implementation validation was run during this planning-only checkpoint.
+- Prior implementation validation remains the current evidence basis for scores.
+- The pre-existing dirty implementation test file remains intentionally unstaged unless a future execution turn explicitly owns it.
+```

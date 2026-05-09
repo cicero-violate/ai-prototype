@@ -3673,3 +3673,54 @@ score.md
 
 Implementation files intentionally not modified by this checkpoint.
 
+
+## Planning / Scoring Checkpoint After Commit 143d91a
+
+Turn type: planning/scoring checkpoint.
+Scope: no implementation changes; refreshed source-of-truth implementation plan and score posture only.
+
+Current timestamp evidence:
+
+```text
+branch: main
+latest visible commit before this planning turn: 143d91a Update planning and score checkpoint
+working directory: /workspace/ai_sandbox/canon-mini-agent/prototype/ai
+working tree at checkpoint start: tests/test_write_delta_manifest.py dirty from prior implementation work and intentionally not owned by this planning turn
+```
+
+Current implementation posture:
+
+```text
+- P0 validation baseline remains complete.
+- P1 validation evidence reporting remains complete.
+- P2 agent loop reliability remains complete.
+- P3 runtime and receipt correctness remains complete for the current scope.
+- P4 graph/source-of-truth and compact receiver evidence work remains in progress.
+- Recent deterministic P4 progress remains concentrated in exact-value and exact-once preserved manifest metric coverage for runtime archive, ignored artifact, connector failure, connector transport, command normalization, and compact full-summary artifact fields.
+```
+
+Planning decision for the next execution turn:
+
+```text
+Do not assume ownership of the pre-existing dirty tests/test_write_delta_manifest.py without first inspecting its diff.
+No additional deterministic implementation branch is selected during this planning checkpoint.
+The next execution turn should choose work only after re-checking git status and source state.
+Proceed only if one of these triggers is present:
+1. deliberate CANON_RUSTC_WRAPPER and CANON_RUSTC_V3_ARTIFACT_DIR inputs are available for live wrapper validation;
+2. compact receiver artifacts gain a new field, metric key, missing flag, or rendering semantic needing exact-value / exact-once manifest coverage;
+3. source inspection exposes an uncovered deterministic failure-classification, replay, persistence, API adapter, graph evidence, or report fallback branch;
+4. behavior-preserving test-helper cleanup improves evidence clarity without weakening explicit assertions.
+```
+
+Files owned by this checkpoint:
+
+```text
+plan.md
+score.md
+```
+
+Files intentionally not owned or staged by this checkpoint:
+
+```text
+tests/test_write_delta_manifest.py
+```
