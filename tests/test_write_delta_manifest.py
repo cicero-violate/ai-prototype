@@ -203,6 +203,10 @@ class DeltaManifestTest(unittest.TestCase):
         for token in tokens:
             self.assertIn(token, manifest)
 
+    def assert_manifest_key_values(self, manifest: str, values: dict[str, object]) -> None:
+        for key, value in values.items():
+            self.assertIn(f"{key}: {value}", manifest, key)
+
     def test_pass_with_commands_and_tests(self) -> None:
         self.write_report(test_count=2)
         done = self.run_script()
@@ -283,14 +287,14 @@ class DeltaManifestTest(unittest.TestCase):
         self.assertEqual(receipt["runtime_archive_inspection_status"], "pass")
         self.assertEqual(receipt["runtime_archive_download_index_files"], 11)
         self.assertEqual(receipt["runtime_archive_prior_state_files"], 7)
-        self.assert_manifest_contains_tokens(manifest, (
-            "runtime_archive_inspection_status: pass",
-            "runtime_archive_download_index_files: 11",
-            "runtime_archive_prior_state_files: 7",
-            "runtime_archive_conversation_ledger_files: 5",
-            "runtime_archive_current_run_summary_present: True",
-            "runtime_archive_runtime_manifest_present: True",
-        ))
+        self.assert_manifest_key_values(manifest, {
+            "runtime_archive_inspection_status": "pass",
+            "runtime_archive_download_index_files": 11,
+            "runtime_archive_prior_state_files": 7,
+            "runtime_archive_conversation_ledger_files": 5,
+            "runtime_archive_current_run_summary_present": True,
+            "runtime_archive_runtime_manifest_present": True,
+        })
         self.assert_manifest_metrics_render_once(
             manifest,
             (
@@ -320,13 +324,13 @@ class DeltaManifestTest(unittest.TestCase):
         self.assertEqual(receipt["policy_learning_trace_validation_result"], "pass")
         self.assertEqual(receipt["policy_learning_trace_missing_count"], 0)
         self.assertEqual(receipt["panic_surface_production_unwrap_count"], 0)
-        self.assert_manifest_contains_tokens(manifest, (
-            "policy_learning_trace_validation_result: pass",
-            "policy_learning_trace_status: pass",
-            "policy_learning_trace_missing_count: 0",
-            "panic_surface_production_unwrap_count: 0",
-            "panic_surface_test_total: 319",
-        ))
+        self.assert_manifest_key_values(manifest, {
+            "policy_learning_trace_validation_result": "pass",
+            "policy_learning_trace_status": "pass",
+            "policy_learning_trace_missing_count": 0,
+            "panic_surface_production_unwrap_count": 0,
+            "panic_surface_test_total": 319,
+        })
         self.assert_manifest_metrics_render_once(
             manifest,
             (
@@ -407,13 +411,13 @@ class DeltaManifestTest(unittest.TestCase):
         self.assertEqual(receipt["connector_transport_status"], "502")
         self.assertTrue(receipt["connector_transport_report_complete"])
         self.assertTrue(receipt["connector_transport_exit_file_present"])
-        self.assert_manifest_contains_tokens(manifest, (
-            "connector_transport_artifact_classification: transport_interrupted_artifacts_complete",
-            "connector_transport_status: 502",
-            "connector_transport_report_complete: True",
-            "connector_transport_exit_file_present: True",
-            "connector_transport_artifact_classification_options",
-        ))
+        self.assert_manifest_key_values(manifest, {
+            "connector_transport_artifact_classification": "transport_interrupted_artifacts_complete",
+            "connector_transport_status": "502",
+            "connector_transport_report_complete": True,
+            "connector_transport_exit_file_present": True,
+        })
+        self.assertIn("connector_transport_artifact_classification_options", manifest)
         self.assert_manifest_metrics_render_once(
             manifest,
             (
@@ -456,9 +460,11 @@ class DeltaManifestTest(unittest.TestCase):
         self.assertEqual(receipt["validation_test_count"], 3)
         self.assertEqual(receipt["connector_transport_artifact_classification"], "transport_interrupted_artifacts_complete")
         self.assertTrue(receipt["runtime_manifest_base_matches_delta_base"])
-        self.assertIn("cargo_test_all_targets: pass", manifest)
-        self.assertIn("connector_transport_artifact_classification: transport_interrupted_artifacts_complete", manifest)
-        self.assertIn("runtime_manifest_base_matches_delta_base: True", manifest)
+        self.assert_manifest_key_values(manifest, {
+            "cargo_test_all_targets": "pass",
+            "connector_transport_artifact_classification": "transport_interrupted_artifacts_complete",
+            "runtime_manifest_base_matches_delta_base": True,
+        })
 
     def test_generates_manifest_from_actual_full_summary_report_artifact(self) -> None:
         scripts_dir = self.repo / "scripts"
@@ -532,17 +538,17 @@ class DeltaManifestTest(unittest.TestCase):
         for command in receipt["validation_commands"]:
             self.assertIn("cmd", command)
             self.assertTrue(command["cmd"])
-        self.assert_manifest_contains_tokens(manifest, (
-            "validation_status: pass",
-            "command_execution_status: pass",
-            "missing_signal_status: pass",
-            "runtime_archive_evidence_source: compact_report",
-            "full_summary_report_only: True",
-            "full_summary_report_command: --full-summary-report",
-            "connector_transport_artifact_classification: transport_interrupted_artifacts_complete",
-            "runtime_manifest_base_matches_delta_base: True",
-            "cargo_test_all_targets: pass",
-        ))
+        self.assert_manifest_key_values(manifest, {
+            "validation_status": "pass",
+            "command_execution_status": "pass",
+            "missing_signal_status": "pass",
+            "runtime_archive_evidence_source": "compact_report",
+            "full_summary_report_only": True,
+            "full_summary_report_command": "--full-summary-report",
+            "connector_transport_artifact_classification": "transport_interrupted_artifacts_complete",
+            "runtime_manifest_base_matches_delta_base": True,
+            "cargo_test_all_targets": "pass",
+        })
         self.assert_command_normalization_manifest(
             manifest,
             count=3,

@@ -1891,3 +1891,61 @@ log: target/validation-logs/score-contract-token-helper-step4-final.log
 ## Next Execution Slice After Manifest Token Helper Step 4
 
 Continue P4 by identifying coherent manifest value families that can be checked by key/value maps rather than raw token strings, or pause the manifest-test refactor and move to the next receiver evidence gap only when executable evidence identifies one. Keep the next slice small and test-focused unless production behavior must change.
+
+
+
+## Completed Execution Slice After Manifest Key-Value Helper Step 5
+
+Completed the next concrete P4 maintainability slice by centralizing coherent manifest key/value assertions in `tests/test_write_delta_manifest.py` without changing production behavior.
+
+Implementation details:
+
+```text
+- Added DeltaManifestTest.assert_manifest_key_values() for manifest assertions with explicit expected key/value pairs.
+- Replaced raw token assertions for runtime archive, policy learning/panic surface, connector transport, compact full-summary replay, and actual full-summary artifact checks where the expected value was a coherent manifest key/value pair.
+- Left isolated free-form manifest assertions direct where they are not coherent metric families.
+- Preserved exact-once metric checks through assert_manifest_metrics_render_once().
+- Preserved broad token checks through assert_manifest_contains_tokens() for non-key/value token groups.
+```
+
+This completes the small manifest-test refactor chain started after command normalization: receipt checks, exact-once metric checks, token checks, and coherent key/value checks now have reusable assertion surfaces.
+
+## Validation Evidence From Manifest Key-Value Helper Step 5
+
+```text
+command: python3 -m unittest tests/test_write_delta_manifest.py
+exit: 0
+result: 23 passed; 0 failed
+log: target/validation-logs/write-delta-manifest-key-value-helper-step5.log
+```
+
+```text
+command: python3 -m unittest tests/test_observe_validation_contract.py
+exit: 0
+result: 39 passed; 0 failed
+log: target/validation-logs/observe-validation-contract-key-value-helper-step5.log
+```
+
+```text
+command: python3 -m py_compile scripts/observe_validation.sh scripts/write_delta_manifest.py tests/test_write_delta_manifest.py tests/test_observe_validation_contract.py
+exit: 0
+log: target/validation-logs/py-compile-key-value-helper-step5.log
+```
+
+```text
+command: cargo test --test planning_contract -- --test-threads=1
+exit: 0
+result: 2 passed; 0 failed
+log: target/validation-logs/planning-contract-key-value-helper-step5-final.log
+```
+
+```text
+command: cargo test --test score_contract -- --test-threads=1
+exit: 0
+result: 5 passed; 0 failed
+log: target/validation-logs/score-contract-key-value-helper-step5-final.log
+```
+
+## Next Execution Slice After Manifest Key-Value Helper Step 5
+
+The manifest assertion refactor is now at a stable stopping point. Continue P4 only if executable evidence identifies a receiver transparency gap. Otherwise, move to the next evidence-backed gap in the runtime, such as capturing a live wrapper-configured observe-validation run when environment services are ready, or adding tests for router/MCP failure classification if those paths are available.
