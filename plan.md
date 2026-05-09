@@ -729,9 +729,59 @@ result: overall validation_status=fail from required command timeout/failure, wh
 summary: validation_status=fail, validation_status_reason=required_command_failure_or_timeout, command_execution_status=fail, missing_signal_status=pass, missing_signal_count=0, failed_required_commands=[cargo_test_all_targets], runtime_archive_evidence_source=compact_report, runtime_archive_report_status=pass, missing_runtime_manifest_base_match=false, missing_runtime_download_index=false, missing_runtime_prior_state=false, missing_runtime_conversation_ledger=false
 ```
 
-## Next Execution Slice After Status Split Step 4
+## Completed Execution Slice After Status Split Step 4
 
-Continue P4 by adding a focused status report or fixture for required command execution outcomes, especially timeout versus hard failure classification, so connector transport instability and command-level validation failures are auditable without conflating them with missing-signal health. Preserve the separated status fields, compact runtime report integration, direct archive precedence, optional wrapper semantics, generated graph JSON classification, graph fixture evidence, receipt replay inventory, and runtime performance evidence.
+Completed focused required command execution outcome classification. Full observe-validation summary rows now emit `command_execution_classification`, classification options, required command names, statuses, exit codes, timeout list, hard-failure list, missing list, skipped-environment list, passed list, and failed list. This makes timeout versus hard command failure auditable without conflating command execution state with missing-signal health.
+
+
+## Validation Evidence From Command Classification Implementation Step 5
+
+```text
+python3 -m unittest tests/test_observe_validation_contract.py
+exit: 0
+result: 34 passed; 0 failed
+log: target/validation-logs/observe-validation-contract-command-classification-step5.log
+```
+
+```text
+python3 -m py_compile scripts/observe_validation.sh tests/test_observe_validation_contract.py
+exit: 0
+log: target/validation-logs/py-compile-command-classification-step5.log
+```
+
+```text
+CANON_DELTA_BASE=$(git rev-parse HEAD) CANON_RUNTIME_ARCHIVE=target/runtime-archive-step5-head-report.tar CANON_OBSERVE_REPORT=target/observe/runtime-archive-report-step5-head.ndjson python3 scripts/observe_validation.sh --runtime-archive-report
+exit: 0
+result: validation_status=pass, runtime_archive_inspection_status=pass, runtime_manifest_base_matches_delta_base=true, runtime_archive_missing_signal_count=0
+summary: missing_runtime_manifest_base_match=false, missing_runtime_download_index=false, missing_runtime_prior_state=false, missing_runtime_conversation_ledger=false
+log: target/validation-logs/runtime-archive-report-step5-head.log
+```
+
+```text
+CANON_OBSERVE_REPORT=target/observe/graph-fixture-report-command-classification-step5.ndjson python3 scripts/observe_validation.sh --graph-fixture-report
+exit: 0
+result: validation_status=pass, graph_evidence_status=graph_mutation_landed_with_receipt_snapshot
+log: target/validation-logs/graph-fixture-report-command-classification-step5.log
+```
+
+```text
+python3 -m unittest tests/test_graph_workflow_fixture_validator.py
+exit: 0
+result: 2 passed; 0 failed
+log: target/validation-logs/graph-workflow-fixture-validator-command-classification-step5.log
+```
+
+```text
+CANON_TEST_TIMEOUT_SECONDS=1 CANON_DELTA_BASE=$(git rev-parse HEAD) CANON_RUNTIME_ARCHIVE_REPORT=target/observe/runtime-archive-report-step5-head.ndjson CANON_OBSERVE_REPORT=target/observe/full-observe-command-classification-step5.ndjson python3 scripts/observe_validation.sh
+connector result: 502 transport error during long command; ignored artifacts were produced
+exit file: target/validation-logs/full-observe-command-classification-step5.exit = 1
+result: overall validation_status=fail from required command hard failure while missing-signal health passed
+summary: command_execution_classification=required_command_hard_failure, command_execution_status=fail, validation_status_reason=required_command_failure_or_timeout, missing_signal_status=pass, missing_signal_count=0, required_command_failed=[cargo_test_all_targets], required_command_hard_failed=[cargo_test_all_targets], required_command_timed_out=[], required_command_exit_codes.cargo_test_all_targets=101, runtime_archive_evidence_source=compact_report
+```
+
+## Next Execution Slice After Command Classification Step 5
+
+Continue P4 by using the required command execution classification to refine connector transport instability reporting, or by adding a compact command-execution report-only mode that can replay and inspect command status summaries without invoking long cargo validation. Preserve separated status fields, command classification fields, compact runtime report integration, direct archive precedence, optional wrapper semantics, generated graph JSON classification, graph fixture evidence, receipt replay inventory, and runtime performance evidence.
 
 ## Current Non-Goals
 

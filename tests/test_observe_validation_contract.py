@@ -309,6 +309,68 @@ class ObserveValidationContractTest(unittest.TestCase):
             ("fail", "required_command_failure_or_timeout"),
         )
 
+    def test_command_execution_summary_classifies_required_command_outcomes(self) -> None:
+        required = {"cargo_test_all_targets", "panic_surface_validation"}
+        cases = (
+            (
+                [
+                    {"name": "cargo_test_all_targets", "status": "pass", "exit_code": 0, "timed_out": False},
+                    {"name": "panic_surface_validation", "status": "pass", "exit_code": 0, "timed_out": False},
+                ],
+                "required_commands_passed",
+            ),
+            (
+                [
+                    {"name": "cargo_test_all_targets", "status": "timeout", "exit_code": 124, "timed_out": True},
+                    {"name": "panic_surface_validation", "status": "pass", "exit_code": 0, "timed_out": False},
+                ],
+                "required_command_timeout",
+            ),
+            (
+                [
+                    {"name": "cargo_test_all_targets", "status": "fail", "exit_code": 101, "timed_out": False},
+                    {"name": "panic_surface_validation", "status": "pass", "exit_code": 0, "timed_out": False},
+                ],
+                "required_command_hard_failure",
+            ),
+            (
+                [
+                    {"name": "cargo_test_all_targets", "status": "skipped_env_missing", "exit_code": None, "timed_out": False},
+                    {"name": "panic_surface_validation", "status": "pass", "exit_code": 0, "timed_out": False},
+                ],
+                "required_command_skipped_env_only",
+            ),
+            (
+                [
+                    {"name": "cargo_test_all_targets", "status": "pass", "exit_code": 0, "timed_out": False},
+                ],
+                "required_command_missing",
+            ),
+        )
+
+        for commands, expected in cases:
+            with self.subTest(expected=expected):
+                summary = self.observe_module.command_execution_summary(commands, required)
+                self.assertEqual(summary["command_execution_classification"], expected)
+                self.assertIn("required_command_timeout", summary["command_execution_classification_options"])
+                self.assertIn("cargo_test_all_targets", summary["required_command_names"])
+                self.assertIn("panic_surface_validation", summary["required_command_names"])
+
+    def test_command_execution_classification_is_emitted_in_summary(self) -> None:
+        for token in (
+            "def command_execution_summary(",
+            "command_execution_classification",
+            "command_execution_classification_options",
+            "required_command_statuses",
+            "required_command_exit_codes",
+            "required_command_timed_out",
+            "required_command_hard_failed",
+            "required_command_skipped_env",
+            "required_command_failed",
+            "command_execution_status = \"pass\" if not command_summary[\"required_command_failed\"] else \"fail\"",
+        ):
+            self.assertIn(token, self.script)
+
     def test_external_surface_evidence_is_source_derived(self) -> None:
         for token in (
             "def source_evidence()",

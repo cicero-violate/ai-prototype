@@ -350,6 +350,68 @@ def runtime_performance_summary(commands: list[dict[str, Any]]) -> dict[str, Any
         "download_write_ms_median": download_write_ms_median,
     }
 
+
+def command_execution_summary(
+    commands: list[dict[str, Any]], required: set[str]
+) -> dict[str, Any]:
+    by_name = {str(command.get("name")): command for command in commands}
+    required_commands = sorted(required)
+    required_statuses = {
+        name: by_name.get(name, {}).get("status", "missing") for name in required_commands
+    }
+    required_exit_codes = {
+        name: by_name.get(name, {}).get("exit_code") for name in required_commands
+    }
+    required_timed_out = sorted(
+        name for name in required_commands if by_name.get(name, {}).get("timed_out")
+    )
+    required_hard_failed = sorted(
+        name
+        for name in required_commands
+        if required_statuses[name] == "fail" and not by_name.get(name, {}).get("timed_out")
+    )
+    required_missing = sorted(name for name in required_commands if name not in by_name)
+    required_skipped_env = sorted(
+        name for name in required_commands if required_statuses[name] == "skipped_env_missing"
+    )
+    required_passed = sorted(name for name in required_commands if required_statuses[name] == "pass")
+    required_failed = sorted(
+        name
+        for name in required_commands
+        if required_statuses[name] not in {"pass", "skipped_env_missing"}
+    )
+    if required_timed_out:
+        classification = "required_command_timeout"
+    elif required_hard_failed:
+        classification = "required_command_hard_failure"
+    elif required_missing:
+        classification = "required_command_missing"
+    elif required_skipped_env and len(required_passed) + len(required_skipped_env) == len(required_commands):
+        classification = "required_command_skipped_env_only"
+    elif not required_failed:
+        classification = "required_commands_passed"
+    else:
+        classification = "required_command_mixed_failure"
+    return {
+        "command_execution_classification": classification,
+        "command_execution_classification_options": [
+            "required_commands_passed",
+            "required_command_timeout",
+            "required_command_hard_failure",
+            "required_command_missing",
+            "required_command_skipped_env_only",
+            "required_command_mixed_failure",
+        ],
+        "required_command_names": required_commands,
+        "required_command_statuses": required_statuses,
+        "required_command_exit_codes": required_exit_codes,
+        "required_command_timed_out": required_timed_out,
+        "required_command_hard_failed": required_hard_failed,
+        "required_command_missing": required_missing,
+        "required_command_skipped_env": required_skipped_env,
+        "required_command_passed": required_passed,
+        "required_command_failed": required_failed,
+    }
 def wrapper_graph_configuration_status(*, wrapper: str, artifact_dir: str, wrapper_available: bool) -> str:
     if not wrapper and not artifact_dir:
         return "not_configured"
@@ -783,9 +845,10 @@ def main() -> int:
     required.add("policy_learning_trace_validation")
     if router_test.get("available"):
         required.add("router_offline_tests")
+    command_summary = command_execution_summary(commands, required)
     missing_signal_count = sum(1 for value in missing.values() if value)
     missing_signal_status = "pass" if missing_signal_count == 0 else "fail"
-    command_execution_status = "pass" if not failed_required else "fail"
+    command_execution_status = "pass" if not command_summary["required_command_failed"] else "fail"
     validation_status = "pass" if command_execution_status == "pass" and missing_signal_status == "pass" else "fail"
     validation_status_reason = (
         "all_required_commands_and_missing_signals_passed"
@@ -808,6 +871,7 @@ def main() -> int:
         "validation_status": validation_status,
         "validation_status_reason": validation_status_reason,
         "command_execution_status": command_execution_status,
+        **command_summary,
         "missing_signal_status": missing_signal_status,
         "validation_commands": commands,
         "validation_command_count": len(commands),
