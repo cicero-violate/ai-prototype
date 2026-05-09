@@ -2240,3 +2240,67 @@ Candidate priorities:
 ```
 
 Do not add speculative production behavior solely to create a coverage target.
+
+## Completed Execution Slice After API Transport Request-Id Collision Step 4
+
+Completed focused deterministic API transport failure-classification coverage for the request-id reuse path that is distinct from malformed frames and conflicting payload hashes.
+
+Implementation details:
+
+```text
+- Added transport_frame_classifies_same_payload_request_id_collision_as_invalid_replay() to tests/api_transport_contract.rs.
+- The test constructs a valid transport frame plus a syntactically valid transport receipt with the same request_id and payload_hash but a different command binding.
+- The fixture proves the frame does not match the existing receipt, is not classified as a conflicting payload request, but does hit contains_request_id().
+- handle_transport_frame_once() returns CanonError::InvalidReplay before mutating state, TLog, command ledger, or transport ledger.
+- Hardened API transport receipt persistence fixture paths under target/test-tmp/api-transport-receipts with a process/time nonce and explicit directory creation, preventing stale temp files from affecting persistence evidence.
+```
+
+This adds a deterministic API transport replay-classification branch without depending on live router services, external MCP workers, wrapper telemetry, or long observe-validation.
+
+## Validation Evidence From API Transport Request-Id Collision Step 4
+
+Initial focused validation exposed stale temp-file/fixture-directory issues in existing API transport receipt persistence tests, while the new request-id collision branch itself passed within the failing suite:
+
+```text
+command: RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo fmt --check
+exit: 0
+log: target/validation-logs/fmt-api-transport-request-id-collision-step4.log
+exit file: target/validation-logs/fmt-api-transport-request-id-collision-step4.exit
+```
+
+```text
+command: RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test api_transport_contract -- --test-threads=1
+exit: 101
+result: 17 passed; 3 failed due existing receipt persistence fixture path reuse / missing fixture directory; new transport_frame_classifies_same_payload_request_id_collision_as_invalid_replay passed
+log: target/validation-logs/api-transport-request-id-collision-step4.log
+exit file: target/validation-logs/api-transport-request-id-collision-step4.exit
+```
+
+After fixture isolation and directory creation, final passing evidence:
+
+```text
+command: RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo fmt --check
+exit: 0
+log: target/validation-logs/fmt-api-transport-request-id-collision-step4-final2.log
+exit file: target/validation-logs/fmt-api-transport-request-id-collision-step4-final2.exit
+```
+
+```text
+command: RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test api_transport_contract -- --test-threads=1
+exit: 0
+result: 20 passed; 0 failed
+log: target/validation-logs/api-transport-request-id-collision-step4-final2.log
+exit file: target/validation-logs/api-transport-request-id-collision-step4-final2.exit
+```
+
+## Next Execution Slice After API Transport Request-Id Collision Step 4
+
+Continue P4 only where focused executable evidence identifies another concrete branch. Candidate priorities:
+
+```text
+1. Inspect API server error/status mapping for deterministic uncovered branches, especially InvalidReplay-to-CONFLICT at the HTTP adapter boundary if reachable without invalid fixture construction.
+2. Capture live wrapper-configured observe-validation evidence only when wrapper services and artifacts are available.
+3. Return to compact receiver manifest checks only if new metric keys or receiver workflows are introduced.
+```
+
+Avoid additional MCP receipt work unless a new uncovered failure branch appears.

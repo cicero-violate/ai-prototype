@@ -11,9 +11,15 @@ use ai::{
 };
 
 fn transport_receipt_path(name: &str) -> std::path::PathBuf {
-    std::env::temp_dir().join(format!(
-        "ai-api-transport-{name}-{}.ndjson",
-        std::process::id()
+    let nanos = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .expect("system time should be after epoch")
+        .as_nanos();
+    let dir = std::path::PathBuf::from("target/test-tmp/api-transport-receipts");
+    std::fs::create_dir_all(&dir).expect("api transport receipt fixture dir should exist");
+    dir.join(format!(
+        "ai-api-transport-{name}-{}-{nanos}.ndjson",
+        std::process::id(),
     ))
 }
 
@@ -214,6 +220,49 @@ fn transport_ledger_exposes_request_id_membership() {
 
     assert!(ledger.contains_request_id(101));
     assert!(!ledger.contains_request_id(102));
+}
+
+#[test]
+fn transport_frame_classifies_same_payload_request_id_collision_as_invalid_replay() {
+    let cfg = RuntimeConfig::default();
+    let mut state = State::default();
+    let before = state;
+    let mut tlog = TLog::default();
+    let mut command_ledger = CommandLedger::default();
+    let frame = observation_frame();
+    let receipt_with_same_request_and_payload_but_different_command = ApiTransportReceipt::new(
+        frame.request_id,
+        frame.payload_hash,
+        frame.envelope.command_id.wrapping_add(1),
+        frame.envelope.command_hash,
+        55,
+    );
+    let mut transport_ledger = match ApiTransportLedger::from_receipts(vec![
+        receipt_with_same_request_and_payload_but_different_command,
+    ]) {
+        Ok(ledger) => ledger,
+        Err(err) => panic!("syntactically valid receipt should build a ledger: {err:?}"),
+    };
+
+    assert!(!frame.matches_receipt(receipt_with_same_request_and_payload_but_different_command));
+    assert!(!transport_ledger.has_conflicting_request(&frame));
+    assert!(transport_ledger.contains_request_id(frame.request_id));
+
+    assert_eq!(
+        handle_transport_frame_once(
+            &mut state,
+            &mut tlog,
+            cfg,
+            &mut command_ledger,
+            &mut transport_ledger,
+            frame,
+        ),
+        Err(CanonError::InvalidReplay)
+    );
+    assert_eq!(state, before);
+    assert!(tlog.is_empty());
+    assert!(command_ledger.is_empty());
+    assert_eq!(transport_ledger.len(), 1);
 }
 
 #[test]

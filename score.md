@@ -3,14 +3,14 @@
 ## Current Progress Snapshot
 
 Date: 2026-05-09 America/Toronto / 2026-05-09 UTC
-Turn type: implementation step 3 after MCP connection failure receipt step 2
-Scope executed: added deterministic MCP worker-timeout receipt coverage with a controlled local fixture.
+Turn type: implementation step 4 after MCP timeout receipt step 3
+Scope executed: added deterministic API transport request-id collision replay-classification coverage and hardened API transport receipt fixture isolation.
 
 Current timestamp evidence:
 
 ```text
 branch: main
-latest visible commit before this implementation turn: cc4223c Add deterministic MCP connection failure receipts
+latest visible commit before this implementation turn: 8ac4277 Add deterministic MCP timeout receipts
 working directory: /workspace/ai_sandbox/canon-mini-agent/prototype/ai
 working tree at turn start: clean
 ```
@@ -20,7 +20,7 @@ working tree at turn start: clean
 Implementation, test, and planning/scoring files owned by this turn:
 
 ```text
-tests/mcp_receipt_contract.rs
+tests/api_transport_contract.rs
 plan.md
 score.md
 ```
@@ -29,17 +29,17 @@ Generated validation logs, observe reports, runtime fixture archives, graph repo
 
 ## Scorecard
 
-Scores are approximate implementation-readiness scores on a 0-10 scale. Robustness, determinism, scalability, and future-proofing improve slightly because MCP timeout behavior now has deterministic local evidence in addition to HTTP worker-failure and no-listener connection-failure evidence.
+Scores are approximate implementation-readiness scores on a 0-10 scale. Correctness, robustness, determinism, scalability, and future-proofing improve slightly because API transport request-id collision replay classification now has focused deterministic evidence and receipt persistence fixtures no longer depend on stale temp files.
 
 ```text
 I  Intelligence      = 7.0
 E  Efficiency        = 7.9
-C  Correctness       = 9.86
+C  Correctness       = 9.87
 A  Alignment         = 8.8
-R  Robustness        = 9.98
+R  Robustness        = 9.985
 P  Performance       = 6.45
-S  Scalability       = 6.75
-D  Determinism       = 9.58
+S  Scalability       = 6.78
+D  Determinism       = 9.6
 T  Transparency      = 10.0
 Co Collaboration     = 8.0
 Em Empowerment       = 7.8
@@ -47,39 +47,49 @@ B  Benefit           = 8.1
 L  Learning          = 7.1
 St Structure         = 9.74
 Si Simplicity        = 7.34
-F  Future-Proofing   = 9.17
+F  Future-Proofing   = 9.18
 ```
 
 Approximate geometric mean:
 
 ```text
-G ≈ 8.29 / 10
+G ≈ 8.30 / 10
 ```
 
 ## Completed Work This Turn
 
-- Read `plan.md`, `score.md`, current git status, and the MCP receipt tests.
-- Confirmed the next planned target was deterministic MCP timeout receipt coverage only if it could be exercised without live services or brittle sleeps.
-- Added `mcp_executor_records_worker_timeout_as_receipt()` to `tests/mcp_receipt_contract.rs`.
-- The new fixture starts a local worker, accepts and verifies the MCP request, intentionally withholds the HTTP response, then releases the server thread through an explicit channel after the client records a timeout receipt.
-- Verified the timeout receipt is non-success, contract-valid, effect-normalized, request-bound, replayable, verifier-accepted, and has `timed_out=true` with empty response bytes.
-- Updated `plan.md` with completed step-3 evidence and shifted the next preferred target away from MCP failure receipt coverage toward focused router/API classifier coverage.
+- Read `plan.md`, `score.md`, current git status, router/offline classifier tests, API transport replay-classification tests, route-level API handlers, and server error mapping.
+- Confirmed router/offline classification already has executable branch coverage and API receipt replay already covers missing, stale, duplicated, reordered, and forged receipt classes.
+- Added `transport_frame_classifies_same_payload_request_id_collision_as_invalid_replay()` to `tests/api_transport_contract.rs`.
+- The new test covers the request-id reuse path where a receipt has the same request_id and payload_hash but a different command binding, causing `handle_transport_frame_once()` to return `CanonError::InvalidReplay` without mutation.
+- Hardened `transport_receipt_path()` to use `target/test-tmp/api-transport-receipts` with a process/time nonce and explicit directory creation, preventing stale temp files or missing directories from affecting persistence evidence.
+- Updated `plan.md` with completed step-4 evidence and next candidate targets.
 
 ## Validation Evidence Captured This Turn
 
 ```text
 command: RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo fmt --check
 exit: 0
-log: target/validation-logs/fmt-mcp-timeout-step3.log
-exit file: target/validation-logs/fmt-mcp-timeout-step3.exit
+log: target/validation-logs/fmt-api-transport-request-id-collision-step4-final2.log
+exit file: target/validation-logs/fmt-api-transport-request-id-collision-step4-final2.exit
 ```
 
 ```text
-command: RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test mcp_receipt_contract -- --test-threads=1
+command: RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test api_transport_contract -- --test-threads=1
 exit: 0
-result: 9 passed; 0 failed
-log: target/validation-logs/mcp-receipt-timeout-step3.log
-exit file: target/validation-logs/mcp-receipt-timeout-step3.exit
+result: 20 passed; 0 failed
+log: target/validation-logs/api-transport-request-id-collision-step4-final2.log
+exit file: target/validation-logs/api-transport-request-id-collision-step4-final2.exit
+```
+
+Initial focused API transport validation before fixture hardening:
+
+```text
+command: RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test api_transport_contract -- --test-threads=1
+exit: 101
+result: 17 passed; 3 failed due existing receipt persistence fixture path reuse / missing fixture directory; new transport_frame_classifies_same_payload_request_id_collision_as_invalid_replay passed
+log: target/validation-logs/api-transport-request-id-collision-step4.log
+exit file: target/validation-logs/api-transport-request-id-collision-step4.exit
 ```
 
 Planning/scoring contract validation after documentation updates:
@@ -88,22 +98,22 @@ Planning/scoring contract validation after documentation updates:
 command: RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test planning_contract -- --test-threads=1
 exit: 0
 result: 2 passed; 0 failed
-log: target/validation-logs/planning-contract-mcp-timeout-step3.log
-exit file: target/validation-logs/planning-contract-mcp-timeout-step3.exit
+log: target/validation-logs/planning-contract-api-transport-request-id-collision-step4.log
+exit file: target/validation-logs/planning-contract-api-transport-request-id-collision-step4.exit
 ```
 
 ```text
 command: RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test score_contract -- --test-threads=1
 exit: 0
 result: 5 passed; 0 failed
-log: target/validation-logs/score-contract-mcp-timeout-step3.log
-exit file: target/validation-logs/score-contract-mcp-timeout-step3.exit
+log: target/validation-logs/score-contract-api-transport-request-id-collision-step4.log
+exit file: target/validation-logs/score-contract-api-transport-request-id-collision-step4.exit
 ```
 
 ## Connector / Environment Notes
 
 - This turn did not require live router, MCP connector, wrapper, Ollama, or OpenAI services.
-- MCP timeout behavior was exercised with a local loopback fixture and an explicit server-release channel.
+- API transport replay classification was exercised through direct deterministic Rust contract tests.
 - Long full observe-validation was not required.
 
 ## Current Risks / Gaps
@@ -111,14 +121,14 @@ exit file: target/validation-logs/score-contract-mcp-timeout-step3.exit
 - Connector 502 transport errors can still interrupt long shell calls, so short deterministic fixture/report paths remain preferred.
 - No live wrapper-configured observe-validation run has been captured in this environment.
 - Live router/MCP/Ollama/OpenAI paths still depend on environment services and can fail independently of core runtime correctness.
-- MCP timeout receipt behavior now has focused deterministic coverage; additional MCP receipt work should wait for a concrete uncovered branch.
+- MCP receipt failure modes and current API transport replay classes now have focused deterministic coverage; additional work should wait for a concrete uncovered branch.
 - Future cross-subproject graph behavior changes still require updating the boundary contract and executable test first.
 
 ## Next Score Update Triggers
 
 Raise scores only after fresh evidence:
 
-- **Scalability / Robustness:** router/API failure-classification tests cover more unavailable/interrupted service paths without live-service brittleness.
+- **Scalability / Robustness:** API server adapter or router failure-classification tests cover more unavailable/interrupted service paths without live-service brittleness.
 - **Correctness / Transparency:** compact receiver workflows add new metric families with exact rendered value and exact-once checks.
 - **Performance:** command-duration performance evidence is strengthened with external benchmark or latency trend data.
 - **Learning:** policy promotion remains externally evaluated and self-approval remains impossible under tests.
@@ -126,4 +136,4 @@ Raise scores only after fresh evidence:
 
 ## Immediate Next Action
 
-Search for a concrete router/API failure-classification branch that can be tested deterministically. If no stable branch exists, wait for live wrapper-configured evidence or a new compact receiver metric gap.
+Search for a concrete API server adapter status-mapping branch that can be tested deterministically, especially an InvalidReplay-to-CONFLICT path if reachable without invalid fixture construction. If no stable branch exists, wait for live wrapper-configured evidence or a new compact receiver metric gap.
