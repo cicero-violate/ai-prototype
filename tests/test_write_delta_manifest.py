@@ -13,6 +13,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "scripts" / "write_delta_manifest.py"
+OBSERVE = ROOT / "scripts" / "observe_validation.sh"
 sys.path.insert(0, str(SCRIPT.parent))
 import write_delta_manifest  # noqa: E402
 
@@ -344,6 +345,81 @@ class DeltaManifestTest(unittest.TestCase):
         self.assertIn("cargo_test_all_targets: pass", manifest)
         self.assertIn("connector_transport_artifact_classification: transport_interrupted_artifacts_complete", manifest)
         self.assertIn("runtime_manifest_base_matches_delta_base: True", manifest)
+
+    def test_generates_manifest_from_actual_full_summary_report_artifact(self) -> None:
+        scripts_dir = self.repo / "scripts"
+        scripts_dir.mkdir(exist_ok=True)
+        observe_copy = scripts_dir / "observe_validation.sh"
+        observe_copy.write_text(OBSERVE.read_text(encoding="utf-8"), encoding="utf-8")
+        (scripts_dir / "validate_graph_workflow_fixture.py").write_text(
+            "def graph_fixture_report(*args, **kwargs):\n"
+            "    return {'event': 'graph_fixture_report', 'graph_evidence_status': 'not_used'}\n",
+            encoding="utf-8",
+        )
+
+        report = self.repo / "target" / "observe" / "actual-full-summary.ndjson"
+        exit_file = self.repo / "target" / "validation-logs" / "actual-full-summary.exit"
+        exit_file.parent.mkdir(parents=True, exist_ok=True)
+        exit_file.write_text("0\n", encoding="utf-8")
+        env = os.environ.copy()
+        env.update({
+            "CANON_OBSERVE_REPORT": str(report),
+            "CANON_DELTA_BASE": self.base,
+            "CANON_CONNECTOR_TRANSPORT_STATUS": "502",
+            "CANON_CONNECTOR_TRANSPORT_REPORT": str(report),
+            "CANON_CONNECTOR_TRANSPORT_EXIT_FILE": str(exit_file),
+        })
+        done = subprocess.run(
+            [sys.executable, str(observe_copy), "--full-summary-report"],
+            cwd=self.repo,
+            env=env,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=False,
+        )
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertTrue(report.exists())
+
+        self.report.write_text(report.read_text(encoding="utf-8"), encoding="utf-8")
+        manifest_done = self.run_script()
+        self.assertEqual(manifest_done.returncode, 0, manifest_done.stderr)
+
+        rows = [json.loads(line) for line in report.read_text(encoding="utf-8").splitlines()]
+        summary = rows[-1]
+        receipt = json.loads(self.receipt.read_text(encoding="utf-8"))
+        manifest = self.out.read_text(encoding="utf-8")
+        self.assertEqual(summary["git_head"], self.head)
+        self.assertTrue(receipt["full_summary_report_only"])
+        self.assertEqual(receipt["full_summary_report_command"], "--full-summary-report")
+        self.assertEqual(receipt["validation_status"], "pass")
+        self.assertEqual(receipt["command_execution_status"], "pass")
+        self.assertEqual(receipt["missing_signal_status"], "pass")
+        self.assertEqual(receipt["runtime_archive_evidence_source"], "compact_report")
+        self.assertEqual(
+            receipt["connector_transport_artifact_classification"],
+            "transport_interrupted_artifacts_complete",
+        )
+        self.assertEqual(receipt["runtime_manifest_base_expected"], self.base)
+        self.assertEqual(receipt["runtime_manifest_base_commit"], self.base)
+        self.assertTrue(receipt["runtime_manifest_base_matches_delta_base"])
+        self.assertEqual(receipt["validation_command_count"], 3)
+        self.assertEqual(receipt["validation_test_count"], 3)
+        for command in receipt["validation_commands"]:
+            self.assertIn("cmd", command)
+            self.assertTrue(command["cmd"])
+        for token in (
+            "validation_status: pass",
+            "command_execution_status: pass",
+            "missing_signal_status: pass",
+            "runtime_archive_evidence_source: compact_report",
+            "full_summary_report_only: True",
+            "full_summary_report_command: --full-summary-report",
+            "connector_transport_artifact_classification: transport_interrupted_artifacts_complete",
+            "runtime_manifest_base_matches_delta_base: True",
+            "cargo_test_all_targets: pass",
+        ):
+            self.assertIn(token, manifest)
 
 
 if __name__ == "__main__":

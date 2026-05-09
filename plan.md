@@ -1031,3 +1031,48 @@ If the implementation touches only manifest tests and no observe-validation beha
 - Do not introduce network, model-provider, or router dependencies.
 - Do not broaden graph workflow semantics.
 - Do not change scoring upward unless the new end-to-end manifest-from-real-report evidence passes.
+
+## Completed Execution Slice After Actual Full-Summary Manifest Step 1
+
+Completed the focused receiver/archive integration slice for compact full-summary artifacts. `tests/test_write_delta_manifest.py` now generates a real `--full-summary-report` artifact by running the observe-validation compact report path inside the temporary manifest repository, feeds that emitted NDJSON report into the delta manifest writer, and verifies that the resulting receipt and manifest preserve validation status, command execution status, missing-signal status, connector transport artifact classification, compact runtime evidence source, runtime manifest base-match evidence, and validation command `cmd` fields.
+
+`scripts/write_delta_manifest.py` now preserves compact full-summary status fields that were previously consumed only by direct observe-validation checks:
+
+```text
+command_execution_status
+missing_signal_status
+runtime_archive_evidence_source
+full_summary_report_only
+full_summary_report_command
+runtime_manifest_base_commit
+runtime_archive_report_present
+runtime_archive_report_status
+runtime_archive_report_base_matches_current
+runtime_archive_present
+```
+
+## Validation Evidence From Actual Full-Summary Manifest Step 1
+
+```text
+python3 -m unittest tests/test_write_delta_manifest.py
+exit: 0
+result: 13 passed; 0 failed
+log: target/validation-logs/write-delta-manifest-actual-full-summary-step1.log
+```
+
+```text
+python3 -m unittest tests/test_observe_validation_contract.py
+exit: 0
+result: 39 passed; 0 failed
+log: target/validation-logs/observe-validation-contract-actual-full-summary-step1.log
+```
+
+```text
+python3 -m py_compile scripts/observe_validation.sh scripts/write_delta_manifest.py tests/test_write_delta_manifest.py tests/test_observe_validation_contract.py
+exit: 0
+log: target/validation-logs/py-compile-actual-full-summary-step1.log
+```
+
+## Next Execution Slice After Actual Full-Summary Manifest Step 1
+
+Continue P4 by finding any remaining receiver/archive/report workflows that still depend on long observe-validation artifacts and convert one more such consumer to compact deterministic evidence. Candidate next slice: add a short contract proving compact runtime archive/full-summary preserved fields are not duplicated in the rendered manifest and remain stable when command rows are sourced from report rows instead of only the summary `validation_commands` field.

@@ -3,39 +3,41 @@
 ## Current Progress Snapshot
 
 Date: 2026-05-09 America/Toronto / 2026-05-09 UTC
-Turn type: planning step 6
-Scope executed: planning/scoring-only update for the next compact full-summary delta-manifest integration slice.
+Turn type: implementation step 1
+Scope executed: generated a delta manifest from an actual emitted compact full-summary observe-validation artifact and preserved compact status fields through the manifest workflow.
 
 Current timestamp evidence:
 
 ```text
 branch: main
-latest visible commit before this planning turn: 7f1b5e4 Add compact full summary report
+latest visible commit before this implementation turn: e00ac3f Plan compact full summary manifest integration
 working directory: /workspace/ai_sandbox/canon-mini-agent/prototype/ai
 working tree at turn start: clean
 ```
 
 ## Current Git State
 
-Planning/scoring files owned by this commit:
+Implementation, test, and planning/scoring files owned by this commit:
 
 ```text
+scripts/write_delta_manifest.py
+tests/test_write_delta_manifest.py
 plan.md
 score.md
 ```
 
-No implementation, source, or test files are intentionally modified in this planning turn. Generated validation logs, observe reports, runtime fixture archives, graph reports, `__pycache__`, target output, and exit files remain ignored and are not committed.
+Generated validation logs, observe reports, runtime fixture archives, graph reports, `__pycache__`, target output, and exit files are intentionally left under ignored paths and are not committed.
 
 ## Scorecard
 
-Scores remain unchanged from implementation step 5 because this turn adds planning clarity but no new executable implementation evidence.
+Scores are approximate implementation-readiness scores on a 0-10 scale. Correctness, robustness, efficiency, and simplicity move slightly upward because receiver/archive coverage now uses an actual compact full-summary artifact rather than a hand-constructed full-summary-shaped report.
 
 ```text
 I  Intelligence      = 7.0
-E  Efficiency        = 7.8
-C  Correctness       = 9.65
+E  Efficiency        = 7.9
+C  Correctness       = 9.7
 A  Alignment         = 8.8
-R  Robustness        = 9.82
+R  Robustness        = 9.85
 P  Performance       = 6.45
 S  Scalability       = 6.6
 D  Determinism       = 9.45
@@ -45,62 +47,93 @@ Em Empowerment       = 7.8
 B  Benefit           = 8.1
 L  Learning          = 7.1
 St Structure         = 9.6
-Si Simplicity        = 7.1
+Si Simplicity        = 7.2
 F  Future-Proofing   = 9.05
 ```
 
 Approximate geometric mean:
 
 ```text
-G ≈ 8.22 / 10
+G ≈ 8.20 / 10
 ```
 
-## Planning Completed This Turn
+## Completed Work This Turn
 
-- Read `plan.md`, `score.md`, git status, recent commits, current P4 completion state, and planning/score contract tests.
-- Confirmed the repo is clean at latest visible commit `7f1b5e4 Add compact full summary report`.
-- Converted the next action into an explicit acceptance plan for generating a delta manifest from an actual emitted `--full-summary-report` artifact.
-- Kept the next execution slice bounded to short deterministic receiver/archive evidence.
-- Preserved the rule that scores should not increase until new executable evidence is produced.
+- Read `plan.md`, `score.md`, git status, recent commits, current compact full-summary plan, manifest tests, observe-validation compact report code, and delta manifest writer preservation fields.
+- Added preservation of compact full-summary status and runtime fields to `scripts/write_delta_manifest.py`:
+  - `command_execution_status`
+  - `missing_signal_status`
+  - `runtime_archive_evidence_source`
+  - `full_summary_report_only`
+  - `full_summary_report_command`
+  - `runtime_manifest_base_commit`
+  - compact runtime archive report presence/status fields
+- Added `test_generates_manifest_from_actual_full_summary_report_artifact` to `tests/test_write_delta_manifest.py`.
+- The new test runs an actual copied `observe_validation.sh --full-summary-report` script inside the temporary git repo used by the manifest tests so `git_head` honestly matches the manifest head.
+- The test feeds the emitted NDJSON report into the manifest writer and verifies receipt/manifest preservation of validation status, command-execution status, missing-signal status, compact runtime evidence, runtime manifest base-match evidence, connector transport artifact classification, and command `cmd` fields.
+- Updated `plan.md` with the completed execution slice and next action.
 
 ## Validation Evidence Captured This Turn
 
-This was a planning/scoring-only turn. No implementation validation commands were required before editing.
+```text
+command: python3 -m unittest tests/test_write_delta_manifest.py
+exit: 0
+result: 13 passed; 0 failed
+log: target/validation-logs/write-delta-manifest-actual-full-summary-step1.log
+```
 
-Documentation contract checks run before commit:
+```text
+command: python3 -m unittest tests/test_observe_validation_contract.py
+exit: 0
+result: 39 passed; 0 failed
+log: target/validation-logs/observe-validation-contract-actual-full-summary-step1.log
+```
+
+```text
+command: python3 -m py_compile scripts/observe_validation.sh scripts/write_delta_manifest.py tests/test_write_delta_manifest.py tests/test_observe_validation_contract.py
+exit: 0
+log: target/validation-logs/py-compile-actual-full-summary-step1.log
+```
 
 ```text
 command: cargo test --test planning_contract -- --test-threads=1
 exit: 0
 result: 2 passed; 0 failed
-log: target/validation-logs/planning-contract-planning-step6.log
+log: target/validation-logs/planning-contract-actual-full-summary-step1.log
 ```
 
 ```text
 command: cargo test --test score_contract -- --test-threads=1
 exit: 0
 result: 5 passed; 0 failed
-log: target/validation-logs/score-contract-planning-step6.log
+log: target/validation-logs/score-contract-actual-full-summary-step1.log
 ```
+
+## Connector / Environment Notes
+
+- This turn did not require a long full observe-validation run.
+- The real compact full-summary artifact path was exercised inside a temporary git repository.
+- No live wrapper-configured, router, Ollama, or OpenAI path was required for baseline evidence.
+- The first focused test run failed because the simulated connector transport exit artifact was absent, correctly producing `transport_interrupted_artifacts_incomplete`. The fixture was fixed by creating the referenced exit artifact before report generation, after which the suite passed.
 
 ## Current Risks / Gaps
 
-- Connector 502 transport errors can still interrupt long shell calls, but the compact full-summary path remains the intended deterministic workaround for receiver/archive evidence.
-- The current manifest coverage proves compact full-summary-shaped input is accepted, but the next slice should prove an actual emitted `--full-summary-report` artifact can drive manifest generation end-to-end.
+- Connector 502 transport errors can still interrupt long shell calls, but receiver/archive evidence can now be generated by a short compact full-summary artifact.
 - No live wrapper-configured observe-validation run has been captured in this environment.
 - Live router/MCP/Ollama/OpenAI paths still depend on environment services and can fail independently of core runtime correctness.
 - Future cross-subproject graph behavior changes still require updating the boundary contract and executable test first.
+- Remaining receiver/archive workflows may still have duplication or row-source assumptions that should be checked with compact report fixtures.
 
 ## Next Score Update Triggers
 
 Raise scores only after fresh evidence:
 
-- **Correctness / Robustness:** a focused integration test generates a delta manifest from an actual emitted `--full-summary-report` artifact.
-- **Efficiency / Simplicity:** receiver/archive workflows use compact full-summary artifacts instead of long historical observe-validation runs.
+- **Correctness / Robustness:** compact runtime/archive/full-summary preserved fields are proven non-duplicated and stable when command rows are sourced from report rows rather than only summary `validation_commands`.
 - **Performance:** command-duration performance evidence is strengthened with external benchmark or latency trend data.
 - **Scalability:** multi-agent coordination and router failure scenarios are tested.
 - **Learning:** policy promotion remains externally evaluated and self-approval remains impossible under tests.
+- **Structure / Simplicity:** remaining receiver/archive workflows consume compact full-summary artifacts rather than long historical observe-validation evidence.
 
 ## Immediate Next Action
 
-Continue P4 by adding a focused integration test or script-level contract that generates a delta manifest from an actual `--full-summary-report` artifact and verifies manifest preservation of validation, command-execution, missing-signal, connector transport, and compact runtime evidence fields.
+Continue P4 by adding a short receiver/archive contract that checks compact full-summary/runtime preserved fields are rendered once and remain stable when validation commands are sourced from report rows instead of only the summary field.

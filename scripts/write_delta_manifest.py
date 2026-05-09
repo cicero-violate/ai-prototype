@@ -160,8 +160,18 @@ def verify_bundle(path: str, base: str, head: str) -> tuple[str, list[str], list
 
 
 PRESERVED_SUMMARY_KEYS = [
+    "command_execution_status",
+    "missing_signal_status",
+    "runtime_archive_evidence_source",
+    "full_summary_report_only",
+    "full_summary_report_command",
     "runtime_manifest_base_expected",
+    "runtime_manifest_base_commit",
     "runtime_manifest_base_matches_delta_base",
+    "runtime_archive_report_present",
+    "runtime_archive_report_status",
+    "runtime_archive_report_base_matches_current",
+    "runtime_archive_present",
     "runtime_archive_inspection_status",
     "runtime_archive_download_index_files",
     "runtime_archive_prior_state_files",
