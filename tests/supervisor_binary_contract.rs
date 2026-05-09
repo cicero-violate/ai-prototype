@@ -110,9 +110,14 @@ fn supervisor_spawns_worker_and_reloads_generation() {
 
     let after_command = wait_for_json(&first_state_url);
     assert!(after_command["tlog_len"].as_u64().expect("tlog len") > initial_tlog_len);
+    let after_command_tlog_len = after_command["tlog_len"].as_u64().expect("tlog len");
+    let tlog_path = tlog_dir.join("worker-tlog.ndjson");
     assert!(std::fs::read_dir(&tlog_dir)
         .expect("tlog dir should exist")
         .any(|entry| entry.expect("tlog entry").path().is_file()));
+    let tlog_len_after_first_command = std::fs::metadata(&tlog_path)
+        .expect("worker tlog should exist")
+        .len();
 
     let reload_url = format!("http://127.0.0.1:{supervisor_port}/reload");
     let reload: serde_json::Value = reqwest::blocking::Client::new()
@@ -137,6 +142,40 @@ fn supervisor_spawns_worker_and_reloads_generation() {
             .expect("new worker health response")
             .status()
             .is_success()
+    );
+    let second_state_url = format!("http://127.0.0.1:{second_port}/v1/state");
+    let second_state = wait_for_json(&second_state_url);
+    assert_eq!(
+        second_state["tlog_len"].as_u64().expect("second tlog len"),
+        after_command_tlog_len
+    );
+
+    let second_command_url = format!("http://127.0.0.1:{second_port}/v1/command");
+    let replay_response: serde_json::Value = reqwest::blocking::Client::new()
+        .post(&second_command_url)
+        .json(&worker_command_body(31, 0x7a11))
+        .send()
+        .expect("replayed worker command response")
+        .json()
+        .expect("replayed worker command json");
+    assert_eq!(replay_response["ok"], true);
+    assert_eq!(replay_response["disposition"], "replayed");
+    assert_eq!(replay_response["event_seq"], command_response["event_seq"]);
+    assert_eq!(
+        replay_response["event_hash"],
+        command_response["event_hash"]
+    );
+    assert_eq!(
+        wait_for_json(&second_state_url)["tlog_len"]
+            .as_u64()
+            .expect("second tlog len after replay"),
+        after_command_tlog_len
+    );
+    assert_eq!(
+        std::fs::metadata(&tlog_path)
+            .expect("worker tlog should still exist")
+            .len(),
+        tlog_len_after_first_command
     );
 
     #[cfg(unix)]
