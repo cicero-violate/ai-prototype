@@ -2122,3 +2122,73 @@ Acceptance criteria for the preferred MCP connection/timeout slice:
 - Prefer short deterministic fixture tests over long observe-validation unless the implementation change requires full evidence.
 - If no stable MCP timeout/connection-failure branch exists, move to the next concrete router/API classifier gap rather than adding speculative code.
 ```
+
+## Completed Execution Slice After MCP Connection Failure Receipt Step 2
+
+Completed the preferred deterministic MCP connection-failure evidence slice. This turn built on the prior uncommitted MCP HTTP-failure test file and added a distinct no-listener transport failure branch without requiring live MCP services.
+
+Implementation details:
+
+```text
+- Added mcp_executor_records_connection_failure_as_receipt() to tests/mcp_receipt_contract.rs.
+- The test reserves a loopback port, releases it, then points LiveMcpCallExecutor at the now-unserved MCP worker URL.
+- The executor request remains admissible, but the transport send fails through reqwest before any worker response body exists.
+- The failure is recorded as a typed McpCallReceipt with exit_status=1, timed_out=false, response_bytes=0, non-zero response_hash, normalized process effect, valid request binding, replay acceptance, and verify_mcp_call_receipts() acceptance.
+- This branch is distinct from HTTP 500 worker response handling, which preserves response bytes from an actual worker error body.
+- The inherited MCP receipt persistence fixture isolation from step 1 remains in place under target/test-tmp/mcp-receipts with a process/time nonce.
+```
+
+This satisfies the step-2 planning target for unavailable/interrupted MCP transport evidence while preserving optional wrapper, router/offline, graph fixture, generated graph JSON, compact archive, and manifest evidence semantics.
+
+## Validation Evidence From MCP Connection Failure Receipt Step 2
+
+Initial focused validation exposed a formatting-only issue after the test was inserted:
+
+```text
+command: RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo fmt --check
+exit: 1
+result: extra blank line before the new connection-failure test
+log: target/validation-logs/fmt-mcp-connection-failure-step2.log
+exit file: target/validation-logs/fmt-mcp-connection-failure-step2.exit
+```
+
+The focused MCP receipt suite already passed before the formatting cleanup:
+
+```text
+command: RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test mcp_receipt_contract -- --test-threads=1
+exit: 0
+result: 8 passed; 0 failed
+log: target/validation-logs/mcp-receipt-connection-failure-step2.log
+exit file: target/validation-logs/mcp-receipt-connection-failure-step2.exit
+```
+
+Final passing evidence:
+
+```text
+command: RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo fmt --check
+exit: 0
+log: target/validation-logs/fmt-mcp-connection-failure-step2-final.log
+exit file: target/validation-logs/fmt-mcp-connection-failure-step2-final.exit
+```
+
+```text
+command: RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test mcp_receipt_contract -- --test-threads=1
+exit: 0
+result: 8 passed; 0 failed
+log: target/validation-logs/mcp-receipt-connection-failure-step2-final.log
+exit file: target/validation-logs/mcp-receipt-connection-failure-step2-final.exit
+```
+
+## Next Execution Slice After MCP Connection Failure Receipt Step 2
+
+Continue P4 by looking for a deterministic MCP timeout branch only if it can be exercised without brittle sleeps. If a stable timeout fixture is not available, shift to focused router/API classifier coverage or environment-backed live wrapper-configured observe-validation when the environment exposes required wrapper artifacts.
+
+Candidate priorities:
+
+```text
+1. Deterministic MCP timeout receipt coverage using a controlled local fixture, if timing can be made stable.
+2. Focused router/API failure-classification branch coverage where an uncovered branch exists.
+3. Live wrapper-configured observe-validation evidence when wrapper services and artifacts are available.
+```
+
+Do not add speculative production code solely to create a test branch.

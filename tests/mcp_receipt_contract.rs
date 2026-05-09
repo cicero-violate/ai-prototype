@@ -6,11 +6,16 @@ use ai::{
 use std::io::{Read, Write};
 use std::net::TcpListener;
 use std::thread;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 fn receipt_path(name: &str) -> std::path::PathBuf {
-    std::env::temp_dir().join(format!(
-        "ai-mcp-receipt-{name}-{}.ndjson",
-        std::process::id()
+    let nonce = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("system clock should be after unix epoch")
+        .as_nanos();
+    std::path::PathBuf::from("target/test-tmp/mcp-receipts").join(format!(
+        "ai-mcp-receipt-{name}-{}-{nonce}.ndjson",
+        std::process::id(),
     ))
 }
 
@@ -181,4 +186,90 @@ fn mcp_executor_calls_local_worker_and_records_receipt() {
         executor.execute_call("apply_patch", "{}"),
         Err(ToolSandboxError::CommandDenied)
     );
+}
+
+#[test]
+fn mcp_executor_records_connection_failure_as_receipt() {
+    let listener = TcpListener::bind("127.0.0.1:0").expect("reserve local unused mcp port");
+    let port = listener.local_addr().expect("local addr").port();
+    drop(listener);
+
+    let worker_url = format!("http://127.0.0.1:{port}/mcp_worker");
+    let args = r#"{"cwd":".","command":"true"}"#;
+    let executor = LiveMcpCallExecutor::new(worker_url)
+        .with_allowed_tool("shell")
+        .with_timeout_ms(250)
+        .with_max_output_bytes(4096);
+    let request = executor
+        .request_for("shell", args)
+        .expect("request should be admissible");
+    let receipt = executor
+        .execute_call("shell", args)
+        .expect("connection failure should still produce a typed receipt");
+
+    assert!(!receipt.is_success());
+    assert!(receipt.is_contract_valid());
+    assert!(receipt.effect_is_normalized());
+    assert!(receipt.is_valid_for(&request));
+    assert_eq!(receipt.exit_status, 1);
+    assert!(!receipt.timed_out);
+    assert_eq!(receipt.response_bytes, 0);
+    assert_ne!(receipt.response_hash, 0);
+    assert_eq!(executor.replay_receipt(&receipt, "shell", args), Ok(true));
+    assert_eq!(verify_mcp_call_receipts(&[receipt]), Ok(1));
+}
+
+#[test]
+fn mcp_executor_records_worker_http_failure_as_receipt() {
+    let listener = TcpListener::bind("127.0.0.1:0").expect("bind local mcp worker");
+    let port = listener.local_addr().expect("local addr").port();
+    let worker_url = format!("http://127.0.0.1:{port}/mcp_worker");
+    let response_body =
+        br#"{"jsonrpc":"2.0","id":1,"error":{"code":-32000,"message":"worker failed"}}"#;
+    let expected_response_bytes = response_body.len() as u64;
+
+    let server = thread::spawn(move || {
+        let (mut stream, _) = listener.accept().expect("accept mcp request");
+        let mut request_bytes = [0u8; 4096];
+        let read = stream.read(&mut request_bytes).expect("read mcp request");
+        let request = String::from_utf8_lossy(&request_bytes[..read]);
+
+        assert!(request.contains("POST /mcp_worker HTTP/1.1"));
+        assert!(request.contains("\"method\":\"tools/call\""));
+        assert!(request.contains("\"name\":\"shell\""));
+
+        let response = format!(
+            "HTTP/1.1 500 Internal Server Error\r\nContent-Type: application/json\r\nContent-Length: {}\r\n\r\n{}",
+            response_body.len(),
+            String::from_utf8_lossy(response_body)
+        );
+        stream
+            .write_all(response.as_bytes())
+            .expect("write mcp error response");
+    });
+
+    let args = r#"{"cwd":".","command":"false"}"#;
+    let executor = LiveMcpCallExecutor::new(worker_url)
+        .with_allowed_tool("shell")
+        .with_timeout_ms(1000)
+        .with_max_output_bytes(4096);
+    let request = executor
+        .request_for("shell", args)
+        .expect("request should be admissible");
+    let receipt = executor
+        .execute_call("shell", args)
+        .expect("worker HTTP failure should still produce a typed receipt");
+
+    server.join().expect("server thread should finish");
+
+    assert!(!receipt.is_success());
+    assert!(receipt.is_contract_valid());
+    assert!(receipt.effect_is_normalized());
+    assert!(receipt.is_valid_for(&request));
+    assert_eq!(receipt.exit_status, 1);
+    assert!(!receipt.timed_out);
+    assert_eq!(receipt.response_bytes, expected_response_bytes);
+    assert_ne!(receipt.response_hash, 0);
+    assert_eq!(executor.replay_receipt(&receipt, "shell", args), Ok(true));
+    assert_eq!(verify_mcp_call_receipts(&[receipt]), Ok(1));
 }
