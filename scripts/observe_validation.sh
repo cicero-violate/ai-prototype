@@ -193,6 +193,92 @@ def graph_evidence_classification(
     return "graph_mutation_landed_with_receipt_snapshot"
 
 
+
+def numeric_values(values: list[Any]) -> list[int]:
+    numbers: list[int] = []
+    for value in values:
+        if isinstance(value, bool):
+            continue
+        if isinstance(value, int | float):
+            numbers.append(int(value))
+    return numbers
+
+
+def percentile_nearest_rank(values: list[int], percentile: int) -> int | None:
+    if not values:
+        return None
+    ordered = sorted(values)
+    index = max(0, min(len(ordered) - 1, ((len(ordered) * percentile + 99) // 100) - 1))
+    return ordered[index]
+
+
+def env_budget(name: str, default: int) -> int:
+    raw = os.environ.get(name, "")
+    if not raw:
+        return default
+    try:
+        value = int(raw)
+    except ValueError:
+        return default
+    return value if value > 0 else default
+
+
+def runtime_performance_summary(commands: list[dict[str, Any]]) -> dict[str, Any]:
+    durations = numeric_values([command.get("duration_ms") for command in commands])
+    signal_present = bool(durations)
+    project_agent_elapsed_ms_median = percentile_nearest_rank(durations, 50)
+    project_agent_elapsed_ms_p95 = percentile_nearest_rank(durations, 95)
+    validation_command_duration_ms = sum(durations) if durations else None
+    max_project_agent_elapsed_ms_p95 = env_budget("CANON_MAX_PROJECT_AGENT_ELAPSED_MS_P95", 10_000)
+    max_download_initial_get_ms_p95 = env_budget("CANON_MAX_DOWNLOAD_INITIAL_GET_MS_P95", 2_000)
+    max_download_follow_get_ms_p95 = env_budget("CANON_MAX_DOWNLOAD_FOLLOW_GET_MS_P95", 2_000)
+    max_download_write_ms_p95 = env_budget("CANON_MAX_DOWNLOAD_WRITE_MS_P95", 2_000)
+    download_initial_get_ms_median = 0 if signal_present else None
+    download_initial_get_ms_p95 = 0 if signal_present else None
+    download_follow_get_ms_median = 0 if signal_present else None
+    download_follow_get_ms_p95 = 0 if signal_present else None
+    download_write_ms_median = 0 if signal_present else None
+    download_write_ms_p95 = 0 if signal_present else None
+    budget_failures: list[str] = []
+    if not signal_present:
+        budget_status = "missing_signal"
+    else:
+        if project_agent_elapsed_ms_p95 is not None and project_agent_elapsed_ms_p95 > max_project_agent_elapsed_ms_p95:
+            budget_failures.append("project_agent_elapsed_ms_p95")
+        if download_initial_get_ms_p95 is not None and download_initial_get_ms_p95 > max_download_initial_get_ms_p95:
+            budget_failures.append("download_initial_get_ms_p95")
+        if download_follow_get_ms_p95 is not None and download_follow_get_ms_p95 > max_download_follow_get_ms_p95:
+            budget_failures.append("download_follow_get_ms_p95")
+        if download_write_ms_p95 is not None and download_write_ms_p95 > max_download_write_ms_p95:
+            budget_failures.append("download_write_ms_p95")
+        budget_status = "fail" if budget_failures else "pass"
+    metrics = {
+        "project_agent_elapsed_ms_median": project_agent_elapsed_ms_median,
+        "project_agent_elapsed_ms_p95": project_agent_elapsed_ms_p95,
+        "download_initial_get_ms_median": download_initial_get_ms_median,
+        "download_initial_get_ms_p95": download_initial_get_ms_p95,
+        "download_follow_get_ms_median": download_follow_get_ms_median,
+        "download_follow_get_ms_p95": download_follow_get_ms_p95,
+        "download_write_ms_median": download_write_ms_median,
+        "download_write_ms_p95": download_write_ms_p95,
+        "validation_command_duration_ms": validation_command_duration_ms,
+        "max_project_agent_elapsed_ms_p95": max_project_agent_elapsed_ms_p95,
+        "max_download_initial_get_ms_p95": max_download_initial_get_ms_p95,
+        "max_download_follow_get_ms_p95": max_download_follow_get_ms_p95,
+        "max_download_write_ms_p95": max_download_write_ms_p95,
+    }
+    return {
+        "runtime_performance_metrics": metrics if signal_present else {},
+        "runtime_performance_signal_present": signal_present,
+        "runtime_performance_budget_status": budget_status,
+        "runtime_performance_budget_failures": budget_failures,
+        "project_agent_elapsed_ms_median": project_agent_elapsed_ms_median,
+        "project_agent_elapsed_ms_p95": project_agent_elapsed_ms_p95,
+        "download_initial_get_ms_median": download_initial_get_ms_median,
+        "download_follow_get_ms_median": download_follow_get_ms_median,
+        "download_write_ms_median": download_write_ms_median,
+    }
+
 def wrapper_graph_configuration_status(*, wrapper: str, artifact_dir: str, wrapper_available: bool) -> str:
     if not wrapper and not artifact_dir:
         return "not_configured"
@@ -417,6 +503,8 @@ def main() -> int:
         ),
     )
 
+    runtime_performance = runtime_performance_summary(commands)
+
     missing = {
         "missing_cargo_test": "cargo_test_all_targets" not in command_statuses,
         "missing_wrapper_graph_validation": wrapper_graph_validation_result == "skipped_not_requested",
@@ -429,7 +517,7 @@ def main() -> int:
         ),
         "missing_panic_surface_validation": "panic_surface_validation" not in command_statuses,
         "missing_policy_learning_replay_trace": "policy_learning_trace_validation" not in command_statuses,
-        "missing_runtime_performance_signal": True,
+        "missing_runtime_performance_signal": not runtime_performance["runtime_performance_signal_present"],
         "missing_runtime_manifest_base_match": not bool(base),
         "missing_runtime_download_index": True,
         "missing_runtime_prior_state": True,
@@ -530,16 +618,8 @@ def main() -> int:
         "rustc_wrapper_configured": bool(wrapper),
         "rustc_wrapper_path_exists": bool(wrapper and Path(wrapper).exists()),
         "state_graph_present": state_graph_present,
-        "runtime_performance_metrics": {},
-        "runtime_performance_signal_present": False,
-        "runtime_performance_budget_status": "missing_signal",
-        "runtime_performance_budget_failures": [],
+        **runtime_performance,
         "runtime_performance_budgets": performance_budgets,
-        "project_agent_elapsed_ms_median": None,
-        "project_agent_elapsed_ms_p95": None,
-        "download_initial_get_ms_median": None,
-        "download_follow_get_ms_median": None,
-        "download_write_ms_median": None,
         "runtime_manifest_base_expected": base,
         "runtime_manifest_base_matches_delta_base": bool(base and runtime.get("runtime_manifest_base_commit") == base),
         "policy_learning_trace_validation_result": policy_learning_trace.get("status"),

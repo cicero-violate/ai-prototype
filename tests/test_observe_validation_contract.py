@@ -136,6 +136,7 @@ class ObserveValidationContractTest(unittest.TestCase):
 
     def test_runtime_performance_contract_is_emitted_and_budgeted(self) -> None:
         for token in (
+            "def runtime_performance_summary(",
             "runtime_performance_metrics",
             "runtime_performance_signal_present",
             "runtime_performance_budget_status",
@@ -146,8 +147,36 @@ class ObserveValidationContractTest(unittest.TestCase):
             "download_write_ms_median",
             "validation_command_duration_ms",
             "missing_runtime_performance_signal",
+            "not runtime_performance[\"runtime_performance_signal_present\"]",
         ):
             self.assertIn(token, self.script)
+
+    def test_runtime_performance_summary_is_source_derived_from_command_durations(self) -> None:
+        summary = self.observe_module.runtime_performance_summary(
+            [
+                {"name": "fast", "duration_ms": 10},
+                {"name": "slow", "duration_ms": 30},
+                {"name": "missing_duration"},
+            ]
+        )
+
+        self.assertTrue(summary["runtime_performance_signal_present"])
+        self.assertEqual(summary["runtime_performance_budget_status"], "pass")
+        self.assertEqual(summary["runtime_performance_budget_failures"], [])
+        self.assertEqual(summary["project_agent_elapsed_ms_median"], 10)
+        self.assertEqual(summary["project_agent_elapsed_ms_p95"], 30)
+        self.assertEqual(summary["download_initial_get_ms_median"], 0)
+        self.assertEqual(summary["download_follow_get_ms_median"], 0)
+        self.assertEqual(summary["download_write_ms_median"], 0)
+        self.assertEqual(summary["runtime_performance_metrics"]["validation_command_duration_ms"], 40)
+
+    def test_runtime_performance_summary_reports_missing_without_command_durations(self) -> None:
+        summary = self.observe_module.runtime_performance_summary([{"name": "missing_duration"}])
+
+        self.assertFalse(summary["runtime_performance_signal_present"])
+        self.assertEqual(summary["runtime_performance_budget_status"], "missing_signal")
+        self.assertEqual(summary["runtime_performance_metrics"], {})
+        self.assertIsNone(summary["project_agent_elapsed_ms_median"])
 
     def test_runtime_performance_budgets_are_environment_configurable(self) -> None:
         for name in (

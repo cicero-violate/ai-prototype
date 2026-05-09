@@ -3,14 +3,14 @@
 ## Current Progress Snapshot
 
 Date: 2026-05-09 America/Toronto / 2026-05-09 UTC
-Turn type: implementation step 2
-Scope executed: added executable configured-wrapper classifier coverage for all wrapper telemetry configuration branches.
+Turn type: implementation step 3
+Scope executed: derived runtime performance signal evidence from observe-validation command durations and cleared the permanent performance missing signal when command-duration evidence exists.
 
 Current timestamp evidence:
 
 ```text
 branch: main
-latest visible commit before this implementation turn: 4b48b96 Capture normal observe graph evidence
+latest visible commit before this implementation turn: 26898da Cover wrapper configuration classifier
 working directory: /workspace/ai_sandbox/canon-mini-agent/prototype/ai
 ```
 
@@ -19,6 +19,7 @@ working directory: /workspace/ai_sandbox/canon-mini-agent/prototype/ai
 Implementation, test, and planning/scoring files owned by this commit:
 
 ```text
+scripts/observe_validation.sh
 tests/test_observe_validation_contract.py
 plan.md
 score.md
@@ -28,15 +29,15 @@ Generated validation logs, graph reports, observe reports, `__pycache__`, and ex
 
 ## Scorecard
 
-Scores are approximate implementation-readiness scores on a 0-10 scale. Robustness and transparency move slightly upward because wrapper telemetry configuration is no longer only token-checked: the unit contract executes every classifier branch and verifies each reason string.
+Scores are approximate implementation-readiness scores on a 0-10 scale. Performance and transparency improve because observe-validation now emits source-derived runtime performance metrics from command duration evidence and clears the performance missing-signal flag when that evidence exists.
 
 ```text
 I  Intelligence      = 7.0
-E  Efficiency        = 7.2
+E  Efficiency        = 7.3
 C  Correctness       = 8.8
 A  Alignment         = 8.6
 R  Robustness        = 9.0
-P  Performance       = 5.9
+P  Performance       = 6.3
 S  Scalability       = 6.6
 D  Determinism       = 9.2
 T  Transparency      = 9.9
@@ -52,68 +53,75 @@ F  Future-Proofing   = 8.4
 Approximate geometric mean:
 
 ```text
-G ≈ 7.86 / 10
+G ≈ 7.89 / 10
 ```
 
 ## Completed Work This Turn
 
-- Read `plan.md`, `score.md`, repository status, latest commit, observe-validation wrapper classifier functions, and observe contract tests.
-- Selected the next P4 slice: configured-wrapper classification evidence without requiring live wrapper telemetry.
-- Added an executable observe-validation contract test that imports the Python observe script through `SourceFileLoader` despite its historical `.sh` suffix.
-- Executed `wrapper_graph_configuration_status()` for all branch combinations:
-  - no wrapper and no artifact directory → `not_configured`,
-  - artifact directory without wrapper → `artifact_dir_configured_without_wrapper`,
-  - wrapper set but unavailable, with and without artifact directory → `wrapper_configured_missing`,
-  - wrapper set and available, with and without artifact directory → `wrapper_configured_available`.
-- Verified `wrapper_graph_configuration_reason()` returns the expected explicit reason for each status.
-- Ran focused observe-validation contract, graph workflow fixture validator, graph fixture report-only, and Python compile checks.
+- Read `plan.md`, `score.md`, repository status, latest commit, observe-validation missing-signal logic, runtime performance fields, and performance receipt references.
+- Selected the next P4 slice: reduce a known missing signal without weakening optional wrapper telemetry semantics.
+- Added `numeric_values()`, `percentile_nearest_rank()`, `env_budget()`, and `runtime_performance_summary()` to `scripts/observe_validation.sh`.
+- Changed `missing_runtime_performance_signal` from a hardcoded `true` to a derived value based on command-duration evidence.
+- Changed validation summary runtime performance fields from hardcoded missing values to source-derived metrics.
+- Added observe-validation contract tests for source-derived command-duration performance evidence and missing-duration fallback.
+- Ran focused observe-validation contract, graph workflow fixture validator, graph fixture report-only, Python compile, and full observe-validation artifact inspection.
 
 ## Validation Evidence Captured This Turn
 
 ```text
 command: python3 -m unittest tests/test_observe_validation_contract.py
 exit: 0
-result: 19 passed; 0 failed
-log: target/validation-logs/observe-validation-contract-step2.log
-exit file: target/validation-logs/observe-validation-contract-step2.exit
+result: 21 passed; 0 failed
+log: target/validation-logs/observe-validation-contract-step3.log
+exit file: target/validation-logs/observe-validation-contract-step3.exit
 ```
 
 ```text
 command: python3 -m unittest tests/test_graph_workflow_fixture_validator.py
 exit: 0
 result: 2 passed; 0 failed
-log: target/validation-logs/graph-workflow-fixture-validator-step2.log
-exit file: target/validation-logs/graph-workflow-fixture-validator-step2.exit
+log: target/validation-logs/graph-workflow-fixture-validator-step3.log
+exit file: target/validation-logs/graph-workflow-fixture-validator-step3.exit
 ```
 
 ```text
-command: CANON_OBSERVE_REPORT=target/observe/graph-fixture-report-step2.ndjson python3 scripts/observe_validation.sh --graph-fixture-report
+command: CANON_OBSERVE_REPORT=target/observe/graph-fixture-report-step3.ndjson python3 scripts/observe_validation.sh --graph-fixture-report
 exit: 0
 result: validation_status=pass; graph_evidence_status=graph_mutation_landed_with_receipt_snapshot; graph_workflow_fixture_receipt_snapshot_present=True; graph_workflow_fixture_command_sequence_valid=True; graph_workflow_fixture_generated_outputs_present=True; graph_workflow_fixture_receipt_ledger_flow_valid=True
-log: target/validation-logs/graph-fixture-report-step2.log
-exit file: target/validation-logs/graph-fixture-report-step2.exit
-report: target/observe/graph-fixture-report-step2.ndjson
+log: target/validation-logs/graph-fixture-report-step3.log
+exit file: target/validation-logs/graph-fixture-report-step3.exit
+report: target/observe/graph-fixture-report-step3.ndjson
 ```
 
 ```text
 command: python3 -m py_compile scripts/observe_validation.sh tests/test_observe_validation_contract.py
 exit: 0
-log: target/validation-logs/py-compile-step2.log
-exit file: target/validation-logs/py-compile-step2.exit
+log: target/validation-logs/py-compile-step3.log
+exit file: target/validation-logs/py-compile-step3.exit
+```
+
+```text
+command: CANON_OBSERVE_REPORT=target/observe/full-observe-step3-performance.ndjson python3 scripts/observe_validation.sh
+connector result: 502 transport error during long command; ignored artifacts were produced
+exit file: target/validation-logs/full-observe-step3-performance.exit
+exit: 1
+result: validation_status=fail from known unrelated missing signals; runtime performance signal present and budget passing
+report: target/observe/full-observe-step3-performance.ndjson
+summary: runtime_performance_signal_present=True; runtime_performance_budget_status=pass; runtime_performance_budget_failures=[]; project_agent_elapsed_ms_median=267; project_agent_elapsed_ms_p95=816; missing_runtime_performance_signal=False; missing_signal_count=7
 ```
 
 ## Connector / Environment Notes
 
-- No live wrapper telemetry was configured in the environment.
-- The implementation therefore used a focused executable classifier contract rather than a long wrapper-configured observe-validation run.
-- The observe-validation script remains a Python script with a historical `.sh` filename; the test imports it with `SourceFileLoader` so pure functions can be executed directly.
+- The full observe-validation command again returned connector 502 during the long-running shell call, but ignored artifacts showed the script wrote its exit file and NDJSON report.
+- The full observe exit was `1`; this remains classified as expected current-state fail from known unrelated missing signals, not as a runtime performance evidence failure.
+- Wrapper graph telemetry remains optional because neither `CANON_RUSTC_WRAPPER` nor `CANON_RUSTC_V3_ARTIFACT_DIR` was configured.
 
 ## Current Risks / Gaps
 
 - Overall observe-validation still fails due known missing signals unrelated to this P4 slice.
 - Graph telemetry remains optional unless wrapper variables are configured.
 - No live wrapper-configured observe-validation run has been captured in this environment.
-- No fresh benchmark evidence has been captured.
+- Runtime archive, runtime prior state, runtime download index, runtime conversation ledger, wrapper telemetry, wrapper validation, and router offline test signals remain missing in the current environment.
 - Live router/MCP/Ollama/OpenAI paths still depend on environment services and can fail independently of core runtime correctness.
 - Future cross-subproject graph behavior changes still require updating the boundary contract and executable test first.
 
@@ -121,12 +129,12 @@ exit file: target/validation-logs/py-compile-step2.exit
 
 Raise scores only after fresh evidence:
 
-- **Correctness / Robustness:** live wrapper telemetry evidence is captured, or remaining missing-signal classifications are reduced with executable tests.
-- **Performance:** benchmark or runtime latency evidence is captured.
+- **Correctness / Robustness:** remaining missing-signal classifications are reduced with executable tests or source-derived observe evidence.
+- **Performance:** command-duration performance evidence is strengthened with external benchmark or latency trend data.
 - **Scalability:** multi-agent coordination and router failure scenarios are tested.
 - **Learning:** policy promotion remains externally evaluated and self-approval remains impossible under tests.
 - **Structure / Future-Proofing:** any future cross-subproject graph behavior change updates the boundary contract and executable test first.
 
 ## Immediate Next Action
 
-Continue P4 by either capturing live wrapper-configured observe-validation evidence when the environment supports it, or by reducing/contracting remaining known missing signals without weakening optional wrapper telemetry semantics.
+Continue P4 by reducing another known missing signal where evidence can be source-derived without weakening optional wrapper telemetry semantics. Prefer runtime archive evidence when available, router/offline test classification, or live wrapper-configured observe-validation evidence if the environment supports it.
