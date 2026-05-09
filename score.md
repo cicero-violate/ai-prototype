@@ -1,4 +1,4 @@
-When you read this. Update this score.
+When you read this. Update this document.
 
 # Canon Agent Score
 
