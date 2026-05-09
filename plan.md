@@ -6,10 +6,10 @@ Canon Agent is a Rust prototype for a deterministic, auditable, self-improving a
 
 The current working tree contains a broad, pre-existing implementation batch plus this planning/scoring refresh. This planning turn intentionally updates only `plan.md` and `score.md`; all source, test, example, and runtime implementation changes remain unowned by this turn and should be handled by the next execution turn.
 
-Current planning snapshot, 2026-05-08 America/Toronto / 2026-05-09T03:03:48Z UTC:
+Current planning snapshot, 2026-05-08 America/Toronto / 2026-05-09T03:09:57Z UTC:
 
 - Branch: `main`.
-- Latest visible planning commit before this turn: `e5105f3 Update Canon Agent planning and scoring`.
+- Latest visible planning commit before this turn: `6ccb3e3 Update Canon Agent planning and scoring`.
 - `plan.md` and `score.md` had no local diff at the start of this refresh.
 - Dirty implementation files are still present and must not be conflated with this planning/scoring commit.
 - The next execution turn should begin with diff review, not new feature work.
@@ -111,6 +111,10 @@ Latest known validation evidence from the prior implementation step:
 4. Record exact exit status and final output lines in `score.md`.
 5. If the all-target command passes, commit the reviewed implementation batch separately from planning/scoring.
 6. Move to P1 only after all-target tests have final pass/fail evidence.
+
+## Planning-Turn Handoff
+
+This turn does not change implementation priority or score ceilings. The correct next move is still validation closure, not additional architecture expansion. Treat any existing source/test/example modifications as an execution-turn batch requiring review, validation, scoring, and a separate commit.
 
 ## Current Non-Goals
 
