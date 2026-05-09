@@ -702,6 +702,10 @@ class DeltaManifestTest(unittest.TestCase):
         self.assertEqual(receipt["missing_signal_status"], "pass")
         self.assertFalse(receipt["missing_signal_flags"]["missing_graph_workflow_fixture_receipt_snapshot"])
         self.assertEqual(receipt["runtime_archive_evidence_source"], "compact_report")
+        self.assertTrue(receipt["connector_failure_classification_present"])
+        self.assertFalse(receipt["connector_failure_present"])
+        self.assertEqual(receipt["connector_failure_status"], "none")
+        self.assertEqual(receipt["connector_failure_classes"], [])
         self.assertFalse(receipt["connector_transport_instability_present"])
         self.assertEqual(
             receipt["connector_transport_artifact_classification"],
@@ -769,6 +773,9 @@ class DeltaManifestTest(unittest.TestCase):
             "ignored_runtime_artifact_count": 0,
             "ignored_validation_artifact_count": 0,
             "router_test_count": 0,
+            "connector_failure_classification_present": True,
+            "connector_failure_present": False,
+            "connector_failure_status": "none",
             "connector_transport_artifact_classification": "transport_interrupted_artifacts_complete",
             "runtime_manifest_base_matches_delta_base": True,
         })
@@ -815,6 +822,10 @@ class DeltaManifestTest(unittest.TestCase):
                 "ignored_runtime_artifact_count",
                 "ignored_validation_artifact_count",
                 "router_test_count",
+                "connector_failure_classification_present",
+                "connector_failure_present",
+                "connector_failure_status",
+                "connector_failure_classes",
                 "connector_transport_instability_present",
                 "connector_transport_artifact_classification",
                 "connector_transport_artifact_classification_options",

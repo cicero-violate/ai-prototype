@@ -4126,6 +4126,57 @@ Otherwise proceed only if:
 4. behavior-preserving test-helper cleanup improves evidence clarity without weakening explicit assertions.
 ```
 
+## Completed Implementation Step 2 After Connector Transport Coverage f9f945c
+
+Executed the next concrete plan trigger: compact full-summary preserved metric receiver hardening for connector failure classification evidence.
+
+Implementation details:
+
+```text
+- Re-read plan.md and score.md.
+- Confirmed the working tree was clean at turn start.
+- Compared scripts/write_delta_manifest.py PRESERVED_SUMMARY_KEYS against scripts/observe_validation.sh compact full-summary emission and tests/test_write_delta_manifest.py actual full-summary artifact coverage.
+- Found that connector_failure_classification_present, connector_failure_present, connector_failure_status, and connector_failure_classes were preserved and emitted, but absent from the actual compact full-summary artifact receiver assertions.
+- Strengthened tests/test_write_delta_manifest.py so generated --full-summary-report artifacts must preserve connector failure classification receipt values, render representative manifest values, and render each connector failure metric exactly once.
+- Kept the change test-only; no runtime agent behavior changed.
+```
+
+Behavior impact:
+
+```text
+- No runtime behavior changed.
+- Compact full-summary artifact receiver coverage now fails if connector failure classification presence, failure state, status, or class inventory is omitted or duplicated in actual-artifact manifest output.
+- The connector failure metric family now has the same actual compact full-summary receiver posture as connector transport evidence.
+```
+
+Validation evidence:
+
+```text
+command: python3 -m py_compile scripts/observe_validation.sh scripts/write_delta_manifest.py tests/test_observe_validation_contract.py tests/test_write_delta_manifest.py
+exit: 0
+log: target/validation-logs/py-compile-full-summary-connector-failure-impl-step2.log
+exit file: target/validation-logs/py-compile-full-summary-connector-failure-impl-step2.exit
+```
+
+```text
+command: python3 -m unittest tests.test_write_delta_manifest tests.test_observe_validation_contract
+exit: 0
+result: 67 passed; 0 failed
+log: target/validation-logs/python-full-summary-connector-failure-impl-step2.log
+exit file: target/validation-logs/python-full-summary-connector-failure-impl-step2.exit
+```
+
+Next execution slice:
+
+```text
+Continue P4 only if source inspection exposes another preserved metric/missing-signal family with incomplete emission, receipt preservation, exact manifest value coverage, or exact-once rendering coverage.
+Otherwise proceed only if:
+1. deliberate CANON_RUSTC_WRAPPER and CANON_RUSTC_V3_ARTIFACT_DIR inputs are available for live wrapper validation;
+2. compact receiver artifacts gain a new field, metric key, missing flag, or rendering semantic;
+3. source inspection exposes an uncovered deterministic failure-classification, replay, persistence, API adapter, graph evidence, or report fallback branch;
+4. behavior-preserving test-helper cleanup improves evidence clarity without weakening explicit assertions.
+```
+
 ## Completed Implementation Step 1 After Planning Checkpoint c3a2f54
 
 Executed the next concrete plan trigger: compact full-summary preserved metric receiver hardening for connector transport evidence.

@@ -3346,6 +3346,93 @@ Current risks / gaps:
 - P4 remains open only for additional source-justified compact evidence/reporting hardening or deterministic uncovered branch coverage.
 ```
 
+## Implementation Step 2 After Connector Transport Coverage f9f945c - Full Summary Connector Failure Receiver Coverage
+
+Completed work:
+
+```text
+- Inspected preserved summary keys, compact full-summary emission, and actual compact full-summary artifact receiver assertions.
+- Identified that connector_failure_classification_present, connector_failure_present, connector_failure_status, and connector_failure_classes were preserved and emitted, but the actual full-summary artifact path did not assert their receipt values or exact-once manifest rendering.
+- Strengthened tests/test_write_delta_manifest.py so actual --full-summary-report artifacts preserve connector failure classification fields and render the connector failure metric family exactly once.
+```
+
+Validation evidence captured this turn:
+
+```text
+command: python3 -m py_compile scripts/observe_validation.sh scripts/write_delta_manifest.py tests/test_observe_validation_contract.py tests/test_write_delta_manifest.py
+exit: 0
+log: target/validation-logs/py-compile-full-summary-connector-failure-impl-step2.log
+exit file: target/validation-logs/py-compile-full-summary-connector-failure-impl-step2.exit
+```
+
+```text
+command: python3 -m unittest tests.test_write_delta_manifest tests.test_observe_validation_contract
+exit: 0
+result: 67 passed; 0 failed
+log: target/validation-logs/python-full-summary-connector-failure-impl-step2.log
+exit file: target/validation-logs/python-full-summary-connector-failure-impl-step2.exit
+```
+
+```text
+command: TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test planning_contract -- --test-threads=1
+exit: 0
+result: 2 passed; 0 failed
+log: target/validation-logs/planning-contract-full-summary-connector-failure-impl-step2.log
+exit file: target/validation-logs/planning-contract-full-summary-connector-failure-impl-step2.exit
+```
+
+```text
+command: TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test score_contract -- --test-threads=1
+exit: 0
+result: 5 passed; 0 failed
+log: target/validation-logs/score-contract-full-summary-connector-failure-impl-step2.log
+exit file: target/validation-logs/score-contract-full-summary-connector-failure-impl-step2.exit
+```
+
+Score update:
+
+```text
+I  Intelligence      = 7.0
+E  Efficiency        = 7.92
+C  Correctness       = 9.991
+A  Alignment         = 8.8
+R  Robustness        = 10.0
+P  Performance       = 6.45
+S  Scalability       = 6.82
+D  Determinism       = 9.756
+T  Transparency      = 10.0
+Co Collaboration     = 8.0
+Em Empowerment       = 7.8
+B  Benefit           = 8.1
+L  Learning          = 7.1
+St Structure         = 9.75
+Si Simplicity        = 7.36
+F  Future-Proofing   = 9.338
+```
+
+Approximate geometric mean:
+
+```text
+G ≈ 8.33 / 10
+```
+
+Rationale:
+
+```text
+- Correctness improves slightly because actual compact full-summary artifact replay now requires connector failure classification evidence preservation in receipts.
+- Determinism improves slightly because connector failure preserved metrics now have exact-once manifest rendering checks in the actual-artifact path.
+- Future-proofing improves slightly because future changes to connector failure field semantics must be made deliberately under focused test coverage.
+- Runtime behavior and performance remain unchanged.
+```
+
+Current risks / gaps:
+
+```text
+- No fresh live wrapper-configured observe-validation evidence was captured.
+- Live graph telemetry still requires deliberate wrapper and artifact-dir inputs.
+- P4 remains open only for additional source-justified compact evidence/reporting hardening or deterministic uncovered branch coverage.
+```
+
 ## Planning / Scoring Checkpoint After Commit c6c53b4
 
 Date: 2026-05-09 America/Toronto / 2026-05-09 UTC
