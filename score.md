@@ -3,24 +3,22 @@
 ## Current Progress Snapshot
 
 Date: 2026-05-09 America/Toronto / 2026-05-09 UTC
-Turn type: implementation step 5
-Scope executed: derived runtime manifest base-match evidence from archived runtime manifest metadata and verified it with a synthetic runtime archive.
+Turn type: planning/scoring
+Scope executed: updated the current implementation plan and score snapshot after commit `441485d`, selected the next P4 execution slice, and left implementation files unchanged.
 
 Current timestamp evidence:
 
 ```text
 branch: main
-latest visible commit before this implementation turn: 910d3f3 Derive runtime archive missing flags
+latest visible commit before this planning turn: 441485d Derive runtime manifest base match
 working directory: /workspace/ai_sandbox/canon-mini-agent/prototype/ai
 ```
 
 ## Current Git State
 
-Implementation, test, and planning/scoring files owned by this commit:
+Planning/scoring files owned by this commit:
 
 ```text
-scripts/observe_validation.sh
-tests/test_observe_validation_contract.py
 plan.md
 score.md
 ```
@@ -29,7 +27,7 @@ Generated validation logs, graph reports, observe reports, synthetic runtime arc
 
 ## Scorecard
 
-Scores are approximate implementation-readiness scores on a 0-10 scale. Correctness and transparency improve because runtime manifest base-match evidence now depends on parsed archived manifest metadata rather than a coarse environment-variable presence check.
+Scores are approximate implementation-readiness scores on a 0-10 scale. Scores are held steady during this planning/scoring turn because no implementation or validation behavior changed.
 
 ```text
 I  Intelligence      = 7.0
@@ -56,16 +54,16 @@ Approximate geometric mean:
 G ≈ 7.91 / 10
 ```
 
-## Completed Work This Turn
+## Completed Work This Planning Turn
 
-- Read `plan.md`, `score.md`, repository status, latest commit, runtime archive inspection logic, runtime manifest base-match fields, and remaining missing-signal flags.
-- Selected the next P4 slice: reduce runtime manifest base-match missing signal without weakening optional wrapper telemetry semantics.
-- Updated `inspect_runtime_archive()` to parse `runtime-manifest.json` inside runtime archives and record `runtime_manifest_base_commit` from `base_commit`, `delta_base`, or `base`.
-- Changed `missing_runtime_manifest_base_match` to require `CANON_DELTA_BASE` to match the parsed archived manifest base commit.
-- Added observe-validation contract coverage for archived manifest base extraction and matching behavior.
-- Ran focused observe-validation contract, graph workflow fixture validator, graph fixture report-only, Python compile, and full observe-validation artifact inspection with a synthetic runtime archive and matching base.
+- Inspected repository status and confirmed the latest visible commit is `441485d Derive runtime manifest base match`.
+- Read the current `plan.md` and `score.md` state.
+- Kept this turn scoped to planning/scoring only.
+- Updated `plan.md` to mark the next selected P4 execution slice as router/offline missing-signal classification.
+- Updated `score.md` to record the planning turn, steady scores, and next validation expectations.
+- Planned to stage and commit only `plan.md` and `score.md`.
 
-## Validation Evidence Captured This Turn
+## Validation Evidence Reviewed From Previous Implementation Turn
 
 ```text
 command: python3 -m unittest tests/test_observe_validation_contract.py
@@ -111,11 +109,10 @@ summary: runtime_manifest_base_expected=base-step5; runtime_manifest_base_commit
 
 ## Connector / Environment Notes
 
-- The full observe-validation command again returned connector 502 during the long-running shell call, but ignored artifacts showed the script wrote its exit file and NDJSON report.
-- The full observe exit was `1`; this remains classified as expected current-state fail from remaining known missing signals, not as a runtime archive or manifest base-match evidence failure.
-- The `CANON_DELTA_BASE=base-step5` value is intentionally synthetic and is not a valid Git object; the script logged `fatal: Not a valid object name base-step5` from the Git ancestry check, but the runtime manifest base-match evidence correctly compared the archived manifest value to the configured base.
-- Wrapper graph telemetry remains optional because neither `CANON_RUSTC_WRAPPER` nor `CANON_RUSTC_V3_ARTIFACT_DIR` was configured.
-- The synthetic runtime archive was generated under ignored `target/` paths and was not staged.
+- No implementation validation commands were run during this planning/scoring turn.
+- Prior implementation evidence remains the latest validation basis until the next execution turn.
+- Wrapper graph telemetry remains optional because neither `CANON_RUSTC_WRAPPER` nor `CANON_RUSTC_V3_ARTIFACT_DIR` is configured in the recorded environment.
+- Generated validation logs, reports, synthetic runtime archives, and exit files remain ignored and unstaged.
 
 ## Current Risks / Gaps
 
@@ -138,4 +135,4 @@ Raise scores only after fresh evidence:
 
 ## Immediate Next Action
 
-Continue P4 by reducing another known missing signal where evidence can be source-derived without weakening optional wrapper telemetry semantics. Prefer router/offline test classification, configured wrapper validation evidence, or clearer separation of optional wrapper telemetry from required validation status.
+Continue P4 by reducing the router/offline missing-signal gap where evidence can be source-derived without weakening optional wrapper telemetry semantics. The next execution turn should inspect observe-validation missing-signal logic, add focused executable classification coverage, and verify that graph fixture, receipt replay, runtime archive, runtime manifest, and performance evidence remain stable.
