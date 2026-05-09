@@ -708,6 +708,11 @@ class DeltaManifestTest(unittest.TestCase):
         self.assertTrue(receipt["runtime_manifest_base_matches_delta_base"])
         self.assertEqual(receipt["runtime_archive_delta_receipt_files"], 0)
         self.assertEqual(receipt["runtime_archive_audit_files"], 0)
+        self.assertEqual(receipt["policy_learning_trace_validation_result"], "pass")
+        self.assertEqual(receipt["policy_learning_trace_status"], "pass")
+        self.assertEqual(receipt["policy_learning_trace_missing_count"], 0)
+        self.assertEqual(receipt["panic_surface_production_unwrap_count"], 0)
+        self.assertEqual(receipt["panic_surface_test_total"], 319)
         self.assertEqual(receipt["router_test_count"], 0)
         self.assert_compact_full_summary_command_receipt(receipt)
         for command in receipt["validation_commands"]:
@@ -720,6 +725,11 @@ class DeltaManifestTest(unittest.TestCase):
             "runtime_archive_evidence_source": "compact_report",
             "full_summary_report_only": True,
             "full_summary_report_command": "--full-summary-report",
+            "policy_learning_trace_validation_result": "pass",
+            "policy_learning_trace_status": "pass",
+            "policy_learning_trace_missing_count": 0,
+            "panic_surface_production_unwrap_count": 0,
+            "panic_surface_test_total": 319,
             "router_test_count": 0,
             "connector_transport_artifact_classification": "transport_interrupted_artifacts_complete",
             "runtime_manifest_base_matches_delta_base": True,
@@ -743,6 +753,16 @@ class DeltaManifestTest(unittest.TestCase):
                 "runtime_manifest_base_expected",
                 "runtime_manifest_base_commit",
                 "runtime_manifest_base_matches_delta_base",
+                "policy_learning_trace_validation_result",
+                "policy_learning_trace_status",
+                "policy_learning_trace_function",
+                "policy_learning_trace_check_count",
+                "policy_learning_trace_missing_count",
+                "panic_surface_production_unwrap_count",
+                "panic_surface_production_expect_count",
+                "panic_surface_production_panic_count",
+                "panic_surface_test_total",
+                "panic_surface_example_total",
                 "router_test_count",
             ),
         )
