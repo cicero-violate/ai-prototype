@@ -3,15 +3,15 @@
 ## Current Progress Snapshot
 
 Date: 2026-05-08 America/Toronto / 2026-05-09 UTC
-Turn type: implementation step 1
-Scope executed: completed and validated the P3 API transport receipt consumer integration batch.
+Turn type: implementation step 2
+Scope executed: added and validated P3 worker HTTP API compatibility coverage for batch limits and invalid envelopes.
 
 Current timestamp evidence:
 
 ```text
-2026-05-09 00:39:38 EDT America/Toronto / 2026-05-09T04:39:38Z UTC
+2026-05-09 00:42:34 EDT America/Toronto / 2026-05-09T04:42:34Z UTC
 branch: main
-latest visible prior commit before this implementation turn: abbe0df Update Canon Agent planning and scoring
+latest visible prior commit before this implementation turn: cbff53f Wire API transport receipt replay verifier
 working directory: /workspace/ai_sandbox/canon-mini-agent/prototype/ai
 ```
 
@@ -20,9 +20,7 @@ working directory: /workspace/ai_sandbox/canon-mini-agent/prototype/ai
 Implementation, test, and planning/scoring files owned by this commit:
 
 ```text
-src/api/transport.rs
-src/lib.rs
-tests/api_transport_contract.rs
+tests/api_server_contract.rs
 plan.md
 score.md
 ```
@@ -31,14 +29,14 @@ Generated validation logs and exit files are intentionally left under ignored `t
 
 ## Scorecard
 
-Scores are approximate implementation-readiness scores on a 0-10 scale. Correctness, robustness, determinism, and transparency improve because the receipt-chain verifier is now consumed by the durable API transport receipt path and exposes compact failure classifications through contract tests.
+Scores are approximate implementation-readiness scores on a 0-10 scale. Correctness and robustness improve because the worker HTTP API boundary now has explicit atomic rejection coverage for oversized batches, malformed batch payloads, and tampered envelopes.
 
 ```text
 I  Intelligence      = 7.0
 E  Efficiency        = 7.0
-C  Correctness       = 8.2
+C  Correctness       = 8.3
 A  Alignment         = 8.5
-R  Robustness        = 8.3
+R  Robustness        = 8.4
 P  Performance       = 5.9
 S  Scalability       = 6.5
 D  Determinism       = 8.9
@@ -47,7 +45,7 @@ Co Collaboration     = 7.9
 Em Empowerment       = 7.5
 B  Benefit           = 7.8
 L  Learning          = 7.1
-St Structure         = 8.3
+St Structure         = 8.4
 Si Simplicity        = 6.6
 F  Future-Proofing   = 8.0
 ```
@@ -55,59 +53,49 @@ F  Future-Proofing   = 8.0
 Approximate geometric mean:
 
 ```text
-G ≈ 7.60 / 10
+G ≈ 7.62 / 10
 ```
 
 ## Completed Work This Turn
 
-- Read `plan.md`, `score.md`, current repository status, and the existing P3 API transport implementation diff.
-- Wired `verify_receipt_chain` into the durable API transport receipt consumer.
-- Added API transport receipt-chain APIs:
-  - `verify_api_transport_receipt_chain`
-  - `verify_api_transport_receipt_chain_with_expected_count`
-  - `api_transport_receipt_replay_classification`
-  - `api_transport_receipt_replay_classification_with_expected_count`
-- Kept `verify_api_transport_receipts` as the stable `CanonError`-returning API while routing its checks through the receipt-chain verifier.
-- Exported the new API transport receipt-chain functions from `src/lib.rs`.
-- Added API transport contract coverage for:
-  - valid receipt-chain replay report
-  - missing receipt with explicit expected count
-  - stale receipt not backed by the current TLog
-  - duplicated receipt
-  - reordered receipts
-  - forged receipt hash
-- Re-ran focused validation, formatting, lib tests, and clippy before commit.
+- Read `plan.md`, `score.md`, current repository status, API protocol/routes, worker API server tests, worker binary tests, and supervisor binary tests.
+- Selected the next concrete P3 compatibility slice: worker HTTP boundary coverage for batch command limits and invalid envelopes.
+- Added API server contract coverage for oversized `SubmitEvidenceBatch` requests exceeding `API_COMMAND_BATCH_LIMIT`.
+- Added API server contract coverage for malformed batch payload JSON that cannot decode into batch submissions.
+- Added API server contract coverage for tampered batch envelope hashes.
+- Each new worker-boundary test asserts `400 BAD_REQUEST`, unchanged state snapshot, and no durable TLog file write.
+- Re-ran targeted API server tests, formatting, lib tests, and clippy before commit.
 
 ## Validation Evidence Captured This Turn
 
 ```text
-command: TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test api_transport_contract -- --test-threads=1
+command: TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test api_server_contract -- --test-threads=1
 exit: 0
-result: 19 passed; 0 failed
-log: target/validation-logs/api-transport-contract-impl-step1.log
-exit file: target/validation-logs/api-transport-contract-impl-step1.exit
+result: 8 passed; 0 failed
+log: target/validation-logs/api-server-contract-impl-step2.log
+exit file: target/validation-logs/api-server-contract-impl-step2.exit
 ```
 
 ```text
 command: RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo fmt --check
 exit: 0
-log: target/validation-logs/fmt-impl-step1.log
-exit file: target/validation-logs/fmt-impl-step1.exit
+log: target/validation-logs/fmt-impl-step2.log
+exit file: target/validation-logs/fmt-impl-step2.exit
 ```
 
 ```text
 command: TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --lib -- --test-threads=1
 exit: 0
-result: 209 passed; 0 failed; finished in 0.41s
-log: target/validation-logs/test-lib-impl-step1.log
-exit file: target/validation-logs/test-lib-impl-step1.exit
+result: 209 passed; 0 failed; finished in 0.43s
+log: target/validation-logs/test-lib-impl-step2.log
+exit file: target/validation-logs/test-lib-impl-step2.exit
 ```
 
 ```text
 command: TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo clippy --all-targets -- -D warnings
 exit: 0
-log: target/validation-logs/clippy-impl-step1.log
-exit file: target/validation-logs/clippy-impl-step1.exit
+log: target/validation-logs/clippy-impl-step2.log
+exit file: target/validation-logs/clippy-impl-step2.exit
 ```
 
 ## Connector / Environment Notes
@@ -119,7 +107,8 @@ exit file: target/validation-logs/clippy-impl-step1.exit
 
 ## Current Risks / Gaps
 
-- API/worker compatibility coverage for batch command limits, invalid envelopes, durable resume behavior, and supervisor reload remains pending.
+- API/worker compatibility coverage for durable resume behavior and supervisor reload edge cases remains pending.
+- Batch command limit and invalid envelope coverage now exists at the worker HTTP route boundary.
 - Compact receipt-chain classifications are exposed by the API transport consumer, but not yet emitted as validation-report rows.
 - Full all-target validation was not rerun this step because prior turns showed quota pressure; this turn used targeted API transport tests plus lib/fmt/clippy.
 - No fresh benchmark evidence has been captured.
@@ -129,7 +118,7 @@ exit file: target/validation-logs/clippy-impl-step1.exit
 
 Raise scores only after fresh evidence:
 
-- **Correctness / Robustness:** API/worker compatibility rejects batch over-limit, invalid envelopes, stale durable resume, and supervisor reload regressions.
+- **Correctness / Robustness:** API/worker compatibility rejects stale durable resume and supervisor reload regressions.
 - **Transparency:** compact receipt-chain classifications are emitted in persisted validation/report evidence when relevant.
 - **Performance:** benchmark or runtime latency evidence is captured.
 - **Scalability:** multi-agent coordination and router failure scenarios are tested.
@@ -137,4 +126,4 @@ Raise scores only after fresh evidence:
 
 ## Immediate Next Action
 
-Continue P3 with API/worker compatibility coverage for batch command limits, invalid envelopes, durable resume behavior, and supervisor reload. Preserve the receipt-chain classification behavior while adding those tests.
+Continue P3 with API/worker compatibility coverage for durable resume behavior and supervisor reload edge cases. Preserve the receipt-chain classification and worker-boundary atomic rejection behavior while adding those tests.

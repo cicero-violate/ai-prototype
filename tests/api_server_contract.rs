@@ -48,6 +48,23 @@ fn command_body(command_id: u64, submission: EvidenceSubmission) -> serde_json::
     })
 }
 
+fn evidence_batch_body(command_id: u64, submissions: &[EvidenceSubmission]) -> serde_json::Value {
+    let envelope = CommandEnvelope::new(
+        command_id,
+        Command::SubmitEvidenceBatch(submissions.to_vec()),
+    );
+    let payload: Vec<_> = submissions
+        .iter()
+        .map(|submission| invariant_payload(submission.payload_hash))
+        .collect();
+    serde_json::json!({
+        "command_id": envelope.command_id,
+        "command_hash": envelope.command_hash,
+        "payload_tag": "SubmitEvidenceBatch",
+        "payload": payload,
+    })
+}
+
 fn command_body_with_payload(
     command_id: u64,
     submission: EvidenceSubmission,
@@ -255,6 +272,109 @@ async fn invalid_command_does_not_mutate_state() {
         "payload_tag": "Unknown",
         "payload": {}
     });
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/v1/command")
+                .header("Content-Type", "application/json")
+                .body(Body::from(body.to_string()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+    assert_eq!(state.snapshot().unwrap(), before);
+    assert!(!path.exists());
+}
+
+#[tokio::test]
+async fn oversized_batch_command_does_not_mutate_state_or_disk() {
+    let path = tlog_path("oversized-batch");
+    let _ = std::fs::remove_file(&path);
+    let state = WorkerAppState::new_default(&path);
+    let before = state.snapshot().unwrap();
+    let app = build_router(state.clone());
+    let submissions: Vec<_> = (0..=ai::api::protocol::API_COMMAND_BATCH_LIMIT)
+        .map(|idx| {
+            EvidenceSubmission::with_payload(
+                ai::GateId::Invariant,
+                ai::Evidence::InvariantProof,
+                true,
+                0x9000 + idx as u64,
+            )
+        })
+        .collect();
+    let body = evidence_batch_body(61, &submissions);
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/v1/command")
+                .header("Content-Type", "application/json")
+                .body(Body::from(body.to_string()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+    assert_eq!(state.snapshot().unwrap(), before);
+    assert!(!path.exists());
+}
+
+#[tokio::test]
+async fn malformed_batch_payload_does_not_mutate_state_or_disk() {
+    let path = tlog_path("malformed-batch");
+    let _ = std::fs::remove_file(&path);
+    let state = WorkerAppState::new_default(&path);
+    let before = state.snapshot().unwrap();
+    let app = build_router(state.clone());
+    let valid = EvidenceSubmission::with_payload(
+        ai::GateId::Invariant,
+        ai::Evidence::InvariantProof,
+        true,
+        0xabc,
+    );
+    let mut body = evidence_batch_body(62, &[valid]);
+    body["payload"] = serde_json::json!({ "not": "a batch array" });
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/v1/command")
+                .header("Content-Type", "application/json")
+                .body(Body::from(body.to_string()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+    assert_eq!(state.snapshot().unwrap(), before);
+    assert!(!path.exists());
+}
+
+#[tokio::test]
+async fn tampered_batch_envelope_does_not_mutate_state_or_disk() {
+    let path = tlog_path("tampered-batch-envelope");
+    let _ = std::fs::remove_file(&path);
+    let state = WorkerAppState::new_default(&path);
+    let before = state.snapshot().unwrap();
+    let app = build_router(state.clone());
+    let valid = EvidenceSubmission::with_payload(
+        ai::GateId::Invariant,
+        ai::Evidence::InvariantProof,
+        true,
+        0xabc,
+    );
+    let mut body = evidence_batch_body(63, &[valid]);
+    body["command_hash"] =
+        serde_json::json!(body["command_hash"].as_u64().unwrap().wrapping_add(1));
 
     let response = app
         .oneshot(

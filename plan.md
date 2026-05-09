@@ -4,13 +4,13 @@
 
 Canon Agent is a Rust prototype for a deterministic, auditable, self-improving agent runtime. The target architecture remains a formally constrained state-machine kernel with a capability layer around it. The kernel owns correctness, state transitions, durable records, replay boundaries, and audit evidence. LLMs and tools operate inside the capability layer and must produce typed, reviewable evidence rather than governing the runtime directly.
 
-Current implementation snapshot, 2026-05-09 00:39:38 EDT America/Toronto / 2026-05-09T04:39:38Z UTC:
+Current implementation snapshot, 2026-05-09 00:42:34 EDT America/Toronto / 2026-05-09T04:42:34Z UTC:
 
 - Branch: `main`.
-- Latest visible prior commit before this implementation turn: `abbe0df Update Canon Agent planning and scoring`.
+- Latest visible prior commit before this implementation turn: `cbff53f Wire API transport receipt replay verifier`.
 - The requested working directory resolves to the connector workspace root: `/workspace/ai_sandbox/canon-mini-agent/prototype/ai`.
-- This implementation step completed and validated the P3 API transport receipt consumer integration batch.
-- The API transport receipt path now consumes the receipt-chain verifier and exposes compact replay classifications for consumer contracts.
+- This implementation step added worker HTTP API compatibility coverage for oversized batches, malformed batch payloads, and tampered batch envelopes.
+- The worker route-level compatibility tests prove invalid batch/envelope input is rejected atomically without mutating in-memory state or writing a durable TLog file.
 - The pre-existing implementation batch has now been reviewed at diff level and validated.
 - P0 validation baseline is closed with fresh all-target, fmt, lib-test, and clippy evidence.
 - Connector 502s occurred during long-running validation polling, but redirected/detached validation evidence completed with exit files and final test summaries.
@@ -143,7 +143,16 @@ Fresh validation evidence from implementation step 1:
    - Any future policy-learning admission must remain gated by external evaluator evidence.
    - LLM-authored candidates may propose changes but cannot self-certify them into learning data.
 3. Tighten API/worker compatibility for batch command limits, invalid envelopes, durable resume behavior, and supervisor reload.
-   - Treat these as follow-on P3 slices after the receipt/replay invariant tests are established.
+   - Added route-level worker API contract coverage for oversized `SubmitEvidenceBatch` payloads exceeding `API_COMMAND_BATCH_LIMIT`.
+   - Added route-level worker API contract coverage for malformed batch payloads that decode incorrectly.
+   - Added route-level worker API contract coverage for tampered batch envelope hashes.
+   - Each new test asserts `400 BAD_REQUEST`, unchanged worker state snapshot, and no durable TLog write.
+   - Validation evidence from current implementation step:
+     - `cargo test --test api_server_contract -- --test-threads=1` passed; 8 tests; exit `0`; log `target/validation-logs/api-server-contract-impl-step2.log`.
+     - `cargo fmt --check` passed; exit `0`; log `target/validation-logs/fmt-impl-step2.log`.
+     - `cargo test --lib -- --test-threads=1` passed; 209 tests; exit `0`; log `target/validation-logs/test-lib-impl-step2.log`.
+     - `cargo clippy --all-targets -- -D warnings` passed; exit `0`; log `target/validation-logs/clippy-impl-step2.log`.
+   - Remaining P3 API/worker compatibility slices: durable resume behavior and supervisor reload edge cases.
 
 ### P4 — Graph source-of-truth integration
 
@@ -159,7 +168,7 @@ Fresh validation evidence from implementation step 1:
 
 ## Next Execute-Turn Recommendation
 
-1. Continue P3 with API/worker compatibility coverage for batch command limits, invalid envelopes, durable resume behavior, and supervisor reload.
+1. Continue P3 with API/worker compatibility coverage for durable resume behavior and supervisor reload edge cases.
 2. Consider wiring compact receipt-chain classifications into validation-report output if a report consumer needs persisted failure-class rows.
 3. Keep policy promotion externally verified; never let the LLM approve its own candidates.
 4. Continue using `TMPDIR="$PWD/target/test-tmp"` for Rust tests in quota-sensitive sandboxes.
@@ -167,7 +176,7 @@ Fresh validation evidence from implementation step 1:
 
 ## Planning-Turn Handoff
 
-P0, P1, and P2 are complete. P3 is now in progress with the receipt-chain invariant verifier implemented and wired into the durable API transport receipt consumer. The next execution turn should continue P3 with API/worker compatibility coverage for batch command limits, invalid envelopes, durable resume behavior, and supervisor reload.
+P0, P1, and P2 are complete. P3 is now in progress with the receipt-chain invariant verifier implemented, wired into the durable API transport receipt consumer, and supplemented by worker HTTP boundary tests for batch limits and invalid envelopes. The next execution turn should continue P3 with durable resume behavior and supervisor reload edge-case coverage.
 
 ## Current Non-Goals
 
