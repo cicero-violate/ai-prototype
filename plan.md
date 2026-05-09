@@ -7,13 +7,13 @@ Canon Agent is a Rust prototype for a deterministic, auditable, self-improving a
 Current implementation snapshot, 2026-05-09 America/Toronto / 2026-05-09 UTC:
 
 - Branch: `main`.
-- Latest visible commit before this implementation turn: `2b72315 Clean up current planning state`.
+- Latest visible commit before this planning turn: `7f1b5e4 Add compact full summary report`.
 - Working directory: `/workspace/ai_sandbox/canon-mini-agent/prototype/ai`.
 - P0 validation baseline is complete.
 - P1 validation evidence reporting is complete.
 - P2 agent loop reliability is complete.
 - P3 runtime and receipt correctness is complete for the current scope.
-- P4 graph source-of-truth integration now includes persisted graph evidence classification, deterministic fixture-backed positive evidence for landed graph mutations with receipt snapshots, command-sequenced workflow fixture validation, a compact graph-only report mode, documented/tested root runtime, wrapper, and editor subproject boundaries, a standalone graph workflow fixture validator consumed by observe-validation, full observe-validation command evidence for that validator, explicit wrapper telemetry configuration classification, normal-path observe-validation summary evidence for graph fixture, wrapper configuration, receipt replay classification, and missing-signal coherence, executable configured-wrapper classifier branch coverage, source-derived runtime performance signal evidence from observe-validation command durations, runtime archive missing-signal derivation from inspected archive contents, runtime manifest base-match derivation from archived manifest metadata, explicit router/offline availability classification in observe-validation summary evidence, optional wrapper graph validation missing-signal derivation, generated graph JSON evidence classification, compact runtime archive report integration, separated validation status fields, compact command-execution reports, connector transport artifact classification, and delta manifest preservation of transport artifact state. The working tree is expected to be clean at the start of implementation step 5.
+- P4 graph source-of-truth integration now includes persisted graph evidence classification, deterministic fixture-backed positive evidence for landed graph mutations with receipt snapshots, command-sequenced workflow fixture validation, a compact graph-only report mode, documented/tested root runtime, wrapper, and editor subproject boundaries, a standalone graph workflow fixture validator consumed by observe-validation, full observe-validation command evidence for that validator, explicit wrapper telemetry configuration classification, normal-path observe-validation summary evidence for graph fixture, wrapper configuration, receipt replay classification, and missing-signal coherence, executable configured-wrapper classifier branch coverage, source-derived runtime performance signal evidence from observe-validation command durations, runtime archive missing-signal derivation from inspected archive contents, runtime manifest base-match derivation from archived manifest metadata, explicit router/offline availability classification in observe-validation summary evidence, optional wrapper graph validation missing-signal derivation, generated graph JSON evidence classification, compact runtime archive report integration, separated validation status fields, compact command-execution reports, connector transport artifact classification, and delta manifest preservation of transport artifact state. The working tree is clean at the start of planning step 6.
 
 ## Current P4 Completion Summary
 
@@ -25,7 +25,7 @@ The current source-of-truth plan state is:
 4. Connector transport artifact classification is landed and distinguishes complete versus incomplete artifacts after transport interruption.
 5. Delta manifests preserve connector transport artifact evidence, so downstream receipts do not rely only on `connector_transport_instability_present`.
 
-Current next implementation target: use the compact full-summary report as the short deterministic evidence path for command execution status, missing-signal status, connector transport artifact classification, compact runtime evidence, and delta manifest preservation.
+Current next implementation target: add focused receiver/archive coverage that generates a delta manifest from an actual `--full-summary-report` artifact, proving compact full-summary replay is not only schema-compatible but also usable as the source artifact in the manifest workflow.
 
 ## Operating Rules For Agent Turns
 
@@ -964,3 +964,70 @@ Continue P4 by using the compact full-summary report as a reusable fixture in an
 - Do not add live trading behavior.
 - Do not rely on external LLM/Ollama/OpenAI availability for baseline correctness.
 - Do not commit token caches, runtime archives, target outputs, validation logs, or SSE chunk logs.
+
+## Planning Step 6 — Current Implementation Plan
+
+This turn is planning/scoring only. No implementation files should be changed in this turn.
+
+### Immediate execution target for the next implementation turn
+
+Add a focused integration test or script-level contract that generates a delta manifest from an actual compact full-summary artifact produced by:
+
+```text
+python3 scripts/observe_validation.sh --full-summary-report
+```
+
+The next implementation should prove the generated artifact can feed `scripts/write_delta_manifest.py` end-to-end, rather than only proving that a hand-constructed or in-memory full-summary-shaped row is accepted by existing manifest tests.
+
+### Required acceptance criteria
+
+1. The test creates a temporary observe report path under an ignored output location such as `target/observe/` or a test temporary directory.
+2. The test invokes or faithfully executes the actual `--full-summary-report` path.
+3. The test feeds that emitted report into the delta manifest writer.
+4. The resulting manifest preserves at least these fields:
+   - `validation_status=pass`
+   - `command_execution_status=pass`
+   - `missing_signal_status=pass`
+   - `connector_transport_artifact_classification=transport_interrupted_artifacts_complete`
+   - `runtime_archive_evidence_source=compact_report`
+   - command rows containing `cmd` values suitable for closure validation
+5. The test remains short and deterministic, with no dependency on live wrapper telemetry, router, Ollama, OpenAI, network, long cargo validation, or external services.
+6. Existing compact modes must remain intact:
+   - `--graph-fixture-report`
+   - `--command-execution-report`
+   - `--full-summary-report`
+7. Existing separated status semantics must remain intact:
+   - `validation_status`
+   - `command_execution_status`
+   - `missing_signal_status`
+
+### Candidate file scope for next implementation turn
+
+Likely files:
+
+```text
+tests/test_write_delta_manifest.py
+scripts/observe_validation.sh
+plan.md
+score.md
+```
+
+`tests/test_write_delta_manifest.py` is the preferred first target. Modify `scripts/observe_validation.sh` only if the real emitted report lacks fields needed for manifest generation or closure validation.
+
+### Suggested validation commands for next implementation turn
+
+```text
+python3 -m unittest tests/test_write_delta_manifest.py
+python3 -m unittest tests/test_observe_validation_contract.py
+python3 -m py_compile scripts/observe_validation.sh scripts/write_delta_manifest.py tests/test_write_delta_manifest.py tests/test_observe_validation_contract.py
+```
+
+If the implementation touches only manifest tests and no observe-validation behavior, the observe-validation contract can still be run as a regression guard because this slice depends on the compact full-summary report contract.
+
+### Non-goals for next implementation turn
+
+- Do not run or require long full observe-validation.
+- Do not add live wrapper-configured validation as a prerequisite.
+- Do not introduce network, model-provider, or router dependencies.
+- Do not broaden graph workflow semantics.
+- Do not change scoring upward unless the new end-to-end manifest-from-real-report evidence passes.
