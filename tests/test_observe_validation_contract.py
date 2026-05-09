@@ -206,7 +206,9 @@ class ObserveValidationContractTest(unittest.TestCase):
         for token in (
             "runtime_manifest_base_expected",
             "runtime_manifest_base_matches_delta_base",
+            "runtime_manifest_base_commit",
             "missing_runtime_manifest_base_match",
+            'base and runtime.get("runtime_manifest_base_commit") == base',
         ):
             self.assertIn(token, self.script)
 
@@ -238,7 +240,7 @@ class ObserveValidationContractTest(unittest.TestCase):
                 "runtime/prior-state.json": "{}",
                 "runtime/conversation-ledger.ndjson": "",
                 "runtime/current-run-summary.json": "{}",
-                "runtime/runtime-manifest.json": "{}",
+                "runtime/runtime-manifest.json": '{"base_commit":"base-123"}',
             }
             for rel, content in files.items():
                 path = root / rel
@@ -257,9 +259,27 @@ class ObserveValidationContractTest(unittest.TestCase):
         self.assertGreater(result["runtime_archive_conversation_ledger_files"], 0)
         self.assertTrue(result["runtime_archive_current_run_summary_present"])
         self.assertTrue(result["runtime_archive_runtime_manifest_present"])
+        self.assertEqual(result["runtime_manifest_base_commit"], "base-123")
         self.assertIn('"missing_runtime_download_index": runtime.get("runtime_archive_download_index_files", 0) <= 0', self.script)
         self.assertIn('"missing_runtime_prior_state": runtime.get("runtime_archive_prior_state_files", 0) <= 0', self.script)
         self.assertIn('"missing_runtime_conversation_ledger": runtime.get("runtime_archive_conversation_ledger_files", 0) <= 0', self.script)
+
+
+    def test_runtime_manifest_base_match_uses_archive_manifest_commit(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            manifest = root / "runtime" / "runtime-manifest.json"
+            manifest.parent.mkdir(parents=True, exist_ok=True)
+            manifest.write_text('{"base_commit":"abc123"}', encoding="utf-8")
+            archive = root / "runtime.tar"
+            with tarfile.open(archive, "w") as tf:
+                tf.add(manifest, arcname="runtime/runtime-manifest.json")
+
+            runtime = self.observe_module.inspect_runtime_archive(str(archive))
+
+        self.assertEqual(runtime["runtime_manifest_base_commit"], "abc123")
+        self.assertTrue("abc123" and runtime.get("runtime_manifest_base_commit") == "abc123")
+        self.assertFalse("other" and runtime.get("runtime_manifest_base_commit") == "other")
 
     def test_connector_failure_classification_is_emitted(self) -> None:
         for token in (

@@ -3,14 +3,14 @@
 ## Current Progress Snapshot
 
 Date: 2026-05-09 America/Toronto / 2026-05-09 UTC
-Turn type: implementation step 4
-Scope executed: derived runtime archive missing-signal flags from inspected archive contents and verified them with a synthetic runtime archive.
+Turn type: implementation step 5
+Scope executed: derived runtime manifest base-match evidence from archived runtime manifest metadata and verified it with a synthetic runtime archive.
 
 Current timestamp evidence:
 
 ```text
 branch: main
-latest visible commit before this implementation turn: 86754b7 Derive observe performance signal
+latest visible commit before this implementation turn: 910d3f3 Derive runtime archive missing flags
 working directory: /workspace/ai_sandbox/canon-mini-agent/prototype/ai
 ```
 
@@ -29,12 +29,12 @@ Generated validation logs, graph reports, observe reports, synthetic runtime arc
 
 ## Scorecard
 
-Scores are approximate implementation-readiness scores on a 0-10 scale. Robustness and transparency improve because runtime archive missing signals now depend on inspected archive evidence instead of hardcoded missing values.
+Scores are approximate implementation-readiness scores on a 0-10 scale. Correctness and transparency improve because runtime manifest base-match evidence now depends on parsed archived manifest metadata rather than a coarse environment-variable presence check.
 
 ```text
 I  Intelligence      = 7.0
 E  Efficiency        = 7.3
-C  Correctness       = 8.9
+C  Correctness       = 9.0
 A  Alignment         = 8.6
 R  Robustness        = 9.1
 P  Performance       = 6.3
@@ -53,66 +53,67 @@ F  Future-Proofing   = 8.4
 Approximate geometric mean:
 
 ```text
-G ≈ 7.90 / 10
+G ≈ 7.91 / 10
 ```
 
 ## Completed Work This Turn
 
-- Read `plan.md`, `score.md`, repository status, latest commit, runtime archive inspection logic, and observe-validation missing-signal flags.
-- Selected the next P4 slice: reduce runtime archive missing signals without weakening optional wrapper telemetry semantics.
-- Moved runtime archive inspection before missing-signal construction in `scripts/observe_validation.sh`.
-- Changed `missing_runtime_download_index`, `missing_runtime_prior_state`, and `missing_runtime_conversation_ledger` from hardcoded `true` values to archive-count-derived flags.
-- Added an observe-validation contract test that builds a synthetic tar archive and verifies archive content counts can clear those missing flags.
-- Ran focused observe-validation contract, graph workflow fixture validator, graph fixture report-only, Python compile, and full observe-validation artifact inspection with a synthetic runtime archive.
+- Read `plan.md`, `score.md`, repository status, latest commit, runtime archive inspection logic, runtime manifest base-match fields, and remaining missing-signal flags.
+- Selected the next P4 slice: reduce runtime manifest base-match missing signal without weakening optional wrapper telemetry semantics.
+- Updated `inspect_runtime_archive()` to parse `runtime-manifest.json` inside runtime archives and record `runtime_manifest_base_commit` from `base_commit`, `delta_base`, or `base`.
+- Changed `missing_runtime_manifest_base_match` to require `CANON_DELTA_BASE` to match the parsed archived manifest base commit.
+- Added observe-validation contract coverage for archived manifest base extraction and matching behavior.
+- Ran focused observe-validation contract, graph workflow fixture validator, graph fixture report-only, Python compile, and full observe-validation artifact inspection with a synthetic runtime archive and matching base.
 
 ## Validation Evidence Captured This Turn
 
 ```text
 command: python3 -m unittest tests/test_observe_validation_contract.py
 exit: 0
-result: 22 passed; 0 failed
-log: target/validation-logs/observe-validation-contract-step4.log
-exit file: target/validation-logs/observe-validation-contract-step4.exit
+result: 23 passed; 0 failed
+log: target/validation-logs/observe-validation-contract-step5.log
+exit file: target/validation-logs/observe-validation-contract-step5.exit
 ```
 
 ```text
 command: python3 -m unittest tests/test_graph_workflow_fixture_validator.py
 exit: 0
 result: 2 passed; 0 failed
-log: target/validation-logs/graph-workflow-fixture-validator-step4.log
-exit file: target/validation-logs/graph-workflow-fixture-validator-step4.exit
+log: target/validation-logs/graph-workflow-fixture-validator-step5.log
+exit file: target/validation-logs/graph-workflow-fixture-validator-step5.exit
 ```
 
 ```text
-command: CANON_OBSERVE_REPORT=target/observe/graph-fixture-report-step4.ndjson python3 scripts/observe_validation.sh --graph-fixture-report
+command: CANON_OBSERVE_REPORT=target/observe/graph-fixture-report-step5.ndjson python3 scripts/observe_validation.sh --graph-fixture-report
 exit: 0
 result: validation_status=pass; graph_evidence_status=graph_mutation_landed_with_receipt_snapshot; graph_workflow_fixture_receipt_snapshot_present=True; graph_workflow_fixture_command_sequence_valid=True; graph_workflow_fixture_generated_outputs_present=True; graph_workflow_fixture_receipt_ledger_flow_valid=True
-log: target/validation-logs/graph-fixture-report-step4.log
-exit file: target/validation-logs/graph-fixture-report-step4.exit
-report: target/observe/graph-fixture-report-step4.ndjson
+log: target/validation-logs/graph-fixture-report-step5.log
+exit file: target/validation-logs/graph-fixture-report-step5.exit
+report: target/observe/graph-fixture-report-step5.ndjson
 ```
 
 ```text
 command: python3 -m py_compile scripts/observe_validation.sh tests/test_observe_validation_contract.py
 exit: 0
-log: target/validation-logs/py-compile-step4.log
-exit file: target/validation-logs/py-compile-step4.exit
+log: target/validation-logs/py-compile-step5.log
+exit file: target/validation-logs/py-compile-step5.exit
 ```
 
 ```text
-command: CANON_RUNTIME_ARCHIVE=target/runtime-archive-step4.tar CANON_OBSERVE_REPORT=target/observe/full-observe-step4-runtime-archive.ndjson python3 scripts/observe_validation.sh
+command: CANON_DELTA_BASE=base-step5 CANON_RUNTIME_ARCHIVE=target/runtime-archive-step5.tar CANON_OBSERVE_REPORT=target/observe/full-observe-step5-runtime-base.ndjson python3 scripts/observe_validation.sh
 connector result: 502 transport error during long command; ignored artifacts were produced
-exit file: target/validation-logs/full-observe-step4-runtime-archive.exit
+exit file: target/validation-logs/full-observe-step5-runtime-base.exit
 exit: 1
-result: validation_status=fail from known unrelated missing signals; runtime archive and performance evidence present
-report: target/observe/full-observe-step4-runtime-archive.ndjson
-summary: runtime_archive_inspection_status=pass; runtime_archive_download_index_files=1; runtime_archive_prior_state_files=1; runtime_archive_conversation_ledger_files=1; runtime_archive_current_run_summary_present=True; runtime_archive_runtime_manifest_present=True; runtime_performance_signal_present=True; runtime_performance_budget_status=pass; missing_runtime_download_index=False; missing_runtime_prior_state=False; missing_runtime_conversation_ledger=False; missing_runtime_performance_signal=False; missing_signal_count=4
+result: validation_status=fail from known unrelated missing signals; runtime archive, manifest base-match, and performance evidence present
+report: target/observe/full-observe-step5-runtime-base.ndjson
+summary: runtime_manifest_base_expected=base-step5; runtime_manifest_base_commit=base-step5; runtime_manifest_base_matches_delta_base=True; runtime_archive_inspection_status=pass; runtime_archive_download_index_files=1; runtime_archive_prior_state_files=1; runtime_archive_conversation_ledger_files=1; runtime_performance_signal_present=True; runtime_performance_budget_status=pass; missing_runtime_manifest_base_match=False; missing_runtime_download_index=False; missing_runtime_prior_state=False; missing_runtime_conversation_ledger=False; missing_runtime_performance_signal=False; missing_signal_count=3
 ```
 
 ## Connector / Environment Notes
 
 - The full observe-validation command again returned connector 502 during the long-running shell call, but ignored artifacts showed the script wrote its exit file and NDJSON report.
-- The full observe exit was `1`; this remains classified as expected current-state fail from remaining known missing signals, not as a runtime archive evidence failure.
+- The full observe exit was `1`; this remains classified as expected current-state fail from remaining known missing signals, not as a runtime archive or manifest base-match evidence failure.
+- The `CANON_DELTA_BASE=base-step5` value is intentionally synthetic and is not a valid Git object; the script logged `fatal: Not a valid object name base-step5` from the Git ancestry check, but the runtime manifest base-match evidence correctly compared the archived manifest value to the configured base.
 - Wrapper graph telemetry remains optional because neither `CANON_RUSTC_WRAPPER` nor `CANON_RUSTC_V3_ARTIFACT_DIR` was configured.
 - The synthetic runtime archive was generated under ignored `target/` paths and was not staged.
 
@@ -121,7 +122,7 @@ summary: runtime_archive_inspection_status=pass; runtime_archive_download_index_
 - Overall observe-validation still fails due remaining known missing signals unrelated to this P4 slice.
 - Graph telemetry remains optional unless wrapper variables are configured.
 - No live wrapper-configured observe-validation run has been captured in this environment.
-- Runtime manifest base-match, wrapper telemetry, wrapper validation, and router offline test signals remain missing in the current environment.
+- Wrapper telemetry, wrapper validation, and router offline test signals remain missing in the current environment.
 - Live router/MCP/Ollama/OpenAI paths still depend on environment services and can fail independently of core runtime correctness.
 - Future cross-subproject graph behavior changes still require updating the boundary contract and executable test first.
 
@@ -137,4 +138,4 @@ Raise scores only after fresh evidence:
 
 ## Immediate Next Action
 
-Continue P4 by reducing another known missing signal where evidence can be source-derived without weakening optional wrapper telemetry semantics. Prefer runtime manifest base-match evidence, router/offline test classification, or live wrapper-configured observe-validation evidence if the environment supports it.
+Continue P4 by reducing another known missing signal where evidence can be source-derived without weakening optional wrapper telemetry semantics. Prefer router/offline test classification, configured wrapper validation evidence, or clearer separation of optional wrapper telemetry from required validation status.

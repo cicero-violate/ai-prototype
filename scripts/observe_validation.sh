@@ -327,7 +327,17 @@ def inspect_runtime_archive(path: str | None) -> dict[str, Any]:
     }
     try:
         with tarfile.open(archive) as tf:
-            names = tf.getnames()
+            members = {member.name: member for member in tf.getmembers()}
+            names = sorted(members)
+            for name, member in members.items():
+                if name.endswith("runtime-manifest.json"):
+                    extracted = tf.extractfile(member)
+                    if extracted is not None:
+                        try:
+                            manifest = json.loads(extracted.read().decode("utf-8"))
+                        except (UnicodeDecodeError, json.JSONDecodeError):
+                            manifest = {}
+                        counts["runtime_manifest_base_commit"] = manifest.get("base_commit") or manifest.get("delta_base") or manifest.get("base")
     except tarfile.TarError:
         counts["runtime_archive_inspection_status"] = "invalid_tar"
         return counts
@@ -519,7 +529,9 @@ def main() -> int:
         "missing_panic_surface_validation": "panic_surface_validation" not in command_statuses,
         "missing_policy_learning_replay_trace": "policy_learning_trace_validation" not in command_statuses,
         "missing_runtime_performance_signal": not runtime_performance["runtime_performance_signal_present"],
-        "missing_runtime_manifest_base_match": not bool(base),
+        "missing_runtime_manifest_base_match": not bool(
+            base and runtime.get("runtime_manifest_base_commit") == base
+        ),
         "missing_runtime_download_index": runtime.get("runtime_archive_download_index_files", 0) <= 0,
         "missing_runtime_prior_state": runtime.get("runtime_archive_prior_state_files", 0) <= 0,
         "missing_runtime_conversation_ledger": runtime.get("runtime_archive_conversation_ledger_files", 0) <= 0,
