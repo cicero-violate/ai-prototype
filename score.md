@@ -3,19 +3,32 @@
 ## Current Progress Snapshot
 
 Date: 2026-05-08
-Turn type: execute step 1
-Scope reviewed: `.gitignore`, git status/ignored status, source docs/tests/fixtures, formatting state, focused library-test baseline.
+Turn type: planning/scoring
+Scope reviewed: `GOAL.md`, `Cargo.toml`, `src/`, `tests/`, `docs/`, existing `plan.md`, existing `score.md`, recent git history, and current git status.
+
+This turn did not implement source changes or run a fresh full validation suite. It refreshed the implementation plan and score based on repository inspection and the latest recorded validation state.
+
+## Current Git State
+
+Observed before this planning update:
+
+```text
+ M USAGE.md
+ M canon-rustc-v3/src/graph.rs
+```
+
+Those are pre-existing non-planning implementation changes and were intentionally not modified by this planning/scoring turn.
 
 ## Scorecard
 
-Scores are approximate implementation-readiness scores on a 0-10 scale, based on static inspection in this planning turn. They are not a substitute for a fresh validation run.
+Scores are approximate implementation-readiness scores on a 0-10 scale. They are evidence-weighted and should not be raised without fresh validation output.
 
 ```text
 I  Intelligence      = 6.8
 E  Efficiency        = 6.5
-C  Correctness       = 6.8
+C  Correctness       = 6.7
 A  Alignment         = 8.2
-R  Robustness        = 6.8
+R  Robustness        = 6.7
 P  Performance       = 5.8
 S  Scalability       = 6.2
 D  Determinism       = 8.0
@@ -32,60 +45,52 @@ F  Future-Proofing   = 7.4
 Approximate geometric mean:
 
 ```text
-G ≈ 7.03 / 10
+G ≈ 6.99 / 10
 ```
 
 ## Basis For Scoring
 
 ### Strengths
 
-- Clear architectural separation between kernel, runtime, capability records, API, agent loop, and domain specs.
-- Strong determinism orientation: replay, typed receipts, transition validation, durable state, command ledgers, and TLog verification are core project concepts.
-- Rich contract-test surface exists for API, transport, planning, scoring, worker/supervisor binaries, graph mutation, validation harness, panic surface, and policy learning traces.
-- Loop-mode usage is documented with router-server integration, retry behavior, SSE chunk logging, and multi-agent coordination.
-- Domain intelligence strategy is documented while intentionally kept unwired from the kernel/runtime.
-- Safety posture is directionally strong: no unsafe Rust, external effects modeled through receipts, and policy promotion should require external evidence.
+- The project goal is explicit: deterministic, auditable, self-improving agent runtime governed by a state-machine kernel rather than by the LLM.
+- Architecture is well separated across kernel, runtime, capability records, API, loop agent, validation harness, graph mutation, and domain specifications.
+- Determinism and transparency are central design elements: typed records, transition validation, durable state, command ledgers, receipts, NDJSON logs, and replay verification.
+- Contract-test coverage exists across API, transport, planning, scoring, supervisor/worker binaries, graph mutation CLI, MCP receipts, validation harness, panic surface, and policy-learning traces.
+- Domain intelligence work is documented but intentionally not wired into the runtime, preserving kernel/runtime neutrality.
+- Coordination through `plan.md` and `score.md` is mature enough for multi-turn agent loops.
 
-### Gaps / Risks
+### Current Risks / Gaps
 
-- Validation was refreshed for formatting and focused library tests. Formatting passes; library tests currently fail on filesystem write/quota errors rather than assertion mismatches in the visible failures.
-- Repository hygiene improved: broad ignores hiding source docs/tests were narrowed, while generated runtime artifacts remain ignored. Some newly visible source fixtures are now intentionally staged for tracking.
-- Complexity is high. Many exported surfaces and receipt families may be difficult to maintain without stronger end-to-end validation summaries.
-- Live router/MCP/Ollama/OpenAI paths require environment dependencies and can fail independently of core runtime correctness.
-- Graph telemetry appears optional and may be absent unless wrapper configuration is correct.
-- Domain specs are extensive but not yet implemented as stable Rust contracts.
+- Latest recorded library validation still fails due to filesystem write/quota errors (`Disk quota exceeded`, `TlogIo`, `PolicyIo`, `SandboxIo`). This blocks raising correctness and robustness scores.
+- Full `cargo test --all-targets` and `cargo clippy --all-targets -- -D warnings` were previously inconclusive due to connector/process-output failure, not proven pass/fail.
+- Repository has existing uncommitted non-planning changes, so commit hygiene remains important.
+- Complexity is high; broad exported surfaces and many receipt families require stronger end-to-end validation summaries.
+- Live router/MCP/Ollama/OpenAI paths depend on environment services and can fail independently of core runtime correctness.
+- Graph telemetry remains optional and may be absent unless wrapper configuration is correct.
+- Domain specs are extensive but are not yet stable Rust contracts.
 
 ## Dimension Notes
 
-- **Intelligence (6.8):** Capability families and learning/policy concepts are present, but intelligence is still mostly structural unless validated by working loops and evidence-driven promotion.
-- **Efficiency (6.4):** Policy reuse and deterministic routing can reduce LLM cost, but current implementation breadth may add operational overhead.
-- **Correctness (7.0):** Contract tests and replay concepts are strong; fresh `cargo test --all-targets` evidence is required before raising this.
-- **Alignment (8.2):** The code and docs closely match the stated goal of auditable, deterministic, self-improving agents.
-- **Robustness (6.7):** Recovery, retry, supervisor, and receipt verification exist; negative tests and environment failure coverage should be expanded.
-- **Performance (5.8):** No current benchmark evidence found in this planning pass.
-- **Scalability (6.2):** Multi-agent loop coordination exists, but shared-file coordination and external router dependencies need load/failure validation.
-- **Determinism (8.0):** Determinism is central and well represented in structure; live LLM/tool paths remain inherently variable unless fully receipt-bounded.
-- **Transparency (7.8):** Documentation, NDJSON logs, receipts, and validation reports support auditability.
-- **Collaboration (7.4):** `plan.md`/`score.md` coordination and loop mode are useful for agent collaboration; needs stricter hygiene for concurrent edits.
-- **Empowerment (7.1):** The system can help autonomous implementation loops, assuming router/MCP dependencies are operational.
-- **Benefit (7.0):** Strong potential value as an auditable agent runtime; production utility depends on validation hardening.
-- **Learning (6.9):** Learning and policy promotion concepts exist, but need more end-to-end verified examples.
-- **Structure (7.6):** Module boundaries are strong, but exported surface area is broad.
-- **Simplicity (5.9):** The project is conceptually dense and operationally complex.
-- **Future-Proofing (7.3):** Versioned schemas, receipts, and documented boundaries help future evolution.
+- **Intelligence (6.8):** Capability families and learning/policy concepts are present, but intelligence is still mostly structural until working loops and policy promotion are validated end to end.
+- **Efficiency (6.5):** Policy reuse and deterministic routing can reduce repeated LLM work, but operational complexity and validation overhead remain significant.
+- **Correctness (6.7):** Strong test/receipt/replay concepts exist; current quota-related test failures keep this below 7.
+- **Alignment (8.2):** Source layout and docs closely match the stated goal of auditable, deterministic, self-improving agents.
+- **Robustness (6.7):** Recovery, retry, supervisor, and receipt verification exist; missing/negative environment and receipt tests should be expanded.
+- **Performance (5.8):** No fresh benchmark evidence was reviewed in this planning turn.
+- **Scalability (6.2):** Multi-agent coordination exists, but file coordination and external router dependencies need stress/failure validation.
+- **Determinism (8.0):** Determinism is central and well represented; live LLM/tool paths remain variable unless fully receipt-bounded.
+- **Transparency (8.0):** Documentation, NDJSON logs, receipts, and validation reports provide good audit surfaces.
+- **Collaboration (7.5):** Planning/scoring files provide usable loop coordination; concurrent edit/commit hygiene must remain strict.
+- **Empowerment (7.1):** The system can support autonomous implementation loops when router/MCP dependencies are available.
+- **Benefit (7.0):** Strong potential as an auditable runtime; production utility depends on validation hardening.
+- **Learning (6.9):** Learning and policy promotion concepts exist, but need complete candidate-to-policy fixtures.
+- **Structure (7.7):** Module boundaries are strong; exported surface area remains broad.
+- **Simplicity (6.1):** The project is conceptually dense and operationally complex.
+- **Future-Proofing (7.4):** Versioned schemas, receipts, documented boundaries, and graph-source plans support future evolution.
 
-## Latest Execute-Turn Work Completed
+## Latest Recorded Validation State
 
-- Audited `.gitignore` and ignored/untracked status.
-- Fixed `.gitignore` to stop hiding source-owned `docs/`, `tests/`, general JSON contracts, and `tests/fixtures/**/*.ndjson`.
-- Added narrower generated/runtime ignores for state, logs, validation logs/status files, generated report JSON, and repo-agent runtime JSON/NDJSON.
-- Applied `cargo fmt` to existing Rust sources/tests and verified formatting.
-- Removed ignored bulky generated artifacts (`ai.tar.gz`, validation logs/status files, incremental build directories), reducing local project usage by about 1.3 GB.
-- Surfaced previously hidden source docs, contract tests, and fixtures for tracking.
-
-## Validation State
-
-Commands run with `RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER=""`:
+Commands recorded from the prior execute-turn baseline, with wrappers disabled:
 
 ```text
 cargo fmt --check
@@ -98,29 +103,24 @@ primary failure class: filesystem write/quota errors
 examples: Disk quota exceeded, TlogIo, PolicyIo, SandboxIo
 
 cargo test --all-targets
-status: inconclusive in this turn; connector returned 502 on full-output/full-process attempts before a reliable final status was captured
+status: inconclusive; connector returned 502 on full-output/full-process attempts before a reliable final status was captured
 
 cargo clippy --all-targets -- -D warnings
-status: inconclusive in this turn; connector returned 502 before a reliable final status was captured
+status: inconclusive; connector returned 502 before a reliable final status was captured
 ```
 
-Environment note: `df -h` reported substantial free space on `/workspace` and `/tmp`, but tests still received OS error 122 (`Disk quota exceeded`) on write paths. This suggests a user/project quota or sandbox write limit rather than normal filesystem fullness.
-
-Next validation target:
-
-```sh
-cd ai
-RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --lib -- --test-threads=1
-RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets
-RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo clippy --all-targets -- -D warnings
-```
+Environment note from prior validation: normal `df` free-space output was not enough to explain OS error 122. The next execute turn should inspect quota/inode/project-limit behavior and test write paths directly.
 
 ## Next Score Update Triggers
 
-Increase scores only after fresh evidence:
+Raise scores only after fresh evidence:
 
-- `C`, `R`, and `D`: all root Rust tests pass with wrappers disabled and negative receipt/replay tests are added.
-- `P`: benchmark or runtime latency evidence is captured.
-- `S`: multi-agent and router failure scenarios are tested.
-- `L`: a full candidate-to-policy-promotion fixture is passing.
-- `Si`: runtime/subproject/generated artifact boundaries are clarified and simplified.
+- **Correctness / Robustness / Determinism:** library and all-target Rust tests pass with wrappers disabled; receipt/replay negative tests are expanded.
+- **Performance:** benchmark or runtime latency evidence is captured.
+- **Scalability:** multi-agent coordination and router failure scenarios are tested.
+- **Learning:** full candidate proposal → sandbox execution → external evaluation → distillation/export → policy-store insertion fixture passes.
+- **Simplicity:** generated/runtime/subproject artifact boundaries are clarified and commit hygiene remains clean.
+
+## Immediate Next Action
+
+The next execute turn should resolve quota-safe validation first, then rerun the baseline commands and update this score file with exact results.
