@@ -360,6 +360,13 @@ class ObserveValidationContractTest(unittest.TestCase):
                 ],
                 "required_command_missing",
             ),
+            (
+                [
+                    {"name": "cargo_test_all_targets", "status": "pass", "exit_code": 0, "timed_out": False},
+                    {"name": "panic_surface_validation", "status": "warn", "exit_code": 2, "timed_out": False},
+                ],
+                "required_command_mixed_failure",
+            ),
         )
 
         for commands, expected in cases:
