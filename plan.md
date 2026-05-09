@@ -1997,3 +1997,128 @@ Acceptance criteria for the preferred router/MCP slice:
 - If router/MCP tests require environment services, prefer deterministic fixture coverage over a brittle live-service dependency.
 - If no deterministic router/MCP classification gap is found, return to planning rather than changing production behavior speculatively.
 ```
+
+## Completed Execution Slice After MCP HTTP Failure Receipt Step 1
+
+Completed the preferred deterministic router/MCP evidence slice by adding local-worker MCP HTTP failure coverage without requiring live services.
+
+Implementation details:
+
+```text
+- Added mcp_executor_records_worker_http_failure_as_receipt() to tests/mcp_receipt_contract.rs.
+- The test starts a local TCP worker fixture, returns HTTP 500 with a JSON-RPC error body, and verifies LiveMcpCallExecutor records the failure as a typed McpCallReceipt.
+- The failure receipt remains contract-valid, effect-normalized, replayable against the original request, and verifiable through verify_mcp_call_receipts().
+- The receipt is explicitly non-success with exit_status=1, timed_out=false, preserved response bytes, and non-zero response hash.
+- Hardened the MCP receipt persistence fixture path by using target/test-tmp/mcp-receipts plus a process/time nonce so stale temp files cannot affect persistence evidence.
+```
+
+This satisfies the planning target for deterministic MCP failure-classification evidence while preserving optional wrapper, generated graph JSON, compact runtime archive, and observe-validation status semantics.
+
+## Validation Evidence From MCP HTTP Failure Receipt Step 1
+
+```text
+command: RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test mcp_receipt_contract -- --test-threads=1
+exit: 0
+result: 7 passed; 0 failed
+log: target/validation-logs/mcp-receipt-http-failure-step1-final.log
+exit file: target/validation-logs/mcp-receipt-http-failure-step1-final.exit
+```
+
+```text
+command: RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo fmt --check
+exit: 0
+log: target/validation-logs/fmt-mcp-http-failure-step1-final.log
+exit file: target/validation-logs/fmt-mcp-http-failure-step1-final.exit
+```
+
+```text
+command: python3 -m unittest tests/test_observe_validation_contract.py
+exit: 0
+result: 39 passed; 0 failed
+log: target/validation-logs/observe-validation-contract-mcp-http-failure-step1-final.log
+exit file: target/validation-logs/observe-validation-contract-mcp-http-failure-step1-final.exit
+```
+
+```text
+command: RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test planning_contract -- --test-threads=1
+exit: 0
+result: 2 passed; 0 failed
+log: target/validation-logs/planning-contract-mcp-http-failure-step1-final.log
+exit file: target/validation-logs/planning-contract-mcp-http-failure-step1-final.exit
+```
+
+```text
+command: RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test score_contract -- --test-threads=1
+exit: 0
+result: 5 passed; 0 failed
+log: target/validation-logs/score-contract-mcp-http-failure-step1-final.log
+exit file: target/validation-logs/score-contract-mcp-http-failure-step1-final.exit
+```
+
+## Next Execution Slice After MCP HTTP Failure Receipt Step 1
+
+Continue P4 with the next evidence-backed runtime gap. Candidate targets:
+
+```text
+1. Add deterministic MCP timeout/connection-failure receipt coverage if it can be exercised without flaky timing or live services.
+2. Add router/API failure-classification coverage only where a concrete uncovered branch exists.
+3. Capture live wrapper-configured observe-validation evidence only when the environment exposes required wrapper artifacts and services.
+```
+
+Avoid further manifest assertion refactors unless new receiver metrics are introduced.
+
+## Planning Turn Update — 2026-05-09 After MCP HTTP Failure Receipt Step 1
+
+This planning/scoring turn made no implementation changes. The repository already had an implementation-file modification from the MCP HTTP failure receipt step, so this turn preserves that file and owns only `plan.md` and `score.md`.
+
+Current observed state for this planning turn:
+
+```text
+branch: main
+latest visible commit before this planning turn: 68d8473 Update planning after manifest assertions
+working directory: /workspace/ai_sandbox/canon-mini-agent/prototype/ai
+pre-existing dirty implementation file: tests/mcp_receipt_contract.rs
+planning/scoring files owned by this turn: plan.md, score.md
+```
+
+Current assessment:
+
+```text
+- P0 validation baseline: complete.
+- P1 validation evidence reporting: complete.
+- P2 agent loop reliability: complete.
+- P3 runtime and receipt correctness: complete for current scope.
+- P4 graph/source-of-truth, observe-validation evidence, compact archive reporting, manifest rendering, and MCP HTTP-failure receipt evidence: in progress with the latest deterministic MCP slice complete.
+```
+
+The MCP HTTP-worker failure branch now has deterministic local-fixture evidence. The next execution turn should avoid repeating that branch and should look for a distinct failure mode that adds new evidence without live-service brittleness.
+
+### Next Execution Target
+
+Preferred next P4 target: add deterministic MCP connection-failure or timeout receipt coverage only if the branch can be exercised without brittle sleeps. A stable target would prove that unavailable/interrupted MCP transport produces a typed, replayable, verifiable receipt with explicit failure classification and without relying on an external MCP worker.
+
+Fallback target: inspect router/API failure-classification branches and add focused fixture coverage only where a concrete uncovered branch exists.
+
+Environment-dependent target: capture live wrapper-configured observe-validation evidence only when wrapper artifacts and required services are available. Do not weaken optional wrapper semantics to force this evidence.
+
+Acceptance criteria for the preferred MCP connection/timeout slice:
+
+```text
+1. Exercise a failure mode distinct from HTTP 500 worker response handling.
+2. Avoid flaky timing, live services, and nondeterministic sleeps where possible.
+3. Verify the resulting receipt is typed, effect-normalized, replayable, and verifier-accepted when verifier acceptance is part of the existing contract for that failure mode.
+4. Preserve existing MCP HTTP failure coverage and persistence fixture isolation.
+5. Preserve optional wrapper, router/offline, graph fixture, generated graph JSON, compact archive, and manifest evidence semantics.
+6. Run focused validation plus planning_contract and score_contract.
+7. Commit implementation changes separately from this planning/scoring commit.
+```
+
+### Commit Hygiene For Next Execution Turn
+
+```text
+- Start with git status --short and account for any dirty files inherited from prior turns.
+- Stage explicit paths only.
+- Do not commit generated target/observe, target/validation-logs, runtime archives, graph reports, __pycache__, or build output.
+- Prefer short deterministic fixture tests over long observe-validation unless the implementation change requires full evidence.
+- If no stable MCP timeout/connection-failure branch exists, move to the next concrete router/API classifier gap rather than adding speculative code.
+```
