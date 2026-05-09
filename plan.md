@@ -7,13 +7,13 @@ Canon Agent is a Rust prototype for a deterministic, auditable, self-improving a
 Current implementation snapshot, 2026-05-09 America/Toronto / 2026-05-09 UTC:
 
 - Branch: `main`.
-- Latest visible commit before this implementation turn: `26898da Cover wrapper configuration classifier`.
+- Latest visible commit before this implementation turn: `86754b7 Derive observe performance signal`.
 - Working directory: `/workspace/ai_sandbox/canon-mini-agent/prototype/ai`.
 - P0 validation baseline is complete.
 - P1 validation evidence reporting is complete.
 - P2 agent loop reliability is complete.
 - P3 runtime and receipt correctness is complete for the current scope.
-- P4 graph source-of-truth integration now includes persisted graph evidence classification, deterministic fixture-backed positive evidence for landed graph mutations with receipt snapshots, command-sequenced workflow fixture validation, a compact graph-only report mode, documented/tested root runtime, wrapper, and editor subproject boundaries, a standalone graph workflow fixture validator consumed by observe-validation, full observe-validation command evidence for that validator, explicit wrapper telemetry configuration classification, normal-path observe-validation summary evidence for graph fixture, wrapper configuration, receipt replay classification, and missing-signal coherence, executable configured-wrapper classifier branch coverage, and source-derived runtime performance signal evidence from observe-validation command durations.
+- P4 graph source-of-truth integration now includes persisted graph evidence classification, deterministic fixture-backed positive evidence for landed graph mutations with receipt snapshots, command-sequenced workflow fixture validation, a compact graph-only report mode, documented/tested root runtime, wrapper, and editor subproject boundaries, a standalone graph workflow fixture validator consumed by observe-validation, full observe-validation command evidence for that validator, explicit wrapper telemetry configuration classification, normal-path observe-validation summary evidence for graph fixture, wrapper configuration, receipt replay classification, and missing-signal coherence, executable configured-wrapper classifier branch coverage, source-derived runtime performance signal evidence from observe-validation command durations, and runtime archive missing-signal derivation from inspected archive contents.
 
 ## Operating Rules For Agent Turns
 
@@ -166,10 +166,16 @@ Current implementation snapshot, 2026-05-09 America/Toronto / 2026-05-09 UTC:
    - Added observe-validation contract tests for source-derived performance evidence and missing-duration fallback.
    - Normal observe-validation produced ignored artifacts confirming `runtime_performance_signal_present=true`, `runtime_performance_budget_status=pass`, `missing_runtime_performance_signal=false`, and `missing_signal_count=7`.
 
-13. **Next P4 slice**
+13. **Derive runtime archive missing flags from inspected archive contents — complete**
+   - Moved runtime archive inspection before missing-signal calculation in `scripts/observe_validation.sh`.
+   - `missing_runtime_download_index`, `missing_runtime_prior_state`, and `missing_runtime_conversation_ledger` now derive from `inspect_runtime_archive()` counts instead of hardcoded `true` values.
+   - Added an observe-validation contract test that builds a synthetic runtime tar archive and verifies download index, prior state, conversation ledger, current-run summary, and runtime manifest evidence are detected.
+   - Ran observe-validation with an ignored synthetic runtime archive. The report confirmed `runtime_archive_inspection_status=pass`, archive counts present, `missing_runtime_download_index=false`, `missing_runtime_prior_state=false`, `missing_runtime_conversation_ledger=false`, and `missing_signal_count=4`.
+
+14. **Next P4 slice**
    - Keep wrapper telemetry optional unless `CANON_RUSTC_WRAPPER` or `CANON_RUSTC_V3_ARTIFACT_DIR` is configured.
    - If future graph implementation crosses subproject boundaries, update the boundary contract and test before changing behavior.
-   - Continue reducing known missing-signal gaps where evidence can be source-derived without weakening optional wrapper telemetry semantics; candidates include runtime archive inputs, router/offline test classification, or live wrapper-configured evidence when environment support exists.
+   - Continue reducing known missing-signal gaps where evidence can be source-derived without weakening optional wrapper telemetry semantics; candidates include runtime manifest base-match evidence, router/offline test classification, or live wrapper-configured evidence when environment support exists.
 
 ### P5 — Domain intelligence layer
 
@@ -222,11 +228,11 @@ log: target/validation-logs/graph-mutation-cli-contract-p4-impl-step8.log
 
 ## Current Implementation-Turn Result
 
-Implementation step 3 reduced a known missing signal by making observe-validation runtime performance evidence source-derived from validation command durations. The full observe-validation command again hit connector transport 502, but ignored exit/report artifacts were produced. The summary now records `runtime_performance_signal_present=true`, `runtime_performance_budget_status=pass`, and `missing_runtime_performance_signal=false`; overall validation still fails because other known missing signals remain.
+Implementation step 4 reduced three known runtime archive missing signals by deriving them from inspected runtime archive contents. A synthetic ignored archive provided download-index, prior-state, conversation-ledger, current-run-summary, and runtime-manifest entries. Full observe-validation again hit connector transport 502, but ignored exit/report artifacts were produced. The report confirmed archive inspection passed, the three archive missing flags cleared, runtime performance evidence remained present, and `missing_signal_count` dropped to `4`; overall validation still fails because other known gaps remain.
 
 ## Execution-Turn Handoff
 
-P0, P1, P2, and current P3 scope are complete. P4 has source-derived graph evidence classification, deterministic fixture-backed positive landed-with-receipt-snapshot evidence with command-sequenced workflow validation, a compact graph-only report path that avoids broad cargo validation, a tested subproject boundary contract for root runtime/wrapper/editor responsibilities, a standalone graph workflow fixture validator consumed by observe-validation, full observe-validation command evidence for that validator, explicit optional wrapper telemetry configuration classification, normal-path observe-validation summary evidence for graph fixture, wrapper configuration, receipt replay classification, and missing-signal coherence, executable branch coverage for all wrapper configuration statuses, and source-derived runtime performance signal evidence. The next implementation value is further reduction of known missing signals or live wrapper-configured evidence when the environment supports it.
+P0, P1, P2, and current P3 scope are complete. P4 has source-derived graph evidence classification, deterministic fixture-backed positive landed-with-receipt-snapshot evidence with command-sequenced workflow validation, a compact graph-only report path that avoids broad cargo validation, a tested subproject boundary contract for root runtime/wrapper/editor responsibilities, a standalone graph workflow fixture validator consumed by observe-validation, full observe-validation command evidence for that validator, explicit optional wrapper telemetry configuration classification, normal-path observe-validation summary evidence for graph fixture, wrapper configuration, receipt replay classification, and missing-signal coherence, executable branch coverage for all wrapper configuration statuses, source-derived runtime performance signal evidence, and runtime archive missing-signal derivation from inspected archive contents. The next implementation value is further reduction of remaining known missing signals or live wrapper-configured evidence when the environment supports it.
 
 ## Validation Evidence From Implementation Step 1
 
@@ -340,6 +346,43 @@ connector result: 502 transport error during long command; ignored artifacts wer
 exit file: target/validation-logs/full-observe-step3-performance.exit = 1
 result: validation_status=fail from known unrelated missing signals; runtime performance signal present and budget passing
 summary: runtime_performance_signal_present=true, runtime_performance_budget_status=pass, missing_runtime_performance_signal=false, missing_signal_count=7
+```
+
+## Validation Evidence From Implementation Step 4
+
+```text
+python3 -m unittest tests/test_observe_validation_contract.py
+exit: 0
+result: 22 passed; 0 failed
+log: target/validation-logs/observe-validation-contract-step4.log
+```
+
+```text
+python3 -m unittest tests/test_graph_workflow_fixture_validator.py
+exit: 0
+result: 2 passed; 0 failed
+log: target/validation-logs/graph-workflow-fixture-validator-step4.log
+```
+
+```text
+CANON_OBSERVE_REPORT=target/observe/graph-fixture-report-step4.ndjson python3 scripts/observe_validation.sh --graph-fixture-report
+exit: 0
+result: validation_status=pass, graph_evidence_status=graph_mutation_landed_with_receipt_snapshot, graph_workflow_fixture_receipt_snapshot_present=true
+log: target/validation-logs/graph-fixture-report-step4.log
+```
+
+```text
+python3 -m py_compile scripts/observe_validation.sh tests/test_observe_validation_contract.py
+exit: 0
+log: target/validation-logs/py-compile-step4.log
+```
+
+```text
+CANON_RUNTIME_ARCHIVE=target/runtime-archive-step4.tar CANON_OBSERVE_REPORT=target/observe/full-observe-step4-runtime-archive.ndjson python3 scripts/observe_validation.sh
+connector result: 502 transport error during long command; ignored artifacts were produced
+exit file: target/validation-logs/full-observe-step4-runtime-archive.exit = 1
+result: validation_status=fail from known unrelated missing signals; runtime archive and performance evidence present
+summary: runtime_archive_inspection_status=pass, runtime_archive_download_index_files=1, runtime_archive_prior_state_files=1, runtime_archive_conversation_ledger_files=1, missing_runtime_download_index=false, missing_runtime_prior_state=false, missing_runtime_conversation_ledger=false, missing_runtime_performance_signal=false, missing_signal_count=4
 ```
 
 ## Current Non-Goals

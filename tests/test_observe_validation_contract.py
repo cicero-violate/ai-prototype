@@ -4,6 +4,8 @@ from __future__ import annotations
 import importlib.util
 import re
 import sys
+import tarfile
+import tempfile
 import unittest
 from importlib.machinery import SourceFileLoader
 from pathlib import Path
@@ -227,6 +229,37 @@ class ObserveValidationContractTest(unittest.TestCase):
             "missing_runtime_inspection_contract",
         ):
             self.assertIn(token, self.script)
+
+    def test_runtime_archive_inspection_counts_clear_archive_missing_flags(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            files = {
+                "runtime/download-index.json": "{}",
+                "runtime/prior-state.json": "{}",
+                "runtime/conversation-ledger.ndjson": "",
+                "runtime/current-run-summary.json": "{}",
+                "runtime/runtime-manifest.json": "{}",
+            }
+            for rel, content in files.items():
+                path = root / rel
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(content, encoding="utf-8")
+            archive = root / "runtime.tar"
+            with tarfile.open(archive, "w") as tf:
+                for rel in files:
+                    tf.add(root / rel, arcname=rel)
+
+            result = self.observe_module.inspect_runtime_archive(str(archive))
+
+        self.assertEqual(result["runtime_archive_inspection_status"], "pass")
+        self.assertGreater(result["runtime_archive_download_index_files"], 0)
+        self.assertGreater(result["runtime_archive_prior_state_files"], 0)
+        self.assertGreater(result["runtime_archive_conversation_ledger_files"], 0)
+        self.assertTrue(result["runtime_archive_current_run_summary_present"])
+        self.assertTrue(result["runtime_archive_runtime_manifest_present"])
+        self.assertIn('"missing_runtime_download_index": runtime.get("runtime_archive_download_index_files", 0) <= 0', self.script)
+        self.assertIn('"missing_runtime_prior_state": runtime.get("runtime_archive_prior_state_files", 0) <= 0', self.script)
+        self.assertIn('"missing_runtime_conversation_ledger": runtime.get("runtime_archive_conversation_ledger_files", 0) <= 0', self.script)
 
     def test_connector_failure_classification_is_emitted(self) -> None:
         for token in (

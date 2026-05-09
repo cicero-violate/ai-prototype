@@ -504,6 +504,7 @@ def main() -> int:
     )
 
     runtime_performance = runtime_performance_summary(commands)
+    runtime = inspect_runtime_archive(os.environ.get("CANON_RUNTIME_ARCHIVE"))
 
     missing = {
         "missing_cargo_test": "cargo_test_all_targets" not in command_statuses,
@@ -519,9 +520,9 @@ def main() -> int:
         "missing_policy_learning_replay_trace": "policy_learning_trace_validation" not in command_statuses,
         "missing_runtime_performance_signal": not runtime_performance["runtime_performance_signal_present"],
         "missing_runtime_manifest_base_match": not bool(base),
-        "missing_runtime_download_index": True,
-        "missing_runtime_prior_state": True,
-        "missing_runtime_conversation_ledger": True,
+        "missing_runtime_download_index": runtime.get("runtime_archive_download_index_files", 0) <= 0,
+        "missing_runtime_prior_state": runtime.get("runtime_archive_prior_state_files", 0) <= 0,
+        "missing_runtime_conversation_ledger": runtime.get("runtime_archive_conversation_ledger_files", 0) <= 0,
         "missing_runtime_inspection_contract": False,
         "missing_external_observation_stream_test": not evidence["external_observation_stream_test_present"],
         "missing_external_api_action_test": not evidence["external_api_action_test_present"],
@@ -539,7 +540,6 @@ def main() -> int:
         required.add("router_offline_tests")
     validation_status = "pass" if not failed_required else "fail"
 
-    runtime = inspect_runtime_archive(os.environ.get("CANON_RUNTIME_ARCHIVE"))
     performance_budgets = {
         "CANON_MAX_PROJECT_AGENT_ELAPSED_MS_P95": os.environ.get("CANON_MAX_PROJECT_AGENT_ELAPSED_MS_P95"),
         "CANON_MAX_DOWNLOAD_INITIAL_GET_MS_P95": os.environ.get("CANON_MAX_DOWNLOAD_INITIAL_GET_MS_P95"),
