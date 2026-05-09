@@ -404,6 +404,14 @@ class DeltaManifestTest(unittest.TestCase):
         self.assertEqual(receipt["runtime_manifest_base_commit"], self.base)
         self.assertTrue(receipt["runtime_manifest_base_matches_delta_base"])
         self.assertEqual(receipt["validation_command_count"], 3)
+        self.assertEqual(receipt["validation_command_distinct_count"], 3)
+        self.assertEqual(receipt["validation_command_source"], "summary_validation_commands")
+        self.assertEqual(receipt["validation_command_summary_input_count"], 3)
+        self.assertEqual(receipt["validation_command_summary_distinct_count"], 3)
+        self.assertEqual(receipt["validation_command_summary_duplicate_count"], 0)
+        self.assertEqual(receipt["validation_command_row_input_count"], 0)
+        self.assertEqual(receipt["validation_command_row_distinct_count"], 0)
+        self.assertEqual(receipt["validation_command_row_duplicate_count"], 0)
         self.assertEqual(receipt["validation_test_count"], 3)
         for command in receipt["validation_commands"]:
             self.assertIn("cmd", command)
@@ -417,6 +425,14 @@ class DeltaManifestTest(unittest.TestCase):
             "full_summary_report_command: --full-summary-report",
             "connector_transport_artifact_classification: transport_interrupted_artifacts_complete",
             "runtime_manifest_base_matches_delta_base: True",
+            "validation_command_distinct_count: 3",
+            "validation_command_source: summary_validation_commands",
+            "validation_command_summary_input_count: 3",
+            "validation_command_summary_distinct_count: 3",
+            "validation_command_summary_duplicate_count: 0",
+            "validation_command_row_input_count: 0",
+            "validation_command_row_distinct_count: 0",
+            "validation_command_row_duplicate_count: 0",
             "cargo_test_all_targets: pass",
         ):
             self.assertIn(token, manifest)

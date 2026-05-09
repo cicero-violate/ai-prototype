@@ -7,13 +7,13 @@ Canon Agent is a Rust prototype for a deterministic, auditable, self-improving a
 Current implementation snapshot, 2026-05-09 America/Toronto / 2026-05-09 UTC:
 
 - Branch: `main`.
-- Latest visible commit before this implementation turn: `711f460 Deduplicate summary manifest command evidence`.
+- Latest visible commit before this implementation turn: `c381eb3 Expose command normalization metadata`.
 - Working directory: `/workspace/ai_sandbox/canon-mini-agent/prototype/ai`.
 - P0 validation baseline is complete.
 - P1 validation evidence reporting is complete.
 - P2 agent loop reliability is complete.
 - P3 runtime and receipt correctness is complete for the current scope.
-- P4 graph source-of-truth integration now includes persisted graph evidence classification, deterministic fixture-backed positive evidence for landed graph mutations with receipt snapshots, command-sequenced workflow fixture validation, a compact graph-only report mode, documented/tested root runtime, wrapper, and editor subproject boundaries, a standalone graph workflow fixture validator consumed by observe-validation, full observe-validation command evidence for that validator, explicit wrapper telemetry configuration classification, normal-path observe-validation summary evidence for graph fixture, wrapper configuration, receipt replay classification, and missing-signal coherence, executable configured-wrapper classifier branch coverage, source-derived runtime performance signal evidence from observe-validation command durations, runtime archive missing-signal derivation from inspected archive contents, runtime manifest base-match derivation from archived manifest metadata, explicit router/offline availability classification in observe-validation summary evidence, optional wrapper graph validation missing-signal derivation, generated graph JSON evidence classification, compact runtime archive report integration, separated validation status fields, compact command-execution reports, connector transport artifact classification, delta manifest preservation of transport artifact state, compact full-summary artifact replay, actual full-summary artifact manifest generation, row command fallback preservation, summary/row command conflict rejection, command execution metadata conflict rejection, and duplicate row command conflict rejection, and distinct command-count closure for exact duplicate row evidence, and duplicate command-name closure for summary-provided validation commands, and explicit command evidence normalization metadata in receipts and manifests. The working tree was clean at the start of implementation step 3.
+- P4 graph source-of-truth integration now includes persisted graph evidence classification, deterministic fixture-backed positive evidence for landed graph mutations with receipt snapshots, command-sequenced workflow fixture validation, a compact graph-only report mode, documented/tested root runtime, wrapper, and editor subproject boundaries, a standalone graph workflow fixture validator consumed by observe-validation, full observe-validation command evidence for that validator, explicit wrapper telemetry configuration classification, normal-path observe-validation summary evidence for graph fixture, wrapper configuration, receipt replay classification, and missing-signal coherence, executable configured-wrapper classifier branch coverage, source-derived runtime performance signal evidence from observe-validation command durations, runtime archive missing-signal derivation from inspected archive contents, runtime manifest base-match derivation from archived manifest metadata, explicit router/offline availability classification in observe-validation summary evidence, optional wrapper graph validation missing-signal derivation, generated graph JSON evidence classification, compact runtime archive report integration, separated validation status fields, compact command-execution reports, connector transport artifact classification, delta manifest preservation of transport artifact state, compact full-summary artifact replay, actual full-summary artifact manifest generation, row command fallback preservation, summary/row command conflict rejection, command execution metadata conflict rejection, and duplicate row command conflict rejection, and distinct command-count closure for exact duplicate row evidence, and duplicate command-name closure for summary-provided validation commands, and explicit command evidence normalization metadata in receipts and manifests, and actual compact full-summary artifact coverage for command normalization metadata. The working tree was clean at the start of implementation step 4.
 
 ## Current P4 Completion Summary
 
@@ -25,7 +25,7 @@ The current source-of-truth plan state is:
 4. Connector transport artifact classification is landed and distinguishes complete versus incomplete artifacts after transport interruption.
 5. Delta manifests preserve connector transport artifact evidence, so downstream receipts do not rely only on `connector_transport_instability_present`.
 
-Current next implementation target: continue P4 by improving command normalization metadata coverage across compact full-summary receiver workflows, especially proving the metadata survives actual full-summary artifact manifest generation.
+Current next implementation target: continue P4 by adding compact receiver-side checks for command normalization metadata uniqueness and non-duplication in manifest metric rendering.
 
 ## Operating Rules For Agent Turns
 
@@ -1484,3 +1484,63 @@ log: target/validation-logs/score-contract-command-normalization-step3.log
 ## Next Execution Slice After Command Normalization Metadata Step 3
 
 Continue P4 by proving command normalization metadata survives receiver/archive workflows that generate a manifest from an actual compact `--full-summary-report` artifact. Candidate next slice: extend the actual full-summary artifact manifest generation test so its generated receipt and manifest include command source/count normalization metadata.
+
+
+## Completed Execution Slice After Full-Summary Command Normalization Step 4
+
+Completed receiver/archive coverage for command normalization metadata through the actual compact `--full-summary-report` artifact manifest-generation path. `tests/test_write_delta_manifest.py` now verifies that a report produced by the copied `observe_validation.sh --full-summary-report` script can be consumed by `write_delta_manifest.py` and still emits command normalization metadata in both the generated receipt and manifest.
+
+The actual full-summary artifact path now asserts:
+
+```text
+validation_command_distinct_count
+validation_command_source
+validation_command_summary_input_count
+validation_command_summary_distinct_count
+validation_command_summary_duplicate_count
+validation_command_row_input_count
+validation_command_row_distinct_count
+validation_command_row_duplicate_count
+```
+
+This proves the metadata is not limited to hand-written report fixtures and survives the compact summary receiver workflow used for short transport-safe artifacts.
+
+## Validation Evidence From Full-Summary Command Normalization Step 4
+
+```text
+python3 -m unittest tests/test_write_delta_manifest.py
+exit: 0
+result: 23 passed; 0 failed
+log: target/validation-logs/write-delta-manifest-full-summary-normalization-step4.log
+```
+
+```text
+python3 -m unittest tests/test_observe_validation_contract.py
+exit: 0
+result: 39 passed; 0 failed
+log: target/validation-logs/observe-validation-contract-full-summary-normalization-step4.log
+```
+
+```text
+python3 -m py_compile scripts/observe_validation.sh scripts/write_delta_manifest.py tests/test_write_delta_manifest.py tests/test_observe_validation_contract.py
+exit: 0
+log: target/validation-logs/py-compile-full-summary-normalization-step4.log
+```
+
+```text
+cargo test --test planning_contract -- --test-threads=1
+exit: 0
+result: 2 passed; 0 failed
+log: target/validation-logs/planning-contract-full-summary-normalization-step4.log
+```
+
+```text
+cargo test --test score_contract -- --test-threads=1
+exit: 0
+result: 5 passed; 0 failed
+log: target/validation-logs/score-contract-full-summary-normalization-step4.log
+```
+
+## Next Execution Slice After Full-Summary Command Normalization Step 4
+
+Continue P4 by adding compact manifest rendering checks for the new command normalization metadata. Candidate next slice: assert each command normalization metric renders exactly once in the generated manifest, including in compact full-summary and row-fallback paths.
