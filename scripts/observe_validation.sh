@@ -636,6 +636,7 @@ def full_summary_report() -> dict[str, Any]:
         "connector_failure_classes": [],
         "connector_transport_instability_present": False,
         **transport_artifacts,
+        "router_test_count": 0,
         "runtime_archive_evidence_source": "compact_report",
         "runtime_archive_report_present": True,
         "runtime_archive_report_status": "pass",

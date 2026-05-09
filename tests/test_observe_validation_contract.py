@@ -556,6 +556,7 @@ class ObserveValidationContractTest(unittest.TestCase):
             self.assertTrue(row["runtime_manifest_base_matches_delta_base"])
             self.assertEqual(row["runtime_archive_delta_receipt_files"], 0)
             self.assertEqual(row["runtime_archive_audit_files"], 0)
+            self.assertEqual(row["router_test_count"], 0)
             self.assertEqual(row["connector_transport_artifact_classification"], "transport_interrupted_artifacts_complete")
             self.assertTrue(row["connector_transport_report_complete"])
             self.assertTrue(row["connector_transport_exit_file_present"])

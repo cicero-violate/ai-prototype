@@ -708,6 +708,7 @@ class DeltaManifestTest(unittest.TestCase):
         self.assertTrue(receipt["runtime_manifest_base_matches_delta_base"])
         self.assertEqual(receipt["runtime_archive_delta_receipt_files"], 0)
         self.assertEqual(receipt["runtime_archive_audit_files"], 0)
+        self.assertEqual(receipt["router_test_count"], 0)
         self.assert_compact_full_summary_command_receipt(receipt)
         for command in receipt["validation_commands"]:
             self.assertIn("cmd", command)
@@ -719,6 +720,7 @@ class DeltaManifestTest(unittest.TestCase):
             "runtime_archive_evidence_source": "compact_report",
             "full_summary_report_only": True,
             "full_summary_report_command": "--full-summary-report",
+            "router_test_count": 0,
             "connector_transport_artifact_classification": "transport_interrupted_artifacts_complete",
             "runtime_manifest_base_matches_delta_base": True,
         })
@@ -741,6 +743,7 @@ class DeltaManifestTest(unittest.TestCase):
                 "runtime_manifest_base_expected",
                 "runtime_manifest_base_commit",
                 "runtime_manifest_base_matches_delta_base",
+                "router_test_count",
             ),
         )
         self.assert_compact_full_summary_manifest_commands(manifest)

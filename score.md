@@ -3257,3 +3257,92 @@ Current risks / gaps:
 - Live graph telemetry still requires deliberate wrapper and artifact-dir inputs.
 - P4 remains open only for additional source-justified compact evidence/reporting hardening.
 ```
+
+## Implementation Step 2 - Full Summary Router Test Count Preservation
+
+Completed work:
+
+```text
+- Inspected preserved summary keys and compact full-summary artifact tests.
+- Identified that router_test_count was preserved by the delta manifest receiver but omitted by compact full-summary report mode.
+- Updated compact full-summary report output to emit router_test_count=0 explicitly.
+- Added observe-validation contract coverage for the emitted zero value.
+- Added delta-manifest receiver coverage that the actual full-summary artifact receipt preserves router_test_count and renders the manifest metric exactly once.
+```
+
+Validation evidence captured this turn:
+
+```text
+command: python3 -m py_compile scripts/observe_validation.sh scripts/write_delta_manifest.py tests/test_observe_validation_contract.py tests/test_write_delta_manifest.py
+exit: 0
+log: target/validation-logs/py-compile-full-summary-router-count-impl-step2.log
+exit file: target/validation-logs/py-compile-full-summary-router-count-impl-step2.exit
+```
+
+```text
+command: python3 -m unittest tests.test_write_delta_manifest tests.test_observe_validation_contract
+exit: 0
+result: 67 passed; 0 failed
+log: target/validation-logs/python-full-summary-router-count-impl-step2.log
+exit file: target/validation-logs/python-full-summary-router-count-impl-step2.exit
+```
+
+```text
+command: TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test planning_contract -- --test-threads=1
+exit: 0
+result: 2 passed; 0 failed
+log: target/validation-logs/planning-contract-full-summary-router-count-impl-step2.log
+exit file: target/validation-logs/planning-contract-full-summary-router-count-impl-step2.exit
+```
+
+```text
+command: TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test score_contract -- --test-threads=1
+exit: 0
+result: 5 passed; 0 failed
+log: target/validation-logs/score-contract-full-summary-router-count-impl-step2.log
+exit file: target/validation-logs/score-contract-full-summary-router-count-impl-step2.exit
+```
+
+Score update:
+
+```text
+I  Intelligence      = 7.0
+E  Efficiency        = 7.92
+C  Correctness       = 9.986
+A  Alignment         = 8.8
+R  Robustness        = 10.0
+P  Performance       = 6.45
+S  Scalability       = 6.82
+D  Determinism       = 9.741
+T  Transparency      = 10.0
+Co Collaboration     = 8.0
+Em Empowerment       = 7.8
+B  Benefit           = 8.1
+L  Learning          = 7.1
+St Structure         = 9.75
+Si Simplicity        = 7.36
+F  Future-Proofing   = 9.328
+```
+
+Approximate geometric mean:
+
+```text
+G ≈ 8.33 / 10
+```
+
+Rationale:
+
+```text
+- Correctness improves slightly because compact full-summary reports now emit router_test_count instead of omitting a preserved evidence field.
+- Determinism improves slightly because the actual full-summary receiver path now requires exact-once manifest rendering for router_test_count.
+- Future-proofing improves slightly because future omission or duplicate rendering of compact router test count evidence now fails focused tests.
+- Runtime behavior and performance remain unchanged.
+```
+
+Current risks / gaps:
+
+```text
+- No fresh live wrapper-configured observe-validation evidence was captured.
+- Live graph telemetry still requires deliberate wrapper and artifact-dir inputs.
+- P4 remains open only for additional source-justified compact evidence/reporting hardening.
+```
