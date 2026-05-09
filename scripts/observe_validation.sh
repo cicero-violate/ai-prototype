@@ -5,7 +5,7 @@ The script is intentionally deterministic and report-first: generated evidence i
 written to target/observe/validation-report.ndjson by default, while expensive
 commands keep their full logs under target/validation-logs. Root Rust validation
 clears wrapper variables so baseline correctness is independent of optional graph
-capture tooling.
+capture tooling. Use --graph-fixture-report for a compact graph-only report.
 """
 from __future__ import annotations
 
@@ -321,7 +321,44 @@ def ignored_artifact_counts() -> dict[str, int]:
     }
 
 
+def emit_graph_fixture_report() -> int:
+    REPORT.parent.mkdir(parents=True, exist_ok=True)
+    REPORT.write_text("", encoding="utf-8")
+    fixture = inspect_graph_workflow_fixture()
+    status = "pass" if fixture.get("graph_workflow_fixture_receipt_snapshot_present") else "fail"
+    row = {
+        "event": "graph_fixture_report",
+        "schema_version": 1,
+        "git_head": git_value("rev-parse", "HEAD"),
+        "validation_status": status,
+        "graph_evidence_classification_present": True,
+        "graph_evidence_status": "graph_mutation_landed_with_receipt_snapshot"
+        if status == "pass"
+        else "graph_mutation_evidence_contract_missing",
+        "graph_evidence_status_options": [
+            "graph_mutation_evidence_contract_missing",
+            "graph_mutation_landed_with_receipt_snapshot",
+        ],
+        "graph_fixture_report_only": True,
+        "graph_fixture_report_command": "--graph-fixture-report",
+        **fixture,
+        "missing_signal_flags": {
+            "missing_graph_workflow_fixture_receipt_snapshot": not fixture.get(
+                "graph_workflow_fixture_receipt_snapshot_present", False
+            ),
+        },
+    }
+    emit(row)
+    return 0 if status == "pass" else 1
+
+
 def main() -> int:
+    if len(sys.argv) == 2 and sys.argv[1] == "--graph-fixture-report":
+        return emit_graph_fixture_report()
+    if len(sys.argv) > 1:
+        print("usage: observe_validation.sh [--graph-fixture-report]", file=sys.stderr)
+        return 2
+
     REPORT.parent.mkdir(parents=True, exist_ok=True)
     REPORT.write_text("", encoding="utf-8")
 

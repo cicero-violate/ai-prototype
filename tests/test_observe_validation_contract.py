@@ -217,6 +217,18 @@ class ObserveValidationContractTest(unittest.TestCase):
         ):
             self.assertIn(token, self.script)
 
+    def test_graph_fixture_report_mode_is_report_only(self) -> None:
+        for token in (
+            "--graph-fixture-report",
+            "def emit_graph_fixture_report()",
+            "graph_fixture_report",
+            "graph_fixture_report_only",
+            "graph_fixture_report_command",
+            "usage: observe_validation.sh [--graph-fixture-report]",
+            "return emit_graph_fixture_report()",
+        ):
+            self.assertIn(token, self.script)
+
     def test_ignored_artifact_counts_are_emitted(self) -> None:
         for token in (
             "ignored_artifact_count",

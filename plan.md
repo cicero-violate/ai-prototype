@@ -7,13 +7,13 @@ Canon Agent is a Rust prototype for a deterministic, auditable, self-improving a
 Current implementation snapshot, 2026-05-09 America/Toronto / 2026-05-09 UTC:
 
 - Branch: `main`.
-- Latest visible commit before this implementation turn: `27853af Classify graph evidence in validation summary`.
+- Latest visible commit before this implementation turn: `38fc0bc Emit fixture-backed graph evidence status`.
 - Working directory: `/workspace/ai_sandbox/canon-mini-agent/prototype/ai`.
 - P0 validation baseline is complete.
 - P1 validation evidence reporting is complete.
 - P2 agent loop reliability is complete.
 - P3 runtime and receipt correctness is complete for the current scope.
-- P4 graph source-of-truth integration now includes persisted graph evidence classification plus deterministic fixture-backed positive evidence for landed graph mutations with receipt snapshots.
+- P4 graph source-of-truth integration now includes persisted graph evidence classification, deterministic fixture-backed positive evidence for landed graph mutations with receipt snapshots, and a compact graph-only report mode.
 
 ## Operating Rules For Agent Turns
 
@@ -46,7 +46,7 @@ Current implementation snapshot, 2026-05-09 America/Toronto / 2026-05-09 UTC:
 ### P1 — Make validation evidence first-class — complete
 
 - Observe-validation reporting emits source-backed validation summary evidence under ignored `target/observe/validation-report.ndjson`.
-- The compact report includes git hygiene, command outcomes, graph telemetry presence/absence, runtime archive counts, ignored artifact counts, missing-signal flags, connector-failure classification fields, receipt replay classification inventory, and graph evidence state.
+- The compact report includes git hygiene, command outcomes, graph telemetry presence/absence, runtime archive counts, ignored artifact counts, missing-signal flags, connector-failure classification fields, receipt replay classification inventory, graph evidence state, and graph fixture report-only mode.
 - Helper validators and manifest writer scripts are tracked source rather than stale generated artifacts.
 
 ### P2 — Agent loop reliability — complete
@@ -81,19 +81,24 @@ Current implementation snapshot, 2026-05-09 America/Toronto / 2026-05-09 UTC:
 
 2. **Add deterministic positive graph evidence fixture/report path — complete**
    - Added `inspect_graph_workflow_fixture()` to validate the tracked graph workflow fixture manifest, file inventory, SHA-256 integrity rows, required workflow commands, landing command, ledger command, and receipt-snapshot evidence.
-   - The observe-validation summary now emits `graph_workflow_fixture_*` fields and clears `missing_graph_workflow_fixture_receipt_snapshot` when the deterministic fixture proves a landed graph mutation with receipt snapshot evidence.
-   - The positive graph status `graph_mutation_landed_with_receipt_snapshot` is now reachable without live wrapper telemetry when fixture evidence is complete.
+   - The observe-validation summary emits `graph_workflow_fixture_*` fields and clears `missing_graph_workflow_fixture_receipt_snapshot` when the deterministic fixture proves a landed graph mutation with receipt snapshot evidence.
+   - The positive graph status `graph_mutation_landed_with_receipt_snapshot` is reachable without live wrapper telemetry when fixture evidence is complete.
    - Fixed the observe-validation `state_graph_present` assignment so graph status and missing-signal fields are defined consistently.
 
-3. **Verify graph mutation ops, patch receipts, snapshot contracts, and landing receipts end-to-end — partially complete**
+3. **Add compact graph fixture report-only mode — complete**
+   - Added `--graph-fixture-report` to `scripts/observe_validation.sh`.
+   - The report-only mode emits a single `graph_fixture_report` row and exits without running cargo validation, panic validation, policy replay validation, or wrapper telemetry.
+   - The row includes `graph_fixture_report_only=true`, `graph_fixture_report_command=--graph-fixture-report`, `graph_evidence_status`, `graph_workflow_fixture_*` fields, and `missing_graph_workflow_fixture_receipt_snapshot`.
+   - Current evidence: `CANON_OBSERVE_REPORT=target/observe/graph-fixture-report-step3.ndjson python3 scripts/observe_validation.sh --graph-fixture-report` passed and emitted `graph_evidence_status=graph_mutation_landed_with_receipt_snapshot`.
+
+4. **Verify graph mutation ops, patch receipts, snapshot contracts, and landing receipts end-to-end — partially complete**
    - Existing graph CLI contract tests cover verify-ops, generate-patch, verify-landing, verify-receipts, stable usage, workflow fixture integrity, copyable workflow fixtures, and executable manifest flow.
    - Current evidence: `cargo test --test graph_mutation_cli_contract -- --test-threads=1` passed; 10 tests.
-   - Current observe smoke evidence: `graph_evidence_status=graph_mutation_landed_with_receipt_snapshot`, `graph_workflow_fixture_status=pass`, and `missing_graph_workflow_fixture_receipt_snapshot=false`.
 
-4. **Next P4 slice**
-   - Consider adding a compact CLI/report command that emits the deterministic graph fixture evidence without running broad cargo validation.
-   - Keep wrapper telemetry optional unless `CANON_RUSTC_WRAPPER` or `CANON_RUSTC_V3_ARTIFACT_DIR` is configured.
+5. **Next P4 slice**
    - Clarify `canon-rustc-v3` and `graph-editor` repository/subproject boundaries if implementation work crosses those directories.
+   - Consider adding a dedicated standalone validator script if report-only mode grows beyond graph fixture evidence.
+   - Keep wrapper telemetry optional unless `CANON_RUSTC_WRAPPER` or `CANON_RUSTC_V3_ARTIFACT_DIR` is configured.
 
 ### P5 — Domain intelligence layer
 
@@ -104,52 +109,52 @@ Current implementation snapshot, 2026-05-09 America/Toronto / 2026-05-09 UTC:
 ## Validation Evidence From Current Implementation Step
 
 ```text
-CANON_TEST_TIMEOUT_SECONDS=1 CANON_OBSERVE_REPORT=target/observe/validation-report-p4-step2-smoke.ndjson python3 scripts/observe_validation.sh
-exit: 1 expected from intentionally short cargo all-target timeout
-result: validation_summary emitted graph_evidence_status=graph_mutation_landed_with_receipt_snapshot, graph_workflow_fixture_status=pass, graph_workflow_fixture_receipt_snapshot_present=true, missing_graph_workflow_fixture_receipt_snapshot=false
-log: target/validation-logs/observe-smoke-p4-impl-step2.log
+python3 -m unittest tests/test_observe_validation_contract.py
+exit: 0
+result: 18 passed; 0 failed
+log: target/validation-logs/observe-validation-contract-p4-impl-step3.log
 ```
 
 ```text
-python3 -m unittest tests/test_observe_validation_contract.py
+CANON_OBSERVE_REPORT=target/observe/graph-fixture-report-step3.ndjson python3 scripts/observe_validation.sh --graph-fixture-report
 exit: 0
-result: 17 passed; 0 failed
-log: target/validation-logs/observe-validation-contract-p4-impl-step2.log
+result: event=graph_fixture_report, validation_status=pass, graph_evidence_status=graph_mutation_landed_with_receipt_snapshot, graph_workflow_fixture_receipt_snapshot_present=true
+log: target/validation-logs/graph-fixture-report-p4-impl-step3.log
 ```
 
 ```text
 TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test graph_mutation_cli_contract -- --test-threads=1
 exit: 0
 result: 10 passed; 0 failed
-log: target/validation-logs/graph-mutation-cli-contract-p4-impl-step2.log
+log: target/validation-logs/graph-mutation-cli-contract-p4-impl-step3.log
 ```
 
 ```text
 RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo fmt --check
 exit: 0
-log: target/validation-logs/fmt-p4-impl-step2.log
+log: target/validation-logs/fmt-p4-impl-step3.log
 ```
 
 ```text
 TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --lib -- --test-threads=1
 exit: 0
 result: 209 passed; 0 failed
-log: target/validation-logs/test-lib-p4-impl-step2.log
+log: target/validation-logs/test-lib-p4-impl-step3.log
 ```
 
 ```text
 TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo clippy --all-targets -- -D warnings
 exit: 0
-log: target/validation-logs/clippy-p4-impl-step2.log
+log: target/validation-logs/clippy-p4-impl-step3.log
 ```
 
 ## Next Execute-Turn Recommendation
 
-Continue P4 by making graph fixture evidence easier to consume separately from broad observe-validation, or proceed to clarifying subproject boundaries for `canon-rustc-v3` and `graph-editor` if the next implementation work crosses those project roots.
+Continue P4 by clarifying subproject boundaries for `canon-rustc-v3` and `graph-editor`, or proceed to the next graph integration slice that requires those boundaries. Keep graph wrapper telemetry optional and keep deterministic fixture evidence available through `--graph-fixture-report`.
 
 ## Planning-Turn Handoff
 
-P0, P1, P2, and current P3 scope are complete. P4 now has both source-derived graph evidence classification and deterministic fixture-backed positive landed-with-receipt-snapshot evidence in persisted validation summary rows.
+P0, P1, P2, and current P3 scope are complete. P4 now has source-derived graph evidence classification, deterministic fixture-backed positive landed-with-receipt-snapshot evidence, and a compact graph-only report path that avoids broad cargo validation.
 
 ## Current Non-Goals
 
