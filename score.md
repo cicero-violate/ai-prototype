@@ -1974,3 +1974,76 @@ Current risks / gaps:
 - Live graph telemetry still requires deliberate wrapper and artifact-dir inputs.
 - Compact full-summary replay remains artifact-only by design.
 ```
+
+## Implementation Step 5 - Runtime Archive Missing Compact Report Fallback Coverage
+
+Completed work:
+
+```text
+- Read the latest plan.md and score.md state.
+- Confirmed no live wrapper validation prerequisites were configured.
+- Inspected compact runtime archive evidence coverage.
+- Added direct assertion coverage for missing or invalid compact runtime archive report fallback.
+- Made no runtime behavior changes.
+```
+
+Validation evidence captured this turn:
+
+```text
+command: python3 -m py_compile scripts/observe_validation.sh tests/test_observe_validation_contract.py
+exit: 0
+log: target/validation-logs/py-compile-runtime-archive-missing-report-step5.log
+exit file: target/validation-logs/py-compile-runtime-archive-missing-report-step5.exit
+```
+
+```text
+command: python3 -m unittest tests.test_observe_validation_contract
+exit: 0
+result: 42 passed; 0 failed
+log: target/validation-logs/observe-validation-contract-runtime-archive-missing-report-step5.log
+exit file: target/validation-logs/observe-validation-contract-runtime-archive-missing-report-step5.exit
+```
+
+Score update:
+
+```text
+I  Intelligence      = 7.0
+E  Efficiency        = 7.92
+C  Correctness       = 9.96
+A  Alignment         = 8.8
+R  Robustness        = 10.0
+P  Performance       = 6.45
+S  Scalability       = 6.82
+D  Determinism       = 9.71
+T  Transparency      = 10.0
+Co Collaboration     = 8.0
+Em Empowerment       = 7.8
+B  Benefit           = 8.1
+L  Learning          = 7.1
+St Structure         = 9.75
+Si Simplicity        = 7.36
+F  Future-Proofing   = 9.30
+```
+
+Approximate geometric mean:
+
+```text
+G ≈ 8.33 / 10
+```
+
+Rationale:
+
+```text
+- Correctness improves slightly because compact runtime archive fallback now has explicit executable coverage.
+- Determinism improves because missing compact-report behavior has a precise input vector and expected status.
+- Future-proofing improves slightly because report fallback drift now fails a focused contract test.
+- Runtime behavior and performance remain unchanged.
+```
+
+Current risks / gaps:
+
+```text
+- No fresh live wrapper-configured observe-validation evidence was captured.
+- Live graph telemetry still requires deliberate wrapper and artifact-dir inputs.
+- Compact full-summary replay remains artifact-only by design.
+```

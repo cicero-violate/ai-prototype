@@ -3290,3 +3290,48 @@ Proceed only if:
 3. source inspection exposes uncovered deterministic failure-classification or persistence-error coverage;
 4. another behavior-preserving test-helper cleanup improves evidence clarity without weakening exact-once assertions.
 ```
+
+## Completed Implementation Step 5 After Command Execution Mixed-Failure Coverage b3d16ac
+
+Executed the next concrete plan trigger: source-inspected deterministic fallback coverage for compact runtime archive report evidence.
+
+Implementation details:
+
+```text
+- Re-read the latest plan and score state.
+- Confirmed live wrapper-configured observe-validation prerequisites were not set in the environment.
+- Inspected `runtime_archive_evidence` and its compact-report test coverage.
+- Found coverage for passing compact reports, base-mismatched compact reports, and direct-archive precedence.
+- Added direct fallback coverage for missing or invalid compact runtime archive reports in `tests/test_observe_validation_contract.py`.
+- Verified that missing compact report evidence falls back to no runtime archive evidence and preserves `runtime_archive_report_status=missing_or_invalid`.
+```
+
+No runtime behavior changed. This step closes a compact runtime archive evidence fallback branch.
+
+Validation evidence:
+
+```text
+command: python3 -m py_compile scripts/observe_validation.sh tests/test_observe_validation_contract.py
+exit: 0
+log: target/validation-logs/py-compile-runtime-archive-missing-report-step5.log
+exit file: target/validation-logs/py-compile-runtime-archive-missing-report-step5.exit
+```
+
+```text
+command: python3 -m unittest tests.test_observe_validation_contract
+exit: 0
+result: 42 passed; 0 failed
+log: target/validation-logs/observe-validation-contract-runtime-archive-missing-report-step5.log
+exit file: target/validation-logs/observe-validation-contract-runtime-archive-missing-report-step5.exit
+```
+
+Next execution slice:
+
+```text
+No additional deterministic implementation branch is identified from this turn.
+Proceed only if:
+1. deliberate CANON_RUSTC_WRAPPER and CANON_RUSTC_V3_ARTIFACT_DIR inputs are available for live wrapper validation;
+2. compact receiver artifacts gain a new field, metric key, missing flag, or rendering semantic;
+3. source inspection exposes uncovered deterministic failure-classification or persistence-error coverage;
+4. another behavior-preserving test-helper cleanup improves evidence clarity without weakening exact-once assertions.
+```

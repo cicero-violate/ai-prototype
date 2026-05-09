@@ -834,6 +834,21 @@ class ObserveValidationContractTest(unittest.TestCase):
         self.assertEqual(runtime["runtime_archive_report_status"], "not_usable")
         self.assertEqual(runtime["runtime_archive_inspection_status"], "skipped_env_missing")
 
+    def test_runtime_archive_evidence_falls_back_when_compact_report_is_missing_or_invalid(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            missing_report = root / "missing-runtime-report.ndjson"
+            runtime = self.observe_module.runtime_archive_evidence(
+                archive_path="",
+                report_path=str(missing_report),
+                base="base-from-report",
+            )
+
+        self.assertEqual(runtime["runtime_archive_evidence_source"], "none")
+        self.assertEqual(runtime["runtime_archive_report_status"], "missing_or_invalid")
+        self.assertFalse(runtime["runtime_archive_report_present"])
+        self.assertEqual(runtime["runtime_archive_inspection_status"], "skipped_env_missing")
+
     def test_runtime_archive_evidence_prefers_direct_archive_over_compact_report(self) -> None:
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
