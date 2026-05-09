@@ -2590,6 +2590,53 @@ Candidate priorities:
 
 Do not make compact replay modes depend on live wrapper validation.
 
+## Completed Implementation Step 3 After Compact Full-Summary Command-Set Step 2
+
+Completed synthetic compact full-summary report metadata helper extraction.
+
+Implementation details:
+
+```text
+- Added compact_full_summary_report_extra(base) in tests/test_write_delta_manifest.py.
+- Centralized synthetic compact full-summary status, missing-signal, runtime archive, runtime manifest, and connector transport fields.
+- Reused the helper in test_accepts_compact_full_summary_artifact_replay().
+- Preserved the shared required-command fixture, exact required command order assertion, missing-signal closure, connector transport evidence, runtime manifest base-match evidence, and exact-once manifest command checks.
+```
+
+This implementation step remains test-only and behavior-preserving. It reduces drift risk between compact full-summary synthetic receiver coverage and the actual generated `--full-summary-report` artifact coverage by consolidating the synthetic report metadata into one helper.
+
+## Validation Evidence From Compact Full-Summary Extra Helper Step 3
+
+```text
+command: python3 -m py_compile tests/test_write_delta_manifest.py scripts/write_delta_manifest.py
+exit: 0
+log: target/validation-logs/py-compile-compact-full-summary-extra-helper-step3.log
+exit file: target/validation-logs/py-compile-compact-full-summary-extra-helper-step3.exit
+```
+
+```text
+command: python3 -m unittest tests.test_write_delta_manifest
+exit: 0
+result: 23 passed; 0 failed
+log: target/validation-logs/write-delta-manifest-compact-full-summary-extra-helper-step3.log
+exit file: target/validation-logs/write-delta-manifest-compact-full-summary-extra-helper-step3.exit
+```
+
+## Next Execution Slice After Compact Full-Summary Extra Helper Step 3
+
+No additional deterministic branch is currently identified. Continue only when a new compact receiver field, live-wrapper prerequisite, or source-inspected failure branch appears.
+
+Candidate priorities:
+
+```text
+1. Capture live wrapper-configured observe-validation evidence only when CANON_RUSTC_WRAPPER and CANON_RUSTC_V3_ARTIFACT_DIR are deliberately available for a clean non-compact run.
+2. Add compact receiver manifest exact-once checks only if a future compact receiver workflow introduces new metric keys or rendering semantics.
+3. Add deterministic failure-classification coverage only for newly identified uncovered branches.
+4. Continue behavior-preserving test-boilerplate reductions only when they preserve explicit receipt, manifest, command-set, missing-signal, runtime manifest, connector transport, and exact-once evidence semantics.
+```
+
+Do not make compact replay modes depend on live wrapper validation.
+
 ## Completed Implementation Step 2 After Compact Full-Summary Helper Step 1
 
 Completed compact full-summary command-set helper strengthening.

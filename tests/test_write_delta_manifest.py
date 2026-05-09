@@ -52,6 +52,30 @@ def compact_full_summary_command_names() -> list[str]:
     return [name for name, _cmd in FULL_SUMMARY_REQUIRED_COMMANDS]
 
 
+def compact_full_summary_report_extra(base: str) -> dict:
+    return {
+        "full_summary_report_only": True,
+        "full_summary_report_command": "--full-summary-report",
+        "command_execution_status": "pass",
+        "missing_signal_status": "pass",
+        "missing_signal_count": 0,
+        "missing_signal_flags": {
+            "missing_cargo_test": False,
+            "missing_runtime_manifest_base_match": False,
+            "missing_graph_workflow_fixture_receipt_snapshot": False,
+        },
+        "runtime_archive_evidence_source": "compact_report",
+        "runtime_archive_report_status": "pass",
+        "runtime_manifest_base_expected": base,
+        "runtime_manifest_base_commit": base,
+        "runtime_manifest_base_matches_delta_base": True,
+        "connector_transport_artifact_classification": "transport_interrupted_artifacts_complete",
+        "connector_transport_status": "502",
+        "connector_transport_report_complete": True,
+        "connector_transport_exit_file_present": True,
+    }
+
+
 def manifest_metric_names(manifest: str) -> list[str]:
     return [
         line[2:].split(":", 1)[0]
@@ -505,27 +529,8 @@ class DeltaManifestTest(unittest.TestCase):
             commands=commands,
             command_count=len(FULL_SUMMARY_REQUIRED_COMMANDS),
             test_count=len(FULL_SUMMARY_REQUIRED_COMMANDS),
-            extra={
-            "full_summary_report_only": True,
-            "full_summary_report_command": "--full-summary-report",
-            "command_execution_status": "pass",
-            "missing_signal_status": "pass",
-            "missing_signal_count": 0,
-            "missing_signal_flags": {
-                "missing_cargo_test": False,
-                "missing_runtime_manifest_base_match": False,
-                "missing_graph_workflow_fixture_receipt_snapshot": False,
-            },
-            "runtime_archive_evidence_source": "compact_report",
-            "runtime_archive_report_status": "pass",
-            "runtime_manifest_base_expected": self.base,
-            "runtime_manifest_base_commit": self.base,
-            "runtime_manifest_base_matches_delta_base": True,
-            "connector_transport_artifact_classification": "transport_interrupted_artifacts_complete",
-            "connector_transport_status": "502",
-            "connector_transport_report_complete": True,
-            "connector_transport_exit_file_present": True,
-        })
+            extra=compact_full_summary_report_extra(self.base),
+        )
         done = self.run_script()
         self.assertEqual(done.returncode, 0, done.stderr)
         receipt = json.loads(self.receipt.read_text(encoding="utf-8"))
