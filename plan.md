@@ -4126,6 +4126,58 @@ Otherwise proceed only if:
 4. behavior-preserving test-helper cleanup improves evidence clarity without weakening explicit assertions.
 ```
 
+## Completed Implementation Step 1 After Planning Checkpoint c3a2f54
+
+Executed the next concrete plan trigger: compact full-summary preserved metric receiver hardening for connector transport evidence.
+
+Implementation details:
+
+```text
+- Re-read plan.md and score.md.
+- Confirmed the working tree was clean at turn start.
+- Inspected scripts/write_delta_manifest.py PRESERVED_SUMMARY_KEYS against scripts/observe_validation.sh compact full-summary emission and tests/test_write_delta_manifest.py actual full-summary artifact coverage.
+- Found that connector transport evidence fields were already preserved by the receiver and emitted by compact full-summary mode, but the actual compact full-summary artifact path only asserted exact values and exact-once manifest rendering for a subset of the connector transport metric family.
+- Strengthened tests/test_write_delta_manifest.py so the actual generated --full-summary-report artifact must preserve the full connector transport family in the receipt.
+- Strengthened the same actual-artifact test so the generated delta manifest must render connector transport metrics exactly once.
+- Kept the change test-only; no runtime agent behavior changed.
+```
+
+Behavior impact:
+
+```text
+- No runtime behavior changed.
+- Compact full-summary artifact receiver coverage now fails if connector transport status, interruption state, report path/presence/completeness, exit-file path/presence, classifier options, or classifier reason are omitted, altered unexpectedly, or rendered multiple times in the manifest.
+- The source-derived connector transport classifier option contract is now explicitly checked in the actual compact full-summary artifact path.
+```
+
+Validation evidence:
+
+```text
+command: python3 -m py_compile scripts/observe_validation.sh scripts/write_delta_manifest.py tests/test_observe_validation_contract.py tests/test_write_delta_manifest.py
+exit: 0
+log: target/validation-logs/py-compile-full-summary-connector-transport-impl-step1.log
+exit file: target/validation-logs/py-compile-full-summary-connector-transport-impl-step1.exit
+```
+
+```text
+command: python3 -m unittest tests.test_write_delta_manifest tests.test_observe_validation_contract
+exit: 0
+result: 67 passed; 0 failed
+log: target/validation-logs/python-full-summary-connector-transport-impl-step1.log
+exit file: target/validation-logs/python-full-summary-connector-transport-impl-step1.exit
+```
+
+Next execution slice:
+
+```text
+Continue P4 only if source inspection exposes another preserved metric/missing-signal family with incomplete emission, receipt preservation, exact manifest value coverage, or exact-once rendering coverage.
+Otherwise proceed only if:
+1. deliberate CANON_RUSTC_WRAPPER and CANON_RUSTC_V3_ARTIFACT_DIR inputs are available for live wrapper validation;
+2. compact receiver artifacts gain a new field, metric key, missing flag, or rendering semantic;
+3. source inspection exposes an uncovered deterministic failure-classification, replay, persistence, API adapter, graph evidence, or report fallback branch;
+4. behavior-preserving test-helper cleanup improves evidence clarity without weakening explicit assertions.
+```
+
 ## Planning / Scoring Checkpoint After Commit c6c53b4
 
 Planning-only review for the next agent loop turn.

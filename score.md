@@ -3258,6 +3258,94 @@ Current risks / gaps:
 - P4 remains open only for additional source-justified compact evidence/reporting hardening.
 ```
 
+## Implementation Step 1 After Planning Checkpoint c3a2f54 - Full Summary Connector Transport Receiver Coverage
+
+Completed work:
+
+```text
+- Inspected the compact full-summary report emitter, PRESERVED_SUMMARY_KEYS, connector transport artifact classifier, and actual compact full-summary artifact receiver test.
+- Identified that connector transport fields were preserved and emitted, but the actual full-summary artifact path did not assert the complete connector transport receipt family or exact-once manifest rendering family.
+- Strengthened tests/test_write_delta_manifest.py so actual --full-summary-report artifacts preserve connector_transport_instability_present, connector_transport_artifact_classification, connector_transport_artifact_classification_options, connector_transport_artifact_classification_reason, connector_transport_status, connector_transport_interrupted, connector_transport_report_path, connector_transport_report_present, connector_transport_report_complete, connector_transport_exit_file, and connector_transport_exit_file_present.
+- Strengthened the actual-artifact manifest check so each connector transport metric renders exactly once.
+```
+
+Validation evidence captured this turn:
+
+```text
+command: python3 -m py_compile scripts/observe_validation.sh scripts/write_delta_manifest.py tests/test_observe_validation_contract.py tests/test_write_delta_manifest.py
+exit: 0
+log: target/validation-logs/py-compile-full-summary-connector-transport-impl-step1.log
+exit file: target/validation-logs/py-compile-full-summary-connector-transport-impl-step1.exit
+```
+
+```text
+command: python3 -m unittest tests.test_write_delta_manifest tests.test_observe_validation_contract
+exit: 0
+result: 67 passed; 0 failed
+log: target/validation-logs/python-full-summary-connector-transport-impl-step1.log
+exit file: target/validation-logs/python-full-summary-connector-transport-impl-step1.exit
+```
+
+```text
+command: TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test planning_contract -- --test-threads=1
+exit: 0
+result: 2 passed; 0 failed
+log: target/validation-logs/planning-contract-full-summary-connector-transport-impl-step1.log
+exit file: target/validation-logs/planning-contract-full-summary-connector-transport-impl-step1.exit
+```
+
+```text
+command: TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test score_contract -- --test-threads=1
+exit: 0
+result: 5 passed; 0 failed
+log: target/validation-logs/score-contract-full-summary-connector-transport-impl-step1.log
+exit file: target/validation-logs/score-contract-full-summary-connector-transport-impl-step1.exit
+```
+
+Score update:
+
+```text
+I  Intelligence      = 7.0
+E  Efficiency        = 7.92
+C  Correctness       = 9.990
+A  Alignment         = 8.8
+R  Robustness        = 10.0
+P  Performance       = 6.45
+S  Scalability       = 6.82
+D  Determinism       = 9.753
+T  Transparency      = 10.0
+Co Collaboration     = 8.0
+Em Empowerment       = 7.8
+B  Benefit           = 8.1
+L  Learning          = 7.1
+St Structure         = 9.75
+Si Simplicity        = 7.36
+F  Future-Proofing   = 9.336
+```
+
+Approximate geometric mean:
+
+```text
+G ≈ 8.33 / 10
+```
+
+Rationale:
+
+```text
+- Correctness improves slightly because actual compact full-summary artifact replay now requires full connector transport evidence preservation in receipts.
+- Determinism improves slightly because connector transport preserved metrics now have exact-once manifest rendering checks in the actual-artifact path.
+- Future-proofing improves slightly because future changes to connector transport classifier options, status fields, paths, or artifact completeness must be made deliberately under focused test coverage.
+- Runtime behavior and performance remain unchanged.
+```
+
+Current risks / gaps:
+
+```text
+- No fresh live wrapper-configured observe-validation evidence was captured.
+- Live graph telemetry still requires deliberate wrapper and artifact-dir inputs.
+- P4 remains open only for additional source-justified compact evidence/reporting hardening or deterministic uncovered branch coverage.
+```
+
 ## Planning / Scoring Checkpoint After Commit c6c53b4
 
 Date: 2026-05-09 America/Toronto / 2026-05-09 UTC

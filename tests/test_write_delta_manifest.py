@@ -643,6 +643,9 @@ class DeltaManifestTest(unittest.TestCase):
         self.assertTrue(receipt["runtime_manifest_base_matches_delta_base"])
         self.assert_manifest_key_values(manifest, {
             "connector_transport_artifact_classification": "transport_interrupted_artifacts_complete",
+            "connector_transport_status": "502",
+            "connector_transport_report_complete": True,
+            "connector_transport_exit_file_present": True,
             "runtime_manifest_base_matches_delta_base": True,
         })
         self.assert_compact_full_summary_manifest_commands(manifest)
@@ -699,10 +702,31 @@ class DeltaManifestTest(unittest.TestCase):
         self.assertEqual(receipt["missing_signal_status"], "pass")
         self.assertFalse(receipt["missing_signal_flags"]["missing_graph_workflow_fixture_receipt_snapshot"])
         self.assertEqual(receipt["runtime_archive_evidence_source"], "compact_report")
+        self.assertFalse(receipt["connector_transport_instability_present"])
         self.assertEqual(
             receipt["connector_transport_artifact_classification"],
             "transport_interrupted_artifacts_complete",
         )
+        self.assertEqual(
+            receipt["connector_transport_artifact_classification_options"],
+            [
+                "transport_ok_no_artifacts",
+                "transport_ok_artifacts_present",
+                "transport_interrupted_artifacts_complete",
+                "transport_interrupted_artifacts_incomplete",
+            ],
+        )
+        self.assertEqual(
+            receipt["connector_transport_artifact_classification_reason"],
+            "connector transport was interrupted but report and exit artifacts are present",
+        )
+        self.assertEqual(receipt["connector_transport_status"], "502")
+        self.assertTrue(receipt["connector_transport_interrupted"])
+        self.assertEqual(receipt["connector_transport_report_path"], str(report))
+        self.assertTrue(receipt["connector_transport_report_present"])
+        self.assertTrue(receipt["connector_transport_report_complete"])
+        self.assertEqual(receipt["connector_transport_exit_file"], str(exit_file))
+        self.assertTrue(receipt["connector_transport_exit_file_present"])
         self.assertEqual(receipt["runtime_manifest_base_expected"], self.base)
         self.assertEqual(receipt["runtime_manifest_base_commit"], self.base)
         self.assertTrue(receipt["runtime_manifest_base_matches_delta_base"])
@@ -791,6 +815,17 @@ class DeltaManifestTest(unittest.TestCase):
                 "ignored_runtime_artifact_count",
                 "ignored_validation_artifact_count",
                 "router_test_count",
+                "connector_transport_instability_present",
+                "connector_transport_artifact_classification",
+                "connector_transport_artifact_classification_options",
+                "connector_transport_artifact_classification_reason",
+                "connector_transport_status",
+                "connector_transport_interrupted",
+                "connector_transport_report_path",
+                "connector_transport_report_present",
+                "connector_transport_report_complete",
+                "connector_transport_exit_file",
+                "connector_transport_exit_file_present",
             ),
         )
         self.assertIn("ObservationCursor", manifest)
