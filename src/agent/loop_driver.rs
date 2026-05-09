@@ -304,6 +304,7 @@ fn planning_prompt(goal: &str, agent_id: u32, agent_count: u32, working_dir: &Pa
          ## GOAL\n{goal}\n\n\
          Create or update `plan.md` with the current implementation plan. \
          Create or update `score.md` with current progress and scoring. \
+         Analyze `state/rustc/ai/graph.json` with Python and include the relevant graph evidence in the planning/scoring update. \
          Keep this turn focused on planning and scoring, and commit the planning/scoring changes at the end of the turn.",
         dir = working_dir.display(),
     )
@@ -540,6 +541,7 @@ mod tests {
 
         assert!(planning.contains("planning turn for this agent loop"));
         assert!(planning.contains("Create or update `plan.md`"));
+        assert!(planning.contains("Analyze `state/rustc/ai/graph.json` with Python"));
         assert!(planning.contains("commit the planning/scoring changes"));
         assert!(execute.contains("executing implementation step 2"));
         assert!(execute.contains("Read `plan.md`"));

@@ -46,17 +46,18 @@ L  Learning          = 8.5
 St Structure         = 7.7
 Si Simplicity        = 8.4
 F  Future-Proofing   = 8.1
+Ch Coherency         = 8.6
 ```
 
 Approximate geometric mean over the listed score axes:
 
 ```text
-G ~= 8.12 / 10
+G ~= 8.14 / 10
 ```
 
 ## Rationale
 
-Correctness, determinism, and scalability are strongest because the kernel, receipts, replay boundaries, graph fixture validation, and validation evidence paths are mature for the current scope. Robustness, intelligence, and benefit remain lower because live graph editing, self-modification, and domain intelligence are not yet proven end to end.
+Correctness, determinism, scalability, and coherency are strongest because the kernel, receipts, replay boundaries, graph fixture validation, validation evidence paths, and current planning direction agree on the same evidence-first architecture. Robustness, intelligence, and benefit remain lower because live graph editing, self-modification, and domain intelligence are not yet proven end to end.
 
 The next score gains should come from evidence, not optimism:
 
