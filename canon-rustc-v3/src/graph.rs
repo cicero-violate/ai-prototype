@@ -33,20 +33,33 @@ pub struct GraphNode {
     pub def_id: String,
     pub path: String,
     pub kind: String,
-    /// Full source span extended backwards to cover outer attributes (Gap 3).
-    /// None for compiler-generated or macro-expanded items.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub def: Option<SourceSpan>,
-    /// Verbatim source text [def.lo .. def.hi], including outer attributes.
-    /// None when `def` is None.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub source_text: Option<String>,
-    /// Structured function signature for `fn` nodes (Gap 5).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub sig: Option<FnSig>,
-    /// Field definitions for `struct` nodes; variant names for `enum` nodes (Gap 2).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub fields: Vec<FieldDef>,
+    /// Extracted invariant clauses for `fn` nodes whose body is a pure boolean
+    /// conjunction (e.g. `is_valid`, `is_structurally_valid`).  Each entry is
+    /// one `&&`-separated predicate captured at compile time with full type info.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub invariants: Vec<InvariantClause>,
+}
+
+/// One predicate clause extracted from a boolean-conjunction validator fn.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct InvariantClause {
+    /// Human-readable operator string: "!=", "==", "<", "<=", ">", ">=", "!".
+    pub op: String,
+    /// Left-hand side of the predicate as source text (e.g. `self.retry_count`).
+    pub lhs: String,
+    /// Right-hand side as source text, empty for unary `!` predicates.
+    pub rhs: String,
+    /// Source span of this clause expression.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub span: Option<SourceSpan>,
 }
 
 /// Structured function signature.

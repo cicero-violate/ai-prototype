@@ -27,12 +27,14 @@ counts, graph presence, Ollama status, and missing-signal flags.
 ## Rust Checks
 
 Run when a Rust toolchain exists. Wrapper variables are cleared so root checks
-never depend on local graph-capture tooling.
+never depend on local graph-capture tooling. In quota-limited sandboxes, keep
+Rust test temp files in the ignored target tree instead of `/tmp`.
 
 ```bash
-RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo fmt --check
-RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets
-RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo clippy --all-targets -- -D warnings
+mkdir -p target/test-tmp
+TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo fmt --check
+TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets
+TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo clippy --all-targets -- -D warnings
 ```
 
 Capture graph telemetry only when the wrapper is explicitly available:

@@ -83,6 +83,47 @@ CANON_OPENAI_MODEL       optional; model identifier forwarded to router-server
 CANON_OPENAI_TIMEOUT_MS  optional; TCP read/write timeout for each turn
 ```
 
+### Evidence certification (tlog / receipts)
+
+When `AI_WORKER_PORT` is set, the agent runs an `AgentCycle` certification pass **after each successful loop cycle**. The cycle drives the worker through all evidence gates (Invariant → Analysis → Judgment → Plan → Execute → Verify → Eval → Done), stamping LLM receipts to the tlog.
+
+The objective for the certification is built from the files the loop cycle just produced:
+- `GOAL.md` → `domain_hint` (up to 800 chars)
+- `plan.md` → appended to domain_hint as "Completed work" summary (up to 400 chars)
+- `score.md` → `success_metric` (up to 300 chars)
+
+The worker must be in a state where it can accept new evidence (i.e. not already at `phase=Done` from a prior run). If `SUPERVISOR_PORT` is also set, the agent calls `POST /reload` on the supervisor before each certification, waits up to 30 s for the worker to become healthy, then certifies against the fresh instance.
+
+```sh
+# Minimal: loop + certification against a running worker
+AI_WORKER_PORT=9091 \
+PROJECT_DIR=/path/to/project \
+CANON_OPENAI_BASE_URL=http://127.0.0.1:8081/v1 \
+./target/release/agent
+
+# With supervisor auto-reload for a fresh worker each cycle
+AI_WORKER_PORT=9091 \
+SUPERVISOR_PORT=9090 \
+PROJECT_DIR=/path/to/project \
+CANON_OPENAI_BASE_URL=http://127.0.0.1:8081/v1 \
+./target/release/agent
+```
+
+Certification environment:
+
+```text
+AI_WORKER_PORT      required to enable certification; worker HTTP port
+SUPERVISOR_PORT     optional; when set, POST /reload is called before each cert
+AI_CERT_MAX_STEPS   optional; AgentCycle step budget for certification (default 30)
+```
+
+Certification log lines are prefixed `[agent] cert:`:
+
+```text
+[agent] cert: cycle 1 — domain=Implement the feature…
+[agent] cert: done  steps=9  success=true  stop=phase_done  phase=Done  tlog_len=14
+```
+
 ### Multiple parallel agents
 
 ```sh

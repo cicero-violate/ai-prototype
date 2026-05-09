@@ -236,7 +236,9 @@ impl LoopDriver {
                 Ok(_) => {
                     eprintln!("[{tag}] cert: waiting for worker on port {worker_port}");
                     if !wait_for_worker_healthy(worker_port, 30) {
-                        eprintln!("[{tag}] cert: worker did not become healthy after reload — skipping");
+                        eprintln!(
+                            "[{tag}] cert: worker did not become healthy after reload — skipping"
+                        );
                         return;
                     }
                 }
@@ -259,11 +261,16 @@ impl LoopDriver {
 
         eprintln!(
             "[{tag}] cert: cycle {cycle_num} — domain={}…",
-            objective.domain_hint.chars().take(80).collect::<String>().replace('\n', " "),
+            objective
+                .domain_hint
+                .chars()
+                .take(80)
+                .collect::<String>()
+                .replace('\n', " "),
         );
 
-        let mut cycle = AgentCycle::new(router, worker, objective)
-            .with_max_steps(self.config.cert_max_steps);
+        let mut cycle =
+            AgentCycle::new(router, worker, objective).with_max_steps(self.config.cert_max_steps);
 
         match cycle.run() {
             Ok(summary) => eprintln!(
