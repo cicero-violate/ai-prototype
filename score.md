@@ -11,9 +11,9 @@ This turn is intentionally limited to planning and scoring. The working tree alr
 Current timestamp evidence:
 
 ```text
-2026-05-08 America/Toronto / 2026-05-09T02:53:30Z UTC
+2026-05-08 America/Toronto / 2026-05-09T03:03:48Z UTC
 branch: main
-latest visible prior commit: e663e2b Update Canon Agent planning and scoring
+latest visible prior commit: e5105f3 Update Canon Agent planning and scoring
 ```
 
 ## Current Git State
@@ -89,6 +89,7 @@ Correctness, robustness, and determinism remain capped until `cargo test --all-t
 - Confirmed `plan.md` and `score.md` had no local diff before this refresh.
 - Updated `plan.md` to make planning-turn boundaries explicit.
 - Updated `score.md` to distinguish prior implementation evidence from this planning/scoring turn.
+- Refreshed the prior-commit and timestamp evidence for this planning/scoring pass.
 - Preserved the priority that the next execution turn should complete all-target validation before moving to new feature work.
 
 ## Latest Validation State
