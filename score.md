@@ -3,23 +3,24 @@
 ## Current Progress Snapshot
 
 Date: 2026-05-09 America/Toronto / 2026-05-09 UTC
-Turn type: planning/scoring turn after implementation step 5
-Scope executed: updated planning and scoring artifacts only; no implementation code changed.
+Turn type: implementation step 1 after planning turn
+Scope executed: refactored command-normalization receipt and manifest assertions into reusable helpers while preserving exact-once coverage.
 
 Current timestamp evidence:
 
 ```text
 branch: main
-latest visible commit before this planning turn: e472f7c Check command normalization metric rendering
+latest visible commit before this implementation turn: 27842db Update planning score after command normalization rendering
 working directory: /workspace/ai_sandbox/canon-mini-agent/prototype/ai
 working tree at turn start: clean
 ```
 
 ## Current Git State
 
-Planning/scoring files owned by this turn:
+Implementation, test, and planning/scoring files owned by this turn:
 
 ```text
+tests/test_write_delta_manifest.py
 plan.md
 score.md
 ```
@@ -28,7 +29,7 @@ Generated validation logs, observe reports, runtime fixture archives, graph repo
 
 ## Scorecard
 
-Scores are approximate implementation-readiness scores on a 0-10 scale. Scores are held steady during this planning-only turn; transparency and correctness remain at the prior high-water mark from exact-once manifest rendering evidence for command normalization metadata across compact full-summary and row-fallback paths.
+Scores are approximate implementation-readiness scores on a 0-10 scale. Structure and simplicity improve slightly because command-normalization receipt and manifest assertions now use reusable helpers while preserving exact-once manifest evidence across compact full-summary and row-fallback paths.
 
 ```text
 I  Intelligence      = 7.0
@@ -44,62 +45,82 @@ Co Collaboration     = 8.0
 Em Empowerment       = 7.8
 B  Benefit           = 8.1
 L  Learning          = 7.1
-St Structure         = 9.6
-Si Simplicity        = 7.2
-F  Future-Proofing   = 9.05
+St Structure         = 9.65
+Si Simplicity        = 7.25
+F  Future-Proofing   = 9.08
 ```
 
 Approximate geometric mean:
 
 ```text
-G ≈ 8.24 / 10
+G ≈ 8.25 / 10
 ```
 
 ## Completed Work This Turn
 
-- Read `plan.md`, `score.md`, git status, recent commits, and current command-normalization rendering plan.
-- Confirmed the latest visible commit is `e472f7c Check command normalization metric rendering`.
-- Added a planning-only section to `plan.md` for the next implementation slice.
-- Updated `score.md` to reflect planning/scoring status without claiming new implementation work.
-- Kept the next implementation recommendation focused on refactoring command-normalization receipt and manifest assertions into reusable helpers.
+- Read `plan.md`, `score.md`, git status, recent commits, and the current command-normalization helper-refactor plan.
+- Added `expected_command_normalization_metrics()` to centralize expected normalized command metadata.
+- Added `DeltaManifestTest.assert_command_normalization_receipt()` for reusable receipt assertions.
+- Added `DeltaManifestTest.assert_command_normalization_metrics_render_once()` for exact-once manifest metric assertions.
+- Replaced repeated direct command-normalization receipt assertions in summary, duplicate-summary, row-fallback, and duplicate-row tests.
+- Preserved compact full-summary and compact row-fallback exact-once manifest coverage.
+- Updated `plan.md` with the completed execution slice and next action.
 
 ## Validation Evidence Captured This Turn
 
-Validation for this planning/scoring turn is limited to planning and score artifact contracts.
+```text
+command: python3 -m unittest tests/test_write_delta_manifest.py
+exit: 0
+result: 23 passed; 0 failed
+log: target/validation-logs/write-delta-manifest-helper-refactor-step1.log
+```
+
+```text
+command: python3 -m unittest tests/test_observe_validation_contract.py
+exit: 0
+result: 39 passed; 0 failed
+log: target/validation-logs/observe-validation-contract-helper-refactor-step1.log
+```
+
+```text
+command: python3 -m py_compile scripts/observe_validation.sh scripts/write_delta_manifest.py tests/test_write_delta_manifest.py tests/test_observe_validation_contract.py
+exit: 0
+log: target/validation-logs/py-compile-helper-refactor-step1.log
+```
 
 ```text
 command: cargo test --test planning_contract -- --test-threads=1
 exit: 0
 result: 2 passed; 0 failed
-log: target/validation-logs/planning-contract-planning-turn-after-render-once-step5.log
+log: target/validation-logs/planning-contract-helper-refactor-step1-final.log
 ```
 
 ```text
 command: cargo test --test score_contract -- --test-threads=1
 exit: 0
 result: 5 passed; 0 failed
-log: target/validation-logs/score-contract-planning-turn-after-render-once-step5.log
+log: target/validation-logs/score-contract-helper-refactor-step1-final.log
 ```
 
 ## Connector / Environment Notes
 
-- This planning-only turn did not require a long full observe-validation run.
+- This turn did not require a long full observe-validation run.
 - No live wrapper-configured, router, Ollama, or OpenAI path was required for baseline evidence.
-- No implementation code was changed in this turn.
+- The implementation was test-maintainability focused and did not change production manifest generation behavior.
 
 ## Current Risks / Gaps
 
-- Command normalization tests now have duplicated receipt/manifest field assertions; future maintainability would improve with reusable assertion helpers.
 - Connector 502 transport errors can still interrupt long shell calls, but receiver/archive evidence continues to move toward short compact artifacts.
 - No live wrapper-configured observe-validation run has been captured in this environment.
 - Live router/MCP/Ollama/OpenAI paths still depend on environment services and can fail independently of core runtime correctness.
 - Future cross-subproject graph behavior changes still require updating the boundary contract and executable test first.
+- Future compact receiver metric families should use the new helper pattern instead of adding repeated field-by-field assertions.
 
 ## Next Score Update Triggers
 
 Raise scores only after fresh evidence:
 
-- **Structure / Simplicity:** command normalization receipt/manifest assertions are refactored into reusable helpers without reducing coverage.
+- **Structure / Simplicity:** additional compact receiver metric families adopt reusable assertion helpers without reducing coverage.
 - **Performance:** command-duration performance evidence is strengthened with external benchmark or latency trend data.
 - **Scalability:** multi-agent coordination and router failure scenarios are tested.
 - **Learning:** policy promotion remains externally evaluated and self-approval remains impossible under tests.
@@ -107,4 +128,4 @@ Raise scores only after fresh evidence:
 
 ## Immediate Next Action
 
-Continue P4 by refactoring command normalization receipt/manifest assertions into reusable helpers while preserving exact-once metric coverage for compact full-summary and row-fallback manifest paths.
+Continue P4 by applying reusable assertion patterns to the next compact receiver metric family when new manifest keys are added, or add a small regression check for expected command-normalization manifest values while retaining exact-once rendering guarantees.

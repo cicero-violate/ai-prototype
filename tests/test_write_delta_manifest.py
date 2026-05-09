@@ -37,6 +37,30 @@ def manifest_metric_names(manifest: str) -> list[str]:
     ]
 
 
+def expected_command_normalization_metrics(
+    *,
+    count: int,
+    source: str,
+    summary_input: int,
+    summary_distinct: int,
+    summary_duplicate: int,
+    row_input: int,
+    row_distinct: int,
+    row_duplicate: int,
+) -> dict[str, int | str]:
+    return {
+        "validation_command_count": count,
+        "validation_command_distinct_count": count,
+        "validation_command_source": source,
+        "validation_command_summary_input_count": summary_input,
+        "validation_command_summary_distinct_count": summary_distinct,
+        "validation_command_summary_duplicate_count": summary_duplicate,
+        "validation_command_row_input_count": row_input,
+        "validation_command_row_distinct_count": row_distinct,
+        "validation_command_row_duplicate_count": row_duplicate,
+    }
+
+
 class DeltaManifestTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
@@ -116,6 +140,36 @@ class DeltaManifestTest(unittest.TestCase):
             return SimpleNamespace(returncode=1, stdout="", stderr=str(exc))
         finally:
             os.chdir(cwd)
+
+    def assert_command_normalization_receipt(
+        self,
+        receipt: dict,
+        *,
+        count: int,
+        source: str,
+        summary_input: int,
+        summary_distinct: int,
+        summary_duplicate: int,
+        row_input: int,
+        row_distinct: int,
+        row_duplicate: int,
+    ) -> None:
+        for key, value in expected_command_normalization_metrics(
+            count=count,
+            source=source,
+            summary_input=summary_input,
+            summary_distinct=summary_distinct,
+            summary_duplicate=summary_duplicate,
+            row_input=row_input,
+            row_distinct=row_distinct,
+            row_duplicate=row_duplicate,
+        ).items():
+            self.assertEqual(receipt[key], value, key)
+
+    def assert_command_normalization_metrics_render_once(self, manifest: str) -> None:
+        metric_counts = Counter(manifest_metric_names(manifest))
+        for key in COMMAND_NORMALIZATION_METRIC_KEYS:
+            self.assertEqual(metric_counts[key], 1, key)
 
     def test_pass_with_commands_and_tests(self) -> None:
         self.write_report(test_count=2)
@@ -418,15 +472,17 @@ class DeltaManifestTest(unittest.TestCase):
         self.assertEqual(receipt["runtime_manifest_base_expected"], self.base)
         self.assertEqual(receipt["runtime_manifest_base_commit"], self.base)
         self.assertTrue(receipt["runtime_manifest_base_matches_delta_base"])
-        self.assertEqual(receipt["validation_command_count"], 3)
-        self.assertEqual(receipt["validation_command_distinct_count"], 3)
-        self.assertEqual(receipt["validation_command_source"], "summary_validation_commands")
-        self.assertEqual(receipt["validation_command_summary_input_count"], 3)
-        self.assertEqual(receipt["validation_command_summary_distinct_count"], 3)
-        self.assertEqual(receipt["validation_command_summary_duplicate_count"], 0)
-        self.assertEqual(receipt["validation_command_row_input_count"], 0)
-        self.assertEqual(receipt["validation_command_row_distinct_count"], 0)
-        self.assertEqual(receipt["validation_command_row_duplicate_count"], 0)
+        self.assert_command_normalization_receipt(
+            receipt,
+            count=3,
+            source="summary_validation_commands",
+            summary_input=3,
+            summary_distinct=3,
+            summary_duplicate=0,
+            row_input=0,
+            row_distinct=0,
+            row_duplicate=0,
+        )
         self.assertEqual(receipt["validation_test_count"], 3)
         for command in receipt["validation_commands"]:
             self.assertIn("cmd", command)
@@ -451,9 +507,7 @@ class DeltaManifestTest(unittest.TestCase):
             "cargo_test_all_targets: pass",
         ):
             self.assertIn(token, manifest)
-        metric_names = manifest_metric_names(manifest)
-        for key in COMMAND_NORMALIZATION_METRIC_KEYS:
-            self.assertEqual(Counter(metric_names)[key], 1, key)
+        self.assert_command_normalization_metrics_render_once(manifest)
 
     def test_compact_preserved_fields_render_once_with_command_rows_fallback(self) -> None:
         commands = [
@@ -516,8 +570,7 @@ class DeltaManifestTest(unittest.TestCase):
             "full_summary_report_command",
         ):
             self.assertEqual(Counter(metric_names)[key], 1, key)
-        for key in COMMAND_NORMALIZATION_METRIC_KEYS:
-            self.assertEqual(Counter(metric_names)[key], 1, key)
+        self.assert_command_normalization_metrics_render_once(manifest)
         self.assertIn("unit: pass :: ['python3', '-m', 'unittest']", manifest)
         self.assertIn("compile: pass :: ['python3', '-m', 'py_compile']", manifest)
 
@@ -562,15 +615,17 @@ class DeltaManifestTest(unittest.TestCase):
         done = self.run_script()
         self.assertEqual(done.returncode, 0, done.stderr)
         receipt = json.loads(self.receipt.read_text(encoding="utf-8"))
-        self.assertEqual(receipt["validation_command_count"], 2)
-        self.assertEqual(receipt["validation_command_distinct_count"], 2)
-        self.assertEqual(receipt["validation_command_source"], "summary_validation_commands")
-        self.assertEqual(receipt["validation_command_summary_input_count"], 2)
-        self.assertEqual(receipt["validation_command_summary_distinct_count"], 2)
-        self.assertEqual(receipt["validation_command_summary_duplicate_count"], 0)
-        self.assertEqual(receipt["validation_command_row_input_count"], 2)
-        self.assertEqual(receipt["validation_command_row_distinct_count"], 2)
-        self.assertEqual(receipt["validation_command_row_duplicate_count"], 0)
+        self.assert_command_normalization_receipt(
+            receipt,
+            count=2,
+            source="summary_validation_commands",
+            summary_input=2,
+            summary_distinct=2,
+            summary_duplicate=0,
+            row_input=2,
+            row_distinct=2,
+            row_duplicate=0,
+        )
         self.assertEqual([command["name"] for command in receipt["validation_commands"]], ["unit", "compile"])
         self.assertEqual([command["duration_ms"] for command in receipt["validation_commands"]], [7, 3])
         manifest = self.out.read_text(encoding="utf-8")
@@ -665,15 +720,17 @@ class DeltaManifestTest(unittest.TestCase):
         done = self.run_script()
         self.assertEqual(done.returncode, 0, done.stderr)
         receipt = json.loads(self.receipt.read_text(encoding="utf-8"))
-        self.assertEqual(receipt["validation_command_count"], 1)
-        self.assertEqual(receipt["validation_command_distinct_count"], 1)
-        self.assertEqual(receipt["validation_command_source"], "summary_validation_commands")
-        self.assertEqual(receipt["validation_command_summary_input_count"], 2)
-        self.assertEqual(receipt["validation_command_summary_distinct_count"], 1)
-        self.assertEqual(receipt["validation_command_summary_duplicate_count"], 1)
-        self.assertEqual(receipt["validation_command_row_input_count"], 0)
-        self.assertEqual(receipt["validation_command_row_distinct_count"], 0)
-        self.assertEqual(receipt["validation_command_row_duplicate_count"], 0)
+        self.assert_command_normalization_receipt(
+            receipt,
+            count=1,
+            source="summary_validation_commands",
+            summary_input=2,
+            summary_distinct=1,
+            summary_duplicate=1,
+            row_input=0,
+            row_distinct=0,
+            row_duplicate=0,
+        )
         self.assertEqual([command["name"] for command in receipt["validation_commands"]], ["unit"])
         manifest = self.out.read_text(encoding="utf-8")
         self.assertIn("validation_command_summary_duplicate_count: 1", manifest)
@@ -747,15 +804,17 @@ class DeltaManifestTest(unittest.TestCase):
         done = self.run_script()
         self.assertEqual(done.returncode, 0, done.stderr)
         receipt = json.loads(self.receipt.read_text(encoding="utf-8"))
-        self.assertEqual(receipt["validation_command_count"], 1)
-        self.assertEqual(receipt["validation_command_distinct_count"], 1)
-        self.assertEqual(receipt["validation_command_source"], "validation_command_rows")
-        self.assertEqual(receipt["validation_command_summary_input_count"], 0)
-        self.assertEqual(receipt["validation_command_summary_distinct_count"], 0)
-        self.assertEqual(receipt["validation_command_summary_duplicate_count"], 0)
-        self.assertEqual(receipt["validation_command_row_input_count"], 2)
-        self.assertEqual(receipt["validation_command_row_distinct_count"], 1)
-        self.assertEqual(receipt["validation_command_row_duplicate_count"], 1)
+        self.assert_command_normalization_receipt(
+            receipt,
+            count=1,
+            source="validation_command_rows",
+            summary_input=0,
+            summary_distinct=0,
+            summary_duplicate=0,
+            row_input=2,
+            row_distinct=1,
+            row_duplicate=1,
+        )
         self.assertEqual([command["name"] for command in receipt["validation_commands"]], ["unit"])
         manifest = self.out.read_text(encoding="utf-8")
         self.assertIn("validation_command_source: validation_command_rows", manifest)

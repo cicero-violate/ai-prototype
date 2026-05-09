@@ -1661,3 +1661,61 @@ exit: 0
 result: 5 passed; 0 failed
 log: target/validation-logs/score-contract-planning-turn-after-render-once-step5.log
 ```
+
+
+
+## Completed Execution Slice After Command Normalization Helper Refactor Step 1
+
+Completed the planned P4 maintainability slice by refactoring command-normalization receipt and manifest assertions into reusable test helpers without changing production behavior.
+
+Implementation details:
+
+```text
+- Added expected_command_normalization_metrics() to centralize expected normalized command metadata.
+- Added DeltaManifestTest.assert_command_normalization_receipt() for receipt metadata checks.
+- Added DeltaManifestTest.assert_command_normalization_metrics_render_once() for exact-once manifest metric rendering checks.
+- Replaced repeated direct receipt assertions in summary, duplicate-summary, row-fallback, and duplicate-row command-normalization tests.
+- Preserved exact-once command-normalization manifest coverage for compact full-summary and row-fallback paths.
+```
+
+This improves structure and future-proofing for the compact receiver workflow: adding or changing command-normalization metadata now has one primary assertion surface instead of repeated field-by-field test boilerplate.
+
+## Validation Evidence From Command Normalization Helper Refactor Step 1
+
+```text
+command: python3 -m unittest tests/test_write_delta_manifest.py
+exit: 0
+result: 23 passed; 0 failed
+log: target/validation-logs/write-delta-manifest-helper-refactor-step1.log
+```
+
+```text
+command: python3 -m unittest tests/test_observe_validation_contract.py
+exit: 0
+result: 39 passed; 0 failed
+log: target/validation-logs/observe-validation-contract-helper-refactor-step1.log
+```
+
+```text
+command: python3 -m py_compile scripts/observe_validation.sh scripts/write_delta_manifest.py tests/test_write_delta_manifest.py tests/test_observe_validation_contract.py
+exit: 0
+log: target/validation-logs/py-compile-helper-refactor-step1.log
+```
+
+```text
+command: cargo test --test planning_contract -- --test-threads=1
+exit: 0
+result: 2 passed; 0 failed
+log: target/validation-logs/planning-contract-helper-refactor-step1-final.log
+```
+
+```text
+command: cargo test --test score_contract -- --test-threads=1
+exit: 0
+result: 5 passed; 0 failed
+log: target/validation-logs/score-contract-helper-refactor-step1-final.log
+```
+
+## Next Execution Slice After Command Normalization Helper Refactor Step 1
+
+Continue P4 by applying the same reusable assertion pattern to the next compact receiver metric family when new manifest keys are added, or add a small regression check that command-normalization manifest snippets include the expected values while the helper continues to enforce exact-once rendering.
