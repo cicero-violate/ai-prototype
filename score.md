@@ -3,33 +3,31 @@
 ## Current Progress Snapshot
 
 Date: 2026-05-09 America/Toronto / 2026-05-09 UTC
-Turn type: implementation step 3
-Scope executed: preserved connector transport artifact classification in the delta manifest/receipt consumer.
+Turn type: implementation step 4
+Scope executed: cleaned planning/scoring documentation drift so current P4 completed work is no longer described as uncommitted or pending.
 
 Current timestamp evidence:
 
 ```text
 branch: main
-latest visible commit before this implementation turn: 8d52fb6 Classify connector transport artifacts
+latest visible commit before this implementation turn: 30bf057 Preserve connector transport artifacts in manifests
 working directory: /workspace/ai_sandbox/canon-mini-agent/prototype/ai
 ```
 
 ## Current Git State
 
-Implementation, test, and planning/scoring files owned by this commit:
+Planning/scoring files owned by this commit:
 
 ```text
-scripts/write_delta_manifest.py
-tests/test_write_delta_manifest.py
 plan.md
 score.md
 ```
 
-Generated validation logs, observe reports, runtime fixture archives, graph reports, `__pycache__`, target output, and exit files are intentionally left under ignored paths and are not committed.
+No source behavior files were changed in this turn. Generated validation logs, observe reports, runtime fixture archives, graph reports, `__pycache__`, target output, and exit files are intentionally left under ignored paths and are not committed.
 
 ## Scorecard
 
-Scores are approximate implementation-readiness scores on a 0-10 scale. Transparency and future-proofing improve because connector transport artifact evidence now survives into delta receipts/manifests instead of remaining only in observe-validation summary rows.
+Scores are approximate implementation-readiness scores on a 0-10 scale. Structure and simplicity improve because the plan now has a concise current P4 completion summary and a source-backed next action instead of treating already-landed work as current drift.
 
 ```text
 I  Intelligence      = 7.0
@@ -45,85 +43,81 @@ Co Collaboration     = 8.0
 Em Empowerment       = 7.8
 B  Benefit           = 8.1
 L  Learning          = 7.1
-St Structure         = 9.55
-Si Simplicity        = 6.9
+St Structure         = 9.6
+Si Simplicity        = 7.0
 F  Future-Proofing   = 9.05
 ```
 
 Approximate geometric mean:
 
 ```text
-G ≈ 8.19 / 10
+G ≈ 8.20 / 10
 ```
 
 ## Completed Work This Turn
 
-- Read `plan.md`, `score.md`, git status, latest commits, and source usages of connector transport fields.
-- Identified `scripts/write_delta_manifest.py` as the higher-level consumer still preserving only older connector failure/instability fields.
-- Added connector transport artifact fields to `PRESERVED_SUMMARY_KEYS`:
-  - `connector_transport_artifact_classification`
-  - `connector_transport_artifact_classification_options`
-  - `connector_transport_artifact_classification_reason`
-  - `connector_transport_status`
-  - `connector_transport_interrupted`
-  - `connector_transport_report_path`
-  - `connector_transport_report_present`
-  - `connector_transport_report_complete`
-  - `connector_transport_exit_file`
-  - `connector_transport_exit_file_present`
-- Added a delta manifest regression test proving these fields are preserved in both receipt JSON and rendered manifest output exactly once.
-- Re-ran observe-validation contract coverage to ensure the source classifier/report path remained stable.
-- Updated planning to mark manifest consumer integration complete and identify the next cleanup slice.
+- Read `plan.md`, `score.md`, git status, latest commits, and planning/score contract files.
+- Added a top-level `Current P4 Completion Summary` to `plan.md`.
+- Updated the current snapshot to commit `30bf057 Preserve connector transport artifacts in manifests`.
+- Reframed landed generated graph JSON classification, compact runtime archive reports, separated validation status fields, compact command-execution reports, connector transport artifact classification, and delta manifest transport artifact preservation as completed baseline capabilities.
+- Replaced the stale next-slice paragraph with a completed planning-cleanup section and a new source-backed next execution target.
+- Rewrote `score.md` to reflect this planning/scoring cleanup turn.
 
 ## Validation Evidence Captured This Turn
 
 ```text
-command: python3 -m unittest tests/test_write_delta_manifest.py
+command: cargo test --test planning_contract -- --test-threads=1
 exit: 0
-result: 11 passed; 0 failed
-log: target/validation-logs/write-delta-manifest-transport-artifacts-step3.log
-exit file: target/validation-logs/write-delta-manifest-transport-artifacts-step3.exit
+result: 2 passed; 0 failed
+log: target/validation-logs/planning-contract-doc-cleanup-step4.log
+exit file: target/validation-logs/planning-contract-doc-cleanup-step4.exit
 ```
 
 ```text
-command: python3 -m unittest tests/test_observe_validation_contract.py
+command: cargo test --test score_contract -- --test-threads=1
 exit: 0
-result: 38 passed; 0 failed
-log: target/validation-logs/observe-validation-contract-transport-artifacts-step3.log
-exit file: target/validation-logs/observe-validation-contract-transport-artifacts-step3.exit
+result: 5 passed; 0 failed
+log: target/validation-logs/score-contract-doc-cleanup-step4.log
+exit file: target/validation-logs/score-contract-doc-cleanup-step4.exit
 ```
 
 ```text
-command: python3 -m py_compile scripts/write_delta_manifest.py scripts/observe_validation.sh tests/test_write_delta_manifest.py tests/test_observe_validation_contract.py
+command: python3 - <<'PY'
+from pathlib import Path
+text = Path('plan.md').read_text(encoding='utf-8')
+stale_phrase = 'current ' + 'uncommitted work'
+assert stale_phrase not in text
+assert 'Current P4 Completion Summary' in text
+assert '30bf057 Preserve connector transport artifacts in manifests' in text
+PY
 exit: 0
-log: target/validation-logs/py-compile-transport-artifacts-step3.log
-exit file: target/validation-logs/py-compile-transport-artifacts-step3.exit
+log: target/validation-logs/plan-doc-sanity-step4.log
+exit file: target/validation-logs/plan-doc-sanity-step4.exit
 ```
 
 ## Connector / Environment Notes
 
 - This turn did not require a long full observe-validation run.
-- The work was limited to the delta manifest preservation path and focused contract tests.
+- No source behavior files changed.
 - No live wrapper-configured, router, Ollama, or OpenAI path was required for baseline evidence.
 
 ## Current Risks / Gaps
 
-- Connector 502 transport errors can still interrupt long shell calls, but the artifact classification now distinguishes complete versus incomplete evidence and is preserved in delta receipts/manifests.
+- Connector 502 transport errors can still interrupt long shell calls, but the artifact classification distinguishes complete versus incomplete evidence and is preserved in delta receipts/manifests.
 - No live wrapper-configured observe-validation run has been captured in this environment.
 - Live router/MCP/Ollama/OpenAI paths still depend on environment services and can fail independently of core runtime correctness.
-- Some older `plan.md` sections remain chronologically verbose and can obscure the current next action.
 - Future cross-subproject graph behavior changes still require updating the boundary contract and executable test first.
 
 ## Next Score Update Triggers
 
 Raise scores only after fresh evidence:
 
-- **Structure / Simplicity:** stale planning sections are consolidated so completed work is no longer described as current/uncommitted.
 - **Correctness / Robustness:** full observe-validation emits and downstream manifests preserve transport artifact classification from an actual long-run artifact scenario.
 - **Performance:** command-duration performance evidence is strengthened with external benchmark or latency trend data.
 - **Scalability:** multi-agent coordination and router failure scenarios are tested.
 - **Learning:** policy promotion remains externally evaluated and self-approval remains impossible under tests.
+- **Structure / Simplicity:** a compact full-summary artifact replay fixture makes future evidence checks shorter and less dependent on historical plan text.
 
 ## Immediate Next Action
 
-Continue P4 with a plan/documentation cleanup slice that consolidates the current completion state and removes stale references to already-landed work as current uncommitted work.
+Continue P4 by adding a compact full-summary artifact replay fixture or synthetic short workflow that proves command execution status, missing-signal status, connector transport artifact classification, compact runtime archive report evidence, and delta manifest preservation together.
