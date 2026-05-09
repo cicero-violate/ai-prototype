@@ -502,6 +502,13 @@ class DeltaManifestTest(unittest.TestCase):
             "runtime_manifest_base_matches_delta_base": True,
             "graph_workflow_fixture_validation": "pass",
         })
+        self.assert_manifest_metrics_render_once(
+            manifest,
+            (
+                "cargo_test_all_targets",
+                "graph_workflow_fixture_validation",
+            ),
+        )
 
     def test_generates_manifest_from_actual_full_summary_report_artifact(self) -> None:
         scripts_dir = self.repo / "scripts"
@@ -588,6 +595,13 @@ class DeltaManifestTest(unittest.TestCase):
             "cargo_test_all_targets": "pass",
             "graph_workflow_fixture_validation": "pass",
         })
+        self.assert_manifest_metrics_render_once(
+            manifest,
+            (
+                "cargo_test_all_targets",
+                "graph_workflow_fixture_validation",
+            ),
+        )
         self.assert_command_normalization_manifest(
             manifest,
             count=4,

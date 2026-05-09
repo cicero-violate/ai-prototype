@@ -2684,3 +2684,49 @@ Candidate priorities:
 ```
 
 Do not make compact replay modes depend on live wrapper validation.
+
+## Completed Execution Slice After Full Summary Graph Exact-Once Step 3
+
+Completed exact-once rendered metric coverage for compact full-summary graph workflow fixture validation evidence.
+
+Implementation details:
+
+```text
+- Extended tests/test_write_delta_manifest.py compact full-summary synthetic replay assertions.
+- Extended actual --full-summary-report artifact manifest assertions.
+- Added exact-once manifest rendering checks for cargo_test_all_targets and graph_workflow_fixture_validation in both paths.
+- Preserved the prior four-command compact full-summary receipt and manifest evidence requirements.
+```
+
+This closes the direct receiver-side follow-up from the prior step: the manifest no longer only checks that graph_workflow_fixture_validation renders as pass; it also checks that the metric is rendered exactly once.
+
+## Validation Evidence From Full Summary Graph Exact-Once Step 3
+
+```text
+command: python3 -m py_compile tests/test_write_delta_manifest.py scripts/write_delta_manifest.py
+exit: 0
+log: target/validation-logs/py-compile-full-summary-graph-exact-once-step3.log
+exit file: target/validation-logs/py-compile-full-summary-graph-exact-once-step3.exit
+```
+
+```text
+command: python3 -m unittest tests.test_write_delta_manifest
+exit: 0
+result: 23 passed; 0 failed
+log: target/validation-logs/write-delta-manifest-full-summary-graph-exact-once-step3.log
+exit file: target/validation-logs/write-delta-manifest-full-summary-graph-exact-once-step3.exit
+```
+
+## Next Execution Slice After Full Summary Graph Exact-Once Step 3
+
+No additional deterministic branch is currently identified. Continue only when a new compact receiver field, live-wrapper prerequisite, or source-inspected failure branch appears.
+
+Candidate priorities:
+
+```text
+1. Capture live wrapper-configured observe-validation evidence only when CANON_RUSTC_WRAPPER and CANON_RUSTC_V3_ARTIFACT_DIR are deliberately available for a clean non-compact run.
+2. Add compact receiver manifest exact-once checks only if a future compact receiver workflow introduces new metric keys or rendering semantics.
+3. Add deterministic failure-classification coverage only for newly identified uncovered branches.
+```
+
+Do not make compact replay modes depend on live wrapper validation.

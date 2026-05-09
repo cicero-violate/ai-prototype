@@ -834,3 +834,90 @@ Current risks / gaps:
 Immediate next action:
 
 Wait for deliberate V3 wrapper prerequisites, a new compact receiver field, or a newly identified deterministic uncovered branch before making additional implementation changes.
+
+## Implementation Step 3 — Full Summary Graph Exact-Once Coverage
+
+Date: 2026-05-09 America/Toronto / 2026-05-09 UTC
+Turn type: implementation step 3 after full-summary graph manifest coverage
+Scope executed: exact-once rendered manifest coverage for compact full-summary graph workflow fixture validation command evidence.
+
+Current timestamp evidence:
+
+```text
+branch: main
+latest visible commit before this implementation turn: a681108 Add full summary graph manifest coverage
+working directory: /workspace/ai_sandbox/canon-mini-agent/prototype/ai
+working tree at turn start: clean
+```
+
+Implementation, test, and planning/scoring files owned by this turn:
+
+```text
+tests/test_write_delta_manifest.py
+plan.md
+score.md
+```
+
+Generated validation logs and exit files remain ignored and are not committed.
+
+Score movement: transparency and future-proofing improve slightly because the new compact full-summary graph workflow fixture validation metric now has exact-once rendered manifest coverage. Production behavior did not change.
+
+```text
+I  Intelligence      = 7.0
+E  Efficiency        = 7.91
+C  Correctness       = 9.91
+A  Alignment         = 8.8
+R  Robustness        = 10.0
+P  Performance       = 6.45
+S  Scalability       = 6.82
+D  Determinism       = 9.66
+T  Transparency      = 10.0
+Co Collaboration     = 8.0
+Em Empowerment       = 7.8
+B  Benefit           = 8.1
+L  Learning          = 7.1
+St Structure         = 9.75
+Si Simplicity        = 7.36
+F  Future-Proofing   = 9.25
+```
+
+Approximate geometric mean:
+
+```text
+G ≈ 8.32 / 10
+```
+
+Completed work this turn:
+
+- Read the latest `plan.md` and `score.md` state.
+- Inspected compact full-summary receiver coverage after commit `a681108`.
+- Identified a concrete exact-once gap: `graph_workflow_fixture_validation` was asserted for value but not for exact rendered metric cardinality.
+- Added exact-once checks for `graph_workflow_fixture_validation` in both synthetic compact full-summary replay and actual generated `--full-summary-report` manifest coverage.
+- Kept the change test-only and preserved the existing four-command compact full-summary evidence path.
+
+Validation evidence captured this turn:
+
+```text
+command: python3 -m py_compile tests/test_write_delta_manifest.py scripts/write_delta_manifest.py
+exit: 0
+log: target/validation-logs/py-compile-full-summary-graph-exact-once-step3.log
+exit file: target/validation-logs/py-compile-full-summary-graph-exact-once-step3.exit
+```
+
+```text
+command: python3 -m unittest tests.test_write_delta_manifest
+exit: 0
+result: 23 passed; 0 failed
+log: target/validation-logs/write-delta-manifest-full-summary-graph-exact-once-step3.log
+exit file: target/validation-logs/write-delta-manifest-full-summary-graph-exact-once-step3.exit
+```
+
+Current risks / gaps:
+
+- No fresh live wrapper-configured observe-validation run has been captured in this environment.
+- Live wrapper graph telemetry still requires deliberate V3 wrapper inputs and a non-compact full observe-validation run.
+- Compact full-summary replay remains artifact-only and intentionally omits live wrapper validation fields even when wrapper environment variables are present.
+
+Immediate next action:
+
+Wait for deliberate V3 wrapper prerequisites, a new compact receiver field, or a newly identified deterministic uncovered branch before making additional implementation changes.
