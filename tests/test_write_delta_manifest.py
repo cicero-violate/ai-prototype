@@ -260,6 +260,53 @@ class DeltaManifestTest(unittest.TestCase):
         self.assertEqual(Counter(metric_names)["external_api_action_evidence_tokens"], 1)
         self.assertEqual(Counter(metric_names)["semantic_artifact_verification_evidence_files"], 1)
 
+    def test_preserves_connector_transport_artifact_classification_once(self) -> None:
+        self.write_report(extra={
+            "connector_failure_classification_present": True,
+            "connector_failure_present": False,
+            "connector_failure_status": "none",
+            "connector_failure_classes": [],
+            "connector_transport_instability_present": False,
+            "connector_transport_artifact_classification": "transport_interrupted_artifacts_complete",
+            "connector_transport_artifact_classification_options": [
+                "transport_ok_no_artifacts",
+                "transport_ok_artifacts_present",
+                "transport_interrupted_artifacts_complete",
+                "transport_interrupted_artifacts_incomplete",
+            ],
+            "connector_transport_artifact_classification_reason": "connector transport was interrupted but report and exit artifacts are present",
+            "connector_transport_status": "502",
+            "connector_transport_interrupted": True,
+            "connector_transport_report_path": "target/observe/full-observe.ndjson",
+            "connector_transport_report_present": True,
+            "connector_transport_report_complete": True,
+            "connector_transport_exit_file": "target/validation-logs/full-observe.exit",
+            "connector_transport_exit_file_present": True,
+        })
+        done = self.run_script()
+        self.assertEqual(done.returncode, 0, done.stderr)
+        receipt = json.loads(self.receipt.read_text(encoding="utf-8"))
+        manifest = self.out.read_text(encoding="utf-8")
+        self.assertEqual(
+            receipt["connector_transport_artifact_classification"],
+            "transport_interrupted_artifacts_complete",
+        )
+        self.assertEqual(receipt["connector_transport_status"], "502")
+        self.assertTrue(receipt["connector_transport_report_complete"])
+        self.assertTrue(receipt["connector_transport_exit_file_present"])
+        for token in (
+            "connector_transport_artifact_classification: transport_interrupted_artifacts_complete",
+            "connector_transport_status: 502",
+            "connector_transport_report_complete: True",
+            "connector_transport_exit_file_present: True",
+            "connector_transport_artifact_classification_options",
+        ):
+            self.assertIn(token, manifest)
+        metric_names = [line[2:].split(":", 1)[0] for line in manifest.splitlines()
+                        if line.startswith("- ") and ":" in line]
+        self.assertEqual(Counter(metric_names)["connector_transport_artifact_classification"], 1)
+        self.assertEqual(Counter(metric_names)["connector_transport_status"], 1)
+
 
 if __name__ == "__main__":
     unittest.main()

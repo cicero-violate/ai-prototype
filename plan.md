@@ -7,13 +7,13 @@ Canon Agent is a Rust prototype for a deterministic, auditable, self-improving a
 Current implementation snapshot, 2026-05-09 America/Toronto / 2026-05-09 UTC:
 
 - Branch: `main`.
-- Latest visible commit before this implementation turn: `d943a80 Add command execution report mode`.
+- Latest visible commit before this implementation turn: `8d52fb6 Classify connector transport artifacts`.
 - Working directory: `/workspace/ai_sandbox/canon-mini-agent/prototype/ai`.
 - P0 validation baseline is complete.
 - P1 validation evidence reporting is complete.
 - P2 agent loop reliability is complete.
 - P3 runtime and receipt correctness is complete for the current scope.
-- P4 graph source-of-truth integration now includes persisted graph evidence classification, deterministic fixture-backed positive evidence for landed graph mutations with receipt snapshots, command-sequenced workflow fixture validation, a compact graph-only report mode, documented/tested root runtime, wrapper, and editor subproject boundaries, a standalone graph workflow fixture validator consumed by observe-validation, full observe-validation command evidence for that validator, explicit wrapper telemetry configuration classification, normal-path observe-validation summary evidence for graph fixture, wrapper configuration, receipt replay classification, and missing-signal coherence, executable configured-wrapper classifier branch coverage, source-derived runtime performance signal evidence from observe-validation command durations, runtime archive missing-signal derivation from inspected archive contents, runtime manifest base-match derivation from archived manifest metadata, explicit router/offline availability classification in observe-validation summary evidence, and optional wrapper graph validation missing-signal derivation. The current implementation/test work adds connector transport artifact classification so transport interruption can be represented separately from validation command outcomes when report and exit artifacts are present.
+- P4 graph source-of-truth integration now includes persisted graph evidence classification, deterministic fixture-backed positive evidence for landed graph mutations with receipt snapshots, command-sequenced workflow fixture validation, a compact graph-only report mode, documented/tested root runtime, wrapper, and editor subproject boundaries, a standalone graph workflow fixture validator consumed by observe-validation, full observe-validation command evidence for that validator, explicit wrapper telemetry configuration classification, normal-path observe-validation summary evidence for graph fixture, wrapper configuration, receipt replay classification, and missing-signal coherence, executable configured-wrapper classifier branch coverage, source-derived runtime performance signal evidence from observe-validation command durations, runtime archive missing-signal derivation from inspected archive contents, runtime manifest base-match derivation from archived manifest metadata, explicit router/offline availability classification in observe-validation summary evidence, and optional wrapper graph validation missing-signal derivation. The current implementation/test work integrates connector transport artifact classification into the delta manifest/receipt consumer so transport interruption evidence is preserved beyond observe-validation summaries.
 
 ## Operating Rules For Agent Turns
 
@@ -839,9 +839,38 @@ log: target/validation-logs/command-execution-transport-artifacts-step2.log
 exit file: target/validation-logs/command-execution-transport-artifacts-step2.exit
 ```
 
-## Next Execution Slice After Transport Artifact Step 2
+## Completed Execution Slice After Transport Artifact Step 2
 
-Continue P4 by integrating connector transport artifact classification into any higher-level validation/status documentation or report consumers that still rely only on `connector_transport_instability_present`. A good next slice is to add a compact artifact replay fixture for full-observe summaries, or to reduce any stale plan text that still frames generated graph JSON classification as uncommitted work. Preserve compact command-execution report mode, separated status fields, compact runtime report integration, direct archive precedence, optional wrapper semantics, generated graph JSON classification, graph fixture evidence, receipt replay inventory, and runtime performance evidence.
+Completed higher-level consumer integration for connector transport artifact classification. `scripts/write_delta_manifest.py` now preserves `connector_transport_artifact_classification` and related artifact state fields from observe-validation summaries into the delta receipt and rendered manifest. This prevents downstream delta/archive consumers from relying only on the older `connector_transport_instability_present` boolean.
+
+## Validation Evidence From Manifest Consumer Implementation Step 3
+
+```text
+python3 -m unittest tests/test_write_delta_manifest.py
+exit: 0
+result: 11 passed; 0 failed
+log: target/validation-logs/write-delta-manifest-transport-artifacts-step3.log
+exit file: target/validation-logs/write-delta-manifest-transport-artifacts-step3.exit
+```
+
+```text
+python3 -m unittest tests/test_observe_validation_contract.py
+exit: 0
+result: 38 passed; 0 failed
+log: target/validation-logs/observe-validation-contract-transport-artifacts-step3.log
+exit file: target/validation-logs/observe-validation-contract-transport-artifacts-step3.exit
+```
+
+```text
+python3 -m py_compile scripts/write_delta_manifest.py scripts/observe_validation.sh tests/test_write_delta_manifest.py tests/test_observe_validation_contract.py
+exit: 0
+log: target/validation-logs/py-compile-transport-artifacts-step3.log
+exit file: target/validation-logs/py-compile-transport-artifacts-step3.exit
+```
+
+## Next Execution Slice After Manifest Consumer Step 3
+
+Continue P4 by reducing stale planning/documentation drift around completed generated graph JSON classification, compact runtime archive reports, command execution reports, and connector transport artifact classification. A good next slice is to tighten plan structure so the current P4 completion list and next action no longer mention already-landed work as current uncommitted work. Preserve compact command-execution report mode, separated status fields, compact runtime report integration, direct archive precedence, optional wrapper semantics, generated graph JSON classification, graph fixture evidence, receipt replay inventory, runtime performance evidence, and delta-manifest preservation of transport artifact state.
 
 ## Current Non-Goals
 
