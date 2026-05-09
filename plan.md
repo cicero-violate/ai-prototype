@@ -2379,3 +2379,31 @@ Candidate priorities:
 ```
 
 Avoid adding speculative runtime behavior solely to create another branch target.
+
+## Planning Checkpoint After API Server Error Mapping Coverage
+
+This planning/scoring turn records the state after commit `55dcab2 Add API server error mapping coverage`. No implementation files are owned by this turn. The current plan is to avoid speculative code changes and continue only when the next branch target is supported by concrete missing evidence.
+
+Current planning assessment:
+
+```text
+turn type: planning/scoring checkpoint
+latest visible commit: 55dcab2 Add API server error mapping coverage
+working tree at checkpoint start: clean
+implementation scope this turn: none
+owned files this turn: plan.md, score.md
+```
+
+P4 is now best treated as evidence-tightening rather than broad feature construction. The strongest current surfaces are deterministic API transport replay classification, API server status mapping, MCP receipt failure classification, compact command evidence normalization, graph fixture validation, and observe-validation summary classification.
+
+Next execution priorities, in order:
+
+```text
+1. Capture live wrapper-configured observe-validation evidence only when wrapper services/artifacts are available and the run can be classified without contaminating git state.
+2. Add compact receiver manifest exact-once checks only when a new compact receiver workflow introduces new metric keys or rendering semantics.
+3. Add deterministic persistence-error handling evidence only if a fixture can intentionally trigger TlogIo without invalid route state or brittle filesystem assumptions.
+4. Reduce duplicated command-normalization test boilerplate only if the refactor is behavior-preserving and keeps current exact rendered-value coverage intact.
+```
+
+Do not start another implementation slice merely to raise scores. The next change should preserve the architecture boundary: the state machine governs transitions and evidence; capability-layer intelligence remains subordinate to typed, externally verifiable records.
+
