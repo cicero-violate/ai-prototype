@@ -3,86 +3,127 @@
 ## Current Progress Snapshot
 
 Date: 2026-05-08 America/Toronto / 2026-05-09 UTC
-Turn type: planning/scoring
-Scope executed: refreshed the implementation plan and scorecard only; no implementation files were changed.
+Turn type: implementation step 1
+Scope executed: first P3 runtime/receipt correctness slice.
 
 Current timestamp evidence:
 
 ```text
-2026-05-09 00:15:21 EDT America/Toronto / 2026-05-09T04:15:21Z UTC
+2026-05-09 00:21:47 EDT America/Toronto / 2026-05-09T04:21:47Z UTC
 branch: main
-latest visible prior commit before this turn: b76a0db Clarify loop driver retry evidence
+latest visible prior commit before this turn: fa58cb1 Update Canon Agent planning and scoring
 working directory: /workspace/ai_sandbox/canon-mini-agent/prototype/ai
 ```
 
 ## Current Git State
 
-Planning/scoring files owned by this commit:
+Implementation and documentation files owned by this commit:
 
 ```text
+src/recovery.rs
 plan.md
 score.md
 ```
 
-No source, test, runtime, or generated validation artifact changes are intended for this planning turn.
+Generated validation logs and exit files are intentionally left under ignored `target/validation-logs/` and are not committed.
 
 ## Scorecard
 
-Scores are approximate implementation-readiness scores on a 0-10 scale. This planning turn does not raise implementation capability scores because no new implementation or validation evidence was produced. P0, P1, and P2 remain credited from prior validated work; P3 is now the active target.
+Scores are approximate implementation-readiness scores on a 0-10 scale. Correctness, robustness, determinism, and transparency improve slightly because receipt replay now has a deterministic verifier, compact failure classes, and focused tests for valid/invalid receipt-chain cases.
 
 ```text
 I  Intelligence      = 7.0
-E  Efficiency        = 6.9
-C  Correctness       = 7.9
+E  Efficiency        = 7.0
+C  Correctness       = 8.1
 A  Alignment         = 8.5
-R  Robustness        = 8.0
+R  Robustness        = 8.2
 P  Performance       = 5.9
 S  Scalability       = 6.5
-D  Determinism       = 8.7
-T  Transparency      = 8.8
+D  Determinism       = 8.8
+T  Transparency      = 8.9
 Co Collaboration     = 7.9
 Em Empowerment       = 7.5
-B  Benefit           = 7.6
+B  Benefit           = 7.7
 L  Learning          = 7.1
-St Structure         = 8.1
-Si Simplicity        = 6.5
-F  Future-Proofing   = 7.8
+St Structure         = 8.2
+Si Simplicity        = 6.6
+F  Future-Proofing   = 7.9
 ```
 
 Approximate geometric mean:
 
 ```text
-G ≈ 7.48 / 10
+G ≈ 7.56 / 10
 ```
 
 ## Completed Work This Turn
 
-- Confirmed the requested working directory resolves to the connector workspace root.
-- Inspected `git status --short`, current files, `plan.md`, and `score.md`.
-- Confirmed the latest visible prior commit is `b76a0db Clarify loop driver retry evidence`.
-- Updated `plan.md` to mark this as a planning/scoring turn.
-- Preserved P0, P1, and P2 as complete.
-- Set P3 runtime and receipt correctness as the next execution target.
-- Identified the first P3 source surfaces for the next execution turn:
-  - `src/recovery.rs` for validation receipt structures.
-  - `src/validation_harness.rs` for receipt hashing and typed evidence contracts.
+- Read `plan.md` and executed the next concrete P3 item.
+- Added deterministic receipt-chain verification in `src/recovery.rs`:
+  - `ReceiptChainEntry`
+  - `ReceiptReplayReport`
+  - `ReceiptReplayFailure`
+  - `verify_receipt_chain`
+- Added compact receipt replay failure classifications:
+  - `forged_receipt`
+  - `duplicated_receipt`
+  - `reordered_receipt`
+  - `stale_receipt`
+  - `missing_receipt`
+- Added focused recovery tests for:
+  - valid receipt-chain replay
+  - forged receipt hash
+  - forged run identity
+  - duplicated receipt
+  - reordered receipts
+  - stale extra receipts
+  - missing receipts
+  - compact classification strings
 
 ## Validation Evidence Captured This Turn
 
-No validation commands were required or run because this was a planning/scoring-only turn. Existing implementation evidence remains the latest execution evidence:
+```text
+command: RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo fmt --check
+exit: 0
+log: target/validation-logs/fmt-step1.log
+exit file: target/validation-logs/fmt-step1.exit
+```
 
 ```text
-P2 targeted loop-driver tests: passed
-fmt: passed
-lib tests: passed; 201 passed; 0 failed
-clippy --all-targets -D warnings: passed
+command: TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test recovery::tests --lib -- --test-threads=1
+exit: 0
+result: 8 passed; 0 failed; 201 filtered out
+log: target/validation-logs/recovery-tests-step1.log
+exit file: target/validation-logs/recovery-tests-step1.exit
 ```
+
+```text
+command: TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --lib -- --test-threads=1
+exit: 0
+result: 209 passed; 0 failed; finished in 0.41s
+log: target/validation-logs/test-lib-step1.log
+exit file: target/validation-logs/test-lib-step1.exit
+```
+
+```text
+command: TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo clippy --all-targets -- -D warnings
+exit: 0
+log: target/validation-logs/clippy-step1.log
+exit file: target/validation-logs/clippy-step1.exit
+```
+
+## Connector / Environment Notes
+
+- An initial write attempt hit `Disk quota exceeded` and truncated `src/recovery.rs`; the file was immediately restored from Git before applying the final patch.
+- Ignored build/log artifacts were cleaned to reduce `target/` pressure from about 4.3G to about 3.0G.
+- A combined format/test command returned connector-level `502`; redirected rerun evidence showed format and targeted tests completed.
+- The broad lib/clippy command also returned connector-level `502`; redirected exit files and logs showed both commands completed with exit `0`.
 
 ## Current Risks / Gaps
 
-- P3 receipt/replay invariant coverage remains incomplete.
-- Forged, duplicated, reordered, stale, and missing receipt cases still need explicit tests.
-- Full all-target validation remains sensitive to temp/quota pressure unless run with redirected temp directories and compact polling.
+- The new receipt-chain verifier is tested but not yet wired into a durable receipt ledger or validation-report consumer.
+- API/worker compatibility coverage for batch command limits, invalid envelopes, durable resume behavior, and supervisor reload remains pending.
+- Full all-target validation was not rerun this step because prior turns showed quota pressure; this turn used targeted recovery tests plus lib/fmt/clippy.
 - No fresh benchmark evidence has been captured.
 - Live router/MCP/Ollama/OpenAI paths still depend on environment services and can fail independently of core runtime correctness.
 
@@ -90,12 +131,12 @@ clippy --all-targets -D warnings: passed
 
 Raise scores only after fresh evidence:
 
-- **Correctness / Robustness:** replay and receipt invariants reject forged, duplicated, reordered, stale, and missing receipts.
-- **Transparency:** receipt/replay failures emit compact, reviewable failure classes.
+- **Correctness / Robustness:** receipt-chain verification is consumed by a durable ledger/reporting path, not only unit tested.
+- **Transparency:** consumer-facing receipt/replay failures emit compact classifications in persisted evidence.
 - **Performance:** benchmark or runtime latency evidence is captured.
 - **Scalability:** multi-agent coordination and router failure scenarios are tested.
 - **Learning:** policy promotion remains externally evaluated and self-approval remains impossible under tests.
 
 ## Immediate Next Action
 
-Begin P3 by adding targeted runtime/recovery receipt tests for forged, duplicated, reordered, stale, missing, and valid receipt-chain behavior. Start with `src/recovery.rs`, use the narrowest existing test surface available, and run targeted tests before the standard fmt/lib/clippy validation sequence.
+Continue P3 by wiring `verify_receipt_chain` into the nearest durable receipt ledger or validation-report consumer, preserving compact failure classifications and adding targeted consumer tests before the standard fmt/lib/clippy validation sequence.

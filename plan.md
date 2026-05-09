@@ -4,12 +4,12 @@
 
 Canon Agent is a Rust prototype for a deterministic, auditable, self-improving agent runtime. The target architecture remains a formally constrained state-machine kernel with a capability layer around it. The kernel owns correctness, state transitions, durable records, replay boundaries, and audit evidence. LLMs and tools operate inside the capability layer and must produce typed, reviewable evidence rather than governing the runtime directly.
 
-Current implementation snapshot, 2026-05-09 00:15:21 EDT America/Toronto / 2026-05-09T04:15:21Z UTC:
+Current implementation snapshot, 2026-05-09 00:21:47 EDT America/Toronto / 2026-05-09T04:21:47Z UTC:
 
 - Branch: `main`.
-- Latest visible prior commit before this planning turn: `b76a0db Clarify loop driver retry evidence`.
+- Latest visible prior commit before this implementation turn: `fa58cb1 Update Canon Agent planning and scoring`.
 - The requested working directory resolves to the connector workspace root: `/workspace/ai_sandbox/canon-mini-agent/prototype/ai`.
-- This is a planning/scoring turn. No implementation files are in scope.
+- This implementation step completed the first P3 receipt/replay invariant slice.
 - The pre-existing implementation batch has now been reviewed at diff level and validated.
 - P0 validation baseline is closed with fresh all-target, fmt, lib-test, and clippy evidence.
 - Connector 502s occurred during long-running validation polling, but redirected/detached validation evidence completed with exit files and final test summaries.
@@ -109,13 +109,19 @@ Fresh validation evidence from implementation step 1:
    - `cargo test --lib -- --test-threads=1` passed; 201 tests.
    - `cargo clippy --all-targets -- -D warnings` passed.
 
-### P3 — Runtime and receipt correctness — next execution target
+### P3 — Runtime and receipt correctness — in progress
 
-1. Expand replay and receipt invariants for forged, duplicated, reordered, stale, and missing receipts.
+1. Expand replay and receipt invariants for forged, duplicated, reordered, stale, and missing receipts — first slice complete.
    - Primary source surface discovered during this planning turn: `src/recovery.rs` for validation receipts and `src/validation_harness.rs` for receipt hashing/typed evidence contracts.
-   - First execution slice should add focused failing/passing tests before changing receipt logic.
-   - Required negative cases: forged receipt identity/hash, duplicated receipt, reordered receipt sequence, stale receipt, and missing receipt.
-   - Required success case: valid receipt chain/replay remains accepted and produces compact evidence.
+   - Added a deterministic `ReceiptChainEntry` / `ReceiptReplayReport` verifier in `src/recovery.rs`.
+   - Added compact `ReceiptReplayFailure` classifications for `forged_receipt`, `duplicated_receipt`, `reordered_receipt`, `stale_receipt`, and `missing_receipt`.
+   - Added focused recovery tests for valid replay plus forged receipt hash, forged run identity, duplicated receipt, reordered receipts, stale extra receipts, missing receipts, and compact classification strings.
+   - Validation evidence from implementation step 1:
+     - `cargo fmt --check` passed; exit `0`; log `target/validation-logs/fmt-step1.log`.
+     - `cargo test recovery::tests --lib -- --test-threads=1` passed; 8 tests; exit `0`; log `target/validation-logs/recovery-tests-step1.log`.
+     - `cargo test --lib -- --test-threads=1` passed; 209 tests; exit `0`; log `target/validation-logs/test-lib-step1.log`.
+     - `cargo clippy --all-targets -- -D warnings` passed; exit `0`; log `target/validation-logs/clippy-step1.log`.
+   - Environment note: broad validation returned a connector-level `502`, but redirected logs and exit files showed lib tests and clippy completed with exit `0`.
 2. Keep policy promotion externally verified; never let the LLM approve its own candidates.
    - Any future policy-learning admission must remain gated by external evaluator evidence.
    - LLM-authored candidates may propose changes but cannot self-certify them into learning data.
@@ -136,16 +142,15 @@ Fresh validation evidence from implementation step 1:
 
 ## Next Execute-Turn Recommendation
 
-1. Begin P3 with targeted receipt/replay invariant tests.
-2. Inspect `src/recovery.rs` first, then locate the narrowest existing test module or add one near the receipt/replay code.
-3. Add tests for forged, duplicated, reordered, stale, missing, and valid receipt-chain behavior.
-4. Only then adjust implementation logic needed to make the invariant set pass.
-5. Continue using `TMPDIR="$PWD/target/test-tmp"` for Rust tests in quota-sensitive sandboxes.
-6. Run targeted receipt/replay tests, `cargo fmt --check`, `cargo test --lib -- --test-threads=1`, and `cargo clippy --all-targets -- -D warnings` after the next P3 slice.
+1. Continue P3 by connecting receipt-chain verification to the nearest durable receipt ledger or validation-report consumer that can use compact failure classifications.
+2. Add API/worker compatibility coverage for batch command limits, invalid envelopes, durable resume behavior, and supervisor reload after the receipt-chain verifier is wired into a consumer.
+3. Keep policy promotion externally verified; never let the LLM approve its own candidates.
+4. Continue using `TMPDIR="$PWD/target/test-tmp"` for Rust tests in quota-sensitive sandboxes.
+5. Run targeted tests for the next consumer, `cargo fmt --check`, `cargo test --lib -- --test-threads=1`, and `cargo clippy --all-targets -- -D warnings` after the next P3 slice.
 
 ## Planning-Turn Handoff
 
-P0, P1, and P2 are complete. This planning turn keeps implementation unchanged and directs the next execution turn to P3 runtime and receipt correctness, beginning with replay/receipt invariant expansion.
+P0, P1, and P2 are complete. P3 is now in progress with the first receipt-chain invariant verifier and focused tests complete. The next execution turn should wire the compact verifier into a durable receipt/reporting consumer or proceed to API/worker compatibility coverage if that consumer already exists.
 
 ## Current Non-Goals
 
