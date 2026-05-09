@@ -24,4 +24,3 @@ Approximate geometric mean:
 ```text
 G ≈ 
 ```
-
