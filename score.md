@@ -4,13 +4,13 @@
 
 Date: 2026-05-08
 Turn type: planning/scoring
-Scope reviewed: repository root listing, current `git status --short`, recent commit history, existing `plan.md`, existing `score.md`, and source/test tree inventory.
+Scope reviewed: repository root listing, current `git status --short`, existing `plan.md`, existing `score.md`, and source/test inventory.
 
-This turn did not implement source changes and did not run a fresh validation suite. It refreshed the implementation plan and score posture, re-confirmed the working-tree baseline with a pre-existing implementation modification, and kept the next execution step focused on dirty-state resolution plus evidence capture.
+This turn did not implement source changes and did not run a fresh validation suite. It refreshed the implementation plan and scoring posture, confirmed the working tree contains a pre-existing implementation modification, and kept the next execution step focused on dirty-state resolution plus evidence capture.
 
 ## Current Git State
 
-Observed at the start of this planning refresh:
+Observed at the start of this planning/scoring turn:
 
 ```text
 M src/validation_harness.rs
@@ -25,16 +25,14 @@ M plan.md
 M score.md
 ```
 
-No implementation files should be staged or committed by this planning/scoring turn. In particular, `src/validation_harness.rs` must remain unstaged unless a later execution turn explicitly claims responsibility for that implementation change.
-
-Pre-edit review showed no need to change implementation files; the only intended edits are this planning/scoring refresh.
-
-Current planning/scoring edit policy:
+Planning/scoring edit policy:
 
 ```text
 stage: plan.md score.md
 do not stage: src/validation_harness.rs
 ```
+
+No implementation files should be staged or committed by this planning/scoring turn.
 
 ## Scorecard
 
@@ -50,22 +48,22 @@ P  Performance       = 5.8
 S  Scalability       = 6.2
 D  Determinism       = 8.0
 T  Transparency      = 8.0
-Co Collaboration     = 7.6
+Co Collaboration     = 7.5
 Em Empowerment       = 7.1
 B  Benefit           = 7.0
 L  Learning          = 6.9
 St Structure         = 7.7
-Si Simplicity        = 6.2
+Si Simplicity        = 6.1
 F  Future-Proofing   = 7.4
 ```
 
 Approximate geometric mean:
 
 ```text
-G ≈ 7.01 / 10
+G ≈ 7.00 / 10
 ```
 
-Collaboration and simplicity remain useful but are no longer credited for a clean working tree because an implementation file is already dirty. Correctness and robustness remain capped until fresh validation evidence is captured.
+Collaboration and simplicity remain capped because the implementation tree is already dirty. Correctness and robustness remain capped until fresh validation evidence is captured.
 
 ## Basis For Scoring
 
@@ -82,7 +80,7 @@ Collaboration and simplicity remain useful but are no longer credited for a clea
 
 - Fresh full validation was not run during this planning turn.
 - The working tree contains a pre-existing implementation modification in `src/validation_harness.rs`; this must be resolved or explicitly incorporated before reliable implementation scoring.
-- Previous validation evidence indicated `/tmp`/filesystem quota-related failures; the current validation plan depends on consistently using `TMPDIR="$PWD/target/test-tmp"`.
+- Prior validation evidence indicated temp-path quota failures; validation should use `TMPDIR="$PWD/target/test-tmp"`.
 - Full `cargo test --all-targets` and `cargo clippy --all-targets -- -D warnings` still need reliable, current pass/fail evidence.
 - Complexity is high; broad exported surfaces and many receipt families require stronger end-to-end validation summaries.
 - Live router/MCP/Ollama/OpenAI paths depend on environment services and can fail independently of core runtime correctness.
@@ -100,12 +98,12 @@ Collaboration and simplicity remain useful but are no longer credited for a clea
 - **Scalability (6.2):** Multi-agent coordination exists, but file coordination and external router dependencies need stress/failure validation.
 - **Determinism (8.0):** Determinism is central and well represented; live LLM/tool paths remain variable unless fully receipt-bounded.
 - **Transparency (8.0):** Documentation, NDJSON logs, receipts, and validation reports provide good audit surfaces.
-- **Collaboration (7.6):** Planning/scoring files provide loop coordination, but the current tree has a pre-existing dirty implementation file that must be handled carefully.
+- **Collaboration (7.5):** Planning/scoring files provide loop coordination, but the current tree has a pre-existing dirty implementation file.
 - **Empowerment (7.1):** The system can support autonomous implementation loops when router/MCP dependencies are available.
 - **Benefit (7.0):** Strong potential as an auditable runtime; production utility depends on validation hardening.
 - **Learning (6.9):** Learning and policy promotion concepts exist, but need complete candidate-to-policy fixtures.
 - **Structure (7.7):** Module boundaries are strong; exported surface area remains broad.
-- **Simplicity (6.2):** The project remains conceptually dense, but the immediate plan is now cleaner and more directive.
+- **Simplicity (6.1):** The project remains conceptually dense and current dirty state adds coordination overhead.
 - **Future-Proofing (7.4):** Versioned schemas, receipts, documented boundaries, and graph-source plans support future evolution.
 
 ## Latest Known Validation State
@@ -130,7 +128,7 @@ status: needs fresh reliable result with quota-safe TMPDIR and wrappers disabled
 
 No correctness/robustness score increase should occur until current validation output is captured.
 
-This planning turn intentionally did not run validation commands because the user requested a planning/scoring loop turn. The next execution turn should run the commands listed in `plan.md` P0 and record exact exit status plus tail output here.
+This planning turn intentionally did not run validation commands because the requested turn is focused on planning and scoring. The next execution turn should run the commands listed in `plan.md` P0 and record exact exit status plus tail output here.
 
 ## Next Score Update Triggers
 

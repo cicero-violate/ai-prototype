@@ -2,28 +2,26 @@
 
 ## Current State
 
-Canon Agent is a Rust prototype for a deterministic, auditable, self-improving agent runtime. The intended architecture is a formally constrained state-machine kernel with an expanding capability layer. The kernel owns correctness, transitions, durable records, and replay boundaries. LLMs and other tools operate inside the capability layer and must produce typed, reviewable evidence rather than governing the system directly.
+Canon Agent is a Rust prototype for a deterministic, auditable, self-improving agent runtime. The target architecture is a formally constrained state-machine kernel with a capability layer around it. The kernel owns correctness, state transitions, durable records, replay boundaries, and audit evidence. LLMs and tools operate inside the capability layer and must produce typed, reviewable evidence rather than governing the runtime directly.
 
 Current implementation surfaces include:
 
-- Kernel/state-machine modules under `src/kernel`.
-- Runtime reducer, transition table, durable state, command ledger, writer, diff, verification, and recovery support under `src/runtime`.
+- Kernel/state-machine, runtime, durable-state, transition, command-ledger, writer, diff, verification, recovery, and validation support.
 - Capability records for observation, context, memory, LLM, judgment, planning, tooling, verification, eval, policy, learning, and orchestration.
-- API protocol, routes, server, and transport receipt contracts under `src/api`.
-- Loop-mode agent driver under `src/agent`, plus `agent`, `worker`, `supervisor`, graph mutation, and root validation binaries.
-- Contract tests for API, transport, planning, scoring, supervisor/worker behavior, graph mutation CLI, MCP receipts, validation harness, panic surface, policy-learning traces, and helper scripts.
+- API protocol, routes, server, and transport receipt contracts.
+- Loop-mode agent driver plus agent, worker, supervisor, graph mutation, and root validation binaries.
+- Contract tests across API, transport, planning, scoring, supervisor/worker behavior, graph mutation CLI, MCP receipts, validation harness, panic surface, policy-learning traces, and helper scripts.
 - Architecture/evolution/graph/Ollama/runtime/domain documentation.
 - Domain intelligence docs intentionally kept outside compiled runtime behavior until record contracts stabilize.
 
 Current planning/scoring baseline:
 
-- Working tree was not clean at the start of this planning refresh: `src/validation_harness.rs` had a pre-existing unstaged modification.
-- This planning turn must not touch or stage that implementation change.
+- Working tree is not clean at this planning turn: `src/validation_harness.rs` has a pre-existing unstaged modification.
+- This planning turn must not touch, stage, or commit that implementation change.
 - This turn updates only `plan.md` and `score.md`.
-- No fresh validation suite was run in this planning turn.
-- The implementation roadmap remains stable; scoring explicitly records the dirty implementation file as external to this planning turn.
-- Repository inspection for this turn also reviewed the latest commit history and source/test inventory so the next execution turn can focus on validation rather than rediscovery.
-- Next execution turn should first decide whether to preserve, inspect, test, or revert the existing `src/validation_harness.rs` change, then run a full quota-safe validation baseline.
+- No validation suite is run during this planning turn.
+- Scores remain capped until an execution turn captures fresh validation evidence.
+- The next execution turn should first inspect `src/validation_harness.rs`, decide whether it is intentional or should be reverted, then run quota-safe validation.
 
 ## Operating Rules For Agent Turns
 
@@ -40,35 +38,41 @@ Current planning/scoring baseline:
 
 3. **Commit hygiene**
    - Before editing: inspect `git status --short`.
-   - Before committing: inspect `git diff -- plan.md score.md` or the exact intended file set.
-   - Stage by path, never with broad `git add .`, unless the task explicitly requires staging all changed files.
+   - Before committing: inspect the exact intended diff.
+   - Stage by explicit path, not by broad `git add .`.
+   - Do not stage pre-existing unrelated dirty files.
 
 ## Implementation Priority
 
 ### P0 — Re-establish clean validation baseline
 
-1. **Use quota-safe validation paths**
-   - Previous validation evidence indicated `/tmp`-style temporary writes can fail with OS error 122 (`Disk quota exceeded`).
-   - Use repository-local temp output for Rust validation:
+1. **Resolve dirty implementation state**
+   - Inspect `src/validation_harness.rs` before any implementation work.
+   - Decide whether the change is prior intentional work, an incomplete edit, or should be reverted.
+   - Record the decision in `score.md` on the execution turn.
+
+2. **Use quota-safe validation paths**
+   - Prior evidence indicated temp writes can fail with OS error 122 (`Disk quota exceeded`).
+   - Use repository-local temp output:
      - `mkdir -p target/test-tmp`
      - `TMPDIR="$PWD/target/test-tmp"`
-   - Keep `RUSTC_WRAPPER=""` and `RUSTC_WORKSPACE_WRAPPER=""` unless graph telemetry is explicitly being validated.
+   - Keep `RUSTC_WRAPPER=""` and `RUSTC_WORKSPACE_WRAPPER=""` unless graph telemetry is explicitly under test.
 
-2. **Run baseline validation from repository root**
+3. **Run baseline validation from repository root**
    - `mkdir -p target/test-tmp`
    - `RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo fmt --check`
    - `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --lib -- --test-threads=1`
    - `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`
    - `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo clippy --all-targets -- -D warnings`
 
-3. **Classify any failure precisely**
+4. **Classify failures precisely**
    - Environment failure: quota, temp path, missing service, connector truncation, or unavailable external dependency.
    - Compile failure: Rust compile error before tests run.
    - Semantic test failure: assertion or contract mismatch.
    - Lint failure: clippy warning escalated by `-D warnings`.
    - Output-limit failure: command may have run but connector output is insufficient to prove pass/fail.
 
-4. **Record exact evidence**
+5. **Record exact evidence**
    - Capture command, status, and final relevant output lines in `score.md`.
    - If connector output truncates, redirect logs under `target/` and report the exit code plus tail lines.
    - Do not raise scores from assumed results.
@@ -76,12 +80,12 @@ Current planning/scoring baseline:
 ### P1 — Make validation evidence first-class
 
 1. **Strengthen observe-validation reporting**
-   - Ensure `scripts/observe_validation.sh` is executable.
-   - Ensure it writes `target/observe/validation-report.ndjson`.
+   - Ensure `scripts/observe_validation.sh` is executable if present or add it deliberately if missing.
+   - Ensure validation reports land under ignored `target/observe/validation-report.ndjson`.
    - Include git hygiene, command outcomes, graph telemetry presence/absence, runtime archive counts, ignored artifact counts, and missing-signal flags.
 
 2. **Keep score updates evidence-backed**
-   - Raise correctness/robustness/determinism only after fresh passing validation.
+   - Raise correctness, robustness, and determinism only after fresh passing validation.
    - Lower relevant dimensions when failures expose semantic defects.
    - Keep environment-only failures separate from product correctness failures.
 
@@ -126,8 +130,8 @@ Current planning/scoring baseline:
 ### P4 — Graph source-of-truth integration
 
 1. **Make graph telemetry observable but optional**
-   - Keep graph capture disabled unless `CANON_RUSTC_WRAPPER`/`RUSTC_WRAPPER` are explicitly configured.
-   - Treat absence of `state/rustc/*/graph.json` as a clear validation signal, not as hidden success.
+   - Keep graph capture disabled unless wrapper variables are explicitly configured.
+   - Treat absence of `state/rustc/*/graph.json` as a clear validation signal, not hidden success.
 
 2. **Unify graph mutation evidence**
    - Verify graph mutation ops, graph patch receipts, snapshot contracts, and mutation landing receipts as one end-to-end flow.
@@ -153,23 +157,20 @@ Current planning/scoring baseline:
 
 ## Next Execute-Turn Recommendation
 
-Resolve implementation-tree ambiguity, then run and record the validation baseline:
-
-1. Confirm `git status --short` before editing.
-2. Inspect the pre-existing `src/validation_harness.rs` modification and determine whether it is intentional work from a prior turn or should be reverted by an execution turn.
-3. Create `target/test-tmp`.
-4. Run `cargo fmt --check`, library tests, all-target tests, and clippy using wrapper-disabled, quota-safe commands.
-5. Classify any failures using the categories in P0.
-6. Update `score.md` with exact command outcomes.
-7. Commit only intentional validation/scoring or implementation changes.
+1. Confirm `git status --short`.
+2. Inspect the pre-existing `src/validation_harness.rs` modification.
+3. Decide whether to preserve, test, or revert that implementation change.
+4. Create `target/test-tmp`.
+5. Run the P0 validation commands with wrappers disabled and quota-safe `TMPDIR`.
+6. Classify failures using P0 categories.
+7. Update `score.md` with exact command outcomes.
+8. Commit only intentional validation/scoring or implementation changes.
 
 Do not change source code before the baseline unless a validation failure identifies a specific implementation defect or the existing `src/validation_harness.rs` dirty state is intentionally resolved.
 
-Planning-turn commit scope for the current turn remains restricted to `plan.md` and `score.md`; `src/validation_harness.rs` is intentionally left untouched and unstaged.
-
 ## Current Non-Goals
 
-- Do not wire `src/domain` into runtime behavior yet.
+- Do not wire domain specs into runtime behavior yet.
 - Do not redesign the kernel.
 - Do not add live trading behavior.
 - Do not rely on external LLM/Ollama/OpenAI availability for baseline correctness.
