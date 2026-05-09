@@ -7,13 +7,13 @@ Canon Agent is a Rust prototype for a deterministic, auditable, self-improving a
 Current implementation snapshot, 2026-05-09 America/Toronto / 2026-05-09 UTC:
 
 - Branch: `main`.
-- Latest visible commit before this implementation turn: `687d0dc Classify router offline validation state`.
+- Latest visible commit before this planning turn: `58a846e Classify optional wrapper validation state`.
 - Working directory: `/workspace/ai_sandbox/canon-mini-agent/prototype/ai`.
 - P0 validation baseline is complete.
 - P1 validation evidence reporting is complete.
 - P2 agent loop reliability is complete.
 - P3 runtime and receipt correctness is complete for the current scope.
-- P4 graph source-of-truth integration now includes persisted graph evidence classification, deterministic fixture-backed positive evidence for landed graph mutations with receipt snapshots, command-sequenced workflow fixture validation, a compact graph-only report mode, documented/tested root runtime, wrapper, and editor subproject boundaries, a standalone graph workflow fixture validator consumed by observe-validation, full observe-validation command evidence for that validator, explicit wrapper telemetry configuration classification, normal-path observe-validation summary evidence for graph fixture, wrapper configuration, receipt replay classification, and missing-signal coherence, executable configured-wrapper classifier branch coverage, source-derived runtime performance signal evidence from observe-validation command durations, runtime archive missing-signal derivation from inspected archive contents, runtime manifest base-match derivation from archived manifest metadata, explicit router/offline availability classification in observe-validation summary evidence, and optional wrapper graph validation missing-signal derivation.
+- P4 graph source-of-truth integration now includes persisted graph evidence classification, deterministic fixture-backed positive evidence for landed graph mutations with receipt snapshots, command-sequenced workflow fixture validation, a compact graph-only report mode, documented/tested root runtime, wrapper, and editor subproject boundaries, a standalone graph workflow fixture validator consumed by observe-validation, full observe-validation command evidence for that validator, explicit wrapper telemetry configuration classification, normal-path observe-validation summary evidence for graph fixture, wrapper configuration, receipt replay classification, and missing-signal coherence, executable configured-wrapper classifier branch coverage, source-derived runtime performance signal evidence from observe-validation command durations, runtime archive missing-signal derivation from inspected archive contents, runtime manifest base-match derivation from archived manifest metadata, explicit router/offline availability classification in observe-validation summary evidence, and optional wrapper graph validation missing-signal derivation. The current uncommitted implementation/test work is a candidate P4 slice to classify `missing_generated_graph_json` from live graph presence, requested wrapper capture, and deterministic fixture substitution rather than a raw state-file absence check.
 
 ## Operating Rules For Agent Turns
 
@@ -503,6 +503,51 @@ exit file: target/validation-logs/full-observe-step5-runtime-base.exit = 1
 result: validation_status=fail from known unrelated missing signals; runtime archive, manifest base-match, and performance evidence present
 summary: runtime_manifest_base_expected=base-step5, runtime_manifest_base_commit=base-step5, runtime_manifest_base_matches_delta_base=true, missing_runtime_manifest_base_match=false, missing_runtime_download_index=false, missing_runtime_prior_state=false, missing_runtime_conversation_ledger=false, missing_runtime_performance_signal=false, missing_signal_count=3
 ```
+
+## Planning Turn Update — 2026-05-09
+
+This planning turn did not modify implementation files. It found pre-existing uncommitted changes in:
+
+```text
+scripts/observe_validation.sh
+tests/test_observe_validation_contract.py
+```
+
+Those dirty files add a candidate `generated_graph_json_classification()` path and executable branch coverage. The next execution turn should either complete and validate that slice or revert it if it weakens the graph evidence contract.
+
+### Next Execution Slice — classify generated graph JSON evidence
+
+Goal: reduce the remaining `missing_generated_graph_json` gap without weakening wrapper evidence semantics.
+
+Acceptance criteria:
+
+1. `missing_generated_graph_json` is derived from explicit classification fields, not only `not state_graph_present`.
+2. Live `state/.../graph.json` evidence remains accepted as `generated_graph_json_present`.
+3. If wrapper graph capture is not requested and the deterministic graph workflow fixture proves a landed mutation with receipt snapshot, missing generated graph JSON is cleared as fixture substitution.
+4. If wrapper graph capture is requested, absence of live generated graph JSON remains a required missing signal even when fixture evidence exists.
+5. If neither live graph JSON nor fixture receipt evidence exists, missing generated graph JSON remains true.
+6. Observe-validation summary rows include classification, reason, option inventory, missing boolean, and fixture-substitution boolean.
+7. Focused unit tests execute every classifier branch.
+8. Existing optional wrapper, router/offline, graph fixture, receipt replay, runtime archive, runtime manifest, and runtime performance semantics are preserved.
+
+Recommended validation for that execution turn:
+
+```text
+python3 -m unittest tests/test_observe_validation_contract.py
+python3 -m unittest tests/test_graph_workflow_fixture_validator.py
+CANON_OBSERVE_REPORT=target/observe/graph-fixture-report-generated-json.ndjson python3 scripts/observe_validation.sh --graph-fixture-report
+python3 -m py_compile scripts/observe_validation.sh tests/test_observe_validation_contract.py
+CANON_TEST_TIMEOUT_SECONDS=1 CANON_OBSERVE_REPORT=target/observe/full-observe-generated-json-timeout-smoke.ndjson python3 scripts/observe_validation.sh
+```
+
+The full observe smoke may still exit `1` while known unrelated missing signals remain. Treat success for this slice as source-derived summary evidence showing the generated graph JSON classification fields are emitted and `missing_generated_graph_json=false` only in the intended fixture-substitution case.
+
+### Commit Hygiene For Next Execution Turn
+
+- Keep generated validation logs, reports, archives, and exit files ignored.
+- Before committing, inspect `git diff -- scripts/observe_validation.sh tests/test_observe_validation_contract.py plan.md score.md`.
+- If the execution turn owns the current dirty implementation files, include them with that execution commit and update `score.md` with fresh validation evidence.
+- If this planning commit is still ahead when execution begins, do not amend it; create a separate implementation commit.
 
 ## Current Non-Goals
 
