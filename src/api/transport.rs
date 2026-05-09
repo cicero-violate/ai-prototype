@@ -367,10 +367,10 @@ pub fn handle_transport_frame_once(
     Ok(response)
 }
 
-fn event_for_transport_receipt<'a>(
-    tlog: &'a TLog,
+fn event_for_transport_receipt(
+    tlog: &TLog,
     receipt: ApiTransportReceipt,
-) -> Result<&'a ControlEvent, CanonError> {
+) -> Result<&ControlEvent, CanonError> {
     let event = tlog
         .iter()
         .find(|event| event.self_hash == receipt.event_hash)

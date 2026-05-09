@@ -1971,6 +1971,7 @@ fn assert_stdout_contains_all(stdout: &str, expected_fragments: &[&str]) {
         let normalized_fragment = fragment
             .strip_suffix('\\')
             .map(|prefix| format!("{prefix}\""));
+        let escaped_json_fragment = fragment.replace('"', "\\\"");
         let current_count_fragment = match *fragment {
             "\"validation_harness_expected_tests\":200" => Some(format!(
                 "\"validation_harness_expected_tests\":{VALIDATION_HARNESS_EXPECTED_TESTS}"
@@ -2000,6 +2001,7 @@ fn assert_stdout_contains_all(stdout: &str, expected_fragments: &[&str]) {
             || normalized_fragment
                 .as_deref()
                 .is_some_and(|normalized| stdout.contains(normalized))
+            || stdout.contains(&escaped_json_fragment)
             || current_count_fragment
                 .as_deref()
                 .is_some_and(|current| stdout.contains(current));

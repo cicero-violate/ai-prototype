@@ -2013,6 +2013,10 @@ fn hash_text(value: &str) -> u64 {
     h.max(1)
 }
 
+#[expect(
+    clippy::too_many_arguments,
+    reason = "retry-budget binding compares the full receipt hash preimage"
+)]
 fn retry_budget_binding_is_valid(
     provider_hash: u64,
     base_url_hash: u64,

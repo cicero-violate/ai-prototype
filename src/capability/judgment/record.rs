@@ -414,7 +414,10 @@ impl PolicyReusePerformanceCostTrendReceipt {
 }
 
 impl PolicyReuseCostCatalogReceipt {
-    #[allow(clippy::too_many_arguments)]
+    #[expect(
+        clippy::too_many_arguments,
+        reason = "judgment receipt constructors intentionally bind typed evidence fields"
+    )]
     pub fn from_source_hashes(
         evidence_family_count: usize,
         healthy_mode_count: usize,
@@ -519,7 +522,6 @@ impl PolicyReuseCostCatalogReceipt {
 }
 
 impl PolicyReuseEvaluatorSavingsReceipt {
-    #[allow(clippy::too_many_arguments)]
     pub fn from_sources(
         catalog: &PolicyReuseCostCatalogReceipt,
         performance_cost: &PolicyReusePerformanceCostTrendReceipt,

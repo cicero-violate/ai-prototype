@@ -235,7 +235,7 @@ impl LiveSandboxToolExecutor {
         let artifact_path = self.artifact_path_for_root(&root, request)?;
         self.write_artifact(&artifact_path, &body)?;
 
-        let artifact_path_hash = path_hash(&artifact_relative_name(request));
+        let artifact_path_hash = path_hash(artifact_relative_name(request));
         let artifact_content_hash = bytes_hash(&body);
         let sandbox_root_hash = path_hash(root.to_string_lossy().as_bytes());
         let effect = Effect::artifact(

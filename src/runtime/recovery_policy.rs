@@ -141,16 +141,6 @@ pub(crate) fn failure_for_gate(id: GateId, status: GateStatus) -> Option<Failure
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn passing_gate_has_no_failure_class() {
-        assert_eq!(failure_for_gate(GateId::Eval, GateStatus::Pass), None);
-    }
-}
-
 pub(crate) fn event_kind_for_failure(class: FailureClass) -> EventKind {
     match class {
         FailureClass::InvariantUnknown | FailureClass::InvariantBlocked => EventKind::Blocked,
@@ -175,5 +165,15 @@ pub(crate) fn evidence_for_gate(id: GateId) -> Evidence {
         GateId::Verification => Evidence::LineageProof,
         GateId::Eval => Evidence::EvalScore,
         GateId::Learning => Evidence::PolicyPromotion,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn passing_gate_has_no_failure_class() {
+        assert_eq!(failure_for_gate(GateId::Eval, GateStatus::Pass), None);
     }
 }

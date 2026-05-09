@@ -3,23 +3,21 @@
 ## Current Progress Snapshot
 
 Date: 2026-05-08 America/Toronto / 2026-05-09 UTC
-Turn type: planning/scoring
-Scope reviewed: repository status, existing `plan.md`, existing `score.md`, `GOAL.md`, package manifests, and working-directory resolution.
-
-This turn is intentionally limited to planning and scoring. The working tree already contains broad implementation changes outside this turn's scope. Those files were not modified by this planning update and should be reviewed during the next execution turn.
+Turn type: implementation step 1
+Scope executed: P0 validation-baseline closure for the existing implementation batch.
 
 Current timestamp evidence:
 
 ```text
-2026-05-08 23:36:10 EDT America/Toronto / 2026-05-09T03:36:10Z UTC
+2026-05-08 23:43:56 EDT America/Toronto / 2026-05-09T03:43:56Z UTC
 branch: main
-latest visible prior commit: 6be032a Update Canon Agent planning and scoring
+latest visible prior commit: 8f3a15a Update Canon Agent planning and scoring
 working directory: /workspace/ai_sandbox/canon-mini-agent/prototype/ai
 ```
 
 ## Current Git State
 
-Observed dirty implementation paths before this planning update:
+Implementation files owned by this commit as the validated pending batch:
 
 ```text
 examples/ollama_judgment.rs
@@ -43,100 +41,111 @@ tests/mcp_receipt_contract.rs
 tests/validation_harness_contract.rs
 ```
 
-Planning/scoring files intentionally changed by this turn:
+Planning/scoring files updated by this turn:
 
 ```text
 plan.md
 score.md
 ```
 
+Generated validation evidence files are intentionally left under ignored `target/validation-logs/` and are not committed.
+
 ## Scorecard
 
-Scores are approximate implementation-readiness scores on a 0-10 scale. They are evidence-weighted and unchanged from the prior implementation snapshot because this planning turn did not run fresh validation.
+Scores are approximate implementation-readiness scores on a 0-10 scale. Correctness, robustness, and determinism were raised because the previously missing all-target validation gate now has final exit and summary evidence.
 
 ```text
-I  Intelligence      = 6.9
-E  Efficiency        = 6.6
-C  Correctness       = 7.1
-A  Alignment         = 8.3
-R  Robustness        = 7.0
-P  Performance       = 5.8
-S  Scalability       = 6.3
-D  Determinism       = 8.1
-T  Transparency      = 8.2
-Co Collaboration     = 7.6
-Em Empowerment       = 7.2
-B  Benefit           = 7.1
-L  Learning          = 6.9
-St Structure         = 7.8
-Si Simplicity        = 6.2
-F  Future-Proofing   = 7.5
+I  Intelligence      = 7.0
+E  Efficiency        = 6.7
+C  Correctness       = 7.6
+A  Alignment         = 8.4
+R  Robustness        = 7.4
+P  Performance       = 5.9
+S  Scalability       = 6.4
+D  Determinism       = 8.4
+T  Transparency      = 8.4
+Co Collaboration     = 7.7
+Em Empowerment       = 7.3
+B  Benefit           = 7.3
+L  Learning          = 7.0
+St Structure         = 7.9
+Si Simplicity        = 6.3
+F  Future-Proofing   = 7.6
 ```
 
 Approximate geometric mean:
 
 ```text
-G ≈ 7.08 / 10
+G ≈ 7.28 / 10
 ```
-
-Correctness, robustness, and determinism remain capped until `cargo test --all-targets` completes with final exit evidence.
 
 ## Completed Work This Turn
 
-- Confirmed the requested working directory resolves as the connector workspace root.
-- Inspected repository status and confirmed broad pre-existing implementation dirtiness.
-- Reviewed the existing planning and scoring files.
-- Reviewed top-level project files and manifests for context.
-- Updated `plan.md` to keep the current implementation plan focused on validation closure.
-- Updated `score.md` to preserve score ceilings and distinguish this planning/scoring turn from implementation work.
-- Preserved all existing implementation changes for a future execution turn.
-- Reaffirmed that the next execution turn should inspect the implementation diff and rerun the remaining all-target validation gate.
+- Read `plan.md` and executed the next concrete P0 item: validation-baseline closure.
+- Inspected repository status and the pending implementation diff before running validation.
+- Classified the implementation batch as receipt/proof verification, validation harness/reporting, transport/API, record metadata, test initialization, and example hardening work.
+- Ran all-target validation with redirected/detached logs after connector 502s interrupted direct long-running shell calls.
+- Confirmed all-target validation exit `0` with final result summaries.
+- Refreshed the full baseline with format, lib tests, and clippy.
+- Updated `plan.md` to mark P0 complete and advance the next concrete work to P1 validation-evidence reporting.
+- Updated `score.md` with fresh validation evidence and raised evidence-backed scores.
 
-## Latest Validation State
-
-No fresh validation commands were run during this planning/scoring turn.
-
-Prior evidence still on record:
+## Validation Evidence Captured This Turn
 
 ```text
-RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo fmt --check
-status: pass
+command: TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets
+execution: detached redirected shell after connector 502s
 exit: 0
-log: target/validation-logs/fmt-final-2.log and target/validation-logs/fmt-after-docs.log
-
-TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --lib -- --test-threads=1
-status: pass
-exit: 0
-result: 191 passed; 0 failed
-log: target/validation-logs/test-lib-rerun.log
-
-TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo clippy --all-targets -- -D warnings
-status: pass
-exit: 0
-log: target/validation-logs/clippy-final-2.log
-
-TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets
-status: incomplete evidence
-failure class: connector/output-window disruption, not semantic failure
-observed progress: lib tests, binaries, API contracts, graph mutation contracts, MCP contracts, planning contracts, score contracts, supervisor contracts, and many validation-harness tests reported ok before disconnect
-missing: final all-target exit file and final complete validation-harness summary
-log: target/validation-logs/test-all-final-turn.log
+exit file: target/validation-logs/test-all-detached.exit
+log: target/validation-logs/test-all-detached.log
+summary: 22 test result sections
+notable result lines:
+  - 191 passed; 0 failed; finished in 0.19s
+  - API/transport, graph mutation, MCP, planning, score, supervisor suites passed
+  - validation_harness_contract: 352 passed; 0 failed; finished in 164.84s
+  - worker process contract: 2 passed; 0 failed
+  - example test binaries: 0-test suites passed
 ```
+
+```text
+command: RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo fmt --check
+exit: 0
+log: target/validation-logs/fmt-exec-step-1.log
+```
+
+```text
+command: TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --lib -- --test-threads=1
+exit: 0
+result: 191 passed; 0 failed; finished in 0.41s
+log: target/validation-logs/test-lib-exec-step-1.log
+```
+
+```text
+command: TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo clippy --all-targets -- -D warnings
+exit: 0
+log: target/validation-logs/clippy-exec-step-1.log
+```
+
+## Connector / Environment Notes
+
+- Several direct long-running shell calls returned connector-level `502` errors while the validation command was still running or while polling with sleeps.
+- The successful evidence source is the detached redirected run with explicit exit file and compact follow-up inspection.
+- One earlier direct all-target attempt wrote exit `0` but had an incomplete log due to interrupted/orphaned harness processes; it is not used as the primary evidence source.
+- Stale validation-harness child processes from interrupted attempts were terminated before the detached run completed cleanly.
 
 ## Current Risks / Gaps
 
-- `cargo test --all-targets` still needs a final reliable exit status.
-- The working tree contains many dirty implementation files not owned by this planning turn.
-- Validation-harness all-target output is large enough to trigger connector failures; use redirected logs and inspect exit files.
-- No fresh benchmark evidence was captured.
+- Validation output remains large enough to stress connector polling; P1 should make compact validation evidence first-class.
+- No fresh benchmark evidence was captured, so performance remains comparatively low.
 - Domain specs remain extensive but not yet stable Rust contracts.
 - Live router/MCP/Ollama/OpenAI paths depend on environment services and can fail independently of core runtime correctness.
+- The project would benefit from an explicit validation-report artifact that distinguishes command pass/fail from connector transport instability.
 
 ## Next Score Update Triggers
 
 Raise scores only after fresh evidence:
 
-- **Correctness / Robustness / Determinism:** `cargo test --all-targets` completes with exit 0.
+- **Transparency / Robustness:** validation-report artifact records command outcomes, connector instability, graph telemetry, ignored artifacts, and missing-signal flags.
 - **Performance:** benchmark or runtime latency evidence is captured.
 - **Scalability:** multi-agent coordination and router failure scenarios are tested.
 - **Learning:** full candidate proposal -> sandbox execution -> external evaluation -> distillation/export -> policy-store insertion fixture passes.
@@ -144,6 +153,4 @@ Raise scores only after fresh evidence:
 
 ## Immediate Next Action
 
-Run an execution turn that first inspects the dirty implementation diff, then reruns only the remaining all-target validation command with wrapper-disabled, quota-safe settings. Update this file with exact final exit status and final test-result lines before moving to P1.
-
-Avoid creating further planning-only commits until the current implementation batch has been validated and either committed or intentionally reverted.
+Begin P1 by strengthening validation evidence reporting under ignored `target/observe/validation-report.ndjson`, with tests that keep the report compact, deterministic, and clear about connector/environment failures versus semantic failures.

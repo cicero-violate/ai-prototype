@@ -9001,7 +9001,10 @@ pub fn policy_reuse_evidence_manifest_regression_smoke_receipt(
     receipt
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "validation evidence constructors intentionally bind many typed fields"
+)]
 fn policy_reuse_evidence_manifest_from_sources(
     record_type: &'static str,
     summary: &PolicyReuseEvidenceSummaryReceipt,
@@ -10280,7 +10283,10 @@ pub fn policy_reuse_evidence_retrieval_corpus_readiness_regression_smoke_receipt
     )
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "validation evidence constructors intentionally bind many typed fields"
+)]
 fn policy_reuse_evidence_retrieval_corpus_readiness_from_sources(
     record_type: &'static str,
     example_index: &PolicyReuseEvidenceRetrievalExampleIndexReceipt,
@@ -10372,7 +10378,10 @@ pub fn policy_reuse_evidence_retrieval_corpus_admission_regression_smoke_receipt
     )
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "validation evidence constructors intentionally bind many typed fields"
+)]
 fn policy_reuse_evidence_retrieval_corpus_admission_from_sources(
     record_type: &'static str,
     corpus_readiness: &PolicyReuseEvidenceRetrievalCorpusReadinessReceipt,
@@ -10469,7 +10478,10 @@ pub fn policy_reuse_evidence_retrieval_use_approval_regression_smoke_receipt(
     receipt
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "validation evidence constructors intentionally bind many typed fields"
+)]
 fn policy_reuse_evidence_retrieval_use_approval_from_sources(
     record_type: &'static str,
     corpus_admission: &PolicyReuseEvidenceRetrievalCorpusAdmissionReceipt,
@@ -10561,7 +10573,10 @@ pub fn policy_reuse_evidence_retrieval_use_manifest_regression_smoke_receipt(
     )
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "validation evidence constructors intentionally bind many typed fields"
+)]
 fn policy_reuse_evidence_retrieval_use_manifest_from_sources(
     record_type: &'static str,
     use_approval: &PolicyReuseEvidenceRetrievalUseApprovalReceipt,
@@ -10654,7 +10669,10 @@ pub fn policy_reuse_evidence_retrieval_query_plan_regression_smoke_receipt(
     )
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "validation evidence constructors intentionally bind many typed fields"
+)]
 fn policy_reuse_evidence_retrieval_query_plan_from_sources(
     record_type: &'static str,
     use_manifest: &PolicyReuseEvidenceRetrievalUseManifestReceipt,
@@ -10750,7 +10768,10 @@ pub fn policy_reuse_evidence_retrieval_query_approval_regression_smoke_receipt(
     )
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "validation evidence constructors intentionally bind many typed fields"
+)]
 fn policy_reuse_evidence_retrieval_query_approval_from_sources(
     record_type: &'static str,
     query_plan: &PolicyReuseEvidenceRetrievalQueryPlanReceipt,
@@ -10850,7 +10871,10 @@ pub fn policy_reuse_evidence_retrieval_result_admission_regression_smoke_receipt
     )
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "validation evidence constructors intentionally bind many typed fields"
+)]
 fn policy_reuse_evidence_retrieval_result_admission_from_sources(
     record_type: &'static str,
     query_approval: &PolicyReuseEvidenceRetrievalQueryApprovalReceipt,
@@ -10955,7 +10979,10 @@ pub fn policy_reuse_evidence_retrieval_result_manifest_regression_smoke_receipt(
     )
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "validation evidence constructors intentionally bind many typed fields"
+)]
 fn policy_reuse_evidence_retrieval_result_manifest_from_sources(
     record_type: &'static str,
     result_admission: &PolicyReuseEvidenceRetrievalResultAdmissionReceipt,
@@ -11061,7 +11088,10 @@ pub fn policy_reuse_evidence_retrieval_result_use_admission_regression_smoke_rec
     )
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "validation evidence constructors intentionally bind many typed fields"
+)]
 fn policy_reuse_evidence_retrieval_result_use_admission_from_sources(
     record_type: &'static str,
     result_manifest: &PolicyReuseEvidenceRetrievalResultManifestReceipt,
@@ -11170,7 +11200,10 @@ pub fn policy_reuse_evidence_retrieval_result_use_manifest_regression_smoke_rece
     )
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "validation evidence constructors intentionally bind many typed fields"
+)]
 fn policy_reuse_evidence_retrieval_result_use_manifest_from_sources(
     record_type: &'static str,
     result_use_admission: &PolicyReuseEvidenceRetrievalResultUseAdmissionReceipt,
@@ -11281,7 +11314,10 @@ pub fn policy_reuse_evidence_retrieval_result_use_readiness_regression_smoke_rec
     )
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "validation evidence constructors intentionally bind many typed fields"
+)]
 fn policy_reuse_evidence_retrieval_result_use_readiness_from_sources(
     record_type: &'static str,
     result_use_manifest: &PolicyReuseEvidenceRetrievalResultUseManifestReceipt,
@@ -11390,7 +11426,10 @@ pub fn policy_reuse_evidence_retrieval_result_use_approval_regression_smoke_rece
     )
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "validation evidence constructors intentionally bind many typed fields"
+)]
 fn policy_reuse_evidence_retrieval_result_use_approval_from_sources(
     record_type: &'static str,
     result_use_readiness: &PolicyReuseEvidenceRetrievalResultUseReadinessReceipt,
@@ -11499,7 +11538,10 @@ pub fn policy_reuse_evidence_retrieval_result_use_manifest_admission_regression_
     )
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "validation evidence constructors intentionally bind many typed fields"
+)]
 fn policy_reuse_evidence_retrieval_result_use_manifest_admission_from_sources(
     record_type: &'static str,
     result_use_approval: &PolicyReuseEvidenceRetrievalResultUseApprovalReceipt,
@@ -11611,7 +11653,10 @@ pub fn policy_reuse_evidence_retrieval_result_use_summary_regression_smoke_recei
     )
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "validation evidence constructors intentionally bind many typed fields"
+)]
 fn policy_reuse_evidence_retrieval_result_use_summary_from_sources(
     record_type: &'static str,
     manifest_admission: &PolicyReuseEvidenceRetrievalResultUseManifestAdmissionReceipt,
@@ -11719,7 +11764,10 @@ pub fn policy_reuse_evidence_retrieval_result_use_summary_manifest_regression_sm
     )
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "validation evidence constructors intentionally bind many typed fields"
+)]
 fn policy_reuse_evidence_retrieval_result_use_summary_manifest_from_sources(
     record_type: &'static str,
     summary: &PolicyReuseEvidenceRetrievalResultUseSummaryReceipt,
@@ -11828,7 +11876,10 @@ pub fn policy_reuse_evidence_retrieval_result_use_summary_manifest_admission_reg
     )
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "validation evidence constructors intentionally bind many typed fields"
+)]
 fn policy_reuse_evidence_retrieval_result_use_summary_manifest_admission_from_sources(
     record_type: &'static str,
     summary_manifest: &PolicyReuseEvidenceRetrievalResultUseSummaryManifestReceipt,
@@ -11942,7 +11993,10 @@ pub fn policy_reuse_evidence_retrieval_result_use_summary_manifest_readiness_reg
     )
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "validation evidence constructors intentionally bind many typed fields"
+)]
 fn policy_reuse_evidence_retrieval_result_use_summary_manifest_readiness_from_sources(
     record_type: &'static str,
     admission: &PolicyReuseEvidenceRetrievalResultUseSummaryManifestAdmissionReceipt,
@@ -12057,7 +12111,10 @@ pub fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_regr
     )
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "validation evidence constructors intentionally bind many typed fields"
+)]
 fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_from_sources(
     record_type: &'static str,
     readiness: &PolicyReuseEvidenceRetrievalResultUseSummaryManifestReadinessReceipt,
@@ -12178,7 +12235,10 @@ pub fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admi
     )
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "validation evidence constructors intentionally bind many typed fields"
+)]
 fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_from_sources(
     record_type: &'static str,
     approval: &PolicyReuseEvidenceRetrievalResultUseSummaryManifestApprovalReceipt,
@@ -12301,7 +12361,10 @@ pub fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admi
     )
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "validation evidence constructors intentionally bind many typed fields"
+)]
 fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_consumption_from_source(
     record_type: &'static str,
     approval_admission: &PolicyReuseEvidenceRetrievalResultUseSummaryManifestApprovalAdmissionReceipt,
@@ -12434,7 +12497,10 @@ pub fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admi
     )
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "validation evidence constructors intentionally bind many typed fields"
+)]
 fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_consumption_learning_eligibility_from_source(
     record_type: &'static str,
     consumption: &PolicyReuseEvidenceRetrievalResultUseSummaryManifestApprovalAdmissionConsumptionReceipt,
@@ -12570,7 +12636,10 @@ pub fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admi
     )
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "validation evidence constructors intentionally bind many typed fields"
+)]
 fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_consumption_learning_admission_from_source(
     record_type: &'static str,
     eligibility: &PolicyReuseEvidenceRetrievalResultUseSummaryManifestApprovalAdmissionConsumptionLearningEligibilityReceipt,
@@ -12711,7 +12780,10 @@ pub fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admi
     )
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "validation evidence constructors intentionally bind many typed fields"
+)]
 fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_consumption_learning_materialization_plan_from_source(
     record_type: &'static str,
     admission: &PolicyReuseEvidenceRetrievalResultUseSummaryManifestApprovalAdmissionConsumptionLearningAdmissionReceipt,
@@ -12857,7 +12929,10 @@ pub fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admi
     )
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "validation evidence constructors intentionally bind many typed fields"
+)]
 fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_consumption_learning_storage_admission_from_source(
     record_type: &'static str,
     plan: &PolicyReuseEvidenceRetrievalResultUseSummaryManifestApprovalAdmissionConsumptionLearningMaterializationPlanReceipt,
@@ -13550,7 +13625,10 @@ fn finalize_policy_reuse_evidence_retrieval_result_use_summary_manifest_approval
         );
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "validation evidence constructors intentionally bind many typed fields"
+)]
 fn policy_reuse_evidence_surface_index_from_sources(
     record_type: &'static str,
     policy_reuse: &crate::capability::judgment::PolicyReuseReceipt,
@@ -13670,7 +13748,6 @@ pub fn policy_reuse_distillation_readiness_regression_smoke_receipt(
     receipt
 }
 
-#[allow(clippy::too_many_arguments)]
 fn policy_reuse_distillation_readiness_from_sources(
     record_type: &'static str,
     policy_reuse: &crate::capability::judgment::PolicyReuseReceipt,
@@ -17684,11 +17761,9 @@ fn graph_telemetry_from_report(
     let report_hash = json_string_field(&report, "report_hash")?;
     let wrapper_hash = file_hash(wrapper_path)?;
     let semantic_fn_count = node_count;
-    let semantic_fn_coverage_bps = if node_count == 0 {
-        0
-    } else {
-        semantic_fn_count * 10_000 / node_count
-    };
+    let semantic_fn_coverage_bps = (semantic_fn_count * 10_000)
+        .checked_div(node_count)
+        .unwrap_or(0);
 
     Ok(GraphTelemetryReceipt {
         crate_name: "semantic_scale_probe".to_owned(),

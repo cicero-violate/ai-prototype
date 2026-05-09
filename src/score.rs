@@ -62,7 +62,7 @@ pub fn geometric_mean(values: &[f64]) -> Option<f64> {
         return None;
     }
 
-    if values.iter().any(|v| *v == 0.0) {
+    if values.contains(&0.0) {
         return Some(0.0);
     }
 

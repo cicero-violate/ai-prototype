@@ -231,7 +231,10 @@ pub(crate) fn retry_budget_exhausted(
     retry_count.saturating_add(1) >= attempt_budget || retry_count >= max_retries
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "LLM receipt constructors intentionally bind typed request and response fields"
+)]
 pub(crate) fn retry_budget_decision_valid(
     timeout_ms: u64,
     retry_count: u32,
@@ -249,7 +252,10 @@ pub(crate) fn retry_budget_decision_valid(
             || (!duplicate_request && retry_count <= max_retries && retry_count < attempt_budget))
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "LLM receipt constructors intentionally bind typed request and response fields"
+)]
 pub(crate) fn retry_budget_decision_receiptable(
     timeout_ms: u64,
     retry_count: u32,

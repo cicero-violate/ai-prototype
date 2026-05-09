@@ -37,7 +37,7 @@ impl GraphSourceSpan {
         }
     }
 
-    pub fn is_valid_for(self: &Self, content: &str) -> bool {
+    pub fn is_valid_for(&self, content: &str) -> bool {
         !self.file.is_empty() && self.lo <= self.hi && self.hi <= content.len()
     }
 
@@ -1088,13 +1088,12 @@ pub fn verify_graph_mutation_ops_ndjson(input: &str) -> GraphMutationOpSetReceip
     }
 
     valid_rows.sort_by_key(|row| row.op_index);
-    let mut expected_index = 0u64;
     let mut ordered_ops = Vec::new();
-    for row in &valid_rows {
+    for (expected_index, row) in valid_rows.iter().enumerate() {
+        let expected_index = expected_index as u64;
         if row.op_index != expected_index {
             invalid_row_count += 1;
         }
-        expected_index += 1;
         ordered_ops.push(row.op.clone());
     }
 

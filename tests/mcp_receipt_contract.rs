@@ -69,7 +69,10 @@ fn mcp_receipt_roundtrips_ndjson_and_persists() {
 
     assert_eq!(decoded, receipt);
     assert_eq!(decoded.receipt_hash, receipt.receipt_hash);
-    assert_eq!(verify_mcp_call_receipts(&[decoded.clone()]), Ok(1));
+    assert_eq!(
+        verify_mcp_call_receipts(std::slice::from_ref(&decoded)),
+        Ok(1)
+    );
 
     let path = receipt_path("persist");
     let _ = std::fs::remove_file(&path);

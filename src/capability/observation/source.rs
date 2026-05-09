@@ -515,9 +515,8 @@ pub fn write_observation_cursor_ndjson(
     tmp.sync_all()?;
     drop(tmp);
 
-    fs::rename(&tmp_path, path).map_err(|error| {
+    fs::rename(&tmp_path, path).inspect_err(|_error| {
         let _ = fs::remove_file(&tmp_path);
-        error
     })
 }
 

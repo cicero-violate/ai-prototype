@@ -368,11 +368,8 @@ impl AgentCycle {
         request: OpenAiChatRequest,
         phase: &str,
     ) -> Result<crate::agent::router::RouterTurnResult, OpenAiError> {
-        if use_teacher(phase) {
-            self.router.turn(request)
-        } else {
-            self.router.turn(request)
-        }
+        let _ = use_teacher(phase);
+        self.router.turn(request)
     }
 
     fn submit_evidence(&mut self, gate: &str, evidence: &str, passed: bool) {
@@ -598,6 +595,27 @@ fn build_submit_evidence_json(
 
 // ---- State parsing -------------------------------------------------------
 
+fn extract_phase(state_json: &str) -> Option<String> {
+    extract_json_string(state_json, "phase")
+}
+
+fn extract_json_string(json: &str, field: &str) -> Option<String> {
+    let key = format!("\"{field}\":");
+    let start = json.find(&key)?;
+    let rest = json[start + key.len()..].trim_start();
+    let rest = rest.strip_prefix('"')?;
+    let end = rest.find('"')?;
+    Some(rest[..end].to_string())
+}
+
+fn extract_tlog_len(state_json: &str) -> Option<usize> {
+    let key = "\"tlog_len\":";
+    let start = state_json.find(key)?;
+    let rest = state_json[start + key.len()..].trim_start();
+    let digits: String = rest.chars().take_while(|c| c.is_ascii_digit()).collect();
+    digits.parse().ok()
+}
+
 #[cfg(test)]
 mod hash_tests {
     use super::*;
@@ -694,25 +712,4 @@ mod hash_tests {
             compute_evidence_contract_hash(gate_u64, ev_u64, passed, effect_u64, payload_hash);
         assert_eq!(sub_hash, submission.contract_hash());
     }
-}
-
-fn extract_phase(state_json: &str) -> Option<String> {
-    extract_json_string(state_json, "phase")
-}
-
-fn extract_json_string(json: &str, field: &str) -> Option<String> {
-    let key = format!("\"{field}\":");
-    let start = json.find(&key)?;
-    let rest = json[start + key.len()..].trim_start();
-    let rest = rest.strip_prefix('"')?;
-    let end = rest.find('"')?;
-    Some(rest[..end].to_string())
-}
-
-fn extract_tlog_len(state_json: &str) -> Option<usize> {
-    let key = "\"tlog_len\":";
-    let start = state_json.find(key)?;
-    let rest = state_json[start + key.len()..].trim_start();
-    let digits: String = rest.chars().take_while(|c| c.is_ascii_digit()).collect();
-    digits.parse().ok()
 }

@@ -4,24 +4,32 @@
 
 Canon Agent is a Rust prototype for a deterministic, auditable, self-improving agent runtime. The target architecture remains a formally constrained state-machine kernel with a capability layer around it. The kernel owns correctness, state transitions, durable records, replay boundaries, and audit evidence. LLMs and tools operate inside the capability layer and must produce typed, reviewable evidence rather than governing the runtime directly.
 
-The current working tree contains a broad, pre-existing implementation batch plus this planning/scoring refresh. This planning turn intentionally updates only `plan.md` and `score.md`; all source, test, example, and runtime implementation changes remain unowned by this turn and should be handled by the next execution turn.
-
-Current planning snapshot, 2026-05-08 23:36:10 EDT America/Toronto / 2026-05-09T03:36:10Z UTC:
+Current implementation snapshot, 2026-05-08 23:43:56 EDT America/Toronto / 2026-05-09T03:43:56Z UTC:
 
 - Branch: `main`.
-- Latest visible planning commit before this turn: `6be032a Update Canon Agent planning and scoring`.
+- Latest visible prior commit before this implementation turn: `8f3a15a Update Canon Agent planning and scoring`.
 - The requested working directory resolves to the connector workspace root: `/workspace/ai_sandbox/canon-mini-agent/prototype/ai`.
-- `plan.md` and `score.md` were reviewed during this planning/scoring refresh and will be committed separately from existing implementation dirtiness.
-- Dirty implementation files are still present and must not be conflated with this planning/scoring commit.
-- The next execution turn should begin with diff review, not new feature work.
-- Current implementation diff size remains broad enough that validation closure should precede architecture expansion.
+- The pre-existing implementation batch has now been reviewed at diff level and validated.
+- P0 validation baseline is closed with fresh all-target, fmt, lib-test, and clippy evidence.
+- Connector 502s occurred during long-running validation polling, but redirected/detached validation evidence completed with exit files and final test summaries.
 
-Latest known validation evidence from the prior implementation step:
+Fresh validation evidence from implementation step 1:
 
+- `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets` passed through detached redirected execution.
+  - exit: `0`
+  - log: `target/validation-logs/test-all-detached.log`
+  - exit file: `target/validation-logs/test-all-detached.exit`
+  - evidence: 22 `test result:` sections, including `191 passed`, integration suites, `352 passed` for `validation_harness_contract`, worker process contract, and example test binaries.
 - `RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo fmt --check` passed.
-- `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --lib -- --test-threads=1` passed: 191 tests.
+  - exit: `0`
+  - log: `target/validation-logs/fmt-exec-step-1.log`
+- `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --lib -- --test-threads=1` passed.
+  - exit: `0`
+  - result: `191 passed; 0 failed`
+  - log: `target/validation-logs/test-lib-exec-step-1.log`
 - `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo clippy --all-targets -- -D warnings` passed.
-- `cargo test --all-targets` was attempted and progressed through many suites successfully, but connector/output-window failures prevented final exit-file evidence. Treat this as incomplete evidence, not a semantic product failure.
+  - exit: `0`
+  - log: `target/validation-logs/clippy-exec-step-1.log`
 
 ## Operating Rules For Agent Turns
 
@@ -45,41 +53,28 @@ Latest known validation evidence from the prior implementation step:
 
 ## Implementation Priority
 
-### P0 — Finish validation baseline
+### P0 — Finish validation baseline — complete
 
-1. **Preserve current implementation batch for execution review**
-   - Current dirty implementation paths should be reviewed by an execution turn, not by this planning turn.
-   - Do not overwrite or revert existing implementation changes unless the execution turn explicitly owns that decision.
-   - Treat the batch as likely intentional until exact diffs and tests prove otherwise.
-   - Keep the current implementation batch separate from this planning/scoring commit.
+1. **Implementation batch review**
+   - The dirty implementation batch was inspected at diff level before validation.
+   - Diff shape is primarily validation-harness/reporting, receipt/proof metadata, record construction, API/transport verification, and test initialization hardening.
+   - No implementation files were reverted during this execution step.
 
-2. **Remaining validation gate**
-   - Rerun only:
-     - `mkdir -p target/test-tmp target/validation-logs`
-     - `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets > target/validation-logs/test-all-rerun.log 2>&1; echo $? > target/validation-logs/test-all-rerun.exit`
-   - If the connector disconnects, inspect the exit file and process table before rerunning.
-   - Avoid duplicate all-target invocations.
-   - Capture final exit status and final `test result:` lines in `score.md`.
+2. **Validation gate**
+   - All-target validation now has final exit evidence and final `test result:` summaries.
+   - The detached all-target run completed with exit `0` after connector 502s interrupted streaming/polling attempts.
+   - The previous incomplete all-target evidence is superseded by `target/validation-logs/test-all-detached.log` and `.exit`.
 
-3. **Then refresh the complete baseline**
-   - After all-target tests have final evidence, rerun if necessary:
-     - `cargo fmt --check`
-     - `cargo test --lib -- --test-threads=1`
-     - `cargo clippy --all-targets -- -D warnings`
-   - Only raise correctness, robustness, and determinism from fresh, complete evidence.
-
-4. **Failure classification rules**
-   - Environment failure: quota, temp path, missing service, connector truncation, or unavailable external dependency.
-   - Compile failure: Rust compile error before tests run.
-   - Semantic test failure: assertion or contract mismatch.
-   - Lint failure: clippy warning escalated by `-D warnings`.
-   - Output-limit failure: command may have run but connector output is insufficient to prove pass/fail.
+3. **Complete baseline refresh**
+   - Format, lib tests, and clippy have been refreshed and passed with exit `0`.
+   - Correctness, robustness, and determinism score ceilings may be raised from this point.
 
 ### P1 — Make validation evidence first-class
 
 1. Strengthen observe-validation reporting under ignored `target/observe/validation-report.ndjson`.
 2. Include git hygiene, command outcomes, graph telemetry presence/absence, runtime archive counts, ignored artifact counts, and missing-signal flags.
 3. Keep score updates evidence-backed; raise correctness/robustness/determinism only from fresh passing gates.
+4. Add explicit connector-failure classification to validation reporting so a completed detached run can distinguish runtime pass from shell transport instability.
 
 ### P2 — Agent loop reliability
 
@@ -107,18 +102,15 @@ Latest known validation evidence from the prior implementation step:
 
 ## Next Execute-Turn Recommendation
 
-1. Confirm `git status --short` and identify unrelated dirty files.
-2. Inspect the current implementation diff before changing source.
-3. Rerun only the remaining all-target validation gate with wrapper-disabled, quota-safe settings.
-4. Record exact exit status and final output lines in `score.md`.
-5. If the all-target command passes, commit the reviewed implementation batch separately from planning/scoring.
-6. Move to P1 only after all-target tests have final pass/fail evidence.
+1. Begin P1 by making validation evidence first-class and compact enough for connector-limited runs.
+2. Preserve the current redirected validation-log pattern and exit-file pattern for expensive checks.
+3. Add/extend tests for validation report contents before changing behavior.
+4. Keep generated validation logs ignored and out of commits.
+5. Run `cargo fmt --check`, targeted tests for validation reporting, and `cargo clippy --all-targets -- -D warnings` after P1 changes.
 
 ## Planning-Turn Handoff
 
-This turn does not change implementation priority or score ceilings. The correct next move is still validation closure, not additional architecture expansion. Treat any existing source/test/example modifications as an execution-turn batch requiring review, validation, scoring, and a separate commit. The current planning pass confirms that the repository still has broad implementation dirtiness and that this commit remains limited to `plan.md` and `score.md`.
-
-Additional handoff note for the next execution turn: the repository has received repeated planning/scoring-only commits while the implementation batch remains uncommitted. Close the validation loop and either commit or deliberately revert the implementation batch before creating more planning-only updates.
+P0 is complete. The correct next move is P1 validation-evidence reporting, not additional broad runtime architecture. The implementation batch that had been pending across multiple planning-only turns is now validated and should be committed with this turn's planning/scoring updates.
 
 ## Current Non-Goals
 
@@ -126,4 +118,4 @@ Additional handoff note for the next execution turn: the repository has received
 - Do not redesign the kernel.
 - Do not add live trading behavior.
 - Do not rely on external LLM/Ollama/OpenAI availability for baseline correctness.
-- Do not commit token caches, runtime archives, target outputs, or SSE chunk logs.
+- Do not commit token caches, runtime archives, target outputs, validation logs, or SSE chunk logs.

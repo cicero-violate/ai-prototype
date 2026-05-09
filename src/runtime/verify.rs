@@ -129,24 +129,24 @@ fn validate_persisted_event(event: EventView) -> Result<(), CanonError> {
         }
     }
 
-    if event.kind == EventKind::Persisted && event.cause == Cause::Persisted {
-        if event.to != Phase::Learn
+    if event.kind == EventKind::Persisted
+        && event.cause == Cause::Persisted
+        && (event.to != Phase::Learn
             || event.failure.is_some()
             || event.recovery_action.is_some()
-            || event.affected_gate.is_some()
-        {
-            return Err(CanonError::InvalidLearnTarget);
-        }
+            || event.affected_gate.is_some())
+    {
+        return Err(CanonError::InvalidLearnTarget);
     }
 
     Ok(())
 }
 
 fn validate_learned_event(event: EventView) -> Result<(), CanonError> {
-    if event.kind == EventKind::Learned {
-        if event.to != Phase::Done || event.affected_gate != Some(GateId::Learning) {
-            return Err(CanonError::InvalidLearnTarget);
-        }
+    if event.kind == EventKind::Learned
+        && (event.to != Phase::Done || event.affected_gate != Some(GateId::Learning))
+    {
+        return Err(CanonError::InvalidLearnTarget);
     }
 
     Ok(())

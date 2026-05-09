@@ -194,6 +194,10 @@ impl CanonicalEffectReceipt {
         )
     }
 
+    #[expect(
+        clippy::too_many_arguments,
+        reason = "verification proof constructors intentionally bind full proof material"
+    )]
     pub fn new(
         subject: ProofSubjectKind,
         effect: CanonicalEffect,
@@ -454,6 +458,10 @@ impl VerificationProofBinding {
 }
 
 impl VerificationProofRecord {
+    #[expect(
+        clippy::too_many_arguments,
+        reason = "verification proof constructors intentionally bind full proof material"
+    )]
     pub fn new(
         subject: ProofSubjectKind,
         proof_line_hash: u64,

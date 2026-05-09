@@ -463,7 +463,7 @@ impl VerificationRecord {
     }
 
     pub fn from_request(request: VerificationRequest) -> Self {
-        let receipt = DeterministicSemanticVerifier::default().verify(request);
+        let receipt = DeterministicSemanticVerifier.verify(request);
         Self {
             request,
             receipt,

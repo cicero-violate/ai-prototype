@@ -338,7 +338,7 @@ mod tests {
         assert!(promotion.submission().passed);
 
         let mut store = PolicyStore::default();
-        let entry = store.promote(promotion.clone()).unwrap().clone();
+        let entry = *store.promote(promotion.clone()).unwrap();
 
         assert_eq!(entry.version, 1);
         assert_eq!(entry.value, promotion.source_seq);
@@ -359,7 +359,7 @@ mod tests {
         std::fs::remove_file(&path).ok();
 
         let mut store = PolicyStore::default();
-        let entry = store.promote_durable(&path, promotion).unwrap().clone();
+        let entry = *store.promote_durable(&path, promotion).unwrap();
         let loaded = PolicyStore::load_ndjson(&path).unwrap();
         std::fs::remove_file(&path).ok();
 
@@ -514,8 +514,10 @@ mod tests {
 
     #[test]
     fn observation_record_submission_drives_invariant_gate_through_api() {
-        let mut state = State::default();
-        state.phase = Phase::Invariant;
+        let mut state = State {
+            phase: Phase::Invariant,
+            ..State::default()
+        };
 
         let mut tlog = Vec::new();
         let record = ObservationRecord::new(7, 1, 0xabc, 1);
@@ -539,8 +541,10 @@ mod tests {
 
     #[test]
     fn invalid_observation_fails_submission_without_advancing_gate() {
-        let mut state = State::default();
-        state.phase = Phase::Invariant;
+        let mut state = State {
+            phase: Phase::Invariant,
+            ..State::default()
+        };
 
         let mut tlog = Vec::new();
         let record = ObservationRecord::new(7, 1, 0, 1);
@@ -827,8 +831,10 @@ mod tests {
 
     #[test]
     fn context_record_submission_drives_analysis_gate_through_api() {
-        let mut state = State::default();
-        state.phase = Phase::Analysis;
+        let mut state = State {
+            phase: Phase::Analysis,
+            ..State::default()
+        };
         state.gates.invariant = Gate::pass(Evidence::InvariantProof);
 
         let mut memory = MemoryIndex::default();
@@ -963,8 +969,10 @@ mod tests {
 
     #[test]
     fn ollama_response_body_drives_judgment_record_through_api() {
-        let mut state = State::default();
-        state.phase = Phase::Judgment;
+        let mut state = State {
+            phase: Phase::Judgment,
+            ..State::default()
+        };
         state.gates.invariant = Gate::pass(Evidence::InvariantProof);
         state.gates.analysis = Gate::pass(Evidence::AnalysisReport);
 
@@ -1002,8 +1010,10 @@ mod tests {
 
     #[test]
     fn ollama_effect_receipt_persists_in_mixed_tlog_and_replays() {
-        let mut state = State::default();
-        state.phase = Phase::Judgment;
+        let mut state = State {
+            phase: Phase::Judgment,
+            ..State::default()
+        };
         state.gates.invariant = Gate::pass(Evidence::InvariantProof);
         state.gates.analysis = Gate::pass(Evidence::AnalysisReport);
 
@@ -1097,8 +1107,10 @@ mod tests {
 
     #[test]
     fn ollama_judgment_final_proof_persists_as_verification_event() {
-        let mut state = State::default();
-        state.phase = Phase::Judgment;
+        let mut state = State {
+            phase: Phase::Judgment,
+            ..State::default()
+        };
         state.gates.invariant = Gate::pass(Evidence::InvariantProof);
         state.gates.analysis = Gate::pass(Evidence::AnalysisReport);
 
@@ -1189,8 +1201,10 @@ mod tests {
 
     #[test]
     fn ollama_proof_event_projects_into_generic_verification_spine() {
-        let mut state = State::default();
-        state.phase = Phase::Judgment;
+        let mut state = State {
+            phase: Phase::Judgment,
+            ..State::default()
+        };
         state.gates.invariant = Gate::pass(Evidence::InvariantProof);
         state.gates.analysis = Gate::pass(Evidence::AnalysisReport);
 
@@ -1402,8 +1416,10 @@ mod tests {
 
     #[test]
     fn ollama_receipt_and_proof_hash_are_bidirectionally_bound() {
-        let mut state = State::default();
-        state.phase = Phase::Judgment;
+        let mut state = State {
+            phase: Phase::Judgment,
+            ..State::default()
+        };
         state.gates.invariant = Gate::pass(Evidence::InvariantProof);
         state.gates.analysis = Gate::pass(Evidence::AnalysisReport);
 
@@ -1479,8 +1495,10 @@ mod tests {
 
     #[test]
     fn ollama_receipt_hash_binds_proof_event_sequence_ordering() {
-        let mut state = State::default();
-        state.phase = Phase::Judgment;
+        let mut state = State {
+            phase: Phase::Judgment,
+            ..State::default()
+        };
         state.gates.invariant = Gate::pass(Evidence::InvariantProof);
         state.gates.analysis = Gate::pass(Evidence::AnalysisReport);
 
@@ -1561,8 +1579,10 @@ mod tests {
 
     #[test]
     fn ollama_proof_replay_rejects_displaced_proof_event_sequence() {
-        let mut state = State::default();
-        state.phase = Phase::Judgment;
+        let mut state = State {
+            phase: Phase::Judgment,
+            ..State::default()
+        };
         state.gates.invariant = Gate::pass(Evidence::InvariantProof);
         state.gates.analysis = Gate::pass(Evidence::AnalysisReport);
 
@@ -1667,8 +1687,10 @@ mod tests {
 
     #[test]
     fn ollama_receipt_proves_configured_local_endpoint_provenance() {
-        let mut state = State::default();
-        state.phase = Phase::Judgment;
+        let mut state = State {
+            phase: Phase::Judgment,
+            ..State::default()
+        };
         state.gates.invariant = Gate::pass(Evidence::InvariantProof);
         state.gates.analysis = Gate::pass(Evidence::AnalysisReport);
 
@@ -1767,8 +1789,10 @@ mod tests {
 
     #[test]
     fn ollama_receipt_construction_rejects_non_local_endpoint_before_receipt() {
-        let mut state = State::default();
-        state.phase = Phase::Judgment;
+        let mut state = State {
+            phase: Phase::Judgment,
+            ..State::default()
+        };
         state.gates.invariant = Gate::pass(Evidence::InvariantProof);
         state.gates.analysis = Gate::pass(Evidence::AnalysisReport);
 
@@ -1831,8 +1855,10 @@ mod tests {
 
     #[test]
     fn ollama_judgment_tlog_rejects_each_critical_receipt_field_tamper() {
-        let mut state = State::default();
-        state.phase = Phase::Judgment;
+        let mut state = State {
+            phase: Phase::Judgment,
+            ..State::default()
+        };
         state.gates.invariant = Gate::pass(Evidence::InvariantProof);
         state.gates.analysis = Gate::pass(Evidence::AnalysisReport);
 
@@ -1944,10 +1970,9 @@ mod tests {
 
         let mut store = PolicyStore::default();
         let empty_fingerprint = store.fingerprint();
-        let entry = store
+        let entry = *store
             .promote_feedback_durable(&path, promotion.clone())
-            .unwrap()
-            .clone();
+            .unwrap();
         let loaded = PolicyStore::load_ndjson(&path).unwrap();
         std::fs::remove_file(&path).ok();
 
@@ -2131,8 +2156,10 @@ mod tests {
         let mut policy = PolicyStore::default();
         policy.promote_feedback(promotion).unwrap();
 
-        let mut state = State::default();
-        state.phase = Phase::Judgment;
+        let mut state = State {
+            phase: Phase::Judgment,
+            ..State::default()
+        };
         state.gates.invariant = Gate::pass(Evidence::InvariantProof);
         state.gates.analysis = Gate::pass(Evidence::AnalysisReport);
 
@@ -2163,8 +2190,10 @@ mod tests {
 
     #[test]
     fn llm_record_submission_drives_judgment_gate_through_api() {
-        let mut state = State::default();
-        state.phase = Phase::Judgment;
+        let mut state = State {
+            phase: Phase::Judgment,
+            ..State::default()
+        };
         state.gates.invariant = Gate::pass(Evidence::InvariantProof);
         state.gates.analysis = Gate::pass(Evidence::AnalysisReport);
 
@@ -2193,8 +2222,10 @@ mod tests {
 
     #[test]
     fn invalid_llm_record_fails_without_advancing_judgment() {
-        let mut state = State::default();
-        state.phase = Phase::Judgment;
+        let mut state = State {
+            phase: Phase::Judgment,
+            ..State::default()
+        };
         state.gates.invariant = Gate::pass(Evidence::InvariantProof);
         state.gates.analysis = Gate::pass(Evidence::AnalysisReport);
 
@@ -2272,8 +2303,10 @@ mod tests {
 
     #[test]
     fn orchestration_record_orders_ready_submissions() {
-        let mut state = State::default();
-        state.phase = Phase::Invariant;
+        let state = State {
+            phase: Phase::Invariant,
+            ..State::default()
+        };
 
         let record = OrchestrationRecord::from_state(state, 9);
         assert_eq!(record.decision(), OrchestrationDecision::Routed);
@@ -2320,8 +2353,10 @@ mod tests {
 
     #[test]
     fn orchestration_skips_already_passed_gates() {
-        let mut state = State::default();
-        state.phase = Phase::Plan;
+        let mut state = State {
+            phase: Phase::Plan,
+            ..State::default()
+        };
         state.gates.invariant = Gate::pass(Evidence::InvariantProof);
         state.gates.analysis = Gate::pass(Evidence::AnalysisReport);
         state.gates.judgment = Gate::pass(Evidence::JudgmentRecord);
@@ -2392,8 +2427,10 @@ mod tests {
 
     #[test]
     fn empty_orchestration_batch_is_rejected() {
-        let mut state = State::default();
-        state.phase = Phase::Invariant;
+        let mut state = State {
+            phase: Phase::Invariant,
+            ..State::default()
+        };
         let mut tlog = Vec::new();
 
         let result = crate::api::routes::handle_command(
@@ -2433,8 +2470,10 @@ mod tests {
 
     #[test]
     fn api_rejects_invalid_batch_atomically() {
-        let mut state = State::default();
-        state.phase = Phase::Plan;
+        let mut state = State {
+            phase: Phase::Plan,
+            ..State::default()
+        };
         state.gates.invariant = Gate::pass(Evidence::InvariantProof);
         state.gates.analysis = Gate::pass(Evidence::AnalysisReport);
         state.gates.judgment = Gate::pass(Evidence::JudgmentRecord);
@@ -2751,8 +2790,10 @@ mod tests {
 
     #[test]
     fn planning_record_binds_ready_task_through_api() {
-        let mut state = State::default();
-        state.phase = Phase::Plan;
+        let mut state = State {
+            phase: Phase::Plan,
+            ..State::default()
+        };
         state.gates.invariant = Gate::pass(Evidence::InvariantProof);
         state.gates.analysis = Gate::pass(Evidence::AnalysisReport);
         state.gates.judgment = Gate::pass(Evidence::JudgmentRecord);
@@ -2777,8 +2818,10 @@ mod tests {
 
     #[test]
     fn tooling_record_materializes_artifact_through_api() {
-        let mut state = State::default();
-        state.phase = Phase::Execute;
+        let mut state = State {
+            phase: Phase::Execute,
+            ..State::default()
+        };
         state.packet.bind_ready_task();
         state.gates.invariant = Gate::pass(Evidence::InvariantProof);
         state.gates.analysis = Gate::pass(Evidence::AnalysisReport);
@@ -2805,8 +2848,10 @@ mod tests {
 
     #[test]
     fn tooling_effect_receipt_binds_request_receipt_and_tlog_event() {
-        let mut state = State::default();
-        state.phase = Phase::Execute;
+        let mut state = State {
+            phase: Phase::Execute,
+            ..State::default()
+        };
         state.packet.bind_ready_task();
         state.gates.invariant = Gate::pass(Evidence::InvariantProof);
         state.gates.analysis = Gate::pass(Evidence::AnalysisReport);
@@ -2877,8 +2922,10 @@ mod tests {
         let _ = std::fs::remove_dir_all(&sandbox_root);
         let receipt_path = sandbox_root.join("tool_effect_receipts.ndjson");
 
-        let mut state = State::default();
-        state.phase = Phase::Execute;
+        let mut state = State {
+            phase: Phase::Execute,
+            ..State::default()
+        };
         state.packet.bind_ready_task();
         state.gates.invariant = Gate::pass(Evidence::InvariantProof);
         state.gates.analysis = Gate::pass(Evidence::AnalysisReport);
@@ -3005,8 +3052,10 @@ mod tests {
             .execute_process("/usr/bin/printf", &["canon-process-effect"], "")
             .unwrap();
 
-        let mut state = State::default();
-        state.phase = Phase::Execute;
+        let mut state = State {
+            phase: Phase::Execute,
+            ..State::default()
+        };
         state.packet.bind_ready_task();
         state.gates.invariant = Gate::pass(Evidence::InvariantProof);
         state.gates.analysis = Gate::pass(Evidence::AnalysisReport);
@@ -3093,8 +3142,10 @@ mod tests {
             .execute_process("/usr/bin/printf", &["duplicate-process-batch"], "")
             .unwrap();
 
-        let mut state = State::default();
-        state.phase = Phase::Execute;
+        let mut state = State {
+            phase: Phase::Execute,
+            ..State::default()
+        };
         state.packet.bind_ready_task();
         state.gates.invariant = Gate::pass(Evidence::InvariantProof);
         state.gates.analysis = Gate::pass(Evidence::AnalysisReport);
@@ -3141,8 +3192,10 @@ mod tests {
             );
         }
 
-        let mut state = State::default();
-        state.phase = Phase::Execute;
+        let mut state = State {
+            phase: Phase::Execute,
+            ..State::default()
+        };
         state.packet.bind_ready_task();
         state.gates.invariant = Gate::pass(Evidence::InvariantProof);
         state.gates.analysis = Gate::pass(Evidence::AnalysisReport);
@@ -3187,8 +3240,10 @@ mod tests {
 
     #[test]
     fn tooling_effect_receipt_rejects_tampered_packet_effect_replay() {
-        let mut state = State::default();
-        state.phase = Phase::Execute;
+        let mut state = State {
+            phase: Phase::Execute,
+            ..State::default()
+        };
         state.packet.bind_ready_task();
         state.gates.invariant = Gate::pass(Evidence::InvariantProof);
         state.gates.analysis = Gate::pass(Evidence::AnalysisReport);
@@ -3322,8 +3377,10 @@ mod tests {
 
     #[test]
     fn tooling_effect_receipt_rejects_registry_policy_drift() {
-        let mut state = State::default();
-        state.phase = Phase::Execute;
+        let mut state = State {
+            phase: Phase::Execute,
+            ..State::default()
+        };
         state.packet.bind_ready_task();
         state.gates.invariant = Gate::pass(Evidence::InvariantProof);
         state.gates.analysis = Gate::pass(Evidence::AnalysisReport);
@@ -3362,8 +3419,10 @@ mod tests {
 
     #[test]
     fn capability_registry_projection_is_persisted_in_execution_tlog() {
-        let mut state = State::default();
-        state.phase = Phase::Execute;
+        let mut state = State {
+            phase: Phase::Execute,
+            ..State::default()
+        };
         state.packet.bind_ready_task();
         state.gates.invariant = Gate::pass(Evidence::InvariantProof);
         state.gates.analysis = Gate::pass(Evidence::AnalysisReport);
@@ -3401,8 +3460,10 @@ mod tests {
 
     #[test]
     fn tooling_effect_receipt_rejects_tlog_registry_projection_drift() {
-        let mut state = State::default();
-        state.phase = Phase::Execute;
+        let mut state = State {
+            phase: Phase::Execute,
+            ..State::default()
+        };
         state.packet.bind_ready_task();
         state.gates.invariant = Gate::pass(Evidence::InvariantProof);
         state.gates.analysis = Gate::pass(Evidence::AnalysisReport);
@@ -3456,8 +3517,10 @@ mod tests {
 
     #[test]
     fn verification_record_repairs_lineage_through_api() {
-        let mut state = State::default();
-        state.phase = Phase::Verify;
+        let mut state = State {
+            phase: Phase::Verify,
+            ..State::default()
+        };
         state.packet.bind_ready_task();
         state.packet.materialize_artifact();
         state.packet.artifact_lineage_hash = 0;
@@ -3648,8 +3711,10 @@ mod tests {
 
     #[test]
     fn invalid_semantic_verification_fails_without_repairing_lineage() {
-        let mut state = State::default();
-        state.phase = Phase::Verify;
+        let mut state = State {
+            phase: Phase::Verify,
+            ..State::default()
+        };
         state.packet.bind_ready_task();
         state.packet.materialize_artifact();
         state.packet.artifact_lineage_hash = 0;
@@ -3683,8 +3748,10 @@ mod tests {
 
     #[test]
     fn capability_records_drive_objective_from_plan_to_persist() {
-        let mut state = State::default();
-        state.phase = Phase::Plan;
+        let mut state = State {
+            phase: Phase::Plan,
+            ..State::default()
+        };
         state.gates.invariant = Gate::pass(Evidence::InvariantProof);
         state.gates.analysis = Gate::pass(Evidence::AnalysisReport);
         state.gates.judgment = Gate::pass(Evidence::JudgmentRecord);

@@ -1895,6 +1895,10 @@ fn ollama_provider_hash() -> u64 {
     hash_text(OLLAMA_PROVIDER)
 }
 
+#[expect(
+    clippy::too_many_arguments,
+    reason = "retry-budget binding compares the full receipt hash preimage"
+)]
 fn retry_budget_binding_is_valid(
     provider_hash: u64,
     base_url_hash: u64,

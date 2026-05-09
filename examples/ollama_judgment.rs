@@ -116,8 +116,10 @@ fn tamper_rejected_count(
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let mut state = State::default();
-    state.phase = Phase::Judgment;
+    let mut state = State {
+        phase: Phase::Judgment,
+        ..State::default()
+    };
     state.gates.invariant = Gate::pass(Evidence::InvariantProof);
     state.gates.analysis = Gate::pass(Evidence::AnalysisReport);
 
