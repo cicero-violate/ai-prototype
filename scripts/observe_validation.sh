@@ -193,6 +193,37 @@ def graph_evidence_classification(
     return "graph_mutation_landed_with_receipt_snapshot"
 
 
+def generated_graph_json_classification(
+    *,
+    state_graph_present: bool,
+    wrapper_requested: bool,
+    fixture_receipt_snapshot_present: bool,
+) -> dict[str, Any]:
+    if state_graph_present:
+        classification = "generated_graph_json_present"
+        reason = "live generated graph.json evidence is present under state/"
+        missing = False
+    elif fixture_receipt_snapshot_present and not wrapper_requested:
+        classification = "generated_graph_json_substituted_by_fixture"
+        reason = "live wrapper graph capture was not requested and deterministic graph fixture receipt evidence is present"
+        missing = False
+    elif wrapper_requested:
+        classification = "generated_graph_json_missing_when_requested"
+        reason = "wrapper graph capture was requested but no generated graph.json evidence was found under state/"
+        missing = True
+    else:
+        classification = "generated_graph_json_missing_no_fixture"
+        reason = "no live generated graph.json or deterministic graph fixture receipt evidence is present"
+        missing = True
+
+    return {
+        "generated_graph_json_classification": classification,
+        "generated_graph_json_classification_reason": reason,
+        "generated_graph_json_missing": missing,
+        "generated_graph_json_fixture_substitution": classification == "generated_graph_json_substituted_by_fixture",
+    }
+
+
 def router_offline_classification(router_test: dict[str, Any]) -> dict[str, Any]:
     available = bool(router_test.get("available"))
     status = str(router_test.get("status") or "unknown")
@@ -589,6 +620,13 @@ def main() -> int:
             graph_workflow_fixture.get("graph_workflow_fixture_receipt_snapshot_present")
         ),
     )
+    generated_graph_json = generated_graph_json_classification(
+        state_graph_present=state_graph_present,
+        wrapper_requested=wrapper_graph_validation_requested,
+        fixture_receipt_snapshot_present=bool(
+            graph_workflow_fixture.get("graph_workflow_fixture_receipt_snapshot_present")
+        ),
+    )
 
     runtime_performance = runtime_performance_summary(commands)
     runtime = inspect_runtime_archive(os.environ.get("CANON_RUNTIME_ARCHIVE"))
@@ -596,7 +634,7 @@ def main() -> int:
     missing = {
         "missing_cargo_test": "cargo_test_all_targets" not in command_statuses,
         "missing_wrapper_graph_validation": wrapper_graph_validation["wrapper_graph_validation_missing"],
-        "missing_generated_graph_json": not state_graph_present,
+        "missing_generated_graph_json": generated_graph_json["generated_graph_json_missing"],
         "missing_rustc_wrapper_telemetry": wrapper_graph_validation["wrapper_graph_telemetry_missing"],
         "missing_graph_source_contract_report": not evidence["graph_source_contract_present"],
         "missing_graph_workflow_contract_report": not evidence["graph_workflow_contract_present"],
@@ -678,6 +716,14 @@ def main() -> int:
             "graph_mutation_landed_without_receipt_ledger",
             "graph_mutation_landed_with_receipt_snapshot",
         ],
+        "generated_graph_json_classification_present": True,
+        "generated_graph_json_classification_options": [
+            "generated_graph_json_present",
+            "generated_graph_json_substituted_by_fixture",
+            "generated_graph_json_missing_when_requested",
+            "generated_graph_json_missing_no_fixture",
+        ],
+        **generated_graph_json,
         "graph_source_contract_present": evidence["graph_source_contract_present"],
         "graph_source_contract_evidence_files": unique_files(graph_source_contract),
         "graph_source_contract_evidence_tokens": graph_source_contract,

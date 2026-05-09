@@ -182,6 +182,72 @@ class ObserveValidationContractTest(unittest.TestCase):
             "missing_rustc_wrapper_telemetry",
         ):
             self.assertIn(flag, self.script)
+        self.assertIn("def generated_graph_json_classification(", self.script)
+        self.assertIn("generated_graph_json_classification_present", self.script)
+        self.assertIn("generated_graph_json_classification_options", self.script)
+        self.assertIn("generated_graph_json_present", self.script)
+        self.assertIn("generated_graph_json_substituted_by_fixture", self.script)
+        self.assertIn("generated_graph_json_missing_when_requested", self.script)
+        self.assertIn("generated_graph_json_missing_no_fixture", self.script)
+        self.assertIn('"missing_generated_graph_json": generated_graph_json["generated_graph_json_missing"]', self.script)
+
+    def test_generated_graph_json_classifier_executes_all_status_branches(self) -> None:
+        cases = (
+            (
+                {
+                    "state_graph_present": True,
+                    "wrapper_requested": True,
+                    "fixture_receipt_snapshot_present": False,
+                },
+                {
+                    "generated_graph_json_classification": "generated_graph_json_present",
+                    "generated_graph_json_missing": False,
+                    "generated_graph_json_fixture_substitution": False,
+                },
+            ),
+            (
+                {
+                    "state_graph_present": False,
+                    "wrapper_requested": False,
+                    "fixture_receipt_snapshot_present": True,
+                },
+                {
+                    "generated_graph_json_classification": "generated_graph_json_substituted_by_fixture",
+                    "generated_graph_json_missing": False,
+                    "generated_graph_json_fixture_substitution": True,
+                },
+            ),
+            (
+                {
+                    "state_graph_present": False,
+                    "wrapper_requested": True,
+                    "fixture_receipt_snapshot_present": True,
+                },
+                {
+                    "generated_graph_json_classification": "generated_graph_json_missing_when_requested",
+                    "generated_graph_json_missing": True,
+                    "generated_graph_json_fixture_substitution": False,
+                },
+            ),
+            (
+                {
+                    "state_graph_present": False,
+                    "wrapper_requested": False,
+                    "fixture_receipt_snapshot_present": False,
+                },
+                {
+                    "generated_graph_json_classification": "generated_graph_json_missing_no_fixture",
+                    "generated_graph_json_missing": True,
+                    "generated_graph_json_fixture_substitution": False,
+                },
+            ),
+        )
+
+        for kwargs, expected in cases:
+            with self.subTest(kwargs=kwargs):
+                result = self.observe_module.generated_graph_json_classification(**kwargs)
+                for key, value in expected.items():
+                    self.assertEqual(result[key], value)
 
     def test_panic_surface_validation_is_required(self) -> None:
         self.assertIn("validate_rust_panic_surface.py", self.script)
