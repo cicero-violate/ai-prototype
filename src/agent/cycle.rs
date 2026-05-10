@@ -5,7 +5,7 @@
 
 use crate::agent::objective::AgentObjective;
 use crate::agent::prompt;
-use crate::agent::router::RouterClient;
+use crate::agent::router::{RouterClient, RouterTabCloseOutcome};
 use crate::agent::step::{AgentActionKind, AgentDecision, AgentRunSummary, AgentStep};
 use crate::agent::worker_client::WorkerClient;
 use crate::capability::llm::openai::{OpenAiChatRequest, OpenAiError, OpenAiMessage};
@@ -89,6 +89,10 @@ impl AgentCycle {
 
     pub fn steps(&self) -> &[AgentStep] {
         &self.steps
+    }
+
+    pub fn close_router_tab(&mut self) -> Result<RouterTabCloseOutcome, OpenAiError> {
+        self.router.close_current_tab()
     }
 
     pub fn run(&mut self) -> Result<AgentRunSummary, CycleError> {

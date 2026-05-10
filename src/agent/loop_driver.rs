@@ -220,7 +220,11 @@ impl LoopDriver {
             }
         }
 
-        // All loop turns completed — run evidence certification against the worker.
+        // All loop turns completed; close the project-loop browser tab before
+        // certification opens its own router session.
+        close_router_tab(tag, "project", &mut router);
+
+        // Run evidence certification against the worker.
         self.run_certification(cycle_num, tag);
 
         Ok(())
@@ -289,6 +293,17 @@ impl LoopDriver {
             ),
             Err(e) => eprintln!("[{tag}] cert: AgentCycle failed: {e}"),
         }
+        match cycle.close_router_tab() {
+            Ok(outcome) => eprintln!("[{tag}] cert: browser tab close outcome: {outcome:?}"),
+            Err(e) => eprintln!("[{tag}] cert: browser tab close failed: {e}"),
+        }
+    }
+}
+
+fn close_router_tab(tag: &str, label: &str, router: &mut RouterClient) {
+    match router.close_current_tab() {
+        Ok(outcome) => eprintln!("[{tag}] {label}: browser tab close outcome: {outcome:?}"),
+        Err(e) => eprintln!("[{tag}] {label}: browser tab close failed: {e}"),
     }
 }
 

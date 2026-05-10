@@ -4,9 +4,12 @@
 //! tab URL. Each turn returns a target_url; the next turn must supply it via
 //! OpenAiBrowserOptions::continue_at to stay in the same thread.
 
+use std::env;
 use std::io::{self, Read, Write};
 use std::net::TcpStream;
 use std::time::Duration;
+
+use serde_json::Value;
 
 use crate::agent::sse::{decode_chunked_body, parse_sse_body, ChunkLogger};
 use crate::capability::llm::openai::{
@@ -27,6 +30,15 @@ pub struct RouterTurnResult {
     pub response: OpenAiChatResponse,
     /// The tab URL to pass to the next turn. Same value as response.target_url.
     pub target_url: Option<String>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum RouterTabCloseOutcome {
+    NoTarget,
+    NoCdpEndpoint,
+    NoMatchingTarget,
+    Closed,
+    CloseHttpStatus(u16),
 }
 
 impl RouterClient {
@@ -51,6 +63,24 @@ impl RouterClient {
     /// Drop the current tab URL; the next turn will open a new chat.
     pub fn reset_session(&mut self) {
         self.target_url = None;
+    }
+
+    /// Best-effort close of the currently pinned browser tab.
+    ///
+    /// This uses Chrome's local DevTools HTTP API when the returned target URL
+    /// is itself a `/devtools/page/<id>` URL, or when `CANON_BROWSER_CDP_URL`,
+    /// `CDP_URL`, `CDP_PORT`, or the default `127.0.0.1:9222` debugging
+    /// endpoint can resolve the tab by URL.
+    pub fn close_current_tab(&mut self) -> Result<RouterTabCloseOutcome, OpenAiError> {
+        let Some(target_url) = self.target_url.clone() else {
+            return Ok(RouterTabCloseOutcome::NoTarget);
+        };
+
+        let outcome = close_browser_tab_for_url(&target_url, self.inner.config().timeout_ms)?;
+        if matches!(outcome, RouterTabCloseOutcome::Closed) {
+            self.target_url = None;
+        }
+        Ok(outcome)
     }
 
     /// Send one turn, threading target_url automatically.
@@ -129,6 +159,134 @@ impl RouterClient {
             finish_reason,
         })
     }
+}
+
+fn close_browser_tab_for_url(
+    target_url: &str,
+    timeout_ms: u64,
+) -> Result<RouterTabCloseOutcome, OpenAiError> {
+    if let Some((host, port, target_id)) = devtools_page_target(target_url) {
+        return close_cdp_target(&host, port, &target_id, timeout_ms);
+    }
+
+    let Some(cdp_url) = cdp_endpoint_from_env() else {
+        return Ok(RouterTabCloseOutcome::NoCdpEndpoint);
+    };
+    let endpoint = parse_local_http_endpoint(&cdp_url).map_err(|e| match e {
+        LocalEndpointError::InvalidUrl => OpenAiError::InvalidUrl,
+        LocalEndpointError::NonLocalHost => OpenAiError::InvalidConfig("cdp url must be local"),
+    })?;
+    let (status, body) = cdp_get(&endpoint.host, endpoint.port, "/json/list", timeout_ms)?;
+    if status != 200 {
+        return Ok(RouterTabCloseOutcome::CloseHttpStatus(status));
+    }
+
+    let Some(target_id) = cdp_target_id_for_url(&body, target_url) else {
+        return Ok(RouterTabCloseOutcome::NoMatchingTarget);
+    };
+    close_cdp_target(&endpoint.host, endpoint.port, &target_id, timeout_ms)
+}
+
+fn cdp_endpoint_from_env() -> Option<String> {
+    env::var("CANON_BROWSER_CDP_URL")
+        .ok()
+        .filter(|v| !v.trim().is_empty())
+        .or_else(|| env::var("CDP_URL").ok().filter(|v| !v.trim().is_empty()))
+        .or_else(|| {
+            env::var("CDP_PORT")
+                .ok()
+                .filter(|v| !v.trim().is_empty())
+                .map(|port| format!("http://127.0.0.1:{port}"))
+        })
+        .or_else(|| Some("http://127.0.0.1:9222".to_string()))
+}
+
+fn devtools_page_target(target_url: &str) -> Option<(String, u16, String)> {
+    let endpoint = parse_local_http_endpoint(target_url).ok()?;
+    let target_id = endpoint
+        .path_prefix
+        .strip_prefix("/devtools/page/")?
+        .trim_matches('/');
+    if target_id.is_empty() {
+        return None;
+    }
+    Some((endpoint.host, endpoint.port, target_id.to_string()))
+}
+
+fn cdp_target_id_for_url(list_body: &str, target_url: &str) -> Option<String> {
+    let value: Value = serde_json::from_str(list_body).ok()?;
+    let entries = value.as_array()?;
+    entries.iter().find_map(|entry| {
+        let obj = entry.as_object()?;
+        let id = obj.get("id")?.as_str()?;
+        let url_matches = obj
+            .get("url")
+            .and_then(Value::as_str)
+            .is_some_and(|url| url == target_url);
+        let websocket_matches = obj
+            .get("webSocketDebuggerUrl")
+            .and_then(Value::as_str)
+            .is_some_and(|url| url == target_url);
+        let frontend_matches = obj
+            .get("devtoolsFrontendUrl")
+            .and_then(Value::as_str)
+            .is_some_and(|url| url == target_url);
+        (url_matches || websocket_matches || frontend_matches).then(|| id.to_string())
+    })
+}
+
+fn close_cdp_target(
+    host: &str,
+    port: u16,
+    target_id: &str,
+    timeout_ms: u64,
+) -> Result<RouterTabCloseOutcome, OpenAiError> {
+    let path = format!("/json/close/{target_id}");
+    let (status, _) = cdp_get(host, port, &path, timeout_ms)?;
+    if status == 200 {
+        Ok(RouterTabCloseOutcome::Closed)
+    } else {
+        Ok(RouterTabCloseOutcome::CloseHttpStatus(status))
+    }
+}
+
+fn cdp_get(
+    host: &str,
+    port: u16,
+    path: &str,
+    timeout_ms: u64,
+) -> Result<(u16, String), OpenAiError> {
+    let mut stream = TcpStream::connect((host, port)).map_err(OpenAiError::Io)?;
+    let timeout = Duration::from_millis(timeout_ms);
+    stream
+        .set_read_timeout(Some(timeout))
+        .map_err(OpenAiError::Io)?;
+    stream
+        .set_write_timeout(Some(timeout))
+        .map_err(OpenAiError::Io)?;
+
+    let request = format!(
+        "GET {path} HTTP/1.1\r\nHost: {host}:{port}\r\nAccept: application/json\r\nConnection: close\r\n\r\n"
+    );
+    stream
+        .write_all(request.as_bytes())
+        .map_err(OpenAiError::Io)?;
+    stream.flush().map_err(OpenAiError::Io)?;
+
+    let mut response = String::new();
+    stream
+        .read_to_string(&mut response)
+        .map_err(OpenAiError::Io)?;
+    let (head, body) = response
+        .split_once("\r\n\r\n")
+        .ok_or(OpenAiError::InvalidResponse)?;
+    let status = head
+        .lines()
+        .next()
+        .and_then(|line| line.split_whitespace().nth(1))
+        .and_then(|raw| raw.parse::<u16>().ok())
+        .ok_or(OpenAiError::InvalidResponse)?;
+    Ok((status, body.to_string()))
 }
 
 /// Result of a streaming SSE turn. Mirrors the return shape of chatTurn().
@@ -300,4 +458,31 @@ fn send_streaming_request(
     };
 
     Ok(parse_sse_body(&body_text, logger))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn devtools_page_target_extracts_local_target_id() {
+        assert_eq!(
+            devtools_page_target("http://127.0.0.1:9222/devtools/page/ABC123"),
+            Some(("127.0.0.1".to_string(), 9222, "ABC123".to_string()))
+        );
+        assert_eq!(devtools_page_target("https://chatgpt.com/c/abc123"), None);
+    }
+
+    #[test]
+    fn cdp_target_id_matches_target_url_from_json_list() {
+        let body = r#"[
+          {"id":"old","url":"https://example.invalid/old"},
+          {"id":"target-1","url":"https://chatgpt.com/c/current"}
+        ]"#;
+        assert_eq!(
+            cdp_target_id_for_url(body, "https://chatgpt.com/c/current"),
+            Some("target-1".to_string())
+        );
+        assert_eq!(cdp_target_id_for_url(body, "https://missing.invalid"), None);
+    }
 }
