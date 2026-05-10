@@ -60,12 +60,14 @@ F  Future-Proofing   = 8.1
 Ch Coherency         = 8.6
 ```
 
-Approximate geometric mean over the listed score axes, unchanged because this
-turn only updated planning/scoring and did not run implementation validation:
+Approximate geometric mean over the listed score axes remains about:
 
 ```text
 G ~= 8.14 / 10
 ```
+
+The score is not raised yet because only targeted contract validation completed;
+full-suite validation was blocked by connector-side HTTP 502 errors.
 
 ## Rationale
 
@@ -73,20 +75,24 @@ Correctness, determinism, scalability, and coherency are strongest because the k
 
 Planning-turn evidence on 2026-05-10:
 
-- First incomplete active priority: P5 domain intelligence implementation.
-- Existing domain Rust files: `src/domain/bridge.rs`, `src/domain/contracts.rs`,
-  `src/domain/identity.rs`, `src/domain/risk.rs`, `src/domain/scoring.rs`, and
-  `src/domain/mod.rs`.
-- Missing planned subdomain Rust files: `src/domain/global_intelligence.rs`,
-  `src/domain/business.rs`, `src/domain/finance.rs`, and
-  `src/domain/trading.rs`.
-- Existing design notes remain: `business.md`, `contracts.md`, `finance.md`,
-  `global_intelligence.md`, `integration.md`, `README.md`, `roadmap.md`,
-  `scoring.md`, and `trading.md`.
-- `git status --short` showed uncommitted implementation changes in
-  `src/agent/config.rs`, `src/domain/mod.rs`, and `src/lib.rs`, plus untracked
-  domain Rust files. This planning turn intentionally stages only `plan.md` and
-  `score.md`.
+- First incomplete active priority: item 2, `src/domain/contracts.rs` constructors for `DomainSignal`, `DomainContext`, `DomainJudgment`, `DomainPlan`, `DomainRiskEnvelope`, `DomainEval`, and `DomainPromotionCandidate`.
+- Existing domain Rust files from `find src/domain -type f | sort`: `src/domain/bridge.rs`, `src/domain/contracts.rs`, `src/domain/identity.rs`, `src/domain/risk.rs`, `src/domain/scoring.rs`, and `src/domain/mod.rs`.
+- Missing planned subdomain Rust files: `src/domain/global_intelligence.rs`, `src/domain/business.rs`, `src/domain/finance.rs`, and `src/domain/trading.rs`.
+- Existing design notes remain: `business.md`, `contracts.md`, `finance.md`, `global_intelligence.md`, `integration.md`, `README.md`, `roadmap.md`, `scoring.md`, and `trading.md`.
+- Python graph analysis confirmed schema version 16, graph hash `ab2202a8d8ec371b0c462aecc41e28d059920f53e2179dd40ebb6ebb3127fc33`, 4,473 nodes, 31,082 edges, 2,976 intents, and 0 `domain::` prefix nodes. Nineteen nodes contain the text `domain`, but they are older agent/runtime references such as `runtime::reducer::raise_domain_failure`, not compiled `src/domain` module evidence.
+- Helper-agent spawn was attempted through `canon_spawn_agent` and failed with `connect worker on port 9100: Connection refused`; planning proceeded in this agent.
+- `git status --short` showed multiple pre-existing uncommitted implementation/test changes outside this planning turn. This planning turn stages only `plan.md` and `score.md`.
+
+
+Implementation step 2 evidence on 2026-05-10:
+
+- Completed Active Priorities item 1 in `src/domain/contracts.rs`.
+- Added serde coverage for domain schema primitive enums and core record structs.
+- Replaced `DomainSignal.signal_class` string storage with typed `DomainSignalClass`.
+- Added unit tests for schema primitive JSON round-trip and live-effect safety ordering.
+- Targeted validation passed: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test contracts::tests -- --test-threads=1` ran 2 domain contract tests successfully.
+- Full validation command attempted twice: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`; both attempts failed at the connector layer with HTTP 502 upstream/external service errors, so no full-suite Rust failure was observed in this turn.
+- Helper-agent spawn was requested during this planning turn but failed with `connect worker on port 9100: Connection refused`; planning proceeded locally.
 
 The next score gains should come from evidence, not optimism:
 

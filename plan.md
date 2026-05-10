@@ -37,17 +37,14 @@ objective or world signal
 
 ## Active Priorities
 
-First incomplete item: P5 domain intelligence implementation. Reconnaissance on
-2026-05-10 shows `src/domain` is now wired into `src/lib.rs` and Rust files exist
-for `bridge.rs`, `contracts.rs`, `identity.rs`, `risk.rs`, and `scoring.rs`, but
-the graph snapshot still has `domain:: 0` nodes, meaning the current graph
-evidence predates the new domain module capture.
+First incomplete item: Active Priorities item 2, `src/domain/contracts.rs` constructors for `DomainSignal`, `DomainContext`, `DomainJudgment`, `DomainPlan`, `DomainRiskEnvelope`, `DomainEval`, and `DomainPromotionCandidate`. Reconnaissance on 2026-05-10 shows `src/domain` is wired into `src/lib.rs` and Rust files exist for `bridge.rs`, `contracts.rs`, `identity.rs`, `risk.rs`, and `scoring.rs`. The planned subdomain Rust files `global_intelligence.rs`, `business.rs`, `finance.rs`, and `trading.rs` are still absent. The graph snapshot has schema version 16, 4,473 nodes, 31,082 edges, and 0 `domain::` prefix nodes; current graph evidence predates compiled domain module capture.
 
 Ordered execute-turn checklist, one file or one test per item:
 
-1. `src/domain/contracts.rs`: add or complete `DomainSchemaVersion`,
+1. [x] `src/domain/contracts.rs`: add or complete `DomainSchemaVersion`,
    `DomainSourceKind`, `DomainHorizon`, `DomainSignalClass`, `DomainRiskClass`,
    `DomainPlanKind`, and `DomainLiveEffectLevel` so names align with P5.2.
+   - Completed 2026-05-10: schema/source/horizon/signal/risk/plan/live-effect primitives derive serde traits, round-trip through JSON, and preserve live-effect safety ordering.
 2. `src/domain/contracts.rs`: add or complete constructors for `DomainSignal`,
    `DomainContext`, `DomainJudgment`, `DomainPlan`, `DomainRiskEnvelope`,
    `DomainEval`, and `DomainPromotionCandidate` with explicit schema versions,
