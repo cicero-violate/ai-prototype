@@ -32,7 +32,19 @@ impl AgentLoopConfig {
     pub fn from_env() -> Self {
         let project_dir: PathBuf = env::var("PROJECT_DIR")
             .map(PathBuf::from)
-            .unwrap_or_else(|_| env::current_dir().unwrap_or_default());
+            .unwrap_or_else(|_| {
+                // Derive from binary path: target/release/agent → ../../.. = project root.
+                // Falls back to current_dir() if exe path is unavailable.
+                env::current_exe()
+                    .ok()
+                    .and_then(|p| {
+                        p.parent() // release/
+                            .and_then(|p| p.parent()) // target/
+                            .and_then(|p| p.parent()) // ai/
+                            .map(|p| p.to_path_buf())
+                    })
+                    .unwrap_or_else(|| env::current_dir().unwrap_or_default())
+            });
         let working_dir = project_dir.clone();
         let sse_chunks_dir = env::var("SSE_CHUNKS_DIR")
             .map(PathBuf::from)

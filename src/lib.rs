@@ -9,6 +9,7 @@ pub mod agent;
 pub mod api;
 pub mod capability;
 pub mod codec;
+pub mod domain;
 pub mod error;
 pub mod graph_mutation;
 pub mod kernel;
