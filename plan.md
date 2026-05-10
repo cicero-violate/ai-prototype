@@ -5,16 +5,22 @@ Workspace: `/workspace/ai_sandbox/canon-mini-agent/prototype/ai`.
 
 ## Goal
 
-Canon Agent is a deterministic, auditable, self-improving agent runtime. The kernel owns correctness, state transitions, replay, receipts, and durable evidence. Capabilities own observation, context, tools, LLM calls, planning, judgment, verification, evaluation, learning, graph editing, and policy promotion. The LLM proposes and explains; it does not govern the state machine or approve itself.
+Canon Agent is a deterministic, auditable, self-improving agent runtime. The
+kernel owns correctness, state transitions, replay, receipts, and durable
+evidence. Capabilities own observation, context, tools, LLM calls, planning,
+judgment, verification, evaluation, learning, graph editing, and policy
+promotion. The LLM proposes and explains; it does not govern the state machine
+or approve itself.
 
-The near-term goal is to finish the evidence-backed mutation and learning path:
+The near-term goal is to turn `src/domain` from a documentation-only sketch into
+real, testable Rust code while preserving the runtime boundary:
 
 ```text
-objective
-  -> domain/capability interpretation
-  -> plan
-  -> typed tool or graph operation
-  -> sandbox execution
+objective or world signal
+  -> domain signal/context/judgment/plan records
+  -> deterministic score and risk envelope
+  -> future capability bridge record
+  -> typed capability execution
   -> receipt and replay verification
   -> eval score
   -> learning or policy promotion candidate
@@ -27,19 +33,325 @@ objective
 - P2 agent loop reliability: complete.
 - P3 runtime and receipt correctness: complete for current scope.
 - P4 graph source-of-truth integration: mostly complete for deterministic fixture/report evidence.
-- P5 domain intelligence layer: planned, documentation-only today.
+- P5 domain intelligence layer: documentation exists in `src/domain`; compiled Rust records are not implemented yet.
 
 ## Active Priorities
 
-1. Close P4 by treating graph editing as an actual mutation path, not only validation/report evidence.
-2. Start P5 by stabilizing domain record contracts before wiring behavior.
-3. Add an explicit self-modification lane inside verified evolution.
-4. Use Python to inspect `state/rustc/ai/graph.json` before designing graph edits.
+1. Make `src/domain` implementable as a pure Rust domain-contract module.
+2. Keep domain code out of kernel/runtime mutation paths.
+3. Add deterministic domain records, scoring, fixtures, and tests before capability wiring.
+4. Close P4 graph editing separately from domain implementation.
 5. Keep business automation first, finance intelligence second, and trading sandbox-only.
+
+## Domain Implementation Target
+
+The domain directory currently contains specifications and a single Rust sketch:
+
+```text
+src/domain/
+  README.md
+  business.md
+  contracts.md
+  finance.md
+  global_intelligence.md
+  integration.md
+  mod.rs
+  roadmap.md
+  scoring.md
+  trading.md
+```
+
+Convert this into a compiled, still-safe module surface:
+
+```text
+src/domain/
+  mod.rs                    # public module surface and boundary docs
+  contracts.rs              # shared records, ids, enums, schema versions
+  identity.rs               # deterministic hash/id helpers
+  scoring.rs                # bounded score math and verdict thresholds
+  risk.rs                   # risk envelopes and live-effect constraints
+  bridge.rs                 # typed future capability mapping descriptors only
+  global_intelligence.rs    # global signal classification records
+  business.rs               # business opportunity and workflow records
+  finance.rs                # finance hypothesis and risk records
+  trading.rs                # sandbox-only simulation records
+```
+
+The existing `.md` files remain as design notes until the Rust records supersede
+them. Do not delete them in the first implementation pass.
+
+## P5 - Domain Intelligence Implementation
+
+P5 starts with pure, deterministic Rust records. Domain code may interpret,
+score, classify, and describe future capability requirements. It must not mutate
+`State`, `Packet`, `GateSet`, runtime events, command ledgers, or TLog directly.
+
+### P5.1 - Compile the Domain Module
+
+Required work:
+
+- Add `pub mod domain;` to `src/lib.rs` only after records and tests compile.
+- Replace `src/domain/mod.rs` sketch-only content with declared Rust modules.
+- Keep all domain modules free of I/O, process spawning, network calls, and runtime writes.
+- Use existing dependencies only: `serde` and `serde_json` are available.
+- Add local unit tests under `src/domain` or integration tests under `tests/`.
+
+Done when:
+
+- `cargo test --all-targets` compiles with `domain` wired into the crate.
+- A test proves domain modules do not expose kernel/runtime mutation APIs.
+- The markdown specs still explain intent, but compiled Rust owns the contract.
+
+### P5.2 - Shared Contracts
+
+Implement these first in `src/domain/contracts.rs`:
+
+```text
+DomainId
+DomainSchemaVersion
+DomainSourceKind
+DomainHorizon
+DomainSignalClass
+DomainRiskClass
+DomainVerdict
+DomainPlanKind
+DomainLiveEffectLevel
+
+DomainSignal
+DomainContext
+DomainJudgment
+DomainPlan
+DomainRiskEnvelope
+DomainEval
+DomainPromotionCandidate
+```
+
+Rules:
+
+- Records are plain data with `Clone`, `Debug`, `PartialEq`, `Eq` where practical.
+- Records derive `Serialize` and `Deserialize`.
+- Floating-point fields are avoided in core records. Use bounded integer scores,
+  preferably `u16` in the range `0..=1000`, to make equality and hashing stable.
+- Each record stores its schema version explicitly.
+- Each record has enough provenance and hash fields to be replay-auditable.
+- Trading records default to sandbox-only and no live execution.
+
+Done when:
+
+- Every conceptual record family from `contracts.md` has a Rust struct or enum.
+- Constructors validate score ranges and basic invariants.
+- Invalid score ranges, missing hashes, and unsafe trading flags fail tests.
+
+### P5.3 - Deterministic Identity
+
+Implement in `src/domain/identity.rs`:
+
+```text
+DomainHash
+DomainHashInput
+domain_hash_json(record)
+domain_hash_parts(parts)
+canonical_json_bytes(record)
+```
+
+Rules:
+
+- Hash identity must be deterministic across runs.
+- Hash input must include schema version and record kind.
+- Hash input must not include non-deterministic fields unless they are explicit record data.
+- Prefer a small internal stable hash helper if the crate already has one; otherwise use a
+  deterministic, documented local hash implementation without adding dependencies.
+
+Done when:
+
+- Serializing and hashing the same record twice produces the same identity.
+- Changing one material field changes the identity.
+- Schema-version changes alter identity.
+
+### P5.4 - Scoring and Verdicts
+
+Implement in `src/domain/scoring.rs`:
+
+```text
+BoundedScore         # 0..=1000
+ScoreInputs
+ScoreBreakdown
+domain_value_score
+actionability_score
+source_quality_score
+confidence_score
+uncertainty_score
+risk_score
+promotion_score
+verdict_for_scores
+```
+
+Use integer math with saturation. Preserve the intent from `scoring.md`:
+
+```text
+domain_value = opportunity * confidence * policy_fit * verification_readiness
+             - risk * uncertainty * staleness_penalty
+
+actionability = domain_value * source_quality * context_quality
+```
+
+Rules:
+
+- Missing evidence lowers confidence and raises uncertainty.
+- Contradiction raises uncertainty and may force `Research` or `Block`.
+- Risk envelope violations force `Block`.
+- High actionability still requires capability receipts later; domain code cannot execute.
+
+Done when:
+
+- Fixture tests cover `Ignore`, `Watch`, `Research`, `ActBusiness`, `ActFinanceResearch`,
+  `SimulateTrading`, and `Block`.
+- Scoring is deterministic and does not use floats.
+- Boundary values at `0`, threshold edges, and `1000` are tested.
+
+### P5.5 - Risk Envelope
+
+Implement in `src/domain/risk.rs`:
+
+```text
+DomainRiskEnvelope
+RiskEnvelopeViolation
+check_risk_envelope(plan, envelope)
+```
+
+Rules:
+
+- Live-effect level must be explicit.
+- Domain plans that imply external effects require verification.
+- Trading plans must be sandbox-only.
+- Finance plans may describe research or allocation hypotheses, but execution remains blocked.
+- Business plans may describe workflows and value hypotheses, but tool execution must still be routed through capabilities.
+
+Done when:
+
+- A live trading request always produces a blocking violation.
+- A finance execution plan is blocked unless a future explicit policy changes the contract.
+- A business workflow plan can pass only when verification and rollback/invalidation fields are present.
+
+### P5.6 - Subdomain Records
+
+Implement subdomain modules after shared contracts compile:
+
+```text
+src/domain/global_intelligence.rs
+  SignalClass
+  GlobalSignalProfile
+  stale_for_horizon(...)
+  actionability_hint(...)
+
+src/domain/business.rs
+  BusinessOpportunity
+  WorkflowAutomationCandidate
+  CustomerFeedbackSignal
+  monetization_score(...)
+
+src/domain/finance.rs
+  AssetUniverse
+  FinanceHypothesis
+  FinanceRiskDimensions
+  finance_research_allowed(...)
+
+src/domain/trading.rs
+  TradingSimulationPlan
+  BacktestReceiptRequirements
+  TradingRiskLimit
+  enforce_sandbox_only(...)
+```
+
+Rules:
+
+- Business is the first production-oriented domain.
+- Finance remains research and allocation intelligence.
+- Trading remains sandbox-only.
+- Subdomain modules depend on shared domain contracts, not on kernel/runtime internals.
+
+Done when:
+
+- Each subdomain has at least one fixture-driven test.
+- Business monetization scoring is implemented with deterministic bounded scores.
+- Finance hypotheses explicitly carry `execution_allowed = false`.
+- Trading simulation plans cannot be constructed with live execution enabled.
+
+### P5.7 - Fixtures
+
+Add deterministic fixtures before bridge behavior:
+
+```text
+tests/fixtures/domain/global_signal_macro.json
+tests/fixtures/domain/business_workflow_opportunity.json
+tests/fixtures/domain/finance_hypothesis_research.json
+tests/fixtures/domain/trading_simulation_sandbox.json
+tests/fixtures/domain/trading_live_blocked.json
+```
+
+Each fixture must include:
+
+- schema version,
+- domain id,
+- source/provenance hash,
+- horizon,
+- score inputs,
+- expected verdict,
+- expected risk-envelope result,
+- expected bridge target descriptor.
+
+Done when:
+
+- Fixtures deserialize into Rust records.
+- Expected identities and verdicts are asserted in tests.
+- Fixture failures produce clear assertion messages.
+
+### P5.8 - Capability Bridge Descriptor, Not Execution
+
+Implement `src/domain/bridge.rs` as descriptors only:
+
+```text
+DomainBridgeTarget
+DomainBridgeDescriptor
+bridge_target_for_signal(...)
+bridge_target_for_context(...)
+bridge_target_for_judgment(...)
+bridge_target_for_plan(...)
+bridge_target_for_eval(...)
+```
+
+Bridge targets map to future capability families:
+
+```text
+DomainSignal    -> ObservationRecord
+DomainContext   -> ContextRecord / MemoryLookupRecord
+DomainJudgment  -> JudgmentRecord / PolicyJudgmentRecord
+DomainPlan      -> PlanRecord
+Tool action     -> ToolExecutionRecord
+Proof check     -> VerificationRecord
+Result score    -> EvalRecord
+Repeatable win  -> PolicyPromotion candidate
+```
+
+Rules:
+
+- The bridge returns typed descriptors and required receipt families only.
+- It does not submit commands.
+- It does not call API routes.
+- It does not append evidence.
+- It does not mutate runtime state.
+
+Done when:
+
+- Tests prove bridge outputs are descriptors, not effects.
+- Every domain record family has a future capability target.
+- Trading execution targets remain absent or explicitly blocked.
 
 ## P4 - Graph Editing
 
-Graph editing is the receipt-backed source mutation path.
+Graph editing is the receipt-backed source mutation path. Keep it separate from
+domain implementation unless a domain plan later describes graph-edit intent
+through a capability bridge descriptor.
 
 Required flow:
 
@@ -71,44 +383,10 @@ Done when:
 - The receipt proves the intended graph change landed.
 - Failed, stale, or partial mutations produce explicit failure receipts.
 
-## P5 - Domain Intelligence
-
-The domain layer remains unwired until contracts are stable. It describes interpretation, strategy, scoring, policy intent, and domain risk. It must not mutate `State`, `Packet`, `GateSet`, runtime events, or TLog directly.
-
-Record families to stabilize first:
-
-- `DomainSignal`
-- `DomainContext`
-- `DomainJudgment`
-- `DomainPlan`
-- `DomainRiskEnvelope`
-- `DomainEval`
-- `DomainPromotionCandidate`
-
-Capability bridge:
-
-```text
-DomainSignal    -> ObservationRecord
-DomainContext   -> ContextRecord / MemoryLookupRecord
-DomainJudgment  -> JudgmentRecord / PolicyJudgmentRecord
-DomainPlan      -> PlanRecord
-Tool action     -> ToolExecutionRecord
-Proof check     -> VerificationRecord
-Result score    -> EvalRecord
-Repeatable win  -> PolicyPromotion candidate
-```
-
-Next work:
-
-- Define schema versions and deterministic hash identity for domain records.
-- Add fixtures before Rust behavior.
-- Define source quality, uncertainty, contradiction, actionability, and risk scoring.
-- Add tests proving domain records cannot bypass the capability registry.
-- Keep trading execution blocked unless a future sandbox policy explicitly allows it.
-
 ## Self-Modification
 
-Self-modification belongs inside verified evolution, after capability planning and before policy promotion. It is not a kernel feature and not a domain shortcut.
+Self-modification belongs inside verified evolution, after capability planning and
+before policy promotion. It is not a kernel feature and not a domain shortcut.
 
 Allowed path:
 
@@ -154,8 +432,10 @@ Trading is not the first production business path.
 ## Non-Goals
 
 - Do not redesign the kernel.
-- Do not wire `src/domain` into `lib.rs` until record contracts are stable.
+- Do not use domain code to bypass the capability registry.
+- Do not let domain code mutate `State`, `Packet`, `GateSet`, runtime events, command ledgers, or TLog.
 - Do not add live trading execution.
+- Do not add external dependencies for the first domain implementation pass unless absolutely necessary.
 - Do not treat unconfigured wrapper telemetry as required evidence.
 - Do not depend on external model/provider/router availability for baseline correctness.
 - Do not commit generated logs, target output, runtime archives, tokens, SSE chunks, or local session artifacts.
@@ -177,6 +457,19 @@ For planning/doc-only changes:
 TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test planning_contract -- --test-threads=1
 ```
 
+For domain implementation work:
+
+```bash
+TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets
+```
+
+For domain fixture validation after fixtures exist:
+
+```bash
+python3 -m unittest tests/test_domain_fixture_contract.py
+TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test domain_contract -- --test-threads=1
+```
+
 For graph-editing work:
 
 ```bash
@@ -184,11 +477,4 @@ python3 scripts/analyze_graph_json.py state/rustc/ai/graph.json
 TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test graph_mutation_cli_contract -- --test-threads=1
 python3 -m unittest tests/test_graph_workflow_fixture_validator.py
 CANON_OBSERVE_REPORT=target/observe/graph-fixture-report.ndjson python3 scripts/observe_validation.sh --graph-fixture-report
-```
-
-For domain work:
-
-```bash
-python3 -m unittest tests/test_observe_validation_contract.py
-TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets
 ```

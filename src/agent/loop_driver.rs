@@ -317,9 +317,14 @@ fn planning_prompt(goal: &str, agent_id: u32, agent_count: u32, working_dir: &Pa
          ## WORKING DIRECTORY\n`{dir}`\n\
          All shell commands must run relative to this directory unless the task explicitly requires otherwise.\n\n\
          ## GOAL\n{goal}\n\n\
-         Create or update `plan.md` with the current implementation plan. \
-         Create or update `score.md` with current progress and scoring. \
-         Analyze `state/rustc/ai/graph.json` with Python and include the relevant graph evidence in the planning/scoring update. \
+         Before updating the plan, do the following reconnaissance:\n\
+         1. Read the current `plan.md` and identify the first incomplete item under \"Active Priorities\".\n\
+         2. Run `find src/domain -type f | sort` to see what files exist vs. what the plan requires.\n\
+         3. Analyze `state/rustc/ai/graph.json` with Python and note any relevant graph evidence.\n\n\
+         Then update `plan.md` so that the active priority section contains a concrete, ordered checklist \
+         of file-level tasks (one file or one test per item) that the execute turns can pick up one at a time. \
+         Tasks must name specific files and functions — not describe intent in prose. \
+         Update `score.md` with current progress and scoring. \
          Keep this turn focused on planning and scoring, and commit the planning/scoring changes at the end of the turn.",
         dir = working_dir.display(),
     )
@@ -330,9 +335,13 @@ fn execute_prompt(turn_num: u32, agent_id: u32, agent_count: u32) -> String {
     format!(
         "{agent_line}\n\
          You are executing implementation step {turn_num} of this agent loop.\n\n\
-         Read `plan.md`, execute the next concrete part of that plan, \
-         run the relevant tests/checks, update `plan.md` if the plan changes, \
-         update `score.md` with progress and scoring, and commit all turn changes at the end of the turn."
+         Read `plan.md`. The active priority is the first incomplete item listed under \
+         \"Active Priorities\". Implement that work now — write or edit the actual source \
+         files, do not rewrite the plan. For domain module work, create or update files \
+         under `src/domain/`. After implementation, run the relevant tests/checks \
+         (use the validation commands in `plan.md`), fix any failures, update `plan.md` \
+         to mark completed steps, update `score.md` with progress and scoring, and \
+         commit all turn changes at the end of the turn."
     )
 }
 
@@ -555,7 +564,7 @@ mod tests {
         let execute = execute_prompt(2, 0, 1);
 
         assert!(planning.contains("planning turn for this agent loop"));
-        assert!(planning.contains("Create or update `plan.md`"));
+        assert!(planning.contains("update `plan.md`"));
         assert!(planning.contains("Analyze `state/rustc/ai/graph.json` with Python"));
         assert!(planning.contains("commit the planning/scoring changes"));
         assert!(execute.contains("executing implementation step 2"));
