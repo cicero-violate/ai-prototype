@@ -1,0 +1,41 @@
+{
+  "schema_version": "canon_domain_fixture_v1",
+  "fixture_id": "business_workflow_invoice_triage",
+  "domain_id": "Business",
+  "record_family": "BusinessOpportunity",
+  "source_kind": "CustomerDiscovery",
+  "source_id": "ops-team-interview-001",
+  "provenance_hash": "sha256:business-provenance-001",
+  "payload_hash": "sha256:business-payload-001",
+  "horizon": "Strategic",
+  "signal_class": "WorkflowBottleneck",
+  "score_inputs": {
+    "opportunity": 880,
+    "confidence": 760,
+    "policy_fit": 850,
+    "verification_readiness": 820,
+    "risk": 260,
+    "uncertainty": 250,
+    "staleness_penalty": 80,
+    "source_quality": 740,
+    "context_quality": 790
+  },
+  "expected_domain_value_score": 459,
+  "expected_actionability_score": 267,
+  "expected_verdict": "ActBusiness",
+  "uncertainty": {
+    "score": 250,
+    "drivers": [
+      "needs-roi-baseline",
+      "needs-error-rate-sample"
+    ]
+  },
+  "expected_risk_envelope": {
+    "requires_verification": true,
+    "sandbox_only": false,
+    "max_live_effect_level": "BusinessWorkflowProposal",
+    "expected_result": "pass"
+  },
+  "expected_bridge_target": "PlanRecord",
+  "expected_eval_behavior": "verify_time_saved_error_reduction_and_customer_feedback"
+}

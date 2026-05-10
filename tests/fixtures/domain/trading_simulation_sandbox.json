@@ -1,0 +1,43 @@
+{
+  "schema_version": "canon_domain_fixture_v1",
+  "fixture_id": "trading_simulation_sandbox_breakout",
+  "domain_id": "TradingSandbox",
+  "record_family": "TradingSimulationPlan",
+  "source_kind": "HistoricalDataset",
+  "source_id": "paper-backtest-dataset-001",
+  "provenance_hash": "sha256:trading-sandbox-provenance-001",
+  "payload_hash": "sha256:trading-sandbox-payload-001",
+  "horizon": "Tactical",
+  "signal_class": "PaperTradeHypothesis",
+  "sandbox_only": true,
+  "live_execution_allowed": false,
+  "score_inputs": {
+    "opportunity": 610,
+    "confidence": 560,
+    "policy_fit": 900,
+    "verification_readiness": 760,
+    "risk": 430,
+    "uncertainty": 470,
+    "staleness_penalty": 140,
+    "source_quality": 690,
+    "context_quality": 620
+  },
+  "expected_domain_value_score": 204,
+  "expected_actionability_score": 86,
+  "expected_verdict": "SimulateTrading",
+  "uncertainty": {
+    "score": 470,
+    "drivers": [
+      "overfit-risk",
+      "slippage-assumption"
+    ]
+  },
+  "expected_risk_envelope": {
+    "requires_verification": true,
+    "sandbox_only": true,
+    "max_live_effect_level": "SandboxSimulationOnly",
+    "expected_result": "pass"
+  },
+  "expected_bridge_target": "PlanRecord",
+  "expected_eval_behavior": "verify_backtest_receipt_drawdown_hit_rate_expectancy_and_rule_adherence"
+}

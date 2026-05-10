@@ -1,0 +1,40 @@
+{
+  "schema_version": "canon_domain_fixture_v1",
+  "fixture_id": "trading_live_execution_blocked",
+  "domain_id": "TradingSandbox",
+  "record_family": "TradingSimulationPlan",
+  "source_kind": "HistoricalDataset",
+  "source_id": "paper-backtest-dataset-002",
+  "provenance_hash": "sha256:trading-live-blocked-provenance-001",
+  "payload_hash": "sha256:trading-live-blocked-payload-001",
+  "horizon": "Immediate",
+  "signal_class": "PaperTradeHypothesis",
+  "sandbox_only": false,
+  "live_execution_allowed": true,
+  "score_inputs": {
+    "opportunity": 800,
+    "confidence": 700,
+    "policy_fit": 0,
+    "verification_readiness": 500,
+    "risk": 900,
+    "uncertainty": 800,
+    "staleness_penalty": 300,
+    "source_quality": 650,
+    "context_quality": 620
+  },
+  "expected_domain_value_score": 0,
+  "expected_actionability_score": 0,
+  "expected_verdict": "Block",
+  "uncertainty": {
+    "score": 800,
+    "drivers": ["live-execution-requested", "sandbox-policy-violation"]
+  },
+  "expected_risk_envelope": {
+    "requires_verification": true,
+    "sandbox_only": true,
+    "max_live_effect_level": "SandboxSimulationOnly",
+    "expected_result": "block"
+  },
+  "expected_bridge_target": "Blocked",
+  "expected_eval_behavior": "reject_live_execution_and_record_blocking_reason"
+}

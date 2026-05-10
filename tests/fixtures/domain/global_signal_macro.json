@@ -1,0 +1,41 @@
+{
+  "schema_version": "canon_domain_fixture_v1",
+  "fixture_id": "global_signal_macro_rate_cut_watch",
+  "domain_id": "GlobalIntelligence",
+  "record_family": "DomainSignal",
+  "source_kind": "PrimarySource",
+  "source_id": "central-bank-policy-statement",
+  "provenance_hash": "sha256:global-macro-provenance-001",
+  "payload_hash": "sha256:global-macro-payload-001",
+  "horizon": "Tactical",
+  "signal_class": "Macro",
+  "score_inputs": {
+    "opportunity": 520,
+    "confidence": 620,
+    "policy_fit": 700,
+    "verification_readiness": 760,
+    "risk": 420,
+    "uncertainty": 500,
+    "staleness_penalty": 180,
+    "source_quality": 820,
+    "context_quality": 640
+  },
+  "expected_domain_value_score": 134,
+  "expected_actionability_score": 69,
+  "expected_verdict": "Watch",
+  "uncertainty": {
+    "score": 500,
+    "drivers": [
+      "forward-guidance-ambiguity",
+      "market-pricing-contradiction"
+    ]
+  },
+  "expected_risk_envelope": {
+    "requires_verification": true,
+    "sandbox_only": false,
+    "max_live_effect_level": "None",
+    "expected_result": "pass"
+  },
+  "expected_bridge_target": "ObservationRecord",
+  "expected_eval_behavior": "verify_primary_source_then_contextualize"
+}

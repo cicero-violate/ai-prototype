@@ -1,0 +1,42 @@
+{
+  "schema_version": "canon_domain_fixture_v1",
+  "fixture_id": "finance_hypothesis_cashflow_research",
+  "domain_id": "Finance",
+  "record_family": "FinanceHypothesis",
+  "source_kind": "PrimaryAndSecondaryResearch",
+  "source_id": "filing-and-market-data-bundle-001",
+  "provenance_hash": "sha256:finance-provenance-001",
+  "payload_hash": "sha256:finance-payload-001",
+  "horizon": "Strategic",
+  "signal_class": "AllocationHypothesis",
+  "execution_allowed": false,
+  "score_inputs": {
+    "opportunity": 700,
+    "confidence": 680,
+    "policy_fit": 620,
+    "verification_readiness": 740,
+    "risk": 520,
+    "uncertainty": 430,
+    "staleness_penalty": 190,
+    "source_quality": 720,
+    "context_quality": 680
+  },
+  "expected_domain_value_score": 176,
+  "expected_actionability_score": 85,
+  "expected_verdict": "ActFinanceResearch",
+  "uncertainty": {
+    "score": 430,
+    "drivers": [
+      "forecast-sensitivity",
+      "liquidity-regime-change"
+    ]
+  },
+  "expected_risk_envelope": {
+    "requires_verification": true,
+    "sandbox_only": false,
+    "max_live_effect_level": "ResearchOnly",
+    "expected_result": "pass"
+  },
+  "expected_bridge_target": "PlanRecord",
+  "expected_eval_behavior": "verify_claims_sources_risk_bounds_and_invalidation"
+}
