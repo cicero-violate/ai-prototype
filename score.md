@@ -14,11 +14,13 @@ Current date: 2026-05-10.
   `identity.rs`, `mod.rs`, `risk.rs`, and `scoring.rs`; planned Rust files
   `global_intelligence.rs`, `business.rs`, `finance.rs`, and `trading.rs`
   remain absent, and fixture tests remain incomplete.
-- Implementation step 1 on 2026-05-10 completed Active Priorities items 5 and 6
-  in `src/domain/contracts.rs`: out-of-range score rejection coverage and unsafe
-  live-effect rejection coverage. Targeted contract validation passed with 7
-  tests. Full-suite validation and graph refresh are still pending because full
-  validation attempts returned connector HTTP 502 before Rust output was
+- Planning reconciliation on 2026-05-10 confirmed the first incomplete Active
+  Priorities item is item 7: `src/domain/identity.rs` must implement
+  `DomainHash`, `DomainHashInput`, `canonical_json_bytes(record)`,
+  `domain_hash_json(record)`, and `domain_hash_parts(parts)`. Items 1 through 6
+  are complete in local source, with prior targeted contract validation passing
+  7 tests. Full-suite validation and graph refresh remain pending because prior
+  full validation attempts returned connector HTTP 502 before Rust output was
   available, so no score increase is claimed.
 
 ## Graph Analysis Evidence
@@ -26,25 +28,25 @@ Current date: 2026-05-10.
 Python inspection of `state/rustc/ai/graph.json`:
 
 ```text
-schema_version = 16
-crate_name     = ai
-graph_hash     = ab2202a8d8ec371b0c462aecc41e28d059920f53e2179dd40ebb6ebb3127fc33
-nodes          = 4473
-edges          = 31082
-intents        = 2976
-node_kinds     = fn 2976, impl 1283, struct 159, enum 53, trait 1, ty_alias 1
-edge_relations = call 17393, phase 5925, similar 3174, mut 2926, use 1014, panic 212, unsafe 186, alloc 124, io 74, impl 35, provider 19
-domain_nodes   = 0
-domain_matches = runtime::reducer::raise_domain_failure only
-graph_nodes    = graph_mutation:: 81, capability:: 903, kernel:: 59
+meta.schema_version   = 16
+meta.crate_name       = ai
+meta.graph_hash       = ab2202a8d8ec371b0c462aecc41e28d059920f53e2179dd40ebb6ebb3127fc33
+nodes                 = 4473
+edges                 = 31082
+intents               = 2976
+node_kinds            = fn 2976, impl 1283, struct 159, enum 53, trait 1, ty_alias 1
+edge_relations        = call 17393, phase 5925, similar 3174, mut 2926, use 1014, panic 212, unsafe 186, alloc 124, io 74, impl 35, provider 19
+compiled_domain_nodes = 0
+broad_domain_matches  = agent::cycle::AgentCycle::run; agent::objective::AgentObjective; agent prompt builders; runtime::reducer::raise_domain_failure
+graph_nodes           = graph_mutation:: 81, capability:: 903, kernel:: 59
 ```
 
 Relevant interpretation: the graph snapshot is valid and rich enough for future
-graph-edit planning, but it does not yet contain compiled `domain::` nodes. The
-only node key containing `domain` is `runtime::reducer::raise_domain_failure`, so
-the graph currently proves an older runtime failure path rather than the P5
-domain module. Domain progress should not be scored as graph-verified until
-tests pass and graph evidence is refreshed.
+graph-edit planning, but it does not yet contain compiled `domain::` nodes.
+Broad text matches for `domain` are from agent objective/prompt/cycle records and
+the older runtime failure path, not from the P5 domain module. Domain progress
+should not be scored as graph-verified until tests pass and graph evidence is
+refreshed.
 
 ## Scores
 
