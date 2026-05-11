@@ -10,6 +10,7 @@
 # Usage: ./run_supervisor.sh
 # Override any variable inline: SUPERVISOR_PORT=9200 ./run_supervisor.sh
 
+cargo build && cargo build --release
 SUPERVISOR_PORT="${SUPERVISOR_PORT:-9100}" \
 PROJECT_DIR="${PROJECT_DIR:-/workspace/ai_sandbox/canon-mini-agent/prototype/ai}" \
 CANON_OPENAI_BASE_URL="${CANON_OPENAI_BASE_URL:-http://127.0.0.1:8081/v1}" \
