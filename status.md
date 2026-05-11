@@ -48,12 +48,52 @@ Current date: 2026-05-10.
 - P3 runtime and receipt correctness: complete for current scope.
 - P4 graph source-of-truth integration: mostly complete for deterministic fixture/report evidence; agent-driven graph editing remains intentionally deferred until P5 domain surfaces are validated.
 - P5 domain intelligence layer: active. `src/domain/contracts.rs` constructor and invariant tests through unsafe live-effect rejection are complete in local source, with prior targeted validation passing 7 contract tests.
-- First incomplete Active Priorities item after implementation step 2 on 2026-05-10: `src/domain/identity.rs` unit test `domain_hash_is_stable`.
-- Implementation step 1 status on 2026-05-10: `src/domain/identity.rs` has a local `DomainHash` newtype implementation and unit test `domain_hash_newtype_validates_prefix_and_non_empty_suffix`; prior targeted identity validation passed, but full-suite validation remains pending because repeated connector HTTP 502 errors returned before Rust output.
+- First incomplete Active Priorities item after planning reconnaissance on 2026-05-10: `src/domain/identity.rs` unit test `domain_hash_changes_when_schema_version_changes`.
+- `src/domain/identity.rs` currently contains `DomainHash`, `DomainHashInput<'a>`, `canonical_json_bytes(record)`, `domain_hash_json(record)`, `domain_hash_parts(parts)`, `stable_domain_id(parts)`, and five passing targeted identity tests through `domain_hash_changes_when_material_field_changes`.
 - Current source inventory confirms Rust files exist for `src/domain/bridge.rs`, `src/domain/contracts.rs`, `src/domain/identity.rs`, `src/domain/mod.rs`, `src/domain/risk.rs`, and `src/domain/scoring.rs`; planned Rust files `src/domain/global_intelligence.rs`, `src/domain/business.rs`, `src/domain/finance.rs`, and `src/domain/trading.rs` remain absent.
-- Implementation step 1 on 2026-05-10 added `src/domain/identity.rs::canonical_json_bytes(record: &serde_json::Value) -> Vec<u8>` with recursive deterministic JSON encoding and explicit object-key sorting. Targeted identity validation passed; full-suite validation is blocked by connector HTTP 502 before Rust output, so no commit was made.
+- Domain fixture JSON files already exist under `tests/fixtures/domain/` for global signal, business workflow opportunity, finance hypothesis research, trading simulation sandbox, and trading live blocked cases; `tests/test_domain_fixture_contract.py` exists but fixture-validation checklist item 46 remains unchecked until refreshed validation is recorded.
 
 ## Validation Ledger
+
+### 2026-05-10 — planning reconnaissance for schema-version identity hash test
+
+- Scope: `plan.md`, `status.md`, `score.md`, `src/domain/identity.rs`, `src/domain/scoring.rs`, `tests/fixtures/domain/*.json`, `tests/test_domain_fixture_contract.py`, `state/rustc/ai/graph.json`, and working-tree status.
+- Command/check: read planning, status, and score files; inspected `src/domain/identity.rs` and `src/domain/scoring.rs`; ran `find src/domain -type f | sort`; inspected domain fixture JSON files; analyzed `state/rustc/ai/graph.json` with Python; checked `git status --short`.
+- Result: informational.
+- Evidence: first incomplete Active Priorities item remains item 8, `src/domain/identity.rs::tests::domain_hash_changes_when_schema_version_changes`; current `identity.rs` ends after `domain_hash_changes_when_material_field_changes`; graph schema version 16 has graph hash `ab2202a8d8ec371b0c462aecc41e28d059920f53e2179dd40ebb6ebb3127fc33`, 4,473 nodes, 31,082 edges, 2,976 intents, and zero `domain::` or `src/domain` node evidence; fixture files exist for all five planned domain JSON fixtures.
+- Next action: add `src/domain/identity.rs` unit test `domain_hash_changes_when_schema_version_changes` and validate with `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test identity::tests -- --test-threads=1`.
+
+### 2026-05-10 — implementation step 5 material field identity hash test
+
+- Scope: `src/domain/identity.rs` unit test `domain_hash_changes_when_material_field_changes` and Active Priorities item 7.
+- Command/check: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test identity::tests -- --test-threads=1`.
+- Result: passed.
+- Evidence: added `domain_hash_changes_when_material_field_changes`, covering a changed `source_hash` material field through `domain_hash_json`; targeted validation ran 5 identity tests successfully after one connector HTTP 502 retry.
+- Next action: add `src/domain/identity.rs` unit test `domain_hash_changes_when_schema_version_changes` after the full-suite gate is available or as directed by the next execute turn.
+
+### 2026-05-10 — full-suite validation after material field identity hash test
+
+- Scope: full project validation after adding `src/domain/identity.rs::tests::domain_hash_changes_when_material_field_changes`.
+- Command/check: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
+- Result: blocked.
+- Evidence: connector returned HTTP 502 twice before Rust output; no product or Rust test failure was observed.
+- Next action: keep the full-suite validation gate unchecked and retry when connector transport is healthy; do not commit this implementation turn.
+
+### 2026-05-10 — implementation step 4 domain_hash_is_stable identity test
+
+- Scope: `src/domain/identity.rs` unit test `domain_hash_is_stable` and Active Priorities item 6.
+- Command/check: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test identity::tests -- --test-threads=1`.
+- Result: passed.
+- Evidence: added `domain_hash_is_stable`, covering repeatable `domain_hash_parts`, `stable_domain_id`, and `domain_hash_json` outputs for identical material inputs; targeted validation ran 4 identity tests successfully.
+- Next action: add `src/domain/identity.rs` unit test `domain_hash_changes_when_material_field_changes` after the full-suite gate is available or as directed by the next execute turn.
+
+### 2026-05-10 — full-suite validation after domain_hash_is_stable identity test
+
+- Scope: full project validation after adding `src/domain/identity.rs::tests::domain_hash_is_stable`.
+- Command/check: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
+- Result: blocked.
+- Evidence: connector returned HTTP 502 twice before Rust output; no product or Rust test failure was observed.
+- Next action: keep the full-suite validation gate unchecked and retry when connector transport is healthy; do not commit this implementation turn.
 
 ### 2026-05-10 — implementation step 2 domain_hash_parts identity helper
 

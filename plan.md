@@ -93,7 +93,7 @@ objective or world signal
 
 ## Active Priorities
 
-Reconnaissance on 2026-05-10 reconfirmed that `src/domain/identity.rs::DomainHashInput<'a>` and `src/domain/identity.rs::canonical_json_bytes(record)` are already implemented in local source and have passing targeted identity validation. Full-suite validation is tracked separately as the validation blocker item below. Execute turns should pick up exactly one unchecked implementation item at a time; the first incomplete implementation item is item 6, `src/domain/identity.rs::domain_hash_is_stable`.
+Reconnaissance on 2026-05-10 reconfirmed that `src/domain/identity.rs::DomainHashInput<'a>`, `src/domain/identity.rs::canonical_json_bytes(record)`, `src/domain/identity.rs::domain_hash_json(record)`, `src/domain/identity.rs::domain_hash_parts(parts)`, `src/domain/identity.rs::domain_hash_is_stable`, and `src/domain/identity.rs::domain_hash_changes_when_material_field_changes` are already implemented in local source and have passing targeted identity validation. Full-suite validation is tracked separately as the validation blocker item below. Execute turns should pick up exactly one unchecked implementation item at a time; the first incomplete implementation item remains item 8, `src/domain/identity.rs::domain_hash_changes_when_schema_version_changes`.
 
 Current source inventory from `find src/domain -type f | sort`:
 
@@ -137,8 +137,14 @@ Ordered execute-turn checklist, one file or one test per item. Implementation it
    - Implementation is present in local source; `stable_domain_id(parts)` delegates to `domain_hash_parts(parts).to_string()` and preserves the previous deterministic FNV-style separator algorithm.
    - Targeted validation passed on 2026-05-10 during implementation step 2: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test identity::tests -- --test-threads=1` ran 3 identity tests successfully after one connector HTTP 502 retry.
    - Required full-suite validation remains blocked on 2026-05-10: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets` returned connector HTTP 502 twice before Rust output. The blocker is tracked in the validation item below; no commit was made in this turn.
-6. [ ] `src/domain/identity.rs`: add unit test `domain_hash_is_stable`.
-7. [ ] `src/domain/identity.rs`: add unit test `domain_hash_changes_when_material_field_changes`.
+6. [x] `src/domain/identity.rs`: add unit test `domain_hash_is_stable`.
+   - Implementation is present in local source and asserts repeatable `domain_hash_parts`, `stable_domain_id`, and `domain_hash_json` outputs for identical material inputs.
+   - Targeted validation passed on 2026-05-10 during implementation step 4: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test identity::tests -- --test-threads=1` ran 4 identity tests successfully.
+   - Required full-suite validation remains blocked on 2026-05-10: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets` returned connector HTTP 502 twice before Rust output. The blocker is tracked in the validation item below; no commit was made in this turn.
+7. [x] `src/domain/identity.rs`: add unit test `domain_hash_changes_when_material_field_changes`.
+   - Implementation is present in local source and asserts `domain_hash_json` changes when the material `source_hash` field changes.
+   - Targeted validation passed on 2026-05-10 during implementation step 5: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test identity::tests -- --test-threads=1` ran 5 identity tests successfully after one connector HTTP 502 retry.
+   - Required full-suite validation remains blocked on 2026-05-10: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets` returned connector HTTP 502 twice before Rust output. The blocker is tracked in the validation item below; no commit was made in this turn.
 8. [ ] `src/domain/identity.rs`: add unit test `domain_hash_changes_when_schema_version_changes`.
 9. [ ] `src/domain/scoring.rs`: implement `BoundedScore` with `new(value: u16)`, `get(&self) -> u16`, `zero()`, `max()`, and `saturating_weighted_average(...)` using integer-only math.
 10. [ ] `src/domain/scoring.rs`: implement `ScoreInputs`, `ScoreBreakdown`, `source_quality_score(...)`, `confidence_score(...)`, `uncertainty_score(...)`, `risk_score(...)`, `promotion_score(...)`, and `verdict_for_scores(...)` using integer-only saturating math.
@@ -178,7 +184,7 @@ Ordered execute-turn checklist, one file or one test per item. Implementation it
 44. [ ] `tests/fixtures/domain/trading_simulation_sandbox.json`: add fixture data for a sandbox-only trading simulation plan.
 45. [ ] `tests/fixtures/domain/trading_live_blocked.json`: add fixture data for a live trading request that must block.
 46. [ ] `tests/test_domain_fixture_contract.py`: add fixture validation covering all domain fixture files and clear assertion failures for missing required fields.
-47. [ ] Validation blocker / full-suite gate: run `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets` and record the result in `score.md`. This remains unchecked until full-suite Rust output is available and green; connector HTTP 502 transport failures should be documented here without causing completed implementation items to remain unchecked. Latest attempt on 2026-05-10 after implementing `domain_hash_parts(parts)` returned connector HTTP 502 twice before Rust output.
+47. [ ] Validation blocker / full-suite gate: run `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets` and record the result in `score.md`. This remains unchecked until full-suite Rust output is available and green; connector HTTP 502 transport failures should be documented here without causing completed implementation items to remain unchecked. Latest attempt on 2026-05-10 after adding `domain_hash_changes_when_material_field_changes` returned connector HTTP 502 twice before Rust output.
 48. [ ] Graph evidence refresh: after domain tests pass, re-capture or regenerate `state/rustc/ai/graph.json` so `domain::` nodes appear, then update `score.md` with the new schema/hash/node evidence.
 49. [ ] Keep P4 graph editing separate: do not start graph mutation implementation until P5 domain contracts, identity, scoring, risk, bridge descriptors, subdomain modules, and fixtures are validated.
 
