@@ -43,19 +43,22 @@ L  Learning          = 8.5
 St Structure         = 7.7
 Si Simplicity        = 8.4
 F  Future-Proofing   = 8.1
+M  Maintainability   = 7.8
 Ch Coherency         = 8.6
 ```
 
 Approximate geometric mean over the listed score axes remains about:
 
 ```text
-G ~= 8.14 / 10
+G ~= 8.12 / 10
 ```
 
-The score is not raised because this planning turn only reconciled already-present `BoundedScore` source with targeted validation evidence. Full-suite validation and refreshed graph evidence for `src/domain::*` remain pending.
+The aggregate score shifts to `G ~= 8.12 / 10` because `Maintainability = 7.8` was added as a new explicit axis. This is a scoring-surface change, not an evidence-backed capability gain. Full-suite validation and refreshed graph evidence remain pending.
 
 ## Rationale
-Correctness, determinism, scalability, and coherency are strongest because the kernel, receipts, replay boundaries, graph fixture validation, validation evidence paths, and current planning direction agree on the same evidence-first architecture. Robustness, intelligence, and benefit remain lower because live graph editing, self-modification, and domain intelligence are not yet proven end to end.
+Correctness, determinism, scalability, and coherency are strongest because the kernel, receipts, replay boundaries, graph fixture validation, validation evidence paths, and current planning direction agree on the same evidence-first architecture. Robustness, intelligence, benefit, and maintainability remain lower because live graph editing, self-modification, domain intelligence, and safe-change ergonomics are not yet proven end to end.
+
+Planning reconnaissance on 2026-05-10 did not change scores: the next scoring test target is now more concrete, but no new implementation, full-suite validation, or refreshed graph-domain evidence was produced. Score values remain unchanged until item-level validation or graph evidence justifies a change.
 
 ## Score History
 
@@ -64,3 +67,9 @@ Correctness, determinism, scalability, and coherency are strongest because the k
 - Scores unchanged at `G ~= 8.14 / 10`.
 - Reason: file split changed documentation structure only; it did not add implementation, validation, or graph evidence.
 - Supporting evidence belongs in `status.md`.
+
+### 2026-05-10 — added maintainability axis
+
+- Added `M Maintainability = 7.8` as an explicit score axis for safe modification, low coupling, low technical debt, and refactorability.
+- Updated aggregate score from `G ~= 8.14 / 10` to `G ~= 8.12 / 10` because the scoring surface now includes one additional axis.
+- This is a scoring-surface change only; it does not claim new capability evidence.
