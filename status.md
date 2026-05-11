@@ -56,6 +56,22 @@ Current date: 2026-05-11.
 
 ## Validation Ledger
 
+### 2026-05-11 — planning contract validation after bridge planning
+
+- Scope: planning/status update for Active Priorities item 22 selection.
+- Command/check: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test planning_contract -- --test-threads=1`.
+- Result: passed.
+- Evidence: `planning_record_blocks_when_all_tasks_complete` and `planning_record_decomposes_objective_with_lineage` both passed; test result `2 passed; 0 failed`.
+- Next action: commit `plan.md` and `status.md` planning updates only.
+
+### 2026-05-11 — planning reconnaissance for bridge descriptor API
+
+- Scope: `plan.md`, `status.md`, `score.md`, `src/domain/bridge.rs`, `src/domain/contracts.rs`, `src/domain/risk.rs`, `src/domain/scoring.rs`, `tests/fixtures/domain/*.json`, `tests/test_domain_fixture_contract.py`, `state/rustc/ai/graph.json`, and working-tree status.
+- Command/check: read planning, status, and score files; inspected the Active Priorities checklist; inspected bridge, contracts, risk, and scoring domain modules; inspected all five domain fixture JSON artifacts; inspected fixture-contract validation; summarized `state/rustc/ai/graph.json`; checked `git status --short`.
+- Result: informational.
+- Evidence: first incomplete Active Priorities implementation item is item 22, `src/domain/bridge.rs` descriptor-only bridge API; current `bridge.rs` only exposes `bridge_target_for_verdict(...)`, `default_plan_kind(...)`, and one fixture-verdict mapping test. Graph evidence remains schema version 16 with graph hash `ab2202a8d8ec371b0c462aecc41e28d059920f53e2179dd40ebb6ebb3127fc33`, 4,473 nodes, 31,082 edges, 2,976 intents, and no compiled `src/domain/*` or P5 `domain::` node evidence. Unrelated unstaged source changes are present in `src/agent/loop_driver.rs`, `src/domain/identity.rs`, `src/score.rs`, and `tests/score_contract.rs`; this planning turn did not inspect or stage those changes.
+- Next action: implement `src/domain/bridge.rs` `DomainBridgeDescriptor` and record-family bridge target functions for Active Priorities item 22, then validate with `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test bridge::tests -- --test-threads=1`.
+
 ### 2026-05-11 — implementation step 5 risk_allows_verified_business_plan_with_rollback_and_invalidation
 
 - Scope: `src/domain/risk.rs` unit test `risk_allows_verified_business_plan_with_rollback_and_invalidation` and Active Priorities item 21.

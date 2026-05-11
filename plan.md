@@ -56,7 +56,7 @@ Rules:
 
 # Canon Agent Plan
 
-Current date: 2026-05-10.
+Current date: 2026-05-11.
 Workspace: `/workspace/ai_sandbox/canon-mini-agent/prototype/ai`.
 
 ## Goal
@@ -93,7 +93,7 @@ objective or world signal
 
 ## Active Priorities
 
-Reconnaissance on 2026-05-11 reconfirmed that `src/domain/identity.rs::DomainHashInput<'a>`, `src/domain/identity.rs::canonical_json_bytes(record)`, `src/domain/identity.rs::domain_hash_json(record)`, `src/domain/identity.rs::domain_hash_parts(parts)`, `src/domain/identity.rs::domain_hash_is_stable`, `src/domain/identity.rs::domain_hash_changes_when_material_field_changes`, `src/domain/identity.rs::domain_hash_changes_when_schema_version_changes`, `src/domain/scoring.rs` score-input breakdown and verdict helpers, `src/domain/scoring.rs::tests::verdict_ignore_thresholds`, `src/domain/scoring.rs::tests::verdict_watch_thresholds`, `src/domain/scoring.rs::tests::verdict_research_thresholds`, `src/domain/scoring.rs::tests::verdict_act_business_thresholds`, `src/domain/scoring.rs::tests::verdict_act_finance_research_thresholds`, and `src/domain/scoring.rs::tests::verdict_simulate_trading_thresholds` are already implemented in local source and have passing targeted validation. Planning reconnaissance also inspected `src/domain/scoring.rs`, `src/domain/risk.rs`, `src/domain/bridge.rs`, all `tests/fixtures/domain/*.json` fixture artifacts, `tests/test_domain_fixture_contract.py`, and `state/rustc/ai/graph.json`. Full-suite validation is tracked separately as the validation blocker item below. Execute turns should pick up exactly one unchecked implementation item at a time; the first incomplete implementation item remains item 17, `src/domain/scoring.rs::tests::verdict_block_thresholds`.
+Reconnaissance on 2026-05-11 reconfirmed that `src/domain/identity.rs::DomainHashInput<'a>`, `src/domain/identity.rs::canonical_json_bytes(record)`, `src/domain/identity.rs::domain_hash_json(record)`, `src/domain/identity.rs::domain_hash_parts(parts)`, `src/domain/identity.rs::domain_hash_is_stable`, `src/domain/identity.rs::domain_hash_changes_when_material_field_changes`, `src/domain/identity.rs::domain_hash_changes_when_schema_version_changes`, `src/domain/scoring.rs` score-input breakdown and verdict helpers, all explicit scoring verdict threshold tests through `src/domain/scoring.rs::tests::verdict_block_thresholds`, and `src/domain/risk.rs` risk-envelope API/tests through `src/domain/risk.rs::tests::risk_allows_verified_business_plan_with_rollback_and_invalidation` are already implemented in local source and have passing targeted validation. Planning reconnaissance also inspected `src/domain/scoring.rs`, `src/domain/risk.rs`, `src/domain/bridge.rs`, `src/domain/contracts.rs`, all `tests/fixtures/domain/*.json` fixture artifacts, `tests/test_domain_fixture_contract.py`, and `state/rustc/ai/graph.json`. Full-suite validation is tracked separately as the validation blocker item below. Execute turns should pick up exactly one unchecked implementation item at a time; the first incomplete implementation item is item 22, `src/domain/bridge.rs` descriptor-only bridge API.
 
 Current source inventory from `find src/domain -type f | sort`:
 
@@ -115,7 +115,7 @@ src/domain/scoring.rs
 src/domain/trading.md
 ```
 
-Graph evidence from `state/rustc/ai/graph.json`: schema version 16, graph hash `ab2202a8d8ec371b0c462aecc41e28d059920f53e2179dd40ebb6ebb3127fc33`, receipt hash `0a44845e35b656d3d31b481b5e43c456d92994ca8e3179b0fd0f6213954cd4df`, risk hash `c28e55e09a0259a6697a67971c16be23a02b59581c77e6973b2e2a44588e665e`, 4,473 node entries, 31,082 edges, and 2,976 intents. The top-level graph keys are `edges`, `intents`, `meta`, and `nodes`; the `nodes` object is keyed by canonical symbol name. Node-kind counts are `fn 2976`, `impl 1283`, `struct 159`, `enum 53`, `trait 1`, `ty_alias 1`. No compiled `domain::` nodes or `src/domain/*` file hits are present, so graph evidence does not yet prove the P5 domain surface.
+Graph evidence from `state/rustc/ai/graph.json`: schema version 16, graph hash `ab2202a8d8ec371b0c462aecc41e28d059920f53e2179dd40ebb6ebb3127fc33`, receipt hash `0a44845e35b656d3d31b481b5e43c456d92994ca8e3179b0fd0f6213954cd4df`, risk hash `c28e55e09a0259a6697a67971c16be23a02b59581c77e6973b2e2a44588e665e`, 4,473 node entries, 31,082 edges, and 2,976 intents. The top-level graph keys are `edges`, `intents`, `meta`, and `nodes`; the `nodes` object is keyed by canonical symbol name. Node-kind counts are `fn 2976`, `impl 1283`, `struct 159`, `enum 53`, `trait 1`, `ty_alias 1`. Reconnaissance found one unrelated runtime symbol containing `domain` (`runtime::reducer::raise_domain_failure`) and no compiled `src/domain/*` or P5 `domain::` node evidence, so graph evidence does not yet prove the P5 domain surface.
 
 Ordered execute-turn checklist, one file or one test per item. Implementation items are marked complete when the source change exists and targeted validation has passed; full-suite validation and commit gating are tracked by the validation item instead of keeping completed implementation work unchecked:
 
