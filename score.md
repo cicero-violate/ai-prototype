@@ -14,8 +14,8 @@ Current date: 2026-05-10.
   `identity.rs`, `mod.rs`, `risk.rs`, and `scoring.rs`; several planned
   subdomain Rust files and fixture tests remain incomplete or absent.
 - Implementation update on 2026-05-10 completed Active Priorities item 4 in
-  `src/domain/contracts.rs`. Fresh reconciliation shows item 5 as the next
-  incomplete task. Targeted domain contract validation passed; full-suite
+  `src/domain/contracts.rs`. Fresh reconciliation found item 5 already present
+  in local source and shows item 6 as the next incomplete task. Targeted domain contract validation passed through item 4; item 5 still needs targeted validation in the next execute turn. Full-suite
   validation attempts were blocked by connector HTTP 502 transport failures
   before Rust output was available, so no full-suite score increase is claimed.
 
@@ -131,7 +131,9 @@ Implementation step 1 evidence on 2026-05-10:
 Planning-turn reconciliation on 2026-05-10:
 
 - Required reconnaissance completed from the project root using `cwd=.` because the shell wrapper rejects the absolute path while resolving `.` to `/workspace/ai_sandbox/canon-mini-agent/prototype/ai`.
-- First incomplete Active Priorities item remains item 5: `src/domain/contracts.rs::domain_record_constructors_reject_out_of_range_scores`, covering out-of-range score/risk constructor inputs for `DomainRiskEnvelope::new`, `DomainJudgment::new`, `DomainPlan::new`, `DomainEval::new`, and `DomainPromotionCandidate::new`.
+- First incomplete item found in `plan.md` before reconciliation was item 5: `src/domain/contracts.rs::domain_record_constructors_reject_out_of_range_scores`, covering out-of-range score/risk constructor inputs for `DomainRiskEnvelope::new`, `DomainJudgment::new`, `DomainPlan::new`, `DomainEval::new`, and `DomainPromotionCandidate::new`.
+- Source inspection showed `domain_record_constructors_reject_out_of_range_scores` already present in `src/domain/contracts.rs`, covering risk envelope, judgment, eval, and promotion candidate score fields, with `DomainPlan::new(...)` correctly treated as having no score fields. The active checklist was updated to mark item 5 complete in local source and make item 6 the next executable task.
+- Next executable task is Active Priorities item 6: `src/domain/contracts.rs::domain_plan_constructor_rejects_unsafe_live_effects`, covering unsafe live-effect rejection in `DomainPlan::new(...)` for finance research/analysis and trading simulation plan kinds.
 - `find src/domain -type f | sort` confirmed Rust files `src/domain/bridge.rs`, `src/domain/contracts.rs`, `src/domain/identity.rs`, `src/domain/mod.rs`, `src/domain/risk.rs`, and `src/domain/scoring.rs`; planned Rust files `src/domain/global_intelligence.rs`, `src/domain/business.rs`, `src/domain/finance.rs`, and `src/domain/trading.rs` remain absent.
 - Python graph analysis of `state/rustc/ai/graph.json` reconfirmed schema version 16, graph hash `ab2202a8d8ec371b0c462aecc41e28d059920f53e2179dd40ebb6ebb3127fc33`, 4,473 nodes, 31,082 edges, 2,976 intents, 2,976 function nodes, 1,283 impl nodes, 159 struct nodes, 53 enum nodes, and no compiled `domain::` nodes.
 - Scores remain at `G ~= 8.14 / 10`; this was a planning/scoring turn, with no implementation validation or graph refresh performed.
