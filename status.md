@@ -53,9 +53,49 @@ Current date: 2026-05-11.
 - `src/domain/identity.rs` currently contains `DomainHash`, `DomainHashInput<'a>`, `canonical_json_bytes(record)`, `domain_hash_json(record)`, `domain_hash_parts(parts)`, `stable_domain_id(parts)`, and six passing targeted identity tests through `domain_hash_changes_when_schema_version_changes`.
 - `src/domain/scoring.rs` currently contains validated `BoundedScore` helpers, score-input breakdown helpers, conservative `verdict_for_scores(...)`, and passing `verdict_ignore_thresholds`, `verdict_watch_thresholds`, `verdict_research_thresholds`, `verdict_act_business_thresholds`, `verdict_act_finance_research_thresholds`, `verdict_simulate_trading_thresholds`, and `verdict_block_thresholds`; explicit verdict threshold tests are complete for the current scoring scope.
 - Current source inventory confirms Rust files exist for `src/domain/bridge.rs`, `src/domain/business.rs`, `src/domain/contracts.rs`, `src/domain/finance.rs`, `src/domain/global_intelligence.rs`, `src/domain/identity.rs`, `src/domain/mod.rs`, `src/domain/risk.rs`, `src/domain/scoring.rs`, and `src/domain/trading.rs`; `src/domain/risk.rs` now includes `RiskEnvelopeViolation`, `check_risk_envelope(...)`, and passing `risk_blocks_live_trading`, `risk_blocks_finance_execution`, and `risk_allows_verified_business_plan_with_rollback_and_invalidation`; `src/domain/bridge.rs` now includes `DomainBridgeDescriptor` plus descriptor-only signal/context/judgment/plan/eval mapping functions with passing targeted bridge validation, passing named record-family descriptor validation, and passing no-live-trading bridge descriptor validation; `src/domain/global_intelligence.rs` exists locally with `SignalClass`, `GlobalSignalProfile`, `stale_for_horizon(...)`, and `actionability_hint(...)`, and compile evidence through `src/domain/mod.rs` now passes targeted validation; `src/domain/finance.rs` exists locally with `AssetUniverse`, `FinanceHypothesis`, `FinanceRiskDimensions`, `finance_research_allowed(...)`, passing behavior test `finance_hypothesis_execution_allowed_is_false`, and passing risk-envelope test `finance_research_plan_passes_research_only_risk_check`; `src/domain/trading.rs` exists locally with `TradingSimulationPlan`, `BacktestReceiptRequirements`, `TradingRiskLimit`, `enforce_sandbox_only(...)`, and passing behavior test `trading_simulation_plan_rejects_live_execution`.
-- Domain fixture JSON files exist under `tests/fixtures/domain/` for global signal, business workflow opportunity, finance hypothesis research, trading simulation sandbox, and trading live blocked cases; `tests/test_domain_fixture_contract.py` now includes explicit risk-result and required-field assertions. Remaining work is item 50 full-suite Rust validation followed by graph evidence analysis/refresh items 51-56.
+- Domain fixture JSON files exist under `tests/fixtures/domain/` for global signal, business workflow opportunity, finance hypothesis research, trading simulation sandbox, and trading live blocked cases; `tests/test_domain_fixture_contract.py` now includes explicit risk-result and required-field assertions. Remaining work is item 50 full-suite Rust validation followed by graph evidence analysis/refresh items 51-56; `scripts/analyze_graph_json.py` is still absent and remains item 51.
 
 ## Validation Ledger
+
+### 2026-05-11 — planning turn item 50 full-suite retry and evidence reconnaissance
+
+- Scope: `plan.md`, `status.md`, `score.md`, Active Priorities item 50, `scripts/`, `tests/test_domain_fixture_contract.py`, `tests/domain_contract.rs`, all `tests/fixtures/domain/*.json`, and `state/rustc/ai/graph.json`.
+- Command/check: inspected the current plan/status/score files; inspected item 50 through item 56 checklist definitions; inspected `scripts/` inventory and confirmed `scripts/analyze_graph_json.py` is absent; inspected fixture contract tests, domain integration tests, all five domain fixture JSON artifacts, and graph metadata/counts; retried `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
+- Result: planning update completed; full-suite validation remains blocked by infrastructure transport.
+- Evidence: item 50 remains the first incomplete Active Priorities item. The fresh full-suite command returned connector HTTP 502 before Rust output, so no product or Rust test failure was observed. Existing graph evidence remains schema version 16 with graph hash `ab2202a8d8ec371b0c462aecc41e28d059920f53e2179dd40ebb6ebb3127fc33`, receipt hash `0a44845e35b656d3d31b481b5e43c456d92994ca8e3179b0fd0f6213954cd4df`, risk hash `c28e55e09a0259a6697a67971c16be23a02b59581c77e6973b2e2a44588e665e`, 4,473 nodes, 31,082 edges, 2,976 intents, node-kind counts `fn 2976`, `impl 1283`, `struct 159`, `enum 53`, `trait 1`, `ty_alias 1`, and 0 compiled P5 `domain::` or `src/domain` node matches.
+- Next action: retry Active Priorities item 50 when connector transport can return full-suite Rust output; keep item 51 as the next file-level graph evidence script task and do not refresh graph evidence until item 50 is green.
+
+### 2026-05-11 — implementation step 2 item 50 full-suite validation retry
+
+- Scope: full Rust workspace validation and Active Priorities item 50.
+- Command/check: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
+- Result: blocked by infrastructure transport.
+- Evidence: the selected validation command returned connector HTTP 502 before Rust output, so no product or Rust test failure was observed. Item 50 remains unchecked; no source files were edited and no score evidence changed.
+- Next action: retry Active Priorities item 50 when connector transport can return full-suite Rust output; do not mark item 50 complete until the Rust full-suite gate is green.
+
+### 2026-05-11 — implementation step 4 item 50 full-suite validation retry
+
+- Scope: full Rust workspace validation and Active Priorities item 50.
+- Command/check: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
+- Result: blocked by infrastructure transport.
+- Evidence: the selected validation command returned connector HTTP 502 before Rust output, so no product or Rust test failure was observed. Item 50 remains unchecked; no source files were edited and no score evidence changed.
+- Next action: retry Active Priorities item 50 when connector transport can return full-suite Rust output; do not mark item 50 complete until the Rust full-suite gate is green.
+
+### 2026-05-11 — implementation step 1 item 50 full-suite validation retry
+
+- Scope: full Rust workspace validation and Active Priorities item 50.
+- Command/check: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
+- Result: blocked by infrastructure transport.
+- Evidence: the selected validation command returned connector HTTP 502 before Rust output, so no product or Rust test failure was observed. Item 50 remains unchecked; no source files were edited and no score evidence changed.
+- Next action: retry Active Priorities item 50 when connector transport can return full-suite Rust output; do not mark item 50 complete until the Rust full-suite gate is green.
+
+### 2026-05-11 — implementation step 1 item 50 full-suite validation retry
+
+- Scope: full Rust workspace validation and Active Priorities item 50.
+- Command/check: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
+- Result: blocked by infrastructure transport.
+- Evidence: the selected validation command returned connector HTTP 502 before Rust output, so no product or Rust test failure was observed. Item 50 remains unchecked; no source files were edited and no score evidence changed.
+- Next action: retry Active Priorities item 50 when connector transport can return full-suite Rust output; do not mark item 50 complete until the Rust full-suite gate is green.
 
 ### 2026-05-11 — planning turn item 50 full-suite validation retry
 
