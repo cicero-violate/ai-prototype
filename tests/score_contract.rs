@@ -39,8 +39,9 @@ fn score_values_preserve_all_goodness_axes() {
         structure: 0.65,
         simplicity: 0.6,
         future_proofing: 0.5,
+        maintainability: 0.55,
     };
-    assert_eq!(s.values().len(), 16);
+    assert_eq!(s.values().len(), 17);
     assert!(s.geometric_mean().unwrap() < 1.0);
 }
 

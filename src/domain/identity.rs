@@ -244,4 +244,40 @@ mod tests {
         assert_eq!(domain_hash_parts(&parts).to_string(), stable_domain_id(&parts));
         assert_eq!(domain_hash_json(&record), domain_hash_json(&record));
     }
+
+    #[test]
+    fn domain_hash_changes_when_material_field_changes() {
+        let original = serde_json::json!({
+            "domain_id": "alpha",
+            "kind": "signal",
+            "schema_version": 1,
+            "source_hash": "domain:source-a",
+        });
+        let changed = serde_json::json!({
+            "domain_id": "alpha",
+            "kind": "signal",
+            "schema_version": 1,
+            "source_hash": "domain:source-b",
+        });
+
+        assert_ne!(domain_hash_json(&original), domain_hash_json(&changed));
+    }
+
+    #[test]
+    fn domain_hash_changes_when_schema_version_changes() {
+        let original = serde_json::json!({
+            "domain_id": "alpha",
+            "kind": "signal",
+            "schema_version": 1,
+            "source_hash": "domain:source-a",
+        });
+        let changed = serde_json::json!({
+            "domain_id": "alpha",
+            "kind": "signal",
+            "schema_version": 2,
+            "source_hash": "domain:source-a",
+        });
+
+        assert_ne!(domain_hash_json(&original), domain_hash_json(&changed));
+    }
 }

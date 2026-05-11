@@ -361,6 +361,14 @@ fn planning_prompt(
          All shell commands must run relative to this directory unless the task explicitly requires otherwise.\n\n\
          {focus_block}\
          ## GOAL\n{goal}\n\n\
+         ## OPTIMIZATION OBJECTIVE\n\
+         The purpose of this planning turn is to choose the next executable work that maximizes expected project goodness. \
+         Treat the score axes in `score.md` as the current objective surface. \
+         Let each possible work item be x, each score axis be p_i(x) in [0,10], and each optional axis weight be w_i >= 0. \
+         Prefer checklist items by expected score gain under:\n\
+         x* = argmax_x (product_i p_i(x)^w_i)^(1 / sum_i w_i).\n\
+         Prioritize work that raises the lowest justified score axes first, especially when the work can produce validation evidence. \
+         Do not raise scores without evidence; instead, plan tasks that can produce evidence likely to justify a future score increase.\n\n\
          Before updating the plan, do the following reconnaissance:\n\
          1. Read the current `plan.md` and identify the first incomplete item under \"Active Priorities\".\n\
          2. Read `status.md` for current progress, validation evidence, blockers, and history.\n\
@@ -653,6 +661,9 @@ mod tests {
         assert!(planning.contains("Update `score.md` only when score values"));
         assert!(planning.contains("Read `score.md`"));
         assert!(planning.contains("Inspect the files, tests, fixtures, evidence paths"));
+        assert!(planning.contains("## OPTIMIZATION OBJECTIVE"));
+        assert!(planning.contains("argmax_x"));
+        assert!(planning.contains("Do not raise scores without evidence"));
         assert!(planning.contains("commit those changes"));
         assert!(execute.contains("executing implementation step 2"));
         assert!(execute.contains("Read `plan.md`, `status.md`, and `score.md`"));

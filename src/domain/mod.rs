@@ -18,6 +18,7 @@
 
 pub mod bridge;
 pub mod contracts;
+pub mod global_intelligence;
 pub mod identity;
 pub mod risk;
 pub mod scoring;
@@ -28,6 +29,9 @@ pub use contracts::{
     DomainPlan, DomainPlanKind, DomainPromotionCandidate, DomainRiskClass, DomainRiskEnvelope,
     DomainSchemaVersion, DomainSignal, DomainSignalClass, DomainSourceKind, DomainVerdict, Horizon,
     LiveEffectLevel, PlanKind, DOMAIN_SCHEMA_VERSION,
+};
+pub use global_intelligence::{
+    actionability_hint, stale_for_horizon, GlobalSignalProfile, SignalClass,
 };
 pub use identity::stable_domain_id;
 pub use risk::{evaluate_risk_envelope, DomainRiskDecision};

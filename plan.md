@@ -214,18 +214,18 @@ Ordered execute-turn checklist, one file or one test per item. Implementation it
    - Scope: `src/domain/bridge.rs` test module only.
    - Done when: trading descriptors route to simulation/planning or blocked targets, never live execution.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test bridge::tests::bridge_never_targets_live_trading_execution -- --test-threads=1` passed on 2026-05-11 with 1 bridge test; broader `cargo test bridge::tests -- --test-threads=1` passed with 3 bridge tests. Full-suite validation remained blocked by connector HTTP 502 before Rust output and is tracked by item 47.
-25. [ ] `src/domain/mod.rs`: declare `global_intelligence` and re-export `SignalClass`, `GlobalSignalProfile`, `stale_for_horizon(...)`, and `actionability_hint(...)` from the existing `src/domain/global_intelligence.rs` module without declaring `business`, `finance`, or `trading` yet.
+25. [x] `src/domain/mod.rs`: declare `global_intelligence` and re-export `SignalClass`, `GlobalSignalProfile`, `stale_for_horizon(...)`, and `actionability_hint(...)` from the existing `src/domain/global_intelligence.rs` module without declaring `business`, `finance`, or `trading` yet.
    - Scope: `src/domain/mod.rs` only.
    - Done when: `src/domain/global_intelligence.rs` compiles through the public domain module surface and its existing tests are discoverable.
-   - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test global_intelligence::tests -- --test-threads=1`.
-26. [ ] `src/domain/global_intelligence.rs`: add unit test `global_signal_profile_staleness_is_deterministic`.
+   - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test global_intelligence::tests -- --test-threads=1` passed on 2026-05-11 with 2 `global_intelligence` tests discovered and passing. Full-suite validation remains blocked by repeated connector HTTP 502 before Rust output and is tracked by item 47; no commit was made.
+26. [x] `src/domain/global_intelligence.rs`: add unit test `global_signal_profile_staleness_is_deterministic`.
    - Scope: `src/domain/global_intelligence.rs` test module only.
    - Done when: repeated staleness checks over the same profile produce identical results.
-   - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test global_intelligence::tests::global_signal_profile_staleness_is_deterministic -- --test-threads=1`.
-27. [ ] `src/domain/global_intelligence.rs`: add unit test `global_signal_actionability_hint_is_deterministic`.
+   - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test global_intelligence::tests::global_signal_profile_staleness_is_deterministic -- --test-threads=1` passed on 2026-05-11 with 1 named test; broader `cargo test global_intelligence::tests -- --test-threads=1` passed with 3 global-intelligence tests. Full-suite validation remains blocked by connector HTTP 502 before Rust output and is tracked by item 47; no commit was made.
+27. [x] `src/domain/global_intelligence.rs`: add unit test `global_signal_actionability_hint_is_deterministic`.
    - Scope: `src/domain/global_intelligence.rs` test module only.
    - Done when: repeated actionability hints over the same profile produce identical results.
-   - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test global_intelligence::tests::global_signal_actionability_hint_is_deterministic -- --test-threads=1`.
+   - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test global_intelligence::tests::global_signal_actionability_hint_is_deterministic -- --test-threads=1` passed on 2026-05-11 with 1 named test; broader `cargo test global_intelligence::tests -- --test-threads=1` passed with 4 global-intelligence tests.
 28. [ ] `src/domain/business.rs`: create Rust module with `BusinessOpportunity`, `WorkflowAutomationCandidate`, `CustomerFeedbackSignal`, and `monetization_score(...)`.
    - Scope: create `src/domain/business.rs` only.
    - Done when: the file compiles as pure deterministic business-domain records and scoring helpers.
@@ -302,7 +302,7 @@ Ordered execute-turn checklist, one file or one test per item. Implementation it
    - Scope: `tests/test_domain_fixture_contract.py` only.
    - Done when: the test validates all five domain JSON fixtures and emits clear field-level failures.
    - Validation: `python tests/test_domain_fixture_contract.py`.
-47. [ ] Validation blocker / full-suite gate: run `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets` and record the result in `status.md` and `score.md` if score rationale changes. This remains unchecked until full-suite Rust output is available and green; connector HTTP 502 transport failures should be documented here without causing completed implementation items to remain unchecked. Latest attempt on 2026-05-11 after creating `src/domain/global_intelligence.rs` item 25 returned connector HTTP 502 before Rust output.
+47. [ ] Validation blocker / full-suite gate: run `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets` and record the result in `status.md` and `score.md` if score rationale changes. This remains unchecked until full-suite Rust output is available and green; connector HTTP 502 transport failures should be documented here without causing completed implementation items to remain unchecked. Latest attempts on 2026-05-11 after validating item 26 returned connector HTTP 502 before Rust output twice.
    - Scope: full Rust workspace validation only.
    - Done when: full-suite Rust output is captured and all tests pass.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
