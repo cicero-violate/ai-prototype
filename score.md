@@ -13,11 +13,11 @@ Current date: 2026-05-10.
   into `src/lib.rs` and Rust files present for `bridge.rs`, `contracts.rs`,
   `identity.rs`, `mod.rs`, `risk.rs`, and `scoring.rs`; several planned
   subdomain Rust files and fixture tests remain incomplete or absent.
-- Planning update on 2026-05-10 sharpened Active Priorities into one-file or
-  one-test execution items. Fresh reconciliation shows item 3 complete and item
-  4 as the next incomplete task. This planning turn reran the required
-  reconnaissance, found no implementation changes to validate, and claims no
-  score increase.
+- Implementation update on 2026-05-10 completed Active Priorities item 4 in
+  `src/domain/contracts.rs`. Fresh reconciliation shows item 5 as the next
+  incomplete task. Targeted domain contract validation passed; full-suite
+  validation attempts were blocked by connector HTTP 502 transport failures
+  before Rust output was available, so no full-suite score increase is claimed.
 
 ## Graph Analysis Evidence
 
@@ -115,6 +115,18 @@ Implementation step 7 evidence on 2026-05-10:
 - Targeted validation passed after one connector retry: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test contracts::tests -- --test-threads=1` ran 4 domain contract tests successfully.
 - Full validation command attempted twice: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`; both attempts returned connector HTTP 502 upstream/external service errors before full-suite Rust output was available.
 - Scores remain unchanged at `G ~= 8.14 / 10`; targeted evidence improved contract confidence, but full-suite validation and graph refresh are still unavailable.
+
+
+Implementation step 1 evidence on 2026-05-10:
+
+- Completed Active Priorities item 4 in `src/domain/contracts.rs`.
+- Added unit test `domain_record_constructors_reject_missing_hashes` covering missing or blank required hash/provenance inputs for `DomainRiskEnvelope::new`, `DomainJudgment::new`, `DomainPlan::new`, `DomainEval::new`, and `DomainPromotionCandidate::new`.
+- The test checks whitespace-only values as missing via constructor paths and asserts the precise `DomainContractError::EmptyField(...)` field names for envelope id, judgment rationale hash, all plan hash fields, eval hashes, and promotion candidate hashes.
+- Targeted validation passed after one connector retry: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test contracts::tests -- --test-threads=1` ran 5 domain contract tests successfully.
+- Full validation command attempted twice: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`; both attempts returned connector HTTP 502 upstream/external service errors before full-suite Rust output was available.
+- Predefined `rust_full_validation` evaluator suite also returned connector HTTP 502 before evaluator output was available.
+- Scores remain at `G ~= 8.14 / 10`; targeted contract evidence improved local confidence, but full-suite validation and graph refresh are still unavailable.
+- Next executable task is Active Priorities item 5: `src/domain/contracts.rs::domain_record_constructors_reject_out_of_range_scores`.
 
 The next score gains should come from evidence, not optimism:
 
