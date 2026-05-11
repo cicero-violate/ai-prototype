@@ -103,6 +103,16 @@ Planning-turn update on 2026-05-10 after fresh reconnaissance:
 - `canon_spawn_agent` succeeded for helper `agent-1` with worker port 43681, domain `domain contracts planning support`, and metric focused on reviewing the `src/domain/contracts.rs` planning queue.
 - Existing uncommitted implementation/test changes were present before this planning patch. This turn stages and commits only `plan.md` and `score.md`.
 
+Implementation step 5 evidence on 2026-05-10:
+
+- Completed Active Priorities item 2 in `src/domain/contracts.rs`.
+- Added `DomainJudgment::new(...)`, `DomainPlan::new(...)`, `DomainEval::new(...)`, and `DomainPromotionCandidate::new(...)` constructors with explicit `DOMAIN_SCHEMA_VERSION` assignment.
+- Added `DomainEval` and `DomainPromotionCandidate` record structs using the field families from `src/domain/contracts.md`.
+- Extended `DomainPlan` with `required_capability_set_hash`, `expected_receipt_set_hash`, `rollback_or_invalidation_hash`, and `requested_live_effect_level` to make plan provenance, receipt expectations, rollback/invalidation material, and live-effect constraints explicit.
+- Exported `DomainEval` and `DomainPromotionCandidate` from `src/domain/mod.rs`.
+- Validation attempts were blocked by connector transport failures: two targeted `cargo test contracts::tests -- --test-threads=1` attempts and one `canon_execute_evaluator_suite` `rust_full_validation` attempt returned HTTP 502 upstream/external service errors before Rust output was available in this turn.
+- Scores remain unchanged at `G ~= 8.14 / 10` because implementation advanced, but this turn did not obtain fresh successful full-suite validation evidence.
+
 The next score gains should come from evidence, not optimism:
 
 - prove agent-driven graph mutation with Python-assisted graph target selection;

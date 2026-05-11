@@ -24,8 +24,10 @@ pub mod scoring;
 
 pub use bridge::{bridge_target_for_verdict, default_plan_kind};
 pub use contracts::{
-    DomainBridgeTarget, DomainId, DomainJudgment, DomainPlan, DomainRiskEnvelope, DomainSignal,
-    DomainVerdict, Horizon, LiveEffectLevel, PlanKind, DOMAIN_SCHEMA_VERSION,
+    DomainBridgeTarget, DomainEval, DomainHorizon, DomainId, DomainJudgment, DomainLiveEffectLevel,
+    DomainPlan, DomainPlanKind, DomainPromotionCandidate, DomainRiskClass, DomainRiskEnvelope,
+    DomainSchemaVersion, DomainSignal, DomainSignalClass, DomainSourceKind, DomainVerdict, Horizon,
+    LiveEffectLevel, PlanKind, DOMAIN_SCHEMA_VERSION,
 };
 pub use identity::stable_domain_id;
 pub use risk::{evaluate_risk_envelope, DomainRiskDecision};
