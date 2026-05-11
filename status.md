@@ -53,9 +53,25 @@ Current date: 2026-05-11.
 - `src/domain/identity.rs` currently contains `DomainHash`, `DomainHashInput<'a>`, `canonical_json_bytes(record)`, `domain_hash_json(record)`, `domain_hash_parts(parts)`, `stable_domain_id(parts)`, and six passing targeted identity tests through `domain_hash_changes_when_schema_version_changes`.
 - `src/domain/scoring.rs` currently contains validated `BoundedScore` helpers, score-input breakdown helpers, conservative `verdict_for_scores(...)`, and passing `verdict_ignore_thresholds`, `verdict_watch_thresholds`, `verdict_research_thresholds`, `verdict_act_business_thresholds`, `verdict_act_finance_research_thresholds`, `verdict_simulate_trading_thresholds`, and `verdict_block_thresholds`; explicit verdict threshold tests are complete for the current scoring scope.
 - Current source inventory confirms Rust files exist for `src/domain/bridge.rs`, `src/domain/business.rs`, `src/domain/contracts.rs`, `src/domain/finance.rs`, `src/domain/global_intelligence.rs`, `src/domain/identity.rs`, `src/domain/mod.rs`, `src/domain/risk.rs`, `src/domain/scoring.rs`, and `src/domain/trading.rs`; `src/domain/risk.rs` now includes `RiskEnvelopeViolation`, `check_risk_envelope(...)`, and passing `risk_blocks_live_trading`, `risk_blocks_finance_execution`, and `risk_allows_verified_business_plan_with_rollback_and_invalidation`; `src/domain/bridge.rs` now includes `DomainBridgeDescriptor` plus descriptor-only signal/context/judgment/plan/eval mapping functions with passing targeted bridge validation, passing named record-family descriptor validation, and passing no-live-trading bridge descriptor validation; `src/domain/global_intelligence.rs` exists locally with `SignalClass`, `GlobalSignalProfile`, `stale_for_horizon(...)`, and `actionability_hint(...)`, and compile evidence through `src/domain/mod.rs` now passes targeted validation; `src/domain/finance.rs` exists locally with `AssetUniverse`, `FinanceHypothesis`, `FinanceRiskDimensions`, `finance_research_allowed(...)`, passing behavior test `finance_hypothesis_execution_allowed_is_false`, and passing risk-envelope test `finance_research_plan_passes_research_only_risk_check`; `src/domain/trading.rs` exists locally with `TradingSimulationPlan`, `BacktestReceiptRequirements`, `TradingRiskLimit`, `enforce_sandbox_only(...)`, and passing behavior test `trading_simulation_plan_rejects_live_execution`.
-- Domain fixture JSON files already exist under `tests/fixtures/domain/` for global signal, business workflow opportunity, finance hypothesis research, trading simulation sandbox, and trading live blocked cases; `tests/test_domain_fixture_contract.py` exists and item 46 targeted fixture validation is recorded. Remaining fixture contract work begins at item 49 full fixture-contract validation after item 48 required-field assertion coverage passed.
+- Domain fixture JSON files already exist under `tests/fixtures/domain/` for global signal, business workflow opportunity, finance hypothesis research, trading simulation sandbox, and trading live blocked cases; `tests/test_domain_fixture_contract.py` exists and item 46 targeted fixture validation is recorded. Remaining fixture contract work remains item 50 full-suite Rust validation; latest attempt was blocked by connector HTTP 502 before Rust output.
 
 ## Validation Ledger
+
+### 2026-05-11 — planning turn targeted validation and full-suite blocker
+
+- Scope: `tests/test_domain_fixture_contract.py`, `tests/domain_contract.rs`, and Active Priorities item 50.
+- Command/check: `python3 -m unittest tests/test_domain_fixture_contract.py`; `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test domain_contract -- --test-threads=1`; `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
+- Result: targeted checks passed; full-suite validation blocked by infrastructure transport.
+- Evidence: fixture contract validation ran 7 unittest cases with 0 failures; domain integration validation ran 4 Rust integration tests with 0 failures; the separate full-suite command returned connector HTTP 502 before Rust output, so no product or Rust full-suite failure was observed and item 50 remains unchecked.
+- Next action: retry Active Priorities item 50 when connector transport can return full-suite Rust output.
+
+### 2026-05-11 — implementation step 3 full fixture contract validation
+
+- Scope: `tests/test_domain_fixture_contract.py` and Active Priorities item 49.
+- Command/check: `python3 -m unittest tests/test_domain_fixture_contract.py`.
+- Result: passed.
+- Evidence: full domain fixture contract validation ran after item 47 risk-result checks and item 48 required-field checks. The command ran 7 unittest cases with 0 failures.
+- Next action: perform Active Priorities item 50 by running `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets` and recording Rust output or connector blocker evidence.
 
 ### 2026-05-11 — implementation step 2 fixture required-field assertion validation
 
