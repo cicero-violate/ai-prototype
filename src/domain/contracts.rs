@@ -107,8 +107,10 @@ pub enum DomainPlanKind {
     ResearchPlan,
     BusinessWorkflowPlan,
     FinanceAnalysisPlan,
+    FinanceResearch,
     AllocationHypothesisPlan,
     TradingSimulationPlan,
+    TradingSimulation,
     LearningPromotionPlan,
 }
 
@@ -160,6 +162,32 @@ fn require_not_financial_execution(
         Err(DomainContractError::UnsafeLiveEffect { field })
     } else {
         Ok(value)
+    }
+}
+
+fn require_plan_live_effect(
+    plan_kind: PlanKind,
+    requested_live_effect_level: LiveEffectLevel,
+) -> Result<LiveEffectLevel, DomainContractError> {
+    match plan_kind {
+        PlanKind::FinanceResearch | PlanKind::FinanceAnalysisPlan
+            if requested_live_effect_level > LiveEffectLevel::ReadOnly =>
+        {
+            Err(DomainContractError::UnsafeLiveEffect {
+                field: "requested_live_effect_level",
+            })
+        }
+        PlanKind::TradingSimulation | PlanKind::TradingSimulationPlan
+            if requested_live_effect_level > LiveEffectLevel::SandboxWrite =>
+        {
+            Err(DomainContractError::UnsafeLiveEffect {
+                field: "requested_live_effect_level",
+            })
+        }
+        _ => require_not_financial_execution(
+            "requested_live_effect_level",
+            requested_live_effect_level,
+        ),
     }
 }
 
@@ -424,8 +452,8 @@ impl DomainPlan {
             "rollback_or_invalidation_hash",
             &rollback_or_invalidation_hash,
         )?;
-        let requested_live_effect_level = require_not_financial_execution(
-            "requested_live_effect_level",
+        let requested_live_effect_level = require_plan_live_effect(
+            plan_kind,
             requested_live_effect_level,
         )?;
 
@@ -621,5 +649,114 @@ mod tests {
                 field: "max_live_effect_level"
             })
         );
+    }
+
+    #[test]
+    fn domain_record_constructors_validate_invariants() {
+        let envelope = DomainRiskEnvelope::new(
+            "env-success",
+            DomainId::Business,
+            250,
+            700,
+            300,
+            DomainLiveEffectLevel::SandboxWrite,
+            false,
+            true,
+            true,
+        )
+        .expect("risk envelope constructor accepts bounded safe inputs");
+        assert_eq!(envelope.schema_version, DOMAIN_SCHEMA_VERSION);
+        assert_eq!(envelope.envelope_id, "env-success");
+        assert_eq!(envelope.max_uncertainty, 250);
+        assert_eq!(envelope.min_confidence, 700);
+        assert_eq!(
+            envelope.max_live_effect_level,
+            DomainLiveEffectLevel::SandboxWrite
+        );
+        assert!(envelope.requires_verification);
+        assert!(envelope.sandbox_only);
+
+        let judgment = DomainJudgment::new(
+            "judgment-success",
+            DomainId::Business,
+            800,
+            200,
+            850,
+            150,
+            750,
+            900,
+            700,
+            DomainVerdict::ActBusiness,
+            "hash:rationale",
+        )
+        .expect("judgment constructor accepts bounded scores and rationale hash");
+        assert_eq!(judgment.schema_version, DOMAIN_SCHEMA_VERSION);
+        assert_eq!(judgment.judgment_id, "judgment-success");
+        assert_eq!(judgment.domain_id, DomainId::Business);
+        assert_eq!(judgment.opportunity_score, 800);
+        assert_eq!(judgment.verdict, DomainVerdict::ActBusiness);
+        assert_eq!(judgment.rationale_hash, "hash:rationale");
+
+        let plan = DomainPlan::new(
+            "plan-success",
+            DomainId::Business,
+            "hash:judgment",
+            DomainPlanKind::BusinessWorkflowPlan,
+            DomainBridgeTarget::PlanRecord,
+            "hash:capability-set",
+            "hash:receipt-set",
+            "hash:risk-envelope",
+            "hash:success-metric",
+            "hash:rollback-or-invalidation",
+            DomainLiveEffectLevel::SandboxWrite,
+        )
+        .expect("plan constructor accepts hashes and safe live effect");
+        assert_eq!(plan.schema_version, DOMAIN_SCHEMA_VERSION);
+        assert_eq!(plan.plan_id, "plan-success");
+        assert_eq!(plan.judgment_hash, "hash:judgment");
+        assert_eq!(plan.plan_kind, DomainPlanKind::BusinessWorkflowPlan);
+        assert_eq!(plan.bridge_target, DomainBridgeTarget::PlanRecord);
+        assert_eq!(
+            plan.requested_live_effect_level,
+            DomainLiveEffectLevel::SandboxWrite
+        );
+
+        let eval = DomainEval::new(
+            "eval-success",
+            DomainId::Business,
+            "hash:plan",
+            "hash:result",
+            950,
+            850,
+            900,
+            700,
+            800,
+            true,
+        )
+        .expect("eval constructor accepts hashes and bounded scores");
+        assert_eq!(eval.schema_version, DOMAIN_SCHEMA_VERSION);
+        assert_eq!(eval.eval_id, "eval-success");
+        assert_eq!(eval.plan_hash, "hash:plan");
+        assert_eq!(eval.result_hash, "hash:result");
+        assert_eq!(eval.correctness_score, 950);
+        assert!(eval.promotion_allowed);
+
+        let candidate = DomainPromotionCandidate::new(
+            "candidate-success",
+            DomainId::Business,
+            "hash:eval-set",
+            "hash:pattern",
+            "hash:policy-delta",
+            875,
+            125,
+            DomainVerdict::ActBusiness,
+        )
+        .expect("promotion candidate constructor accepts hashes and bounded scores");
+        assert_eq!(candidate.schema_version, DOMAIN_SCHEMA_VERSION);
+        assert_eq!(candidate.candidate_id, "candidate-success");
+        assert_eq!(candidate.source_eval_set_hash, "hash:eval-set");
+        assert_eq!(candidate.expected_gain_score, 875);
+        assert_eq!(candidate.regression_risk_score, 125);
+        assert_eq!(candidate.promotion_verdict, DomainVerdict::ActBusiness);
     }
 }

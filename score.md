@@ -11,8 +11,11 @@ Current date: 2026-05-10.
 - P4 graph source-of-truth integration: mostly complete for deterministic fixture/report evidence; next focus is agent-driven graph editing using Python graph analysis.
 - P5 domain intelligence layer: active. Reconnaissance found `src/domain` wired
   into `src/lib.rs` and Rust files present for `bridge.rs`, `contracts.rs`,
-  `identity.rs`, `risk.rs`, and `scoring.rs`; several planned subdomain Rust
-  files and fixture tests remain incomplete or absent.
+  `identity.rs`, `mod.rs`, `risk.rs`, and `scoring.rs`; several planned
+  subdomain Rust files and fixture tests remain incomplete or absent.
+- Planning update on 2026-05-10 sharpened Active Priorities into one-file or
+  one-test execution items. No implementation validation was run in this
+  planning turn, and no score increase is claimed.
 
 ## Graph Analysis Evidence
 
@@ -97,10 +100,10 @@ Implementation step 2 evidence on 2026-05-10:
 Planning-turn update on 2026-05-10 after fresh reconnaissance:
 
 - Required reconnaissance completed from `/workspace/ai_sandbox/canon-mini-agent/prototype/ai`.
-- First incomplete Active Priorities item remains item 2: `src/domain/contracts.rs` constructors and invariants for `DomainRiskEnvelope`, `DomainJudgment`, `DomainPlan`, `DomainEval`, and `DomainPromotionCandidate`.
-- `find src/domain -type f | sort` confirmed Rust files `bridge.rs`, `contracts.rs`, `identity.rs`, `mod.rs`, `risk.rs`, and `scoring.rs`; planned Rust files `global_intelligence.rs`, `business.rs`, `finance.rs`, and `trading.rs` remain absent.
-- Python analysis of `state/rustc/ai/graph.json` confirmed schema version 16, 4,473 nodes, 31,082 edges, 2,976 intents, and no compiled `domain::` nodes.
-- `canon_spawn_agent` succeeded for helper `agent-1` with worker port 43681, domain `domain contracts planning support`, and metric focused on reviewing the `src/domain/contracts.rs` planning queue.
+- First incomplete Active Priorities item is item 3: `src/domain/contracts.rs` unit test `domain_record_constructors_validate_invariants`, covering success paths for `DomainRiskEnvelope::new`, `DomainJudgment::new`, `DomainPlan::new`, `DomainEval::new`, and `DomainPromotionCandidate::new`.
+- `find src/domain -type f | sort` confirmed Rust files `src/domain/bridge.rs`, `src/domain/contracts.rs`, `src/domain/identity.rs`, `src/domain/mod.rs`, `src/domain/risk.rs`, and `src/domain/scoring.rs`; planned Rust files `src/domain/global_intelligence.rs`, `src/domain/business.rs`, `src/domain/finance.rs`, and `src/domain/trading.rs` remain absent.
+- Python analysis of `state/rustc/ai/graph.json` confirmed schema version 16, graph hash `ab2202a8d8ec371b0c462aecc41e28d059920f53e2179dd40ebb6ebb3127fc33`, 4,473 nodes, 31,082 edges, 2,976 intents, 2,976 function nodes, 1,283 impl nodes, 159 struct nodes, 53 enum nodes, and no compiled `domain::` nodes. The only node containing `domain` is `runtime::reducer::raise_domain_failure`, so graph evidence does not yet prove the P5 domain module.
+- Active Priorities were rewritten into concrete file-level and test-level tasks that execute turns can pick up one at a time.
 - Existing uncommitted implementation/test changes were present before this planning patch. This turn stages and commits only `plan.md` and `score.md`.
 
 Implementation step 5 evidence on 2026-05-10:
@@ -112,6 +115,15 @@ Implementation step 5 evidence on 2026-05-10:
 - Exported `DomainEval` and `DomainPromotionCandidate` from `src/domain/mod.rs`.
 - Validation attempts were blocked by connector transport failures: two targeted `cargo test contracts::tests -- --test-threads=1` attempts and one `canon_execute_evaluator_suite` `rust_full_validation` attempt returned HTTP 502 upstream/external service errors before Rust output was available in this turn.
 - Scores remain unchanged at `G ~= 8.14 / 10` because implementation advanced, but this turn did not obtain fresh successful full-suite validation evidence.
+
+Implementation step 7 evidence on 2026-05-10:
+
+- Completed Active Priorities item 3 in `src/domain/contracts.rs`.
+- Added unit test `domain_record_constructors_validate_invariants` covering success paths for `DomainRiskEnvelope::new`, `DomainJudgment::new`, `DomainPlan::new`, `DomainEval::new`, and `DomainPromotionCandidate::new`.
+- The test asserts explicit `DOMAIN_SCHEMA_VERSION` assignment, bounded score retention, hash/provenance retention, bridge target retention, promotion flag retention, and safe live-effect retention.
+- Targeted validation passed after one connector retry: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test contracts::tests -- --test-threads=1` ran 4 domain contract tests successfully.
+- Full validation command attempted twice: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`; both attempts returned connector HTTP 502 upstream/external service errors before full-suite Rust output was available.
+- Scores remain unchanged at `G ~= 8.14 / 10`; targeted evidence improved contract confidence, but full-suite validation and graph refresh are still unavailable.
 
 The next score gains should come from evidence, not optimism:
 
