@@ -66,8 +66,7 @@ Approximate geometric mean over the listed score axes remains about:
 G ~= 8.14 / 10
 ```
 
-The score is not raised yet because only targeted contract validation completed;
-full-suite validation was blocked by connector-side HTTP 502 errors.
+The score is not raised yet because this was a planning/scoring turn only. No new implementation validation was run after reconnaissance, and the graph still has no compiled `domain::` nodes.
 
 ## Rationale
 
@@ -93,6 +92,16 @@ Implementation step 2 evidence on 2026-05-10:
 - Targeted validation passed: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test contracts::tests -- --test-threads=1` ran 2 domain contract tests successfully.
 - Full validation command attempted twice: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`; both attempts failed at the connector layer with HTTP 502 upstream/external service errors, so no full-suite Rust failure was observed in this turn.
 - Helper-agent spawn was requested during this planning turn but failed with `connect worker on port 9100: Connection refused`; planning proceeded locally.
+
+
+Planning-turn update on 2026-05-10 after fresh reconnaissance:
+
+- Required reconnaissance completed from `/workspace/ai_sandbox/canon-mini-agent/prototype/ai`.
+- First incomplete Active Priorities item remains item 2: `src/domain/contracts.rs` constructors and invariants for `DomainRiskEnvelope`, `DomainJudgment`, `DomainPlan`, `DomainEval`, and `DomainPromotionCandidate`.
+- `find src/domain -type f | sort` confirmed Rust files `bridge.rs`, `contracts.rs`, `identity.rs`, `mod.rs`, `risk.rs`, and `scoring.rs`; planned Rust files `global_intelligence.rs`, `business.rs`, `finance.rs`, and `trading.rs` remain absent.
+- Python analysis of `state/rustc/ai/graph.json` confirmed schema version 16, 4,473 nodes, 31,082 edges, 2,976 intents, and no compiled `domain::` nodes.
+- `canon_spawn_agent` succeeded for helper `agent-1` with worker port 43681, domain `domain contracts planning support`, and metric focused on reviewing the `src/domain/contracts.rs` planning queue.
+- Existing uncommitted implementation/test changes were present before this planning patch. This turn stages and commits only `plan.md` and `score.md`.
 
 The next score gains should come from evidence, not optimism:
 
