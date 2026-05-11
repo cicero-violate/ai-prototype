@@ -142,6 +142,8 @@ impl LoopDriver {
                     agent_id,
                     self.config.agent_count,
                     &self.config.working_dir,
+                    self.config.domain.as_deref(),
+                    self.config.metric.as_deref(),
                 )
             } else {
                 execute_prompt(turn, agent_id, self.config.agent_count)
@@ -309,13 +311,28 @@ fn close_router_tab(tag: &str, label: &str, router: &mut RouterClient) {
 
 // ── Prompt builders ───────────────────────────────────────────────────────────
 
-fn planning_prompt(goal: &str, agent_id: u32, agent_count: u32, working_dir: &Path) -> String {
+fn planning_prompt(
+    goal: &str,
+    agent_id: u32,
+    agent_count: u32,
+    working_dir: &Path,
+    domain: Option<&str>,
+    metric: Option<&str>,
+) -> String {
     let agent_line = agent_identity(agent_id, agent_count);
+    let focus_block = match (domain, metric) {
+        (Some(d), Some(m)) => {
+            format!("## YOUR SPECIFIC TASK\n{d}\n\n## SUCCESS CRITERION\n{m}\n\n")
+        }
+        (Some(d), None) => format!("## YOUR SPECIFIC TASK\n{d}\n\n"),
+        _ => String::new(),
+    };
     format!(
         "{agent_line}\n\
          You are doing the planning turn for this agent loop.\n\n\
          ## WORKING DIRECTORY\n`{dir}`\n\
          All shell commands must run relative to this directory unless the task explicitly requires otherwise.\n\n\
+         {focus_block}\
          ## GOAL\n{goal}\n\n\
          Before updating the plan, do the following reconnaissance:\n\
          1. Read the current `plan.md` and identify the first incomplete item under \"Active Priorities\".\n\
@@ -560,7 +577,7 @@ mod tests {
     fn project_prompts_do_not_claim_to_be_worker_certification() {
         let goal = "Ship the next deterministic runtime slice.";
         let working_dir = Path::new("/workspace/project");
-        let planning = planning_prompt(goal, 0, 1, working_dir);
+        let planning = planning_prompt(goal, 0, 1, working_dir, None, None);
         let execute = execute_prompt(2, 0, 1);
 
         assert!(planning.contains("planning turn for this agent loop"));

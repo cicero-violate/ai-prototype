@@ -2424,6 +2424,31 @@ fn try_run_compact_mode(arg: &str) -> Option<Result<CompactModeOutcome, String>>
         .map(|mode| (mode.run)())
 }
 
+pub fn compact_mode_stdout_for_contract(
+    arg: &str,
+    expected_marker: &str,
+) -> Result<String, String> {
+    let outcome = try_run_compact_mode(arg)
+        .ok_or_else(|| format!("root_validate compact mode not found: {arg}"))??;
+    if outcome.exit_code != 0 {
+        return Err(format!("root_validate {arg} failed"));
+    }
+    let mut stdout = outcome.stdout;
+    if !stdout.ends_with('\n') {
+        stdout.push('\n');
+    }
+    if !stdout.contains(expected_marker) {
+        return Err(format!("root_validate {arg} missing {expected_marker}"));
+    }
+    if stdout.contains("canon_root_validation_v1") {
+        return Err(format!(
+            "root_validate {arg} emitted root validation output"
+        ));
+    }
+    Ok(stdout)
+}
+
+#[allow(dead_code)]
 fn main() {
     let arg = std::env::args().nth(1);
     if let Some(arg) = arg.as_deref() {

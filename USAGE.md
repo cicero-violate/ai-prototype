@@ -1,233 +1,233 @@
 # Usage
 
-The `agent` binary has two modes:
+## Binaries
 
-- **Loop mode** — reads `GOAL.md` from `PROJECT_DIR`, syncs the MCP workspace, then runs an infinite cycle of 1 planning turn + N execute turns against the router-server. No canon worker required. This mirrors `chatgpt-agent-loop`.
-- **Single-cycle mode** — falls back to the phase-driven `AgentCycle` when no `GOAL.md` is found. The worker owns runtime state; the agent observes phase, asks the LLM for phase-appropriate work, and submits evidence gates itself.
+| Binary | Role |
+|---|---|
+| `supervisor` | HTTP server that manages the TLog worker and spawns agent threads |
+| `worker` | TLog HTTP server — records evidence, owns runtime state |
+| `agent` | AI loop driver — reads GOAL.md, calls MCP tools, submits evidence |
 
-## Build
+All three are built with:
 
 ```sh
 cargo build --release
 ```
 
-If the local `canon-rustc-v3` wrapper fails to load `librustc_driver`, disable it for the build:
-
-```sh
-cargo build --release --config 'build.rustc-wrapper=""'
-```
-
-## Prerequisite: Router Server
-
-Both modes require the router-server running before the first turn. Default endpoint:
-
-```text
-http://127.0.0.1:8081/v1/chat/completions
-```
-
-Override with:
-
-```sh
-export CANON_OPENAI_BASE_URL=http://127.0.0.1:8081/v1
-```
-
 ---
 
-## Loop Mode
+## Standard startup (3 terminals)
 
-Loop mode activates automatically when `$PROJECT_DIR/GOAL.md` exists.
-
-### Minimal setup
-
-Create a goal file:
+### Terminal 1 — MCP connector
 
 ```sh
-mkdir -p /path/to/project
-cat > /path/to/project/GOAL.md <<'EOF'
-Implement the feature described below and add tests.
-...
-EOF
+cd ../chatgpt-mcp-connector
+MCP_WORKSPACE_ROOT=/workspace/ai_sandbox/canon-mini-agent/prototype \
+cargo run
 ```
 
-Run the agent:
+Serves MCP tools on `:4000`. Workspace root defaults to the parent of its CWD if `MCP_WORKSPACE_ROOT` is not set.
+
+### Terminal 2 — Router server
 
 ```sh
-PROJECT_DIR=/workspace/ai_sandbox/canon-mini-agent/prototype \
+cd ../router-server   # or chatgpt-agent-loop
+npm run dev
+```
+
+CDP proxy that routes LLM calls to ChatGPT on `:8081`.
+
+### Terminal 3 — Supervisor
+
+```sh
+./run_supervisor.sh
+```
+
+Or explicitly:
+
+```sh
+SUPERVISOR_PORT=9100 \
+PROJECT_DIR=/workspace/ai_sandbox/canon-mini-agent/prototype/ai \
 CANON_OPENAI_BASE_URL=http://127.0.0.1:8081/v1 \
-./target/release/agent
-```
-
-Each cycle the agent:
-1. Posts to `$MCP_CONNECTOR_URL/workspace` to sync the project root (fails fast if unreachable).
-2. Reads `GOAL.md` and sends a planning turn — the LLM creates/updates `plan.md` and `score.md`.
-3. Runs `EXECUTE_TURNS` execute turns — the LLM reads `plan.md`, implements the next step, runs checks, and commits.
-4. Sleeps `LOOP_SLEEP_MS` ms before the next cycle.
-
-Chunk logs are written to `$SSE_CHUNKS_DIR` (one ndjson file per turn attempt).
-
-### Loop mode environment
-
-```text
-PROJECT_DIR              optional; default cwd; must contain GOAL.md
-EXECUTE_TURNS            optional; execute turns per cycle (default 5)
-TURN_RETRY_LIMIT         optional; retries per incomplete turn (default 2)
-LOOP_SLEEP_MS            optional; sleep between turns and cycles in ms (default 5000)
-AGENT_COUNT              optional; parallel agents with 5 s staggered starts (default 1)
-MCP_CONNECTOR_URL        optional; default http://127.0.0.1:4000
-SSE_CHUNKS_DIR           optional; default $PROJECT_DIR/agent_state/sse-chunks
-ROUTER_TURN_MAX_MS       optional; max ms the router waits for the LLM (default 600000)
-ROUTER_FIRST_CAPTURE_MS  optional; ms until first response capture (default 60000)
-ROUTER_IDLE_MS           optional; idle threshold before capture completes (default 2500)
-CANON_OPENAI_BASE_URL    optional; router-server base URL (default http://127.0.0.1:8081/v1)
-CANON_OPENAI_MODEL       optional; model identifier forwarded to router-server
-CANON_OPENAI_TIMEOUT_MS  optional; TCP read/write timeout for each turn
-```
-
-### Evidence certification (tlog / receipts)
-
-When `AI_WORKER_PORT` is set, the agent runs an `AgentCycle` certification pass **after each successful loop cycle**. The cycle drives the worker through all evidence gates (Invariant → Analysis → Judgment → Plan → Execute → Verify → Eval → Done), stamping LLM receipts to the tlog.
-
-The objective for the certification is built from the files the loop cycle just produced:
-- `GOAL.md` → `domain_hint` (up to 800 chars)
-- `plan.md` → appended to domain_hint as "Completed work" summary (up to 400 chars)
-- `score.md` → `success_metric` (up to 300 chars)
-
-The worker must be in a state where it can accept new evidence (i.e. not already at `phase=Done` from a prior run). If `SUPERVISOR_PORT` is also set, the agent calls `POST /reload` on the supervisor before each certification, waits up to 30 s for the worker to become healthy, then certifies against the fresh instance.
-
-```sh
-# Minimal: loop + certification against a running worker
-AI_WORKER_PORT=9091 \
-PROJECT_DIR=/path/to/project \
-CANON_OPENAI_BASE_URL=http://127.0.0.1:8081/v1 \
-./target/release/agent
-
-# With supervisor auto-reload for a fresh worker each cycle
-AI_WORKER_PORT=9091 \
-SUPERVISOR_PORT=9090 \
-PROJECT_DIR=/path/to/project \
-CANON_OPENAI_BASE_URL=http://127.0.0.1:8081/v1 \
-./target/release/agent
-```
-
-Certification environment:
-
-```text
-AI_WORKER_PORT      required to enable certification; worker HTTP port
-SUPERVISOR_PORT     optional; when set, POST /reload is called before each cert
-AI_CERT_MAX_STEPS   optional; AgentCycle step budget for certification (default 30)
-```
-
-Certification log lines are prefixed `[agent] cert:`:
-
-```text
-[agent] cert: cycle 1 — domain=Implement the feature…
-[agent] cert: done  steps=9  success=true  stop=phase_done  phase=Done  tlog_len=14
-```
-
-### Multiple parallel agents
-
-```sh
-AGENT_COUNT=3 \
-PROJECT_DIR=/path/to/project \
-./target/release/agent
-```
-
-Agents 1+ start with a 5-second staggered delay. All agents share the same `PROJECT_DIR`; they coordinate through `plan.md` and `score.md`.
-
-### Retry behaviour
-
-Each turn attempt is logged independently. A turn is retried when:
-- the `[DONE]` SSE frame was received but `message_stream_complete` is missing, **and**
-- no `target_url` has been established yet (retrying after a tab is pinned would lose conversation context), **and**
-- `finish_reason` is not `"length"` (truncated output cannot be safely replayed).
-
-On exhausting `TURN_RETRY_LIMIT`, the cycle fails and sleeps before the next cycle.
-
----
-
-## Single-Cycle Mode (phase-driven)
-
-Used when no `GOAL.md` is present. Requires a running canon worker.
-
-### Option A: Run worker directly
-
-Terminal 1:
-
-```sh
-PORT=9091 \
+MCP_CONNECTOR_URL=http://127.0.0.1:4000 \
 AI_TLOG_DIR=tlog \
-./target/release/worker
-```
-
-Terminal 2:
-
-```sh
-AI_WORKER_PORT=9091 \
-AI_AGENT_DOMAIN="my task" \
-AI_AGENT_METRIC="task complete" \
-AI_AGENT_MAX_STEPS=20 \
-./target/release/agent
-```
-
-The agent prints a final summary:
-
-```text
-agent: done  steps=<n>  success=<true|false>  stop=<reason>  phase=<phase>  tlog_len=<n>
-```
-
-`success=true` only when the worker runtime reaches `phase=Done`.
-
-### Option B: Run through supervisor
-
-Terminal 1:
-
-```sh
-AI_WORKER_BIN=./target/release/worker \
-AI_TLOG_DIR=tlog \
-AI_MCP_WORKER_URL=http://127.0.0.1:38469/mcp_worker \
-SUPERVISOR_PORT=9090 \
 ./target/release/supervisor
 ```
 
-Terminal 2:
+The supervisor starts the TLog worker on a random port and prints it to stderr. Check it:
 
 ```sh
-curl http://127.0.0.1:9090/status
+curl http://127.0.0.1:9100/health
+# → {"ok":true,"generation":1,"worker_port":XXXXX}
 ```
 
-Use the worker port from the status response:
+### Terminal 4 — Agent
 
 ```sh
-AI_WORKER_PORT=<worker-port> \
+./run.sh
+```
+
+Or explicitly:
+
+```sh
+AI_WORKER_PORT=<worker_port_from_health> \
+SUPERVISOR_PORT=9100 \
+PROJECT_DIR=/workspace/ai_sandbox/canon-mini-agent/prototype/ai \
+CANON_OPENAI_BASE_URL=http://127.0.0.1:8081/v1 \
+MCP_CONNECTOR_URL=http://127.0.0.1:4000 \
+./target/release/agent
+```
+
+---
+
+## Agent modes
+
+### Loop mode (default)
+
+Activates when `$PROJECT_DIR/GOAL.md` exists. The agent runs an infinite cycle:
+
+1. POSTs to `$MCP_CONNECTOR_URL/workspace` to sync the project root.
+2. Reads `GOAL.md` → sends a planning turn → LLM creates/updates `plan.md` and `score.md`.
+3. Runs `EXECUTE_TURNS` execute turns → LLM implements the next step, runs checks, commits.
+4. If `AI_WORKER_PORT` is set, runs a certification pass stamping evidence to the TLog.
+5. Sleeps `LOOP_SLEEP_MS` ms, then repeats.
+
+### Single-cycle mode
+
+Fallback when no `GOAL.md` is present. Requires a running worker.
+
+```sh
+AI_WORKER_PORT=9091 \
 AI_AGENT_DOMAIN="my task" \
 AI_AGENT_METRIC="task complete" \
 AI_AGENT_MAX_STEPS=20 \
 ./target/release/agent
 ```
 
-Hot-reload the worker after a rebuild:
+---
 
-```sh
-curl -X POST http://127.0.0.1:9090/reload
+## Spawning child agents
+
+From within a running agent, ChatGPT can call the `canon_spawn_agent` MCP tool to launch a new agent thread inside the supervisor process. All threads share the same TLog (one worker, one evidence chain).
+
+```json
+{
+  "name": "canon_spawn_agent",
+  "arguments": {
+    "domain": "implement src/domain/records.rs",
+    "metric": "cargo test passes",
+    "max_steps": 20
+  }
+}
 ```
 
-### Single-cycle environment
+`supervisor_port` defaults to `9100` — only set it if the supervisor is on a different port.
+
+The supervisor handles the rest: it knows the active worker port, project dir, and MCP connector URL.
+
+Spawn receipt:
+
+```json
+{
+  "ok": true,
+  "spawn_id": "agent-0",
+  "pid": 12345,
+  "domain": "implement src/domain/records.rs",
+  "metric": "cargo test passes",
+  "worker_port": 44321
+}
+```
+
+`pid` is the supervisor's own process ID — all agent threads run inside it.
+
+---
+
+## Inter-agent messaging
+
+Agents communicate via an append-only NDJSON mailbox at:
+
+```
+$PROJECT_DIR/agent_state/mailbox/{agent_id}.ndjson
+```
+
+### Send a message
+
+```json
+{
+  "name": "canon_send_agent_message",
+  "arguments": {
+    "sender": "agent-0",
+    "target_agent": "agent-1",
+    "message_kind": "TaskAssignment",
+    "payload": "{\"task\": \"implement records.rs\"}"
+  }
+}
+```
+
+### Read the mailbox
+
+```json
+{
+  "name": "canon_read_mailbox",
+  "arguments": {
+    "agent_id": "agent-1",
+    "since": 0
+  }
+}
+```
+
+Returns `{messages: [...], next_cursor: N}`. Pass `next_cursor` as `since` on the next call to read only new messages.
+
+Message kinds: `DomainSignal`, `GraphEditRequest`, `EvalRequest`, `PolicyCandidate`, `Observation`, `TaskAssignment`.
+
+---
+
+## Supervisor routes
+
+```
+GET  :9100/health   — {"ok":true,"generation":N,"worker_port":XXXXX}
+POST :9100/reload   — hot-reload the worker (fresh TLog state)
+POST :9100/spawn    — {"domain":"...","metric":"...","max_steps":20}
+```
+
+---
+
+## Environment reference
+
+### Agent
 
 ```text
-AI_WORKER_PORT          required; worker HTTP port
-CANON_OPENAI_BASE_URL   optional; default http://127.0.0.1:8081/v1
-CANON_OPENAI_MODEL      optional; passed through to router-server
-CANON_OPENAI_TIMEOUT_MS optional; LLM request timeout
-AI_AGENT_DOMAIN         optional; objective domain hint
-AI_AGENT_METRIC         optional; success metric
-AI_AGENT_MAX_STEPS      optional; default 20
+PROJECT_DIR              default: derived from binary path (ai/ project root)
+EXECUTE_TURNS            execute turns per cycle (default 5)
+TURN_RETRY_LIMIT         retries per incomplete turn (default 2)
+LOOP_SLEEP_MS            sleep between cycles in ms (default 5000)
+AGENT_COUNT              parallel agent threads with 5s staggered starts (default 1)
+MCP_CONNECTOR_URL        default http://127.0.0.1:4000
+SSE_CHUNKS_DIR           default $PROJECT_DIR/agent_state/sse-chunks
+ROUTER_TURN_MAX_MS       max ms waiting for LLM (default 600000)
+ROUTER_FIRST_CAPTURE_MS  ms until first capture (default 60000)
+ROUTER_IDLE_MS           idle threshold before capture completes (default 2500)
+CANON_OPENAI_BASE_URL    router-server base URL (default http://127.0.0.1:8081/v1)
+AI_WORKER_PORT           enables TLog certification when set
+SUPERVISOR_PORT          when set, POST /reload before each certification
+AI_CERT_MAX_STEPS        AgentCycle step budget for certification (default 30)
 ```
 
-### Inspect runtime state
+### Supervisor
 
-```sh
-curl http://127.0.0.1:9091/health/worker
-curl http://127.0.0.1:9091/v1/state
+```text
+SUPERVISOR_PORT          HTTP port (default 9100)
+AI_TLOG_DIR              TLog directory (default tlog)
+AI_WORKER_BIN            worker binary path (default: sibling of supervisor binary)
+AI_MCP_WORKER_URL        MCP worker URL (default http://127.0.0.1:38469/mcp_worker)
+PROJECT_DIR              passed to spawned agent threads
+CANON_OPENAI_BASE_URL    passed to spawned agent threads via process env
+MCP_CONNECTOR_URL        passed to spawned agent threads
 ```
 
-The state response includes `phase`, `tlog_len`, `failure`, and `recovery_action`.
+### Worker (standalone)
+
+```text
+PORT          HTTP port to listen on
+AI_TLOG_DIR   TLog directory
+```

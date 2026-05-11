@@ -7153,6 +7153,7 @@ pub fn root_validation_steps() -> Vec<ValidationStep> {
                 "--locked",
                 "--",
                 "--nocapture",
+                "--test-threads=2",
             ],
             VALIDATION_HARNESS_EXPECTED_TESTS,
         ),

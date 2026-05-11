@@ -26,25 +26,31 @@ pub struct AgentLoopConfig {
     pub supervisor_port: Option<u16>,
     /// Maximum steps for the certification AgentCycle (default 30).
     pub cert_max_steps: u64,
+    /// Specific sub-task domain for this agent (injected into the planning prompt).
+    /// When None the agent uses only GOAL.md.
+    pub domain: Option<String>,
+    /// Success criterion matching `domain` (injected into the planning prompt).
+    pub metric: Option<String>,
 }
 
 impl AgentLoopConfig {
     pub fn from_env() -> Self {
-        let project_dir: PathBuf = env::var("PROJECT_DIR")
-            .map(PathBuf::from)
-            .unwrap_or_else(|_| {
-                // Derive from binary path: target/release/agent → ../../.. = project root.
-                // Falls back to current_dir() if exe path is unavailable.
-                env::current_exe()
-                    .ok()
-                    .and_then(|p| {
-                        p.parent() // release/
-                            .and_then(|p| p.parent()) // target/
-                            .and_then(|p| p.parent()) // ai/
-                            .map(|p| p.to_path_buf())
-                    })
-                    .unwrap_or_else(|| env::current_dir().unwrap_or_default())
-            });
+        let project_dir: PathBuf =
+            env::var("PROJECT_DIR")
+                .map(PathBuf::from)
+                .unwrap_or_else(|_| {
+                    // Derive from binary path: target/release/agent → ../../.. = project root.
+                    // Falls back to current_dir() if exe path is unavailable.
+                    env::current_exe()
+                        .ok()
+                        .and_then(|p| {
+                            p.parent() // release/
+                                .and_then(|p| p.parent()) // target/
+                                .and_then(|p| p.parent()) // ai/
+                                .map(|p| p.to_path_buf())
+                        })
+                        .unwrap_or_else(|| env::current_dir().unwrap_or_default())
+                });
         let working_dir = project_dir.clone();
         let sse_chunks_dir = env::var("SSE_CHUNKS_DIR")
             .map(PathBuf::from)
@@ -71,6 +77,8 @@ impl AgentLoopConfig {
             worker_port,
             supervisor_port,
             cert_max_steps: env_u64("AI_CERT_MAX_STEPS", 30),
+            domain: env::var("AI_AGENT_DOMAIN").ok().filter(|s| !s.is_empty()),
+            metric: env::var("AI_AGENT_METRIC").ok().filter(|s| !s.is_empty()),
         }
     }
 }

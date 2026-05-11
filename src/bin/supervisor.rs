@@ -12,6 +12,8 @@ use std::process::Stdio;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
+use ai::agent::{AgentLoopConfig, LoopDriver};
+
 use axum::extract::State as AxumState;
 use axum::http::StatusCode;
 use axum::routing::{get, post};
@@ -36,10 +38,20 @@ async fn run() -> Result<(), String> {
     }
 
     let cfg = SupervisorConfig::from_env()?;
+    eprintln!(
+        "supervisor: port={}  project_dir={}  mcp={}  tlog={}",
+        cfg.addr.port(),
+        cfg.project_dir.display(),
+        cfg.mcp_connector_url,
+        cfg.tlog_dir.display(),
+    );
     let process = WorkerProcess::new(
         cfg.worker_bin.clone(),
         cfg.tlog_dir.clone(),
         cfg.mcp_worker_url.clone(),
+        cfg.router_url.clone(),
+        cfg.project_dir.clone(),
+        cfg.mcp_connector_url.clone(),
     );
     let state = SupervisorState {
         inner: Arc::new(Mutex::new(process)),
@@ -54,6 +66,7 @@ async fn run() -> Result<(), String> {
     let listener = TcpListener::bind(cfg.addr)
         .await
         .map_err(|err| format!("bind {} failed: {err}", cfg.addr))?;
+    eprintln!("supervisor: ready on http://0.0.0.0:{}", cfg.addr.port());
     axum::serve(listener, app)
         .with_graceful_shutdown(shutdown_signal())
         .await
@@ -67,7 +80,8 @@ async fn run() -> Result<(), String> {
 fn print_help() {
     println!("usage: supervisor [--help]");
     println!("environment: SUPERVISOR_PORT, AI_TLOG_DIR, AI_WORKER_BIN, AI_MCP_WORKER_URL");
-    println!("routes: GET /health, POST /reload");
+    println!("             AI_AGENT_BIN, CANON_OPENAI_BASE_URL, PROJECT_DIR, MCP_CONNECTOR_URL");
+    println!("routes: GET /health, POST /reload, POST /spawn");
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -76,6 +90,9 @@ struct SupervisorConfig {
     tlog_dir: PathBuf,
     worker_bin: PathBuf,
     mcp_worker_url: String,
+    router_url: String,
+    project_dir: PathBuf,
+    mcp_connector_url: String,
 }
 
 impl SupervisorConfig {
@@ -92,11 +109,21 @@ impl SupervisorConfig {
         };
         let mcp_worker_url = env::var("AI_MCP_WORKER_URL")
             .unwrap_or_else(|_| "http://127.0.0.1:38469/mcp_worker".to_string());
+        let router_url = env::var("CANON_OPENAI_BASE_URL")
+            .unwrap_or_else(|_| "http://127.0.0.1:8081/v1".to_string());
+        let project_dir = env::var("PROJECT_DIR")
+            .map(PathBuf::from)
+            .unwrap_or_else(|_| env::current_dir().unwrap_or_default());
+        let mcp_connector_url =
+            env::var("MCP_CONNECTOR_URL").unwrap_or_else(|_| "http://127.0.0.1:4000".to_string());
         Ok(Self {
             addr: SocketAddr::from(([0, 0, 0, 0], port)),
             tlog_dir,
             worker_bin,
             mcp_worker_url,
+            router_url,
+            project_dir,
+            mcp_connector_url,
         })
     }
 }
@@ -126,10 +153,20 @@ struct WorkerProcess {
     tlog_dir: PathBuf,
     mcp_worker_url: String,
     drain_after: Duration,
+    project_dir: PathBuf,
+    mcp_connector_url: String,
+    next_spawn: u64,
 }
 
 impl WorkerProcess {
-    fn new(binary_path: PathBuf, tlog_dir: PathBuf, mcp_worker_url: String) -> Self {
+    fn new(
+        binary_path: PathBuf,
+        tlog_dir: PathBuf,
+        mcp_worker_url: String,
+        _router_url: String,
+        project_dir: PathBuf,
+        mcp_connector_url: String,
+    ) -> Self {
         Self {
             active: None,
             retired: Vec::new(),
@@ -138,6 +175,9 @@ impl WorkerProcess {
             tlog_dir,
             mcp_worker_url,
             drain_after: Duration::from_secs(30),
+            project_dir,
+            mcp_connector_url,
+            next_spawn: 0,
         }
     }
 
@@ -167,6 +207,7 @@ impl WorkerProcess {
     async fn reload_inner(&mut self) -> Result<ReloadDto, String> {
         self.reap_retired().await;
         let generation = self.next_generation;
+        eprintln!("supervisor: starting worker generation {generation}");
         let instance = spawn_worker(
             &self.binary_path,
             generation,
@@ -174,11 +215,16 @@ impl WorkerProcess {
             &self.mcp_worker_url,
         )
         .await?;
+        eprintln!(
+            "supervisor: worker generation {generation} ready on port {}",
+            instance.port
+        );
         self.next_generation = self
             .next_generation
             .checked_add(1)
             .ok_or_else(|| "generation overflow".to_string())?;
         if let Some(old) = self.active.take() {
+            eprintln!("supervisor: retiring worker generation {}", old.generation);
             self.retired.push(RetiredWorker {
                 instance: old,
                 retired_at: Instant::now(),
@@ -215,6 +261,61 @@ impl WorkerProcess {
             let _ = retired.instance.child.kill().await;
             let _ = retired.instance.child.wait().await;
         }
+    }
+
+    fn spawn_agent(
+        &mut self,
+        domain: &str,
+        metric: &str,
+        max_steps: u64,
+    ) -> Result<SpawnDto, String> {
+        let worker_port = self
+            .active
+            .as_ref()
+            .map(|w| w.port)
+            .ok_or_else(|| "no active worker — call /reload first".to_string())?;
+
+        let n = self.next_spawn;
+        self.next_spawn += 1;
+        let spawn_id = format!("agent-{n}");
+
+        let project_dir = self.project_dir.clone();
+        let mcp_connector_url = self.mcp_connector_url.clone();
+        let execute_turns = max_steps.min(100).max(1) as u32;
+        let config = AgentLoopConfig {
+            execute_turns,
+            turn_retry_limit: 2,
+            loop_sleep_ms: 5000,
+            agent_count: 1,
+            working_dir: project_dir.clone(),
+            sse_chunks_dir: project_dir.join("agent_state").join("sse-chunks"),
+            project_dir,
+            mcp_connector_url,
+            router_turn_max_ms: 600_000,
+            router_first_capture_ms: 60_000,
+            router_idle_ms: 2_500,
+            worker_port: Some(worker_port),
+            supervisor_port: None,
+            cert_max_steps: 30,
+            domain: Some(domain.to_string()),
+            metric: Some(metric.to_string()),
+        };
+
+        eprintln!("supervisor: spawning agent {spawn_id}  domain={domain:?}  metric={metric:?}  worker_port={worker_port}");
+        let sid = spawn_id.clone();
+        std::thread::spawn(move || {
+            LoopDriver::new(config).run_all_agents();
+            eprintln!("supervisor: agent {sid} finished");
+        });
+
+        Ok(SpawnDto {
+            ok: true,
+            spawn_id,
+            pid: std::process::id(),
+            domain: domain.to_string(),
+            metric: metric.to_string(),
+            worker_port,
+        })
     }
 }
 
@@ -254,10 +355,28 @@ struct ErrorDto {
     error: String,
 }
 
+#[derive(Debug, serde::Deserialize)]
+struct SpawnRequest {
+    domain: String,
+    metric: String,
+    max_steps: Option<u64>,
+}
+
+#[derive(Clone, Debug, Serialize, PartialEq, Eq)]
+struct SpawnDto {
+    ok: bool,
+    spawn_id: String,
+    pid: u32,
+    domain: String,
+    metric: String,
+    worker_port: u16,
+}
+
 fn build_router(state: SupervisorState) -> Router {
     Router::new()
         .route("/health", get(health))
         .route("/reload", post(reload))
+        .route("/spawn", post(spawn_agent_handler))
         .with_state(state)
 }
 
@@ -273,6 +392,18 @@ async fn reload(
 ) -> Result<Json<ReloadDto>, (StatusCode, Json<ErrorDto>)> {
     let mut guard = state.inner.lock().await;
     guard.reload_inner().await.map(Json).map_err(error_response)
+}
+
+async fn spawn_agent_handler(
+    AxumState(state): AxumState<SupervisorState>,
+    Json(body): Json<SpawnRequest>,
+) -> Result<Json<SpawnDto>, (StatusCode, Json<ErrorDto>)> {
+    let mut guard = state.inner.lock().await;
+    let max_steps = body.max_steps.unwrap_or(20).max(1).min(100);
+    guard
+        .spawn_agent(&body.domain, &body.metric, max_steps)
+        .map(Json)
+        .map_err(error_response)
 }
 
 async fn spawn_worker(

@@ -29,6 +29,9 @@ use ai::validation_harness::{
     VALIDATION_FOOTPRINT_STEP, VALIDATION_HARNESS_EXPECTED_TESTS, VALIDATION_HARNESS_STEP,
 };
 
+#[path = "../src/bin/root_validate.rs"]
+mod root_validate_bin;
+
 const EXPECTED_ROOT_VALIDATE_COMPACT_MODE_COUNT: usize = 148;
 const EXPECTED_EXTERNAL_AGENT_CLI_MODE_COUNT: usize = 153;
 
@@ -70,6 +73,7 @@ fn root_validation_runs_check_before_contract_suites() {
     assert!(steps[2].args.contains(&"--lib"));
     assert!(steps[3].args.contains(&"api_transport_contract"));
     assert!(steps[4].args.contains(&"validation_harness_contract"));
+    assert!(steps[4].args.contains(&"--test-threads=2"));
     assert_eq!(
         steps[4].expected_test_count,
         Some(VALIDATION_HARNESS_EXPECTED_TESTS)
@@ -1950,20 +1954,8 @@ fn runtime_performance_budget_smoke_exit_is_independent_of_full_root_suite() {
 }
 
 fn root_validate_compact_mode_stdout(arg: &str, expected_marker: &str) -> String {
-    let exe = env!("CARGO_BIN_EXE_root_validate");
-    let output = std::process::Command::new(exe)
-        .arg(arg)
-        .output()
-        .unwrap_or_else(|err| panic!("run root_validate {arg}: {err}"));
-
-    assert!(output.status.success(), "root_validate {arg} failed");
-    let stdout = String::from_utf8_lossy(&output.stdout).into_owned();
-    assert!(
-        stdout.contains(expected_marker),
-        "root_validate {arg} missing {expected_marker}"
-    );
-    assert!(!stdout.contains("canon_root_validation_v1"));
-    stdout
+    root_validate_bin::compact_mode_stdout_for_contract(arg, expected_marker)
+        .unwrap_or_else(|err| panic!("{err}"))
 }
 
 fn assert_stdout_contains_all(stdout: &str, expected_fragments: &[&str]) {
@@ -12168,7 +12160,7 @@ fn root_validation_pass_status_includes_runtime_performance_budget() {
         cargo_version: "cargo 1.96.0-nightly".to_owned(),
         steps: vec![StepReceipt {
             name: VALIDATION_HARNESS_STEP,
-            command: "cargo -Znext-lockfile-bump test --test validation_harness_contract --locked -- --nocapture".to_owned(),
+            command: "cargo -Znext-lockfile-bump test --test validation_harness_contract --locked -- --nocapture --test-threads=2".to_owned(),
             exit_code: Some(0),
             stdout_bytes: 428,
             stderr_bytes: 188,
@@ -12224,7 +12216,7 @@ fn root_validation_json_receipt_records_graph_cli_test_surface() {
         steps: vec![
             StepReceipt {
                 name: VALIDATION_HARNESS_STEP,
-                command: "cargo -Znext-lockfile-bump test --test validation_harness_contract --locked -- --nocapture".to_owned(),
+                command: "cargo -Znext-lockfile-bump test --test validation_harness_contract --locked -- --nocapture --test-threads=2".to_owned(),
                 exit_code: Some(0),
                 stdout_bytes: 428,
                 stderr_bytes: 188,
