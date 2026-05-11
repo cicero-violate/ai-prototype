@@ -11,13 +11,15 @@ Current date: 2026-05-10.
 - P4 graph source-of-truth integration: mostly complete for deterministic fixture/report evidence; next focus is agent-driven graph editing using Python graph analysis.
 - P5 domain intelligence layer: active. Reconnaissance found `src/domain` wired
   into `src/lib.rs` and Rust files present for `bridge.rs`, `contracts.rs`,
-  `identity.rs`, `mod.rs`, `risk.rs`, and `scoring.rs`; several planned
-  subdomain Rust files and fixture tests remain incomplete or absent.
-- Implementation update on 2026-05-10 completed Active Priorities item 4 in
-  `src/domain/contracts.rs`. Fresh reconciliation found item 5 already present
-  in local source and shows item 6 as the next incomplete task. Targeted domain contract validation passed through item 4; item 5 still needs targeted validation in the next execute turn. Full-suite
-  validation attempts were blocked by connector HTTP 502 transport failures
-  before Rust output was available, so no full-suite score increase is claimed.
+  `identity.rs`, `mod.rs`, `risk.rs`, and `scoring.rs`; planned Rust files
+  `global_intelligence.rs`, `business.rs`, `finance.rs`, and `trading.rs`
+  remain absent, and fixture tests remain incomplete.
+- Implementation step 1 on 2026-05-10 completed Active Priorities items 5 and 6
+  in `src/domain/contracts.rs`: out-of-range score rejection coverage and unsafe
+  live-effect rejection coverage. Targeted contract validation passed with 7
+  tests. Full-suite validation and graph refresh are still pending because full
+  validation attempts returned connector HTTP 502 before Rust output was
+  available, so no score increase is claimed.
 
 ## Graph Analysis Evidence
 
@@ -33,13 +35,15 @@ intents        = 2976
 node_kinds     = fn 2976, impl 1283, struct 159, enum 53, trait 1, ty_alias 1
 edge_relations = call 17393, phase 5925, similar 3174, mut 2926, use 1014, panic 212, unsafe 186, alloc 124, io 74, impl 35, provider 19
 domain_nodes   = 0
+domain_matches = runtime::reducer::raise_domain_failure only
 graph_nodes    = graph_mutation:: 81, capability:: 903, kernel:: 59
 ```
 
 Relevant interpretation: the graph snapshot is valid and rich enough for future
-graph-edit planning, but it does not yet contain `domain::` nodes. The graph was
-captured before the current uncommitted domain Rust implementation was reflected
-in graph evidence, so domain progress should not be scored as verified until
+graph-edit planning, but it does not yet contain compiled `domain::` nodes. The
+only node key containing `domain` is `runtime::reducer::raise_domain_failure`, so
+the graph currently proves an older runtime failure path rather than the P5
+domain module. Domain progress should not be scored as graph-verified until
 tests pass and graph evidence is refreshed.
 
 ## Scores
@@ -72,6 +76,14 @@ G ~= 8.14 / 10
 ```
 
 The score is not raised yet because this was a planning/scoring turn only. No new implementation validation was run after reconnaissance, and the graph still has no compiled `domain::` nodes.
+
+Planning-turn reconciliation on 2026-05-10, latest:
+
+- Required reconnaissance completed from `/workspace/ai_sandbox/canon-mini-agent/prototype/ai`; the shell wrapper accepted `cwd=.` and resolved it to the required working directory.
+- First incomplete Active Priorities item is item 6: `src/domain/contracts.rs::domain_plan_constructor_rejects_unsafe_live_effects`, covering `DomainPlan::new(...)` rejection for unsafe live-effect requests on finance research/analysis and trading simulation plan kinds.
+- `find src/domain -type f | sort` confirmed Rust files `src/domain/bridge.rs`, `src/domain/contracts.rs`, `src/domain/identity.rs`, `src/domain/mod.rs`, `src/domain/risk.rs`, and `src/domain/scoring.rs`; planned Rust files `src/domain/global_intelligence.rs`, `src/domain/business.rs`, `src/domain/finance.rs`, and `src/domain/trading.rs` remain absent.
+- Python graph analysis of `state/rustc/ai/graph.json` confirmed schema version 16, graph hash `ab2202a8d8ec371b0c462aecc41e28d059920f53e2179dd40ebb6ebb3127fc33`, 4,473 dictionary nodes, 31,082 edges, 2,976 intents, node kinds `fn 2976`, `impl 1283`, `struct 159`, `enum 53`, `trait 1`, and `ty_alias 1`, with `domain_nodes = 0` and only `runtime::reducer::raise_domain_failure` matching `domain`.
+- Commit scope for this turn remains `plan.md` and `score.md`; pre-existing implementation/runtime edits are not part of the planning commit.
 
 ## Rationale
 
@@ -138,6 +150,17 @@ Planning-turn reconciliation on 2026-05-10:
 - Python graph analysis of `state/rustc/ai/graph.json` reconfirmed schema version 16, graph hash `ab2202a8d8ec371b0c462aecc41e28d059920f53e2179dd40ebb6ebb3127fc33`, 4,473 nodes, 31,082 edges, 2,976 intents, 2,976 function nodes, 1,283 impl nodes, 159 struct nodes, 53 enum nodes, and no compiled `domain::` nodes.
 - Scores remain at `G ~= 8.14 / 10`; this was a planning/scoring turn, with no implementation validation or graph refresh performed.
 - Commit scope for this turn is limited to `plan.md` and `score.md`; pre-existing modified implementation/runtime files remain unstaged.
+
+Implementation step 1 evidence on 2026-05-10:
+
+- Completed Active Priorities item 5 in `src/domain/contracts.rs` by adding `domain_record_constructors_reject_out_of_range_scores`.
+- Completed Active Priorities item 6 in `src/domain/contracts.rs` by adding `domain_plan_constructor_rejects_unsafe_live_effects`.
+- Item 5 asserts `DomainContractError::ScoreOutOfRange { value: 1001, .. }` for every score-bearing constructor field in `DomainRiskEnvelope::new`, `DomainJudgment::new`, `DomainEval::new`, and `DomainPromotionCandidate::new`; `DomainPlan::new` has no score fields, so it is asserted on a valid no-score constructor path.
+- Item 6 asserts unsafe live-effect rejection for `DomainPlanKind::FinanceResearch`, `DomainPlanKind::FinanceAnalysisPlan`, `DomainPlanKind::TradingSimulation`, and `DomainPlanKind::TradingSimulationPlan` when external write or financial execution is requested, plus allowed-boundary cases for finance read-only and trading sandbox write.
+- Targeted validation passed after one connector retry: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test contracts::tests -- --test-threads=1` ran 7 domain contract tests successfully.
+- Full validation command attempted twice after the targeted pass: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`; both attempts returned connector HTTP 502 upstream/external service errors before full-suite Rust output was available.
+- Scores remain at `G ~= 8.14 / 10`; targeted contract evidence improved local confidence, but full-suite validation and graph refresh are still unavailable.
+- Next executable task is Active Priorities item 7: `src/domain/identity.rs` implementation of `DomainHash`, `DomainHashInput`, `canonical_json_bytes(record)`, `domain_hash_json(record)`, and `domain_hash_parts(parts)`.
 
 The next score gains should come from evidence, not optimism:
 

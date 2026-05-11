@@ -950,4 +950,250 @@ mod tests {
             Err(DomainContractError::EmptyField("policy_delta_hash"))
         );
     }
+
+    #[test]
+    fn domain_record_constructors_reject_out_of_range_scores() {
+        let envelope_score_cases = [
+            ("max_uncertainty", 1001, 700, 300),
+            ("min_confidence", 250, 1001, 300),
+            ("max_staleness", 250, 700, 1001),
+        ];
+
+        for (expected_field, max_uncertainty, min_confidence, max_staleness) in envelope_score_cases {
+            assert_eq!(
+                DomainRiskEnvelope::new(
+                    "env-out-of-range",
+                    DomainId::Business,
+                    max_uncertainty,
+                    min_confidence,
+                    max_staleness,
+                    DomainLiveEffectLevel::SandboxWrite,
+                    false,
+                    true,
+                    true,
+                ),
+                Err(DomainContractError::ScoreOutOfRange {
+                    field: expected_field,
+                    value: 1001,
+                })
+            );
+        }
+
+        let judgment_score_cases = [
+            ("opportunity_score", 1001, 200, 850, 150, 750, 900, 700),
+            ("risk_score", 800, 1001, 850, 150, 750, 900, 700),
+            ("confidence_score", 800, 200, 1001, 150, 750, 900, 700),
+            ("uncertainty_score", 800, 200, 850, 1001, 750, 900, 700),
+            ("actionability_score", 800, 200, 850, 150, 1001, 900, 700),
+            ("policy_fit_score", 800, 200, 850, 150, 750, 1001, 700),
+            ("expected_value_score", 800, 200, 850, 150, 750, 900, 1001),
+        ];
+
+        for (
+            expected_field,
+            opportunity_score,
+            risk_score,
+            confidence_score,
+            uncertainty_score,
+            actionability_score,
+            policy_fit_score,
+            expected_value_score,
+        ) in judgment_score_cases
+        {
+            assert_eq!(
+                DomainJudgment::new(
+                    "judgment-out-of-range",
+                    DomainId::Business,
+                    opportunity_score,
+                    risk_score,
+                    confidence_score,
+                    uncertainty_score,
+                    actionability_score,
+                    policy_fit_score,
+                    expected_value_score,
+                    DomainVerdict::ActBusiness,
+                    "hash:rationale",
+                ),
+                Err(DomainContractError::ScoreOutOfRange {
+                    field: expected_field,
+                    value: 1001,
+                })
+            );
+        }
+
+        let valid_plan = DomainPlan::new(
+            "plan-no-score-fields",
+            DomainId::Business,
+            "hash:judgment",
+            DomainPlanKind::BusinessWorkflowPlan,
+            DomainBridgeTarget::PlanRecord,
+            "hash:capability-set",
+            "hash:receipt-set",
+            "hash:risk-envelope",
+            "hash:success-metric",
+            "hash:rollback-or-invalidation",
+            DomainLiveEffectLevel::SandboxWrite,
+        )
+        .expect("plan constructor has no score inputs and accepts valid bounded contract fields");
+        assert_eq!(valid_plan.plan_id, "plan-no-score-fields");
+
+        let eval_score_cases = [
+            ("correctness_score", 1001, 850, 900, 700, 800),
+            ("usefulness_score", 950, 1001, 900, 700, 800),
+            ("risk_adherence_score", 950, 850, 1001, 700, 800),
+            ("roi_or_value_score", 950, 850, 900, 1001, 800),
+            ("reproducibility_score", 950, 850, 900, 700, 1001),
+        ];
+
+        for (
+            expected_field,
+            correctness_score,
+            usefulness_score,
+            risk_adherence_score,
+            roi_or_value_score,
+            reproducibility_score,
+        ) in eval_score_cases
+        {
+            assert_eq!(
+                DomainEval::new(
+                    "eval-out-of-range",
+                    DomainId::Business,
+                    "hash:plan",
+                    "hash:result",
+                    correctness_score,
+                    usefulness_score,
+                    risk_adherence_score,
+                    roi_or_value_score,
+                    reproducibility_score,
+                    true,
+                ),
+                Err(DomainContractError::ScoreOutOfRange {
+                    field: expected_field,
+                    value: 1001,
+                })
+            );
+        }
+
+        let promotion_score_cases = [
+            ("expected_gain_score", 1001, 125),
+            ("regression_risk_score", 875, 1001),
+        ];
+
+        for (expected_field, expected_gain_score, regression_risk_score) in promotion_score_cases {
+            assert_eq!(
+                DomainPromotionCandidate::new(
+                    "candidate-out-of-range",
+                    DomainId::Business,
+                    "hash:eval-set",
+                    "hash:pattern",
+                    "hash:policy-delta",
+                    expected_gain_score,
+                    regression_risk_score,
+                    DomainVerdict::ActBusiness,
+                ),
+                Err(DomainContractError::ScoreOutOfRange {
+                    field: expected_field,
+                    value: 1001,
+                })
+            );
+        }
+    }
+
+    #[test]
+    fn domain_plan_constructor_rejects_unsafe_live_effects() {
+        let unsafe_plan_cases = [
+            (
+                DomainPlanKind::FinanceResearch,
+                DomainLiveEffectLevel::ExternalWrite,
+            ),
+            (
+                DomainPlanKind::FinanceResearch,
+                DomainLiveEffectLevel::FinancialExecution,
+            ),
+            (
+                DomainPlanKind::FinanceAnalysisPlan,
+                DomainLiveEffectLevel::ExternalWrite,
+            ),
+            (
+                DomainPlanKind::FinanceAnalysisPlan,
+                DomainLiveEffectLevel::FinancialExecution,
+            ),
+            (
+                DomainPlanKind::TradingSimulation,
+                DomainLiveEffectLevel::ExternalWrite,
+            ),
+            (
+                DomainPlanKind::TradingSimulation,
+                DomainLiveEffectLevel::FinancialExecution,
+            ),
+            (
+                DomainPlanKind::TradingSimulationPlan,
+                DomainLiveEffectLevel::ExternalWrite,
+            ),
+            (
+                DomainPlanKind::TradingSimulationPlan,
+                DomainLiveEffectLevel::FinancialExecution,
+            ),
+        ];
+
+        for (plan_kind, requested_live_effect_level) in unsafe_plan_cases {
+            assert_eq!(
+                DomainPlan::new(
+                    "plan-unsafe-live-effect",
+                    DomainId::Finance,
+                    "hash:judgment",
+                    plan_kind,
+                    DomainBridgeTarget::PlanRecord,
+                    "hash:capability-set",
+                    "hash:receipt-set",
+                    "hash:risk-envelope",
+                    "hash:success-metric",
+                    "hash:rollback-or-invalidation",
+                    requested_live_effect_level,
+                ),
+                Err(DomainContractError::UnsafeLiveEffect {
+                    field: "requested_live_effect_level",
+                })
+            );
+        }
+
+        let finance_research_read_only = DomainPlan::new(
+            "plan-finance-read-only",
+            DomainId::Finance,
+            "hash:judgment",
+            DomainPlanKind::FinanceResearch,
+            DomainBridgeTarget::PlanRecord,
+            "hash:capability-set",
+            "hash:receipt-set",
+            "hash:risk-envelope",
+            "hash:success-metric",
+            "hash:rollback-or-invalidation",
+            DomainLiveEffectLevel::ReadOnly,
+        )
+        .expect("finance research permits read-only analysis");
+        assert_eq!(
+            finance_research_read_only.requested_live_effect_level,
+            DomainLiveEffectLevel::ReadOnly
+        );
+
+        let trading_simulation_sandbox = DomainPlan::new(
+            "plan-trading-sandbox",
+            DomainId::TradingSandbox,
+            "hash:judgment",
+            DomainPlanKind::TradingSimulation,
+            DomainBridgeTarget::PlanRecord,
+            "hash:capability-set",
+            "hash:receipt-set",
+            "hash:risk-envelope",
+            "hash:success-metric",
+            "hash:rollback-or-invalidation",
+            DomainLiveEffectLevel::SandboxWrite,
+        )
+        .expect("trading simulation permits sandbox writes only");
+        assert_eq!(
+            trading_simulation_sandbox.requested_live_effect_level,
+            DomainLiveEffectLevel::SandboxWrite
+        );
+    }
+
 }

@@ -33,11 +33,11 @@ objective or world signal
 - P2 agent loop reliability: complete.
 - P3 runtime and receipt correctness: complete for current scope.
 - P4 graph source-of-truth integration: mostly complete for deterministic fixture/report evidence.
-- P5 domain intelligence layer: documentation exists in `src/domain`; compiled Rust records are not implemented yet.
+- P5 domain intelligence layer: active. `src/domain` contains compiled Rust modules for the shared contract/identity/scoring/risk/bridge surface, but subdomain Rust modules, fixture contracts, full validation, and graph refresh remain incomplete.
 
 ## Active Priorities
 
-First incomplete item after 2026-05-10 planning reconnaissance: Active Priorities item 6, `src/domain/contracts.rs` unit test `domain_plan_constructor_rejects_unsafe_live_effects`, covering unsafe live-effect requests for `DomainPlan::new(...)` with `DomainPlanKind::FinanceResearch`, `DomainPlanKind::FinanceAnalysisPlan`, `DomainPlanKind::TradingSimulation`, `DomainPlanKind::TradingSimulationPlan`, and `DomainLiveEffectLevel::{ExternalWrite,FinancialExecution}`. Items 1 through 5 are complete in local source; item 5 still needs targeted validation in the next execute turn because this planning turn did not run implementation tests. `find src/domain -type f | sort` confirms compiled Rust files currently exist for `bridge.rs`, `contracts.rs`, `identity.rs`, `mod.rs`, `risk.rs`, and `scoring.rs`; design-note Markdown files remain for business, contracts, finance, global intelligence, integration, roadmap, scoring, and trading. Planned Rust files `src/domain/global_intelligence.rs`, `src/domain/business.rs`, `src/domain/finance.rs`, and `src/domain/trading.rs` are absent. Python graph inspection of `state/rustc/ai/graph.json` shows schema version 16, graph hash `ab2202a8d8ec371b0c462aecc41e28d059920f53e2179dd40ebb6ebb3127fc33`, 4,473 nodes, 31,082 edges, 2,976 intents, node kinds led by 2,976 functions, 1,283 impls, 159 structs, and 53 enums, and 0 compiled `domain::` nodes; graph refresh must wait until domain code and tests are complete.
+First incomplete item after implementation step 1 on 2026-05-10: Active Priorities item 7, `src/domain/identity.rs` implementation of `DomainHash`, `DomainHashInput`, `canonical_json_bytes(record)`, `domain_hash_json(record)`, and `domain_hash_parts(parts)`. Items 1 through 6 are complete in local source. Targeted validation passed for 7 domain contract tests after one connector retry; full-suite validation attempts were blocked by connector HTTP 502 before Rust output was available. `find src/domain -type f | sort` confirms compiled Rust files currently exist for `bridge.rs`, `contracts.rs`, `identity.rs`, `mod.rs`, `risk.rs`, and `scoring.rs`; design-note Markdown files remain for business, contracts, finance, global intelligence, integration, roadmap, scoring, and trading. Planned Rust files `src/domain/global_intelligence.rs`, `src/domain/business.rs`, `src/domain/finance.rs`, and `src/domain/trading.rs` are absent. Python graph inspection of `state/rustc/ai/graph.json` shows schema version 16, graph hash `ab2202a8d8ec371b0c462aecc41e28d059920f53e2179dd40ebb6ebb3127fc33`, 4,473 dictionary nodes, 31,082 edges, 2,976 intents, node kinds led by 2,976 functions, 1,283 impls, 159 structs, and 53 enums, and 0 compiled `domain::` nodes. The only node key containing `domain` is `runtime::reducer::raise_domain_failure`; graph refresh must wait until domain code and tests are complete.
 
 Ordered execute-turn checklist, one file or one test per item:
 
@@ -50,8 +50,9 @@ Ordered execute-turn checklist, one file or one test per item:
 4. [x] `src/domain/contracts.rs`: add unit test `domain_record_constructors_reject_missing_hashes` covering required hash/provenance inputs to `DomainRiskEnvelope::new`, `DomainJudgment::new`, `DomainPlan::new`, `DomainEval::new`, and `DomainPromotionCandidate::new`.
    - Completed 2026-05-10: added missing/blank hash and provenance rejection coverage for risk envelope id validation, judgment rationale hash, all plan provenance/receipt/risk/success/rollback hashes, eval plan/result hashes, and promotion candidate eval-set/pattern/policy-delta hashes. Targeted validation passed: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test contracts::tests -- --test-threads=1` ran 5 domain contract tests successfully.
 5. [x] `src/domain/contracts.rs`: add unit test `domain_record_constructors_reject_out_of_range_scores` covering all `0..=1000` score/risk inputs in `DomainRiskEnvelope::new`, `DomainJudgment::new`, `DomainPlan::new`, `DomainEval::new`, and `DomainPromotionCandidate::new`.
-   - Completed in local source before this planning reconciliation: `domain_record_constructors_reject_out_of_range_scores` now covers `DomainRiskEnvelope::new(...)` fields `max_uncertainty`, `min_confidence`, and `max_staleness`; `DomainJudgment::new(...)` fields `opportunity_score`, `risk_score`, `confidence_score`, `uncertainty_score`, `actionability_score`, `policy_fit_score`, and `expected_value_score`; `DomainEval::new(...)` fields `correctness_score`, `usefulness_score`, `risk_adherence_score`, `roi_or_value_score`, and `reproducibility_score`; and `DomainPromotionCandidate::new(...)` fields `expected_gain_score` and `regression_risk_score`. `DomainPlan::new(...)` has no score fields and is asserted on a valid bounded contract path.
-6. [ ] `src/domain/contracts.rs`: add unit test `domain_plan_constructor_rejects_unsafe_live_effects` covering `DomainPlan::new(...)` with `DomainPlanKind::FinanceResearch`, `DomainPlanKind::FinanceAnalysisPlan`, `DomainPlanKind::TradingSimulation`, `DomainPlanKind::TradingSimulationPlan`, `DomainLiveEffectLevel::ExternalWrite`, and `DomainLiveEffectLevel::FinancialExecution`.
+   - Completed 2026-05-10: `domain_record_constructors_reject_out_of_range_scores` covers `DomainRiskEnvelope::new(...)` fields `max_uncertainty`, `min_confidence`, and `max_staleness`; `DomainJudgment::new(...)` fields `opportunity_score`, `risk_score`, `confidence_score`, `uncertainty_score`, `actionability_score`, `policy_fit_score`, and `expected_value_score`; `DomainEval::new(...)` fields `correctness_score`, `usefulness_score`, `risk_adherence_score`, `roi_or_value_score`, and `reproducibility_score`; and `DomainPromotionCandidate::new(...)` fields `expected_gain_score` and `regression_risk_score`. `DomainPlan::new(...)` has no score fields and is asserted on a valid bounded contract path. Targeted validation passed with item 6: `cargo test contracts::tests -- --test-threads=1` ran 7 domain contract tests successfully.
+6. [x] `src/domain/contracts.rs`: add unit test `domain_plan_constructor_rejects_unsafe_live_effects` covering `DomainPlan::new(...)` with `DomainPlanKind::FinanceResearch`, `DomainPlanKind::FinanceAnalysisPlan`, `DomainPlanKind::TradingSimulation`, `DomainPlanKind::TradingSimulationPlan`, `DomainLiveEffectLevel::ExternalWrite`, and `DomainLiveEffectLevel::FinancialExecution`.
+   - Completed 2026-05-10: added rejection coverage for finance research/analysis plans requesting external write or financial execution, and trading simulation plans requesting external write or financial execution; added allowed-boundary assertions for finance read-only and trading sandbox write. Targeted validation passed: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test contracts::tests -- --test-threads=1` ran 7 domain contract tests successfully.
 7. [ ] `src/domain/identity.rs`: replace `stable_domain_id(parts)` or extend it with `DomainHash`, `DomainHashInput`, `canonical_json_bytes(record)`, `domain_hash_json(record)`, and `domain_hash_parts(parts)`.
 8. [ ] `src/domain/identity.rs`: add unit test `domain_hash_is_stable`.
 9. [ ] `src/domain/identity.rs`: add unit test `domain_hash_changes_when_material_field_changes`.
@@ -99,19 +100,24 @@ Ordered execute-turn checklist, one file or one test per item:
 
 ## Domain Implementation Target
 
-The domain directory currently contains specifications and a single Rust sketch:
+The domain directory currently contains specifications plus the first compiled Rust modules:
 
 ```text
 src/domain/
   README.md
+  bridge.rs
   business.md
+  contracts.rs
   contracts.md
   finance.md
   global_intelligence.md
+  identity.rs
   integration.md
   mod.rs
+  risk.rs
   roadmap.md
   scoring.md
+  scoring.rs
   trading.md
 ```
 
