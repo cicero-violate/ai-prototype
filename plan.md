@@ -93,7 +93,7 @@ objective or world signal
 
 ## Active Priorities
 
-Reconnaissance on 2026-05-11 reconfirmed that `src/domain/identity.rs::DomainHashInput<'a>`, `src/domain/identity.rs::canonical_json_bytes(record)`, `src/domain/identity.rs::domain_hash_json(record)`, `src/domain/identity.rs::domain_hash_parts(parts)`, `src/domain/identity.rs::domain_hash_is_stable`, `src/domain/identity.rs::domain_hash_changes_when_material_field_changes`, `src/domain/identity.rs::domain_hash_changes_when_schema_version_changes`, `src/domain/scoring.rs` score-input breakdown and verdict helpers, all explicit scoring verdict threshold tests through `src/domain/scoring.rs::tests::verdict_block_thresholds`, and `src/domain/risk.rs` risk-envelope API/tests through `src/domain/risk.rs::tests::risk_allows_verified_business_plan_with_rollback_and_invalidation` are already implemented in local source and have passing targeted validation. Planning reconnaissance also inspected `src/domain/scoring.rs`, `src/domain/risk.rs`, `src/domain/bridge.rs`, `src/domain/contracts.rs`, all `tests/fixtures/domain/*.json` fixture artifacts, `tests/test_domain_fixture_contract.py`, and `state/rustc/ai/graph.json`. Full-suite validation is tracked separately as the validation blocker item below. Execute turns should pick up exactly one unchecked implementation item at a time; the first incomplete implementation item is item 22, `src/domain/bridge.rs` descriptor-only bridge API.
+Reconnaissance on 2026-05-11 reconfirmed that `src/domain/identity.rs::DomainHashInput<'a>`, `src/domain/identity.rs::canonical_json_bytes(record)`, `src/domain/identity.rs::domain_hash_json(record)`, `src/domain/identity.rs::domain_hash_parts(parts)`, `src/domain/identity.rs::domain_hash_is_stable`, `src/domain/identity.rs::domain_hash_changes_when_material_field_changes`, `src/domain/identity.rs::domain_hash_changes_when_schema_version_changes`, `src/domain/scoring.rs` score-input breakdown and verdict helpers, all explicit scoring verdict threshold tests through `src/domain/scoring.rs::tests::verdict_block_thresholds`, `src/domain/risk.rs` risk-envelope API/tests through `src/domain/risk.rs::tests::risk_allows_verified_business_plan_with_rollback_and_invalidation`, and `src/domain/bridge.rs` descriptor-only bridge API/tests through `src/domain/bridge.rs::tests::bridge_never_targets_live_trading_execution` are already implemented in local source and have passing targeted validation. Planning reconnaissance also inspected `src/domain/global_intelligence.rs`, `src/domain/mod.rs`, `src/domain/scoring.rs`, `src/domain/risk.rs`, `src/domain/bridge.rs`, `src/domain/contracts.rs`, all `tests/fixtures/domain/*.json` fixture artifacts, `tests/test_domain_fixture_contract.py`, and `state/rustc/ai/graph.json`. `src/domain/global_intelligence.rs` already exists with tests, but those tests ran 0 cases because `src/domain/mod.rs` does not declare the module. Full-suite validation is tracked separately as the validation blocker item below. Execute turns should pick up exactly one unchecked implementation item at a time; the first incomplete implementation item is now item 25, `src/domain/mod.rs` declaration of `global_intelligence` to capture compile evidence for the existing module.
 
 Current source inventory from `find src/domain -type f | sort`:
 
@@ -202,21 +202,21 @@ Ordered execute-turn checklist, one file or one test per item. Implementation it
    - Scope: `src/domain/risk.rs` test module only.
    - Done when: a verified business workflow proposal with rollback and invalidation evidence passes.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test risk::tests::risk_allows_verified_business_plan_with_rollback_and_invalidation -- --test-threads=1` passed on 2026-05-11 after one connector HTTP 502 retry; broader `cargo test risk::tests -- --test-threads=1` also passed with 4 risk tests.
-22. [ ] `src/domain/bridge.rs`: implement `DomainBridgeDescriptor`, `bridge_target_for_signal(...)`, `bridge_target_for_context(...)`, `bridge_target_for_judgment(...)`, `bridge_target_for_plan(...)`, and `bridge_target_for_eval(...)` as descriptor-only functions with no state, command-ledger, runtime, network, process, or TLog mutation authority.
+22. [x] `src/domain/bridge.rs`: implement `DomainBridgeDescriptor`, `bridge_target_for_signal(...)`, `bridge_target_for_context(...)`, `bridge_target_for_judgment(...)`, `bridge_target_for_plan(...)`, and `bridge_target_for_eval(...)` as descriptor-only functions with no state, command-ledger, runtime, network, process, or TLog mutation authority.
    - Scope: `src/domain/bridge.rs` only.
    - Done when: every record family maps to a typed descriptor and the module remains pure data mapping.
-   - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test bridge::tests -- --test-threads=1`.
-23. [ ] `src/domain/bridge.rs`: add unit test `bridge_maps_each_domain_record_family`.
+   - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test bridge::tests -- --test-threads=1` passed on 2026-05-11 after one connector HTTP 502 retry; broader full-suite validation remained blocked by connector HTTP 502 before Rust output and is tracked by item 47.
+23. [x] `src/domain/bridge.rs`: add unit test `bridge_maps_each_domain_record_family`.
    - Scope: `src/domain/bridge.rs` test module only.
    - Done when: signal, context, judgment, plan, and eval record families each produce expected descriptors.
-   - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test bridge::tests::bridge_maps_each_domain_record_family -- --test-threads=1`.
-24. [ ] `src/domain/bridge.rs`: add unit test `bridge_never_targets_live_trading_execution`.
+   - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test bridge::tests::bridge_maps_each_domain_record_family -- --test-threads=1` passed on 2026-05-11 after one connector HTTP 502 retry; broader `cargo test bridge::tests -- --test-threads=1` also passed with 2 bridge tests. Full-suite validation remained blocked by connector HTTP 502 before Rust output and is tracked by item 47.
+24. [x] `src/domain/bridge.rs`: add unit test `bridge_never_targets_live_trading_execution`.
    - Scope: `src/domain/bridge.rs` test module only.
    - Done when: trading descriptors route to simulation/planning or blocked targets, never live execution.
-   - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test bridge::tests::bridge_never_targets_live_trading_execution -- --test-threads=1`.
-25. [ ] `src/domain/global_intelligence.rs`: create Rust module with `SignalClass`, `GlobalSignalProfile`, `stale_for_horizon(...)`, and `actionability_hint(...)` depending only on shared domain contracts.
-   - Scope: create `src/domain/global_intelligence.rs` only.
-   - Done when: the file compiles as a pure deterministic domain module.
+   - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test bridge::tests::bridge_never_targets_live_trading_execution -- --test-threads=1` passed on 2026-05-11 with 1 bridge test; broader `cargo test bridge::tests -- --test-threads=1` passed with 3 bridge tests. Full-suite validation remained blocked by connector HTTP 502 before Rust output and is tracked by item 47.
+25. [ ] `src/domain/mod.rs`: declare `global_intelligence` and re-export `SignalClass`, `GlobalSignalProfile`, `stale_for_horizon(...)`, and `actionability_hint(...)` from the existing `src/domain/global_intelligence.rs` module without declaring `business`, `finance`, or `trading` yet.
+   - Scope: `src/domain/mod.rs` only.
+   - Done when: `src/domain/global_intelligence.rs` compiles through the public domain module surface and its existing tests are discoverable.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test global_intelligence::tests -- --test-threads=1`.
 26. [ ] `src/domain/global_intelligence.rs`: add unit test `global_signal_profile_staleness_is_deterministic`.
    - Scope: `src/domain/global_intelligence.rs` test module only.
@@ -258,7 +258,7 @@ Ordered execute-turn checklist, one file or one test per item. Implementation it
    - Scope: `src/domain/trading.rs` test module only.
    - Done when: live execution requests are rejected by `enforce_sandbox_only(...)`.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test trading::tests::trading_simulation_plan_rejects_live_execution -- --test-threads=1`.
-36. [ ] `src/domain/mod.rs`: declare `global_intelligence`, `business`, `finance`, and `trading` after their Rust files compile, and keep module docs explicit that domain code has no I/O, process, network, runtime, command-ledger, or TLog mutation authority.
+36. [ ] `src/domain/mod.rs`: declare `business`, `finance`, and `trading` after their Rust files compile, and keep module docs explicit that domain code has no I/O, process, network, runtime, command-ledger, or TLog mutation authority.
    - Scope: `src/domain/mod.rs` only.
    - Done when: all domain Rust modules are declared and module docs preserve the safety boundary.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test domain:: -- --test-threads=1`.
@@ -302,7 +302,7 @@ Ordered execute-turn checklist, one file or one test per item. Implementation it
    - Scope: `tests/test_domain_fixture_contract.py` only.
    - Done when: the test validates all five domain JSON fixtures and emits clear field-level failures.
    - Validation: `python tests/test_domain_fixture_contract.py`.
-47. [ ] Validation blocker / full-suite gate: run `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets` and record the result in `status.md` and `score.md` if score rationale changes. This remains unchecked until full-suite Rust output is available and green; connector HTTP 502 transport failures should be documented here without causing completed implementation items to remain unchecked. Latest attempt on 2026-05-10 after validating `src/domain/scoring.rs` item 11 returned connector HTTP 502 twice before Rust output.
+47. [ ] Validation blocker / full-suite gate: run `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets` and record the result in `status.md` and `score.md` if score rationale changes. This remains unchecked until full-suite Rust output is available and green; connector HTTP 502 transport failures should be documented here without causing completed implementation items to remain unchecked. Latest attempt on 2026-05-11 after creating `src/domain/global_intelligence.rs` item 25 returned connector HTTP 502 before Rust output.
    - Scope: full Rust workspace validation only.
    - Done when: full-suite Rust output is captured and all tests pass.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.

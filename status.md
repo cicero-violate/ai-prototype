@@ -48,13 +48,53 @@ Current date: 2026-05-11.
 - P3 runtime and receipt correctness: complete for current scope.
 - P4 graph source-of-truth integration: mostly complete for deterministic fixture/report evidence; agent-driven graph editing remains intentionally deferred until P5 domain surfaces are validated.
 - P5 domain intelligence layer: active. `src/domain/contracts.rs` constructor and invariant tests through unsafe live-effect rejection are complete in local source, with prior targeted validation passing 7 contract tests.
-- First incomplete Active Priorities item after implementation step 5 on 2026-05-11: `src/domain/bridge.rs` descriptor-only bridge API item 22.
+- First incomplete Active Priorities item after planning reconciliation on 2026-05-11: `src/domain/mod.rs` item 25 should declare the existing `src/domain/global_intelligence.rs` module and re-export its pure helpers so compile evidence can be captured before continuing to business/finance/trading modules.
 - `src/domain/identity.rs` currently contains `DomainHash`, `DomainHashInput<'a>`, `canonical_json_bytes(record)`, `domain_hash_json(record)`, `domain_hash_parts(parts)`, `stable_domain_id(parts)`, and six passing targeted identity tests through `domain_hash_changes_when_schema_version_changes`.
 - `src/domain/scoring.rs` currently contains validated `BoundedScore` helpers, score-input breakdown helpers, conservative `verdict_for_scores(...)`, and passing `verdict_ignore_thresholds`, `verdict_watch_thresholds`, `verdict_research_thresholds`, `verdict_act_business_thresholds`, `verdict_act_finance_research_thresholds`, `verdict_simulate_trading_thresholds`, and `verdict_block_thresholds`; explicit verdict threshold tests are complete for the current scoring scope.
-- Current source inventory confirms Rust files exist for `src/domain/bridge.rs`, `src/domain/contracts.rs`, `src/domain/identity.rs`, `src/domain/mod.rs`, `src/domain/risk.rs`, and `src/domain/scoring.rs`; `src/domain/risk.rs` now includes `RiskEnvelopeViolation`, `check_risk_envelope(...)`, and passing `risk_blocks_live_trading`, `risk_blocks_finance_execution`, and `risk_allows_verified_business_plan_with_rollback_and_invalidation`; planned Rust files `src/domain/global_intelligence.rs`, `src/domain/business.rs`, `src/domain/finance.rs`, and `src/domain/trading.rs` remain absent.
+- Current source inventory confirms Rust files exist for `src/domain/bridge.rs`, `src/domain/contracts.rs`, `src/domain/global_intelligence.rs`, `src/domain/identity.rs`, `src/domain/mod.rs`, `src/domain/risk.rs`, and `src/domain/scoring.rs`; `src/domain/risk.rs` now includes `RiskEnvelopeViolation`, `check_risk_envelope(...)`, and passing `risk_blocks_live_trading`, `risk_blocks_finance_execution`, and `risk_allows_verified_business_plan_with_rollback_and_invalidation`; `src/domain/bridge.rs` now includes `DomainBridgeDescriptor` plus descriptor-only signal/context/judgment/plan/eval mapping functions with passing targeted bridge validation, passing named record-family descriptor validation, and passing no-live-trading bridge descriptor validation; `src/domain/global_intelligence.rs` exists locally with `SignalClass`, `GlobalSignalProfile`, `stale_for_horizon(...)`, and `actionability_hint(...)`, but compile evidence is pending because module declaration is deferred to item 36; planned Rust files `src/domain/business.rs`, `src/domain/finance.rs`, and `src/domain/trading.rs` remain absent.
 - Domain fixture JSON files already exist under `tests/fixtures/domain/` for global signal, business workflow opportunity, finance hypothesis research, trading simulation sandbox, and trading live blocked cases; `tests/test_domain_fixture_contract.py` exists but fixture-validation checklist item 46 remains unchecked until refreshed validation is recorded.
 
 ## Validation Ledger
+
+### 2026-05-11 — planning reconciliation for global_intelligence compile evidence
+
+- Scope: `plan.md`, `status.md`, `src/domain/mod.rs`, `src/domain/global_intelligence.rs`, `tests/fixtures/domain/*.json`, `tests/test_domain_fixture_contract.py`, and `state/rustc/ai/graph.json`.
+- Command/check: read planning, status, and score files; inspected the Active Priorities checklist from item 25 onward; inspected `src/domain/mod.rs`, `src/domain/global_intelligence.rs`, all five domain fixture JSON artifacts, `tests/test_domain_fixture_contract.py`, `state/rustc/ai/graph.json`, and working-tree status.
+- Result: informational.
+- Evidence: `src/domain/global_intelligence.rs` exists with `SignalClass`, `GlobalSignalProfile`, `stale_for_horizon(...)`, `actionability_hint(...)`, and two tests, but the prior targeted command ran 0 tests because `src/domain/mod.rs` did not declare the module. Graph evidence remains schema version 16 with graph hash `ab2202a8d8ec371b0c462aecc41e28d059920f53e2179dd40ebb6ebb3127fc33`, 4,473 nodes, 31,082 edges, 2,976 intents, and one unrelated `domain` hit, `runtime::reducer::raise_domain_failure`. Domain fixtures and `tests/test_domain_fixture_contract.py` are present and unchanged.
+- Next action: implement Active Priorities item 25 by editing only `src/domain/mod.rs`, then validate with `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test global_intelligence::tests -- --test-threads=1`.
+
+### 2026-05-11 — implementation step 3 global_intelligence module creation
+
+- Scope: `src/domain/global_intelligence.rs` and Active Priorities item 25.
+- Command/check: targeted command `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test global_intelligence::tests -- --test-threads=1`; full-suite gate `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
+- Result: implementation file exists locally; targeted command was inconclusive; full-suite gate blocked.
+- Evidence: `src/domain/global_intelligence.rs` contains pure deterministic `SignalClass`, `GlobalSignalProfile`, `GlobalSignalProfile::from_signal(...)`, `stale_for_horizon(...)`, and `actionability_hint(...)` helpers depending only on shared domain contracts. The targeted command completed but ran 0 tests because `src/domain/global_intelligence.rs` is not declared in `src/domain/mod.rs`; item 36 intentionally owns module declaration after all subdomain files compile. The full-suite gate returned connector HTTP 502 before Rust output; no product or Rust test failure was observed.
+- Next action: keep item 25 unchecked until compile evidence is captured without exceeding its scope, or advance item 36 after remaining subdomain module files exist.
+
+### 2026-05-11 — implementation step 1 bridge_never_targets_live_trading_execution
+
+- Scope: `src/domain/bridge.rs` unit test `bridge_never_targets_live_trading_execution` and Active Priorities item 24.
+- Command/check: targeted bridge test `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test bridge::tests::bridge_never_targets_live_trading_execution -- --test-threads=1`; broader bridge check `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test bridge::tests -- --test-threads=1`; full-suite gate `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
+- Result: targeted and broader bridge checks passed; full-suite gate blocked.
+- Evidence: `bridge_never_targets_live_trading_execution` asserts trading sandbox judgment and plan descriptors route to `PlanRecord` with `TradingSimulationPlan`, blocked trading judgment routes to `Blocked`, and none use live-trading, financial-execution, brokerage, execution-record, or brokerage-receipt capability/receipt names. Targeted validation ran 1 bridge test successfully with 0 failures. Broader bridge validation ran 3 bridge tests successfully with 0 failures. Full-suite validation returned connector HTTP 502 before Rust output; no product or Rust test failure was observed.
+- Next action: do not commit this implementation turn; retry full-suite validation when connector transport is healthy, then commit if green.
+
+### 2026-05-11 — implementation step 2 bridge_maps_each_domain_record_family
+
+- Scope: `src/domain/bridge.rs` unit test `bridge_maps_each_domain_record_family` and Active Priorities item 23.
+- Command/check: targeted bridge test `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test bridge::tests::bridge_maps_each_domain_record_family -- --test-threads=1`; broader bridge check `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test bridge::tests -- --test-threads=1`; full-suite gate `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
+- Result: targeted and broader bridge checks passed; full-suite gate blocked.
+- Evidence: renamed and strengthened the descriptor test so signal, context, judgment, plan, and eval records each assert record family, domain id, bridge target, capability family, required receipt families, and plan-kind expectations. First targeted attempt returned connector HTTP 502 before Rust output; retry ran 1 targeted bridge test successfully with 0 failures. Broader bridge validation ran 2 bridge tests successfully with 0 failures. Both full-suite attempts returned connector HTTP 502 before Rust output; no product or Rust test failure was observed.
+- Next action: do not commit this implementation turn; retry full-suite validation when connector transport is healthy, then commit if green.
+
+### 2026-05-11 — implementation step 1 bridge descriptor API
+
+- Scope: `src/domain/bridge.rs` `DomainBridgeDescriptor`, `bridge_target_for_signal(...)`, `bridge_target_for_context(...)`, `bridge_target_for_judgment(...)`, `bridge_target_for_plan(...)`, `bridge_target_for_eval(...)`, and Active Priorities item 22.
+- Command/check: targeted bridge check `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test bridge::tests -- --test-threads=1`; broader full-suite gate `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
+- Result: targeted passed; broader full-suite gate blocked.
+- Evidence: added descriptor-only bridge records with static receipt-family labels for observation, context, judgment, planning, evaluation, policy promotion, and blocked outcomes; added `descriptor_functions_map_record_families_without_effect_targets`. First targeted validation attempt returned connector HTTP 502 before Rust output; retry ran 2 bridge tests successfully with 0 failures. Both full-suite attempts returned connector HTTP 502 before Rust output; no product or Rust test failure was observed.
+- Next action: do not commit this implementation turn; retry full-suite validation when connector transport is healthy, then commit if green.
 
 ### 2026-05-11 — planning contract validation after bridge planning
 
