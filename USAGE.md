@@ -2,11 +2,11 @@
 
 ## Binaries
 
-| Binary | Role |
-|---|---|
+| Binary       | Role                                                              |
+|--------------+-------------------------------------------------------------------|
 | `supervisor` | HTTP server that manages the TLog worker and spawns agent threads |
-| `worker` | TLog HTTP server — records evidence, owns runtime state |
-| `agent` | AI loop driver — reads GOAL.md, calls MCP tools, submits evidence |
+| `worker`     | TLog HTTP server — records evidence, owns runtime state           |
+| `agent`      | AI loop driver — reads GOAL.md, calls MCP tools, submits evidence |
 
 All three are built with:
 
