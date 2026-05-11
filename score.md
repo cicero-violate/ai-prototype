@@ -14,8 +14,9 @@ Current date: 2026-05-10.
   `identity.rs`, `mod.rs`, `risk.rs`, and `scoring.rs`; several planned
   subdomain Rust files and fixture tests remain incomplete or absent.
 - Planning update on 2026-05-10 sharpened Active Priorities into one-file or
-  one-test execution items. No implementation validation was run in this
-  planning turn, and no score increase is claimed.
+  one-test execution items. Fresh reconciliation after commit `1fe0a59` shows
+  item 3 complete and item 4 as the next incomplete task. No implementation
+  validation was run in this planning turn, and no score increase is claimed.
 
 ## Graph Analysis Evidence
 
@@ -100,7 +101,7 @@ Implementation step 2 evidence on 2026-05-10:
 Planning-turn update on 2026-05-10 after fresh reconnaissance:
 
 - Required reconnaissance completed from `/workspace/ai_sandbox/canon-mini-agent/prototype/ai`.
-- First incomplete Active Priorities item is item 3: `src/domain/contracts.rs` unit test `domain_record_constructors_validate_invariants`, covering success paths for `DomainRiskEnvelope::new`, `DomainJudgment::new`, `DomainPlan::new`, `DomainEval::new`, and `DomainPromotionCandidate::new`.
+- First incomplete Active Priorities item is item 4: `src/domain/contracts.rs` unit test `domain_record_constructors_reject_missing_hashes`, covering required hash/provenance inputs to `DomainRiskEnvelope::new`, `DomainJudgment::new`, `DomainPlan::new`, `DomainEval::new`, and `DomainPromotionCandidate::new`.
 - `find src/domain -type f | sort` confirmed Rust files `src/domain/bridge.rs`, `src/domain/contracts.rs`, `src/domain/identity.rs`, `src/domain/mod.rs`, `src/domain/risk.rs`, and `src/domain/scoring.rs`; planned Rust files `src/domain/global_intelligence.rs`, `src/domain/business.rs`, `src/domain/finance.rs`, and `src/domain/trading.rs` remain absent.
 - Python analysis of `state/rustc/ai/graph.json` confirmed schema version 16, graph hash `ab2202a8d8ec371b0c462aecc41e28d059920f53e2179dd40ebb6ebb3127fc33`, 4,473 nodes, 31,082 edges, 2,976 intents, 2,976 function nodes, 1,283 impl nodes, 159 struct nodes, 53 enum nodes, and no compiled `domain::` nodes. The only node containing `domain` is `runtime::reducer::raise_domain_failure`, so graph evidence does not yet prove the P5 domain module.
 - Active Priorities were rewritten into concrete file-level and test-level tasks that execute turns can pick up one at a time.
