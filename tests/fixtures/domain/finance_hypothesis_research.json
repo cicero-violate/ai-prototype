@@ -38,5 +38,6 @@
     "expected_result": "pass"
   },
   "expected_bridge_target": "PlanRecord",
-  "expected_eval_behavior": "verify_claims_sources_risk_bounds_and_invalidation"
+  "expected_eval_behavior": "verify_claims_sources_risk_bounds_and_invalidation",
+  "expected_risk_result": "pass"
 }

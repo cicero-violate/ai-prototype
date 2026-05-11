@@ -4,6 +4,9 @@ use ai::domain::contracts::{
     DomainSourceKind, DomainVerdict, DOMAIN_SCHEMA_VERSION,
 };
 use ai::domain::identity::domain_hash_json;
+use ai::domain::{
+    actionability_score, bridge_target_for_verdict, domain_value_score, DomainScoreInputs, Score,
+};
 use serde::Deserialize;
 use serde_json::json;
 
@@ -160,6 +163,20 @@ fn assert_bounded_scores(inputs: FixtureScoreInputs) {
     }
 }
 
+fn domain_score_inputs(inputs: FixtureScoreInputs) -> DomainScoreInputs {
+    DomainScoreInputs {
+        opportunity: Score::new(inputs.opportunity),
+        confidence: Score::new(inputs.confidence),
+        policy_fit: Score::new(inputs.policy_fit),
+        verification_readiness: Score::new(inputs.verification_readiness),
+        risk: Score::new(inputs.risk),
+        uncertainty: Score::new(inputs.uncertainty),
+        staleness_penalty: Score::new(inputs.staleness_penalty),
+        source_quality: Score::new(inputs.source_quality),
+        context_quality: Score::new(inputs.context_quality),
+    }
+}
+
 fn assert_fixture_maps_to_contract_records(fixture: DomainFixture) {
     assert_eq!(fixture.schema_version, "canon_domain_fixture_v1");
     assert_bounded_scores(fixture.score_inputs);
@@ -303,3 +320,136 @@ fn domain_identity_is_deterministic() {
         assert_ne!(domain_hash_json(&changed_record), repeated_hash);
     }
 }
+
+#[test]
+fn domain_verdicts_are_deterministic() {
+    for fixture_name in [
+        "global_signal_macro.json",
+        "business_workflow_opportunity.json",
+        "finance_hypothesis_research.json",
+        "trading_simulation_sandbox.json",
+        "trading_live_blocked.json",
+    ] {
+        let fixture = load_fixture(fixture_name);
+        let domain_id = domain_id(&fixture.domain_id);
+        let expected_verdict = verdict(&fixture.expected_verdict);
+        let expected_bridge_target = bridge_target(&fixture.expected_bridge_target);
+        let score_inputs = domain_score_inputs(fixture.score_inputs);
+
+        let domain_value = domain_value_score(score_inputs);
+        let actionability = actionability_score(domain_value, score_inputs);
+
+        assert_eq!(domain_value.get(), fixture.expected_domain_value_score);
+        assert_eq!(actionability.get(), fixture.expected_actionability_score);
+
+        let first_verdict = ai::domain::scoring::verdict_for_scores(domain_id, score_inputs);
+        assert_eq!(first_verdict, expected_verdict);
+        assert_eq!(
+            ai::domain::scoring::verdict_for_scores(domain_id, score_inputs),
+            first_verdict
+        );
+        assert_eq!(bridge_target_for_verdict(first_verdict), expected_bridge_target);
+    }
+}
+
+#[test]
+fn domain_surface_exposes_no_runtime_mutation_api() {
+    let public_surface = std::fs::read_to_string("src/domain/mod.rs").expect("domain module reads");
+    let public_non_doc_surface = public_surface
+        .lines()
+        .filter(|line| {
+            let trimmed = line.trim_start();
+            !trimmed.starts_with("//!") && !trimmed.starts_with("///") && !trimmed.starts_with("//")
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+    let domain_sources = [
+        ("src/domain/bridge.rs", std::fs::read_to_string("src/domain/bridge.rs").expect("bridge module reads")),
+        ("src/domain/business.rs", std::fs::read_to_string("src/domain/business.rs").expect("business module reads")),
+        ("src/domain/contracts.rs", std::fs::read_to_string("src/domain/contracts.rs").expect("contracts module reads")),
+        ("src/domain/finance.rs", std::fs::read_to_string("src/domain/finance.rs").expect("finance module reads")),
+        (
+            "src/domain/global_intelligence.rs",
+            std::fs::read_to_string("src/domain/global_intelligence.rs")
+                .expect("global intelligence module reads"),
+        ),
+        ("src/domain/identity.rs", std::fs::read_to_string("src/domain/identity.rs").expect("identity module reads")),
+        ("src/domain/risk.rs", std::fs::read_to_string("src/domain/risk.rs").expect("risk module reads")),
+        ("src/domain/scoring.rs", std::fs::read_to_string("src/domain/scoring.rs").expect("scoring module reads")),
+        ("src/domain/trading.rs", std::fs::read_to_string("src/domain/trading.rs").expect("trading module reads")),
+    ];
+
+    for forbidden in [
+        "pub use runtime",
+        "pub use crate::runtime",
+        "pub use crate::kernel",
+        "pub use crate::tlog",
+        "pub use crate::command",
+        "CommandEnvelope",
+        "State",
+        "Packet",
+        "GateSet",
+        "TLog",
+        "append(",
+        "std::process",
+        "std::net",
+        "TcpStream",
+        "UdpSocket",
+        "reqwest",
+        "spawn(",
+    ] {
+        assert!(
+            !public_non_doc_surface.contains(forbidden),
+            "public domain surface exposes forbidden authority token {forbidden}"
+        );
+    }
+
+    for allowed_export in [
+        "DomainBridgeTarget",
+        "DomainEval",
+        "DomainJudgment",
+        "DomainPlan",
+        "DomainRiskEnvelope",
+        "DomainSignal",
+        "bridge_target_for_verdict",
+        "default_plan_kind",
+        "finance_research_allowed",
+        "enforce_sandbox_only",
+    ] {
+        assert!(
+            public_surface.contains(allowed_export),
+            "public domain surface keeps descriptor-only export {allowed_export}"
+        );
+    }
+
+    for (path, source) in domain_sources {
+        let non_doc_source = source
+            .lines()
+            .filter(|line| {
+                let trimmed = line.trim_start();
+                !trimmed.starts_with("//!") && !trimmed.starts_with("///") && !trimmed.starts_with("//")
+            })
+            .collect::<Vec<_>>()
+            .join("\n");
+
+        for forbidden in [
+            "std::fs",
+            "std::process",
+            "std::net",
+            "TcpStream",
+            "UdpSocket",
+            "reqwest",
+            "CommandEnvelope",
+            "append(",
+            "spawn(",
+            "TLog",
+        ] {
+            assert!(
+                !non_doc_source.contains(forbidden),
+                "{path} exposes forbidden runtime mutation or external-effect token {forbidden}"
+            );
+        }
+    }
+}
+
+

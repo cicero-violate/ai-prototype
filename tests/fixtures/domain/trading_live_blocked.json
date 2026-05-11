@@ -27,7 +27,10 @@
   "expected_verdict": "Block",
   "uncertainty": {
     "score": 800,
-    "drivers": ["live-execution-requested", "sandbox-policy-violation"]
+    "drivers": [
+      "live-execution-requested",
+      "sandbox-policy-violation"
+    ]
   },
   "expected_risk_envelope": {
     "requires_verification": true,
@@ -36,5 +39,6 @@
     "expected_result": "block"
   },
   "expected_bridge_target": "Blocked",
-  "expected_eval_behavior": "reject_live_execution_and_record_blocking_reason"
+  "expected_eval_behavior": "reject_live_execution_and_record_blocking_reason",
+  "expected_risk_result": "block"
 }

@@ -37,5 +37,6 @@
     "expected_result": "pass"
   },
   "expected_bridge_target": "PlanRecord",
-  "expected_eval_behavior": "verify_time_saved_error_reduction_and_customer_feedback"
+  "expected_eval_behavior": "verify_time_saved_error_reduction_and_customer_feedback",
+  "expected_risk_result": "pass"
 }

@@ -57,6 +57,63 @@ Current date: 2026-05-11.
 
 ## Validation Ledger
 
+### 2026-05-11 — planning turn item 50 full-suite validation retry
+
+- Scope: full Rust workspace validation and Active Priorities item 50.
+- Command/check: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
+- Result: blocked by infrastructure transport.
+- Evidence: planning reconnaissance confirmed item 50 remains the first incomplete Active Priorities item after inspecting `plan.md`, `status.md`, `score.md`, domain integration tests, fixture contract tests, all five domain fixture JSON artifacts, and `state/rustc/ai/graph.json`. The full-suite retry returned connector HTTP 502 before Rust output, so no product or Rust test failure was observed. Graph evidence remains schema version 16 with graph hash `ab2202a8d8ec371b0c462aecc41e28d059920f53e2179dd40ebb6ebb3127fc33`, 4,473 nodes, 31,082 edges, 2,976 intents, and 0 compiled P5 `domain::`/`src/domain` node matches.
+- Next action: retry Active Priorities item 50 when connector transport can return full-suite Rust output; do not start graph evidence refresh until this gate is green.
+
+
+### 2026-05-11 — implementation step 1 item 50 full-suite validation gate retry
+
+- Scope: full Rust workspace validation and Active Priorities item 50.
+- Command/check: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
+- Result: blocked by infrastructure transport.
+- Evidence: the selected validation command returned connector HTTP 502 before Rust output, so no product or Rust test failure was observed. Item 50 remains unchecked; no source files were edited and no score evidence changed.
+- Next action: retry Active Priorities item 50 when connector transport can return full-suite Rust output; do not mark item 50 complete until the Rust full-suite gate is green.
+
+### 2026-05-11 — implementation step 5 item 50 full-suite validation gate
+
+- Scope: full Rust workspace validation and Active Priorities item 50.
+- Command/check: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
+- Result: blocked by infrastructure transport.
+- Evidence: the selected validation command returned connector HTTP 502 before Rust output, so no product or Rust test failure was observed. Item 50 remains unchecked; no source files were edited and no score evidence changed.
+- Next action: retry Active Priorities item 50 when connector transport can return full-suite Rust output; do not mark item 50 complete until the Rust full-suite gate is green.
+
+### 2026-05-11 — implementation step 4 item 50 full-suite validation gate
+
+- Scope: full Rust workspace validation and Active Priorities item 50.
+- Command/check: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
+- Result: blocked by infrastructure transport.
+- Evidence: the selected validation command returned connector HTTP 502 before Rust output, so no product or Rust test failure was observed. Item 50 remains unchecked; no source files were edited and no score evidence changed.
+- Next action: retry Active Priorities item 50 when connector transport can return full-suite Rust output; do not mark item 50 complete until the Rust full-suite gate is green.
+
+### 2026-05-11 — implementation step 3 item 50 full-suite validation gate
+
+- Scope: full Rust workspace validation and Active Priorities item 50.
+- Command/check: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
+- Result: blocked by infrastructure transport.
+- Evidence: the selected validation command returned connector HTTP 502 before Rust output, so no product or Rust test failure was observed. Item 50 remains unchecked; no source files were edited and no score evidence changed.
+- Next action: retry Active Priorities item 50 when connector transport can return full-suite Rust output; do not mark item 50 complete until the Rust full-suite gate is green.
+
+### 2026-05-11 — implementation step 2 item 50 full-suite validation gate
+
+- Scope: full Rust workspace validation and Active Priorities item 50.
+- Command/check: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
+- Result: blocked by infrastructure transport.
+- Evidence: the selected validation command returned connector HTTP 502 before Rust output, so no product or Rust test failure was observed. Item 50 remains unchecked; `plan.md` and `score.md` remain unchanged.
+- Next action: retry Active Priorities item 50 when connector transport can return full-suite Rust output; do not mark item 50 complete until the Rust full-suite gate is green.
+
+### 2026-05-11 — implementation step 1 item 50 full-suite validation gate
+
+- Scope: full Rust workspace validation and Active Priorities item 50.
+- Command/check: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
+- Result: blocked by infrastructure transport.
+- Evidence: the selected validation command returned connector HTTP 502 before Rust output, so no product or Rust test failure was observed. Item 50 remains unchecked and no source files were edited for this validation item.
+- Next action: retry Active Priorities item 50 when connector transport can return full-suite Rust output; do not mark item 50 complete until the Rust full-suite gate is green.
+
 ### 2026-05-11 — planning turn full-suite gate and graph-evidence reconnaissance
 
 - Scope: `plan.md`, `status.md`, `score.md`, Active Priorities item 50, `tests/test_domain_fixture_contract.py`, `tests/domain_contract.rs`, all `tests/fixtures/domain/*.json`, `state/rustc/ai/graph.json`, and `scripts/` inventory.

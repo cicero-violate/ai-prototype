@@ -39,5 +39,6 @@
     "expected_result": "pass"
   },
   "expected_bridge_target": "PlanRecord",
-  "expected_eval_behavior": "verify_backtest_receipt_drawdown_hit_rate_expectancy_and_rule_adherence"
+  "expected_eval_behavior": "verify_backtest_receipt_drawdown_hit_rate_expectancy_and_rule_adherence",
+  "expected_risk_result": "pass"
 }

@@ -37,5 +37,6 @@
     "expected_result": "pass"
   },
   "expected_bridge_target": "ObservationRecord",
-  "expected_eval_behavior": "verify_primary_source_then_contextualize"
+  "expected_eval_behavior": "verify_primary_source_then_contextualize",
+  "expected_risk_result": "pass"
 }
