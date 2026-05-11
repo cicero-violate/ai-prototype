@@ -93,7 +93,7 @@ objective or world signal
 
 ## Active Priorities
 
-Reconnaissance on 2026-05-10 found that `src/domain/identity.rs::DomainHashInput<'a>` is already implemented in local source and has passing targeted identity validation. Full-suite validation is tracked separately as the validation blocker item below. Execute turns should pick up exactly one unchecked implementation item at a time; the next implementation item is item 3.
+Reconnaissance on 2026-05-10 found that `src/domain/identity.rs::DomainHashInput<'a>` is already implemented in local source and has passing targeted identity validation. Full-suite validation is tracked separately as the validation blocker item below. Execute turns should pick up exactly one unchecked implementation item at a time; the first incomplete implementation item is item 3, `src/domain/identity.rs::canonical_json_bytes(record)`.
 
 Current source inventory from `find src/domain -type f | sort`:
 
@@ -115,7 +115,7 @@ src/domain/scoring.rs
 src/domain/trading.md
 ```
 
-Graph evidence from `state/rustc/ai/graph.json`: schema version 16, graph hash `ab2202a8d8ec371b0c462aecc41e28d059920f53e2179dd40ebb6ebb3127fc33`, 4,473 node entries, 31,082 edges, and 2,976 intents. The top-level graph keys are `edges`, `intents`, `meta`, and `nodes`; the `nodes` object is keyed by canonical symbol name. Node-kind counts are `fn 2976`, `impl 1283`, `struct 159`, `enum 53`, `trait 1`, `ty_alias 1`. No compiled `domain::` nodes are present. Broad `domain` hits are limited to agent objective/prompt/cycle names and `runtime::reducer::raise_domain_failure`, so graph evidence does not yet prove the P5 domain surface.
+Graph evidence from `state/rustc/ai/graph.json`: schema version 16, graph hash `ab2202a8d8ec371b0c462aecc41e28d059920f53e2179dd40ebb6ebb3127fc33`, receipt hash `0a44845e35b656d3d31b481b5e43c456d92994ca8e3179b0fd0f6213954cd4df`, risk hash `c28e55e09a0259a6697a67971c16be23a02b59581c77e6973b2e2a44588e665e`, 4,473 node entries, 31,082 edges, and 2,976 intents. The top-level graph keys are `edges`, `intents`, `meta`, and `nodes`; the `nodes` object is keyed by canonical symbol name. Node-kind counts are `fn 2976`, `impl 1283`, `struct 159`, `enum 53`, `trait 1`, `ty_alias 1`. No compiled `domain::` nodes are present. The only broad `domain` node hit is `runtime::reducer::raise_domain_failure`, so graph evidence does not yet prove the P5 domain surface.
 
 Ordered execute-turn checklist, one file or one test per item. Implementation items are marked complete when the source change exists and targeted validation has passed; full-suite validation and commit gating are tracked by the validation item instead of keeping completed implementation work unchecked:
 

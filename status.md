@@ -48,12 +48,20 @@ Current date: 2026-05-10.
 - P3 runtime and receipt correctness: complete for current scope.
 - P4 graph source-of-truth integration: mostly complete for deterministic fixture/report evidence; agent-driven graph editing remains intentionally deferred until P5 domain surfaces are validated.
 - P5 domain intelligence layer: active. `src/domain/contracts.rs` constructor and invariant tests through unsafe live-effect rejection are complete in local source, with prior targeted validation passing 7 contract tests.
-- First incomplete Active Priorities item after fresh reconnaissance on 2026-05-10: `src/domain/identity.rs::DomainHashInput<'a>` plus the remaining deterministic identity helpers: `canonical_json_bytes(record)`, `domain_hash_json(record)`, and `domain_hash_parts(parts)`, followed by the three identity hash tests.
+- First incomplete Active Priorities item after fresh reconnaissance on 2026-05-10: `src/domain/identity.rs::canonical_json_bytes(record: &serde_json::Value) -> Vec<u8>`.
 - Implementation step 1 status on 2026-05-10: `src/domain/identity.rs` has a local `DomainHash` newtype implementation and unit test `domain_hash_newtype_validates_prefix_and_non_empty_suffix`; prior targeted identity validation passed, but full-suite validation remains pending because repeated connector HTTP 502 errors returned before Rust output.
 - Current source inventory confirms Rust files exist for `src/domain/bridge.rs`, `src/domain/contracts.rs`, `src/domain/identity.rs`, `src/domain/mod.rs`, `src/domain/risk.rs`, and `src/domain/scoring.rs`; planned Rust files `src/domain/global_intelligence.rs`, `src/domain/business.rs`, `src/domain/finance.rs`, and `src/domain/trading.rs` remain absent.
-- This turn updated planning and scoring only. No implementation validation or graph refresh was performed, so no score increase is claimed.
+- This planning turn updated `plan.md` and `status.md` only. No implementation validation, full-suite validation, graph refresh, or score change was performed.
 
 ## Validation Ledger
+
+### 2026-05-10 — planning reconnaissance for identity canonical JSON task
+
+- Scope: `plan.md`, `status.md`, `src/domain` inventory, and `state/rustc/ai/graph.json`.
+- Command/check: read `plan.md`; read `status.md`; ran `find src/domain -type f | sort`; analyzed `state/rustc/ai/graph.json` with Python.
+- Result: informational.
+- Evidence: first incomplete Active Priorities item is item 3, `src/domain/identity.rs::canonical_json_bytes(record: &serde_json::Value) -> Vec<u8>`; source inventory still contains Rust files for bridge/contracts/identity/mod/risk/scoring and Markdown notes for business/finance/global intelligence/trading; graph schema version 16 has graph hash `ab2202a8d8ec371b0c462aecc41e28d059920f53e2179dd40ebb6ebb3127fc33`, 4,473 nodes, 31,082 edges, 2,976 intents, and no compiled `domain::` node evidence.
+- Next action: implement `src/domain/identity.rs::canonical_json_bytes(record)` and validate with the targeted identity tests.
 
 ### 2026-05-10 — agent loop reads status.md
 
@@ -95,7 +103,7 @@ edges                 = 31082
 intents               = 2976
 node_kinds            = fn 2976, impl 1283, struct 159, enum 53, trait 1, ty_alias 1
 compiled_domain_nodes = 0
-broad_domain_hits     = 19
+broad_domain_hits     = 1
 compiled_domain_name_hits = runtime::reducer::raise_domain_failure only
 ```
 
