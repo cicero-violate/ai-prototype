@@ -84,8 +84,8 @@ mod tests {
         assert_eq!(
             EDGE_RELATIONS,
             &[
-                "call", "impl", "mut", "io", "unsafe", "panic", "alloc", "use", "similar",
-                "phase", "provider",
+                "call", "impl", "mut", "io", "unsafe", "panic", "alloc", "use", "similar", "phase",
+                "provider",
             ]
         );
         assert_eq!(

@@ -1,0 +1,30 @@
+name: canon-rustc-v3 validation
+
+on:
+  push:
+    paths:
+      - "**"
+  pull_request:
+    paths:
+      - "**"
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: nightly-2026-04-30
+          components: rustc-dev,llvm-tools-preview,rustfmt
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      - name: Validate and generate reports
+        run: scripts/validate-full.sh
+      - name: Upload validation reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: canon-rustc-v3-validation-reports
+          path: validation/reports/

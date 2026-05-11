@@ -287,6 +287,7 @@ mod tests {
             source_text: None,
             sig: None,
             fields: Vec::new(),
+            invariants: Vec::new(),
         }
     }
 

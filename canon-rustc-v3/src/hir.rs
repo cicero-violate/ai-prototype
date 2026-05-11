@@ -57,6 +57,7 @@ pub fn collect_hir(tcx: TyCtxt<'_>, workspace_root: &Path) -> HirOutput {
                 source_text: None,
                 sig: None,
                 fields: vec![],
+                invariants: vec![],
             },
         );
     }
