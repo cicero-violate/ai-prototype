@@ -128,6 +128,15 @@ Implementation step 1 evidence on 2026-05-10:
 - Scores remain at `G ~= 8.14 / 10`; targeted contract evidence improved local confidence, but full-suite validation and graph refresh are still unavailable.
 - Next executable task is Active Priorities item 5: `src/domain/contracts.rs::domain_record_constructors_reject_out_of_range_scores`.
 
+Planning-turn reconciliation on 2026-05-10:
+
+- Required reconnaissance completed from the project root using `cwd=.` because the shell wrapper rejects the absolute path while resolving `.` to `/workspace/ai_sandbox/canon-mini-agent/prototype/ai`.
+- First incomplete Active Priorities item remains item 5: `src/domain/contracts.rs::domain_record_constructors_reject_out_of_range_scores`, covering out-of-range score/risk constructor inputs for `DomainRiskEnvelope::new`, `DomainJudgment::new`, `DomainPlan::new`, `DomainEval::new`, and `DomainPromotionCandidate::new`.
+- `find src/domain -type f | sort` confirmed Rust files `src/domain/bridge.rs`, `src/domain/contracts.rs`, `src/domain/identity.rs`, `src/domain/mod.rs`, `src/domain/risk.rs`, and `src/domain/scoring.rs`; planned Rust files `src/domain/global_intelligence.rs`, `src/domain/business.rs`, `src/domain/finance.rs`, and `src/domain/trading.rs` remain absent.
+- Python graph analysis of `state/rustc/ai/graph.json` reconfirmed schema version 16, graph hash `ab2202a8d8ec371b0c462aecc41e28d059920f53e2179dd40ebb6ebb3127fc33`, 4,473 nodes, 31,082 edges, 2,976 intents, 2,976 function nodes, 1,283 impl nodes, 159 struct nodes, 53 enum nodes, and no compiled `domain::` nodes.
+- Scores remain at `G ~= 8.14 / 10`; this was a planning/scoring turn, with no implementation validation or graph refresh performed.
+- Commit scope for this turn is limited to `plan.md` and `score.md`; pre-existing modified implementation/runtime files remain unstaged.
+
 The next score gains should come from evidence, not optimism:
 
 - prove agent-driven graph mutation with Python-assisted graph target selection;
