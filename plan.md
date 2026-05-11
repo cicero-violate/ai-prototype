@@ -37,66 +37,81 @@ objective or world signal
 
 ## Active Priorities
 
-First incomplete item after implementation step 1 on 2026-05-10: Active Priorities item 7, `src/domain/identity.rs` implementation of `DomainHash`, `DomainHashInput`, `canonical_json_bytes(record)`, `domain_hash_json(record)`, and `domain_hash_parts(parts)`. Items 1 through 6 are complete in local source. Targeted validation passed for 7 domain contract tests after one connector retry; full-suite validation attempts were blocked by connector HTTP 502 before Rust output was available. `find src/domain -type f | sort` confirms compiled Rust files currently exist for `bridge.rs`, `contracts.rs`, `identity.rs`, `mod.rs`, `risk.rs`, and `scoring.rs`; design-note Markdown files remain for business, contracts, finance, global intelligence, integration, roadmap, scoring, and trading. Planned Rust files `src/domain/global_intelligence.rs`, `src/domain/business.rs`, `src/domain/finance.rs`, and `src/domain/trading.rs` are absent. Python graph inspection of `state/rustc/ai/graph.json` shows meta schema version 16, graph hash `ab2202a8d8ec371b0c462aecc41e28d059920f53e2179dd40ebb6ebb3127fc33`, 4,473 dictionary nodes, 31,082 edges, 2,976 intents, node kinds led by 2,976 functions, 1,283 impls, 159 structs, and 53 enums, and 0 compiled `domain::` nodes. Broad `domain` text matches are limited to agent objective/prompt/cycle names and `runtime::reducer::raise_domain_failure`; graph refresh must wait until domain code and tests are complete.
+Reconnaissance on 2026-05-10 found the first incomplete item under this section is `src/domain/identity.rs` identity hashing. Items previously completed in `src/domain/contracts.rs` remain complete and are intentionally omitted from this active execution queue.
+
+Current source inventory from `find src/domain -type f | sort`:
+
+```text
+src/domain/bridge.rs
+src/domain/business.md
+src/domain/contracts.md
+src/domain/contracts.rs
+src/domain/finance.md
+src/domain/global_intelligence.md
+src/domain/identity.rs
+src/domain/integration.md
+src/domain/mod.rs
+src/domain/README.md
+src/domain/risk.rs
+src/domain/roadmap.md
+src/domain/scoring.md
+src/domain/scoring.rs
+src/domain/trading.md
+```
+
+Graph evidence from `state/rustc/ai/graph.json`: schema version 16, graph hash `ab2202a8d8ec371b0c462aecc41e28d059920f53e2179dd40ebb6ebb3127fc33`, 4,473 dictionary nodes, 31,082 edges, 2,976 intents, node kinds `fn 2976`, `impl 1283`, `struct 159`, `enum 53`, `trait 1`, `ty_alias 1`; no compiled `domain::` nodes are present. Broad `domain` hits are limited to agent objective/prompt/cycle names and `runtime::reducer::raise_domain_failure`.
 
 Ordered execute-turn checklist, one file or one test per item:
 
-1. [x] `src/domain/contracts.rs`: add or complete `DomainSchemaVersion`, `DomainSourceKind`, `DomainHorizon`, `DomainSignalClass`, `DomainRiskClass`, `DomainPlanKind`, and `DomainLiveEffectLevel` so names align with P5.2.
-   - Completed 2026-05-10: schema/source/horizon/signal/risk/plan/live-effect primitives derive serde traits, round-trip through JSON, and preserve live-effect safety ordering.
-2. [x] `src/domain/contracts.rs`: implement `DomainRiskEnvelope::new(...)`, `DomainJudgment::new(...)`, `DomainPlan::new(...)`, `DomainEval::new(...)`, and `DomainPromotionCandidate::new(...)` using explicit schema versions, non-empty provenance hashes, and `0..=1000` score validation.
-   - Completed 2026-05-10: added constructors for `DomainJudgment`, `DomainPlan`, `DomainEval`, and `DomainPromotionCandidate`; existing `DomainSignal::new(...)`, `DomainContext::new(...)`, and `DomainRiskEnvelope::new(...)` already validated ids, hashes, scores, schema version, and live-effect safety.
-3. [x] `src/domain/contracts.rs`: add unit test `domain_record_constructors_validate_invariants` covering success paths for `DomainRiskEnvelope::new`, `DomainJudgment::new`, `DomainPlan::new`, `DomainEval::new`, and `DomainPromotionCandidate::new`.
-   - Completed 2026-05-10: added success-path constructor invariant assertions for schema version assignment, bounded score preservation, hash/provenance preservation, bridge target storage, and safe live-effect storage.
-4. [x] `src/domain/contracts.rs`: add unit test `domain_record_constructors_reject_missing_hashes` covering required hash/provenance inputs to `DomainRiskEnvelope::new`, `DomainJudgment::new`, `DomainPlan::new`, `DomainEval::new`, and `DomainPromotionCandidate::new`.
-   - Completed 2026-05-10: added missing/blank hash and provenance rejection coverage for risk envelope id validation, judgment rationale hash, all plan provenance/receipt/risk/success/rollback hashes, eval plan/result hashes, and promotion candidate eval-set/pattern/policy-delta hashes. Targeted validation passed: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test contracts::tests -- --test-threads=1` ran 5 domain contract tests successfully.
-5. [x] `src/domain/contracts.rs`: add unit test `domain_record_constructors_reject_out_of_range_scores` covering all `0..=1000` score/risk inputs in `DomainRiskEnvelope::new`, `DomainJudgment::new`, `DomainPlan::new`, `DomainEval::new`, and `DomainPromotionCandidate::new`.
-   - Completed 2026-05-10: `domain_record_constructors_reject_out_of_range_scores` covers `DomainRiskEnvelope::new(...)` fields `max_uncertainty`, `min_confidence`, and `max_staleness`; `DomainJudgment::new(...)` fields `opportunity_score`, `risk_score`, `confidence_score`, `uncertainty_score`, `actionability_score`, `policy_fit_score`, and `expected_value_score`; `DomainEval::new(...)` fields `correctness_score`, `usefulness_score`, `risk_adherence_score`, `roi_or_value_score`, and `reproducibility_score`; and `DomainPromotionCandidate::new(...)` fields `expected_gain_score` and `regression_risk_score`. `DomainPlan::new(...)` has no score fields and is asserted on a valid bounded contract path. Targeted validation passed with item 6: `cargo test contracts::tests -- --test-threads=1` ran 7 domain contract tests successfully.
-6. [x] `src/domain/contracts.rs`: add unit test `domain_plan_constructor_rejects_unsafe_live_effects` covering `DomainPlan::new(...)` with `DomainPlanKind::FinanceResearch`, `DomainPlanKind::FinanceAnalysisPlan`, `DomainPlanKind::TradingSimulation`, `DomainPlanKind::TradingSimulationPlan`, `DomainLiveEffectLevel::ExternalWrite`, and `DomainLiveEffectLevel::FinancialExecution`.
-   - Completed 2026-05-10: added rejection coverage for finance research/analysis plans requesting external write or financial execution, and trading simulation plans requesting external write or financial execution; added allowed-boundary assertions for finance read-only and trading sandbox write. Targeted validation passed: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test contracts::tests -- --test-threads=1` ran 7 domain contract tests successfully.
-7. [ ] `src/domain/identity.rs`: replace `stable_domain_id(parts)` or extend it with `DomainHash`, `DomainHashInput`, `canonical_json_bytes(record)`, `domain_hash_json(record)`, and `domain_hash_parts(parts)`.
-8. [ ] `src/domain/identity.rs`: add unit test `domain_hash_is_stable`.
-9. [ ] `src/domain/identity.rs`: add unit test `domain_hash_changes_when_material_field_changes`.
-10. [ ] `src/domain/identity.rs`: add unit test `domain_hash_changes_when_schema_version_changes`.
-11. [ ] `src/domain/scoring.rs`: implement `BoundedScore`, `ScoreInputs`, `ScoreBreakdown`, `source_quality_score(...)`, `confidence_score(...)`, `uncertainty_score(...)`, `risk_score(...)`, `promotion_score(...)`, and `verdict_for_scores(...)` using integer-only saturating math.
-12. [ ] `src/domain/scoring.rs`: add unit test `verdict_ignore_thresholds`.
-13. [ ] `src/domain/scoring.rs`: add unit test `verdict_watch_thresholds`.
-14. [ ] `src/domain/scoring.rs`: add unit test `verdict_research_thresholds`.
-15. [ ] `src/domain/scoring.rs`: add unit test `verdict_act_business_thresholds`.
-16. [ ] `src/domain/scoring.rs`: add unit test `verdict_act_finance_research_thresholds`.
-17. [ ] `src/domain/scoring.rs`: add unit test `verdict_simulate_trading_thresholds`.
-18. [ ] `src/domain/scoring.rs`: add unit test `verdict_block_thresholds`.
-19. [ ] `src/domain/risk.rs`: replace or extend `evaluate_risk_envelope(...)` with `RiskEnvelopeViolation` and `check_risk_envelope(plan, envelope)` using `DomainRiskEnvelope`, rollback requirements, invalidation requirements, and explicit live-effect constraints.
-20. [ ] `src/domain/risk.rs`: add unit test `risk_blocks_live_trading`.
-21. [ ] `src/domain/risk.rs`: add unit test `risk_blocks_finance_execution`.
-22. [ ] `src/domain/risk.rs`: add unit test `risk_allows_verified_business_plan_with_rollback_and_invalidation`.
-23. [ ] `src/domain/bridge.rs`: implement `DomainBridgeDescriptor`, `bridge_target_for_signal(...)`, `bridge_target_for_context(...)`, `bridge_target_for_judgment(...)`, `bridge_target_for_plan(...)`, and `bridge_target_for_eval(...)` as descriptor-only functions with no state or TLog mutation.
-24. [ ] `src/domain/bridge.rs`: add unit test `bridge_maps_each_domain_record_family`.
-25. [ ] `src/domain/bridge.rs`: add unit test `bridge_never_targets_live_trading_execution`.
-26. [ ] `src/domain/global_intelligence.rs`: create `SignalClass`, `GlobalSignalProfile`, `stale_for_horizon(...)`, and `actionability_hint(...)` depending only on shared domain contracts.
-27. [ ] `src/domain/global_intelligence.rs`: add unit test `global_signal_profile_staleness_is_deterministic`.
-28. [ ] `src/domain/global_intelligence.rs`: add unit test `global_signal_actionability_hint_is_deterministic`.
-29. [ ] `src/domain/business.rs`: create `BusinessOpportunity`, `WorkflowAutomationCandidate`, `CustomerFeedbackSignal`, and `monetization_score(...)`.
-30. [ ] `src/domain/business.rs`: add unit test `business_monetization_score_is_deterministic`.
-31. [ ] `src/domain/business.rs`: add unit test `business_monetization_score_is_bounded`.
-32. [ ] `src/domain/finance.rs`: create `AssetUniverse`, `FinanceHypothesis`, `FinanceRiskDimensions`, and `finance_research_allowed(...)`.
-33. [ ] `src/domain/finance.rs`: add unit test `finance_hypothesis_execution_allowed_is_false`.
-34. [ ] `src/domain/finance.rs`: add unit test `finance_research_plan_passes_research_only_risk_check`.
-35. [ ] `src/domain/trading.rs`: create `TradingSimulationPlan`, `BacktestReceiptRequirements`, `TradingRiskLimit`, and `enforce_sandbox_only(...)`.
-36. [ ] `src/domain/trading.rs`: add unit test `trading_simulation_plan_rejects_live_execution`.
-37. [ ] `src/domain/mod.rs`: declare `global_intelligence`, `business`, `finance`, and `trading` after their Rust files compile, and keep module docs explicit that domain code has no I/O, process, network, runtime, command-ledger, or TLog mutation authority.
-38. [ ] `tests/domain_contract.rs`: add integration test `domain_records_deserialize_from_json`.
-39. [ ] `tests/domain_contract.rs`: add integration test `domain_identity_is_deterministic`.
-40. [ ] `tests/domain_contract.rs`: add integration test `domain_verdicts_are_deterministic`.
-41. [ ] `tests/domain_contract.rs`: add integration test `domain_surface_exposes_no_runtime_mutation_api`.
-42. [ ] `tests/fixtures/domain/global_signal_macro.json`: add fixture data with schema version, domain id, source/provenance hash, horizon, score inputs, expected verdict, expected risk result, and expected bridge target descriptor.
-43. [ ] `tests/fixtures/domain/business_workflow_opportunity.json`: add fixture data for a verified business workflow opportunity.
-44. [ ] `tests/fixtures/domain/finance_hypothesis_research.json`: add fixture data for a research-only finance hypothesis.
-45. [ ] `tests/fixtures/domain/trading_simulation_sandbox.json`: add fixture data for a sandbox-only trading simulation plan.
-46. [ ] `tests/fixtures/domain/trading_live_blocked.json`: add fixture data for a live trading request that must block.
-47. [ ] `tests/test_domain_fixture_contract.py`: add fixture validation covering all domain fixture files and clear assertion failures for missing required fields.
-48. [ ] Validation: run `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets` and record the result in `score.md`.
-49. [ ] Graph evidence refresh: after domain tests pass, re-capture or regenerate `state/rustc/ai/graph.json` so `domain::` nodes appear, then update `score.md` with the new schema/hash/node evidence.
-50. [ ] Keep P4 graph editing separate: do not start graph mutation implementation until P5 domain contracts, scoring, risk, bridge descriptors, subdomain modules, and fixtures are validated.
+1. [ ] `src/domain/identity.rs`: implement `DomainHash` newtype with `as_str(&self) -> &str`, `Display`, `AsRef<str>`, `TryFrom<String>`, and invariant validation for non-empty `domain:`-prefixed hash strings.
+2. [ ] `src/domain/identity.rs`: implement `DomainHashInput<'a>` enum for `Json(&'a serde_json::Value)` and `Parts(&'a [&'a str])`, plus helper conversion paths used by tests.
+3. [ ] `src/domain/identity.rs`: implement `canonical_json_bytes(record: &serde_json::Value) -> Vec<u8>` with deterministic object-key ordering, stable array ordering, and explicit null/bool/number/string encoding.
+4. [ ] `src/domain/identity.rs`: implement `domain_hash_json(record: &serde_json::Value) -> DomainHash` using `canonical_json_bytes(record)` and the same deterministic hash namespace as `stable_domain_id(parts)`.
+5. [ ] `src/domain/identity.rs`: implement `domain_hash_parts(parts: &[&str]) -> DomainHash` and update `stable_domain_id(parts)` to delegate to `domain_hash_parts(parts).to_string()` without changing existing behavior.
+6. [ ] `src/domain/identity.rs`: add unit test `domain_hash_is_stable`.
+7. [ ] `src/domain/identity.rs`: add unit test `domain_hash_changes_when_material_field_changes`.
+8. [ ] `src/domain/identity.rs`: add unit test `domain_hash_changes_when_schema_version_changes`.
+9. [ ] `src/domain/scoring.rs`: implement `BoundedScore` with `new(value: u16)`, `get(&self) -> u16`, `zero()`, `max()`, and `saturating_weighted_average(...)` using integer-only math.
+10. [ ] `src/domain/scoring.rs`: implement `ScoreInputs`, `ScoreBreakdown`, `source_quality_score(...)`, `confidence_score(...)`, `uncertainty_score(...)`, `risk_score(...)`, `promotion_score(...)`, and `verdict_for_scores(...)` using integer-only saturating math.
+11. [ ] `src/domain/scoring.rs`: add unit test `verdict_ignore_thresholds`.
+12. [ ] `src/domain/scoring.rs`: add unit test `verdict_watch_thresholds`.
+13. [ ] `src/domain/scoring.rs`: add unit test `verdict_research_thresholds`.
+14. [ ] `src/domain/scoring.rs`: add unit test `verdict_act_business_thresholds`.
+15. [ ] `src/domain/scoring.rs`: add unit test `verdict_act_finance_research_thresholds`.
+16. [ ] `src/domain/scoring.rs`: add unit test `verdict_simulate_trading_thresholds`.
+17. [ ] `src/domain/scoring.rs`: add unit test `verdict_block_thresholds`.
+18. [ ] `src/domain/risk.rs`: implement `RiskEnvelopeViolation` and `check_risk_envelope(plan: &DomainPlan, envelope: &DomainRiskEnvelope) -> Result<(), RiskEnvelopeViolation>` covering rollback requirements, invalidation requirements, risk bounds, and live-effect constraints.
+19. [ ] `src/domain/risk.rs`: add unit test `risk_blocks_live_trading`.
+20. [ ] `src/domain/risk.rs`: add unit test `risk_blocks_finance_execution`.
+21. [ ] `src/domain/risk.rs`: add unit test `risk_allows_verified_business_plan_with_rollback_and_invalidation`.
+22. [ ] `src/domain/bridge.rs`: implement `DomainBridgeDescriptor`, `bridge_target_for_signal(...)`, `bridge_target_for_context(...)`, `bridge_target_for_judgment(...)`, `bridge_target_for_plan(...)`, and `bridge_target_for_eval(...)` as descriptor-only functions with no state, command-ledger, runtime, network, process, or TLog mutation authority.
+23. [ ] `src/domain/bridge.rs`: add unit test `bridge_maps_each_domain_record_family`.
+24. [ ] `src/domain/bridge.rs`: add unit test `bridge_never_targets_live_trading_execution`.
+25. [ ] `src/domain/global_intelligence.rs`: create Rust module with `SignalClass`, `GlobalSignalProfile`, `stale_for_horizon(...)`, and `actionability_hint(...)` depending only on shared domain contracts.
+26. [ ] `src/domain/global_intelligence.rs`: add unit test `global_signal_profile_staleness_is_deterministic`.
+27. [ ] `src/domain/global_intelligence.rs`: add unit test `global_signal_actionability_hint_is_deterministic`.
+28. [ ] `src/domain/business.rs`: create Rust module with `BusinessOpportunity`, `WorkflowAutomationCandidate`, `CustomerFeedbackSignal`, and `monetization_score(...)`.
+29. [ ] `src/domain/business.rs`: add unit test `business_monetization_score_is_deterministic`.
+30. [ ] `src/domain/business.rs`: add unit test `business_monetization_score_is_bounded`.
+31. [ ] `src/domain/finance.rs`: create Rust module with `AssetUniverse`, `FinanceHypothesis`, `FinanceRiskDimensions`, and `finance_research_allowed(...)`.
+32. [ ] `src/domain/finance.rs`: add unit test `finance_hypothesis_execution_allowed_is_false`.
+33. [ ] `src/domain/finance.rs`: add unit test `finance_research_plan_passes_research_only_risk_check`.
+34. [ ] `src/domain/trading.rs`: create Rust module with `TradingSimulationPlan`, `BacktestReceiptRequirements`, `TradingRiskLimit`, and `enforce_sandbox_only(...)`.
+35. [ ] `src/domain/trading.rs`: add unit test `trading_simulation_plan_rejects_live_execution`.
+36. [ ] `src/domain/mod.rs`: declare `global_intelligence`, `business`, `finance`, and `trading` after their Rust files compile, and keep module docs explicit that domain code has no I/O, process, network, runtime, command-ledger, or TLog mutation authority.
+37. [ ] `tests/domain_contract.rs`: add integration test `domain_records_deserialize_from_json`.
+38. [ ] `tests/domain_contract.rs`: add integration test `domain_identity_is_deterministic`.
+39. [ ] `tests/domain_contract.rs`: add integration test `domain_verdicts_are_deterministic`.
+40. [ ] `tests/domain_contract.rs`: add integration test `domain_surface_exposes_no_runtime_mutation_api`.
+41. [ ] `tests/fixtures/domain/global_signal_macro.json`: add fixture data with schema version, domain id, source/provenance hash, horizon, score inputs, expected verdict, expected risk result, and expected bridge target descriptor.
+42. [ ] `tests/fixtures/domain/business_workflow_opportunity.json`: add fixture data for a verified business workflow opportunity.
+43. [ ] `tests/fixtures/domain/finance_hypothesis_research.json`: add fixture data for a research-only finance hypothesis.
+44. [ ] `tests/fixtures/domain/trading_simulation_sandbox.json`: add fixture data for a sandbox-only trading simulation plan.
+45. [ ] `tests/fixtures/domain/trading_live_blocked.json`: add fixture data for a live trading request that must block.
+46. [ ] `tests/test_domain_fixture_contract.py`: add fixture validation covering all domain fixture files and clear assertion failures for missing required fields.
+47. [ ] Validation: run `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets` and record the result in `score.md`.
+48. [ ] Graph evidence refresh: after domain tests pass, re-capture or regenerate `state/rustc/ai/graph.json` so `domain::` nodes appear, then update `score.md` with the new schema/hash/node evidence.
+49. [ ] Keep P4 graph editing separate: do not start graph mutation implementation until P5 domain contracts, identity, scoring, risk, bridge descriptors, subdomain modules, and fixtures are validated.
 
 ## Domain Implementation Target
 

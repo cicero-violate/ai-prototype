@@ -8,45 +8,32 @@ Current date: 2026-05-10.
 - P1 validation evidence reporting: complete.
 - P2 agent loop reliability: complete.
 - P3 runtime and receipt correctness: complete for current scope.
-- P4 graph source-of-truth integration: mostly complete for deterministic fixture/report evidence; next focus is agent-driven graph editing using Python graph analysis.
-- P5 domain intelligence layer: active. Reconnaissance found `src/domain` wired
-  into `src/lib.rs` and Rust files present for `bridge.rs`, `contracts.rs`,
-  `identity.rs`, `mod.rs`, `risk.rs`, and `scoring.rs`; planned Rust files
-  `global_intelligence.rs`, `business.rs`, `finance.rs`, and `trading.rs`
-  remain absent, and fixture tests remain incomplete.
-- Planning reconciliation on 2026-05-10 confirmed the first incomplete Active
-  Priorities item is item 7: `src/domain/identity.rs` must implement
-  `DomainHash`, `DomainHashInput`, `canonical_json_bytes(record)`,
-  `domain_hash_json(record)`, and `domain_hash_parts(parts)`. Items 1 through 6
-  are complete in local source, with prior targeted contract validation passing
-  7 tests. Full-suite validation and graph refresh remain pending because prior
-  full validation attempts returned connector HTTP 502 before Rust output was
-  available, so no score increase is claimed.
+- P4 graph source-of-truth integration: mostly complete for deterministic fixture/report evidence; agent-driven graph editing remains intentionally deferred until P5 domain surfaces are validated.
+- P5 domain intelligence layer: active. `src/domain/contracts.rs` constructor and invariant tests through unsafe live-effect rejection are complete in local source, with prior targeted validation passing 7 contract tests.
+- First incomplete Active Priorities item after fresh reconnaissance on 2026-05-10: `src/domain/identity.rs` must implement `DomainHash`, `DomainHashInput`, `canonical_json_bytes(record)`, `domain_hash_json(record)`, and `domain_hash_parts(parts)`, then add the three identity hash tests.
+- Current source inventory confirms Rust files exist for `src/domain/bridge.rs`, `src/domain/contracts.rs`, `src/domain/identity.rs`, `src/domain/mod.rs`, `src/domain/risk.rs`, and `src/domain/scoring.rs`; planned Rust files `src/domain/global_intelligence.rs`, `src/domain/business.rs`, `src/domain/finance.rs`, and `src/domain/trading.rs` remain absent.
+- This turn updated planning and scoring only. No implementation validation or graph refresh was performed, so no score increase is claimed.
 
 ## Graph Analysis Evidence
 
-Python inspection of `state/rustc/ai/graph.json`:
+Python inspection of `state/rustc/ai/graph.json` on 2026-05-10:
 
 ```text
 meta.schema_version   = 16
 meta.crate_name       = ai
 meta.graph_hash       = ab2202a8d8ec371b0c462aecc41e28d059920f53e2179dd40ebb6ebb3127fc33
+meta.receipt_hash     = 0a44845e35b656d3d31b481b5e43c456d92994ca8e3179b0fd0f6213954cd4df
+meta.risk_hash        = c28e55e09a0259a6697a67971c16be23a02b59581c77e6973b2e2a44588e665e
 nodes                 = 4473
 edges                 = 31082
 intents               = 2976
 node_kinds            = fn 2976, impl 1283, struct 159, enum 53, trait 1, ty_alias 1
-edge_relations        = call 17393, phase 5925, similar 3174, mut 2926, use 1014, panic 212, unsafe 186, alloc 124, io 74, impl 35, provider 19
 compiled_domain_nodes = 0
-broad_domain_matches  = agent::cycle::AgentCycle::run; agent::objective::AgentObjective; agent prompt builders; runtime::reducer::raise_domain_failure
-graph_nodes           = graph_mutation:: 81, capability:: 903, kernel:: 59
+broad_domain_hits     = 19
+compiled_domain_name_hits = runtime::reducer::raise_domain_failure only
 ```
 
-Relevant interpretation: the graph snapshot is valid and rich enough for future
-graph-edit planning, but it does not yet contain compiled `domain::` nodes.
-Broad text matches for `domain` are from agent objective/prompt/cycle records and
-the older runtime failure path, not from the P5 domain module. Domain progress
-should not be scored as graph-verified until tests pass and graph evidence is
-refreshed.
+Relevant interpretation: the graph snapshot is valid evidence for the existing runtime/capability/kernel surface, but it does not yet prove the P5 domain module. Broad `domain` text hits are agent objective/prompt/cycle references and the older runtime domain-failure function, not compiled `src/domain::*` nodes. Domain progress should not be scored as graph-verified until domain tests pass and graph evidence is refreshed.
 
 ## Scores
 
@@ -77,15 +64,7 @@ Approximate geometric mean over the listed score axes remains about:
 G ~= 8.14 / 10
 ```
 
-The score is not raised yet because this was a planning/scoring turn only. No new implementation validation was run after reconnaissance, and the graph still has no compiled `domain::` nodes.
-
-Planning-turn reconciliation on 2026-05-10, latest:
-
-- Required reconnaissance completed from `/workspace/ai_sandbox/canon-mini-agent/prototype/ai`; the shell wrapper accepted `cwd=.` and resolved it to the required working directory.
-- First incomplete Active Priorities item is item 6: `src/domain/contracts.rs::domain_plan_constructor_rejects_unsafe_live_effects`, covering `DomainPlan::new(...)` rejection for unsafe live-effect requests on finance research/analysis and trading simulation plan kinds.
-- `find src/domain -type f | sort` confirmed Rust files `src/domain/bridge.rs`, `src/domain/contracts.rs`, `src/domain/identity.rs`, `src/domain/mod.rs`, `src/domain/risk.rs`, and `src/domain/scoring.rs`; planned Rust files `src/domain/global_intelligence.rs`, `src/domain/business.rs`, `src/domain/finance.rs`, and `src/domain/trading.rs` remain absent.
-- Python graph analysis of `state/rustc/ai/graph.json` confirmed schema version 16, graph hash `ab2202a8d8ec371b0c462aecc41e28d059920f53e2179dd40ebb6ebb3127fc33`, 4,473 dictionary nodes, 31,082 edges, 2,976 intents, node kinds `fn 2976`, `impl 1283`, `struct 159`, `enum 53`, `trait 1`, and `ty_alias 1`, with `domain_nodes = 0` and only `runtime::reducer::raise_domain_failure` matching `domain`.
-- Commit scope for this turn remains `plan.md` and `score.md`; pre-existing implementation/runtime edits are not part of the planning commit.
+The score is not raised because this was a planning/scoring turn only. Prior targeted contract evidence is retained, but full-suite validation and refreshed graph evidence for `src/domain::*` remain pending.
 
 ## Rationale
 
