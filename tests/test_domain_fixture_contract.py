@@ -21,6 +21,27 @@ SCORE_FIELDS = {
     "source_quality",
     "context_quality",
 }
+REQUIRED_TOP_LEVEL_FIELDS = {
+    "schema_version",
+    "fixture_id",
+    "source_id",
+    "source_kind",
+    "provenance_hash",
+    "payload_hash",
+    "domain_id",
+    "record_family",
+    "horizon",
+    "signal_class",
+    "uncertainty",
+    "score_inputs",
+    "expected_domain_value_score",
+    "expected_actionability_score",
+    "expected_verdict",
+    "expected_risk_result",
+    "expected_risk_envelope",
+    "expected_bridge_target",
+    "expected_eval_behavior",
+}
 
 
 def bounded_product(*values: int) -> int:
@@ -60,6 +81,13 @@ class DomainFixtureContract(unittest.TestCase):
                 self.assertEqual(fixture["domain_id"], domain_id)
                 self.assertEqual(fixture["expected_bridge_target"], bridge_target)
                 self.assertEqual(fixture["expected_verdict"], verdict)
+
+    def test_required_fixture_fields_have_clear_assertions(self):
+        for name in REQUIRED_FIXTURES:
+            with self.subTest(name=name):
+                fixture = self.load_fixture(name)
+                for field in sorted(REQUIRED_TOP_LEVEL_FIELDS):
+                    self.assertIn(field, fixture, f"{name} missing required field {field}")
 
     def test_fixtures_include_provenance_uncertainty_and_eval_behavior(self):
         for name in REQUIRED_FIXTURES:
