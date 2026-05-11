@@ -117,16 +117,75 @@ impl<'a, const N: usize> From<&'a [&'a str; N]> for DomainHashInput<'a> {
 }
 
 pub fn stable_domain_id(parts: &[&str]) -> String {
+    domain_hash_parts(parts).to_string()
+}
+
+pub fn domain_hash_parts(parts: &[&str]) -> DomainHash {
     let mut hash = 0xcbf29ce484222325u64;
     for part in parts {
-        for byte in part.as_bytes() {
-            hash ^= u64::from(*byte);
-            hash = hash.wrapping_mul(0x100000001b3);
-        }
+        hash = write_hash_bytes(hash, part.as_bytes());
         hash ^= 0xff;
         hash = hash.wrapping_mul(0x100000001b3);
     }
-    format!("{DOMAIN_HASH_PREFIX}{hash:016x}")
+    DomainHash(format!("{DOMAIN_HASH_PREFIX}{hash:016x}"))
+}
+
+pub fn domain_hash_json(record: &Value) -> DomainHash {
+    let hash = write_hash_bytes(0xcbf29ce484222325u64, &canonical_json_bytes(record));
+    DomainHash(format!("{DOMAIN_HASH_PREFIX}{hash:016x}"))
+}
+
+fn write_hash_bytes(mut hash: u64, bytes: &[u8]) -> u64 {
+    for byte in bytes {
+        hash ^= u64::from(*byte);
+        hash = hash.wrapping_mul(0x100000001b3);
+    }
+    hash
+}
+
+pub fn canonical_json_bytes(record: &Value) -> Vec<u8> {
+    let mut out = Vec::new();
+    write_canonical_json(record, &mut out);
+    out
+}
+
+fn write_canonical_json(record: &Value, out: &mut Vec<u8>) {
+    match record {
+        Value::Null => out.extend_from_slice(b"null"),
+        Value::Bool(false) => out.extend_from_slice(b"false"),
+        Value::Bool(true) => out.extend_from_slice(b"true"),
+        Value::Number(number) => out.extend_from_slice(number.to_string().as_bytes()),
+        Value::String(value) => write_canonical_string(value, out),
+        Value::Array(values) => {
+            out.push(b'[');
+            for (index, value) in values.iter().enumerate() {
+                if index > 0 {
+                    out.push(b',');
+                }
+                write_canonical_json(value, out);
+            }
+            out.push(b']');
+        }
+        Value::Object(values) => {
+            out.push(b'{');
+            let mut entries: Vec<_> = values.iter().collect();
+            entries.sort_by(|(left_key, _), (right_key, _)| left_key.cmp(right_key));
+            for (index, (key, value)) in entries.into_iter().enumerate() {
+                if index > 0 {
+                    out.push(b',');
+                }
+                write_canonical_string(key, out);
+                out.push(b':');
+                write_canonical_json(value, out);
+            }
+            out.push(b'}');
+        }
+    }
+}
+
+fn write_canonical_string(value: &str, out: &mut Vec<u8>) {
+    serde_json::to_writer(out, value)
+        .expect("serializing a JSON string into a Vec must not fail");
 }
 
 #[cfg(test)]
@@ -170,5 +229,19 @@ mod tests {
         let parts = ["schema:1", "kind:signal", "id:alpha"];
         assert_eq!(DomainHashInput::from(&parts), DomainHashInput::Parts(&parts));
         assert_eq!(DomainHashInput::parts(&parts), DomainHashInput::Parts(&parts));
+    }
+
+    #[test]
+    fn domain_hash_is_stable() {
+        let parts = ["schema:1", "kind:signal", "id:alpha"];
+        let record = serde_json::json!({
+            "domain_id": "alpha",
+            "kind": "signal",
+            "schema_version": 1,
+        });
+
+        assert_eq!(domain_hash_parts(&parts), domain_hash_parts(&parts));
+        assert_eq!(domain_hash_parts(&parts).to_string(), stable_domain_id(&parts));
+        assert_eq!(domain_hash_json(&record), domain_hash_json(&record));
     }
 }

@@ -8,8 +8,8 @@ python3 /workspace/ai_sandbox/canon-mini-agent/prototype/cdp-file-upload/upload_
   --tar-script /workspace/ai_sandbox/canon-mini-agent/prototype/ai/tar.sh \
   --tar-output ai.tar.gz \
   --open-target-if-missing \
-  --target-url "https://chatgpt.com/g/g-p-69eedbc6bd38819180b138ab3c47abff-ai-prototype/project?tab=sources" \
-  --match "chatgpt.com/g/g-p-69eedbc6bd38819180b138ab3c47abff-ai-prototype/project?tab=sources" \
+  --target-url "https://chatgpt.com/g/g-p-69f580e0d2088191ac3d6ab1b9f490fb-ai-agent-prototype/project?tab=sources" \
+  --match "chatgpt.com/g/g-p-69f580e0d2088191ac3d6ab1b9f490fb-ai-agent-prototype/project?tab=sources" \
   --target-wait-timeout-sec 45 \
   --open-sources-flow \
   --scope sources \

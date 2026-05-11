@@ -7,7 +7,7 @@
 use std::env;
 use std::io::{self, Read, Write};
 use std::net::TcpStream;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use serde_json::Value;
 
@@ -141,7 +141,12 @@ impl RouterClient {
             ),
         );
 
-        let sse = send_streaming_request(self.inner.config(), &body, logger)?;
+        let sse = send_streaming_request(
+            self.inner.config(),
+            &body,
+            logger,
+            router_turn_max_ms.saturating_add(30_000),
+        )?;
 
         if let Some(url) = &sse.target_url {
             self.target_url = Some(url.clone());
@@ -388,6 +393,7 @@ fn send_streaming_request(
     config: &OpenAiConfig,
     body: &str,
     logger: &mut ChunkLogger,
+    stream_deadline_ms: u64,
 ) -> Result<crate::agent::sse::SseResult, OpenAiError> {
     let endpoint = parse_local_http_endpoint(&config.base_url).map_err(|e| match e {
         LocalEndpointError::InvalidUrl => OpenAiError::InvalidUrl,
@@ -398,7 +404,7 @@ fn send_streaming_request(
     let mut stream =
         TcpStream::connect((endpoint.host.as_str(), endpoint.port)).map_err(OpenAiError::Io)?;
     stream
-        .set_read_timeout(Some(Duration::from_millis(config.timeout_ms)))
+        .set_read_timeout(Some(Duration::from_millis(1_000)))
         .map_err(OpenAiError::Io)?;
     stream
         .set_write_timeout(Some(Duration::from_millis(config.timeout_ms)))
@@ -415,21 +421,55 @@ fn send_streaming_request(
         .map_err(OpenAiError::Io)?;
     stream.flush().map_err(OpenAiError::Io)?;
 
-    let mut full_response = String::new();
-    match stream.read_to_string(&mut full_response) {
-        Ok(_) => {}
-        Err(e)
-            if matches!(
-                e.kind(),
-                io::ErrorKind::WouldBlock | io::ErrorKind::TimedOut
-            ) => {}
-        Err(e) => return Err(OpenAiError::Io(e)),
+    let mut full_response = Vec::new();
+    let mut buf = [0_u8; 8192];
+    let deadline = Instant::now()
+        .checked_add(Duration::from_millis(stream_deadline_ms.max(1_000)))
+        .unwrap_or_else(Instant::now);
+    loop {
+        match stream.read(&mut buf) {
+            Ok(0) => break,
+            Ok(n) => {
+                full_response.extend_from_slice(&buf[..n]);
+                logger.write_entry(
+                    "http_chunk",
+                    &format!(
+                        "\"byte_length\":{},\"total_byte_length\":{}",
+                        n,
+                        full_response.len()
+                    ),
+                );
+                if response_bytes_have_done_frame(&full_response) {
+                    break;
+                }
+                if Instant::now() >= deadline {
+                    return Err(OpenAiError::Io(io::Error::new(
+                        io::ErrorKind::TimedOut,
+                        "stream timed out before router [DONE] frame",
+                    )));
+                }
+            }
+            Err(e)
+                if matches!(
+                    e.kind(),
+                    io::ErrorKind::WouldBlock | io::ErrorKind::TimedOut
+                ) =>
+            {
+                if response_bytes_have_done_frame(&full_response) {
+                    break;
+                }
+                if Instant::now() >= deadline {
+                    return Err(OpenAiError::Io(io::Error::new(
+                        io::ErrorKind::TimedOut,
+                        "stream timed out before router [DONE] frame",
+                    )));
+                }
+            }
+            Err(e) => return Err(OpenAiError::Io(e)),
+        }
     }
 
-    logger.write_entry(
-        "http_chunk",
-        &format!("\"byte_length\":{}", full_response.len()),
-    );
+    let full_response = String::from_utf8_lossy(&full_response);
 
     let (head, raw_body) = full_response
         .split_once("\r\n\r\n")
@@ -446,6 +486,13 @@ fn send_streaming_request(
         return Err(OpenAiError::HttpStatus(status));
     }
 
+    if !response_text_has_done_frame(&full_response) {
+        return Err(OpenAiError::Io(io::Error::new(
+            io::ErrorKind::UnexpectedEof,
+            "stream ended before router [DONE] frame",
+        )));
+    }
+
     let is_chunked = head.lines().any(|l| {
         l.to_ascii_lowercase().contains("transfer-encoding")
             && l.to_ascii_lowercase().contains("chunked")
@@ -458,6 +505,16 @@ fn send_streaming_request(
     };
 
     Ok(parse_sse_body(&body_text, logger))
+}
+
+fn response_bytes_have_done_frame(response: &[u8]) -> bool {
+    response
+        .windows(b"data: [DONE]".len())
+        .any(|window| window == b"data: [DONE]")
+}
+
+fn response_text_has_done_frame(response: &str) -> bool {
+    response.lines().any(|line| line.trim() == "data: [DONE]")
 }
 
 #[cfg(test)]
@@ -484,5 +541,25 @@ mod tests {
             Some("target-1".to_string())
         );
         assert_eq!(cdp_target_id_for_url(body, "https://missing.invalid"), None);
+    }
+
+    #[test]
+    fn response_done_frame_detection_accepts_chunked_raw_body() {
+        let response = concat!(
+            "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n",
+            "e\r\ndata: [DONE]\n\n\r\n0\r\n\r\n"
+        );
+        assert!(response_bytes_have_done_frame(response.as_bytes()));
+        assert!(response_text_has_done_frame(response));
+    }
+
+    #[test]
+    fn response_done_frame_detection_rejects_partial_stream() {
+        let response = concat!(
+            "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n",
+            "22\r\ndata: {\"object\":\"chat.completion.chunk\"}\n\n\r\n"
+        );
+        assert!(!response_bytes_have_done_frame(response.as_bytes()));
+        assert!(!response_text_has_done_frame(response));
     }
 }

@@ -364,11 +364,12 @@ fn planning_prompt(
          Before updating the plan, do the following reconnaissance:\n\
          1. Read the current `plan.md` and identify the first incomplete item under \"Active Priorities\".\n\
          2. Read `status.md` for current progress, validation evidence, blockers, and history.\n\
-         3. Run `find src/domain -type f | sort` to see what files exist vs. what the plan requires.\n\
-         4. Analyze `state/rustc/ai/graph.json` with Python and note any relevant graph evidence.\n\n\
+         3. Read `score.md` for current score values and score rationale.\n\
+         4. Inspect the files, tests, fixtures, evidence paths, and validation commands named by `plan.md` and `status.md`.\n\
+         5. If project evidence files are named in the plan or status, inspect them with the appropriate local tool before changing the checklist.\n\n\
          Then update `plan.md` so that the active priority section contains a concrete, ordered checklist \
          of file-level tasks (one file or one test per item) that the execute turns can pick up one at a time. \
-         Tasks must name specific files and functions — not describe intent in prose. \
+         Tasks must name specific files, functions, tests, fixtures, or artifacts — not describe intent in prose. \
          Update `status.md` with progress, validation evidence, blockers, and history. \
          Update `score.md` only when score values or score rationale change. \
          Keep this turn focused on planning, status, and scoring, and commit those changes at the end of the turn.",
@@ -406,10 +407,10 @@ fn execute_prompt(turn_num: u32, agent_id: u32, agent_count: u32) -> String {
     format!(
         "{agent_line}\n\
          You are executing implementation step {turn_num} of this agent loop.\n\n\
-         Read `plan.md` and `status.md`. Find the first unchecked implementation item ([ ]) under \"Active Priorities\" in `plan.md` \
-         and implement it now — write or edit source files only, do not rewrite the plan. \
-         For domain module work, create or update files under `src/domain/`. \
-         After implementation, run the validation commands in `plan.md`, fix any failures, \
+         Read `plan.md`, `status.md`, and `score.md`. Find the first unchecked implementation item ([ ]) under \"Active Priorities\" in `plan.md` \
+         and implement it now. Only change files within the scope named by that checklist item. \
+         If the item names a validation, evidence refresh, documentation, cleanup, or blocker task, perform that task instead of editing unrelated source. \
+         After implementation, run the targeted and broader validation commands named in `plan.md`, fix any failures, \
          mark the item done in `plan.md`, update `status.md` with progress/evidence/blockers, \
          update `score.md` only for score changes, and commit all changes. \
          Only commit if all checks pass; if checks cannot be made green, document the \
@@ -650,10 +651,12 @@ mod tests {
         assert!(planning.contains("Read `status.md`"));
         assert!(planning.contains("Update `status.md`"));
         assert!(planning.contains("Update `score.md` only when score values"));
-        assert!(planning.contains("Analyze `state/rustc/ai/graph.json` with Python"));
+        assert!(planning.contains("Read `score.md`"));
+        assert!(planning.contains("Inspect the files, tests, fixtures, evidence paths"));
         assert!(planning.contains("commit those changes"));
         assert!(execute.contains("executing implementation step 2"));
-        assert!(execute.contains("Read `plan.md` and `status.md`"));
+        assert!(execute.contains("Read `plan.md`, `status.md`, and `score.md`"));
+        assert!(execute.contains("Only change files within the scope named by that checklist item"));
         assert!(execute.contains("update `status.md` with progress/evidence/blockers"));
         assert!(execute.contains("update `score.md` only for score changes"));
         assert!(!planning.contains("AgentCycle certification"));

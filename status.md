@@ -48,12 +48,44 @@ Current date: 2026-05-10.
 - P3 runtime and receipt correctness: complete for current scope.
 - P4 graph source-of-truth integration: mostly complete for deterministic fixture/report evidence; agent-driven graph editing remains intentionally deferred until P5 domain surfaces are validated.
 - P5 domain intelligence layer: active. `src/domain/contracts.rs` constructor and invariant tests through unsafe live-effect rejection are complete in local source, with prior targeted validation passing 7 contract tests.
-- First incomplete Active Priorities item after planning reconnaissance on 2026-05-10: `src/domain/identity.rs::domain_hash_json(record: &serde_json::Value) -> DomainHash`.
+- First incomplete Active Priorities item after implementation step 2 on 2026-05-10: `src/domain/identity.rs` unit test `domain_hash_is_stable`.
 - Implementation step 1 status on 2026-05-10: `src/domain/identity.rs` has a local `DomainHash` newtype implementation and unit test `domain_hash_newtype_validates_prefix_and_non_empty_suffix`; prior targeted identity validation passed, but full-suite validation remains pending because repeated connector HTTP 502 errors returned before Rust output.
 - Current source inventory confirms Rust files exist for `src/domain/bridge.rs`, `src/domain/contracts.rs`, `src/domain/identity.rs`, `src/domain/mod.rs`, `src/domain/risk.rs`, and `src/domain/scoring.rs`; planned Rust files `src/domain/global_intelligence.rs`, `src/domain/business.rs`, `src/domain/finance.rs`, and `src/domain/trading.rs` remain absent.
 - Implementation step 1 on 2026-05-10 added `src/domain/identity.rs::canonical_json_bytes(record: &serde_json::Value) -> Vec<u8>` with recursive deterministic JSON encoding and explicit object-key sorting. Targeted identity validation passed; full-suite validation is blocked by connector HTTP 502 before Rust output, so no commit was made.
 
 ## Validation Ledger
+
+### 2026-05-10 — implementation step 2 domain_hash_parts identity helper
+
+- Scope: `src/domain/identity.rs::domain_hash_parts(parts: &[&str]) -> DomainHash`, `src/domain/identity.rs::stable_domain_id(parts)`, and Active Priorities item 5.
+- Command/check: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test identity::tests -- --test-threads=1`.
+- Result: passed.
+- Evidence: `domain_hash_parts(parts)` is present in local source and returns `DomainHash`; `stable_domain_id(parts)` delegates to `domain_hash_parts(parts).to_string()` while preserving the previous deterministic FNV-style separator algorithm; targeted validation ran 3 identity tests successfully after one connector HTTP 502 retry.
+- Next action: add `src/domain/identity.rs` unit test `domain_hash_is_stable` after the full-suite gate is available or as directed by the next execute turn.
+
+### 2026-05-10 — full-suite validation after domain_hash_parts identity helper
+
+- Scope: full project validation after implementing `src/domain/identity.rs::domain_hash_parts(parts)`.
+- Command/check: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
+- Result: blocked.
+- Evidence: connector returned HTTP 502 twice before Rust output; no product or Rust test failure was observed.
+- Next action: keep the full-suite validation gate unchecked and retry when connector transport is healthy; do not commit this implementation turn.
+
+### 2026-05-10 — implementation step 1 domain_hash_json identity helper
+
+- Scope: `src/domain/identity.rs::domain_hash_json(record: &serde_json::Value) -> DomainHash` and Active Priorities item 4.
+- Command/check: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test identity::tests -- --test-threads=1`.
+- Result: passed.
+- Evidence: `domain_hash_json(record)` is present in local source, uses `canonical_json_bytes(record)`, emits the `domain:` namespace, and targeted validation ran 3 identity tests successfully after one connector HTTP 502 retry.
+- Next action: implement `src/domain/identity.rs::domain_hash_parts(parts)` after the full-suite gate is available or as directed by the next execute turn.
+
+### 2026-05-10 — full-suite validation after domain_hash_json identity helper
+
+- Scope: full project validation after confirming `src/domain/identity.rs::domain_hash_json(record)`.
+- Command/check: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
+- Result: blocked.
+- Evidence: connector returned HTTP 502 twice before Rust output; no product or Rust test failure was observed.
+- Next action: keep the full-suite validation gate unchecked and retry when connector transport is healthy; do not commit this implementation turn.
 
 ### 2026-05-10 — planning reconciliation for domain_hash_json identity task
 
