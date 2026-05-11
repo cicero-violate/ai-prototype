@@ -1,3 +1,59 @@
+# Plan File Instructions
+
+Use this file as the source of truth for selecting and executing the next unit of project work.
+
+## Required sections
+
+Keep the operational portion of the file in this order when practical:
+
+1. `## Goal` — the intended outcome or product state.
+2. `## Current State` — concise facts about what is already true.
+3. `## Active Priorities` — the ordered checklist used for execution.
+4. `## Suggested Validation` — commands or checks that prove work is complete.
+5. Additional design notes or background sections after the operational sections.
+
+## Active Priorities format
+
+Use one checklist item per independently executable unit of work:
+
+```md
+N. [ ] `<path or component>`: <specific action and expected result>.
+   - Scope: <files, functions, records, tests, or artifacts allowed to change>.
+   - Done when: <observable completion condition>.
+   - Validation: `<targeted command or check>`.
+```
+
+Rules:
+
+- Select the first unchecked implementation item matching `N. [ ]` under `## Active Priorities`.
+- Implement exactly that item unless it is explicitly labeled as validation, evidence refresh, documentation, cleanup, or blocker handling.
+- Keep each checklist item small enough for one execution turn.
+- Avoid broad items such as “finish module,” “clean up project,” or “improve quality” unless they are decomposed into file-level or test-level tasks.
+- Do not reorder, renumber, delete, or broadly rewrite checklist items during an implementation turn unless the selected item is explicitly a planning or cleanup item.
+
+## Checkbox semantics
+
+- `[ ]` means the item remains selectable by the next execution turn.
+- `[x]` means the item’s named work exists and its targeted completion check has passed.
+- Full-project validation, release gates, evidence refreshes, or deployment checks should be separate checklist items.
+- Do not keep completed implementation work unchecked only because a later full-project gate is unavailable or blocked.
+- Infrastructure, connector, network, permission, or tool failures are blockers; document them separately from source or test failures.
+
+## Validation and commit rules
+
+- After changing files, run the most specific validation for the selected item first.
+- Then run any required broader validation listed in this file.
+- Mark the implementation item `[x]` only when the source/artifact change exists and its targeted validation passes.
+- Commit only when the required validation for the intended commit scope is green.
+- If validation cannot run or cannot be made green, document the blocker, leave the relevant validation or blocker item unchecked, and do not claim completion for that gate.
+
+## Delegation rule
+
+- If multiple unchecked implementation items are independent, the primary agent should still make progress on the first item before delegating another.
+- Delegated work must name the exact scope and the validation metric that proves completion.
+
+---
+
 # Canon Agent Plan
 
 Current date: 2026-05-10.
@@ -37,7 +93,7 @@ objective or world signal
 
 ## Active Priorities
 
-Reconnaissance on 2026-05-10 found the first incomplete item under this section is `src/domain/identity.rs::DomainHashInput<'a>`. Local source already contains the `DomainHash` newtype, `DomainHashError`, `stable_domain_id(parts)`, and identity tests for stable ordering and hash-prefix validation. Execute turns should pick up exactly one unchecked item at a time, starting with item 2.
+Reconnaissance on 2026-05-10 found that `src/domain/identity.rs::DomainHashInput<'a>` is already implemented in local source and has passing targeted identity validation. Full-suite validation is tracked separately as the validation blocker item below. Execute turns should pick up exactly one unchecked implementation item at a time; the next implementation item is item 3.
 
 Current source inventory from `find src/domain -type f | sort`:
 
@@ -61,11 +117,14 @@ src/domain/trading.md
 
 Graph evidence from `state/rustc/ai/graph.json`: schema version 16, graph hash `ab2202a8d8ec371b0c462aecc41e28d059920f53e2179dd40ebb6ebb3127fc33`, 4,473 node entries, 31,082 edges, and 2,976 intents. The top-level graph keys are `edges`, `intents`, `meta`, and `nodes`; the `nodes` object is keyed by canonical symbol name. Node-kind counts are `fn 2976`, `impl 1283`, `struct 159`, `enum 53`, `trait 1`, `ty_alias 1`. No compiled `domain::` nodes are present. Broad `domain` hits are limited to agent objective/prompt/cycle names and `runtime::reducer::raise_domain_failure`, so graph evidence does not yet prove the P5 domain surface.
 
-Ordered execute-turn checklist, one file or one test per item:
+Ordered execute-turn checklist, one file or one test per item. Implementation items are marked complete when the source change exists and targeted validation has passed; full-suite validation and commit gating are tracked by the validation item instead of keeping completed implementation work unchecked:
 
 1. [x] `src/domain/identity.rs`: implement `DomainHash` newtype with `as_str(&self) -> &str`, `Display`, `AsRef<str>`, `TryFrom<String>`, and invariant validation for non-empty `domain:`-prefixed hash strings.
    - Local source contains this implementation and unit test `domain_hash_newtype_validates_prefix_and_non_empty_suffix`. Prior targeted validation passed, but full validation remains pending because connector HTTP 502 transport errors returned before Rust output.
-2. [ ] `src/domain/identity.rs`: implement `DomainHashInput<'a>` enum with `Json(&'a serde_json::Value)` and `Parts(&'a [&'a str])` variants, plus helper conversion paths used by the following identity hash helpers.
+2. [x] `src/domain/identity.rs`: implement `DomainHashInput<'a>` enum with `Json(&'a serde_json::Value)` and `Parts(&'a [&'a str])` variants, plus helper conversion paths used by the following identity hash helpers.
+   - Implementation is present in local source with helper constructors, `From` conversions, and unit test `domain_hash_input_converts_json_and_parts`.
+   - Targeted validation passed again on 2026-05-10 during implementation step 5: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test identity::tests -- --test-threads=1` ran 3 identity tests successfully.
+   - Required full-suite validation remains blocked on 2026-05-10: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets` returned connector HTTP 502 twice before Rust output in implementation step 5. The blocker is tracked in the validation item below; do not re-select this item for implementation.
 3. [ ] `src/domain/identity.rs`: implement `canonical_json_bytes(record: &serde_json::Value) -> Vec<u8>` with deterministic object-key ordering, stable array ordering, and explicit null/bool/number/string encoding.
 4. [ ] `src/domain/identity.rs`: implement `domain_hash_json(record: &serde_json::Value) -> DomainHash` using `canonical_json_bytes(record)` and the same deterministic hash namespace as `stable_domain_id(parts)`.
 5. [ ] `src/domain/identity.rs`: implement `domain_hash_parts(parts: &[&str]) -> DomainHash` and update `stable_domain_id(parts)` to delegate to `domain_hash_parts(parts).to_string()` without changing existing behavior.
@@ -110,7 +169,7 @@ Ordered execute-turn checklist, one file or one test per item:
 44. [ ] `tests/fixtures/domain/trading_simulation_sandbox.json`: add fixture data for a sandbox-only trading simulation plan.
 45. [ ] `tests/fixtures/domain/trading_live_blocked.json`: add fixture data for a live trading request that must block.
 46. [ ] `tests/test_domain_fixture_contract.py`: add fixture validation covering all domain fixture files and clear assertion failures for missing required fields.
-47. [ ] Validation: run `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets` and record the result in `score.md`.
+47. [ ] Validation blocker / full-suite gate: run `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets` and record the result in `score.md`. This remains unchecked until full-suite Rust output is available and green; connector HTTP 502 transport failures should be documented here without causing completed implementation items to remain unchecked.
 48. [ ] Graph evidence refresh: after domain tests pass, re-capture or regenerate `state/rustc/ai/graph.json` so `domain::` nodes appear, then update `score.md` with the new schema/hash/node evidence.
 49. [ ] Keep P4 graph editing separate: do not start graph mutation implementation until P5 domain contracts, identity, scoring, risk, bridge descriptors, subdomain modules, and fixtures are validated.
 

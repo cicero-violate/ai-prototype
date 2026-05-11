@@ -5,6 +5,8 @@
 
 use std::fmt;
 
+use serde_json::Value;
+
 const DOMAIN_HASH_PREFIX: &str = "domain:";
 
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -80,6 +82,40 @@ impl fmt::Display for DomainHashError {
 
 impl std::error::Error for DomainHashError {}
 
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum DomainHashInput<'a> {
+    Json(&'a Value),
+    Parts(&'a [&'a str]),
+}
+
+impl<'a> DomainHashInput<'a> {
+    pub fn json(record: &'a Value) -> Self {
+        Self::Json(record)
+    }
+
+    pub fn parts(parts: &'a [&'a str]) -> Self {
+        Self::Parts(parts)
+    }
+}
+
+impl<'a> From<&'a Value> for DomainHashInput<'a> {
+    fn from(record: &'a Value) -> Self {
+        Self::Json(record)
+    }
+}
+
+impl<'a> From<&'a [&'a str]> for DomainHashInput<'a> {
+    fn from(parts: &'a [&'a str]) -> Self {
+        Self::Parts(parts)
+    }
+}
+
+impl<'a, const N: usize> From<&'a [&'a str; N]> for DomainHashInput<'a> {
+    fn from(parts: &'a [&'a str; N]) -> Self {
+        Self::Parts(&parts[..])
+    }
+}
+
 pub fn stable_domain_id(parts: &[&str]) -> String {
     let mut hash = 0xcbf29ce484222325u64;
     for part in parts {
@@ -123,5 +159,16 @@ mod tests {
             DomainHash::try_from("domain:".to_string()),
             Err(DomainHashError::EmptyHashSuffix)
         );
+    }
+
+    #[test]
+    fn domain_hash_input_converts_json_and_parts() {
+        let record = serde_json::json!({"kind":"signal","schema_version":1});
+        assert_eq!(DomainHashInput::from(&record), DomainHashInput::Json(&record));
+        assert_eq!(DomainHashInput::json(&record), DomainHashInput::Json(&record));
+
+        let parts = ["schema:1", "kind:signal", "id:alpha"];
+        assert_eq!(DomainHashInput::from(&parts), DomainHashInput::Parts(&parts));
+        assert_eq!(DomainHashInput::parts(&parts), DomainHashInput::Parts(&parts));
     }
 }

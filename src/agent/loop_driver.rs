@@ -363,13 +363,15 @@ fn planning_prompt(
          ## GOAL\n{goal}\n\n\
          Before updating the plan, do the following reconnaissance:\n\
          1. Read the current `plan.md` and identify the first incomplete item under \"Active Priorities\".\n\
-         2. Run `find src/domain -type f | sort` to see what files exist vs. what the plan requires.\n\
-         3. Analyze `state/rustc/ai/graph.json` with Python and note any relevant graph evidence.\n\n\
+         2. Read `status.md` for current progress, validation evidence, blockers, and history.\n\
+         3. Run `find src/domain -type f | sort` to see what files exist vs. what the plan requires.\n\
+         4. Analyze `state/rustc/ai/graph.json` with Python and note any relevant graph evidence.\n\n\
          Then update `plan.md` so that the active priority section contains a concrete, ordered checklist \
          of file-level tasks (one file or one test per item) that the execute turns can pick up one at a time. \
          Tasks must name specific files and functions — not describe intent in prose. \
-         Update `score.md` with current progress and scoring. \
-         Keep this turn focused on planning and scoring, and commit the planning/scoring changes at the end of the turn.",
+         Update `status.md` with progress, validation evidence, blockers, and history. \
+         Update `score.md` only when score values or score rationale change. \
+         Keep this turn focused on planning, status, and scoring, and commit those changes at the end of the turn.",
         dir = working_dir.display(),
     )
 }
@@ -385,7 +387,7 @@ fn spawned_prompt(domain: &str, metric: &str, step: u32, working_dir: &Path) -> 
              ## SUCCESS CRITERION\n{metric}\n\n\
              Implement this now. Write or edit the necessary source files, run tests, \
              fix any failures, and commit your changes. \
-             Do not touch `plan.md`, `score.md`, or any other planning files. \
+             Do not touch `plan.md`, `status.md`, `score.md`, or any other planning/status files. \
              Focus only on the task above."
         )
     } else {
@@ -404,13 +406,14 @@ fn execute_prompt(turn_num: u32, agent_id: u32, agent_count: u32) -> String {
     format!(
         "{agent_line}\n\
          You are executing implementation step {turn_num} of this agent loop.\n\n\
-         Read `plan.md`. Find the first unchecked item ([ ]) under \"Active Priorities\" \
+         Read `plan.md` and `status.md`. Find the first unchecked implementation item ([ ]) under \"Active Priorities\" in `plan.md` \
          and implement it now — write or edit source files only, do not rewrite the plan. \
          For domain module work, create or update files under `src/domain/`. \
          After implementation, run the validation commands in `plan.md`, fix any failures, \
-         mark the item done in `plan.md`, update `score.md`, and commit all changes. \
+         mark the item done in `plan.md`, update `status.md` with progress/evidence/blockers, \
+         update `score.md` only for score changes, and commit all changes. \
          Only commit if all checks pass; if checks cannot be made green, document the \
-         blocker in `plan.md` and do not commit.\n\n\
+         blocker in `status.md` or the relevant validation item in `plan.md` and do not commit.\n\n\
          If the plan has two or more unchecked items that are independent of each other \
          (different files, no shared state), you may delegate one by calling \
          `canon_spawn_agent` with a specific domain (the file or function to implement) \
@@ -532,13 +535,18 @@ fn sync_mcp_workspace(mcp_url: &str, project_dir: &Path) -> Result<(), String> {
 fn build_cert_objective(project_dir: &Path) -> AgentObjective {
     let goal = read_file_truncated(&project_dir.join("GOAL.md"), 800);
     let plan = read_file_truncated(&project_dir.join("plan.md"), 400);
+    let status = read_file_truncated(&project_dir.join("status.md"), 500);
     let score = read_file_truncated(&project_dir.join("score.md"), 300);
 
-    let domain = if plan.is_empty() {
-        goal
-    } else {
-        format!("{goal}\n\nCompleted work:\n{plan}")
-    };
+    let mut domain = goal;
+    if !plan.is_empty() {
+        domain.push_str("\n\nPlan:\n");
+        domain.push_str(&plan);
+    }
+    if !status.is_empty() {
+        domain.push_str("\n\nStatus evidence:\n");
+        domain.push_str(&status);
+    }
 
     let metric = if score.is_empty() {
         "All objectives in GOAL.md completed".into()
@@ -639,10 +647,15 @@ mod tests {
 
         assert!(planning.contains("planning turn for this agent loop"));
         assert!(planning.contains("update `plan.md`"));
+        assert!(planning.contains("Read `status.md`"));
+        assert!(planning.contains("Update `status.md`"));
+        assert!(planning.contains("Update `score.md` only when score values"));
         assert!(planning.contains("Analyze `state/rustc/ai/graph.json` with Python"));
-        assert!(planning.contains("commit the planning/scoring changes"));
+        assert!(planning.contains("commit those changes"));
         assert!(execute.contains("executing implementation step 2"));
-        assert!(execute.contains("Read `plan.md`"));
+        assert!(execute.contains("Read `plan.md` and `status.md`"));
+        assert!(execute.contains("update `status.md` with progress/evidence/blockers"));
+        assert!(execute.contains("update `score.md` only for score changes"));
         assert!(!planning.contains("AgentCycle certification"));
         assert!(!execute.contains("AgentCycle certification"));
     }
@@ -653,13 +666,15 @@ mod tests {
         fs::create_dir_all(&root).unwrap();
         fs::write(root.join("GOAL.md"), "goal\n".repeat(1000)).unwrap();
         fs::write(root.join("plan.md"), "plan\n".repeat(1000)).unwrap();
+        fs::write(root.join("status.md"), "status\n".repeat(1000)).unwrap();
         fs::write(root.join("score.md"), "score\n".repeat(1000)).unwrap();
 
         let objective = build_cert_objective(&root);
-        assert!(objective.domain_hint.contains("Completed work:"));
+        assert!(objective.domain_hint.contains("Plan:"));
+        assert!(objective.domain_hint.contains("Status evidence:"));
         assert!(objective.domain_hint.ends_with('…'));
         assert!(objective.success_metric.ends_with('…'));
-        assert!(objective.domain_hint.chars().count() < 1_400);
+        assert!(objective.domain_hint.chars().count() < 1_800);
         assert!(objective.success_metric.chars().count() <= 301);
 
         let _ = fs::remove_dir_all(root);
