@@ -93,7 +93,7 @@ objective or world signal
 
 ## Active Priorities
 
-Reconnaissance on 2026-05-10 reconfirmed that `src/domain/identity.rs::DomainHashInput<'a>` is already implemented in local source and has passing targeted identity validation. Full-suite validation is tracked separately as the validation blocker item below. Execute turns should pick up exactly one unchecked implementation item at a time; the first incomplete implementation item is item 3, `src/domain/identity.rs::canonical_json_bytes(record)`.
+Reconnaissance on 2026-05-10 reconfirmed that `src/domain/identity.rs::DomainHashInput<'a>` and `src/domain/identity.rs::canonical_json_bytes(record)` are already implemented in local source and have passing targeted identity validation. Full-suite validation is tracked separately as the validation blocker item below. Execute turns should pick up exactly one unchecked implementation item at a time; the first incomplete implementation item is item 4, `src/domain/identity.rs::domain_hash_json(record)`.
 
 Current source inventory from `find src/domain -type f | sort`:
 

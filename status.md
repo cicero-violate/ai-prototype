@@ -48,12 +48,20 @@ Current date: 2026-05-10.
 - P3 runtime and receipt correctness: complete for current scope.
 - P4 graph source-of-truth integration: mostly complete for deterministic fixture/report evidence; agent-driven graph editing remains intentionally deferred until P5 domain surfaces are validated.
 - P5 domain intelligence layer: active. `src/domain/contracts.rs` constructor and invariant tests through unsafe live-effect rejection are complete in local source, with prior targeted validation passing 7 contract tests.
-- First incomplete Active Priorities item after implementation step 1 on 2026-05-10: `src/domain/identity.rs::domain_hash_json(record: &serde_json::Value) -> DomainHash`.
+- First incomplete Active Priorities item after planning reconnaissance on 2026-05-10: `src/domain/identity.rs::domain_hash_json(record: &serde_json::Value) -> DomainHash`.
 - Implementation step 1 status on 2026-05-10: `src/domain/identity.rs` has a local `DomainHash` newtype implementation and unit test `domain_hash_newtype_validates_prefix_and_non_empty_suffix`; prior targeted identity validation passed, but full-suite validation remains pending because repeated connector HTTP 502 errors returned before Rust output.
 - Current source inventory confirms Rust files exist for `src/domain/bridge.rs`, `src/domain/contracts.rs`, `src/domain/identity.rs`, `src/domain/mod.rs`, `src/domain/risk.rs`, and `src/domain/scoring.rs`; planned Rust files `src/domain/global_intelligence.rs`, `src/domain/business.rs`, `src/domain/finance.rs`, and `src/domain/trading.rs` remain absent.
 - Implementation step 1 on 2026-05-10 added `src/domain/identity.rs::canonical_json_bytes(record: &serde_json::Value) -> Vec<u8>` with recursive deterministic JSON encoding and explicit object-key sorting. Targeted identity validation passed; full-suite validation is blocked by connector HTTP 502 before Rust output, so no commit was made.
 
 ## Validation Ledger
+
+### 2026-05-10 — planning reconciliation for domain_hash_json identity task
+
+- Scope: `plan.md`, `status.md`, `src/domain` inventory, `state/rustc/ai/graph.json`, and working-tree status.
+- Command/check: read `plan.md`; read `status.md`; ran `find src/domain -type f | sort`; analyzed `state/rustc/ai/graph.json` with Python; checked `git status --short`.
+- Result: informational.
+- Evidence: first incomplete Active Priorities item is item 4, `src/domain/identity.rs::domain_hash_json(record: &serde_json::Value) -> DomainHash`; source inventory contains Rust files for bridge/contracts/identity/mod/risk/scoring and Markdown notes for business/finance/global intelligence/trading; planned Rust files `src/domain/global_intelligence.rs`, `src/domain/business.rs`, `src/domain/finance.rs`, and `src/domain/trading.rs` remain absent; graph schema version 16 has graph hash `ab2202a8d8ec371b0c462aecc41e28d059920f53e2179dd40ebb6ebb3127fc33`, 4,473 nodes, 31,082 edges, 2,976 intents, and no compiled `src/domain::*` graph evidence; working tree has pre-existing modified implementation files `src/agent/router.rs`, `src/domain/identity.rs`, and `upload.sh` outside this planning scope.
+- Next action: implement `src/domain/identity.rs::domain_hash_json(record)` and validate with targeted identity tests.
 
 ### 2026-05-10 — planning reconnaissance for domain hash JSON task
 
@@ -314,3 +322,12 @@ Planning reconciliation on 2026-05-10:
 - Kept full-suite validation as a separate unchecked blocker/gate item; no commit should be made until `cargo test --all-targets` produces green Rust output.
 - Next executable implementation item is Active Priorities item 3: `src/domain/identity.rs::canonical_json_bytes(record)`.
 - Scores remain unchanged at `G ~= 8.14 / 10`; this reconciliation fixes agent-loop state, not implementation or validation evidence.
+
+Planning reconciliation on 2026-05-10 for domain hash JSON:
+
+- Required reconnaissance completed from the connector workspace root, which resolves to `/workspace/ai_sandbox/canon-mini-agent/prototype/ai`; direct absolute-path shell entry was unavailable in the local container, so connector shell commands used `cwd=.` relative to the required project root.
+- Read `plan.md` and identified the first incomplete Active Priorities item as item 4, `src/domain/identity.rs::domain_hash_json(record: &serde_json::Value) -> DomainHash`.
+- Read `status.md` and confirmed current progress: P5 domain intelligence remains active, targeted identity validation has passed for prior identity items, and full-suite validation remains blocked by connector HTTP 502 transport failures rather than Rust output.
+- Ran `find src/domain -type f | sort`; Rust files remain `src/domain/bridge.rs`, `src/domain/contracts.rs`, `src/domain/identity.rs`, `src/domain/mod.rs`, `src/domain/risk.rs`, and `src/domain/scoring.rs`; planned Rust files for global intelligence, business, finance, and trading remain absent.
+- Python analysis of `state/rustc/ai/graph.json` reconfirmed schema version 16, graph hash `ab2202a8d8ec371b0c462aecc41e28d059920f53e2179dd40ebb6ebb3127fc33`, 4,473 nodes, 31,082 edges, 2,976 intents, and no compiled `src/domain::*` graph evidence.
+- Updated `plan.md` to make `src/domain/identity.rs::domain_hash_json(record)` the explicit next executable task. Updated `status.md` with reconnaissance evidence. `score.md` was not changed because score values and rationale did not change.
