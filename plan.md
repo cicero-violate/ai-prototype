@@ -198,10 +198,10 @@ Ordered execute-turn checklist, one file or one test per item. Implementation it
    - Scope: `src/domain/risk.rs` test module only.
    - Done when: finance execution beyond research-only bounds is rejected.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test risk::tests::risk_blocks_finance_execution -- --test-threads=1` passed on 2026-05-11 after one connector HTTP 502 retry; broader `cargo test risk::tests -- --test-threads=1` also passed with 3 risk tests.
-21. [ ] `src/domain/risk.rs`: add unit test `risk_allows_verified_business_plan_with_rollback_and_invalidation`.
+21. [x] `src/domain/risk.rs`: add unit test `risk_allows_verified_business_plan_with_rollback_and_invalidation`.
    - Scope: `src/domain/risk.rs` test module only.
    - Done when: a verified business workflow proposal with rollback and invalidation evidence passes.
-   - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test risk::tests::risk_allows_verified_business_plan_with_rollback_and_invalidation -- --test-threads=1`.
+   - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test risk::tests::risk_allows_verified_business_plan_with_rollback_and_invalidation -- --test-threads=1` passed on 2026-05-11 after one connector HTTP 502 retry; broader `cargo test risk::tests -- --test-threads=1` also passed with 4 risk tests.
 22. [ ] `src/domain/bridge.rs`: implement `DomainBridgeDescriptor`, `bridge_target_for_signal(...)`, `bridge_target_for_context(...)`, `bridge_target_for_judgment(...)`, `bridge_target_for_plan(...)`, and `bridge_target_for_eval(...)` as descriptor-only functions with no state, command-ledger, runtime, network, process, or TLog mutation authority.
    - Scope: `src/domain/bridge.rs` only.
    - Done when: every record family maps to a typed descriptor and the module remains pure data mapping.

@@ -48,13 +48,21 @@ Current date: 2026-05-11.
 - P3 runtime and receipt correctness: complete for current scope.
 - P4 graph source-of-truth integration: mostly complete for deterministic fixture/report evidence; agent-driven graph editing remains intentionally deferred until P5 domain surfaces are validated.
 - P5 domain intelligence layer: active. `src/domain/contracts.rs` constructor and invariant tests through unsafe live-effect rejection are complete in local source, with prior targeted validation passing 7 contract tests.
-- First incomplete Active Priorities item after implementation step 4 on 2026-05-11: `src/domain/risk.rs` unit test `risk_allows_verified_business_plan_with_rollback_and_invalidation` item 21.
+- First incomplete Active Priorities item after implementation step 5 on 2026-05-11: `src/domain/bridge.rs` descriptor-only bridge API item 22.
 - `src/domain/identity.rs` currently contains `DomainHash`, `DomainHashInput<'a>`, `canonical_json_bytes(record)`, `domain_hash_json(record)`, `domain_hash_parts(parts)`, `stable_domain_id(parts)`, and six passing targeted identity tests through `domain_hash_changes_when_schema_version_changes`.
 - `src/domain/scoring.rs` currently contains validated `BoundedScore` helpers, score-input breakdown helpers, conservative `verdict_for_scores(...)`, and passing `verdict_ignore_thresholds`, `verdict_watch_thresholds`, `verdict_research_thresholds`, `verdict_act_business_thresholds`, `verdict_act_finance_research_thresholds`, `verdict_simulate_trading_thresholds`, and `verdict_block_thresholds`; explicit verdict threshold tests are complete for the current scoring scope.
-- Current source inventory confirms Rust files exist for `src/domain/bridge.rs`, `src/domain/contracts.rs`, `src/domain/identity.rs`, `src/domain/mod.rs`, `src/domain/risk.rs`, and `src/domain/scoring.rs`; `src/domain/risk.rs` now includes `RiskEnvelopeViolation`, `check_risk_envelope(...)`, and passing `risk_blocks_live_trading` and `risk_blocks_finance_execution`; planned Rust files `src/domain/global_intelligence.rs`, `src/domain/business.rs`, `src/domain/finance.rs`, and `src/domain/trading.rs` remain absent.
+- Current source inventory confirms Rust files exist for `src/domain/bridge.rs`, `src/domain/contracts.rs`, `src/domain/identity.rs`, `src/domain/mod.rs`, `src/domain/risk.rs`, and `src/domain/scoring.rs`; `src/domain/risk.rs` now includes `RiskEnvelopeViolation`, `check_risk_envelope(...)`, and passing `risk_blocks_live_trading`, `risk_blocks_finance_execution`, and `risk_allows_verified_business_plan_with_rollback_and_invalidation`; planned Rust files `src/domain/global_intelligence.rs`, `src/domain/business.rs`, `src/domain/finance.rs`, and `src/domain/trading.rs` remain absent.
 - Domain fixture JSON files already exist under `tests/fixtures/domain/` for global signal, business workflow opportunity, finance hypothesis research, trading simulation sandbox, and trading live blocked cases; `tests/test_domain_fixture_contract.py` exists but fixture-validation checklist item 46 remains unchecked until refreshed validation is recorded.
 
 ## Validation Ledger
+
+### 2026-05-11 — implementation step 5 risk_allows_verified_business_plan_with_rollback_and_invalidation
+
+- Scope: `src/domain/risk.rs` unit test `risk_allows_verified_business_plan_with_rollback_and_invalidation` and Active Priorities item 21.
+- Command/check: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test risk::tests::risk_allows_verified_business_plan_with_rollback_and_invalidation -- --test-threads=1`; broader risk check `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test risk::tests -- --test-threads=1`.
+- Result: passed.
+- Evidence: added a verified business workflow plan with expected receipt evidence and rollback/invalidation hash, requested `SandboxWrite`, and a matching business envelope capped at `SandboxWrite`; `check_risk_envelope(...)` returns `Ok(())`. First validation attempt returned connector HTTP 502 before Rust output; retry ran 1 targeted test successfully with 0 failures, and broader risk validation ran 4 risk tests successfully with 0 failures.
+- Next action: implement `src/domain/bridge.rs` descriptor-only bridge API for Active Priorities item 22.
 
 ### 2026-05-11 — implementation step 4 risk_blocks_finance_execution
 

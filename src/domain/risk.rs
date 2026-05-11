@@ -180,6 +180,38 @@ mod tests {
     }
 
     #[test]
+    fn risk_allows_verified_business_plan_with_rollback_and_invalidation() {
+        let plan = DomainPlan {
+            schema_version: DOMAIN_SCHEMA_VERSION,
+            plan_id: "business-workflow-plan".to_string(),
+            domain_id: DomainId::Business,
+            judgment_hash: "hash:judgment".to_string(),
+            plan_kind: PlanKind::BusinessWorkflowPlan,
+            bridge_target: DomainBridgeTarget::PlanRecord,
+            required_capability_set_hash: "hash:capability-set".to_string(),
+            expected_receipt_set_hash: "hash:receipt-set".to_string(),
+            risk_envelope_hash: "hash:risk-envelope".to_string(),
+            success_metric_hash: "hash:success-metric".to_string(),
+            rollback_or_invalidation_hash: "hash:rollback-or-invalidation".to_string(),
+            requested_live_effect_level: LiveEffectLevel::SandboxWrite,
+        };
+        let envelope = DomainRiskEnvelope {
+            schema_version: DOMAIN_SCHEMA_VERSION,
+            envelope_id: "business-workflow-envelope".to_string(),
+            domain_id: DomainId::Business,
+            max_uncertainty: 500,
+            min_confidence: 400,
+            max_staleness: 500,
+            max_live_effect_level: LiveEffectLevel::SandboxWrite,
+            requires_human_review: false,
+            requires_verification: true,
+            sandbox_only: false,
+        };
+
+        assert_eq!(check_risk_envelope(&plan, &envelope), Ok(()));
+    }
+
+    #[test]
     fn blocks_live_financial_execution_for_sandbox_envelope() {
         let envelope = DomainRiskEnvelope {
             schema_version: DOMAIN_SCHEMA_VERSION,
