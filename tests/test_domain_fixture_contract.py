@@ -100,6 +100,19 @@ class DomainFixtureContract(unittest.TestCase):
                 self.assertNotIn("TLog", fixture)
                 self.assertNotIn("runtime_mutation", fixture)
 
+    def test_fixtures_include_expected_risk_result(self):
+        allowed_results = {"pass", "block"}
+        for name in REQUIRED_FIXTURES:
+            with self.subTest(name=name):
+                fixture = self.load_fixture(name)
+                self.assertIn("expected_risk_result", fixture, name)
+                self.assertIn(fixture["expected_risk_result"], allowed_results, name)
+                self.assertEqual(
+                    fixture["expected_risk_result"],
+                    fixture["expected_risk_envelope"]["expected_result"],
+                    name,
+                )
+
     def test_trading_fixtures_preserve_sandbox_only_boundary(self):
         sandbox = self.load_fixture("trading_simulation_sandbox.json")
         blocked = self.load_fixture("trading_live_blocked.json")
