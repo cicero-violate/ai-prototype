@@ -459,6 +459,31 @@ mod tests {
     }
 
     #[test]
+    fn verdict_simulate_trading_thresholds() {
+        let inputs = DomainScoreInputs {
+            opportunity: Score::new(610),
+            confidence: Score::new(560),
+            policy_fit: Score::new(900),
+            verification_readiness: Score::new(760),
+            risk: Score::new(430),
+            uncertainty: Score::new(470),
+            staleness_penalty: Score::new(140),
+            source_quality: Score::new(690),
+            context_quality: Score::new(620),
+        };
+
+        let domain_value = domain_value_score(inputs);
+        let actionability = actionability_score(domain_value, inputs);
+
+        assert_eq!(domain_value.get(), 204);
+        assert_eq!(actionability.get(), 86);
+        assert_eq!(
+            verdict_for_scores(DomainId::TradingSandbox, inputs),
+            DomainVerdict::SimulateTrading
+        );
+    }
+
+    #[test]
     fn verdict_ignore_thresholds() {
         let ignore_inputs = DomainScoreInputs {
             opportunity: Score::new(300),
