@@ -76,17 +76,6 @@ The score is not raised yet because this was a planning/scoring turn only. No ne
 
 Correctness, determinism, scalability, and coherency are strongest because the kernel, receipts, replay boundaries, graph fixture validation, validation evidence paths, and current planning direction agree on the same evidence-first architecture. Robustness, intelligence, and benefit remain lower because live graph editing, self-modification, and domain intelligence are not yet proven end to end.
 
-Planning-turn evidence on 2026-05-10:
-
-- First incomplete active priority: item 2, `src/domain/contracts.rs` constructors for `DomainSignal`, `DomainContext`, `DomainJudgment`, `DomainPlan`, `DomainRiskEnvelope`, `DomainEval`, and `DomainPromotionCandidate`.
-- Existing domain Rust files from `find src/domain -type f | sort`: `src/domain/bridge.rs`, `src/domain/contracts.rs`, `src/domain/identity.rs`, `src/domain/risk.rs`, `src/domain/scoring.rs`, and `src/domain/mod.rs`.
-- Missing planned subdomain Rust files: `src/domain/global_intelligence.rs`, `src/domain/business.rs`, `src/domain/finance.rs`, and `src/domain/trading.rs`.
-- Existing design notes remain: `business.md`, `contracts.md`, `finance.md`, `global_intelligence.md`, `integration.md`, `README.md`, `roadmap.md`, `scoring.md`, and `trading.md`.
-- Python graph analysis confirmed schema version 16, graph hash `ab2202a8d8ec371b0c462aecc41e28d059920f53e2179dd40ebb6ebb3127fc33`, 4,473 nodes, 31,082 edges, 2,976 intents, and 0 `domain::` prefix nodes. Nineteen nodes contain the text `domain`, but they are older agent/runtime references such as `runtime::reducer::raise_domain_failure`, not compiled `src/domain` module evidence.
-- Helper-agent spawn was attempted through `canon_spawn_agent` and failed with `connect worker on port 9100: Connection refused`; planning proceeded in this agent.
-- `git status --short` showed multiple pre-existing uncommitted implementation/test changes outside this planning turn. This planning turn stages only `plan.md` and `score.md`.
-
-
 Implementation step 2 evidence on 2026-05-10:
 
 - Completed Active Priorities item 1 in `src/domain/contracts.rs`.
@@ -104,8 +93,8 @@ Planning-turn update on 2026-05-10 after fresh reconnaissance:
 - First incomplete Active Priorities item is item 4: `src/domain/contracts.rs` unit test `domain_record_constructors_reject_missing_hashes`, covering required hash/provenance inputs to `DomainRiskEnvelope::new`, `DomainJudgment::new`, `DomainPlan::new`, `DomainEval::new`, and `DomainPromotionCandidate::new`.
 - `find src/domain -type f | sort` confirmed Rust files `src/domain/bridge.rs`, `src/domain/contracts.rs`, `src/domain/identity.rs`, `src/domain/mod.rs`, `src/domain/risk.rs`, and `src/domain/scoring.rs`; planned Rust files `src/domain/global_intelligence.rs`, `src/domain/business.rs`, `src/domain/finance.rs`, and `src/domain/trading.rs` remain absent.
 - Python analysis of `state/rustc/ai/graph.json` confirmed schema version 16, graph hash `ab2202a8d8ec371b0c462aecc41e28d059920f53e2179dd40ebb6ebb3127fc33`, 4,473 nodes, 31,082 edges, 2,976 intents, 2,976 function nodes, 1,283 impl nodes, 159 struct nodes, 53 enum nodes, and no compiled `domain::` nodes. The only node containing `domain` is `runtime::reducer::raise_domain_failure`, so graph evidence does not yet prove the P5 domain module.
-- Active Priorities were rewritten into concrete file-level and test-level tasks that execute turns can pick up one at a time.
-- Existing uncommitted implementation/test changes were present before this planning patch. This turn stages and commits only `plan.md` and `score.md`.
+- Active Priorities remain a concrete ordered checklist of file-level and test-level tasks that execute turns can pick up one at a time; the next executable task is item 4.
+- `git status --short` showed no uncommitted changes before this planning patch. This turn stages and commits only `plan.md` and `score.md`.
 
 Implementation step 5 evidence on 2026-05-10:
 
