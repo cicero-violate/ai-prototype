@@ -48,14 +48,95 @@ Current date: 2026-05-11.
 - P3 runtime and receipt correctness: complete for current scope.
 - P4 graph source-of-truth integration: mostly complete for deterministic fixture/report evidence; agent-driven graph editing remains intentionally deferred until P5 domain surfaces are validated.
 - P5 domain intelligence layer: active. `src/domain/contracts.rs` constructor and invariant tests through unsafe live-effect rejection are complete in local source, with prior targeted validation passing 7 contract tests.
-- Active Priorities items 25 through 39 are complete in the working tree. Item 39 targeted `domain_identity_is_deterministic` validation returned Rust output and passed with 1 named integration test; broader `domain_contract` integration validation passed with 2 integration tests. Planning reconnaissance reconfirmed the first incomplete implementation item is item 40, `tests/domain_contract.rs::domain_verdicts_are_deterministic`. Full-suite validation remains blocked by connector HTTP 502 and is tracked by item 48.
+- Active Priorities items 25 through 46 are complete in the working tree. Items 42 through 45 refreshed `tests/fixtures/domain/global_signal_macro.json`, `tests/fixtures/domain/business_workflow_opportunity.json`, `tests/fixtures/domain/finance_hypothesis_research.json`, and `tests/fixtures/domain/trading_simulation_sandbox.json` with explicit top-level `expected_risk_result: "pass"`; item 46 confirms `tests/fixtures/domain/trading_live_blocked.json` with explicit top-level `expected_risk_result: "block"`. Targeted fixture validation passed with 5 tests. Full-suite validation remains blocked by connector HTTP 502 and is tracked by item 50.
 - `src/domain/business.rs` contains `BusinessOpportunity`, `WorkflowAutomationCandidate`, `CustomerFeedbackSignal`, `monetization_score(...)`, compile-smoke test `business_module_records_and_score_helper_compile`, deterministic repeatability test `business_monetization_score_is_deterministic`, and bounded-score test `business_monetization_score_is_bounded`, with broader business validation passing 3 tests after correcting the bounded test scalar assertion.
 - `src/domain/identity.rs` currently contains `DomainHash`, `DomainHashInput<'a>`, `canonical_json_bytes(record)`, `domain_hash_json(record)`, `domain_hash_parts(parts)`, `stable_domain_id(parts)`, and six passing targeted identity tests through `domain_hash_changes_when_schema_version_changes`.
 - `src/domain/scoring.rs` currently contains validated `BoundedScore` helpers, score-input breakdown helpers, conservative `verdict_for_scores(...)`, and passing `verdict_ignore_thresholds`, `verdict_watch_thresholds`, `verdict_research_thresholds`, `verdict_act_business_thresholds`, `verdict_act_finance_research_thresholds`, `verdict_simulate_trading_thresholds`, and `verdict_block_thresholds`; explicit verdict threshold tests are complete for the current scoring scope.
 - Current source inventory confirms Rust files exist for `src/domain/bridge.rs`, `src/domain/business.rs`, `src/domain/contracts.rs`, `src/domain/finance.rs`, `src/domain/global_intelligence.rs`, `src/domain/identity.rs`, `src/domain/mod.rs`, `src/domain/risk.rs`, `src/domain/scoring.rs`, and `src/domain/trading.rs`; `src/domain/risk.rs` now includes `RiskEnvelopeViolation`, `check_risk_envelope(...)`, and passing `risk_blocks_live_trading`, `risk_blocks_finance_execution`, and `risk_allows_verified_business_plan_with_rollback_and_invalidation`; `src/domain/bridge.rs` now includes `DomainBridgeDescriptor` plus descriptor-only signal/context/judgment/plan/eval mapping functions with passing targeted bridge validation, passing named record-family descriptor validation, and passing no-live-trading bridge descriptor validation; `src/domain/global_intelligence.rs` exists locally with `SignalClass`, `GlobalSignalProfile`, `stale_for_horizon(...)`, and `actionability_hint(...)`, and compile evidence through `src/domain/mod.rs` now passes targeted validation; `src/domain/finance.rs` exists locally with `AssetUniverse`, `FinanceHypothesis`, `FinanceRiskDimensions`, `finance_research_allowed(...)`, passing behavior test `finance_hypothesis_execution_allowed_is_false`, and passing risk-envelope test `finance_research_plan_passes_research_only_risk_check`; `src/domain/trading.rs` exists locally with `TradingSimulationPlan`, `BacktestReceiptRequirements`, `TradingRiskLimit`, `enforce_sandbox_only(...)`, and passing behavior test `trading_simulation_plan_rejects_live_execution`.
-- Domain fixture JSON files already exist under `tests/fixtures/domain/` for global signal, business workflow opportunity, finance hypothesis research, trading simulation sandbox, and trading live blocked cases; `tests/test_domain_fixture_contract.py` exists but fixture-validation checklist item 46 remains unchecked until refreshed validation is recorded.
+- Domain fixture JSON files already exist under `tests/fixtures/domain/` for global signal, business workflow opportunity, finance hypothesis research, trading simulation sandbox, and trading live blocked cases; `tests/test_domain_fixture_contract.py` exists and item 46 targeted fixture validation is recorded. Remaining fixture contract work begins at item 47, `tests/test_domain_fixture_contract.py::test_fixtures_include_expected_risk_result`, followed by item 48 clear required-field assertion coverage and item 49 full fixture-contract validation.
 
 ## Validation Ledger
+
+### 2026-05-11 — planning turn for fixture contract risk-result validation
+
+- Scope: `plan.md`, `status.md`, `score.md`, `tests/test_domain_fixture_contract.py`, `tests/fixtures/domain/*.json`, and `state/rustc/ai/graph.json`.
+- Command/check: inspected Active Priorities items 47 through 52, current working-tree status, `tests/test_domain_fixture_contract.py`, all five domain fixture JSON files, and graph evidence metadata.
+- Result: informational planning update.
+- Evidence: first incomplete implementation work was the broad `tests/test_domain_fixture_contract.py` item 47. Existing fixture JSON files now all include top-level `expected_risk_result`; four pass fixtures use `"pass"` and `trading_live_blocked.json` uses `"block"`, matching each fixture's `expected_risk_envelope.expected_result`. The existing Python fixture contract validates schema, domain, bridge target, verdict, provenance, uncertainty, score inputs, score equations, runtime-effect exclusions, and trading sandbox boundaries, but it does not yet explicitly validate top-level `expected_risk_result` for every fixture or emit clear per-field missing-required-field assertions. Current graph evidence remains schema version 16 with graph hash `ab2202a8d8ec371b0c462aecc41e28d059920f53e2179dd40ebb6ebb3127fc33`, 4,473 nodes, 31,082 edges, 2,976 intents, and no compiled P5 `domain::` node evidence.
+- Next action: implement Active Priorities item 47 by adding `tests/test_domain_fixture_contract.py::test_fixtures_include_expected_risk_result`, then run `python3 -m unittest tests.test_domain_fixture_contract.DomainFixtureContract.test_fixtures_include_expected_risk_result`.
+
+### 2026-05-11 — implementation step 1 trading_live_blocked fixture refresh
+
+- Scope: `tests/fixtures/domain/trading_live_blocked.json` and Active Priorities item 46.
+- Command/check: targeted command `python3 -m unittest tests/test_domain_fixture_contract.py`; broader full-suite gate `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
+- Result: targeted passed; broader full-suite gate blocked by infrastructure transport.
+- Evidence: `tests/fixtures/domain/trading_live_blocked.json` preserves `TradingSandbox`, `TradingSimulationPlan`, `Block`, `sandbox_only: false`, `live_execution_allowed: true`, expected domain value `0`, expected actionability `0`, structured risk envelope with `expected_result: "block"`, expected bridge target `Blocked`, and explicit top-level `expected_risk_result: "block"`. Targeted fixture validation ran 5 unittest cases with 0 failures. The broader full-suite attempt returned connector HTTP 502 before Rust output; no product or Rust test failure was observed.
+- Next action: implement Active Priorities item 47 by refreshing `tests/test_domain_fixture_contract.py` so it explicitly validates top-level `expected_risk_result`, then run `python3 -m unittest tests/test_domain_fixture_contract.py`; retry item 50 full-suite validation when connector transport can return Rust output. No commit was made because the broader gate could not be made green.
+
+### 2026-05-11 — implementation step 1 trading_simulation_sandbox fixture refresh
+
+- Scope: `tests/fixtures/domain/trading_simulation_sandbox.json` and Active Priorities item 45.
+- Command/check: targeted command `python3 -m unittest tests/test_domain_fixture_contract.py`; broader full-suite gate `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
+- Result: targeted passed; broader full-suite gate blocked by infrastructure transport.
+- Evidence: `tests/fixtures/domain/trading_simulation_sandbox.json` now preserves `TradingSandbox`, `TradingSimulationPlan`, `SimulateTrading`, `sandbox_only: true`, `live_execution_allowed: false`, expected domain value `204`, expected actionability `86`, structured risk envelope with `expected_result: "pass"`, and explicit top-level `expected_risk_result: "pass"`. Targeted fixture validation ran 5 unittest cases with 0 failures. The full-suite gate returned connector HTTP 502 before Rust output; no product or Rust test failure was observed.
+- Next action: implement Active Priorities item 46 by refreshing `tests/fixtures/domain/trading_live_blocked.json`, then run `python3 -m unittest tests/test_domain_fixture_contract.py`; retry item 50 full-suite validation when connector transport can return Rust output. No commit was made because the broader gate could not be made green.
+
+### 2026-05-11 — implementation step 1 finance_hypothesis_research fixture refresh
+
+- Scope: `tests/fixtures/domain/finance_hypothesis_research.json` and Active Priorities item 44.
+- Command/check: targeted command `python3 -m unittest tests/test_domain_fixture_contract.py`; broader full-suite gate `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`; alternate project evaluator gate `canon_execute_evaluator_suite(rust_full_validation)`.
+- Result: targeted passed; broader full-suite gates blocked by infrastructure transport.
+- Evidence: `tests/fixtures/domain/finance_hypothesis_research.json` now preserves `Finance`, `PlanRecord`, `ActFinanceResearch`, `execution_allowed: false`, expected domain value `176`, expected actionability `85`, structured risk envelope with `expected_result: "pass"`, and explicit top-level `expected_risk_result: "pass"`. Targeted fixture validation ran 5 unittest cases with 0 failures. Both broader full-validation attempts returned connector HTTP 502 before Rust output; no product or Rust test failure was observed.
+- Next action: implement Active Priorities item 45 by refreshing `tests/fixtures/domain/trading_simulation_sandbox.json`, then run `python3 -m unittest tests/test_domain_fixture_contract.py`; retry item 50 full-suite validation when connector transport can return Rust output. No commit was made because the broader gate could not be made green.
+
+
+### 2026-05-11 — implementation step 3 business_workflow_opportunity fixture refresh
+
+- Scope: `tests/fixtures/domain/business_workflow_opportunity.json` and Active Priorities item 43.
+- Command/check: targeted command `python3 -m unittest tests/test_domain_fixture_contract.py`; broader full-suite gate `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
+- Result: targeted passed; broader full-suite gate blocked by infrastructure transport.
+- Evidence: `tests/fixtures/domain/business_workflow_opportunity.json` now preserves `Business`, `PlanRecord`, `ActBusiness`, expected domain value `459`, expected actionability `267`, structured risk envelope with `expected_result: "pass"`, and explicit top-level `expected_risk_result: "pass"`. Targeted fixture validation ran 5 unittest cases with 0 failures. The full-suite gate returned connector HTTP 502 before Rust output; no product or Rust test failure was observed.
+- Next action: implement Active Priorities item 44 by refreshing `tests/fixtures/domain/finance_hypothesis_research.json`, then run `python3 -m unittest tests/test_domain_fixture_contract.py`; retry item 50 full-suite validation when connector transport can return Rust output.
+
+### 2026-05-11 — planning reconnaissance for business workflow fixture refresh
+
+- Scope: `plan.md`, `status.md`, `score.md`, `tests/test_domain_fixture_contract.py`, `tests/fixtures/domain/business_workflow_opportunity.json`, all other `tests/fixtures/domain/*.json`, and current working-tree evidence.
+- Command/check: inspected planning/status/score files; confirmed Active Priorities item 43 is the first unchecked implementation item; inspected the Python fixture contract and all five domain fixture JSON artifacts.
+- Result: informational planning update.
+- Evidence: `tests/test_domain_fixture_contract.py` currently validates five required fixtures for schema, domain id, expected bridge target, verdict, provenance hashes, uncertainty drivers, bounded score inputs, deterministic integer score equations, and no runtime effect fields. `business_workflow_opportunity.json` currently has `Business`, `PlanRecord`, `ActBusiness`, expected domain value `459`, actionability `267`, and `expected_risk_envelope.expected_result: "pass"`; unlike refreshed `global_signal_macro.json`, it does not yet include explicit top-level `expected_risk_result`. Existing uncommitted evidence also shows items 40-42 complete with targeted validation, while full-suite validation remains blocked by connector HTTP 502 before Rust output.
+- Next action: implement Active Priorities item 43 by refreshing only `tests/fixtures/domain/business_workflow_opportunity.json`, then run `python3 -m unittest tests/test_domain_fixture_contract.py`.
+
+### 2026-05-11 — implementation step 5 global_signal_macro fixture refresh
+
+- Scope: `tests/fixtures/domain/global_signal_macro.json` and Active Priorities item 42.
+- Command/check: targeted command `python3 -m unittest tests/test_domain_fixture_contract.py`; broader full-suite gate `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
+- Result: targeted passed; broader full-suite gate blocked by infrastructure transport.
+- Evidence: `tests/fixtures/domain/global_signal_macro.json` now includes the existing schema, `GlobalIntelligence` domain id, source/provenance hashes, `Tactical` horizon, complete score inputs, expected `Watch` verdict, expected `ObservationRecord` bridge target, structured risk envelope with `expected_result: "pass"`, and explicit top-level `expected_risk_result: "pass"`. Targeted fixture validation ran 5 unittest cases with 0 failures. The full-suite gate returned connector HTTP 502 before Rust output; no product or Rust test failure was observed.
+- Next action: implement Active Priorities item 43 by refreshing `tests/fixtures/domain/business_workflow_opportunity.json`, then run `python3 -m unittest tests/test_domain_fixture_contract.py`; retry item 50 full-suite validation when connector transport can return Rust output.
+
+### 2026-05-11 — implementation step 3 domain_surface_exposes_no_runtime_mutation_api
+
+- Scope: `tests/domain_contract.rs` integration test `domain_surface_exposes_no_runtime_mutation_api` and Active Priorities item 41.
+- Command/check: targeted command `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test domain_contract domain_surface_exposes_no_runtime_mutation_api -- --test-threads=1`; broader integration command `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test domain_contract -- --test-threads=1`; full-suite gate `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
+- Result: targeted passed; broader integration passed; full-suite gate blocked by infrastructure transport.
+- Evidence: `tests/domain_contract.rs` contains `domain_surface_exposes_no_runtime_mutation_api`, which inspects `src/domain/mod.rs` public exports and non-doc source in domain Rust modules for runtime, command-ledger, process, network, or TLog mutation authority tokens. Targeted validation ran 1 named integration test with 0 failures. Broader `domain_contract` validation ran 4 integration tests with 0 failures. The full-suite gate returned connector HTTP 502 before Rust output; no product or Rust test failure was observed.
+- Next action: implement Active Priorities item 42 by refreshing `tests/fixtures/domain/global_signal_macro.json`, then run `python3 -m unittest tests/test_domain_fixture_contract.py`; retry item 50 full-suite validation when connector transport can return Rust output.
+
+### 2026-05-11 — implementation step 1 domain_surface_exposes_no_runtime_mutation_api
+
+- Scope: `tests/domain_contract.rs` integration test `domain_surface_exposes_no_runtime_mutation_api` and Active Priorities item 41.
+- Command/check: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test domain_contract domain_surface_exposes_no_runtime_mutation_api -- --test-threads=1`.
+- Result: blocked by infrastructure transport.
+- Evidence: `tests/domain_contract.rs` contains `domain_surface_exposes_no_runtime_mutation_api`, which inspects `src/domain/mod.rs` public exports and non-doc source in domain Rust modules for runtime, command-ledger, process, network, or TLog mutation authority tokens. Two targeted validation attempts returned connector HTTP 502 before Rust output; no product or Rust test failure was observed.
+- Next action: retry Active Priorities item 41 targeted validation when connector transport can return Rust output; mark item 41 complete only after the named test is green.
+
+### 2026-05-11 — implementation step 2 domain_verdicts_are_deterministic
+
+- Scope: `tests/domain_contract.rs` integration test `domain_verdicts_are_deterministic` and Active Priorities item 40.
+- Command/check: targeted command `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test domain_contract domain_verdicts_are_deterministic -- --test-threads=1`; broader integration command `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test domain_contract -- --test-threads=1`; full-suite gate `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
+- Result: targeted passed; broader integration passed; full-suite gate blocked by infrastructure transport.
+- Evidence: `tests/domain_contract.rs` contains `domain_verdicts_are_deterministic`, which loads all five domain fixtures, converts fixture score inputs into `DomainScoreInputs`, verifies deterministic domain-value and actionability scores against fixture expectations, verifies `verdict_for_scores(...)` is stable and equals the expected verdict, and verifies `bridge_target_for_verdict(...)` equals the expected bridge target. Targeted validation ran 1 named integration test with 0 failures. Broader `domain_contract` validation ran 3 integration tests with 0 failures. A combined broader/full validation call and a separate full-suite call both returned connector HTTP 502 before full-suite Rust output; no product or Rust test failure was observed.
+- Next action: implement Active Priorities item 41 by adding `tests/domain_contract.rs::domain_surface_exposes_no_runtime_mutation_api`, then run the named targeted integration validation.
 
 ### 2026-05-11 — planning reconnaissance for deterministic verdict integration test selection
 
@@ -175,7 +256,7 @@ Current date: 2026-05-11.
 - Command/check: targeted command `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test business::tests -- --test-threads=1`; broader full-suite gate `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
 - Result: targeted passed; broader full-suite gate blocked by infrastructure transport.
 - Evidence: `src/domain/mod.rs` already declares `pub mod business;` and re-exports `monetization_score`, `BusinessOpportunity`, `CustomerFeedbackSignal`, and `WorkflowAutomationCandidate` without declaring `finance` or `trading`. Targeted validation discovered and passed 3 business tests with 0 failures. The subsequent full-suite attempt returned connector HTTP 502 before Rust output; no product or Rust test failure was observed.
-- Next action: do not commit this implementation turn; implement Active Priorities item 31 or retry item 48 full-suite validation when connector transport is healthy.
+- Next action: do not commit this implementation turn; implement Active Priorities item 31 or retry item 50 full-suite validation when connector transport is healthy.
 
 ### 2026-05-11 — implementation step 4 business monetization bounded score
 
@@ -183,7 +264,7 @@ Current date: 2026-05-11.
 - Command/check: targeted command `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test business::tests::business_monetization_score_is_bounded -- --test-threads=1`; broader scoped command `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test business::tests -- --test-threads=1`; broader full-suite gate attempted twice as `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
 - Result: targeted passed; broader scoped passed; full-suite gate blocked by infrastructure transport.
 - Evidence: added `business_monetization_score_is_bounded` to `src/domain/business.rs`, using over-range constructor inputs that clamp through `BoundedScore` and asserting `monetization_score(...)` returns `BoundedScore::max()`. Initial targeted validation failed with Rust type error because the test compared `u16` to `BoundedScore`; corrected the scoped assertion to compare scalar values. Retried validation passed with 1 named test and 0 failures; broader business validation passed with 3 business tests and 0 failures. Two full-suite attempts returned connector HTTP 502 before usable Rust product output; no product or Rust test failure was observed.
-- Next action: do not commit this implementation turn; implement Active Priorities item 31 or retry item 48 full-suite validation when connector transport is healthy.
+- Next action: do not commit this implementation turn; implement Active Priorities item 31 or retry item 50 full-suite validation when connector transport is healthy.
 
 ### 2026-05-11 — implementation step 2 business monetization determinism
 
@@ -191,7 +272,7 @@ Current date: 2026-05-11.
 - Command/check: targeted command `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test business::tests::business_monetization_score_is_deterministic -- --test-threads=1`; broader scoped command `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test business::tests -- --test-threads=1`; broader full-suite gate attempted as `cargo test --all-targets` and predefined suite `rust_full_validation`.
 - Result: targeted passed; broader scoped passed; full-suite gate blocked by infrastructure transport.
 - Evidence: the named deterministic test was added to `src/domain/business.rs` and proves three repeated `monetization_score(...)` calls over the same `BusinessOpportunity`, `WorkflowAutomationCandidate`, and `CustomerFeedbackSignal` return the same `BoundedScore` value `652`. The targeted command passed with 1 named test and 0 failures after one connector HTTP 502 retry. Broader scoped validation passed with 2 business tests and 0 failures. Full-suite validation attempts returned connector/tool transport failures before usable Rust product output; no product or Rust test failure was observed.
-- Next action: do not commit this implementation turn; implement Active Priorities item 30 or retry item 48 full-suite validation when connector transport is healthy.
+- Next action: do not commit this implementation turn; implement Active Priorities item 30 or retry item 50 full-suite validation when connector transport is healthy.
 
 ### 2026-05-11 — implementation step 4 business module validation
 
@@ -199,7 +280,7 @@ Current date: 2026-05-11.
 - Command/check: targeted command `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test business::tests -- --test-threads=1`; broader full-suite gate `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
 - Result: targeted passed; broader full-suite gate blocked by infrastructure transport.
 - Evidence: initial targeted validation discovered `business_module_records_and_score_helper_compile` and failed because `monetization_score(...)` returned deterministic value `652` while the compile-smoke assertion expected `615`; corrected the scoped assertion in `src/domain/business.rs` and reran targeted validation successfully with 1 business test passed and 0 failures. The subsequent full-suite attempt returned connector HTTP 502 before Rust output; no product or Rust test failure was observed.
-- Next action: do not commit this implementation turn; implement Active Priorities item 29 or retry item 48 full-suite validation when connector transport is healthy.
+- Next action: do not commit this implementation turn; implement Active Priorities item 29 or retry item 50 full-suite validation when connector transport is healthy.
 
 ### 2026-05-11 — planning resequence for business module compile evidence
 
@@ -231,7 +312,7 @@ Current date: 2026-05-11.
 - Command/check: targeted command `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test global_intelligence::tests::global_signal_profile_staleness_is_deterministic -- --test-threads=1`; broader scoped command `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test global_intelligence::tests -- --test-threads=1`; full-suite gate `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
 - Result: targeted and broader scoped checks passed; full-suite gate blocked by infrastructure transport.
 - Evidence: the named test is present in `src/domain/global_intelligence.rs` and proves three repeated `stale_for_horizon(&profile)` checks return the same result for the same profile. Targeted validation ran 1 named test successfully with 0 failures. Broader scoped validation ran 3 `global_intelligence` tests successfully with 0 failures. The combined broader/full-suite command and the separate full-suite retry both returned connector HTTP 502 before Rust output; no product or Rust test failure was observed.
-- Next action: implement Active Priorities item 27, then retry item 48 full-suite validation when connector transport is healthy.
+- Next action: implement Active Priorities item 27, then retry item 50 full-suite validation when connector transport is healthy.
 
 ### 2026-05-11 — implementation step 1 global_intelligence module declaration
 
@@ -239,7 +320,7 @@ Current date: 2026-05-11.
 - Command/check: targeted command `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test global_intelligence::tests -- --test-threads=1`; broader full-suite gate `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets` retried twice.
 - Result: targeted passed; broader full-suite gate blocked by infrastructure transport.
 - Evidence: `src/domain/mod.rs` already contains `pub mod global_intelligence;` and re-exports `actionability_hint`, `stale_for_horizon`, `GlobalSignalProfile`, and `SignalClass` without declaring `business`, `finance`, or `trading`. Targeted validation discovered and ran 2 tests successfully: `domain::global_intelligence::tests::global_signal_profile_from_domain_signal_is_deterministic` and `domain::global_intelligence::tests::global_signal_profile_helpers_are_deterministic`. Both full-suite attempts returned connector HTTP 502 before Rust output; no product or Rust test failure was observed.
-- Next action: run Active Priorities item 26, then retry item 48 full-suite validation when connector transport is healthy.
+- Next action: run Active Priorities item 26, then retry item 50 full-suite validation when connector transport is healthy.
 
 ### 2026-05-11 — planning reconciliation for global_intelligence compile evidence
 
