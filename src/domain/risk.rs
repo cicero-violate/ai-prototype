@@ -107,7 +107,42 @@ pub fn evaluate_risk_envelope(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::domain::contracts::{DomainId, DOMAIN_SCHEMA_VERSION};
+    use crate::domain::contracts::{DomainBridgeTarget, DomainId, PlanKind, DOMAIN_SCHEMA_VERSION};
+
+    #[test]
+    fn risk_blocks_live_trading() {
+        let plan = DomainPlan {
+            schema_version: DOMAIN_SCHEMA_VERSION,
+            plan_id: "trading-live-plan".to_string(),
+            domain_id: DomainId::TradingSandbox,
+            judgment_hash: "hash:judgment".to_string(),
+            plan_kind: PlanKind::TradingSimulationPlan,
+            bridge_target: DomainBridgeTarget::PlanRecord,
+            required_capability_set_hash: "hash:capability-set".to_string(),
+            expected_receipt_set_hash: "hash:receipt-set".to_string(),
+            risk_envelope_hash: "hash:risk-envelope".to_string(),
+            success_metric_hash: "hash:success-metric".to_string(),
+            rollback_or_invalidation_hash: "hash:rollback-or-invalidation".to_string(),
+            requested_live_effect_level: LiveEffectLevel::FinancialExecution,
+        };
+        let envelope = DomainRiskEnvelope {
+            schema_version: DOMAIN_SCHEMA_VERSION,
+            envelope_id: "trading-sandbox-envelope".to_string(),
+            domain_id: DomainId::TradingSandbox,
+            max_uncertainty: 500,
+            min_confidence: 400,
+            max_staleness: 300,
+            max_live_effect_level: LiveEffectLevel::SandboxWrite,
+            requires_human_review: true,
+            requires_verification: true,
+            sandbox_only: true,
+        };
+
+        assert_eq!(
+            check_risk_envelope(&plan, &envelope),
+            Err(RiskEnvelopeViolation::LiveEffectExceedsEnvelope)
+        );
+    }
 
     #[test]
     fn blocks_live_financial_execution_for_sandbox_envelope() {
