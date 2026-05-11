@@ -182,10 +182,10 @@ Ordered execute-turn checklist, one file or one test per item. Implementation it
    - Scope: `src/domain/scoring.rs` test module only.
    - Done when: the named test proves the trading branch routes only to simulation.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test scoring::tests::verdict_simulate_trading_thresholds -- --test-threads=1` passed on 2026-05-10 after one connector HTTP 502 retry; broader `cargo test scoring::tests -- --test-threads=1` also passed with 10 scoring tests.
-17. [ ] `src/domain/scoring.rs`: add unit test `verdict_block_thresholds` covering `tests/fixtures/domain/trading_live_blocked.json` score inputs and asserting domain value `0`, actionability `0`, and `DomainVerdict::Block` from zero policy fit/high risk.
+17. [x] `src/domain/scoring.rs`: add unit test `verdict_block_thresholds` covering `tests/fixtures/domain/trading_live_blocked.json` score inputs and asserting domain value `0`, actionability `0`, and `DomainVerdict::Block` from zero policy fit/high risk.
    - Scope: `src/domain/scoring.rs` test module only.
    - Done when: the named test proves block precedence over ignore for unsafe requests.
-   - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test scoring::tests::verdict_block_thresholds -- --test-threads=1`.
+   - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test scoring::tests::verdict_block_thresholds -- --test-threads=1` passed on 2026-05-11 after one connector HTTP 502 retry; broader `cargo test scoring::tests -- --test-threads=1` also passed with 11 scoring tests.
 18. [ ] `src/domain/risk.rs`: implement `RiskEnvelopeViolation` and `check_risk_envelope(plan: &DomainPlan, envelope: &DomainRiskEnvelope) -> Result<(), RiskEnvelopeViolation>` covering rollback requirements, invalidation requirements, risk bounds, and live-effect constraints.
    - Scope: `src/domain/risk.rs` only.
    - Done when: the new API compiles without adding I/O, runtime, network, command-ledger, or TLog mutation authority.
