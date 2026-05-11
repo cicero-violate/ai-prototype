@@ -434,6 +434,31 @@ mod tests {
     }
 
     #[test]
+    fn verdict_act_finance_research_thresholds() {
+        let inputs = DomainScoreInputs {
+            opportunity: Score::new(700),
+            confidence: Score::new(680),
+            policy_fit: Score::new(620),
+            verification_readiness: Score::new(740),
+            risk: Score::new(520),
+            uncertainty: Score::new(430),
+            staleness_penalty: Score::new(190),
+            source_quality: Score::new(720),
+            context_quality: Score::new(680),
+        };
+
+        let domain_value = domain_value_score(inputs);
+        let actionability = actionability_score(domain_value, inputs);
+
+        assert_eq!(domain_value.get(), 176);
+        assert_eq!(actionability.get(), 85);
+        assert_eq!(
+            verdict_for_scores(DomainId::Finance, inputs),
+            DomainVerdict::ActFinanceResearch
+        );
+    }
+
+    #[test]
     fn verdict_ignore_thresholds() {
         let ignore_inputs = DomainScoreInputs {
             opportunity: Score::new(300),
