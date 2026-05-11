@@ -1,11 +1,71 @@
 //! Domain risk-envelope checks.
 
-use super::contracts::{DomainRiskEnvelope, LiveEffectLevel};
+use super::contracts::{DomainPlan, DomainRiskEnvelope, LiveEffectLevel};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum DomainRiskDecision {
     Pass,
     Block { reason: &'static str },
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum RiskEnvelopeViolation {
+    DomainMismatch,
+    MaxUncertaintyOutOfRange { value: u16 },
+    MinConfidenceOutOfRange { value: u16 },
+    MaxStalenessOutOfRange { value: u16 },
+    UnsafeEnvelopeLiveEffect,
+    MissingExpectedReceiptSet,
+    MissingRollbackOrInvalidation,
+    LiveEffectExceedsEnvelope,
+    SandboxOnlyBoundary,
+}
+
+fn is_blank(value: &str) -> bool {
+    value.trim().is_empty()
+}
+
+pub fn check_risk_envelope(
+    plan: &DomainPlan,
+    envelope: &DomainRiskEnvelope,
+) -> Result<(), RiskEnvelopeViolation> {
+    if plan.domain_id != envelope.domain_id {
+        return Err(RiskEnvelopeViolation::DomainMismatch);
+    }
+    if envelope.max_uncertainty > 1000 {
+        return Err(RiskEnvelopeViolation::MaxUncertaintyOutOfRange {
+            value: envelope.max_uncertainty,
+        });
+    }
+    if envelope.min_confidence > 1000 {
+        return Err(RiskEnvelopeViolation::MinConfidenceOutOfRange {
+            value: envelope.min_confidence,
+        });
+    }
+    if envelope.max_staleness > 1000 {
+        return Err(RiskEnvelopeViolation::MaxStalenessOutOfRange {
+            value: envelope.max_staleness,
+        });
+    }
+    if envelope.max_live_effect_level == LiveEffectLevel::FinancialExecution {
+        return Err(RiskEnvelopeViolation::UnsafeEnvelopeLiveEffect);
+    }
+    if envelope.requires_verification && is_blank(&plan.expected_receipt_set_hash) {
+        return Err(RiskEnvelopeViolation::MissingExpectedReceiptSet);
+    }
+    if (envelope.requires_verification || plan.requested_live_effect_level > LiveEffectLevel::None)
+        && is_blank(&plan.rollback_or_invalidation_hash)
+    {
+        return Err(RiskEnvelopeViolation::MissingRollbackOrInvalidation);
+    }
+    if plan.requested_live_effect_level > envelope.max_live_effect_level {
+        return Err(RiskEnvelopeViolation::LiveEffectExceedsEnvelope);
+    }
+    if envelope.sandbox_only && plan.requested_live_effect_level > LiveEffectLevel::SandboxWrite {
+        return Err(RiskEnvelopeViolation::SandboxOnlyBoundary);
+    }
+
+    Ok(())
 }
 
 pub fn evaluate_risk_envelope(

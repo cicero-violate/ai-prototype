@@ -186,10 +186,10 @@ Ordered execute-turn checklist, one file or one test per item. Implementation it
    - Scope: `src/domain/scoring.rs` test module only.
    - Done when: the named test proves block precedence over ignore for unsafe requests.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test scoring::tests::verdict_block_thresholds -- --test-threads=1` passed on 2026-05-11 after one connector HTTP 502 retry; broader `cargo test scoring::tests -- --test-threads=1` also passed with 11 scoring tests.
-18. [ ] `src/domain/risk.rs`: implement `RiskEnvelopeViolation` and `check_risk_envelope(plan: &DomainPlan, envelope: &DomainRiskEnvelope) -> Result<(), RiskEnvelopeViolation>` covering rollback requirements, invalidation requirements, risk bounds, and live-effect constraints.
+18. [x] `src/domain/risk.rs`: implement `RiskEnvelopeViolation` and `check_risk_envelope(plan: &DomainPlan, envelope: &DomainRiskEnvelope) -> Result<(), RiskEnvelopeViolation>` covering rollback requirements, invalidation requirements, risk bounds, and live-effect constraints.
    - Scope: `src/domain/risk.rs` only.
    - Done when: the new API compiles without adding I/O, runtime, network, command-ledger, or TLog mutation authority.
-   - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test risk::tests -- --test-threads=1`.
+   - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test risk::tests -- --test-threads=1` passed on 2026-05-11 after one connector HTTP 502 retry with 1 risk test and 0 failures.
 19. [ ] `src/domain/risk.rs`: add unit test `risk_blocks_live_trading`.
    - Scope: `src/domain/risk.rs` test module only.
    - Done when: live trading or financial execution is rejected for a sandbox trading plan/envelope.
