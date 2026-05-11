@@ -452,10 +452,8 @@ impl DomainPlan {
             "rollback_or_invalidation_hash",
             &rollback_or_invalidation_hash,
         )?;
-        let requested_live_effect_level = require_plan_live_effect(
-            plan_kind,
-            requested_live_effect_level,
-        )?;
+        let requested_live_effect_level =
+            require_plan_live_effect(plan_kind, requested_live_effect_level)?;
 
         Ok(Self {
             schema_version: DOMAIN_SCHEMA_VERSION,
@@ -959,7 +957,8 @@ mod tests {
             ("max_staleness", 250, 700, 1001),
         ];
 
-        for (expected_field, max_uncertainty, min_confidence, max_staleness) in envelope_score_cases {
+        for (expected_field, max_uncertainty, min_confidence, max_staleness) in envelope_score_cases
+        {
             assert_eq!(
                 DomainRiskEnvelope::new(
                     "env-out-of-range",
@@ -1195,5 +1194,4 @@ mod tests {
             DomainLiveEffectLevel::SandboxWrite
         );
     }
-
 }

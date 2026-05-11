@@ -86,7 +86,10 @@ pub fn actionability_hint(profile: &GlobalSignalProfile) -> u16 {
     let base = u32::from(profile.source_quality_score)
         .saturating_mul(u32::from(profile.freshness_score))
         / 1000;
-    let weighted = base.saturating_mul(horizon_weight).saturating_mul(class_weight) / 25;
+    let weighted = base
+        .saturating_mul(horizon_weight)
+        .saturating_mul(class_weight)
+        / 25;
     let contradiction_penalty = u32::from(profile.contradiction_score) / 2;
 
     weighted.saturating_sub(contradiction_penalty).min(1000) as u16

@@ -184,8 +184,7 @@ fn write_canonical_json(record: &Value, out: &mut Vec<u8>) {
 }
 
 fn write_canonical_string(value: &str, out: &mut Vec<u8>) {
-    serde_json::to_writer(out, value)
-        .expect("serializing a JSON string into a Vec must not fail");
+    serde_json::to_writer(out, value).expect("serializing a JSON string into a Vec must not fail");
 }
 
 #[cfg(test)]
@@ -205,7 +204,10 @@ mod tests {
         assert_eq!(hash.as_str(), "domain:abc123");
         assert_eq!(hash.as_ref(), "domain:abc123");
         assert_eq!(hash.to_string(), "domain:abc123");
-        assert_eq!(DomainHash::try_from("".to_string()), Err(DomainHashError::Empty));
+        assert_eq!(
+            DomainHash::try_from("".to_string()),
+            Err(DomainHashError::Empty)
+        );
         assert_eq!(
             DomainHash::try_from(" domain:abc123".to_string()),
             Err(DomainHashError::SurroundingWhitespace)
@@ -223,12 +225,24 @@ mod tests {
     #[test]
     fn domain_hash_input_converts_json_and_parts() {
         let record = serde_json::json!({"kind":"signal","schema_version":1});
-        assert_eq!(DomainHashInput::from(&record), DomainHashInput::Json(&record));
-        assert_eq!(DomainHashInput::json(&record), DomainHashInput::Json(&record));
+        assert_eq!(
+            DomainHashInput::from(&record),
+            DomainHashInput::Json(&record)
+        );
+        assert_eq!(
+            DomainHashInput::json(&record),
+            DomainHashInput::Json(&record)
+        );
 
         let parts = ["schema:1", "kind:signal", "id:alpha"];
-        assert_eq!(DomainHashInput::from(&parts), DomainHashInput::Parts(&parts));
-        assert_eq!(DomainHashInput::parts(&parts), DomainHashInput::Parts(&parts));
+        assert_eq!(
+            DomainHashInput::from(&parts),
+            DomainHashInput::Parts(&parts)
+        );
+        assert_eq!(
+            DomainHashInput::parts(&parts),
+            DomainHashInput::Parts(&parts)
+        );
     }
 
     #[test]
@@ -241,7 +255,10 @@ mod tests {
         });
 
         assert_eq!(domain_hash_parts(&parts), domain_hash_parts(&parts));
-        assert_eq!(domain_hash_parts(&parts).to_string(), stable_domain_id(&parts));
+        assert_eq!(
+            domain_hash_parts(&parts).to_string(),
+            stable_domain_id(&parts)
+        );
         assert_eq!(domain_hash_json(&record), domain_hash_json(&record));
     }
 

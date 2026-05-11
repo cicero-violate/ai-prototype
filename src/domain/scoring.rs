@@ -31,7 +31,8 @@ impl BoundedScore {
 
         for (score, weight) in weighted_scores {
             let weight = u32::from(*weight);
-            weighted_sum = weighted_sum.saturating_add(u32::from(score.get()).saturating_mul(weight));
+            weighted_sum =
+                weighted_sum.saturating_add(u32::from(score.get()).saturating_mul(weight));
             total_weight = total_weight.saturating_add(weight);
         }
 

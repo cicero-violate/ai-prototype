@@ -308,7 +308,10 @@ mod tests {
         assert_eq!(context_descriptor.domain_id, DomainId::GlobalIntelligence);
         assert_eq!(context_descriptor.target, DomainBridgeTarget::ContextRecord);
         assert_eq!(context_descriptor.capability_family, "context");
-        assert_eq!(context_descriptor.required_receipt_families, CONTEXT_RECEIPTS);
+        assert_eq!(
+            context_descriptor.required_receipt_families,
+            CONTEXT_RECEIPTS
+        );
         assert_eq!(context_descriptor.plan_kind, None);
 
         let judgment_descriptor = bridge_target_for_judgment(&judgment);
@@ -375,7 +378,10 @@ mod tests {
         assert_eq!(simulation_descriptor.record_family, "DomainJudgment");
         assert_eq!(simulation_descriptor.target, DomainBridgeTarget::PlanRecord);
         assert_eq!(simulation_descriptor.capability_family, "planning");
-        assert_eq!(simulation_descriptor.required_receipt_families, PLAN_RECEIPTS);
+        assert_eq!(
+            simulation_descriptor.required_receipt_families,
+            PLAN_RECEIPTS
+        );
         assert_eq!(
             simulation_descriptor.plan_kind,
             Some(PlanKind::TradingSimulationPlan)
