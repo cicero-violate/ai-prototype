@@ -37,7 +37,7 @@ objective or world signal
 
 ## Active Priorities
 
-Reconnaissance on 2026-05-10 found the first incomplete item under this section is `src/domain/identity.rs::DomainHashInput<'a>` after the local `DomainHash` newtype/test work. Items already completed in `src/domain/contracts.rs` remain complete and are intentionally omitted from this active execution queue. Execute turns should pick up exactly one unchecked item at a time, starting with item 2.
+Reconnaissance on 2026-05-10 found the first incomplete item under this section is `src/domain/identity.rs::DomainHashInput<'a>`. Local source already contains the `DomainHash` newtype, `DomainHashError`, `stable_domain_id(parts)`, and identity tests for stable ordering and hash-prefix validation. Execute turns should pick up exactly one unchecked item at a time, starting with item 2.
 
 Current source inventory from `find src/domain -type f | sort`:
 
@@ -59,13 +59,13 @@ src/domain/scoring.rs
 src/domain/trading.md
 ```
 
-Graph evidence from `state/rustc/ai/graph.json`: schema version 16, graph hash `ab2202a8d8ec371b0c462aecc41e28d059920f53e2179dd40ebb6ebb3127fc33`, 4,473 node entries, 31,082 edges, and 2,976 intents. The top-level graph keys are `edges`, `intents`, `meta`, and `nodes`; the `nodes` object is keyed by canonical symbol name. Previous node-kind counts remain `fn 2976`, `impl 1283`, `struct 159`, `enum 53`, `trait 1`, `ty_alias 1`. No compiled `domain::` nodes are present. Broad `domain` hits are limited to agent objective/prompt/cycle names and `runtime::reducer::raise_domain_failure`.
+Graph evidence from `state/rustc/ai/graph.json`: schema version 16, graph hash `ab2202a8d8ec371b0c462aecc41e28d059920f53e2179dd40ebb6ebb3127fc33`, 4,473 node entries, 31,082 edges, and 2,976 intents. The top-level graph keys are `edges`, `intents`, `meta`, and `nodes`; the `nodes` object is keyed by canonical symbol name. Node-kind counts are `fn 2976`, `impl 1283`, `struct 159`, `enum 53`, `trait 1`, `ty_alias 1`. No compiled `domain::` nodes are present. Broad `domain` hits are limited to agent objective/prompt/cycle names and `runtime::reducer::raise_domain_failure`, so graph evidence does not yet prove the P5 domain surface.
 
 Ordered execute-turn checklist, one file or one test per item:
 
 1. [x] `src/domain/identity.rs`: implement `DomainHash` newtype with `as_str(&self) -> &str`, `Display`, `AsRef<str>`, `TryFrom<String>`, and invariant validation for non-empty `domain:`-prefixed hash strings.
-   - Local source contains this implementation and unit test `domain_hash_newtype_validates_prefix_and_non_empty_suffix`. Prior targeted validation passed, but full validation has been repeatedly blocked by connector HTTP 502 transport errors; keep full validation pending.
-2. [ ] `src/domain/identity.rs`: implement `DomainHashInput<'a>` enum for `Json(&'a serde_json::Value)` and `Parts(&'a [&'a str])`, plus helper conversion paths used by tests.
+   - Local source contains this implementation and unit test `domain_hash_newtype_validates_prefix_and_non_empty_suffix`. Prior targeted validation passed, but full validation remains pending because connector HTTP 502 transport errors returned before Rust output.
+2. [ ] `src/domain/identity.rs`: implement `DomainHashInput<'a>` enum with `Json(&'a serde_json::Value)` and `Parts(&'a [&'a str])` variants, plus helper conversion paths used by the following identity hash helpers.
 3. [ ] `src/domain/identity.rs`: implement `canonical_json_bytes(record: &serde_json::Value) -> Vec<u8>` with deterministic object-key ordering, stable array ordering, and explicit null/bool/number/string encoding.
 4. [ ] `src/domain/identity.rs`: implement `domain_hash_json(record: &serde_json::Value) -> DomainHash` using `canonical_json_bytes(record)` and the same deterministic hash namespace as `stable_domain_id(parts)`.
 5. [ ] `src/domain/identity.rs`: implement `domain_hash_parts(parts: &[&str]) -> DomainHash` and update `stable_domain_id(parts)` to delegate to `domain_hash_parts(parts).to_string()` without changing existing behavior.
@@ -113,6 +113,7 @@ Ordered execute-turn checklist, one file or one test per item:
 47. [ ] Validation: run `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets` and record the result in `score.md`.
 48. [ ] Graph evidence refresh: after domain tests pass, re-capture or regenerate `state/rustc/ai/graph.json` so `domain::` nodes appear, then update `score.md` with the new schema/hash/node evidence.
 49. [ ] Keep P4 graph editing separate: do not start graph mutation implementation until P5 domain contracts, identity, scoring, risk, bridge descriptors, subdomain modules, and fixtures are validated.
+
 
 ## Domain Implementation Target
 

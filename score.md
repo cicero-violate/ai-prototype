@@ -164,6 +164,17 @@ Planning-turn update on 2026-05-10 after current reconnaissance:
 - Updated scoring commentary only. Scores remain at `G ~= 8.14 / 10` because this planning turn performed no implementation validation, full-suite validation, or graph refresh.
 - Commit scope for this turn is limited to `plan.md` and `score.md`; existing implementation changes in `src/agent/loop_driver.rs` and `src/domain/identity.rs` remain unstaged.
 
+
+Planning-turn update on 2026-05-10 after current reconnaissance:
+
+- Required reconnaissance completed from `/workspace/ai_sandbox/canon-mini-agent/prototype/ai` using the shell wrapper with `cwd=.` because the wrapper resolves `.` to the required working directory.
+- Read `plan.md` and identified the first incomplete Active Priorities item as `src/domain/identity.rs::DomainHashInput<'a>`; local source already contains `DomainHash`, `DomainHashError`, `stable_domain_id(parts)`, `stable_identity_is_order_sensitive_and_repeatable`, and `domain_hash_newtype_validates_prefix_and_non_empty_suffix`.
+- Ran `find src/domain -type f | sort`; Rust files present remain `src/domain/bridge.rs`, `src/domain/contracts.rs`, `src/domain/identity.rs`, `src/domain/mod.rs`, `src/domain/risk.rs`, and `src/domain/scoring.rs`. Planned Rust files `src/domain/global_intelligence.rs`, `src/domain/business.rs`, `src/domain/finance.rs`, and `src/domain/trading.rs` remain absent.
+- Python analysis of `state/rustc/ai/graph.json` found top-level keys `edges`, `intents`, `meta`, and `nodes`; schema version remains 16, graph hash remains `ab2202a8d8ec371b0c462aecc41e28d059920f53e2179dd40ebb6ebb3127fc33`, with 4,473 node entries, 31,082 edges, and 2,976 intents. No compiled `domain::` graph node evidence is present.
+- Updated `plan.md` so Active Priorities are a concrete ordered file/test checklist and clarified that `src/domain/identity.rs::DomainHashInput<'a>` is the next single execute-turn task.
+- Updated scoring commentary only. Scores remain at `G ~= 8.14 / 10` because this planning turn performed no implementation validation, full-suite validation, or graph refresh.
+- Commit scope for this turn is limited to `plan.md` and `score.md`; existing implementation changes, if any, remain unstaged.
+
 The next score gains should come from evidence, not optimism:
 
 - prove agent-driven graph mutation with Python-assisted graph target selection;
