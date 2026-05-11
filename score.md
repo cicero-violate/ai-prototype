@@ -10,7 +10,8 @@ Current date: 2026-05-10.
 - P3 runtime and receipt correctness: complete for current scope.
 - P4 graph source-of-truth integration: mostly complete for deterministic fixture/report evidence; agent-driven graph editing remains intentionally deferred until P5 domain surfaces are validated.
 - P5 domain intelligence layer: active. `src/domain/contracts.rs` constructor and invariant tests through unsafe live-effect rejection are complete in local source, with prior targeted validation passing 7 contract tests.
-- First incomplete Active Priorities item after fresh reconnaissance on 2026-05-10: `src/domain/identity.rs` must implement `DomainHash`, `DomainHashInput`, `canonical_json_bytes(record)`, `domain_hash_json(record)`, and `domain_hash_parts(parts)`, then add the three identity hash tests.
+- First incomplete Active Priorities item after fresh reconnaissance on 2026-05-10: `src/domain/identity.rs::DomainHashInput<'a>` plus the remaining deterministic identity helpers: `canonical_json_bytes(record)`, `domain_hash_json(record)`, and `domain_hash_parts(parts)`, followed by the three identity hash tests.
+- Implementation step 1 status on 2026-05-10: `src/domain/identity.rs` has a local `DomainHash` newtype implementation and unit test `domain_hash_newtype_validates_prefix_and_non_empty_suffix`; prior targeted identity validation passed, but full-suite validation remains pending because repeated connector HTTP 502 errors returned before Rust output.
 - Current source inventory confirms Rust files exist for `src/domain/bridge.rs`, `src/domain/contracts.rs`, `src/domain/identity.rs`, `src/domain/mod.rs`, `src/domain/risk.rs`, and `src/domain/scoring.rs`; planned Rust files `src/domain/global_intelligence.rs`, `src/domain/business.rs`, `src/domain/finance.rs`, and `src/domain/trading.rs` remain absent.
 - This turn updated planning and scoring only. No implementation validation or graph refresh was performed, so no score increase is claimed.
 
@@ -141,7 +142,27 @@ Implementation step 1 evidence on 2026-05-10:
 - Targeted validation passed after one connector retry: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test contracts::tests -- --test-threads=1` ran 7 domain contract tests successfully.
 - Full validation command attempted twice after the targeted pass: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`; both attempts returned connector HTTP 502 upstream/external service errors before full-suite Rust output was available.
 - Scores remain at `G ~= 8.14 / 10`; targeted contract evidence improved local confidence, but full-suite validation and graph refresh are still unavailable.
-- Next executable task is Active Priorities item 7: `src/domain/identity.rs` implementation of `DomainHash`, `DomainHashInput`, `canonical_json_bytes(record)`, `domain_hash_json(record)`, and `domain_hash_parts(parts)`.
+- Next executable task is Active Priorities item 2: `src/domain/identity.rs::DomainHashInput<'a>`, followed by canonical JSON bytes and hash helper implementation.
+
+
+Planning-turn update on 2026-05-10 after required reconnaissance:
+
+- Read `plan.md` and identified the first incomplete Active Priorities item as `src/domain/identity.rs` deterministic identity hashing. Local source already contains the `DomainHash` newtype and `domain_hash_newtype_validates_prefix_and_non_empty_suffix`; the next executable task is `src/domain/identity.rs::DomainHashInput<'a>`.
+- Ran `find src/domain -type f | sort`; Rust files present are `src/domain/bridge.rs`, `src/domain/contracts.rs`, `src/domain/identity.rs`, `src/domain/mod.rs`, `src/domain/risk.rs`, and `src/domain/scoring.rs`. Planned Rust files `src/domain/global_intelligence.rs`, `src/domain/business.rs`, `src/domain/finance.rs`, and `src/domain/trading.rs` remain absent.
+- Python analysis of `state/rustc/ai/graph.json` found top-level keys `edges`, `intents`, `meta`, and `nodes`; schema version remains 16, graph hash remains `ab2202a8d8ec371b0c462aecc41e28d059920f53e2179dd40ebb6ebb3127fc33`, with 4,473 node entries, 31,082 edges, and 2,976 intents. The graph still has no compiled `domain::` node evidence.
+- Updated `plan.md` so Active Priorities are a concrete ordered file/test checklist and clarified that item 2, `src/domain/identity.rs::DomainHashInput<'a>`, is the next single execute-turn task.
+- Updated scoring commentary only. Scores remain at `G ~= 8.14 / 10` because this planning turn performed no implementation validation, full-suite validation, or graph refresh.
+- Commit scope for this turn is limited to `plan.md` and `score.md`; existing implementation changes in `src/agent/loop_driver.rs` and `src/domain/identity.rs` remain unstaged.
+
+Planning-turn update on 2026-05-10 after current reconnaissance:
+
+- Required reconnaissance completed from `/workspace/ai_sandbox/canon-mini-agent/prototype/ai` using the shell wrapper with `cwd=.` because the wrapper resolves `.` to the required working directory.
+- Read `plan.md` and identified the first incomplete Active Priorities item as `src/domain/identity.rs::DomainHashInput<'a>`; the local source already contains `DomainHash`, `DomainHashError`, `stable_domain_id(parts)`, `stable_identity_is_order_sensitive_and_repeatable`, and `domain_hash_newtype_validates_prefix_and_non_empty_suffix`.
+- Ran `find src/domain -type f | sort`; Rust files present remain `src/domain/bridge.rs`, `src/domain/contracts.rs`, `src/domain/identity.rs`, `src/domain/mod.rs`, `src/domain/risk.rs`, and `src/domain/scoring.rs`. Planned Rust files `src/domain/global_intelligence.rs`, `src/domain/business.rs`, `src/domain/finance.rs`, and `src/domain/trading.rs` remain absent.
+- Python analysis of `state/rustc/ai/graph.json` found top-level keys `edges`, `intents`, `meta`, and `nodes`; schema version remains 16, graph hash remains `ab2202a8d8ec371b0c462aecc41e28d059920f53e2179dd40ebb6ebb3127fc33`, with 4,473 node entries, 31,082 edges, and 2,976 intents. No compiled `domain::` graph node evidence is present.
+- Updated `plan.md` to name `src/domain/identity.rs::DomainHashInput<'a>` as the first incomplete executable task and to keep Active Priorities as a file/test-level ordered checklist.
+- Updated scoring commentary only. Scores remain at `G ~= 8.14 / 10` because this planning turn performed no implementation validation, full-suite validation, or graph refresh.
+- Commit scope for this turn is limited to `plan.md` and `score.md`; existing implementation changes in `src/agent/loop_driver.rs` and `src/domain/identity.rs` remain unstaged.
 
 The next score gains should come from evidence, not optimism:
 
