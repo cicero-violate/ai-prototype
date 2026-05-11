@@ -58,7 +58,7 @@ The aggregate score shifts to `G ~= 8.12 / 10` because `Maintainability = 7.8` w
 ## Rationale
 Correctness, determinism, scalability, and coherency are strongest because the kernel, receipts, replay boundaries, graph fixture validation, validation evidence paths, and current planning direction agree on the same evidence-first architecture. Robustness, intelligence, benefit, and maintainability remain lower because live graph editing, self-modification, domain intelligence, and safe-change ergonomics are not yet proven end to end.
 
-Planning reconnaissance on 2026-05-11 did not change scores: finance behavior tests through item 34, trading compile evidence through item 36, trading behavior test item 37, and domain integration contract items 38-39 have passed targeted checks, but deterministic verdict integration item 40, full-suite validation, and refreshed graph-domain evidence remain pending. Score values remain unchanged until integration-level behavior validation, full-suite validation, or graph evidence justifies a change.
+Planning reconnaissance on 2026-05-11 did not change scores: finance behavior tests through item 34, trading compile evidence through item 36, trading behavior test item 37, domain integration contract items 38-41, fixture refresh items 42-46, and fixture-contract items 47-49 have passed targeted checks. Item 50 full-suite validation is still blocked by connector HTTP 502 before Rust output, and refreshed graph-domain evidence remains pending. Current graph evidence has zero compiled P5 `domain::` or `src/domain` node matches, so score values remain unchanged until full-suite validation or graph evidence justifies a change.
 
 ## Score History
 

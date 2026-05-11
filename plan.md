@@ -322,23 +322,27 @@ Ordered execute-turn checklist, one file or one test per item. Implementation it
    - Scope: full Rust workspace validation only; do not edit source files while selecting this validation item.
    - Done when: full-suite Rust output is available and green. If connector HTTP 502 or another transport failure occurs before Rust output, leave this item unchecked and record the infrastructure blocker in `status.md`.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
-51. [ ] `scripts/analyze_graph_json.py`: add or refresh a local graph-analysis script that reads `state/rustc/ai/graph.json` and prints schema version, graph hash, receipt hash, risk hash, node count, edge count, intent count, node-kind counts, and `domain::` node matches.
+51. [ ] `scripts/analyze_graph_json.py`: create the graph-analysis script that reads `state/rustc/ai/graph.json` and prints schema version, graph hash, receipt hash, risk hash, node count, edge count, intent count, node-kind counts, and compiled P5 `domain::`/`src/domain` node matches.
    - Scope: `scripts/analyze_graph_json.py` only.
-   - Done when: the script runs against the current graph and explicitly reports that current evidence still has no compiled P5 `domain::` node matches beyond unrelated runtime symbols.
+   - Done when: the script produces the graph summary and explicit P5 domain-node match count without mutating graph state.
    - Validation: `python3 scripts/analyze_graph_json.py state/rustc/ai/graph.json`.
-52. [ ] `state/rustc/ai/graph.json`: after item 50 is green, re-capture or regenerate the Rust graph evidence so compiled P5 `domain::` nodes appear.
-   - Scope: `state/rustc/ai/graph.json` and the generated graph evidence artifacts only.
-   - Done when: refreshed graph evidence includes compiled P5 `domain::` nodes and current graph hash/counts.
+52. [ ] `scripts/analyze_graph_json.py`: add a regression self-check path that fails when required top-level graph keys or metadata hashes are missing.
+   - Scope: `scripts/analyze_graph_json.py` only.
+   - Done when: the script exits nonzero for malformed graph input or missing required metadata and still passes against `state/rustc/ai/graph.json`.
    - Validation: `python3 scripts/analyze_graph_json.py state/rustc/ai/graph.json`.
-53. [ ] `status.md`: record the refreshed graph schema/hash/node evidence after item 52.
+53. [ ] `state/rustc/ai/graph.json`: after item 50 is green, re-capture or regenerate the Rust graph evidence so compiled P5 `domain::` nodes appear.
+   - Scope: `state/rustc/ai/graph.json` and generated graph evidence artifacts only.
+   - Done when: refreshed graph evidence includes compiled P5 `domain::` or `src/domain` nodes and current graph hash/counts.
+   - Validation: `python3 scripts/analyze_graph_json.py state/rustc/ai/graph.json`.
+54. [ ] `status.md`: record the refreshed graph schema/hash/node evidence after item 53.
    - Scope: `status.md` Evidence Summary and Validation Ledger only.
-   - Done when: status records the new graph hash, node count, edge count, intent count, and `domain::` node evidence.
+   - Done when: status records the new graph hash, node count, edge count, intent count, and P5 domain-node evidence.
    - Validation: `python3 scripts/analyze_graph_json.py state/rustc/ai/graph.json`.
-54. [ ] `score.md`: update score rationale only if item 50 full-suite validation or item 52 refreshed graph evidence justifies a score change.
+55. [ ] `score.md`: update score rationale only if item 50 full-suite validation or item 53 refreshed graph evidence justifies a score change.
    - Scope: `score.md` only.
    - Done when: scores either remain explicitly unchanged with rationale, or a value changes with evidence cited from `status.md`.
    - Validation: score/status consistency review.
-55. [ ] `plan.md`: keep the P4 graph-editing guardrail documented after P5 validation.
+56. [ ] `plan.md`: keep the P4 graph-editing guardrail documented after P5 validation.
    - Scope: `plan.md` only.
    - Done when: graph mutation implementation remains deferred until P5 domain contracts, identity, scoring, risk, bridge descriptors, subdomain modules, fixtures, full-suite validation, and refreshed graph evidence are complete.
    - Validation: planning/status review.
