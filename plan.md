@@ -93,17 +93,20 @@ objective or world signal
 
 ## Active Priorities
 
-Reconnaissance on 2026-05-11 reconfirmed that `src/domain/identity.rs::DomainHashInput<'a>`, `src/domain/identity.rs::canonical_json_bytes(record)`, `src/domain/identity.rs::domain_hash_json(record)`, `src/domain/identity.rs::domain_hash_parts(parts)`, `src/domain/identity.rs::domain_hash_is_stable`, `src/domain/identity.rs::domain_hash_changes_when_material_field_changes`, `src/domain/identity.rs::domain_hash_changes_when_schema_version_changes`, `src/domain/scoring.rs` score-input breakdown and verdict helpers, all explicit scoring verdict threshold tests through `src/domain/scoring.rs::tests::verdict_block_thresholds`, `src/domain/risk.rs` risk-envelope API/tests through `src/domain/risk.rs::tests::risk_allows_verified_business_plan_with_rollback_and_invalidation`, and `src/domain/bridge.rs` descriptor-only bridge API/tests through `src/domain/bridge.rs::tests::bridge_never_targets_live_trading_execution` are already implemented in local source and have passing targeted validation. Planning reconnaissance also inspected `src/domain/global_intelligence.rs`, `src/domain/mod.rs`, `src/domain/scoring.rs`, `src/domain/risk.rs`, `src/domain/bridge.rs`, `src/domain/contracts.rs`, all `tests/fixtures/domain/*.json` fixture artifacts, `tests/test_domain_fixture_contract.py`, and `state/rustc/ai/graph.json`. `src/domain/global_intelligence.rs` already exists with tests, but those tests ran 0 cases because `src/domain/mod.rs` does not declare the module. Full-suite validation is tracked separately as the validation blocker item below. Execute turns should pick up exactly one unchecked implementation item at a time; the first incomplete implementation item is now item 25, `src/domain/mod.rs` declaration of `global_intelligence` to capture compile evidence for the existing module.
+Reconnaissance on 2026-05-11 reconfirmed that `src/domain/identity.rs::DomainHashInput<'a>`, `src/domain/identity.rs::canonical_json_bytes(record)`, `src/domain/identity.rs::domain_hash_json(record)`, `src/domain/identity.rs::domain_hash_parts(parts)`, `src/domain/identity.rs::domain_hash_is_stable`, `src/domain/identity.rs::domain_hash_changes_when_material_field_changes`, `src/domain/identity.rs::domain_hash_changes_when_schema_version_changes`, `src/domain/scoring.rs` score-input breakdown and verdict helpers, all explicit scoring verdict threshold tests through `src/domain/scoring.rs::tests::verdict_block_thresholds`, `src/domain/risk.rs` risk-envelope API/tests through `src/domain/risk.rs::tests::risk_allows_verified_business_plan_with_rollback_and_invalidation`, and `src/domain/bridge.rs` descriptor-only bridge API/tests through `src/domain/bridge.rs::tests::bridge_never_targets_live_trading_execution` are already implemented in local source and have passing targeted validation. Planning reconnaissance also inspected `src/domain/global_intelligence.rs`, `src/domain/mod.rs`, `src/domain/scoring.rs`, `src/domain/risk.rs`, `src/domain/bridge.rs`, `src/domain/contracts.rs`, all `tests/fixtures/domain/*.json` fixture artifacts, `tests/test_domain_fixture_contract.py`, and `state/rustc/ai/graph.json`. `src/domain/global_intelligence.rs` already exists with tests, but those tests ran 0 cases because `src/domain/mod.rs` does not declare the module. Full-suite validation is tracked separately as the validation blocker item below. Execute turns should pick up exactly one unchecked implementation item at a time. Reconnaissance on 2026-05-11 found that item 32 source work already exists in `src/domain/mod.rs`, but its targeted compile check is blocked by connector HTTP 502 before Rust output. The first incomplete implementation item is now item 33, `src/domain/finance.rs::tests::finance_hypothesis_execution_allowed_is_false`; item 32 remains as a targeted validation blocker/evidence item rather than an implementation task.
 
 Current source inventory from `find src/domain -type f | sort`:
 
 ```text
 src/domain/bridge.rs
 src/domain/business.md
+src/domain/business.rs
 src/domain/contracts.md
 src/domain/contracts.rs
 src/domain/finance.md
+src/domain/finance.rs
 src/domain/global_intelligence.md
+src/domain/global_intelligence.rs
 src/domain/identity.rs
 src/domain/integration.md
 src/domain/mod.rs
@@ -226,95 +229,105 @@ Ordered execute-turn checklist, one file or one test per item. Implementation it
    - Scope: `src/domain/global_intelligence.rs` test module only.
    - Done when: repeated actionability hints over the same profile produce identical results.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test global_intelligence::tests::global_signal_actionability_hint_is_deterministic -- --test-threads=1` passed on 2026-05-11 with 1 named test; broader `cargo test global_intelligence::tests -- --test-threads=1` passed with 4 global-intelligence tests.
-28. [ ] `src/domain/business.rs`: create Rust module with `BusinessOpportunity`, `WorkflowAutomationCandidate`, `CustomerFeedbackSignal`, and `monetization_score(...)`.
-   - Scope: create `src/domain/business.rs` only.
-   - Done when: the file compiles as pure deterministic business-domain records and scoring helpers.
-   - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test business::tests -- --test-threads=1`.
-29. [ ] `src/domain/business.rs`: add unit test `business_monetization_score_is_deterministic`.
+28. [x] `src/domain/mod.rs`: declare `business` and re-export `BusinessOpportunity`, `WorkflowAutomationCandidate`, `CustomerFeedbackSignal`, and `monetization_score(...)` from the existing `src/domain/business.rs` module without declaring `finance` or `trading` yet.
+   - Scope: `src/domain/mod.rs` only.
+   - Done when: `src/domain/business.rs` compiles through the public domain module surface and its existing compile-smoke test is discoverable.
+   - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test business::tests -- --test-threads=1` passed on 2026-05-11 with 3 business tests discovered and passing. Full-suite validation remains blocked by connector HTTP 502 before Rust output and is tracked by item 48; no commit was made.
+29. [x] `src/domain/business.rs`: rename or add unit test `business_monetization_score_is_deterministic` using the existing `BusinessOpportunity`, `WorkflowAutomationCandidate`, `CustomerFeedbackSignal`, and `monetization_score(...)` helpers.
    - Scope: `src/domain/business.rs` test module only.
    - Done when: repeated monetization scoring over the same inputs is stable.
-   - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test business::tests::business_monetization_score_is_deterministic -- --test-threads=1`.
-30. [ ] `src/domain/business.rs`: add unit test `business_monetization_score_is_bounded`.
+   - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test business::tests::business_monetization_score_is_deterministic -- --test-threads=1` passed on 2026-05-11; broader `cargo test business::tests -- --test-threads=1` passed with 3 business tests during item 28 validation.
+30. [x] `src/domain/business.rs`: add unit test `business_monetization_score_is_bounded`.
    - Scope: `src/domain/business.rs` test module only.
-   - Done when: monetization scoring is clamped to the bounded score range.
-   - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test business::tests::business_monetization_score_is_bounded -- --test-threads=1`.
-31. [ ] `src/domain/finance.rs`: create Rust module with `AssetUniverse`, `FinanceHypothesis`, `FinanceRiskDimensions`, and `finance_research_allowed(...)`.
+   - Done when: extreme score inputs are clamped through `BoundedScore` and `monetization_score(...)` remains within `0..=1000`.
+   - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test business::tests::business_monetization_score_is_bounded -- --test-threads=1` passed on 2026-05-11; broader `cargo test business::tests -- --test-threads=1` passed with 3 business tests during item 28 validation.
+31. [x] `src/domain/finance.rs`: create Rust module with `AssetUniverse`, `FinanceHypothesis`, `FinanceRiskDimensions`, and `finance_research_allowed(...)`.
    - Scope: create `src/domain/finance.rs` only.
-   - Done when: the module compiles and exposes research-only finance helpers without execution authority.
+   - Done when: the file contains pure deterministic finance-domain records and a research-only allowance helper with no I/O, runtime, command-ledger, network, process, or TLog mutation authority.
+   - Validation: source inspection passed on 2026-05-11: `test -f src/domain/finance.rs`, required symbol greps for `AssetUniverse`, `FinanceHypothesis`, `FinanceRiskDimensions`, and `finance_research_allowed(...)`, plus disallowed-authority grep for filesystem/process/runtime/TLog/state/network primitives. Compile validation remains deferred until item 32 declares the module. Broader full-suite validation remains blocked by connector HTTP 502 before Rust output and is tracked by item 48.
+32. [ ] Targeted validation blocker / `src/domain/mod.rs` finance declaration evidence: `src/domain/mod.rs` already declares `finance` and re-exports `AssetUniverse`, `FinanceHypothesis`, `FinanceRiskDimensions`, and `finance_research_allowed(...)`; capture targeted compile evidence when connector transport can return Rust output.
+   - Scope: `src/domain/mod.rs` validation evidence only; do not edit `src/domain/mod.rs` unless source inspection shows the finance declaration/re-export was removed.
+   - Done when: targeted Rust output is available and proves `src/domain/finance.rs` compiles through the public domain module surface.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test finance::tests -- --test-threads=1`.
-32. [ ] `src/domain/finance.rs`: add unit test `finance_hypothesis_execution_allowed_is_false`.
+33. [ ] `src/domain/finance.rs`: add unit test `finance_hypothesis_execution_allowed_is_false`.
    - Scope: `src/domain/finance.rs` test module only.
-   - Done when: finance hypotheses cannot authorize execution.
+   - Done when: finance execution beyond research-only bounds is deterministically rejected.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test finance::tests::finance_hypothesis_execution_allowed_is_false -- --test-threads=1`.
-33. [ ] `src/domain/finance.rs`: add unit test `finance_research_plan_passes_research_only_risk_check`.
+34. [ ] `src/domain/finance.rs`: add unit test `finance_research_plan_passes_research_only_risk_check`.
    - Scope: `src/domain/finance.rs` test module only.
-   - Done when: a research-only finance plan passes the intended risk envelope while retaining no execution authority.
+   - Done when: a finance research plan remains allowed only under read-only/research constraints.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test finance::tests::finance_research_plan_passes_research_only_risk_check -- --test-threads=1`.
-34. [ ] `src/domain/trading.rs`: create Rust module with `TradingSimulationPlan`, `BacktestReceiptRequirements`, `TradingRiskLimit`, and `enforce_sandbox_only(...)`.
+35. [ ] `src/domain/trading.rs`: create Rust module with `TradingSimulationPlan`, `BacktestReceiptRequirements`, `TradingRiskLimit`, and `enforce_sandbox_only(...)`.
    - Scope: create `src/domain/trading.rs` only.
-   - Done when: the module compiles and exposes sandbox-only trading simulation records.
-   - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test trading::tests -- --test-threads=1`.
-35. [ ] `src/domain/trading.rs`: add unit test `trading_simulation_plan_rejects_live_execution`.
-   - Scope: `src/domain/trading.rs` test module only.
-   - Done when: live execution requests are rejected by `enforce_sandbox_only(...)`.
-   - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test trading::tests::trading_simulation_plan_rejects_live_execution -- --test-threads=1`.
-36. [ ] `src/domain/mod.rs`: declare `business`, `finance`, and `trading` after their Rust files compile, and keep module docs explicit that domain code has no I/O, process, network, runtime, command-ledger, or TLog mutation authority.
+   - Done when: the file contains pure deterministic sandbox-only trading records and no live execution authority.
+   - Validation: source inspection plus compile validation after item 36 declares the module.
+36. [ ] `src/domain/mod.rs`: declare `trading` and re-export `TradingSimulationPlan`, `BacktestReceiptRequirements`, `TradingRiskLimit`, and `enforce_sandbox_only(...)`; keep module docs explicit that domain code has no I/O, process, network, runtime, command-ledger, or TLog mutation authority.
    - Scope: `src/domain/mod.rs` only.
-   - Done when: all domain Rust modules are declared and module docs preserve the safety boundary.
-   - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test domain:: -- --test-threads=1`.
-37. [ ] `tests/domain_contract.rs`: add integration test `domain_records_deserialize_from_json`.
+   - Done when: `src/domain/trading.rs` compiles through the public domain module surface and its tests are discoverable.
+   - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test trading::tests -- --test-threads=1`.
+37. [ ] `src/domain/trading.rs`: add unit test `trading_simulation_plan_rejects_live_execution`.
+   - Scope: `src/domain/trading.rs` test module only.
+   - Done when: live trading or brokerage execution is rejected while sandbox simulation remains representable.
+   - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test trading::tests::trading_simulation_plan_rejects_live_execution -- --test-threads=1`.
+38. [ ] `tests/domain_contract.rs`: add integration test `domain_records_deserialize_from_json`.
    - Scope: create or update `tests/domain_contract.rs` only.
-   - Done when: domain fixture records deserialize through the public domain surface.
+   - Done when: the domain fixture records deserialize into the typed domain contract surface.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test domain_contract domain_records_deserialize_from_json -- --test-threads=1`.
-38. [ ] `tests/domain_contract.rs`: add integration test `domain_identity_is_deterministic`.
+39. [ ] `tests/domain_contract.rs`: add integration test `domain_identity_is_deterministic`.
    - Scope: `tests/domain_contract.rs` only.
-   - Done when: identity hashes are stable across repeated fixture deserialization.
+   - Done when: fixture-derived domain hashes are stable and material-field changes alter identity.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test domain_contract domain_identity_is_deterministic -- --test-threads=1`.
-39. [ ] `tests/domain_contract.rs`: add integration test `domain_verdicts_are_deterministic`.
+40. [ ] `tests/domain_contract.rs`: add integration test `domain_verdicts_are_deterministic`.
    - Scope: `tests/domain_contract.rs` only.
-   - Done when: fixture score inputs reproduce expected verdicts through public APIs.
+   - Done when: fixture score inputs deterministically produce the expected verdict and bridge target.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test domain_contract domain_verdicts_are_deterministic -- --test-threads=1`.
-40. [ ] `tests/domain_contract.rs`: add integration test `domain_surface_exposes_no_runtime_mutation_api`.
+41. [ ] `tests/domain_contract.rs`: add integration test `domain_surface_exposes_no_runtime_mutation_api`.
    - Scope: `tests/domain_contract.rs` only.
-   - Done when: the public domain surface remains free of runtime/TLog/command-ledger mutation API references.
+   - Done when: the public domain surface remains descriptor-only and does not expose runtime, command-ledger, process, network, or TLog mutation APIs.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test domain_contract domain_surface_exposes_no_runtime_mutation_api -- --test-threads=1`.
-41. [ ] `tests/fixtures/domain/global_signal_macro.json`: refresh fixture data with schema version, domain id, source/provenance hash, horizon, score inputs, expected verdict, expected risk result, and expected bridge target descriptor.
+42. [ ] `tests/fixtures/domain/global_signal_macro.json`: refresh fixture data with schema version, domain id, source/provenance hash, horizon, score inputs, expected verdict, expected risk result, and expected bridge target descriptor.
    - Scope: `tests/fixtures/domain/global_signal_macro.json` only.
-   - Done when: required fields match `tests/test_domain_fixture_contract.py` expectations.
-   - Validation: `python tests/test_domain_fixture_contract.py`.
-42. [ ] `tests/fixtures/domain/business_workflow_opportunity.json`: refresh fixture data for a verified business workflow opportunity.
+   - Done when: the fixture has every required field consumed by `tests/test_domain_fixture_contract.py`.
+   - Validation: `python3 -m unittest tests/test_domain_fixture_contract.py`.
+43. [ ] `tests/fixtures/domain/business_workflow_opportunity.json`: refresh fixture data for a verified business workflow opportunity.
    - Scope: `tests/fixtures/domain/business_workflow_opportunity.json` only.
-   - Done when: required fields match the business fixture expected verdict and risk envelope.
-   - Validation: `python tests/test_domain_fixture_contract.py`.
-43. [ ] `tests/fixtures/domain/finance_hypothesis_research.json`: refresh fixture data for a research-only finance hypothesis.
+   - Done when: the fixture has every required field and matches the business scoring/verdict boundary.
+   - Validation: `python3 -m unittest tests/test_domain_fixture_contract.py`.
+44. [ ] `tests/fixtures/domain/finance_hypothesis_research.json`: refresh fixture data for a research-only finance hypothesis.
    - Scope: `tests/fixtures/domain/finance_hypothesis_research.json` only.
-   - Done when: required fields prove finance remains research-only.
-   - Validation: `python tests/test_domain_fixture_contract.py`.
-44. [ ] `tests/fixtures/domain/trading_simulation_sandbox.json`: refresh fixture data for a sandbox-only trading simulation plan.
+   - Done when: the fixture has every required field and proves finance remains research-only.
+   - Validation: `python3 -m unittest tests/test_domain_fixture_contract.py`.
+45. [ ] `tests/fixtures/domain/trading_simulation_sandbox.json`: refresh fixture data for a sandbox-only trading simulation plan.
    - Scope: `tests/fixtures/domain/trading_simulation_sandbox.json` only.
-   - Done when: required fields prove sandbox simulation routing.
-   - Validation: `python tests/test_domain_fixture_contract.py`.
-45. [ ] `tests/fixtures/domain/trading_live_blocked.json`: refresh fixture data for a live trading request that must block.
+   - Done when: the fixture has every required field and proves trading routes to simulation only.
+   - Validation: `python3 -m unittest tests/test_domain_fixture_contract.py`.
+46. [ ] `tests/fixtures/domain/trading_live_blocked.json`: refresh fixture data for a live trading request that must block.
    - Scope: `tests/fixtures/domain/trading_live_blocked.json` only.
-   - Done when: required fields prove live execution is blocked.
-   - Validation: `python tests/test_domain_fixture_contract.py`.
-46. [ ] `tests/test_domain_fixture_contract.py`: add or refresh fixture validation covering all domain fixture files and clear assertion failures for missing required fields.
+   - Done when: the fixture has every required field and proves unsafe live trading blocks.
+   - Validation: `python3 -m unittest tests/test_domain_fixture_contract.py`.
+47. [ ] `tests/test_domain_fixture_contract.py`: add or refresh fixture validation covering all domain fixture files and clear assertion failures for missing required fields.
    - Scope: `tests/test_domain_fixture_contract.py` only.
-   - Done when: the test validates all five domain JSON fixtures and emits clear field-level failures.
-   - Validation: `python tests/test_domain_fixture_contract.py`.
-47. [ ] Validation blocker / full-suite gate: run `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets` and record the result in `status.md` and `score.md` if score rationale changes. This remains unchecked until full-suite Rust output is available and green; connector HTTP 502 transport failures should be documented here without causing completed implementation items to remain unchecked. Latest attempts on 2026-05-11 after validating item 26 returned connector HTTP 502 before Rust output twice.
+   - Done when: all five domain fixtures are validated for schema, provenance, score inputs, expected verdict, expected risk result, and expected bridge target fields.
+   - Validation: `python3 -m unittest tests/test_domain_fixture_contract.py`.
+48. [ ] Validation blocker / full-suite gate: run `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets` and record the result in `status.md` and `score.md` if score rationale changes. This remains unchecked until full-suite Rust output is available and green; connector HTTP 502 transport failures should be documented here without causing completed implementation items to remain unchecked. Latest attempt on 2026-05-11 after planning reconnaissance returned connector HTTP 502 before Rust output for the targeted finance compile check; prior full-suite attempts also returned connector HTTP 502 before Rust output.
    - Scope: full Rust workspace validation only.
-   - Done when: full-suite Rust output is captured and all tests pass.
+   - Done when: full-suite Rust output is available and green.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
-48. [ ] Graph evidence refresh: after domain tests pass, re-capture or regenerate `state/rustc/ai/graph.json` so `domain::` nodes appear, then update `score.md` with the new schema/hash/node evidence.
-   - Scope: `state/rustc/ai/graph.json`, graph evidence report paths, `status.md`, and `score.md` only.
-   - Done when: refreshed graph evidence contains compiled `domain::` or `src/domain` nodes and hash/schema details are recorded.
-   - Validation: inspect `state/rustc/ai/graph.json` and record schema/hash/node/domain-hit counts.
-49. [ ] Keep P4 graph editing separate: do not start graph mutation implementation until P5 domain contracts, identity, scoring, risk, bridge descriptors, subdomain modules, and fixtures are validated.
-   - Scope: planning/status files only.
-   - Done when: this guard remains documented until the P5 validation gate passes.
-   - Validation: review `plan.md` before starting any graph mutation implementation item.
+49. [ ] Graph evidence refresh: after domain tests pass, re-capture or regenerate `state/rustc/ai/graph.json` so `domain::` nodes appear, then update `score.md` with the new schema/hash/node evidence.
+   - Scope: `state/rustc/ai/graph.json`, graph capture report artifacts, `status.md`, and score rationale only.
+   - Done when: refreshed graph evidence includes compiled P5 `domain::` nodes and current graph hash/counts.
+   - Validation: `python3 scripts/analyze_graph_json.py state/rustc/ai/graph.json`.
+50. [ ] Keep P4 graph editing separate: do not start graph mutation implementation until P5 domain contracts, identity, scoring, risk, bridge descriptors, subdomain modules, and fixtures are validated.
+   - Scope: planning guardrail only.
+   - Done when: this remains documented until the P5 gate is complete.
+   - Validation: planning/status review.
 
+
+## Additional Validation Notes
+
+- Targeted validation for the selected checklist item, as listed under `## Active Priorities`.
+- Required broader gate when available: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
+- Fixture validation when fixture or fixture-test items are selected: `python3 -m unittest tests/test_domain_fixture_contract.py`.
 
 ## Domain Implementation Target
 
