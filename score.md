@@ -52,7 +52,7 @@ Approximate geometric mean over the listed score axes remains about:
 G ~= 8.14 / 10
 ```
 
-The score is not raised because this was a planning/scoring turn only. Prior targeted contract evidence is retained, but full-suite validation and refreshed graph evidence for `src/domain::*` remain pending.
+The score is not raised because this planning turn only reconciled already-present `BoundedScore` source with targeted validation evidence. Full-suite validation and refreshed graph evidence for `src/domain::*` remain pending.
 
 ## Rationale
 Correctness, determinism, scalability, and coherency are strongest because the kernel, receipts, replay boundaries, graph fixture validation, validation evidence paths, and current planning direction agree on the same evidence-first architecture. Robustness, intelligence, and benefit remain lower because live graph editing, self-modification, and domain intelligence are not yet proven end to end.

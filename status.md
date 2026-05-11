@@ -48,12 +48,37 @@ Current date: 2026-05-10.
 - P3 runtime and receipt correctness: complete for current scope.
 - P4 graph source-of-truth integration: mostly complete for deterministic fixture/report evidence; agent-driven graph editing remains intentionally deferred until P5 domain surfaces are validated.
 - P5 domain intelligence layer: active. `src/domain/contracts.rs` constructor and invariant tests through unsafe live-effect rejection are complete in local source, with prior targeted validation passing 7 contract tests.
-- First incomplete Active Priorities item after planning reconnaissance on 2026-05-10: `src/domain/identity.rs` unit test `domain_hash_changes_when_schema_version_changes`.
-- `src/domain/identity.rs` currently contains `DomainHash`, `DomainHashInput<'a>`, `canonical_json_bytes(record)`, `domain_hash_json(record)`, `domain_hash_parts(parts)`, `stable_domain_id(parts)`, and five passing targeted identity tests through `domain_hash_changes_when_material_field_changes`.
+- First incomplete Active Priorities item after planning reconciliation on 2026-05-10: `src/domain/scoring.rs` score-input breakdown and verdict helper implementation item 10.
+- `src/domain/identity.rs` currently contains `DomainHash`, `DomainHashInput<'a>`, `canonical_json_bytes(record)`, `domain_hash_json(record)`, `domain_hash_parts(parts)`, `stable_domain_id(parts)`, and six passing targeted identity tests through `domain_hash_changes_when_schema_version_changes`.
+- `src/domain/scoring.rs` currently contains validated `BoundedScore` helpers through `bounded_score_clamps_and_averages_with_integer_math`; score-input breakdown and verdict helper functions remain next.
 - Current source inventory confirms Rust files exist for `src/domain/bridge.rs`, `src/domain/contracts.rs`, `src/domain/identity.rs`, `src/domain/mod.rs`, `src/domain/risk.rs`, and `src/domain/scoring.rs`; planned Rust files `src/domain/global_intelligence.rs`, `src/domain/business.rs`, `src/domain/finance.rs`, and `src/domain/trading.rs` remain absent.
 - Domain fixture JSON files already exist under `tests/fixtures/domain/` for global signal, business workflow opportunity, finance hypothesis research, trading simulation sandbox, and trading live blocked cases; `tests/test_domain_fixture_contract.py` exists but fixture-validation checklist item 46 remains unchecked until refreshed validation is recorded.
 
 ## Validation Ledger
+
+### 2026-05-10 — planning reconciliation for BoundedScore scoring helper
+
+- Scope: `plan.md`, `status.md`, `score.md`, `src/domain/scoring.rs`, `src/domain/contracts.rs`, `src/domain/risk.rs`, `src/domain/bridge.rs`, `src/domain/mod.rs`, `tests/fixtures/domain/*.json`, and working-tree status.
+- Command/check: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test scoring::tests::bounded_score_clamps_and_averages_with_integer_math -- --test-threads=1`.
+- Result: passed.
+- Evidence: `src/domain/scoring.rs::BoundedScore` is present with clamping constructor, accessors, zero/max helpers, and integer-only saturating weighted average; targeted validation ran 1 scoring test successfully with 0 failures and no ignored or measured tests.
+- Next action: implement Active Priorities item 10, `src/domain/scoring.rs` score-input breakdown and verdict helpers, then run targeted scoring validation.
+
+### 2026-05-10 — implementation step 1 schema-version identity hash test
+
+- Scope: `src/domain/identity.rs` unit test `domain_hash_changes_when_schema_version_changes` and Active Priorities item 8.
+- Command/check: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test identity::tests -- --test-threads=1`.
+- Result: passed.
+- Evidence: added `domain_hash_changes_when_schema_version_changes`, covering a changed `schema_version` material field through `domain_hash_json`; targeted validation ran 6 identity tests successfully after one connector HTTP 502 retry.
+- Next action: run the full-suite validation gate when connector transport is healthy, then commit if the full suite is green.
+
+### 2026-05-10 — full-suite validation after schema-version identity hash test
+
+- Scope: full project validation after adding `src/domain/identity.rs::tests::domain_hash_changes_when_schema_version_changes`.
+- Command/check: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
+- Result: blocked.
+- Evidence: connector returned HTTP 502 twice before Rust output; no product or Rust test failure was observed.
+- Next action: keep the full-suite validation gate unchecked and retry when connector transport is healthy; do not commit this implementation turn.
 
 ### 2026-05-10 — planning reconnaissance for schema-version identity hash test
 
