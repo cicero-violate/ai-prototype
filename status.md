@@ -51,9 +51,17 @@ Current date: 2026-05-10.
 - First incomplete Active Priorities item after fresh reconnaissance on 2026-05-10: `src/domain/identity.rs::canonical_json_bytes(record: &serde_json::Value) -> Vec<u8>`.
 - Implementation step 1 status on 2026-05-10: `src/domain/identity.rs` has a local `DomainHash` newtype implementation and unit test `domain_hash_newtype_validates_prefix_and_non_empty_suffix`; prior targeted identity validation passed, but full-suite validation remains pending because repeated connector HTTP 502 errors returned before Rust output.
 - Current source inventory confirms Rust files exist for `src/domain/bridge.rs`, `src/domain/contracts.rs`, `src/domain/identity.rs`, `src/domain/mod.rs`, `src/domain/risk.rs`, and `src/domain/scoring.rs`; planned Rust files `src/domain/global_intelligence.rs`, `src/domain/business.rs`, `src/domain/finance.rs`, and `src/domain/trading.rs` remain absent.
-- This planning turn updated `plan.md` and `status.md` only. No implementation validation, full-suite validation, graph refresh, or score change was performed.
+- Current planning turn updated `plan.md` and `status.md` only. No implementation validation, full-suite validation, graph refresh, or score change was performed.
 
 ## Validation Ledger
+
+### 2026-05-10 — planning reconnaissance for canonical JSON identity task
+
+- Scope: `plan.md`, `status.md`, `src/domain` inventory, `state/rustc/ai/graph.json`, and working-tree status.
+- Command/check: read `plan.md`; read `status.md`; ran `find src/domain -type f | sort`; analyzed `state/rustc/ai/graph.json` with Python; checked `git status --short`.
+- Result: informational.
+- Evidence: first incomplete Active Priorities item remains item 3, `src/domain/identity.rs::canonical_json_bytes(record: &serde_json::Value) -> Vec<u8>`; source inventory is unchanged; graph schema version 16 has graph hash `ab2202a8d8ec371b0c462aecc41e28d059920f53e2179dd40ebb6ebb3127fc33`, 4,473 nodes, 31,082 edges, 2,976 intents, zero compiled `domain::` name hits, and zero `src/domain/*` file hits; pre-existing working-tree modification is `upload.sh` only.
+- Next action: implement `src/domain/identity.rs::canonical_json_bytes(record)` and validate with the targeted identity tests.
 
 ### 2026-05-10 — planning reconnaissance for identity canonical JSON task
 
