@@ -85,11 +85,14 @@ impl LoopDriver {
 
     fn run_agent_loop(&self, agent_id: u32) {
         let tag = agent_tag(agent_id, self.config.agent_count);
-        let goal_path = self.config.project_dir.join("GOAL.md");
+        let is_spawned = self.config.domain.is_some();
 
-        if !goal_path.exists() {
-            eprintln!("[{tag}] no GOAL.md — loop disabled");
-            return;
+        if !is_spawned {
+            let goal_path = self.config.project_dir.join("GOAL.md");
+            if !goal_path.exists() {
+                eprintln!("[{tag}] no GOAL.md — loop disabled");
+                return;
+            }
         }
 
         let mut cycle_num: u64 = 0;
@@ -109,6 +112,12 @@ impl LoopDriver {
                 eprintln!("[{tag}] cycle {cycle_num} failed: {e}");
             }
 
+            // Spawned agents run one cycle for their specific task then exit.
+            if is_spawned {
+                eprintln!("[{tag}] spawned agent task complete — exiting");
+                break;
+            }
+
             eprintln!(
                 "[{tag}] sleeping {}ms before next cycle",
                 self.config.loop_sleep_ms
@@ -124,29 +133,47 @@ impl LoopDriver {
         tag: &str,
         mut router: RouterClient,
     ) -> Result<(), String> {
-        let goal = read_goal_file(&self.config.project_dir)?;
-        let total_turns = self.config.execute_turns + 1; // 1 plan + N execute
+        let is_spawned = self.config.domain.is_some();
+        let (total_turns, turn_offset) = if is_spawned {
+            (self.config.execute_turns, 1) // all execute, no planning turn
+        } else {
+            (self.config.execute_turns + 1, 0) // 1 plan + N execute
+        };
+
+        let goal = if is_spawned {
+            String::new()
+        } else {
+            read_goal_file(&self.config.project_dir)?
+        };
 
         for turn in 0..total_turns {
-            let turn_mode = project_turn_mode(turn);
-            let is_planning = turn_mode == LoopMode::ProjectPlanning;
+            let effective_turn = turn + turn_offset;
+            let turn_mode = project_turn_mode(effective_turn);
+            let is_planning = !is_spawned && turn_mode == LoopMode::ProjectPlanning;
             let label = if is_planning {
                 "plan".to_string()
             } else {
-                format!("execute-{turn}")
+                format!("execute-{effective_turn}")
             };
 
-            let prompt = if is_planning {
+            let prompt = if is_spawned {
+                spawned_prompt(
+                    self.config.domain.as_deref().unwrap_or(""),
+                    self.config.metric.as_deref().unwrap_or(""),
+                    turn + 1,
+                    &self.config.working_dir,
+                )
+            } else if is_planning {
                 planning_prompt(
                     &goal,
                     agent_id,
                     self.config.agent_count,
                     &self.config.working_dir,
-                    self.config.domain.as_deref(),
-                    self.config.metric.as_deref(),
+                    None,
+                    None,
                 )
             } else {
-                execute_prompt(turn, agent_id, self.config.agent_count)
+                execute_prompt(effective_turn, agent_id, self.config.agent_count)
             };
 
             eprintln!(
@@ -347,18 +374,48 @@ fn planning_prompt(
     )
 }
 
+fn spawned_prompt(domain: &str, metric: &str, step: u32, working_dir: &Path) -> String {
+    let dir = working_dir.display();
+    if step == 1 {
+        format!(
+            "You are a sub-agent with a specific task.\n\n\
+             ## WORKING DIRECTORY\n`{dir}`\n\
+             All shell commands must run relative to this directory.\n\n\
+             ## YOUR TASK\n{domain}\n\n\
+             ## SUCCESS CRITERION\n{metric}\n\n\
+             Implement this now. Write or edit the necessary source files, run tests, \
+             fix any failures, and commit your changes. \
+             Do not touch `plan.md`, `score.md`, or any other planning files. \
+             Focus only on the task above."
+        )
+    } else {
+        format!(
+            "You are a sub-agent continuing your task (step {step}).\n\n\
+             ## WORKING DIRECTORY\n`{dir}`\n\n\
+             ## YOUR TASK\n{domain}\n\n\
+             ## SUCCESS CRITERION\n{metric}\n\n\
+             Continue implementing. Check what remains, fix any failures, and commit."
+        )
+    }
+}
+
 fn execute_prompt(turn_num: u32, agent_id: u32, agent_count: u32) -> String {
     let agent_line = agent_identity(agent_id, agent_count);
     format!(
         "{agent_line}\n\
          You are executing implementation step {turn_num} of this agent loop.\n\n\
-         Read `plan.md`. The active priority is the first incomplete item listed under \
-         \"Active Priorities\". Implement that work now — write or edit the actual source \
-         files, do not rewrite the plan. For domain module work, create or update files \
-         under `src/domain/`. After implementation, run the relevant tests/checks \
-         (use the validation commands in `plan.md`), fix any failures, update `plan.md` \
-         to mark completed steps, update `score.md` with progress and scoring, and \
-         commit all turn changes at the end of the turn."
+         Read `plan.md`. Find the first unchecked item ([ ]) under \"Active Priorities\" \
+         and implement it now — write or edit source files only, do not rewrite the plan. \
+         For domain module work, create or update files under `src/domain/`. \
+         After implementation, run the validation commands in `plan.md`, fix any failures, \
+         mark the item done in `plan.md`, update `score.md`, and commit all changes. \
+         Only commit if all checks pass; if checks cannot be made green, document the \
+         blocker in `plan.md` and do not commit.\n\n\
+         If the plan has two or more unchecked items that are independent of each other \
+         (different files, no shared state), you may delegate one by calling \
+         `canon_spawn_agent` with a specific domain (the file or function to implement) \
+         and metric (the test or check that must pass). Implement the first item yourself \
+         and spawn for the second — do not spawn without also making progress yourself."
     )
 }
 
