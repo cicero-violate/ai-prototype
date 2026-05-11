@@ -38,7 +38,7 @@ Use one entry per validation attempt, blocker, or evidence update:
 
 # Canon Agent Status
 
-Current date: 2026-05-10.
+Current date: 2026-05-11.
 
 ## Current Progress
 
@@ -48,13 +48,21 @@ Current date: 2026-05-10.
 - P3 runtime and receipt correctness: complete for current scope.
 - P4 graph source-of-truth integration: mostly complete for deterministic fixture/report evidence; agent-driven graph editing remains intentionally deferred until P5 domain surfaces are validated.
 - P5 domain intelligence layer: active. `src/domain/contracts.rs` constructor and invariant tests through unsafe live-effect rejection are complete in local source, with prior targeted validation passing 7 contract tests.
-- First incomplete Active Priorities item after implementation step 5 on 2026-05-10: `src/domain/scoring.rs` unit test `verdict_block_thresholds` item 17.
+- First incomplete Active Priorities item after planning reconnaissance on 2026-05-11: `src/domain/scoring.rs` unit test `verdict_block_thresholds` item 17.
 - `src/domain/identity.rs` currently contains `DomainHash`, `DomainHashInput<'a>`, `canonical_json_bytes(record)`, `domain_hash_json(record)`, `domain_hash_parts(parts)`, `stable_domain_id(parts)`, and six passing targeted identity tests through `domain_hash_changes_when_schema_version_changes`.
 - `src/domain/scoring.rs` currently contains validated `BoundedScore` helpers, score-input breakdown helpers, conservative `verdict_for_scores(...)`, and passing `verdict_ignore_thresholds`, `verdict_watch_thresholds`, `verdict_research_thresholds`, `verdict_act_business_thresholds`, `verdict_act_finance_research_thresholds`, and `verdict_simulate_trading_thresholds`; remaining explicit verdict threshold tests start at `verdict_block_thresholds`.
 - Current source inventory confirms Rust files exist for `src/domain/bridge.rs`, `src/domain/contracts.rs`, `src/domain/identity.rs`, `src/domain/mod.rs`, `src/domain/risk.rs`, and `src/domain/scoring.rs`; planned Rust files `src/domain/global_intelligence.rs`, `src/domain/business.rs`, `src/domain/finance.rs`, and `src/domain/trading.rs` remain absent.
 - Domain fixture JSON files already exist under `tests/fixtures/domain/` for global signal, business workflow opportunity, finance hypothesis research, trading simulation sandbox, and trading live blocked cases; `tests/test_domain_fixture_contract.py` exists but fixture-validation checklist item 46 remains unchecked until refreshed validation is recorded.
 
 ## Validation Ledger
+
+### 2026-05-11 — planning reconnaissance for verdict_block_thresholds
+
+- Scope: `plan.md`, `status.md`, `score.md`, `src/domain/scoring.rs`, `src/domain/risk.rs`, `src/domain/bridge.rs`, `tests/fixtures/domain/*.json`, `tests/test_domain_fixture_contract.py`, `state/rustc/ai/graph.json`, and working-tree status.
+- Command/check: read planning, status, and score files; inspected the Active Priorities checklist; inspected `src/domain/scoring.rs`, `src/domain/risk.rs`, `src/domain/bridge.rs`, all domain fixture JSON artifacts, `tests/test_domain_fixture_contract.py`, and `state/rustc/ai/graph.json`; checked `git status --short`.
+- Result: informational.
+- Evidence: first incomplete Active Priorities implementation item remains item 17, `src/domain/scoring.rs::tests::verdict_block_thresholds`; `tests/fixtures/domain/trading_live_blocked.json` expects domain value `0`, actionability `0`, verdict `Block`, bridge target `Blocked`, `policy_fit` `0`, and risk `900`; graph evidence remains schema version 16 with graph hash `ab2202a8d8ec371b0c462aecc41e28d059920f53e2179dd40ebb6ebb3127fc33`, 4,473 nodes, 31,082 edges, 2,976 intents, and zero `domain::` or `src/domain` hits. Unrelated unstaged source changes are present in `src/agent/loop_driver.rs`, `src/domain/identity.rs`, `src/score.rs`, and `tests/score_contract.rs`; this planning turn did not inspect or stage those changes.
+- Next action: add `src/domain/scoring.rs` unit test `verdict_block_thresholds` using the trading live blocked fixture score inputs and validate with `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test scoring::tests::verdict_block_thresholds -- --test-threads=1`.
 
 ### 2026-05-10 — implementation step 5 verdict_simulate_trading_thresholds
 
