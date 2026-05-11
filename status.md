@@ -48,13 +48,21 @@ Current date: 2026-05-10.
 - P3 runtime and receipt correctness: complete for current scope.
 - P4 graph source-of-truth integration: mostly complete for deterministic fixture/report evidence; agent-driven graph editing remains intentionally deferred until P5 domain surfaces are validated.
 - P5 domain intelligence layer: active. `src/domain/contracts.rs` constructor and invariant tests through unsafe live-effect rejection are complete in local source, with prior targeted validation passing 7 contract tests.
-- First incomplete Active Priorities item after implementation step 2 on 2026-05-10: `src/domain/scoring.rs` unit test `verdict_act_business_thresholds` item 14.
+- First incomplete Active Priorities item after implementation step 3 on 2026-05-10: `src/domain/scoring.rs` unit test `verdict_act_finance_research_thresholds` item 15.
 - `src/domain/identity.rs` currently contains `DomainHash`, `DomainHashInput<'a>`, `canonical_json_bytes(record)`, `domain_hash_json(record)`, `domain_hash_parts(parts)`, `stable_domain_id(parts)`, and six passing targeted identity tests through `domain_hash_changes_when_schema_version_changes`.
-- `src/domain/scoring.rs` currently contains validated `BoundedScore` helpers, score-input breakdown helpers, conservative `verdict_for_scores(...)`, and passing `verdict_ignore_thresholds`, `verdict_watch_thresholds`, and `verdict_research_thresholds`; remaining explicit verdict threshold tests start at `verdict_act_business_thresholds`.
+- `src/domain/scoring.rs` currently contains validated `BoundedScore` helpers, score-input breakdown helpers, conservative `verdict_for_scores(...)`, and passing `verdict_ignore_thresholds`, `verdict_watch_thresholds`, `verdict_research_thresholds`, and `verdict_act_business_thresholds`; remaining explicit verdict threshold tests start at `verdict_act_finance_research_thresholds`.
 - Current source inventory confirms Rust files exist for `src/domain/bridge.rs`, `src/domain/contracts.rs`, `src/domain/identity.rs`, `src/domain/mod.rs`, `src/domain/risk.rs`, and `src/domain/scoring.rs`; planned Rust files `src/domain/global_intelligence.rs`, `src/domain/business.rs`, `src/domain/finance.rs`, and `src/domain/trading.rs` remain absent.
 - Domain fixture JSON files already exist under `tests/fixtures/domain/` for global signal, business workflow opportunity, finance hypothesis research, trading simulation sandbox, and trading live blocked cases; `tests/test_domain_fixture_contract.py` exists but fixture-validation checklist item 46 remains unchecked until refreshed validation is recorded.
 
 ## Validation Ledger
+
+### 2026-05-10 — implementation step 3 verdict_act_business_thresholds
+
+- Scope: `src/domain/scoring.rs` unit test `verdict_act_business_thresholds` and Active Priorities item 14.
+- Command/check: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test scoring::tests::verdict_act_business_thresholds -- --test-threads=1`; broader scoring check `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test scoring::tests -- --test-threads=1`.
+- Result: passed.
+- Evidence: added a business fixture verdict test using score inputs from `tests/fixtures/domain/business_workflow_opportunity.json`, asserting domain value `459`, actionability `267`, and `DomainVerdict::ActBusiness`; first validation attempt returned connector HTTP 502 before Rust output, retry ran 1 targeted test successfully with 0 failures, and broader scoring validation ran 8 scoring tests successfully with 0 failures.
+- Next action: add `src/domain/scoring.rs` unit test `verdict_act_finance_research_thresholds`.
 
 ### 2026-05-10 — implementation step 2 verdict_research_thresholds
 

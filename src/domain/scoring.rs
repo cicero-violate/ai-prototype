@@ -409,6 +409,31 @@ mod tests {
     }
 
     #[test]
+    fn verdict_act_business_thresholds() {
+        let inputs = DomainScoreInputs {
+            opportunity: Score::new(880),
+            confidence: Score::new(760),
+            policy_fit: Score::new(850),
+            verification_readiness: Score::new(820),
+            risk: Score::new(260),
+            uncertainty: Score::new(250),
+            staleness_penalty: Score::new(80),
+            source_quality: Score::new(740),
+            context_quality: Score::new(790),
+        };
+
+        let domain_value = domain_value_score(inputs);
+        let actionability = actionability_score(domain_value, inputs);
+
+        assert_eq!(domain_value.get(), 459);
+        assert_eq!(actionability.get(), 267);
+        assert_eq!(
+            verdict_for_scores(DomainId::Business, inputs),
+            DomainVerdict::ActBusiness
+        );
+    }
+
+    #[test]
     fn verdict_ignore_thresholds() {
         let ignore_inputs = DomainScoreInputs {
             opportunity: Score::new(300),
