@@ -57,6 +57,14 @@ Current date: 2026-05-12.
 
 ## Validation Ledger
 
+### 2026-05-12 — implementation step 3 blocked by completed checklist
+
+- Scope: `plan.md` `## Active Priorities`, `status.md`, and `score.md`.
+- Command/check: `git status --short`; `grep -n "^[0-9][0-9]*\. \[ \]" plan.md | head -20`; `sed -n '490,535p' plan.md`; `sed -n '1,95p' status.md`; `sed -n '1,85p' score.md`.
+- Result: blocked.
+- Evidence: no unchecked implementation item exists under `## Active Priorities`; Active Priorities items 25 through 89 are complete, and item 89 already passed example compile, formatter, full-suite validation, commit-hook fast validation, and was committed as `34c05f5 Extract Ollama MCP evidence helper`. No source file was changed for this implementation step.
+- Next action: run a planning turn to select the next concrete, file-scoped graph-backed item before another implementation step.
+
 ### 2026-05-12 — item 89 Ollama tool-loop MCP evidence helper extraction passed
 
 - Scope: Active Priorities item 89, `examples/ollama_tool_loop_trace.rs::submit_ollama_tool_calls(...)`, and private helper `submit_ollama_mcp_evidence(...)`.
