@@ -224,21 +224,8 @@ impl LiveSandboxProcessExecutor {
             .spawn()
             .map_err(|_| ToolSandboxError::SandboxIo)?;
 
-        let started = Instant::now();
         let timeout = Duration::from_millis(self.timeout_ms);
-        let (exit_status, timed_out) = loop {
-            if let Some(status) = child.try_wait().map_err(|_| ToolSandboxError::SandboxIo)? {
-                break (status.code().unwrap_or(255) as u64, false);
-            }
-
-            if started.elapsed() >= timeout {
-                let _ = child.kill();
-                let _ = child.wait();
-                break (124, true);
-            }
-
-            thread::sleep(Duration::from_millis(10));
-        };
+        let (exit_status, timed_out) = wait_for_sandbox_process(&mut child, timeout)?;
 
         let stdout = bounded_file_bytes(&plan.io.stdout, self.max_output_bytes)?;
         let stderr = bounded_file_bytes(&plan.io.stderr, self.max_output_bytes)?;
@@ -429,6 +416,26 @@ struct SandboxProcessEffect {
     stderr_bytes: u64,
     exit_status: u64,
     timed_out: bool,
+}
+
+fn wait_for_sandbox_process(
+    child: &mut std::process::Child,
+    timeout: Duration,
+) -> Result<(u64, bool), ToolSandboxError> {
+    let started = Instant::now();
+    loop {
+        if let Some(status) = child.try_wait().map_err(|_| ToolSandboxError::SandboxIo)? {
+            return Ok((status.code().unwrap_or(255) as u64, false));
+        }
+
+        if started.elapsed() >= timeout {
+            let _ = child.kill();
+            let _ = child.wait();
+            return Ok((124, true));
+        }
+
+        thread::sleep(Duration::from_millis(10));
+    }
 }
 
 pub fn append_sandbox_process_receipt_ndjson(
