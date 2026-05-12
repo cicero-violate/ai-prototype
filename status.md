@@ -57,6 +57,14 @@ Current date: 2026-05-11.
 
 ## Validation Ledger
 
+### 2026-05-11 — item 50 full-suite Rust validation green
+
+- Scope: Active Priorities item 50, full Rust workspace validation gate.
+- Command/check: `cargo test --all-targets` from `/workspace/ai_sandbox/canon-mini-agent/prototype/ai`.
+- Result: passed.
+- Evidence: local terminal output showed Canon rustc wrapper witness capture for `ai`, `ai__bin`, `tlog_introspect__bin`, `graph_mutation__bin`, `worker__bin`, `supervisor__bin`, `root_validate__bin`, and `agent__bin`, followed by green Rust output. The run passed 258 library tests, 10 API server contract tests, 20 API transport contract tests, 3 canonical TLog contract tests, 4 domain contract tests, 10 graph mutation CLI contract tests, 9 MCP receipt contract tests, 2 planning contract tests, 5 score contract tests, 2 supervisor binary contract tests, 352 validation harness contract tests, 2 worker binary contract tests, and all listed zero-test binary/example harnesses, with 0 failures.
+- Next action: proceed to item 53 graph refresh, then item 54 status evidence capture and item 55 score review as gated follow-up evidence tasks.
+
 ### 2026-05-11 — planning turn item 50 gate and loop-driver split candidates
 
 - Scope: `plan.md`, `status.md`, `score.md`, `SCORE_REPORT.md`, `state/rustc/auto-refactor/.*.graph-editor-plan.json`, `src/agent/loop_driver.rs`, and existing uncommitted item 50 transport-blocker evidence in `status.md`.

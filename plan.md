@@ -318,10 +318,10 @@ Ordered execute-turn checklist, one file or one test per item. Implementation it
    - Scope: `tests/test_domain_fixture_contract.py` validation only.
    - Done when: all fixture contract unittest cases pass with the refreshed field-level and risk-result checks.
    - Validation: `python3 -m unittest tests/test_domain_fixture_contract.py` passed on 2026-05-11 with 7 fixture contract tests and 0 failures.
-50. [ ] `cargo test --all-targets`: retry the full Rust workspace validation gate and record Rust output or connector blocker evidence.
+50. [x] `cargo test --all-targets`: retry the full Rust workspace validation gate and record Rust output or connector blocker evidence.
    - Scope: full Rust workspace validation only; do not edit source files while selecting this validation item.
    - Done when: full-suite Rust output is available and green. If connector HTTP 502 or another transport failure occurs before Rust output, leave this item unchecked and record the infrastructure blocker in `status.md`.
-   - Recovery note: repeated transport blockers are infrastructure evidence only; do not mark this item complete and do not advance to graph refresh, score review, or refactor implementation until full-suite Rust output is available and green.
+   - Validation: local terminal evidence on 2026-05-11 showed `cargo test --all-targets` passed with the Canon rustc wrapper capturing witnesses for `ai`, all listed binaries, and all target/example suites. The run included 258 library tests, 10 API server contract tests, 20 API transport contract tests, 3 canonical TLog contract tests, 4 domain contract tests, 10 graph mutation CLI contract tests, 9 MCP receipt contract tests, 2 planning contract tests, 5 score contract tests, 2 supervisor binary contract tests, 352 validation harness contract tests, 2 worker binary contract tests, and all listed zero-test binary/example harnesses, with 0 failures.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
 51. [x] `scripts/analyze_graph_json.py`: create the graph-analysis script that reads `state/rustc/ai/graph.json` and prints schema version, graph hash, receipt hash, risk hash, node count, edge count, intent count, node-kind counts, and compiled P5 `domain::`/`src/domain` node matches.
    - Scope: `scripts/analyze_graph_json.py` only.
