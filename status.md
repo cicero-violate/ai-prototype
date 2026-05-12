@@ -48,7 +48,7 @@ Current date: 2026-05-12.
 - P3 runtime and receipt correctness: complete for current scope.
 - P4 graph source-of-truth integration: mostly complete for deterministic fixture/report evidence; agent-driven graph editing remains intentionally deferred until P5 domain surfaces are validated.
 - P5 domain intelligence layer: active. `src/domain/contracts.rs` constructor and invariant tests through unsafe live-effect rejection are complete in local source, with prior targeted validation passing 7 contract tests.
-- Active Priorities items 25 through 103 are complete in the working tree; item 104 is now the first unchecked executable implementation item, followed by in-memory router finalization error coverage in item 105 and graph-derived evidence refresh item 106. The latest graph-derived structural refresh reports `G = 7.93 / 10`, Architecture `9.0`, Structure `4.8`, Simplicity `7.1`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2`; `score.md` remains unchanged because the refresh did not prove a score-history-worthy capability change.
+- Active Priorities items 25 through 104 are complete in the working tree; item 105 is now the first unchecked executable implementation item, followed by graph-derived evidence refresh item 106. The latest graph-derived structural refresh reports `G = 7.93 / 10`, Architecture `9.0`, Structure `4.8`, Simplicity `7.1`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2`; `score.md` remains unchanged because the refresh did not prove a score-history-worthy capability change.
 - `src/domain/business.rs` contains `BusinessOpportunity`, `WorkflowAutomationCandidate`, `CustomerFeedbackSignal`, `monetization_score(...)`, compile-smoke test `business_module_records_and_score_helper_compile`, deterministic repeatability test `business_monetization_score_is_deterministic`, and bounded-score test `business_monetization_score_is_bounded`, with broader business validation passing 3 tests after correcting the bounded test scalar assertion.
 - `src/domain/identity.rs` currently contains `DomainHash`, `DomainHashInput<'a>`, `canonical_json_bytes(record)`, `domain_hash_json(record)`, `domain_hash_parts(parts)`, `stable_domain_id(parts)`, and six passing targeted identity tests through `domain_hash_changes_when_schema_version_changes`.
 - `src/domain/scoring.rs` currently contains validated `BoundedScore` helpers, score-input breakdown helpers, conservative `verdict_for_scores(...)`, and passing `verdict_ignore_thresholds`, `verdict_watch_thresholds`, `verdict_research_thresholds`, `verdict_act_business_thresholds`, `verdict_act_finance_research_thresholds`, `verdict_simulate_trading_thresholds`, and `verdict_block_thresholds`; explicit verdict threshold tests are complete for the current scoring scope.
@@ -56,6 +56,14 @@ Current date: 2026-05-12.
 - Domain fixture JSON files exist under `tests/fixtures/domain/` for global signal, business workflow opportunity, finance hypothesis research, trading simulation sandbox, and trading live blocked cases; `tests/test_domain_fixture_contract.py` now includes explicit risk-result and required-field assertions. Item 51 graph analyzer now exists and passes against `state/rustc/ai/graph.json`, reporting 752 compiled P5 domain-node matches. Item 52 malformed-input self-check also passes. Remaining work includes item 50 full-suite Rust validation and later graph evidence refresh/score review items gated on full-suite output.
 
 ## Validation Ledger
+
+### 2026-05-12 — implementation step 1 item 104 router finalize success coverage
+
+- Scope: Active Priorities item 104, `src/agent/router.rs` test module, `plan.md`, and `status.md`.
+- Command/check: `env TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test router::tests::finalize_streaming_response_accepts_in_memory_sse_done_response`.
+- Result: passed.
+- Evidence: `finalize_streaming_response_accepts_in_memory_sse_done_response` builds an in-memory 200 SSE HTTP response with chat completion content frames, an `x-turn` metadata frame, and a terminating `data: [DONE]` frame. The test passed with 1 named router test and asserted parsed content, target URL, stream-complete metadata, finish reason, `done`, `is_complete()`, and completion reason.
+- Next action: execute Active Priorities item 105 by adding non-200 and missing-`[DONE]` in-memory error coverage for `finalize_streaming_response(...)`.
 
 ### 2026-05-12 — planning selected item 104 router finalize success coverage
 

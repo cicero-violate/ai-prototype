@@ -720,6 +720,43 @@ mod tests {
     }
 
     #[test]
+    fn finalize_streaming_response_accepts_in_memory_sse_done_response() {
+        let temp_dir = std::env::temp_dir().join(format!(
+            "canon-router-finalize-success-{}",
+            std::process::id()
+        ));
+        let mut logger = ChunkLogger::new(&temp_dir, "test", 1, "success")
+            .expect("chunk logger can be created for in-memory finalize test");
+        let body = concat!(
+            r#"data: {"object":"chat.completion.chunk","choices":[{"delta":{"content":"Hello "},"finish_reason":null}]}"#,
+            "\n\n",
+            r#"data: {"object":"chat.completion.chunk","choices":[{"delta":{"content":"world"},"finish_reason":"stop"}]}"#,
+            "\n\n",
+            r#"data: {"object":"x-turn","target_url":"thread-1","message_stream_complete":true}"#,
+            "\n\n",
+            "data: [DONE]\n\n",
+        );
+        let response = format!(
+            "HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\nContent-Length: {}\r\n\r\n{}",
+            body.len(),
+            body
+        );
+
+        let result = finalize_streaming_response(response.as_bytes(), &mut logger)
+            .expect("complete in-memory SSE response finalizes successfully");
+
+        assert_eq!(result.content, "Hello world");
+        assert_eq!(result.target_url.as_deref(), Some("thread-1"));
+        assert!(result.message_stream_complete);
+        assert!(result.done);
+        assert_eq!(result.finish_reason.as_deref(), Some("stop"));
+        assert!(result.is_complete());
+        assert_eq!(result.completion_reason(), "ok");
+
+        let _ = std::fs::remove_dir_all(temp_dir);
+    }
+
+    #[test]
     fn transient_router_classifier_accepts_retryable_io_errors() {
         for kind in [
             io::ErrorKind::WouldBlock,

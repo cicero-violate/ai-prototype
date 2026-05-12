@@ -12,7 +12,7 @@ Maintainability      = 10.0
 Determinism          = 10.0
 Coherency            = 8.2
 
-G (geometric mean)   = 7.94 / 10
+G (geometric mean)   = 7.93 / 10
 ```
 
 ## Per-Crate Breakdown
@@ -30,7 +30,7 @@ G (geometric mean)   = 7.94 / 10
 | ollama_tool_loop_trace     |    11 |   228 |    8 |  5.0 |    9.1 |    1.6 |  10.0 |   10.0 |   8.1 |
 | ollama_tool_mcp_loop_trace |    16 |   301 |   10 |  5.0 |    9.3 |    1.5 |  10.0 |   10.0 |   8.1 |
 | openai_tool_loop_trace     |    14 |   292 |   11 |  5.0 |    8.8 |    2.0 |  10.0 |   10.0 |   7.9 |
-| root_validate              |   162 |  1971 |  160 |  3.3 |    1.5 |    6.2 |  10.0 |   10.0 |   7.3 |
+| root_validate              |   162 |  1971 |  160 |  3.2 |    1.5 |    6.2 |  10.0 |   10.0 |   7.3 |
 | score                      |    90 |   685 |   54 |  8.3 |    4.4 |    6.5 |  10.0 |   10.0 |   8.2 |
 | supervisor                 |   114 |   709 |   37 |  9.4 |    5.6 |    4.7 |   9.9 |   10.0 |   8.6 |
 | tlog_introspect            |     1 |    49 |    1 |  5.0 |    4.5 |    0.2 |  10.0 |   10.0 |   7.0 |
