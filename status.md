@@ -48,7 +48,7 @@ Current date: 2026-05-12.
 - P3 runtime and receipt correctness: complete for current scope.
 - P4 graph source-of-truth integration: mostly complete for deterministic fixture/report evidence; agent-driven graph editing remains intentionally deferred until P5 domain surfaces are validated.
 - P5 domain intelligence layer: active. `src/domain/contracts.rs` constructor and invariant tests through unsafe live-effect rejection are complete in local source, with prior targeted validation passing 7 contract tests.
-- Active Priorities items 25 through 87 are complete in the working tree. Planning reconnaissance on 2026-05-12 selected new graph-backed item 88, `examples/ollama_tool_loop_trace.rs::submit_ollama_tool_calls(...)` inspection, followed by item 89 for a scoped post-loop MCP evidence helper extraction.
+- Active Priorities items 25 through 88 are complete in the working tree. The next executable item is item 89, a scoped post-loop MCP evidence helper extraction in `examples/ollama_tool_loop_trace.rs::submit_ollama_tool_calls(...)`.
 - `src/domain/business.rs` contains `BusinessOpportunity`, `WorkflowAutomationCandidate`, `CustomerFeedbackSignal`, `monetization_score(...)`, compile-smoke test `business_module_records_and_score_helper_compile`, deterministic repeatability test `business_monetization_score_is_deterministic`, and bounded-score test `business_monetization_score_is_bounded`, with broader business validation passing 3 tests after correcting the bounded test scalar assertion.
 - `src/domain/identity.rs` currently contains `DomainHash`, `DomainHashInput<'a>`, `canonical_json_bytes(record)`, `domain_hash_json(record)`, `domain_hash_parts(parts)`, `stable_domain_id(parts)`, and six passing targeted identity tests through `domain_hash_changes_when_schema_version_changes`.
 - `src/domain/scoring.rs` currently contains validated `BoundedScore` helpers, score-input breakdown helpers, conservative `verdict_for_scores(...)`, and passing `verdict_ignore_thresholds`, `verdict_watch_thresholds`, `verdict_research_thresholds`, `verdict_act_business_thresholds`, `verdict_act_finance_research_thresholds`, `verdict_simulate_trading_thresholds`, and `verdict_block_thresholds`; explicit verdict threshold tests are complete for the current scoring scope.
@@ -56,6 +56,14 @@ Current date: 2026-05-12.
 - Domain fixture JSON files exist under `tests/fixtures/domain/` for global signal, business workflow opportunity, finance hypothesis research, trading simulation sandbox, and trading live blocked cases; `tests/test_domain_fixture_contract.py` now includes explicit risk-result and required-field assertions. Item 51 graph analyzer now exists and passes against `state/rustc/ai/graph.json`, reporting 752 compiled P5 domain-node matches. Item 52 malformed-input self-check also passes. Remaining work includes item 50 full-suite Rust validation and later graph evidence refresh/score review items gated on full-suite output.
 
 ## Validation Ledger
+
+### 2026-05-12 — item 88 Ollama tool-loop MCP evidence split inspection passed
+
+- Scope: Active Priorities item 88, `examples/ollama_tool_loop_trace.rs::submit_ollama_tool_calls(...)`, and `state/rustc/auto-refactor/..__state__rustc__ollama_tool_loop_trace__bin__graph.graph-editor-plan.json`.
+- Command/check: `cat state/rustc/auto-refactor/..__state__rustc__ollama_tool_loop_trace__bin__graph.graph-editor-plan.json`; `sed -n '100,180p' examples/ollama_tool_loop_trace.rs`; `cargo check --example ollama_tool_loop_trace`.
+- Result: passed.
+- Evidence: `SplitFn id=a0f85bbd8f5f9cf1` remains current for `submit_ollama_tool_calls(...)` with `expected_lo=3474`, `expected_hi=6382`, generated names `submit_ollama_tool_calls__parse` and `submit_ollama_tool_calls__transform`, and boundaries `phase::parse`/`phase::transform`. Source inspection confirmed the smallest safe helper boundary is the post-loop `combined_mcp_execution_receipt(&receipts)?`, `CommandEnvelope::new(...)`, `Command::SubmitEvidence(receipt.submission())`, `handle_envelope(...)`, and `Ok(TOOL_CALL_TARGET)` finalization block only. `cargo check --example ollama_tool_loop_trace` passed and refreshed the `ollama_tool_loop_trace__bin` witness with 10 nodes, 220 facts, and graph hash `fd1ffb7865915988d2fc6c3a0470899d9b8bbff24000ebe32b61cb6bfe07db0e`.
+- Next action: execute item 89 by extracting only the post-loop MCP evidence submission block into `submit_ollama_mcp_evidence(...)` and validating with `cargo check --example ollama_tool_loop_trace && cargo fmt --check && TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
 
 ### 2026-05-12 — planning selected Ollama tool-loop MCP evidence split
 
