@@ -57,6 +57,14 @@ Current date: 2026-05-11.
 
 ## Validation Ledger
 
+### 2026-05-11 — implementation step 4 item 50 full-suite validation retry
+
+- Scope: Active Priorities item 50, full Rust workspace validation only.
+- Command/check: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
+- Result: blocked by infrastructure transport.
+- Evidence: the exact checklist validation command returned connector HTTP 502 before Rust output. No Rust test failure, source failure, score-changing evidence, or graph-refresh evidence was observed. Item 50 remains unchecked in `plan.md`.
+- Next action: retry item 50 when connector transport can return full-suite Rust output; do not select item 53 until item 50 is green.
+
 ### 2026-05-11 — implementation step 3 item 50 full-suite validation retry
 
 - Scope: Active Priorities item 50, full Rust workspace validation only.
