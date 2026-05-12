@@ -499,18 +499,38 @@ fn send_streaming_request(
     })?;
 
     let path = chat_completions_path(&endpoint.path_prefix);
-    let mut stream =
-        TcpStream::connect((endpoint.host.as_str(), endpoint.port)).map_err(OpenAiError::Io)?;
+    let request_str = build_streaming_http_request(&path, &endpoint.host, endpoint.port, body);
+
+    let full_response = collect_streaming_response_bytes(
+        &endpoint.host,
+        endpoint.port,
+        config.timeout_ms,
+        &request_str,
+        logger,
+        stream_deadline_ms,
+    )?;
+
+    finalize_streaming_response(&full_response, logger)
+}
+
+fn collect_streaming_response_bytes(
+    endpoint_host: &str,
+    endpoint_port: u16,
+    write_timeout_ms: u64,
+    request: &str,
+    logger: &mut ChunkLogger,
+    stream_deadline_ms: u64,
+) -> Result<Vec<u8>, OpenAiError> {
+    let mut stream = TcpStream::connect((endpoint_host, endpoint_port)).map_err(OpenAiError::Io)?;
     stream
         .set_read_timeout(Some(Duration::from_millis(1_000)))
         .map_err(OpenAiError::Io)?;
     stream
-        .set_write_timeout(Some(Duration::from_millis(config.timeout_ms)))
+        .set_write_timeout(Some(Duration::from_millis(write_timeout_ms)))
         .map_err(OpenAiError::Io)?;
 
-    let request_str = build_streaming_http_request(&path, &endpoint.host, endpoint.port, body);
     stream
-        .write_all(request_str.as_bytes())
+        .write_all(request.as_bytes())
         .map_err(OpenAiError::Io)?;
     stream.flush().map_err(OpenAiError::Io)?;
 
@@ -562,7 +582,7 @@ fn send_streaming_request(
         }
     }
 
-    finalize_streaming_response(&full_response, logger)
+    Ok(full_response)
 }
 
 fn finalize_streaming_response(

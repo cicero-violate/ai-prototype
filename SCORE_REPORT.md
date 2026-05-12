@@ -5,7 +5,7 @@ Generated: 2026-05-12  |  Schema version: 16  |  Crates: 16
 ## Aggregate Scores
 
 ```text
-Architecture         = 9.0
+Architecture         = 8.9
 Structure            = 4.8
 Simplicity           = 7.1
 Maintainability      = 10.0
@@ -20,7 +20,7 @@ G (geometric mean)   = 7.93 / 10
 | Crate                      | Nodes | Edges | Fns  | Arch | Struct | Simple | Maint | Determ | Coher |
 | :------------------------- | ----: | ----: | ---: | ---: | -----: | -----: | ----: | -----: | ----: |
 | agent                      |     5 |   195 |    5 |  5.0 |    8.5 |    0.5 |  10.0 |   10.0 |   7.8 |
-| ai                         |  5428 | 34809 | 2182 |  9.5 |    6.0 |    7.0 |  10.0 |   10.0 |   8.2 |
+| ai                         |  5429 | 34817 | 2183 |  9.5 |    6.0 |    7.0 |  10.0 |   10.0 |   8.2 |
 | ai                         |     1 |    18 |    1 |  5.0 |    4.5 |    4.5 |  10.0 |   10.0 |   7.0 |
 | chatgpt_mcp_connector      |  3651 | 20573 | 1655 |  8.9 |    3.4 |    7.5 |  10.0 |   10.0 |   8.3 |
 | graph_mutation             |    10 |   249 |   10 |  5.0 |    7.8 |    2.2 |  10.0 |   10.0 |   8.0 |
