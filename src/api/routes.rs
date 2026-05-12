@@ -4,7 +4,7 @@ use crate::api::protocol::{
     mcp_authorization_submission, Command, CommandEnvelope, CommandLedger, ControlEventResponse,
 };
 use crate::capability::{CapabilityRegistry, EvidenceSubmission};
-use crate::kernel::{Cause, Decision, EventKind, RuntimeConfig, State, TLog};
+use crate::kernel::{Cause, Decision, EventKind, Phase, RuntimeConfig, State, TLog};
 use crate::runtime::{tick, tick_with_api_command, CanonError, CanonicalWriter, Outcome};
 
 pub fn handle_command(
@@ -131,6 +131,10 @@ fn tick_for_command_response(
     cfg: RuntimeConfig,
     receipt: Option<(u64, u64)>,
 ) -> Result<(), CanonError> {
+    if state.phase == Phase::Done {
+        return Ok(());
+    }
+
     match receipt {
         Some((command_id, command_hash)) => {
             tick_with_api_command(state, tlog, cfg, command_id, command_hash)

@@ -4,7 +4,7 @@ use std::path::Path;
 
 use crate::codec::ndjson::{append_tlog_ndjson, write_tlog_ndjson};
 use crate::kernel::{
-    CapabilityRegistryProjection, ControlEvent, Phase, RuntimeConfig, State, TLog,
+    CapabilityRegistryProjection, Cause, ControlEvent, EventKind, Phase, RuntimeConfig, State, TLog,
 };
 
 use super::verify::{hash_event, validate_event, verify_tlog, EventHashInput, EventView};
@@ -80,7 +80,16 @@ impl CanonicalWriter {
             affected_gate: outcome.affected_gate,
         })?;
 
-        if after.phase == Phase::Done && after.failure.is_none() && !after.is_success() {
+        let terminal_bookkeeping = after.phase == Phase::Done
+            && outcome.kind == EventKind::Persisted
+            && outcome.cause == Cause::EvidenceSubmitted;
+
+        if after.phase == Phase::Done
+            && after.failure.is_none()
+            && !after.is_success()
+            && outcome.kind != EventKind::Persisted
+            && !terminal_bookkeeping
+        {
             return Err(CanonError::InvalidCompletion);
         }
 

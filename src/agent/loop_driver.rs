@@ -6,11 +6,8 @@ use std::thread;
 use std::time::Duration;
 
 use crate::agent::config::AgentLoopConfig;
-use crate::agent::cycle::AgentCycle;
-use crate::agent::objective::AgentObjective;
 use crate::agent::router::RouterClient;
 use crate::agent::sse::ChunkLogger;
-use crate::agent::worker_client::WorkerClient;
 use crate::capability::llm::openai::{OpenAiChatRequest, OpenAiMessage};
 
 /// Outer project-loop driver. Mirrors agentLoop / runCycle from
@@ -20,9 +17,7 @@ use crate::capability::llm::openai::{OpenAiChatRequest, OpenAiMessage};
 /// 1 planning turn + N execute turns with per-turn retry logic.
 ///
 /// This is deliberately separate from the phase-driven worker/runtime path:
-/// the project loop asks the router model to edit files and commit work, while
-/// `AgentCycle` certification submits typed evidence through the worker so the
-/// deterministic state machine can verify and record the result.
+/// the project loop asks the router model to edit files and commit work.
 pub struct LoopDriver {
     pub config: AgentLoopConfig,
 }
@@ -225,12 +220,8 @@ impl LoopDriver {
             }
         }
 
-        // All loop turns completed; close the project-loop browser tab before
-        // certification opens its own router session.
+        // All loop turns completed; close the project-loop browser tab.
         close_router_tab(tag, "project", &mut router);
-
-        // Run evidence certification against the worker.
-        self.run_certification(cycle_num, tag);
 
         Ok(())
     }
@@ -289,76 +280,6 @@ impl LoopDriver {
             reason,
             retry_is_safe: result.retry_is_safe(has_target_url),
         })
-    }
-
-    /// Run an AgentCycle against the worker to stamp evidence gates to the tlog.
-    /// Called after each successful loop cycle.
-    fn run_certification(&self, cycle_num: u64, tag: &str) {
-        let mode = LoopMode::WorkerCertification;
-        let Some(mut worker_port) = self.config.worker_port else {
-            return;
-        };
-
-        // If a supervisor is configured, reload the worker to get a fresh state.
-        if let Some(sup_port) = self.config.supervisor_port {
-            eprintln!("[{tag}] cert: reloading worker via supervisor (port {sup_port})");
-            match supervisor_reload(sup_port, worker_port) {
-                Ok(reloaded_worker_port) => {
-                    worker_port = reloaded_worker_port;
-                    eprintln!("[{tag}] cert: waiting for worker on port {worker_port}");
-                    if !wait_for_worker_healthy(worker_port, 30) {
-                        eprintln!(
-                            "[{tag}] cert: worker did not become healthy after reload — skipping"
-                        );
-                        return;
-                    }
-                }
-                Err(e) => {
-                    eprintln!("[{tag}] cert: supervisor reload failed: {e} — continuing with current worker state");
-                }
-            }
-        }
-
-        let router = match RouterClient::from_env() {
-            Ok(r) => r,
-            Err(e) => {
-                eprintln!("[{tag}] cert: router init failed: {e}");
-                return;
-            }
-        };
-
-        let worker = WorkerClient::new(worker_port);
-        let objective = build_cert_objective(&self.config.project_dir);
-
-        eprintln!(
-            "[{tag}] cert: cycle {cycle_num} mode={} — domain={}…",
-            mode.label(),
-            objective
-                .domain_hint
-                .chars()
-                .take(80)
-                .collect::<String>()
-                .replace('\n', " "),
-        );
-
-        let mut cycle =
-            AgentCycle::new(router, worker, objective).with_max_steps(self.config.cert_max_steps);
-
-        match cycle.run() {
-            Ok(summary) => eprintln!(
-                "[{tag}] cert: done  steps={}  success={}  stop={}  phase={}  tlog_len={}",
-                summary.step_count,
-                summary.success,
-                summary.stop_reason,
-                summary.final_phase,
-                summary.final_tlog_len,
-            ),
-            Err(e) => eprintln!("[{tag}] cert: AgentCycle failed: {e}"),
-        }
-        match cycle.close_router_tab() {
-            Ok(outcome) => eprintln!("[{tag}] cert: browser tab close outcome: {outcome:?}"),
-            Err(e) => eprintln!("[{tag}] cert: browser tab close failed: {e}"),
-        }
     }
 }
 
@@ -660,7 +581,6 @@ fn agent_tag(agent_id: u32, agent_count: u32) -> String {
 enum LoopMode {
     ProjectPlanning,
     ProjectExecution,
-    WorkerCertification,
 }
 
 impl LoopMode {
@@ -668,7 +588,6 @@ impl LoopMode {
         match self {
             Self::ProjectPlanning => "project_planning",
             Self::ProjectExecution => "project_execution",
-            Self::WorkerCertification => "worker_certification",
         }
     }
 }
@@ -698,20 +617,7 @@ fn read_goal_file(project_dir: &Path) -> Result<String, String> {
 
 /// POST {mcp_url}/workspace with the project root. Mirrors syncMcpWorkspace().
 fn sync_mcp_workspace(mcp_url: &str, project_dir: &Path) -> Result<(), String> {
-    let url = mcp_url.trim_end_matches('/');
-    let host_port = url
-        .strip_prefix("http://")
-        .ok_or_else(|| format!("MCP_CONNECTOR_URL must start with http://: {url}"))?;
-
-    let (host, port) = if let Some(colon_pos) = host_port.rfind(':') {
-        let h = &host_port[..colon_pos];
-        let p: u16 = host_port[colon_pos + 1..]
-            .parse()
-            .map_err(|_| format!("invalid port in MCP_CONNECTOR_URL: {url}"))?;
-        (h.to_string(), p)
-    } else {
-        (host_port.to_string(), 80u16)
-    };
+    let (host, port) = parse_mcp_workspace_endpoint(mcp_url)?;
 
     let root = project_dir.to_string_lossy();
     let body = format!("{{\"root\":\"{root}\"}}");
@@ -747,130 +653,21 @@ fn sync_mcp_workspace(mcp_url: &str, project_dir: &Path) -> Result<(), String> {
     Ok(())
 }
 
-// ── Certification helpers ─────────────────────────────────────────────────────
+fn parse_mcp_workspace_endpoint(mcp_url: &str) -> Result<(String, u16), String> {
+    let url = mcp_url.trim_end_matches('/');
+    let host_port = url
+        .strip_prefix("http://")
+        .ok_or_else(|| format!("MCP_CONNECTOR_URL must start with http://: {url}"))?;
 
-/// Build an AgentObjective from the project files produced by the loop cycle.
-fn build_cert_objective(project_dir: &Path) -> AgentObjective {
-    let goal = read_goal_cert_excerpt(&project_dir.join("GOAL.md"), 600);
-    let plan = read_file_truncated(&project_dir.join("plan.md"), 400);
-    let status = read_file_truncated(&project_dir.join("status.md"), 500);
-    let score = read_file_truncated(&project_dir.join("score.md"), 300);
-
-    let mut domain = String::from(
-        "Certify the latest autonomous project-loop work using local plan/status evidence. \
-         Produce phase evidence for the worker runtime; do not request human review unless \
-         the local evidence is missing, unsafe, or contradictory.",
-    );
-    if !goal.is_empty() {
-        domain.push_str("\n\nProject goal excerpt:\n");
-        domain.push_str(&goal);
-    }
-    if !plan.is_empty() {
-        domain.push_str("\n\nPlan:\n");
-        domain.push_str(&plan);
-    }
-    if !status.is_empty() {
-        domain.push_str("\n\nStatus evidence:\n");
-        domain.push_str(&status);
-    }
-
-    let mut metric = String::from(
-        "Certification succeeds when the worker reaches phase Done using typed evidence \
-         derived from the latest plan.md/status.md validation state.",
-    );
-    if !score.is_empty() {
-        metric.push_str("\n\nScore context:\n");
-        metric.push_str(&score);
-    }
-
-    AgentObjective::new(domain, metric)
-}
-
-fn read_goal_cert_excerpt(path: &Path, max_chars: usize) -> String {
-    let raw = fs::read_to_string(path).unwrap_or_default();
-    let body = raw
-        .lines()
-        .position(|line| line.trim_start().starts_with('#'))
-        .map(|idx| raw.lines().skip(idx).collect::<Vec<_>>().join("\n"))
-        .unwrap_or(raw);
-    truncate_chars(body.trim(), max_chars)
-}
-
-fn truncate_chars(text: &str, max_chars: usize) -> String {
-    let count = text.chars().count();
-    if count > max_chars {
-        let truncated: String = text.chars().take(max_chars).collect();
-        format!("{truncated}…")
+    if let Some(colon_pos) = host_port.rfind(':') {
+        let h = &host_port[..colon_pos];
+        let p: u16 = host_port[colon_pos + 1..]
+            .parse()
+            .map_err(|_| format!("invalid port in MCP_CONNECTOR_URL: {url}"))?;
+        Ok((h.to_string(), p))
     } else {
-        text.to_string()
+        Ok((host_port.to_string(), 80u16))
     }
-}
-
-fn read_file_truncated(path: &Path, max_chars: usize) -> String {
-    fs::read_to_string(path)
-        .map(|s| truncate_chars(&s, max_chars))
-        .unwrap_or_default()
-}
-
-/// POST /reload to the supervisor and return the active worker port.
-fn supervisor_reload(supervisor_port: u16, fallback_worker_port: u16) -> Result<u16, String> {
-    let mut stream = TcpStream::connect(("127.0.0.1", supervisor_port))
-        .map_err(|e| format!("supervisor connect: {e}"))?;
-    stream.set_read_timeout(Some(Duration::from_secs(10))).ok();
-    stream.set_write_timeout(Some(Duration::from_secs(5))).ok();
-
-    let request = format!(
-        "POST /reload HTTP/1.1\r\nHost: 127.0.0.1:{supervisor_port}\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"
-    );
-    stream
-        .write_all(request.as_bytes())
-        .map_err(|e| format!("supervisor write: {e}"))?;
-    stream.flush().ok();
-
-    let mut response = String::new();
-    stream.read_to_string(&mut response).ok();
-
-    let status: u16 = response
-        .lines()
-        .next()
-        .and_then(|l| l.split_whitespace().nth(1))
-        .and_then(|s| s.parse().ok())
-        .unwrap_or(0);
-
-    match status {
-        200 => parse_reload_worker_port(&response),
-        204 => Ok(fallback_worker_port),
-        _ => Err(format!("supervisor /reload returned HTTP {status}")),
-    }
-}
-
-fn parse_reload_worker_port(response: &str) -> Result<u16, String> {
-    let body = response
-        .split_once("\r\n\r\n")
-        .map(|(_, body)| body)
-        .or_else(|| response.split_once("\n\n").map(|(_, body)| body))
-        .ok_or_else(|| "supervisor /reload response missing body".to_string())?;
-    let json: serde_json::Value =
-        serde_json::from_str(body).map_err(|e| format!("supervisor /reload JSON: {e}"))?;
-    let port = json
-        .get("active")
-        .and_then(|active| active.get("worker_port"))
-        .and_then(serde_json::Value::as_u64)
-        .ok_or_else(|| "supervisor /reload response missing active.worker_port".to_string())?;
-    u16::try_from(port).map_err(|_| format!("supervisor /reload worker_port out of range: {port}"))
-}
-
-/// Poll the worker health endpoint until it responds OK or the timeout expires.
-fn wait_for_worker_healthy(port: u16, timeout_secs: u64) -> bool {
-    let client = WorkerClient::new(port);
-    let deadline = std::time::Instant::now() + Duration::from_secs(timeout_secs);
-    while std::time::Instant::now() < deadline {
-        if client.health().unwrap_or(false) {
-            return true;
-        }
-        thread::sleep(Duration::from_millis(500));
-    }
-    false
 }
 
 #[cfg(test)]
@@ -885,14 +682,10 @@ mod tests {
     }
 
     #[test]
-    fn project_loop_modes_distinguish_planning_execution_and_worker_certification() {
+    fn project_loop_modes_distinguish_planning_and_execution() {
         assert_eq!(project_turn_mode(0), LoopMode::ProjectPlanning);
         assert_eq!(project_turn_mode(1), LoopMode::ProjectExecution);
         assert_eq!(project_turn_mode(9), LoopMode::ProjectExecution);
-        assert_eq!(
-            LoopMode::WorkerCertification.label(),
-            "worker_certification"
-        );
     }
 
     #[test]
@@ -923,59 +716,21 @@ mod tests {
     }
 
     #[test]
-    fn certification_objective_uses_truncated_project_evidence() {
-        let root = std::env::temp_dir().join(format!("canon-loop-cert-{}", std::process::id()));
-        fs::create_dir_all(&root).unwrap();
-        fs::write(root.join("GOAL.md"), "goal\n".repeat(1000)).unwrap();
-        fs::write(root.join("plan.md"), "plan\n".repeat(1000)).unwrap();
-        fs::write(root.join("status.md"), "status\n".repeat(1000)).unwrap();
-        fs::write(root.join("score.md"), "score\n".repeat(1000)).unwrap();
+    fn mcp_workspace_endpoint_parser_preserves_host_port_and_errors() {
+        assert_eq!(
+            parse_mcp_workspace_endpoint("http://127.0.0.1:9100").unwrap(),
+            ("127.0.0.1".to_string(), 9100)
+        );
+        assert_eq!(
+            parse_mcp_workspace_endpoint("http://localhost/").unwrap(),
+            ("localhost".to_string(), 80)
+        );
 
-        let objective = build_cert_objective(&root);
-        assert!(objective
-            .domain_hint
-            .starts_with("Certify the latest autonomous project-loop work"));
-        assert!(objective.domain_hint.contains("Project goal excerpt:"));
-        assert!(objective.domain_hint.contains("Plan:"));
-        assert!(objective.domain_hint.contains("Status evidence:"));
-        assert!(objective.domain_hint.ends_with('…'));
-        assert!(objective.success_metric.contains("Score context:"));
-        assert!(objective.success_metric.ends_with('…'));
-        assert!(objective.domain_hint.chars().count() < 1_900);
-        assert!(objective.success_metric.chars().count() < 500);
-
-        let _ = fs::remove_dir_all(root);
-    }
-
-    #[test]
-    fn certification_goal_excerpt_starts_at_first_heading() {
-        let root =
-            std::env::temp_dir().join(format!("canon-loop-cert-heading-{}", std::process::id()));
-        fs::create_dir_all(&root).unwrap();
-        fs::write(
-            root.join("GOAL.md"),
-            "opening invocation\n\n# Canon Agent\nConcrete project objective\n",
-        )
-        .unwrap();
-
-        let excerpt = read_goal_cert_excerpt(&root.join("GOAL.md"), 200);
-        assert!(excerpt.starts_with("# Canon Agent"));
-        assert!(!excerpt.contains("opening invocation"));
-
-        let _ = fs::remove_dir_all(root);
-    }
-
-    #[test]
-    fn supervisor_reload_response_parses_fresh_worker_port() {
-        let response = "HTTP/1.1 200 OK\r\ncontent-type: application/json\r\n\r\n{\"ok\":true,\"active\":{\"generation\":2,\"worker_port\":41234}}";
-
-        assert_eq!(parse_reload_worker_port(response).unwrap(), 41234);
-    }
-
-    #[test]
-    fn supervisor_reload_response_rejects_missing_worker_port() {
-        let response = "HTTP/1.1 200 OK\r\n\r\n{\"ok\":true,\"active\":{\"generation\":2}}";
-
-        assert!(parse_reload_worker_port(response).is_err());
+        assert!(parse_mcp_workspace_endpoint("https://localhost:9100")
+            .unwrap_err()
+            .contains("must start with http://"));
+        assert!(parse_mcp_workspace_endpoint("http://localhost:not-a-port")
+            .unwrap_err()
+            .contains("invalid port"));
     }
 }
