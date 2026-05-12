@@ -57,6 +57,14 @@ Current date: 2026-05-11.
 
 ## Validation Ledger
 
+### 2026-05-11 — item 55 score rationale review
+
+- Scope: Active Priorities item 55, `score.md` rationale and score/status consistency review.
+- Command/check: score/status consistency review over `score.md`, `status.md`, and `SCORE_REPORT.md`.
+- Result: passed.
+- Evidence: item 50 full-suite validation and item 53 refreshed graph evidence are now reflected in score rationale. Project-level numeric score axes remain unchanged because the new evidence is a validation/evidence refresh, not a separate capability score change. Current `SCORE_REPORT.md` reports graph-derived `G = 8.02 / 10`, Structure `4.8`, Simplicity `7.4`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.5`.
+- Next action: proceed to item 56 P4 graph-editing guardrail documentation check.
+
 ### 2026-05-11 — item 54 status evidence summary refresh
 
 - Scope: Active Priorities item 54, `status.md` Evidence Summary and Validation Ledger only.

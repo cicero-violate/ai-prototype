@@ -339,10 +339,10 @@ Ordered execute-turn checklist, one file or one test per item. Implementation it
    - Scope: `status.md` Evidence Summary and Validation Ledger only.
    - Done when: status records the new graph hash, node count, edge count, intent count, and P5 domain-node evidence.
    - Validation: `python3 scripts/analyze_graph_json.py state/rustc/ai/graph.json` passed on 2026-05-11 with schema version 16, graph hash `2399ea73e0eccc81561d2f1f3aaedb1692d965e0a4dfcbe6c0e2c4cb3e67f664`, 5,337 nodes, 33,179 edges, 3,453 intents, and 752 compiled P5 domain-node matches.
-55. [ ] `score.md`: update score rationale only if item 50 full-suite validation or item 53 refreshed graph evidence justifies a score change.
+55. [x] `score.md`: update score rationale only if item 50 full-suite validation or item 53 refreshed graph evidence justifies a score change.
    - Scope: `score.md` only.
    - Done when: scores either remain explicitly unchanged with rationale, or a value changes with evidence cited from `status.md`.
-   - Validation: score/status consistency review.
+   - Validation: score/status consistency review passed on 2026-05-11; project-level numeric scores remain unchanged, while rationale now cites item 50 full-suite validation, item 53 refreshed graph evidence, and current `SCORE_REPORT.md` graph-derived `G = 8.02 / 10`.
 56. [ ] `plan.md`: keep the P4 graph-editing guardrail documented after P5 validation.
    - Scope: `plan.md` only.
    - Done when: graph mutation implementation remains deferred until P5 domain contracts, identity, scoring, risk, bridge descriptors, subdomain modules, fixtures, full-suite validation, and refreshed graph evidence are complete.
