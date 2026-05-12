@@ -48,7 +48,7 @@ Current date: 2026-05-12.
 - P3 runtime and receipt correctness: complete for current scope.
 - P4 graph source-of-truth integration: mostly complete for deterministic fixture/report evidence; agent-driven graph editing remains intentionally deferred until P5 domain surfaces are validated.
 - P5 domain intelligence layer: active. `src/domain/contracts.rs` constructor and invariant tests through unsafe live-effect rejection are complete in local source, with prior targeted validation passing 7 contract tests.
-- Active Priorities items 25 through 83 are complete in the working tree. The next executable item is item 84, a graph-backed inspection of the remaining repeated LLM phase branch in `src/agent/cycle.rs::AgentCycle::run(...)`.
+- Active Priorities items 25 through 84 are complete in the working tree. The next executable item is item 85, the scoped `run_llm_gate_phase(...)` extraction in `src/agent/cycle.rs::AgentCycle::run(...)`.
 - `src/domain/business.rs` contains `BusinessOpportunity`, `WorkflowAutomationCandidate`, `CustomerFeedbackSignal`, `monetization_score(...)`, compile-smoke test `business_module_records_and_score_helper_compile`, deterministic repeatability test `business_monetization_score_is_deterministic`, and bounded-score test `business_monetization_score_is_bounded`, with broader business validation passing 3 tests after correcting the bounded test scalar assertion.
 - `src/domain/identity.rs` currently contains `DomainHash`, `DomainHashInput<'a>`, `canonical_json_bytes(record)`, `domain_hash_json(record)`, `domain_hash_parts(parts)`, `stable_domain_id(parts)`, and six passing targeted identity tests through `domain_hash_changes_when_schema_version_changes`.
 - `src/domain/scoring.rs` currently contains validated `BoundedScore` helpers, score-input breakdown helpers, conservative `verdict_for_scores(...)`, and passing `verdict_ignore_thresholds`, `verdict_watch_thresholds`, `verdict_research_thresholds`, `verdict_act_business_thresholds`, `verdict_act_finance_research_thresholds`, `verdict_simulate_trading_thresholds`, and `verdict_block_thresholds`; explicit verdict threshold tests are complete for the current scoring scope.
@@ -56,6 +56,14 @@ Current date: 2026-05-12.
 - Domain fixture JSON files exist under `tests/fixtures/domain/` for global signal, business workflow opportunity, finance hypothesis research, trading simulation sandbox, and trading live blocked cases; `tests/test_domain_fixture_contract.py` now includes explicit risk-result and required-field assertions. Item 51 graph analyzer now exists and passes against `state/rustc/ai/graph.json`, reporting 752 compiled P5 domain-node matches. Item 52 malformed-input self-check also passes. Remaining work includes item 50 full-suite Rust validation and later graph evidence refresh/score review items gated on full-suite output.
 
 ## Validation Ledger
+
+### 2026-05-12 — item 84 AgentCycle LLM-phase split inspection passed
+
+- Scope: Active Priorities item 84, `state/rustc/auto-refactor/..__state__rustc__ai__graph.graph-editor-plan.json`, `src/agent/cycle.rs::AgentCycle::run(...)`, and existing `agent::cycle::hash_tests`.
+- Command/check: inspected `SplitFn id=918a1611235eccfd` (`fn_path=agent::cycle::AgentCycle::run`, `expected_lo=3897`, `expected_hi=11155`, generated names `run__parse` and `run__transform`, `delegate_strategy=preserve_original_signature`); inspected the remaining `Analysis`, `Judgment`, `Plan`, and `Eval` LLM phase branches; ran `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test agent::cycle::hash_tests -- --test-threads=1`.
+- Result: passed.
+- Evidence: source inspection confirmed the smallest safe helper boundary is the repeated LLM gate workflow only: `llm_phase_turn(...)`, `SENTINEL_REVIEW` detection, `parse_verdict(...)`, `phase_gate(...)`, phase evidence submission, and the one-time `Invariant/InvariantProof` submission for `Analysis`. Recovery, invariant, execute, verify, persist/learn, loop termination, worker observation, and final-summary construction remain outside the proposed helper. Targeted validation passed with 6 cycle hash tests and 0 failures.
+- Next action: execute Active Priorities item 85 by extracting `run_llm_gate_phase(...)` in `src/agent/cycle.rs` only, then run the named targeted, formatter, and full-suite validation gates.
 
 
 ### 2026-05-12 — planning selected AgentCycle LLM-phase branch inspection
