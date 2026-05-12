@@ -48,7 +48,7 @@ Current date: 2026-05-12.
 - P3 runtime and receipt correctness: complete for current scope.
 - P4 graph source-of-truth integration: mostly complete for deterministic fixture/report evidence; agent-driven graph editing remains intentionally deferred until P5 domain surfaces are validated.
 - P5 domain intelligence layer: active. `src/domain/contracts.rs` constructor and invariant tests through unsafe live-effect rejection are complete in local source, with prior targeted validation passing 7 contract tests.
-- Active Priorities items 25 through 100 are complete in the working tree; item 101 is now the first unchecked executable planning/inspection item. The latest graph-derived structural refresh reports `G = 7.93 / 10`, Architecture `9.0`, Structure `4.8`, Simplicity `7.1`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2`; `score.md` remains unchanged because the refresh did not prove a score-history-worthy capability change.
+- Active Priorities items 25 through 100 are complete in the working tree; item 101 remains the first unchecked executable planning/inspection item, followed by router helper extraction item 102, router test item 103, and graph-derived evidence refresh item 104. The latest graph-derived structural refresh reports `G = 7.93 / 10`, Architecture `9.0`, Structure `4.8`, Simplicity `7.1`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2`; `score.md` remains unchanged because the refresh did not prove a score-history-worthy capability change.
 - `src/domain/business.rs` contains `BusinessOpportunity`, `WorkflowAutomationCandidate`, `CustomerFeedbackSignal`, `monetization_score(...)`, compile-smoke test `business_module_records_and_score_helper_compile`, deterministic repeatability test `business_monetization_score_is_deterministic`, and bounded-score test `business_monetization_score_is_bounded`, with broader business validation passing 3 tests after correcting the bounded test scalar assertion.
 - `src/domain/identity.rs` currently contains `DomainHash`, `DomainHashInput<'a>`, `canonical_json_bytes(record)`, `domain_hash_json(record)`, `domain_hash_parts(parts)`, `stable_domain_id(parts)`, and six passing targeted identity tests through `domain_hash_changes_when_schema_version_changes`.
 - `src/domain/scoring.rs` currently contains validated `BoundedScore` helpers, score-input breakdown helpers, conservative `verdict_for_scores(...)`, and passing `verdict_ignore_thresholds`, `verdict_watch_thresholds`, `verdict_research_thresholds`, `verdict_act_business_thresholds`, `verdict_act_finance_research_thresholds`, `verdict_simulate_trading_thresholds`, and `verdict_block_thresholds`; explicit verdict threshold tests are complete for the current scoring scope.
@@ -56,6 +56,30 @@ Current date: 2026-05-12.
 - Domain fixture JSON files exist under `tests/fixtures/domain/` for global signal, business workflow opportunity, finance hypothesis research, trading simulation sandbox, and trading live blocked cases; `tests/test_domain_fixture_contract.py` now includes explicit risk-result and required-field assertions. Item 51 graph analyzer now exists and passes against `state/rustc/ai/graph.json`, reporting 752 compiled P5 domain-node matches. Item 52 malformed-input self-check also passes. Remaining work includes item 50 full-suite Rust validation and later graph evidence refresh/score review items gated on full-suite output.
 
 ## Validation Ledger
+
+### 2026-05-12 — planning validation blocked by connector network
+
+- Scope: `plan.md` and `status.md` planning-only update.
+- Command/check: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test planning_contract -- --test-threads=1`.
+- Result: blocked.
+- Evidence: the MCP connector returned `network_error` / `Connection failed` for `https://cheese-server.duckdns.org/mcp` before shell or Rust output was available. This is infrastructure evidence, not a planning-contract product failure.
+- Next action: retry the planning-contract validation when the connector transport is available; the next executable project item remains Active Priorities item 101.
+
+### 2026-05-12 — planning reconfirmed item 101 router streaming boundary
+
+- Scope: `plan.md`, `status.md`, `score.md`, `SCORE_REPORT.md`, `state/rustc/auto-refactor/..__state__rustc__ai__graph.graph-editor-plan.json`, and `src/agent/router.rs::send_streaming_request(...)`.
+- Command/check: read the Active Priorities section; listed current auto-refactor plan files; inspected `src/agent/router.rs::send_streaming_request(...)` through the router test module; inspected the JSON `SplitFn` entry for `agent::router::send_streaming_request`.
+- Result: informational.
+- Evidence: Active Priorities item 101 remains the first unchecked executable item. The current graph-backed split entry is `SplitFn id=1ea38f3cc5f37f85` for `agent::router::send_streaming_request` with generated parse/transform names, but source inspection confirms the safer manual extraction remains one streaming HTTP byte-collection helper. Endpoint parsing, chat-completions path derivation, request construction, final status/body parsing, SSE decoding, and public error semantics should stay outside the helper. `score.md` remains unchanged because this planning check produced no new score-changing capability evidence.
+- Next action: execute Active Priorities item 101 by recording the exact helper boundary and running `cargo check` before item 102 extraction.
+
+### 2026-05-12 — planning refreshed router streaming checklist evidence
+
+- Scope: `plan.md`, `status.md`, `score.md`, `SCORE_REPORT.md`, `state/rustc/auto-refactor/..__state__rustc__ai__graph.graph-editor-plan.json`, and `src/agent/router.rs::send_streaming_request(...)`.
+- Command/check: read the first unchecked Active Priorities entries; inspected `SCORE_REPORT.md` and `score.md`; inspected the auto-refactor JSON for `SplitFn id=1ea38f3cc5f37f85`; inspected `src/agent/router.rs::send_streaming_request(...)`, `finalize_streaming_response(...)`, `build_streaming_http_request(...)`, done-frame helpers, and existing `router::tests`; checked `git status --short`.
+- Result: informational.
+- Evidence: item 101 is still the first unchecked executable item. The live graph-backed split candidate is `agent::router::send_streaming_request` with `expected_lo=15798`, `expected_hi=18665`, generated names `send_streaming_request__parse` and `send_streaming_request__transform`, and preserved original signature strategy. Manual source inspection confirms item 102 should extract only TCP connect, read/write timeout setup, request write/flush, response byte accumulation, `[DONE]` detection, chunk logging, and timeout/EOF handling; endpoint parsing, path derivation, request construction, final status/body parsing, SSE decoding, and public error mapping must remain in `send_streaming_request(...)` or `finalize_streaming_response(...)`.
+- Next action: execute Active Priorities item 101 and run `cargo check` before marking it complete.
 
 ### 2026-05-12 — planning selected item 101 router streaming request inspection
 
