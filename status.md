@@ -48,7 +48,7 @@ Current date: 2026-05-11.
 - P3 runtime and receipt correctness: complete for current scope.
 - P4 graph source-of-truth integration: mostly complete for deterministic fixture/report evidence; agent-driven graph editing remains intentionally deferred until P5 domain surfaces are validated.
 - P5 domain intelligence layer: active. `src/domain/contracts.rs` constructor and invariant tests through unsafe live-effect rejection are complete in local source, with prior targeted validation passing 7 contract tests.
-- Active Priorities items 25 through 49 are complete in the working tree. Items 42 through 46 refreshed all five `tests/fixtures/domain/*.json` fixtures with explicit top-level `expected_risk_result`; item 47 and item 48 added explicit fixture risk-result and required-field checks; item 49 full fixture validation passed with 7 tests. Full-suite validation remains blocked by connector HTTP 502 and is tracked by item 50.
+- Active Priorities items 25 through 57 are complete in the working tree. Item 58 source extraction is present locally as `src/agent/loop_driver.rs::LoopDriver::run_cycle_attempt`, `cargo fmt --check` passed, and full-suite validation remains blocked by connector HTTP 502 before Rust output; item 58 remains unchecked until `cargo test --all-targets` returns green output.
 - `src/domain/business.rs` contains `BusinessOpportunity`, `WorkflowAutomationCandidate`, `CustomerFeedbackSignal`, `monetization_score(...)`, compile-smoke test `business_module_records_and_score_helper_compile`, deterministic repeatability test `business_monetization_score_is_deterministic`, and bounded-score test `business_monetization_score_is_bounded`, with broader business validation passing 3 tests after correcting the bounded test scalar assertion.
 - `src/domain/identity.rs` currently contains `DomainHash`, `DomainHashInput<'a>`, `canonical_json_bytes(record)`, `domain_hash_json(record)`, `domain_hash_parts(parts)`, `stable_domain_id(parts)`, and six passing targeted identity tests through `domain_hash_changes_when_schema_version_changes`.
 - `src/domain/scoring.rs` currently contains validated `BoundedScore` helpers, score-input breakdown helpers, conservative `verdict_for_scores(...)`, and passing `verdict_ignore_thresholds`, `verdict_watch_thresholds`, `verdict_research_thresholds`, `verdict_act_business_thresholds`, `verdict_act_finance_research_thresholds`, `verdict_simulate_trading_thresholds`, and `verdict_block_thresholds`; explicit verdict threshold tests are complete for the current scoring scope.
@@ -56,6 +56,22 @@ Current date: 2026-05-11.
 - Domain fixture JSON files exist under `tests/fixtures/domain/` for global signal, business workflow opportunity, finance hypothesis research, trading simulation sandbox, and trading live blocked cases; `tests/test_domain_fixture_contract.py` now includes explicit risk-result and required-field assertions. Item 51 graph analyzer now exists and passes against `state/rustc/ai/graph.json`, reporting 752 compiled P5 domain-node matches. Item 52 malformed-input self-check also passes. Remaining work includes item 50 full-suite Rust validation and later graph evidence refresh/score review items gated on full-suite output.
 
 ## Validation Ledger
+
+### 2026-05-11 — planning/status commit blocked by rustc-wrapper hook loader
+
+- Scope: Commit for `plan.md` and `status.md` planning/status updates.
+- Command/check: `git add plan.md status.md && git commit -m "Plan item 58 validation retry"`; retry `git commit -m "Plan item 58 validation retry"`.
+- Result: blocked by repository hook infrastructure.
+- Evidence: first commit attempt returned connector HTTP 502 before git output. Retry reached the pre-commit hook, passed `cargo fmt --check`, then failed during `cargo check` because `canon-rustc-v3/scripts/canon-rustc-v3` could not load `librustc_driver-61971b66f7da0581.so` and exited 127. This is hook/runtime infrastructure evidence, not a Rust source failure.
+- Next action: retry the scoped commit when the rustc-wrapper hook loader is available, or use the repository-approved wrapper-disabled hook path if policy permits.
+
+### 2026-05-11 — item 58 validation retry blocked after formatting passed
+
+- Scope: Active Priorities item 58, `src/agent/loop_driver.rs::LoopDriver::run_cycle` retry-attempt helper extraction.
+- Command/check: `cargo fmt --check && TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`; follow-up `cargo fmt --check`.
+- Result: blocked by infrastructure transport after formatting passed.
+- Evidence: the required combined validation command returned connector HTTP 502 before Rust output. The narrower follow-up `cargo fmt --check` returned exit 0. Source inspection shows `run_cycle_attempt(...)` exists and delegates the per-attempt `ChunkLogger`/`OpenAiChatRequest`/`RouterClient::streaming_turn` block, but item 58 remains unchecked because full-suite Rust validation did not return green output.
+- Next action: retry `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`; mark item 58 complete only after green full-suite output.
 
 ### 2026-05-11 — item 58 implementation step 5 validation blocked by connector HTTP 502
 
