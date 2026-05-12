@@ -7,18 +7,23 @@
 //!   Planning also inspects PROJECT_DIR/state/rustc/auto-refactor when present.
 //!
 //! Single-cycle mode (fallback, requires a running canon worker):
-//!   AI_WORKER_PORT, CANON_OPENAI_BASE_URL, AI_AGENT_DOMAIN,
+//!   SUPERVISOR_PORT, AI_WORKER_PORT, CANON_OPENAI_BASE_URL, AI_AGENT_DOMAIN,
 //!   AI_AGENT_METRIC, AI_AGENT_MAX_STEPS
 
 use ai::agent::{
     AgentCycle, AgentLoopConfig, AgentObjective, LoopDriver, RouterClient, WorkerClient,
 };
+use std::io::{Read, Write};
+use std::net::TcpStream;
+use std::time::Duration;
 
 fn main() {
     if std::env::args().any(|a| a == "--help" || a == "-h") {
         println!("usage: agent [--help]");
         println!("  Loop mode:        set PROJECT_DIR pointing to a directory with GOAL.md");
-        println!("  Single-cycle mode: AI_WORKER_PORT, AI_AGENT_DOMAIN, AI_AGENT_METRIC");
+        println!(
+            "  Single-cycle mode: SUPERVISOR_PORT, AI_WORKER_PORT, AI_AGENT_DOMAIN, AI_AGENT_METRIC"
+        );
         println!("  Planning reads:   plan.md, status.md, score.md, SCORE_REPORT.md, state/rustc/auto-refactor");
         return;
     }
@@ -37,7 +42,7 @@ fn run_single_cycle() {
         std::process::exit(1);
     });
 
-    let worker = WorkerClient::from_env().unwrap_or_else(|e| {
+    let worker = resolve_single_cycle_worker().unwrap_or_else(|e| {
         eprintln!("agent: worker client init failed: {e}");
         std::process::exit(1);
     });
@@ -68,4 +73,88 @@ fn run_single_cycle() {
             std::process::exit(1);
         }
     }
+}
+
+fn resolve_single_cycle_worker() -> Result<WorkerClient, String> {
+    let fallback_worker_port = std::env::var("AI_WORKER_PORT")
+        .ok()
+        .and_then(|v| v.parse::<u16>().ok());
+
+    if let Some(supervisor_port) = std::env::var("SUPERVISOR_PORT")
+        .ok()
+        .and_then(|v| v.parse::<u16>().ok())
+    {
+        match supervisor_reload_worker_port(supervisor_port, fallback_worker_port) {
+            Ok(worker_port) => {
+                eprintln!(
+                    "agent: resolved active worker via supervisor reload  supervisor_port={supervisor_port} worker_port={worker_port}"
+                );
+                return Ok(WorkerClient::new(worker_port));
+            }
+            Err(err) => {
+                eprintln!(
+                    "agent: supervisor reload failed on port {supervisor_port}: {err}; falling back to AI_WORKER_PORT"
+                );
+            }
+        }
+    }
+
+    let worker_port = fallback_worker_port.ok_or_else(|| {
+        "AI_WORKER_PORT not set and SUPERVISOR_PORT did not resolve an active worker".to_string()
+    })?;
+    Ok(WorkerClient::new(worker_port))
+}
+
+fn supervisor_reload_worker_port(
+    supervisor_port: u16,
+    fallback_worker_port: Option<u16>,
+) -> Result<u16, String> {
+    let mut stream = TcpStream::connect(("127.0.0.1", supervisor_port))
+        .map_err(|e| format!("supervisor connect: {e}"))?;
+    stream.set_read_timeout(Some(Duration::from_secs(10))).ok();
+    stream.set_write_timeout(Some(Duration::from_secs(5))).ok();
+
+    let request = format!(
+        "POST /reload HTTP/1.1\r\nHost: 127.0.0.1:{supervisor_port}\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"
+    );
+    stream
+        .write_all(request.as_bytes())
+        .map_err(|e| format!("supervisor write: {e}"))?;
+    stream.flush().ok();
+
+    let mut response = String::new();
+    stream
+        .read_to_string(&mut response)
+        .map_err(|e| format!("supervisor read: {e}"))?;
+
+    let status: u16 = response
+        .lines()
+        .next()
+        .and_then(|line| line.split_whitespace().nth(1))
+        .and_then(|status| status.parse().ok())
+        .unwrap_or(0);
+
+    match status {
+        200 => parse_reload_worker_port(&response),
+        204 => fallback_worker_port.ok_or_else(|| {
+            "supervisor /reload returned 204 and AI_WORKER_PORT is unset".to_string()
+        }),
+        _ => Err(format!("supervisor /reload returned HTTP {status}")),
+    }
+}
+
+fn parse_reload_worker_port(response: &str) -> Result<u16, String> {
+    let body = response
+        .split_once("\r\n\r\n")
+        .map(|(_, body)| body)
+        .or_else(|| response.split_once("\n\n").map(|(_, body)| body))
+        .ok_or_else(|| "supervisor /reload response missing body".to_string())?;
+    let json: serde_json::Value =
+        serde_json::from_str(body).map_err(|e| format!("supervisor /reload JSON: {e}"))?;
+    let port = json
+        .get("active")
+        .and_then(|active| active.get("worker_port"))
+        .and_then(serde_json::Value::as_u64)
+        .ok_or_else(|| "supervisor /reload response missing active.worker_port".to_string())?;
+    u16::try_from(port).map_err(|_| format!("supervisor /reload worker_port out of range: {port}"))
 }
