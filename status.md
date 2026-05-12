@@ -48,7 +48,7 @@ Current date: 2026-05-12.
 - P3 runtime and receipt correctness: complete for current scope.
 - P4 graph source-of-truth integration: mostly complete for deterministic fixture/report evidence; agent-driven graph editing remains intentionally deferred until P5 domain surfaces are validated.
 - P5 domain intelligence layer: active. `src/domain/contracts.rs` constructor and invariant tests through unsafe live-effect rejection are complete in local source, with prior targeted validation passing 7 contract tests.
-- Active Priorities items 25 through 58 are complete in the working tree. Item 58 source extraction is present locally as `src/agent/loop_driver.rs::LoopDriver::run_cycle_attempt`; `cargo fmt --check` and full-suite `cargo test --all-targets` returned green output on 2026-05-11. Item 59 planning/inspection for the graph-backed `sync_mcp_workspace` split candidate is complete. The next executable item is item 60, a file-scoped URL-parser helper extraction in `src/agent/loop_driver.rs`.
+- Active Priorities items 25 through 58 are complete in the working tree. Item 58 source extraction is present locally as `src/agent/loop_driver.rs::LoopDriver::run_cycle_attempt`; `cargo fmt --check` and full-suite `cargo test --all-targets` returned green output on 2026-05-11. Item 59 planning/inspection for the graph-backed `sync_mcp_workspace` split candidate is complete. Item 60 now has source and targeted-test evidence. The next executable item is item 61, a narrow `src/bin/agent.rs` rustfmt/full-suite unblocker for `supervisor_reload_worker_port(...)` HTTP 204 fallback formatting.
 - `src/domain/business.rs` contains `BusinessOpportunity`, `WorkflowAutomationCandidate`, `CustomerFeedbackSignal`, `monetization_score(...)`, compile-smoke test `business_module_records_and_score_helper_compile`, deterministic repeatability test `business_monetization_score_is_deterministic`, and bounded-score test `business_monetization_score_is_bounded`, with broader business validation passing 3 tests after correcting the bounded test scalar assertion.
 - `src/domain/identity.rs` currently contains `DomainHash`, `DomainHashInput<'a>`, `canonical_json_bytes(record)`, `domain_hash_json(record)`, `domain_hash_parts(parts)`, `stable_domain_id(parts)`, and six passing targeted identity tests through `domain_hash_changes_when_schema_version_changes`.
 - `src/domain/scoring.rs` currently contains validated `BoundedScore` helpers, score-input breakdown helpers, conservative `verdict_for_scores(...)`, and passing `verdict_ignore_thresholds`, `verdict_watch_thresholds`, `verdict_research_thresholds`, `verdict_act_business_thresholds`, `verdict_act_finance_research_thresholds`, `verdict_simulate_trading_thresholds`, and `verdict_block_thresholds`; explicit verdict threshold tests are complete for the current scoring scope.
@@ -56,6 +56,38 @@ Current date: 2026-05-12.
 - Domain fixture JSON files exist under `tests/fixtures/domain/` for global signal, business workflow opportunity, finance hypothesis research, trading simulation sandbox, and trading live blocked cases; `tests/test_domain_fixture_contract.py` now includes explicit risk-result and required-field assertions. Item 51 graph analyzer now exists and passes against `state/rustc/ai/graph.json`, reporting 752 compiled P5 domain-node matches. Item 52 malformed-input self-check also passes. Remaining work includes item 50 full-suite Rust validation and later graph evidence refresh/score review items gated on full-suite output.
 
 ## Validation Ledger
+
+### 2026-05-12 — scoped planning commit hook blocked by item 61 rustfmt diff
+
+- Scope: scoped commit for `plan.md` and `status.md` planning-turn updates only.
+- Command/check: `git add plan.md status.md && git commit -m "Plan rustfmt unblocker"`.
+- Result: blocked by unrelated working-tree formatting state.
+- Evidence: the pre-commit hook ran `cargo fmt --check` and reported the same `src/bin/agent.rs` formatting diff around the `supervisor_reload_worker_port(...)` HTTP 204 fallback branch selected as Active Priorities item 61. The scoped planning diff passed document assertions and `git diff --check -- plan.md status.md score.md` before the commit attempt. No Rust source was staged by this planning turn.
+- Next action: execute item 61 or use a repository-approved scoped commit path that does not treat unrelated unstaged source formatting as a planning-file failure.
+
+### 2026-05-12 — planning selected item 61 formatting/full-suite unblocker
+
+- Scope: Active Priorities item 61, `src/bin/agent.rs::supervisor_reload_worker_port(...)` HTTP 204 fallback formatting.
+- Command/check: inspected `plan.md`, `status.md`, `score.md`, `SCORE_REPORT.md`, `state/rustc/auto-refactor/..__state__rustc__ai__graph.graph-editor-plan.json`, `src/agent/loop_driver.rs`, and `src/bin/agent.rs`; ran `cargo fmt --check` for blocker confirmation.
+- Result: informational / planning complete.
+- Evidence: `cargo fmt --check` reports only the rustfmt rewrite for `src/bin/agent.rs` around the `204 => fallback_worker_port...` branch in `supervisor_reload_worker_port(...)`. `src/agent/loop_driver.rs` already contains `parse_mcp_workspace_endpoint(...)` and the targeted parser test, and status records the item 60 targeted test as passed. `SCORE_REPORT.md` still reports Structure as the lowest graph-derived axis at `4.8`; no project-level score change is justified by planning evidence alone.
+- Next action: execute item 61 by applying the rustfmt-compatible expression shape in `src/bin/agent.rs`, then run `cargo fmt --check` and full-suite `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
+
+### 2026-05-12 — item 60 targeted validation passed; broader formatting gate blocked
+
+- Scope: Active Priorities item 60, `src/agent/loop_driver.rs::sync_mcp_workspace` URL-parser helper extraction.
+- Command/check: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test loop_driver::tests::mcp_workspace_endpoint_parser_preserves_host_port_and_errors -- --test-threads=1`; `cargo fmt --check`.
+- Result: targeted validation passed; broader validation blocked by unrelated formatting diff.
+- Evidence: the targeted parser test passed with 1 test, 0 failures, and 268 filtered library tests plus filtered integration/binary harnesses. `sync_mcp_workspace(...)` now delegates URL parsing to `parse_mcp_workspace_endpoint(mcp_url: &str) -> Result<(String, u16), String>`, and the targeted test covers explicit host/port parsing, default port 80 after a trailing slash, non-`http://` rejection, and invalid-port rejection. After removing scoped `src/agent/loop_driver.rs` formatter diffs, `cargo fmt --check` reports only an unrelated pre-existing formatting diff in `src/bin/agent.rs` around the `/reload` 204 fallback branch, which is outside item 60 scope.
+- Next action: resolve or isolate the unrelated `src/bin/agent.rs` formatting diff, then rerun `cargo fmt --check` and full-suite `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`; mark item 60 complete and commit only after all named checks pass.
+
+### 2026-05-12 — item 60 targeted validation blocked by pre-existing loop_driver compile failures
+
+- Scope: Active Priorities item 60, `src/agent/loop_driver.rs::sync_mcp_workspace` URL-parser helper extraction and targeted parser test.
+- Command/check: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test loop_driver::tests::mcp_workspace_endpoint_parser_preserves_host_port_and_errors -- --test-threads=1`.
+- Result: blocked by unrelated pre-existing `src/agent/loop_driver.rs` working-tree changes outside item 60 scope.
+- Evidence: item 60 source work was applied in the allowed region by delegating URL parsing to `parse_mcp_workspace_endpoint(mcp_url: &str) -> Result<(String, u16), String>` and adding `loop_driver::tests::mcp_workspace_endpoint_parser_preserves_host_port_and_errors`. The targeted test command failed before running the parser test because existing unstaged `src/agent/loop_driver.rs` changes outside item 60 removed the certification call and `LoopMode::WorkerCertification` variant while leaving certification helpers/tests/imports in place; Rust reported unused `AgentCycle`, dead-code errors for certification helpers, and missing `LoopMode::WorkerCertification` in an existing certification prompt test. These failures are outside the item 60 allowed edit boundary.
+- Next action: resolve or isolate the pre-existing `src/agent/loop_driver.rs` certification-removal changes, then rerun the item 60 targeted parser test, `cargo fmt --check`, and full-suite `cargo test --all-targets` before marking item 60 complete or committing.
 
 ### 2026-05-12 — scoped planning commit hook blocked by unrelated formatting diff
 
