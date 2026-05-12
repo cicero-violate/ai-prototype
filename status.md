@@ -57,6 +57,14 @@ Current date: 2026-05-11.
 
 ## Validation Ledger
 
+### 2026-05-11 — implementation step 5 item 58 validation blocked by connector HTTP 502
+
+- Scope: Active Priorities item 58, `src/agent/loop_driver.rs::LoopDriver::run_cycle` existing `run_cycle_attempt(...)` helper extraction validation.
+- Command/check: `cargo fmt --check && TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`; retry `cargo fmt --check`.
+- Result: blocked by infrastructure transport.
+- Evidence: the exact validation command returned connector HTTP 502 before usable Rust output. The formatter-only retry also returned connector HTTP 502 before output. No Rust compile, formatting, source-inspection, or test failure was observed. Item 58 remains unchecked because green validation output was not obtained.
+- Next action: retry item 58 validation when connector transport can return command output; mark item 58 complete and commit only after `cargo fmt --check` and full-suite Rust validation return green output.
+
 ### 2026-05-11 — implementation step 4 item 58 validation blocked by connector HTTP 502
 
 - Scope: Active Priorities item 58, `src/agent/loop_driver.rs::LoopDriver::run_cycle` existing `run_cycle_attempt(...)` helper extraction validation.
