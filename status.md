@@ -57,6 +57,14 @@ Current date: 2026-05-12.
 
 ## Validation Ledger
 
+### 2026-05-12 — planning reconnaissance reconfirmed router request-builder follow-up
+
+- Scope: `plan.md`, `status.md`, `score.md`, `SCORE_REPORT.md`, `state/rustc/auto-refactor/*.graph-editor-plan.json`, and `src/agent/router.rs` planning reconnaissance for Active Priorities item 69.
+- Command/check: inspected the current Active Priorities section, current progress and validation ledger, graph-derived `SCORE_REPORT.md`, router source/test locations for `build_streaming_http_request(...)`, and parsed all auto-refactor plan JSON files with Python to count current `SplitFn` candidates.
+- Result: informational / planning complete.
+- Evidence: the first incomplete executable item remains item 69 in `src/agent/router.rs`; `git status --short` reports modified `src/agent/router.rs`; `src/agent/router.rs` contains `build_streaming_http_request(...)` and focused test `streaming_http_request_builder_preserves_post_headers_and_body`; auto-refactor parsing found 7 `SplitFn` candidates in `..__state__rustc__ai__graph.graph-editor-plan.json`, including `SplitFn id=1ea38f3cc5f37f85` for `agent::router::send_streaming_request`, and 23 connector split candidates that are broader than the selected router test/assertion follow-up.
+- Next action: execute item 69 by correcting the `Content-Length` assertion and rustfmt state in `src/agent/router.rs`, then rerun the named targeted test, `cargo fmt --check`, and full-suite `cargo test --all-targets`.
+
 ### 2026-05-12 — scoped planning commit hook blocked by router rustfmt diff
 
 - Scope: scoped commit for `plan.md` and `status.md` planning-turn updates only.
