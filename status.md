@@ -48,7 +48,7 @@ Current date: 2026-05-12.
 - P3 runtime and receipt correctness: complete for current scope.
 - P4 graph source-of-truth integration: mostly complete for deterministic fixture/report evidence; agent-driven graph editing remains intentionally deferred until P5 domain surfaces are validated.
 - P5 domain intelligence layer: active. `src/domain/contracts.rs` constructor and invariant tests through unsafe live-effect rejection are complete in local source, with prior targeted validation passing 7 contract tests.
-- Active Priorities items 25 through 70 are complete in the working tree, with item 70 extracting canonical TLog evidence-line scanning into `src/runtime/introspection.rs::scan_canonical_tlog_evidence(...)` and passing canonical TLog contract, formatter, and full-suite validation on 2026-05-12. Current planning selected item 71 as the first incomplete executable task because `git status --short` reports an unstaged `src/agent/router.rs` diff matching the already validated item 69 router helper extraction; the next execution turn should validate and commit that router state or revert only that file if validation fails before starting another graph-backed split.
+- Active Priorities items 25 through 70 are complete in the working tree, with item 70 extracting canonical TLog evidence-line scanning into `src/runtime/introspection.rs::scan_canonical_tlog_evidence(...)` and passing canonical TLog contract, formatter, and full-suite validation on 2026-05-12. Current planning reconfirmed item 71 as the first incomplete executable task because `git status --short` reports an unstaged `src/agent/router.rs` diff matching the already validated item 69 router helper extraction; the next execution turn should validate and commit that router state or revert only that file if validation fails before starting another graph-backed split.
 - `src/domain/business.rs` contains `BusinessOpportunity`, `WorkflowAutomationCandidate`, `CustomerFeedbackSignal`, `monetization_score(...)`, compile-smoke test `business_module_records_and_score_helper_compile`, deterministic repeatability test `business_monetization_score_is_deterministic`, and bounded-score test `business_monetization_score_is_bounded`, with broader business validation passing 3 tests after correcting the bounded test scalar assertion.
 - `src/domain/identity.rs` currently contains `DomainHash`, `DomainHashInput<'a>`, `canonical_json_bytes(record)`, `domain_hash_json(record)`, `domain_hash_parts(parts)`, `stable_domain_id(parts)`, and six passing targeted identity tests through `domain_hash_changes_when_schema_version_changes`.
 - `src/domain/scoring.rs` currently contains validated `BoundedScore` helpers, score-input breakdown helpers, conservative `verdict_for_scores(...)`, and passing `verdict_ignore_thresholds`, `verdict_watch_thresholds`, `verdict_research_thresholds`, `verdict_act_business_thresholds`, `verdict_act_finance_research_thresholds`, `verdict_simulate_trading_thresholds`, and `verdict_block_thresholds`; explicit verdict threshold tests are complete for the current scoring scope.
@@ -56,6 +56,24 @@ Current date: 2026-05-12.
 - Domain fixture JSON files exist under `tests/fixtures/domain/` for global signal, business workflow opportunity, finance hypothesis research, trading simulation sandbox, and trading live blocked cases; `tests/test_domain_fixture_contract.py` now includes explicit risk-result and required-field assertions. Item 51 graph analyzer now exists and passes against `state/rustc/ai/graph.json`, reporting 752 compiled P5 domain-node matches. Item 52 malformed-input self-check also passes. Remaining work includes item 50 full-suite Rust validation and later graph evidence refresh/score review items gated on full-suite output.
 
 ## Validation Ledger
+
+
+### 2026-05-12 — planning reconfirmed router repository-state cleanup
+
+- Scope: `plan.md`, `status.md`, `score.md`, `SCORE_REPORT.md`, `state/rustc/auto-refactor/*.graph-editor-plan.json`, and current `src/agent/router.rs` working-tree diff.
+- Command/check: inspected Active Priorities items 68 through 71, current status ledger, score rationale, graph-derived structural score report, auto-refactor plans, `git status --short`, and `git diff -- src/agent/router.rs`.
+- Result: informational / planning complete.
+- Evidence: item 71 remains the first incomplete executable item. `git status --short` reports only `M src/agent/router.rs`; the diff is the already validated item 69 helper extraction with `build_streaming_http_request(...)` and `streaming_http_request_builder_preserves_post_headers_and_body` expecting `Content-Length: 34`. `SCORE_REPORT.md` still reports graph-derived Structure as the lowest aggregate axis at `4.8`; no `score.md` numeric change is justified by this planning-only evidence.
+- Next action: execute Active Priorities item 71 by validating and committing the router helper extraction, or reverting only `src/agent/router.rs` if the named validation fails.
+
+
+### 2026-05-12 — planning reconfirmed router cleanup before new split work
+
+- Scope: `plan.md`, `status.md`, `score.md`, `SCORE_REPORT.md`, `src/agent/router.rs`, and `state/rustc/auto-refactor/*.graph-editor-plan.json`.
+- Command/check: inspected Active Priorities, current progress, validation ledger, score rationale, `SCORE_REPORT.md`, `git status --short`, `git diff -- src/agent/router.rs`, `src/agent/router.rs` helper/test lines for `build_streaming_http_request(...)`, and parsed current auto-refactor `SplitFn` operation JSON.
+- Result: informational / planning complete.
+- Evidence: the first incomplete executable item remains item 71. `git status --short` reports `M src/agent/router.rs`; the diff delegates streaming request-string construction to `build_streaming_http_request(...)` and adds `streaming_http_request_builder_preserves_post_headers_and_body` with `Content-Length: 34`. `state/rustc/auto-refactor/..__state__rustc__ai__graph.graph-editor-plan.json` contains current `SplitFn` evidence, including `SplitFn id=1ea38f3cc5f37f85` for `agent::router::send_streaming_request`; future split candidates are deferred until the router diff is validated/committed or reverted. `SCORE_REPORT.md` still reports graph-derived `G = 7.93 / 10` and Structure `4.8`; no score-value change is justified by planning-only evidence.
+- Next action: execute Active Priorities item 71 by running its named targeted router test, `cargo fmt --check`, full-suite Rust validation, and `git status --short`, then commit the validated router extraction or revert only `src/agent/router.rs` if validation fails.
 
 
 ### 2026-05-12 — planning selected router repository-state cleanup
@@ -1638,3 +1656,12 @@ Planning reconciliation on 2026-05-10 for domain hash JSON:
 - Ran `find src/domain -type f | sort`; Rust files remain `src/domain/bridge.rs`, `src/domain/contracts.rs`, `src/domain/identity.rs`, `src/domain/mod.rs`, `src/domain/risk.rs`, and `src/domain/scoring.rs`; planned Rust files for global intelligence, business, finance, and trading remain absent.
 - Python analysis of `state/rustc/ai/graph.json` reconfirmed schema version 16, graph hash `ab2202a8d8ec371b0c462aecc41e28d059920f53e2179dd40ebb6ebb3127fc33`, 4,473 nodes, 31,082 edges, 2,976 intents, and no compiled `src/domain::*` graph evidence.
 - Updated `plan.md` to make `src/domain/identity.rs::domain_hash_json(record)` the explicit next executable task. Updated `status.md` with reconnaissance evidence. `score.md` was not changed because score values and rationale did not change.
+
+Implementation step 5 on 2026-05-12:
+
+- Selected first unchecked Active Priorities item 71: `src/agent/router.rs` cleanup for the uncommitted item 69 streaming request helper extraction.
+- Kept the existing `build_streaming_http_request(path, host, port, body)` extraction because targeted and broader validation passed. No unrelated source files were edited.
+- Targeted validation passed: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test agent::router::tests::streaming_http_request_builder_preserves_post_headers_and_body -- --test-threads=1` ran the focused builder test successfully.
+- Formatting validation passed: `cargo fmt --check`.
+- Broader validation passed: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets` completed with all reported Rust unit and integration tests passing, including the router builder test in the full library suite.
+- Marked item 71 complete in `plan.md`. Scores unchanged; this closes a validated working-tree state and does not change project-level score rationale.

@@ -508,12 +508,7 @@ fn send_streaming_request(
         .set_write_timeout(Some(Duration::from_millis(config.timeout_ms)))
         .map_err(OpenAiError::Io)?;
 
-    let request_str = format!(
-        "POST {path} HTTP/1.1\r\nHost: {}:{}\r\nContent-Type: application/json\r\nAccept: text/event-stream\r\nConnection: close\r\nContent-Length: {}\r\n\r\n{body}",
-        endpoint.host,
-        endpoint.port,
-        body.len(),
-    );
+    let request_str = build_streaming_http_request(&path, &endpoint.host, endpoint.port, body);
     stream
         .write_all(request_str.as_bytes())
         .map_err(OpenAiError::Io)?;
@@ -605,6 +600,13 @@ fn send_streaming_request(
     Ok(parse_sse_body(&body_text, logger))
 }
 
+fn build_streaming_http_request(path: &str, host: &str, port: u16, body: &str) -> String {
+    format!(
+        "POST {path} HTTP/1.1\r\nHost: {host}:{port}\r\nContent-Type: application/json\r\nAccept: text/event-stream\r\nConnection: close\r\nContent-Length: {}\r\n\r\n{body}",
+        body.len(),
+    )
+}
+
 fn response_bytes_have_done_frame(response: &[u8]) -> bool {
     response
         .windows(b"data: [DONE]".len())
@@ -659,6 +661,27 @@ mod tests {
         );
         assert!(!response_bytes_have_done_frame(response.as_bytes()));
         assert!(!response_text_has_done_frame(response));
+    }
+
+    #[test]
+    fn streaming_http_request_builder_preserves_post_headers_and_body() {
+        let body = r#"{"model":"gpt-test","stream":true}"#;
+
+        let request = build_streaming_http_request("/v1/chat/completions", "127.0.0.1", 8080, body);
+
+        assert_eq!(
+            request,
+            concat!(
+                "POST /v1/chat/completions HTTP/1.1\r\n",
+                "Host: 127.0.0.1:8080\r\n",
+                "Content-Type: application/json\r\n",
+                "Accept: text/event-stream\r\n",
+                "Connection: close\r\n",
+                "Content-Length: 34\r\n",
+                "\r\n",
+                r#"{"model":"gpt-test","stream":true}"#,
+            )
+        );
     }
 
     #[test]
