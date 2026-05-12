@@ -57,6 +57,22 @@ Current date: 2026-05-11.
 
 ## Validation Ledger
 
+### 2026-05-11 — planning commit hook blocker
+
+- Scope: planning commit for `plan.md` and `status.md`; unrelated pre-existing `src/agent/cycle.rs`, `src/agent/loop_driver.rs`, and `src/agent/prompt.rs` working-tree changes.
+- Command/check: `git add plan.md status.md && git commit -m "Plan graph evidence tooling after validation blocker"`.
+- Result: blocked by repository hook on unrelated working-tree formatting.
+- Evidence: `python3 -m unittest tests/test_domain_fixture_contract.py` passed 7 tests before the commit attempt; the pre-commit `cargo fmt --check` reported formatting diffs under `src/agent/cycle.rs` and `src/agent/prompt.rs`, which are outside this planning scope.
+- Next action: keep the planning commit scoped to `plan.md` and `status.md`; leave unrelated source changes uncommitted for their owning implementation turn.
+
+### 2026-05-11 — planning turn Active Priorities reconnaissance and checklist refinement
+
+- Scope: `plan.md`, `status.md`, `score.md`, `SCORE_REPORT.md`, Active Priorities items 50-56, `scripts/`, `tests/domain_contract.rs`, `tests/test_domain_fixture_contract.py`, all `tests/fixtures/domain/*.json`, and `state/rustc/ai/graph.json`.
+- Command/check: inspected the first incomplete Active Priorities item, validation ledger, score rationale, graph-derived structural scores, domain integration tests, fixture contract tests, all five domain fixtures, script inventory, and graph metadata/count evidence.
+- Result: planning update completed; scores unchanged.
+- Evidence: item 50 remains the first incomplete item and is still a full-suite validation gate blocked by prior connector HTTP 502 attempts before Rust output. `scripts/analyze_graph_json.py` is still absent, so item 51 remains the next file-level evidence-tooling task once the loop elects to prepare graph evidence without mutating graph state. `SCORE_REPORT.md` still reports Structure as the lowest graph-derived axis at `1.6`; no new validation or graph evidence justifies score changes.
+- Next action: execute item 50 when connector transport can return full-suite Rust output, or select item 51 to create non-mutating graph evidence tooling if the full-suite gate remains transport-blocked.
+
 ### 2026-05-11 — implementation step 1 current loop item 50 full-suite validation retry
 
 - Scope: full Rust workspace validation and Active Priorities item 50.
