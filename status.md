@@ -38,7 +38,7 @@ Use one entry per validation attempt, blocker, or evidence update:
 
 # Canon Agent Status
 
-Current date: 2026-05-11.
+Current date: 2026-05-12.
 
 ## Current Progress
 
@@ -48,7 +48,7 @@ Current date: 2026-05-11.
 - P3 runtime and receipt correctness: complete for current scope.
 - P4 graph source-of-truth integration: mostly complete for deterministic fixture/report evidence; agent-driven graph editing remains intentionally deferred until P5 domain surfaces are validated.
 - P5 domain intelligence layer: active. `src/domain/contracts.rs` constructor and invariant tests through unsafe live-effect rejection are complete in local source, with prior targeted validation passing 7 contract tests.
-- Active Priorities items 25 through 58 are complete in the working tree. Item 58 source extraction is present locally as `src/agent/loop_driver.rs::LoopDriver::run_cycle_attempt`; `cargo fmt --check` and full-suite `cargo test --all-targets` returned green output on 2026-05-11. The next executable item is item 59, a planning/inspection item for the graph-backed `sync_mcp_workspace` split candidate.
+- Active Priorities items 25 through 58 are complete in the working tree. Item 58 source extraction is present locally as `src/agent/loop_driver.rs::LoopDriver::run_cycle_attempt`; `cargo fmt --check` and full-suite `cargo test --all-targets` returned green output on 2026-05-11. Item 59 planning/inspection for the graph-backed `sync_mcp_workspace` split candidate is complete. The next executable item is item 60, a file-scoped URL-parser helper extraction in `src/agent/loop_driver.rs`.
 - `src/domain/business.rs` contains `BusinessOpportunity`, `WorkflowAutomationCandidate`, `CustomerFeedbackSignal`, `monetization_score(...)`, compile-smoke test `business_module_records_and_score_helper_compile`, deterministic repeatability test `business_monetization_score_is_deterministic`, and bounded-score test `business_monetization_score_is_bounded`, with broader business validation passing 3 tests after correcting the bounded test scalar assertion.
 - `src/domain/identity.rs` currently contains `DomainHash`, `DomainHashInput<'a>`, `canonical_json_bytes(record)`, `domain_hash_json(record)`, `domain_hash_parts(parts)`, `stable_domain_id(parts)`, and six passing targeted identity tests through `domain_hash_changes_when_schema_version_changes`.
 - `src/domain/scoring.rs` currently contains validated `BoundedScore` helpers, score-input breakdown helpers, conservative `verdict_for_scores(...)`, and passing `verdict_ignore_thresholds`, `verdict_watch_thresholds`, `verdict_research_thresholds`, `verdict_act_business_thresholds`, `verdict_act_finance_research_thresholds`, `verdict_simulate_trading_thresholds`, and `verdict_block_thresholds`; explicit verdict threshold tests are complete for the current scoring scope.
@@ -56,6 +56,22 @@ Current date: 2026-05-11.
 - Domain fixture JSON files exist under `tests/fixtures/domain/` for global signal, business workflow opportunity, finance hypothesis research, trading simulation sandbox, and trading live blocked cases; `tests/test_domain_fixture_contract.py` now includes explicit risk-result and required-field assertions. Item 51 graph analyzer now exists and passes against `state/rustc/ai/graph.json`, reporting 752 compiled P5 domain-node matches. Item 52 malformed-input self-check also passes. Remaining work includes item 50 full-suite Rust validation and later graph evidence refresh/score review items gated on full-suite output.
 
 ## Validation Ledger
+
+### 2026-05-12 — scoped planning commit hook blocked by unrelated formatting diff
+
+- Scope: scoped commit for `plan.md`, `status.md`, and `score.md` planning-turn updates only.
+- Command/check: `git add plan.md status.md score.md && git commit -m "Plan sync workspace split"`.
+- Result: blocked by unrelated working-tree formatting state.
+- Evidence: the pre-commit hook ran `cargo fmt --check` and reported a formatting diff in unstaged/unrelated `src/bin/agent.rs` around the `/reload` 204 fallback branch. The planning diff itself passed `python3` document assertions and `git diff --check -- plan.md status.md score.md` before the commit attempt. No Rust source was staged by this planning turn.
+- Next action: keep item 60 as the next executable planning-selected implementation task; resolve or isolate the unrelated `src/bin/agent.rs` formatting diff before relying on the normal full-worktree commit hook.
+
+### 2026-05-12 — item 59 sync_mcp_workspace split planning complete
+
+- Scope: Active Priorities item 59, `src/agent/loop_driver.rs::sync_mcp_workspace` graph-backed split-candidate inspection and next-item decomposition.
+- Command/check: `rg -n "fn sync_mcp_workspace|sync_mcp_workspace\(" src/agent/loop_driver.rs`; `sed -n '690,760p' src/agent/loop_driver.rs`; inspected `state/rustc/auto-refactor/..__state__rustc__ai__graph.graph-editor-plan.json` for `SplitFn id=d535999f445621fb`.
+- Result: informational / planning complete.
+- Evidence: source inspection found `sync_mcp_workspace(mcp_url: &str, project_dir: &Path) -> Result<(), String>` at `src/agent/loop_driver.rs:700`; URL normalization, `http://` prefix validation, host/port split, default port, and invalid-port error handling are contained before request-body construction and network send. The graph-backed candidate reports `fn_path=agent::loop_driver::sync_mcp_workspace`, `expected_lo=26600`, `expected_hi=28408`, generated names `sync_mcp_workspace__parse` and `sync_mcp_workspace__transform`, and `delegate_strategy=preserve_original_signature`. Item 60 now names the smallest manual extraction boundary, `parse_mcp_workspace_endpoint(mcp_url: &str) -> Result<(String, u16), String>`, plus a targeted parser test.
+- Next action: execute item 60 in `src/agent/loop_driver.rs` only, adding the parser helper and `loop_driver::tests::mcp_workspace_endpoint_parser_preserves_host_port_and_errors`, then run targeted validation, formatting, and full-suite Rust validation.
 
 ### 2026-05-11 — item 58 full-suite validation green
 
