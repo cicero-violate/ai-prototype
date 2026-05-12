@@ -111,12 +111,12 @@ fn supervisor_spawns_worker_and_reloads_generation() {
     let after_command = wait_for_json(&first_state_url);
     assert!(after_command["tlog_len"].as_u64().expect("tlog len") > initial_tlog_len);
     let after_command_tlog_len = after_command["tlog_len"].as_u64().expect("tlog len");
-    let tlog_path = tlog_dir.join("worker-tlog.ndjson");
+    let tlog_path = tlog_dir.join("canon-agent.tlog.ndjson");
     assert!(std::fs::read_dir(&tlog_dir)
         .expect("tlog dir should exist")
         .any(|entry| entry.expect("tlog entry").path().is_file()));
     let tlog_len_after_first_command = std::fs::metadata(&tlog_path)
-        .expect("worker tlog should exist")
+        .expect("canonical tlog should exist")
         .len();
 
     let reload_url = format!("http://127.0.0.1:{supervisor_port}/reload");
@@ -180,7 +180,7 @@ fn supervisor_spawns_worker_and_reloads_generation() {
     );
     assert_eq!(
         std::fs::metadata(&tlog_path)
-            .expect("worker tlog should still exist")
+            .expect("canonical tlog should still exist")
             .len(),
         tlog_len_after_first_command
     );

@@ -11,6 +11,7 @@ use crate::kernel::{
 pub(crate) mod command_ledger;
 pub(crate) mod diff;
 pub mod durable;
+pub mod introspection;
 pub(crate) mod recovery_policy;
 pub(crate) mod reducer;
 pub(crate) mod transition_table;
@@ -22,6 +23,12 @@ pub use self::diff::semantic_diff;
 pub use self::durable::{
     durable_replay_report, resume_durable_runtime, run_until_done_durable,
     run_until_done_durable_with_ledger, tick_durable, tick_durable_checked, DurableRuntimeState,
+};
+pub use self::introspection::{
+    append_canonical_line, append_score_report_update_ndjson, append_validation_result_ndjson,
+    canonical_tlog_path_from_dir, default_canonical_tlog_path, introspect_canonical_tlog,
+    CanonicalIntrospectionReport, WorkerStateReport, CANONICAL_TLOG_RELATIVE_PATH,
+    LEGACY_WORKER_TLOG_FILE_NAME,
 };
 pub use self::verify::{
     legal_transition, replay_report_from, replay_report_ndjson, replay_tlog_ndjson, verify_tlog,

@@ -1,6 +1,11 @@
 //! Durable eval payload owned by the eval capability.
 
+use std::fs::{self, OpenOptions};
+use std::io::{BufRead, BufReader, Write};
+use std::path::Path;
+
 use crate::capability::{EvidenceProducer, EvidenceSubmission, PacketEffect};
+use crate::error::CanonError;
 use crate::kernel::{mix, Evidence, GateId};
 
 pub const EVAL_SCORECARD_SCHEMA_VERSION: u64 = 1;
@@ -166,6 +171,119 @@ impl EvalScorecardReceipt {
         h = mix(h, self.verdict as u64);
         h.max(1)
     }
+}
+
+pub fn encode_eval_scorecard_receipt_ndjson(receipt: EvalScorecardReceipt) -> String {
+    let verdict = match receipt.verdict {
+        EvalDecision::Pass => 1,
+        EvalDecision::Fail => 2,
+    };
+    format!(
+        "[{},{},{},{},{},{},{},{},{},{},{},{},{}]",
+        receipt.schema_version,
+        receipt.record_type,
+        receipt.score,
+        receipt.threshold_used,
+        receipt.dimension_count,
+        receipt.min_dimension_score,
+        receipt.max_dimension_score,
+        receipt.dimension_threshold_floor,
+        receipt.dimension_order_hash,
+        receipt.dimension_score_hash,
+        receipt.payload_hash,
+        verdict,
+        receipt.receipt_hash
+    )
+}
+
+pub fn decode_eval_scorecard_receipt_ndjson(
+    line: &str,
+) -> Result<EvalScorecardReceipt, CanonError> {
+    let trimmed = line.trim();
+    let body = trimmed
+        .strip_prefix('[')
+        .and_then(|v| v.strip_suffix(']'))
+        .ok_or(CanonError::InvalidTlogRecord)?;
+    let fields = body
+        .split(',')
+        .map(|raw| {
+            raw.trim()
+                .parse::<u64>()
+                .map_err(|_| CanonError::InvalidTlogRecord)
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    if fields.len() != 13 {
+        return Err(CanonError::InvalidTlogRecord);
+    }
+    if fields[0] != EVAL_SCORECARD_SCHEMA_VERSION || fields[1] != EVAL_SCORECARD_RECORD {
+        return Err(CanonError::InvalidTlogRecord);
+    }
+    let verdict = match fields[11] {
+        1 => EvalDecision::Pass,
+        2 => EvalDecision::Fail,
+        _ => return Err(CanonError::InvalidTlogRecord),
+    };
+    let receipt = EvalScorecardReceipt {
+        schema_version: fields[0],
+        record_type: fields[1],
+        score: fields[2],
+        threshold_used: fields[3],
+        dimension_count: fields[4],
+        min_dimension_score: fields[5],
+        max_dimension_score: fields[6],
+        dimension_threshold_floor: fields[7],
+        dimension_order_hash: fields[8],
+        dimension_score_hash: fields[9],
+        payload_hash: fields[10],
+        verdict,
+        receipt_hash: fields[12],
+    };
+    if !receipt.is_self_consistent() {
+        return Err(CanonError::InvalidTlogRecord);
+    }
+    Ok(receipt)
+}
+
+pub fn append_eval_scorecard_receipt_ndjson(
+    path: impl AsRef<Path>,
+    receipt: EvalScorecardReceipt,
+) -> Result<(), CanonError> {
+    let path = path.as_ref();
+    if let Some(parent) = path.parent() {
+        if !parent.as_os_str().is_empty() {
+            fs::create_dir_all(parent).map_err(|_| CanonError::TlogIo)?;
+        }
+    }
+    let mut file = OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(path)
+        .map_err(|_| CanonError::TlogIo)?;
+    writeln!(file, "{}", encode_eval_scorecard_receipt_ndjson(receipt))
+        .map_err(|_| CanonError::TlogIo)?;
+    file.sync_all().map_err(|_| CanonError::TlogIo)
+}
+
+pub fn load_eval_scorecard_receipts_ndjson(
+    path: impl AsRef<Path>,
+) -> Result<Vec<EvalScorecardReceipt>, CanonError> {
+    let path = path.as_ref();
+    if !path.exists() {
+        return Ok(Vec::new());
+    }
+    let file = fs::File::open(path).map_err(|_| CanonError::TlogIo)?;
+    let reader = BufReader::new(file);
+    let mut receipts = Vec::new();
+    for line in reader.lines() {
+        let line = line.map_err(|_| CanonError::TlogIo)?;
+        if line.trim().is_empty() || !line.trim_start().starts_with('[') {
+            continue;
+        }
+        if let Ok(receipt) = decode_eval_scorecard_receipt_ndjson(&line) {
+            receipts.push(receipt);
+        }
+    }
+    Ok(receipts)
 }
 
 impl EvidenceProducer for EvalRecord {

@@ -12,6 +12,8 @@ pub use self::evolution::{
     SelectionRecord, EVOLUTION_LEDGER_RECORD, EVOLUTION_LEDGER_SCHEMA_VERSION,
 };
 pub use self::record::{
-    EvalDecision, EvalDimension, EvalRecord, EvalScorecardReceipt, EVAL_SCORECARD_RECORD,
+    append_eval_scorecard_receipt_ndjson, decode_eval_scorecard_receipt_ndjson,
+    encode_eval_scorecard_receipt_ndjson, load_eval_scorecard_receipts_ndjson, EvalDecision,
+    EvalDimension, EvalRecord, EvalScorecardReceipt, EVAL_SCORECARD_RECORD,
     EVAL_SCORECARD_SCHEMA_VERSION,
 };

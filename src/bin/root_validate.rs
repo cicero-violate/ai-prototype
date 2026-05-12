@@ -1,6 +1,7 @@
 #![forbid(unsafe_code)]
 
 use ai::validation_harness;
+use std::hash::{Hash, Hasher};
 
 struct CompactMode {
     arg: &'static str,
@@ -2459,6 +2460,7 @@ fn main() {
                     if !outcome.stdout.ends_with('\n') {
                         println!();
                     }
+                    mirror_validation_outcome(arg, &outcome);
                     if outcome.exit_code != 0 {
                         std::process::exit(outcome.exit_code);
                     }
@@ -2474,7 +2476,9 @@ fn main() {
 
     match validation_harness::validate_root() {
         Ok(receipt) => {
-            println!("{}", receipt.to_json_line());
+            let stdout = receipt.to_json_line();
+            println!("{stdout}");
+            mirror_validation_json("validate_root", &stdout, receipt.passed());
             if !receipt.passed() {
                 std::process::exit(1);
             }
@@ -2484,6 +2488,28 @@ fn main() {
             std::process::exit(1);
         }
     }
+}
+
+fn mirror_validation_outcome(arg: &str, outcome: &CompactModeOutcome) {
+    mirror_validation_json(
+        arg.trim_start_matches('-'),
+        &outcome.stdout,
+        outcome.exit_code == 0,
+    );
+}
+
+fn mirror_validation_json(record_type: &str, stdout: &str, passed: bool) {
+    let Ok(path) = std::env::var("AI_CANONICAL_TLOG") else {
+        return;
+    };
+    let receipt_hash = stable_text_hash(stdout);
+    let _ = ai::append_validation_result_ndjson(path, record_type, passed, receipt_hash);
+}
+
+fn stable_text_hash(text: &str) -> u64 {
+    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+    text.hash(&mut hasher);
+    hasher.finish().max(1)
 }
 
 fn policy_reuse_evidence_batch_readiness_smoke_mode() -> Result<CompactModeOutcome, String> {

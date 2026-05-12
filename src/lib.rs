@@ -44,7 +44,9 @@ pub use crate::capability::context::{
     CONTEXT_ASSEMBLY_RECEIPT_SCHEMA_VERSION,
 };
 pub use crate::capability::eval::{
-    encode_candidate_receipt_ndjson, CandidateReceipt, CandidateReceiptInput, CandidateVerdict,
+    append_eval_scorecard_receipt_ndjson, decode_eval_scorecard_receipt_ndjson,
+    encode_candidate_receipt_ndjson, encode_eval_scorecard_receipt_ndjson,
+    load_eval_scorecard_receipts_ndjson, CandidateReceipt, CandidateReceiptInput, CandidateVerdict,
     EvalDecision, EvalDimension, EvalRecord, EvalScorecardReceipt, SelectionRecord,
     EVAL_SCORECARD_RECORD, EVAL_SCORECARD_SCHEMA_VERSION, EVOLUTION_LEDGER_RECORD,
     EVOLUTION_LEDGER_SCHEMA_VERSION,
@@ -170,11 +172,14 @@ pub use crate::kernel::{
     State, TLog, EXECUTION_GATE_ORDER, GATE_ORDER, PHASES,
 };
 pub use crate::runtime::{
-    durable_replay_report, legal_transition, replay_report_from, replay_report_ndjson,
+    append_canonical_line, append_score_report_update_ndjson, append_validation_result_ndjson,
+    canonical_tlog_path_from_dir, default_canonical_tlog_path, durable_replay_report,
+    introspect_canonical_tlog, legal_transition, replay_report_from, replay_report_ndjson,
     replay_tlog_ndjson, resume_durable_runtime, run_until_done, run_until_done_durable,
     run_until_done_durable_with_ledger, semantic_diff, tick, tick_durable, tick_durable_checked,
-    touch_all_surfaces, verify_tlog, verify_tlog_from, CanonError, CommandLedger, CommandReceipt,
-    DurableRuntimeState, ReplayReport,
+    touch_all_surfaces, verify_tlog, verify_tlog_from, CanonError, CanonicalIntrospectionReport,
+    CommandLedger, CommandReceipt, DurableRuntimeState, ReplayReport, WorkerStateReport,
+    CANONICAL_TLOG_RELATIVE_PATH, LEGACY_WORKER_TLOG_FILE_NAME,
 };
 
 #[cfg(test)]

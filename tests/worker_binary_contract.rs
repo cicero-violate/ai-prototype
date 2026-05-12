@@ -24,6 +24,7 @@ fn worker_help_does_not_require_environment() {
     let stdout = String::from_utf8_lossy(&output.stdout);
     assert!(stdout.contains("usage: worker"));
     assert!(stdout.contains("/health/worker"));
+    assert!(stdout.contains("canon-agent.tlog.ndjson"));
 }
 
 #[test]
@@ -64,12 +65,16 @@ fn worker_process_serves_health_and_initializes_tlog() {
         panic!("worker health did not become ready; stderr={stderr}");
     }
 
-    let tlog_path = tlog_dir.join("worker-tlog.ndjson");
+    let tlog_path = tlog_dir.join("canon-agent.tlog.ndjson");
     assert!(
         std::fs::metadata(&tlog_path)
             .expect("tlog should exist")
             .len()
             > 0
+    );
+    assert!(
+        !tlog_dir.join("worker-tlog.ndjson").exists(),
+        "worker-tlog.ndjson is a legacy compatibility name, not the only runtime log"
     );
 
     child.kill().expect("worker should kill");

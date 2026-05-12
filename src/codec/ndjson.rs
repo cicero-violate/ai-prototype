@@ -158,6 +158,9 @@ pub fn decode_tlog_ndjson_str(input: &str) -> Result<TLog, CanonError> {
 
 fn is_control_event_record_line(line: &str) -> Result<bool, CanonError> {
     let trimmed = line.trim();
+    if !trimmed.starts_with('[') {
+        return Ok(false);
+    }
     let body = trimmed
         .strip_prefix('[')
         .and_then(|v| v.strip_suffix(']'))

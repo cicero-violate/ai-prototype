@@ -11,8 +11,8 @@ use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
 
 use ai::{
-    build_router, resume_durable_runtime, tick_durable, ApiTransportLedger, ApiTransportSession,
-    RuntimeConfig, State, WorkerAppState,
+    build_router, canonical_tlog_path_from_dir, resume_durable_runtime, tick_durable,
+    ApiTransportLedger, ApiTransportSession, RuntimeConfig, State, WorkerAppState,
 };
 use tokio::net::TcpListener;
 
@@ -48,6 +48,7 @@ async fn run() -> Result<(), String> {
 fn print_help() {
     println!("usage: worker [--help]");
     println!("environment: PORT, AI_TLOG_DIR, AI_MCP_WORKER_URL, AI_WORKER_GENERATION");
+    println!("canonical TLog: AI_TLOG_DIR/canon-agent.tlog.ndjson");
     println!("routes: GET /health/worker, GET /v1/state, POST /v1/command");
 }
 
@@ -73,7 +74,7 @@ impl WorkerConfig {
 }
 
 fn tlog_path_from_dir(dir: &Path) -> PathBuf {
-    dir.join("worker-tlog.ndjson")
+    canonical_tlog_path_from_dir(dir)
 }
 
 fn load_session(tlog_path: &Path) -> Result<ApiTransportSession, String> {
