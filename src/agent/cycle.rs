@@ -131,38 +131,7 @@ impl AgentCycle {
         // The plan is intentionally not treated as success. It is just the
         // first LLM-produced semantic artifact, recorded with a response hash
         // so later review can connect the phase evidence back to the request.
-        self.last_llm_output = {
-            let score_report = std::fs::read_to_string("SCORE_REPORT.md").ok();
-            let messages = vec![
-                OpenAiMessage::system(prompt::system_prompt()),
-                OpenAiMessage::user(prompt::planning_prompt(
-                    &domain,
-                    &metric,
-                    score_report.as_deref(),
-                )),
-            ];
-            let result = self
-                .router
-                .turn(OpenAiChatRequest::new(messages))
-                .map_err(CycleError::Router)?;
-
-            self.steps.push(AgentStep {
-                step_index: 0,
-                objective_id: self.objective.objective_id,
-                decision: AgentDecision {
-                    selected_action: AgentActionKind::LlmTurn,
-                    rationale: "planning turn".into(),
-                    confidence_score: 80,
-                    uncertainty_score: 20,
-                },
-                action_kind: AgentActionKind::LlmTurn,
-                request_hash: result.response.raw_hash,
-                receipt_hash: Some(result.response.response_hash),
-                success: true,
-            });
-
-            result.response.content
-        };
+        self.run_planning_turn(&domain, &metric)?;
 
         // Phase-dispatch loop. The runtime phase drives submissions; LLM output
         // only supplies semantic content and a pass/fail verdict for LLM phases.
@@ -335,6 +304,40 @@ impl AgentCycle {
             final_phase,
             final_tlog_len,
         })
+    }
+
+    fn run_planning_turn(&mut self, domain: &str, metric: &str) -> Result<(), CycleError> {
+        let score_report = std::fs::read_to_string("SCORE_REPORT.md").ok();
+        let messages = vec![
+            OpenAiMessage::system(prompt::system_prompt()),
+            OpenAiMessage::user(prompt::planning_prompt(
+                domain,
+                metric,
+                score_report.as_deref(),
+            )),
+        ];
+        let result = self
+            .router
+            .turn(OpenAiChatRequest::new(messages))
+            .map_err(CycleError::Router)?;
+
+        self.steps.push(AgentStep {
+            step_index: 0,
+            objective_id: self.objective.objective_id,
+            decision: AgentDecision {
+                selected_action: AgentActionKind::LlmTurn,
+                rationale: "planning turn".into(),
+                confidence_score: 80,
+                uncertainty_score: 20,
+            },
+            action_kind: AgentActionKind::LlmTurn,
+            request_hash: result.response.raw_hash,
+            receipt_hash: Some(result.response.response_hash),
+            success: true,
+        });
+
+        self.last_llm_output = result.response.content;
+        Ok(())
     }
 
     fn observe(&self) -> Result<String, CycleError> {

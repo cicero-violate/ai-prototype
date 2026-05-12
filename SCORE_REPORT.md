@@ -5,7 +5,7 @@ Generated: 2026-05-12  |  Schema version: 16  |  Crates: 16
 ## Aggregate Scores
 
 ```text
-Architecture         = 8.9
+Architecture         = 9.0
 Structure            = 4.8
 Simplicity           = 7.1
 Maintainability      = 10.0
@@ -20,7 +20,7 @@ G (geometric mean)   = 7.93 / 10
 | Crate                      | Nodes | Edges | Fns  | Arch | Struct | Simple | Maint | Determ | Coher |
 | :------------------------- | ----: | ----: | ---: | ---: | -----: | -----: | ----: | -----: | ----: |
 | agent                      |     5 |   195 |    5 |  5.0 |    8.5 |    0.5 |  10.0 |   10.0 |   7.8 |
-| ai                         |  5404 | 34664 | 2170 |  9.5 |    6.0 |    7.0 |  10.0 |   10.0 |   8.1 |
+| ai                         |  5405 | 34677 | 2171 |  9.5 |    6.0 |    7.0 |  10.0 |   10.0 |   8.1 |
 | ai                         |     1 |    18 |    1 |  5.0 |    4.5 |    4.5 |  10.0 |   10.0 |   7.0 |
 | chatgpt_mcp_connector      |  3651 | 20573 | 1655 |  8.9 |    3.4 |    7.5 |  10.0 |   10.0 |   8.3 |
 | graph_mutation             |    10 |   249 |   10 |  5.0 |    7.8 |    2.2 |  10.0 |   10.0 |   8.0 |
@@ -30,7 +30,7 @@ G (geometric mean)   = 7.93 / 10
 | ollama_tool_loop_trace     |    10 |   220 |    7 |  5.0 |    8.9 |    1.2 |  10.0 |   10.0 |   8.0 |
 | ollama_tool_mcp_loop_trace |    15 |   293 |    9 |  5.0 |    9.2 |    1.2 |  10.0 |   10.0 |   8.1 |
 | openai_tool_loop_trace     |    13 |   283 |   10 |  5.0 |    8.7 |    1.7 |  10.0 |   10.0 |   7.7 |
-| root_validate              |   162 |  1971 |  160 |  3.2 |    1.5 |    6.2 |  10.0 |   10.0 |   7.3 |
+| root_validate              |   162 |  1971 |  160 |  3.3 |    1.5 |    6.2 |  10.0 |   10.0 |   7.3 |
 | score                      |    89 |   668 |   53 |  8.3 |    4.3 |    6.5 |  10.0 |   10.0 |   8.2 |
 | supervisor                 |   114 |   709 |   37 |  9.4 |    5.6 |    4.7 |   9.9 |   10.0 |   8.6 |
 | tlog_introspect            |     1 |    49 |    1 |  5.0 |    4.5 |    0.2 |  10.0 |   10.0 |   7.0 |
