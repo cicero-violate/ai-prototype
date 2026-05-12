@@ -48,7 +48,7 @@ Current date: 2026-05-12.
 - P3 runtime and receipt correctness: complete for current scope.
 - P4 graph source-of-truth integration: mostly complete for deterministic fixture/report evidence; agent-driven graph editing remains intentionally deferred until P5 domain surfaces are validated.
 - P5 domain intelligence layer: active. `src/domain/contracts.rs` constructor and invariant tests through unsafe live-effect rejection are complete in local source, with prior targeted validation passing 7 contract tests.
-- Active Priorities items 25 through 92 are complete in the working tree. Item 93 is the first unchecked executable item: restore `../chatgpt-mcp-connector/src/mcp_guard.rs::ai_worker_port()` to environment-only behavior so the MCP shell tool no longer forces receipt recording to supervisor port `9100` when `AI_WORKER_PORT` is unset. Item 94 then completes validation for the already-present `../chatgpt-mcp-connector/src/tools.rs` helper extraction for `tools::shell`.
+- Active Priorities items 25 through 93 are complete in the working tree. Item 94 is the first unchecked executable item: complete validation for the already-present `../chatgpt-mcp-connector/src/tools.rs` helper extraction for `tools::shell` now that `../chatgpt-mcp-connector/src/mcp_guard.rs::ai_worker_port()` has been restored to env-only behavior.
 - `src/domain/business.rs` contains `BusinessOpportunity`, `WorkflowAutomationCandidate`, `CustomerFeedbackSignal`, `monetization_score(...)`, compile-smoke test `business_module_records_and_score_helper_compile`, deterministic repeatability test `business_monetization_score_is_deterministic`, and bounded-score test `business_monetization_score_is_bounded`, with broader business validation passing 3 tests after correcting the bounded test scalar assertion.
 - `src/domain/identity.rs` currently contains `DomainHash`, `DomainHashInput<'a>`, `canonical_json_bytes(record)`, `domain_hash_json(record)`, `domain_hash_parts(parts)`, `stable_domain_id(parts)`, and six passing targeted identity tests through `domain_hash_changes_when_schema_version_changes`.
 - `src/domain/scoring.rs` currently contains validated `BoundedScore` helpers, score-input breakdown helpers, conservative `verdict_for_scores(...)`, and passing `verdict_ignore_thresholds`, `verdict_watch_thresholds`, `verdict_research_thresholds`, `verdict_act_business_thresholds`, `verdict_act_finance_research_thresholds`, `verdict_simulate_trading_thresholds`, and `verdict_block_thresholds`; explicit verdict threshold tests are complete for the current scoring scope.
@@ -56,6 +56,14 @@ Current date: 2026-05-12.
 - Domain fixture JSON files exist under `tests/fixtures/domain/` for global signal, business workflow opportunity, finance hypothesis research, trading simulation sandbox, and trading live blocked cases; `tests/test_domain_fixture_contract.py` now includes explicit risk-result and required-field assertions. Item 51 graph analyzer now exists and passes against `state/rustc/ai/graph.json`, reporting 752 compiled P5 domain-node matches. Item 52 malformed-input self-check also passes. Remaining work includes item 50 full-suite Rust validation and later graph evidence refresh/score review items gated on full-suite output.
 
 ## Validation Ledger
+
+### 2026-05-12 — implementation step 1 item 93 MCP guard restore
+
+- Scope: Active Priorities item 93, `../chatgpt-mcp-connector/src/mcp_guard.rs::ai_worker_port()`, `plan.md`, and `status.md`.
+- Command/check: `git -C ../chatgpt-mcp-connector diff -- src/mcp_guard.rs && cd ../chatgpt-mcp-connector && cargo check`.
+- Result: passed.
+- Evidence: `../chatgpt-mcp-connector/src/mcp_guard.rs` was restored to env-only `AI_WORKER_PORT` behavior with no remaining diff, leaving only the already-scoped `../chatgpt-mcp-connector/src/tools.rs` item-94 diff in the connector working tree. The MCP shell tool returned normal command output after the restore instead of the prior receipt-wrapper `InvalidCommand` failure. Connector `cargo check` passed and refreshed `chatgpt_mcp_connector__bin` witness evidence with 3,695 nodes, 21,020 facts, and graph hash `741e0f8999db380671fbac6d96f6e6c347c9da8f50b2ef855a59eac4f539ae1b`.
+- Next action: execute item 94 by validating the existing `../chatgpt-mcp-connector/src/tools.rs::render_shell_response(...)` extraction with `cd ../chatgpt-mcp-connector && cargo check && cargo test`.
 
 ### 2026-05-12 — planning selected item 93 MCP receipt-wrapper blocker handling
 
