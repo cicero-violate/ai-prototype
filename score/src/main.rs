@@ -111,7 +111,11 @@ fn collect_stats(graph: &CrateGraph) -> CrateStats {
                     *call_in.entry(edge.to.as_str()).or_insert(0) += 1;
                 }
             }
-            "similar" => similar_count += 1,
+            "similar" if structural_fns.contains(edge.from.as_str())
+                && structural_fns.contains(edge.to.as_str()) =>
+            {
+                similar_count += 1
+            }
             "phase" => {
                 if structural_fns.contains(edge.from.as_str()) {
                     phase_fns.insert(edge.from.as_str());

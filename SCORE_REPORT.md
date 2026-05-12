@@ -7,12 +7,12 @@ Generated: 2026-05-11  |  Schema version: 16  |  Crates: 15
 ```text
 Architecture         = 8.9
 Structure            = 4.8
-Simplicity           = 4.9
-Maintainability      = 7.7
+Simplicity           = 7.1
+Maintainability      = 10.0
 Determinism          = 10.0
 Coherency            = 8.2
 
-G (geometric mean)   = 7.14 / 10
+G (geometric mean)   = 7.93 / 10
 ```
 
 ## Per-Crate Breakdown
@@ -20,9 +20,9 @@ G (geometric mean)   = 7.14 / 10
 | Crate                      | Nodes | Edges | Fns  | Arch | Struct | Simple | Maint | Determ | Coher |
 | :------------------------- | ----: | ----: | ---: | ---: | -----: | -----: | ----: | -----: | ----: |
 | agent                      |     2 |    66 |    2 |  5.0 |    6.1 |    0.9 |  10.0 |   10.0 |   8.1 |
-| ai                         |  5298 | 33848 | 2122 |  9.5 |    6.0 |    3.5 |   6.0 |   10.0 |   8.1 |
+| ai                         |  5298 | 33848 | 2122 |  9.5 |    6.0 |    7.0 |  10.0 |   10.0 |   8.1 |
 | ai                         |     1 |    18 |    1 |  5.0 |    4.5 |    4.5 |  10.0 |   10.0 |   7.0 |
-| chatgpt_mcp_connector      |  3651 | 20573 | 1655 |  8.9 |    3.4 |    6.7 |   9.5 |   10.0 |   8.3 |
+| chatgpt_mcp_connector      |  3651 | 20573 | 1655 |  8.9 |    3.4 |    7.5 |  10.0 |   10.0 |   8.3 |
 | graph_mutation             |    10 |   249 |   10 |  5.0 |    7.8 |    2.2 |  10.0 |   10.0 |   8.0 |
 | loop_trace                 |     1 |    36 |    1 |  5.0 |    4.5 |    0.8 |  10.0 |   10.0 |   7.0 |
 | ollama_judgment            |     4 |   239 |    4 |  5.0 |    7.7 |    0.1 |  10.0 |   10.0 |   8.6 |
@@ -31,7 +31,7 @@ G (geometric mean)   = 7.14 / 10
 | ollama_tool_mcp_loop_trace |    15 |   293 |    9 |  5.0 |    9.2 |    1.2 |  10.0 |   10.0 |   8.1 |
 | openai_tool_loop_trace     |    13 |   283 |   10 |  5.0 |    8.7 |    1.7 |  10.0 |   10.0 |   7.7 |
 | root_validate              |   159 |  1938 |  157 |  3.2 |    1.2 |    6.1 |  10.0 |   10.0 |   7.3 |
-| score                      |    89 |   664 |   53 |  8.3 |    4.3 |    6.6 |  10.0 |   10.0 |   8.2 |
+| score                      |    89 |   668 |   53 |  8.3 |    4.3 |    6.5 |  10.0 |   10.0 |   8.2 |
 | supervisor                 |   111 |   630 |   34 |  9.0 |    5.4 |    5.1 |   9.9 |   10.0 |   8.6 |
 | worker                     |    18 |   180 |    7 |  5.0 |    8.5 |    2.7 |   9.3 |   10.0 |   9.1 |
 
