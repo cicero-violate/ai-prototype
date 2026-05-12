@@ -57,6 +57,14 @@ Current date: 2026-05-11.
 
 ## Validation Ledger
 
+### 2026-05-11 — item 56 P4 graph-editing guardrail review
+
+- Scope: Active Priorities item 56, `plan.md` P4 graph-editing guardrail documentation.
+- Command/check: planning/status review over Active Priorities items 50 through 60 and current status evidence for items 50, 53, 54, and 55.
+- Result: passed.
+- Evidence: `plan.md` now records that items 50, 53, 54, and 55 are complete and keeps graph mutation/semantic graph-op mutation deferred until the receipt-backed graph edit path is explicitly selected, patches are re-captured, graph diffs are recorded as TLog evidence, and generated merge-surface noise is manually filtered. Item 56 is marked complete; the next unchecked item is item 57, a planning inspection of `src/agent/loop_driver.rs::LoopDriver::run_cycle` using graph-backed `SplitFn id=001e821dc83e940a`.
+- Next action: proceed to item 57 to inspect `src/agent/loop_driver.rs::LoopDriver::run_cycle` and write the smallest helper-extraction implementation checklist item.
+
 ### 2026-05-11 — item 55 score rationale review
 
 - Scope: Active Priorities item 55, `score.md` rationale and score/status consistency review.
