@@ -419,6 +419,16 @@ Ordered execute-turn checklist, one file or one test per item. Implementation it
    - Done when: `git status --short` no longer reports an unstaged `src/agent/router.rs` diff, and the resulting repository state has either a committed validated router extraction or a cleanly reverted router file.
    - Validation: passed on 2026-05-12 with `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test agent::router::tests::streaming_http_request_builder_preserves_post_headers_and_body -- --test-threads=1 && cargo fmt --check && TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`; final pre-commit `git status --short` showed only `src/agent/router.rs` pending before the plan/status updates.
 
+72. [x] `src/graph_mutation.rs`: inspect graph-backed `SplitFn id=f2de356b6e3f4b52` for `graph_mutation::generate_graph_patch` and write the smallest helper-extraction implementation checklist item for that exact function.
+   - Scope: `plan.md`, `status.md`, `state/rustc/auto-refactor/..__state__rustc__ai__graph.graph-editor-plan.json`, `src/graph_mutation.rs`, and existing graph mutation tests only; do not edit Rust source in this planning/inspection item.
+   - Done when: the next implementation item names the exact helper boundary inside `generate_graph_patch(...)`, the expected helper name, companion targeted validation, and confirms the public `generate_graph_patch(graph, sources, ops) -> Result<GraphPatchPlan, GraphPatchError>` behavior is preserved.
+   - Validation: passed on 2026-05-12 with `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test graph_mutation::tests -- --test-threads=1` after inspecting `SplitFn id=f2de356b6e3f4b52` and `src/graph_mutation.rs::generate_graph_patch(...)`.
+
+73. [ ] `src/graph_mutation.rs`: extract patch receipt construction from `generate_graph_patch(...)` into private helper `build_graph_patch_receipt(graph: &GraphSnapshotContract, sources: &[GraphSourceFile], sorted_ops: &[GraphMutationOp], diff: &str) -> GraphPatchReceipt` while preserving public `generate_graph_patch(graph, sources, ops) -> Result<GraphPatchPlan, GraphPatchError>` behavior.
+   - Scope: `src/graph_mutation.rs` only; do not edit generated auto-refactor JSON, graph fixtures, CLI tests, runtime code, domain code, or planning files except to mark this item complete and record validation evidence after implementation.
+   - Done when: `generate_graph_patch(...)` still owns empty-op/schema/source-map/sort/overlap/stale validation and diff/hunk assembly, delegates only receipt field construction/hash finalization to `build_graph_patch_receipt(...)`, and all existing graph mutation behavior remains unchanged.
+   - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test graph_mutation::tests -- --test-threads=1 && cargo fmt --check && TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
+
 
 ## Additional Validation Notes
 
