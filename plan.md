@@ -576,10 +576,11 @@ Ordered execute-turn checklist, one file or one test per item. Implementation it
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test loop_driver::tests -- --test-threads=1`.
    - Completed on 2026-05-12: the `loop_driver` test module now covers MCP workspace endpoint explicit-port/default-port parsing, invalid scheme/port rejection, HTTP status success/malformed handling, and request header/body separation with parsed `Content-Length` equality to the actual body length. Targeted validation passed with 6 `loop_driver::tests`; broader `cargo test --all-targets` passed with 272 library/bin tests, integration suites, 352 root-validation tests, and worker binary tests.
 
-100. [ ] `SCORE_REPORT.md`: refresh graph-derived structural evidence after items 97-99 land, then review whether `score.md` rationale should change without raising project-level scores absent capability evidence.
+100. [x] `SCORE_REPORT.md`: refresh graph-derived structural evidence after items 97-99 land, then review whether `score.md` rationale should change without raising project-level scores absent capability evidence.
    - Scope: `SCORE_REPORT.md`, `score.md`, `status.md`, and any deterministic score/graph refresh command output required by the existing project workflow. Do not edit runtime/domain source for this evidence item.
    - Done when: refreshed structural evidence is recorded or a blocker is documented, and `score.md` is either unchanged with explicit rationale or updated only if new evidence justifies it.
    - Validation: `git diff -- SCORE_REPORT.md score.md status.md plan.md`.
+   - Completed on 2026-05-12: refreshed graph-derived score evidence with `cargo run --manifest-path score/Cargo.toml --quiet -- --artifact-root state/rustc --report SCORE_REPORT.md --date "$(date +%Y-%m-%d)"`. The report remained current with `G = 7.93 / 10`, Architecture `9.0`, Structure `4.8`, Simplicity `7.1`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2`; the command skipped the two schema-version-12 canon-rustc graphs as expected. `score.md` project-level numeric scores and rationale remain unchanged because the refresh is structural evidence only and does not prove a score-history-worthy capability change.
 
 ## Additional Validation Notes
 
