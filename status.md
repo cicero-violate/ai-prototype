@@ -57,6 +57,22 @@ Current date: 2026-05-11.
 
 ## Validation Ledger
 
+### 2026-05-11 — item 58 implementation step 5 validation blocked by connector HTTP 502
+
+- Scope: Active Priorities item 58, `src/agent/loop_driver.rs::LoopDriver::run_cycle` retry-attempt helper extraction validation.
+- Command/check: `cargo fmt --check && TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`; retry `cargo fmt --check`.
+- Result: blocked by infrastructure transport.
+- Evidence: the required combined validation command returned connector HTTP 502 before command output. A narrower `cargo fmt --check` retry also returned connector HTTP 502 before output. No Rust compile, formatting, or test failure was observed. Item 58 remains unchecked because this step did not obtain green validation output.
+- Next action: retry item 58 validation when connector transport can return command output; mark item 58 complete and commit only after green validation.
+
+### 2026-05-11 — item 58 validation retry blocked by connector HTTP 502
+
+- Scope: Active Priorities item 58, `src/agent/loop_driver.rs::LoopDriver::run_cycle` retry-attempt helper extraction validation.
+- Command/check: `cargo fmt --check && TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`; retry `cargo fmt --check`.
+- Result: blocked by infrastructure transport.
+- Evidence: the combined required validation command returned connector HTTP 502 before usable output. A smaller `cargo fmt --check` retry also returned connector HTTP 502 before output. Source inspection still shows `run_cycle_attempt(...)` present, but item 58 remains unchecked because the required validation did not return green output in this step.
+- Next action: retry item 58 validation when connector transport can return command output; if green, mark item 58 complete and commit.
+
 ### 2026-05-11 — item 58 LoopDriver run_cycle_attempt extraction validation blocker
 
 - Scope: Active Priorities item 58, `src/agent/loop_driver.rs::LoopDriver::run_cycle` retry-attempt helper extraction.

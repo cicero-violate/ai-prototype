@@ -21,8 +21,9 @@ use crate::capability::llm::transport::{
     chat_completions_path, parse_local_http_endpoint, LocalEndpointError,
 };
 
-const TRANSIENT_ROUTER_ATTEMPTS: u32 = 3;
-const TRANSIENT_ROUTER_BACKOFF_MS: u64 = 250;
+const DEFAULT_TRANSIENT_ROUTER_ATTEMPTS: u32 = 8;
+const DEFAULT_TRANSIENT_ROUTER_BACKOFF_MS: u64 = 500;
+const DEFAULT_TRANSIENT_ROUTER_MAX_BACKOFF_MS: u64 = 4_000;
 
 pub struct RouterClient {
     inner: OpenAiClient,
@@ -175,33 +176,92 @@ impl RouterClient {
 fn retry_transient_router_io<T>(
     mut op: impl FnMut() -> Result<T, OpenAiError>,
 ) -> Result<T, OpenAiError> {
+    retry_transient_router_io_with_policy(router_retry_policy(), &mut op)
+}
+
+fn retry_transient_router_io_with_policy<T>(
+    policy: RouterRetryPolicy,
+    mut op: impl FnMut() -> Result<T, OpenAiError>,
+) -> Result<T, OpenAiError> {
     let mut attempt = 0;
     loop {
         match op() {
             Ok(value) => return Ok(value),
-            Err(err)
-                if is_transient_router_io_error(&err)
-                    && attempt + 1 < TRANSIENT_ROUTER_ATTEMPTS =>
-            {
+            Err(err) if is_transient_router_error(&err) && attempt + 1 < policy.attempts => {
                 attempt += 1;
-                thread::sleep(Duration::from_millis(
-                    TRANSIENT_ROUTER_BACKOFF_MS * u64::from(attempt),
-                ));
+                let backoff_ms = policy.backoff_ms(attempt);
+                if backoff_ms != 0 {
+                    thread::sleep(Duration::from_millis(backoff_ms));
+                }
             }
             Err(err) => return Err(err),
         }
     }
 }
 
-fn is_transient_router_io_error(err: &OpenAiError) -> bool {
-    matches!(
-        err,
-        OpenAiError::Io(io_err)
-            if matches!(
-                io_err.kind(),
-                io::ErrorKind::WouldBlock | io::ErrorKind::TimedOut | io::ErrorKind::Interrupted
-            )
-    )
+#[derive(Clone, Copy, Debug)]
+struct RouterRetryPolicy {
+    attempts: u32,
+    base_backoff_ms: u64,
+    max_backoff_ms: u64,
+}
+
+impl RouterRetryPolicy {
+    fn backoff_ms(self, retry_attempt: u32) -> u64 {
+        if self.base_backoff_ms == 0 || retry_attempt == 0 {
+            return 0;
+        }
+        let shift = retry_attempt.saturating_sub(1).min(10);
+        let multiplier = 1_u64 << shift;
+        self.base_backoff_ms
+            .saturating_mul(multiplier)
+            .min(self.max_backoff_ms)
+    }
+}
+
+fn router_retry_policy() -> RouterRetryPolicy {
+    RouterRetryPolicy {
+        attempts: env_u32(
+            "CANON_ROUTER_TRANSIENT_ATTEMPTS",
+            DEFAULT_TRANSIENT_ROUTER_ATTEMPTS,
+        )
+        .max(1),
+        base_backoff_ms: env_u64(
+            "CANON_ROUTER_TRANSIENT_BACKOFF_MS",
+            DEFAULT_TRANSIENT_ROUTER_BACKOFF_MS,
+        ),
+        max_backoff_ms: env_u64(
+            "CANON_ROUTER_TRANSIENT_MAX_BACKOFF_MS",
+            DEFAULT_TRANSIENT_ROUTER_MAX_BACKOFF_MS,
+        ),
+    }
+}
+
+fn env_u32(name: &str, default: u32) -> u32 {
+    env::var(name)
+        .ok()
+        .and_then(|value| value.parse().ok())
+        .unwrap_or(default)
+}
+
+fn env_u64(name: &str, default: u64) -> u64 {
+    env::var(name)
+        .ok()
+        .and_then(|value| value.parse().ok())
+        .unwrap_or(default)
+}
+
+fn is_transient_router_error(err: &OpenAiError) -> bool {
+    match err {
+        OpenAiError::Io(io_err) => matches!(
+            io_err.kind(),
+            io::ErrorKind::WouldBlock | io::ErrorKind::TimedOut | io::ErrorKind::Interrupted
+        ),
+        OpenAiError::HttpStatus(status) => {
+            matches!(status, 408 | 409 | 425 | 429 | 500 | 502 | 503 | 504)
+        }
+        _ => false,
+    }
 }
 
 fn close_browser_tab_for_url(
@@ -602,30 +662,43 @@ mod tests {
     }
 
     #[test]
-    fn transient_router_io_classifier_accepts_retryable_errors() {
+    fn transient_router_classifier_accepts_retryable_io_errors() {
         for kind in [
             io::ErrorKind::WouldBlock,
             io::ErrorKind::TimedOut,
             io::ErrorKind::Interrupted,
         ] {
             let err = OpenAiError::Io(io::Error::new(kind, "transient router io"));
-            assert!(is_transient_router_io_error(&err));
+            assert!(is_transient_router_error(&err));
         }
     }
 
     #[test]
-    fn transient_router_io_classifier_rejects_non_retryable_errors() {
+    fn transient_router_classifier_accepts_retryable_http_errors() {
+        for status in [408, 409, 425, 429, 500, 502, 503, 504] {
+            assert!(is_transient_router_error(&OpenAiError::HttpStatus(status)));
+        }
+    }
+
+    #[test]
+    fn transient_router_classifier_rejects_non_retryable_errors() {
         let err = OpenAiError::Io(io::Error::new(
             io::ErrorKind::ConnectionRefused,
             "router is down",
         ));
-        assert!(!is_transient_router_io_error(&err));
+        assert!(!is_transient_router_error(&err));
+        assert!(!is_transient_router_error(&OpenAiError::HttpStatus(400)));
     }
 
     #[test]
     fn retry_transient_router_io_retries_then_succeeds() {
         let mut attempts = 0;
-        let result = retry_transient_router_io(|| {
+        let policy = RouterRetryPolicy {
+            attempts: 3,
+            base_backoff_ms: 0,
+            max_backoff_ms: 0,
+        };
+        let result = retry_transient_router_io_with_policy(policy, || {
             attempts += 1;
             if attempts == 1 {
                 return Err(OpenAiError::Io(io::Error::new(
@@ -643,7 +716,12 @@ mod tests {
     #[test]
     fn retry_transient_router_io_does_not_retry_non_transient_error() {
         let mut attempts = 0;
-        let result: Result<(), OpenAiError> = retry_transient_router_io(|| {
+        let policy = RouterRetryPolicy {
+            attempts: 3,
+            base_backoff_ms: 0,
+            max_backoff_ms: 0,
+        };
+        let result: Result<(), OpenAiError> = retry_transient_router_io_with_policy(policy, || {
             attempts += 1;
             Err(OpenAiError::Io(io::Error::new(
                 io::ErrorKind::ConnectionRefused,
@@ -653,5 +731,36 @@ mod tests {
 
         assert!(result.is_err());
         assert_eq!(attempts, 1);
+    }
+
+    #[test]
+    fn retry_transient_router_io_stops_at_attempt_limit() {
+        let mut attempts = 0;
+        let policy = RouterRetryPolicy {
+            attempts: 3,
+            base_backoff_ms: 0,
+            max_backoff_ms: 0,
+        };
+        let result: Result<(), OpenAiError> = retry_transient_router_io_with_policy(policy, || {
+            attempts += 1;
+            Err(OpenAiError::HttpStatus(502))
+        });
+
+        assert!(result.is_err());
+        assert_eq!(attempts, 3);
+    }
+
+    #[test]
+    fn retry_policy_backoff_caps_exponential_growth() {
+        let policy = RouterRetryPolicy {
+            attempts: 8,
+            base_backoff_ms: 500,
+            max_backoff_ms: 2_000,
+        };
+
+        assert_eq!(policy.backoff_ms(1), 500);
+        assert_eq!(policy.backoff_ms(2), 1_000);
+        assert_eq!(policy.backoff_ms(3), 2_000);
+        assert_eq!(policy.backoff_ms(4), 2_000);
     }
 }

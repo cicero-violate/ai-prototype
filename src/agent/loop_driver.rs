@@ -751,12 +751,20 @@ fn sync_mcp_workspace(mcp_url: &str, project_dir: &Path) -> Result<(), String> {
 
 /// Build an AgentObjective from the project files produced by the loop cycle.
 fn build_cert_objective(project_dir: &Path) -> AgentObjective {
-    let goal = read_file_truncated(&project_dir.join("GOAL.md"), 800);
+    let goal = read_goal_cert_excerpt(&project_dir.join("GOAL.md"), 600);
     let plan = read_file_truncated(&project_dir.join("plan.md"), 400);
     let status = read_file_truncated(&project_dir.join("status.md"), 500);
     let score = read_file_truncated(&project_dir.join("score.md"), 300);
 
-    let mut domain = goal;
+    let mut domain = String::from(
+        "Certify the latest autonomous project-loop work using local plan/status evidence. \
+         Produce phase evidence for the worker runtime; do not request human review unless \
+         the local evidence is missing, unsafe, or contradictory.",
+    );
+    if !goal.is_empty() {
+        domain.push_str("\n\nProject goal excerpt:\n");
+        domain.push_str(&goal);
+    }
     if !plan.is_empty() {
         domain.push_str("\n\nPlan:\n");
         domain.push_str(&plan);
@@ -766,26 +774,41 @@ fn build_cert_objective(project_dir: &Path) -> AgentObjective {
         domain.push_str(&status);
     }
 
-    let metric = if score.is_empty() {
-        "All objectives in GOAL.md completed".into()
-    } else {
-        score
-    };
+    let mut metric = String::from(
+        "Certification succeeds when the worker reaches phase Done using typed evidence \
+         derived from the latest plan.md/status.md validation state.",
+    );
+    if !score.is_empty() {
+        metric.push_str("\n\nScore context:\n");
+        metric.push_str(&score);
+    }
 
     AgentObjective::new(domain, metric)
 }
 
+fn read_goal_cert_excerpt(path: &Path, max_chars: usize) -> String {
+    let raw = fs::read_to_string(path).unwrap_or_default();
+    let body = raw
+        .lines()
+        .position(|line| line.trim_start().starts_with('#'))
+        .map(|idx| raw.lines().skip(idx).collect::<Vec<_>>().join("\n"))
+        .unwrap_or(raw);
+    truncate_chars(body.trim(), max_chars)
+}
+
+fn truncate_chars(text: &str, max_chars: usize) -> String {
+    let count = text.chars().count();
+    if count > max_chars {
+        let truncated: String = text.chars().take(max_chars).collect();
+        format!("{truncated}…")
+    } else {
+        text.to_string()
+    }
+}
+
 fn read_file_truncated(path: &Path, max_chars: usize) -> String {
     fs::read_to_string(path)
-        .map(|s| {
-            let count = s.chars().count();
-            if count > max_chars {
-                let truncated: String = s.chars().take(max_chars).collect();
-                format!("{truncated}…")
-            } else {
-                s
-            }
-        })
+        .map(|s| truncate_chars(&s, max_chars))
         .unwrap_or_default()
 }
 
@@ -909,12 +932,35 @@ mod tests {
         fs::write(root.join("score.md"), "score\n".repeat(1000)).unwrap();
 
         let objective = build_cert_objective(&root);
+        assert!(objective
+            .domain_hint
+            .starts_with("Certify the latest autonomous project-loop work"));
+        assert!(objective.domain_hint.contains("Project goal excerpt:"));
         assert!(objective.domain_hint.contains("Plan:"));
         assert!(objective.domain_hint.contains("Status evidence:"));
         assert!(objective.domain_hint.ends_with('…'));
+        assert!(objective.success_metric.contains("Score context:"));
         assert!(objective.success_metric.ends_with('…'));
-        assert!(objective.domain_hint.chars().count() < 1_800);
-        assert!(objective.success_metric.chars().count() <= 301);
+        assert!(objective.domain_hint.chars().count() < 1_900);
+        assert!(objective.success_metric.chars().count() < 500);
+
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn certification_goal_excerpt_starts_at_first_heading() {
+        let root =
+            std::env::temp_dir().join(format!("canon-loop-cert-heading-{}", std::process::id()));
+        fs::create_dir_all(&root).unwrap();
+        fs::write(
+            root.join("GOAL.md"),
+            "opening invocation\n\n# Canon Agent\nConcrete project objective\n",
+        )
+        .unwrap();
+
+        let excerpt = read_goal_cert_excerpt(&root.join("GOAL.md"), 200);
+        assert!(excerpt.starts_with("# Canon Agent"));
+        assert!(!excerpt.contains("opening invocation"));
 
         let _ = fs::remove_dir_all(root);
     }
