@@ -173,7 +173,16 @@ fn submit_llm_mcp_tool_calls(
         receipts.push(receipt);
     }
 
-    let receipt = combined_mcp_execution_receipt(&receipts)?;
+    submit_llm_mcp_evidence(&receipts, state, tlog, cfg)
+}
+
+fn submit_llm_mcp_evidence(
+    receipts: &[McpCallReceipt],
+    state: &mut State,
+    tlog: &mut TLog,
+    cfg: RuntimeConfig,
+) -> Result<usize, Box<dyn std::error::Error>> {
+    let receipt = combined_mcp_execution_receipt(receipts)?;
     let envelope = CommandEnvelope::new(
         receipt.receipt_hash,
         Command::SubmitEvidence(receipt.submission()),

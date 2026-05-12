@@ -1946,3 +1946,12 @@ Implementation step 1 evidence on 2026-05-12:
 - Confirmed the smallest safe item 91 boundary is post-loop evidence finalization only: final successful receipt selection, evidence envelope submission, and `Ok(TOOL_CALL_TARGET)` return.
 - Targeted validation passed: `cargo check --example ollama_tool_mcp_loop_trace` completed successfully and refreshed the example witness with 15 nodes, 293 facts, and graph hash `3daf7128cac0a0888a62f0c1565cd6eb904ea5ab1160505d2bccd2dd3711913c`.
 - Marked item 90 complete in `plan.md`. Scores unchanged because this was inspection/planning evidence, not a score-history-worthy capability change.
+
+Implementation step 2 evidence on 2026-05-12:
+
+- Selected first unchecked Active Priorities item 91: `examples/ollama_tool_mcp_loop_trace.rs` helper extraction for `submit_llm_mcp_tool_calls(...)`.
+- Extracted only the post-loop evidence finalization block into private helper `submit_llm_mcp_evidence(receipts: &[McpCallReceipt], state: &mut State, tlog: &mut TLog, cfg: RuntimeConfig) -> Result<usize, Box<dyn std::error::Error>>`.
+- Preserved request construction, JSON tool-call validation, MCP execution, per-call receipt persistence, and `combined_mcp_execution_receipt(...)` behavior outside the helper boundary.
+- Targeted and broader validation passed: `cargo check --example ollama_tool_mcp_loop_trace`, `cargo fmt --check`, and `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets` completed with all reported tests passing.
+- The example witness refreshed from 15 nodes/293 facts to 16 nodes/301 facts with graph hash `40d42b1a4c1c9e0d490b18d0544f1ebb4e38445c84a0acb3017619ee17468509`.
+- Marked item 91 complete in `plan.md`. Scores unchanged because this is a small graph-backed structure/simplicity refactor already reflected by validation evidence, not a score-history-worthy project-level capability change.
