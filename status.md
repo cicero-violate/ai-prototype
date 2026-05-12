@@ -1976,3 +1976,14 @@ Implementation step 5 blocker on 2026-05-12:
 - Active Priorities still has no real unchecked executable item: items 1 through 91 are complete, and the remaining unchecked markers are template instructions outside the operational checklist.
 - No source implementation was selected because there is no scoped checklist item to execute.
 - Scores remain unchanged. The next loop should run a planning turn to add concrete file-level work before another implementation step.
+
+Planning-turn update on 2026-05-12 after Active Priorities exhaustion:
+
+- Required reconnaissance completed from the connector workspace root, which resolves to `/workspace/ai_sandbox/canon-mini-agent/prototype/ai`.
+- Read `plan.md`; actual Active Priorities items 1 through 91 are complete, so there was no remaining real unchecked executable item before this planning turn.
+- Read `status.md`; the latest execution blockers confirm item exhaustion rather than source or validation failure.
+- Read `score.md` and `SCORE_REPORT.md`; project scores remain unchanged, while graph-derived `SCORE_REPORT.md` still reports aggregate `G = 7.93 / 10`, Structure `4.8`, Simplicity `7.1`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2`.
+- Inspected current auto-refactor plans. The selected next graph-backed candidate is `state/rustc/auto-refactor/..__state__rustc__chatgpt_mcp_connector__bin__graph.graph-editor-plan.json` with `SplitFn id=ce8d33f07ffdaae6` for `tools::shell`, because `SCORE_REPORT.md` shows `chatgpt_mcp_connector` Structure at `3.4`, the lowest large-crate structure score.
+- Inspected `../chatgpt-mcp-connector/src/tools.rs`; `shell(args, workspace)` still combines command parsing, timeout/output limit parsing, workspace cwd resolution, `/bin/sh -c` spawn, bounded stdout/stderr reader tasks, timeout/kill handling, task joins, output rendering, and MCP JSON response construction.
+- Added Active Priorities items 92 and 93. Item 92 is the next executable inspection item. Item 93 is a placeholder implementation item constrained to the item-92-approved helper boundary.
+- `score.md` was not changed because this planning turn produced no implementation, validation, graph refresh, or score-history-worthy capability improvement.
