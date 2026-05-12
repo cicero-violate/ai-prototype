@@ -57,6 +57,14 @@ Current date: 2026-05-12.
 
 ## Validation Ledger
 
+### 2026-05-12 — planning selected item 105 router finalize error coverage
+
+- Scope: `plan.md`, `status.md`, `score.md`, `SCORE_REPORT.md`, `src/agent/router.rs`, and `state/rustc/auto-refactor/..__state__rustc__ai__graph.graph-editor-plan.json`.
+- Command/check: inspected the current Active Priorities range around items 100-106; inspected `src/agent/router.rs::finalize_streaming_response(...)`, done-frame helpers, and the current router test module; inspected the live auto-refactor plan entry for `agent::router::collect_streaming_response_bytes`.
+- Result: informational.
+- Evidence: items 101-104 are complete in the working tree, and item 105 is the first unchecked executable item. `finalize_streaming_response(...)` already returns `OpenAiError::HttpStatus(status)` for non-200 responses and `OpenAiError::Io` with `UnexpectedEof` when a 200 response lacks a terminating `data: [DONE]` frame, so the next implementation turn should add in-memory tests only. The current graph-backed split candidate remains `SplitFn id=c07f9b3fef3c6e37` for `agent::router::collect_streaming_response_bytes`, but no further helper split should precede the item 105 error-path validation.
+- Next action: execute Active Priorities item 105 by adding named non-200 and missing-`[DONE]` tests in `src/agent/router.rs`, then run `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test router::tests -- --test-threads=1`.
+
 ### 2026-05-12 — implementation step 1 item 104 router finalize success coverage
 
 - Scope: Active Priorities item 104, `src/agent/router.rs` test module, `plan.md`, and `status.md`.
