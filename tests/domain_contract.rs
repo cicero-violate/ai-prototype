@@ -1,7 +1,7 @@
 use ai::domain::contracts::{
-    DomainBridgeTarget, DomainHorizon, DomainId, DomainJudgment, DomainLiveEffectLevel,
-    DomainPlan, DomainPlanKind, DomainRiskEnvelope, DomainSignal, DomainSignalClass,
-    DomainSourceKind, DomainVerdict, DOMAIN_SCHEMA_VERSION,
+    DomainBridgeTarget, DomainHorizon, DomainId, DomainJudgment, DomainLiveEffectLevel, DomainPlan,
+    DomainPlanKind, DomainRiskEnvelope, DomainSignal, DomainSignalClass, DomainSourceKind,
+    DomainVerdict, DOMAIN_SCHEMA_VERSION,
 };
 use ai::domain::identity::domain_hash_json;
 use ai::domain::{
@@ -137,7 +137,9 @@ fn live_effect_level(value: &str) -> DomainLiveEffectLevel {
 fn plan_kind(domain_id: DomainId, verdict: DomainVerdict) -> DomainPlanKind {
     match (domain_id, verdict) {
         (DomainId::Business, DomainVerdict::ActBusiness) => DomainPlanKind::BusinessWorkflowPlan,
-        (DomainId::Finance, DomainVerdict::ActFinanceResearch) => DomainPlanKind::FinanceAnalysisPlan,
+        (DomainId::Finance, DomainVerdict::ActFinanceResearch) => {
+            DomainPlanKind::FinanceAnalysisPlan
+        }
         (DomainId::TradingSandbox, DomainVerdict::SimulateTrading | DomainVerdict::Block) => {
             DomainPlanKind::TradingSimulationPlan
         }
@@ -186,7 +188,8 @@ fn assert_fixture_maps_to_contract_records(fixture: DomainFixture) {
     let signal_class = signal_class(&fixture.signal_class);
     let verdict = verdict(&fixture.expected_verdict);
     let bridge_target = bridge_target(&fixture.expected_bridge_target);
-    let max_live_effect_level = live_effect_level(&fixture.expected_risk_envelope.max_live_effect_level);
+    let max_live_effect_level =
+        live_effect_level(&fixture.expected_risk_envelope.max_live_effect_level);
 
     let signal = DomainSignal::new(
         format!("{}:signal", fixture.fixture_id),
@@ -316,7 +319,10 @@ fn domain_identity_is_deterministic() {
         assert_eq!(domain_hash_json(&material_record), repeated_hash);
 
         let mut changed_record = material_record.clone();
-        changed_record["payload_hash"] = json!(format!("{}:changed", changed_record["payload_hash"].as_str().unwrap()));
+        changed_record["payload_hash"] = json!(format!(
+            "{}:changed",
+            changed_record["payload_hash"].as_str().unwrap()
+        ));
         assert_ne!(domain_hash_json(&changed_record), repeated_hash);
     }
 }
@@ -348,7 +354,10 @@ fn domain_verdicts_are_deterministic() {
             ai::domain::scoring::verdict_for_scores(domain_id, score_inputs),
             first_verdict
         );
-        assert_eq!(bridge_target_for_verdict(first_verdict), expected_bridge_target);
+        assert_eq!(
+            bridge_target_for_verdict(first_verdict),
+            expected_bridge_target
+        );
     }
 }
 
@@ -364,19 +373,43 @@ fn domain_surface_exposes_no_runtime_mutation_api() {
         .collect::<Vec<_>>()
         .join("\n");
     let domain_sources = [
-        ("src/domain/bridge.rs", std::fs::read_to_string("src/domain/bridge.rs").expect("bridge module reads")),
-        ("src/domain/business.rs", std::fs::read_to_string("src/domain/business.rs").expect("business module reads")),
-        ("src/domain/contracts.rs", std::fs::read_to_string("src/domain/contracts.rs").expect("contracts module reads")),
-        ("src/domain/finance.rs", std::fs::read_to_string("src/domain/finance.rs").expect("finance module reads")),
+        (
+            "src/domain/bridge.rs",
+            std::fs::read_to_string("src/domain/bridge.rs").expect("bridge module reads"),
+        ),
+        (
+            "src/domain/business.rs",
+            std::fs::read_to_string("src/domain/business.rs").expect("business module reads"),
+        ),
+        (
+            "src/domain/contracts.rs",
+            std::fs::read_to_string("src/domain/contracts.rs").expect("contracts module reads"),
+        ),
+        (
+            "src/domain/finance.rs",
+            std::fs::read_to_string("src/domain/finance.rs").expect("finance module reads"),
+        ),
         (
             "src/domain/global_intelligence.rs",
             std::fs::read_to_string("src/domain/global_intelligence.rs")
                 .expect("global intelligence module reads"),
         ),
-        ("src/domain/identity.rs", std::fs::read_to_string("src/domain/identity.rs").expect("identity module reads")),
-        ("src/domain/risk.rs", std::fs::read_to_string("src/domain/risk.rs").expect("risk module reads")),
-        ("src/domain/scoring.rs", std::fs::read_to_string("src/domain/scoring.rs").expect("scoring module reads")),
-        ("src/domain/trading.rs", std::fs::read_to_string("src/domain/trading.rs").expect("trading module reads")),
+        (
+            "src/domain/identity.rs",
+            std::fs::read_to_string("src/domain/identity.rs").expect("identity module reads"),
+        ),
+        (
+            "src/domain/risk.rs",
+            std::fs::read_to_string("src/domain/risk.rs").expect("risk module reads"),
+        ),
+        (
+            "src/domain/scoring.rs",
+            std::fs::read_to_string("src/domain/scoring.rs").expect("scoring module reads"),
+        ),
+        (
+            "src/domain/trading.rs",
+            std::fs::read_to_string("src/domain/trading.rs").expect("trading module reads"),
+        ),
     ];
 
     for forbidden in [
@@ -427,7 +460,9 @@ fn domain_surface_exposes_no_runtime_mutation_api() {
             .lines()
             .filter(|line| {
                 let trimmed = line.trim_start();
-                !trimmed.starts_with("//!") && !trimmed.starts_with("///") && !trimmed.starts_with("//")
+                !trimmed.starts_with("//!")
+                    && !trimmed.starts_with("///")
+                    && !trimmed.starts_with("//")
             })
             .collect::<Vec<_>>()
             .join("\n");
@@ -451,5 +486,3 @@ fn domain_surface_exposes_no_runtime_mutation_api() {
         }
     }
 }
-
-

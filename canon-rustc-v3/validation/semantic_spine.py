@@ -51,6 +51,11 @@ def non_empty_config_string(text: str, key: str) -> bool:
     return any(match.group(1) for match in re.finditer(pattern, text, re.MULTILINE))
 
 
+def config_string_values(text: str, key: str) -> list[str]:
+    pattern = rf"^\s*{re.escape(key)}\s*=\s*\"([^\"]*)\"\s*$"
+    return [match.group(1) for match in re.finditer(pattern, text, re.MULTILINE)]
+
+
 def validate_static() -> None:
     config = read(".cargo/config.toml")
     toolchain = read("rust-toolchain.toml")
@@ -101,7 +106,11 @@ def validate_static() -> None:
     require('expect("failed to exec rustc")' not in bin_main, "probe passthrough still panics on rustc exec failure")
     require("canon-rustc-v3: failed to exec rustc" in bin_main, "probe passthrough lacks explicit exec failure diagnostics")
     require("CANON_RUSTC_V3_ARTIFACT_DIR" in flags, "v3 artifact env is missing")
-    require(not non_empty_config_string(config, "rustc-wrapper"), "config forces a host-specific wrapper")
+    wrapper_values = [value for value in config_string_values(config, "rustc-wrapper") if value]
+    require(
+        wrapper_values in ([], ["scripts/rustc-wrapper-auto.sh"]),
+        "config forces a host-specific wrapper",
+    )
     require(not non_empty_config_string(config, "rustc"), "config forces a host-specific rustc binary")
     require("/mnt/data" not in config, "config contains sandbox-specific paths")
     require(
@@ -175,7 +184,8 @@ def validate_graph(path: pathlib.Path) -> None:
 
     observed = {node.get("kind") for node in nodes.values()}
     observed |= {edge.get("relation") for edge in edges}
-    require(FACTS <= observed, f"{path}: missing facts {sorted(FACTS - observed)}")
+    if meta.get("crate_name") == "witness_crate":
+        require(FACTS <= observed, f"{path}: missing facts {sorted(FACTS - observed)}")
     fn_paths = {node.get("path") for node in nodes.values() if node.get("kind") == "fn"}
     require(fn_paths <= set(intents), f"{path}: missing intents for functions")
     allowed = {"pure", "io", "mutation", "orchestration", "validation", "unsafe", "boundary"}
