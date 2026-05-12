@@ -30,4 +30,11 @@ echo "== python smoke validation =="
 python3 canon-rustc-v3/validation/schema16_relation_contract.py
 python3 canon-rustc-v3/validation/semantic_spine.py
 
+echo "== score report =="
+cargo run --manifest-path score/Cargo.toml --quiet -- \
+  --artifact-root state/rustc \
+  --report SCORE_REPORT.md \
+  --date "$(date +%Y-%m-%d)"
+git add SCORE_REPORT.md
+
 echo "fast validation: pass"
