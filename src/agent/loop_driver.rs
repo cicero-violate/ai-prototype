@@ -220,9 +220,6 @@ impl LoopDriver {
             }
         }
 
-        // All loop turns completed; close the project-loop browser tab.
-        close_router_tab(tag, "project", &mut router);
-
         Ok(())
     }
 
@@ -287,13 +284,6 @@ struct RunCycleAttemptOutcome {
     completed: bool,
     reason: String,
     retry_is_safe: bool,
-}
-
-fn close_router_tab(tag: &str, label: &str, router: &mut RouterClient) {
-    match router.close_current_tab() {
-        Ok(outcome) => eprintln!("[{tag}] {label}: browser tab close outcome: {outcome:?}"),
-        Err(e) => eprintln!("[{tag}] {label}: browser tab close failed: {e}"),
-    }
 }
 
 // ── Prompt builders ───────────────────────────────────────────────────────────
