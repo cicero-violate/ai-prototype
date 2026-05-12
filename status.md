@@ -1937,3 +1937,12 @@ Planning-turn update on 2026-05-12 after graph-backed checklist rollover:
 - Inspected `examples/ollama_tool_mcp_loop_trace.rs`; `submit_llm_mcp_tool_calls(...)` still combines request construction, tool-call validation, MCP execution, per-call receipt persistence, and post-loop evidence finalization in one function.
 - Added Active Priorities items 90 and 91. Item 90 is the next executable planning/inspection item. Item 91 is the follow-on helper extraction for post-loop evidence finalization only.
 - `score.md` was not changed because this turn produced planning evidence only, not a score-history-worthy implementation or validation improvement.
+
+Implementation step 1 evidence on 2026-05-12:
+
+- Selected first unchecked Active Priorities item 90: `examples/ollama_tool_mcp_loop_trace.rs` graph-backed inspection for `submit_llm_mcp_tool_calls`.
+- Per item scope, no Rust source was edited. Inspection covered `examples/ollama_tool_mcp_loop_trace.rs` and `state/rustc/auto-refactor/..__state__rustc__ollama_tool_mcp_loop_trace__bin__graph.graph-editor-plan.json`.
+- Confirmed `SplitFn id=bf48e302ecddd798` still targets `submit_llm_mcp_tool_calls(...)`, with auto-refactor phases `parse`, `transform`, and `validate`.
+- Confirmed the smallest safe item 91 boundary is post-loop evidence finalization only: final successful receipt selection, evidence envelope submission, and `Ok(TOOL_CALL_TARGET)` return.
+- Targeted validation passed: `cargo check --example ollama_tool_mcp_loop_trace` completed successfully and refreshed the example witness with 15 nodes, 293 facts, and graph hash `3daf7128cac0a0888a62f0c1565cd6eb904ea5ab1160505d2bccd2dd3711913c`.
+- Marked item 90 complete in `plan.md`. Scores unchanged because this was inspection/planning evidence, not a score-history-worthy capability change.
