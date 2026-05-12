@@ -30,6 +30,13 @@ pub struct WorkerStateReport {
     pub legacy_paths: Vec<PathBuf>,
 }
 
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+struct CanonicalEvidenceScan {
+    latest_evaluator_result: Option<String>,
+    latest_validation_result: Option<String>,
+    latest_score_report_hash: Option<u64>,
+}
+
 pub fn canonical_tlog_path_from_dir(dir: &Path) -> PathBuf {
     dir.join("canon-agent.tlog.ndjson")
 }
@@ -87,66 +94,73 @@ pub fn introspect_canonical_tlog(
 ) -> Result<CanonicalIntrospectionReport, CanonError> {
     let path = path.as_ref();
     let tlog = load_tlog_ndjson(path)?;
-    let mut latest_evaluator_result = None;
-    let mut latest_validation_result = None;
-    let mut latest_score_report_hash = None;
-
-    if path.exists() {
-        let file = fs::File::open(path).map_err(|_| CanonError::TlogIo)?;
-        let reader = BufReader::new(file);
-        for line in reader.lines() {
-            let line = line.map_err(|_| CanonError::TlogIo)?;
-            let trimmed = line.trim();
-            if trimmed.is_empty() {
-                continue;
-            }
-            if let Ok(receipt) = decode_eval_scorecard_receipt_ndjson(trimmed) {
-                latest_evaluator_result = Some(match receipt.verdict {
-                    EvalDecision::Pass => "pass".to_string(),
-                    EvalDecision::Fail => "fail".to_string(),
-                });
-                continue;
-            }
-            let Ok(value) = serde_json::from_str::<Value>(trimmed) else {
-                continue;
-            };
-            match value.get("canonical_kind").and_then(Value::as_str) {
-                Some("validation_result") => {
-                    let record_type = value
-                        .get("record_type")
-                        .and_then(Value::as_str)
-                        .unwrap_or("unknown");
-                    let verdict = if value
-                        .get("passed")
-                        .and_then(Value::as_bool)
-                        .unwrap_or(false)
-                    {
-                        "pass"
-                    } else {
-                        "fail"
-                    };
-                    latest_validation_result = Some(format!("{record_type}:{verdict}"));
-                    if record_type.contains("evaluator") {
-                        latest_evaluator_result = Some(verdict.to_string());
-                    }
-                }
-                Some("score_report_update") => {
-                    latest_score_report_hash = value.get("report_hash").and_then(Value::as_u64);
-                }
-                _ => {}
-            }
-        }
-    }
+    let evidence = scan_canonical_tlog_evidence(path)?;
 
     Ok(CanonicalIntrospectionReport {
         canonical_path: path.to_path_buf(),
         latest_phase: tlog.last().map(|event| format!("{:?}", event.to)),
         event_count: tlog.len(),
-        latest_evaluator_result,
-        latest_validation_result,
-        latest_score_report_hash,
+        latest_evaluator_result: evidence.latest_evaluator_result,
+        latest_validation_result: evidence.latest_validation_result,
+        latest_score_report_hash: evidence.latest_score_report_hash,
         worker_state: detect_worker_state(path),
     })
+}
+
+fn scan_canonical_tlog_evidence(path: &Path) -> Result<CanonicalEvidenceScan, CanonError> {
+    let mut evidence = CanonicalEvidenceScan::default();
+
+    if !path.exists() {
+        return Ok(evidence);
+    }
+
+    let file = fs::File::open(path).map_err(|_| CanonError::TlogIo)?;
+    let reader = BufReader::new(file);
+    for line in reader.lines() {
+        let line = line.map_err(|_| CanonError::TlogIo)?;
+        let trimmed = line.trim();
+        if trimmed.is_empty() {
+            continue;
+        }
+        if let Ok(receipt) = decode_eval_scorecard_receipt_ndjson(trimmed) {
+            evidence.latest_evaluator_result = Some(match receipt.verdict {
+                EvalDecision::Pass => "pass".to_string(),
+                EvalDecision::Fail => "fail".to_string(),
+            });
+            continue;
+        }
+        let Ok(value) = serde_json::from_str::<Value>(trimmed) else {
+            continue;
+        };
+        match value.get("canonical_kind").and_then(Value::as_str) {
+            Some("validation_result") => {
+                let record_type = value
+                    .get("record_type")
+                    .and_then(Value::as_str)
+                    .unwrap_or("unknown");
+                let verdict = if value
+                    .get("passed")
+                    .and_then(Value::as_bool)
+                    .unwrap_or(false)
+                {
+                    "pass"
+                } else {
+                    "fail"
+                };
+                evidence.latest_validation_result = Some(format!("{record_type}:{verdict}"));
+                if record_type.contains("evaluator") {
+                    evidence.latest_evaluator_result = Some(verdict.to_string());
+                }
+            }
+            Some("score_report_update") => {
+                evidence.latest_score_report_hash =
+                    value.get("report_hash").and_then(Value::as_u64);
+            }
+            _ => {}
+        }
+    }
+
+    Ok(evidence)
 }
 
 fn detect_worker_state(canonical_path: &Path) -> WorkerStateReport {
