@@ -1,6 +1,8 @@
 //! Deterministic command handlers.
 
-use crate::api::protocol::{Command, CommandEnvelope, CommandLedger, ControlEventResponse};
+use crate::api::protocol::{
+    mcp_authorization_submission, Command, CommandEnvelope, CommandLedger, ControlEventResponse,
+};
 use crate::capability::{CapabilityRegistry, EvidenceSubmission};
 use crate::kernel::{Cause, Decision, EventKind, RuntimeConfig, State, TLog};
 use crate::runtime::{tick, tick_with_api_command, CanonError, CanonicalWriter, Outcome};
@@ -68,6 +70,25 @@ fn handle_command_with_receipt(
                 &mut candidate_tlog,
                 cfg,
                 batch.submission(),
+                receipt,
+            )?;
+            tick_for_command_response(&mut candidate_state, &mut candidate_tlog, cfg, receipt)?;
+        }
+        Command::AuthorizeMcpCall(request) => {
+            append_submission_event(
+                &mut candidate_state,
+                &mut candidate_tlog,
+                cfg,
+                mcp_authorization_submission(request),
+                receipt,
+            )?;
+        }
+        Command::SubmitMcpCallReceipt(receipt_record) => {
+            append_submission_event(
+                &mut candidate_state,
+                &mut candidate_tlog,
+                cfg,
+                receipt_record.submission(),
                 receipt,
             )?;
             tick_for_command_response(&mut candidate_state, &mut candidate_tlog, cfg, receipt)?;

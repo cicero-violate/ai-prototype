@@ -1,9 +1,9 @@
 //! External command/evidence protocol.
 
 use crate::capability::observation::ObservationIngressBatch;
-use crate::capability::tooling::SandboxProcessReceipt;
+use crate::capability::tooling::{McpCallReceipt, McpCallRequest, SandboxProcessReceipt};
 use crate::capability::{CapabilityRegistry, EvidenceSubmission};
-use crate::kernel::{ControlEvent, TLog};
+use crate::kernel::{ControlEvent, Evidence, GateId, TLog};
 pub use crate::runtime::{CommandLedger, CommandReceipt};
 
 pub const API_PROTOCOL_SCHEMA_VERSION: u64 = 6;
@@ -14,6 +14,8 @@ pub enum Command {
     SubmitEvidence(EvidenceSubmission),
     SubmitEvidenceBatch(Vec<EvidenceSubmission>),
     SubmitObservationIngress(ObservationIngressBatch),
+    AuthorizeMcpCall(McpCallRequest),
+    SubmitMcpCallReceipt(McpCallReceipt),
     SubmitProcessReceipt(SandboxProcessReceipt),
     SubmitProcessReceiptBatch(Vec<SandboxProcessReceipt>),
 }
@@ -35,6 +37,11 @@ impl Command {
                 batch.records.len() <= API_COMMAND_BATCH_LIMIT
                     && batch.is_contract_valid()
                     && batch.submission().is_contract_valid()
+            }
+            Self::AuthorizeMcpCall(request) => request.is_admissible(),
+            Self::SubmitMcpCallReceipt(receipt) => {
+                receipt.is_contract_valid()
+                    && receipt.registry_policy_hash == CapabilityRegistry::canonical().policy_hash()
             }
             Self::SubmitProcessReceipt(receipt) => {
                 receipt.is_contract_valid()
@@ -58,6 +65,8 @@ impl Command {
             Self::SubmitEvidence(_) => 1,
             Self::SubmitEvidenceBatch(submissions) => submissions.len(),
             Self::SubmitObservationIngress(batch) => batch.records.len(),
+            Self::AuthorizeMcpCall(_) => 1,
+            Self::SubmitMcpCallReceipt(_) => 1,
             Self::SubmitProcessReceipt(_) => 1,
             Self::SubmitProcessReceiptBatch(receipts) => receipts.len(),
         }
@@ -91,6 +100,24 @@ impl Command {
                 h ^= batch.submission().contract_hash();
                 h.wrapping_mul(0x100000001b3).max(1)
             }
+            Self::AuthorizeMcpCall(request) => {
+                let mut h = 0x4d43_5041_5554_4801u64;
+                h ^= self.submission_count() as u64;
+                h = h.wrapping_mul(0x100000001b3);
+                h ^= request.contract_hash();
+                h = h.wrapping_mul(0x100000001b3);
+                h ^= mcp_authorization_submission(*request).contract_hash();
+                h.wrapping_mul(0x100000001b3).max(1)
+            }
+            Self::SubmitMcpCallReceipt(receipt) => {
+                let mut h = 0x4d43_5052_4350_5401u64;
+                h ^= self.submission_count() as u64;
+                h = h.wrapping_mul(0x100000001b3);
+                h ^= receipt.contract_hash();
+                h = h.wrapping_mul(0x100000001b3);
+                h ^= receipt.submission().contract_hash();
+                h.wrapping_mul(0x100000001b3).max(1)
+            }
             Self::SubmitProcessReceipt(receipt) => {
                 let mut h = 0x0d6e_8feb_8665_9fd9u64;
                 h ^= self.submission_count() as u64;
@@ -114,6 +141,15 @@ impl Command {
             }
         }
     }
+}
+
+pub fn mcp_authorization_submission(request: McpCallRequest) -> EvidenceSubmission {
+    EvidenceSubmission::with_payload(
+        GateId::Plan,
+        Evidence::TaskReady,
+        false,
+        request.contract_hash(),
+    )
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

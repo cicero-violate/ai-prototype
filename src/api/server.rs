@@ -16,7 +16,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::api::protocol::{Command, CommandEnvelope};
 use crate::api::transport::{ApiTransportDisposition, ApiTransportFrame, ApiTransportSession};
-use crate::capability::{EvidenceSubmission, PacketEffect};
+use crate::capability::tooling::{Effect, McpCallReceipt, McpCallRequest, ToolEffectKind};
+use crate::capability::{CapabilityId, CapabilityRegistry, EvidenceSubmission, PacketEffect};
 use crate::error::CanonError;
 use crate::kernel::{Evidence, GateId, RuntimeConfig, State};
 use crate::runtime::CanonicalWriter;
@@ -91,6 +92,35 @@ pub struct EvidenceSubmissionDto {
     pub passed: bool,
     pub effect: Option<String>,
     pub payload_hash: u64,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+pub struct McpCallRequestDto {
+    pub registry_policy_hash: u64,
+    pub worker_url_hash: u64,
+    pub tool_name_hash: u64,
+    pub args_hash: u64,
+    pub timeout_ms: u64,
+    pub max_output_bytes: u64,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+pub struct McpCallReceiptDto {
+    pub request_hash: u64,
+    pub registry_policy_hash: u64,
+    pub worker_url_hash: u64,
+    pub tool_name_hash: u64,
+    pub args_hash: u64,
+    pub timeout_ms: u64,
+    pub max_output_bytes: u64,
+    pub effect_kind: u64,
+    pub effect_digest: u64,
+    pub effect_metadata: u64,
+    pub response_hash: u64,
+    pub response_bytes: u64,
+    pub exit_status: u64,
+    pub timed_out: bool,
+    pub receipt_hash: u64,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
@@ -182,8 +212,70 @@ fn decode_command(dto: &CommandEnvelopeDto) -> Result<Command, ServerError> {
                 .collect::<Result<Vec<_>, _>>()?;
             Ok(Command::SubmitEvidenceBatch(submissions))
         }
+        "AuthorizeMcpCall" => {
+            let request = decode_mcp_call_request(dto.payload.clone())?;
+            Ok(Command::AuthorizeMcpCall(request))
+        }
+        "SubmitMcpCallReceipt" => {
+            let receipt = decode_mcp_call_receipt(dto.payload.clone())?;
+            Ok(Command::SubmitMcpCallReceipt(receipt))
+        }
         _ => Err(ServerError::UnsupportedPayloadTag),
     }
+}
+
+fn decode_mcp_call_request(payload: serde_json::Value) -> Result<McpCallRequest, ServerError> {
+    let dto: McpCallRequestDto =
+        serde_json::from_value(payload).map_err(|_| ServerError::InvalidPayload)?;
+    let request = McpCallRequest {
+        capability: CapabilityId::Tooling,
+        registry_policy_hash: dto.registry_policy_hash,
+        worker_url_hash: dto.worker_url_hash,
+        tool_name_hash: dto.tool_name_hash,
+        args_hash: dto.args_hash,
+        timeout_ms: dto.timeout_ms,
+        max_output_bytes: dto.max_output_bytes,
+    };
+    if request.registry_policy_hash != CapabilityRegistry::canonical().policy_hash()
+        || !request.is_admissible()
+    {
+        return Err(ServerError::InvalidCommand);
+    }
+    Ok(request)
+}
+
+fn decode_mcp_call_receipt(payload: serde_json::Value) -> Result<McpCallReceipt, ServerError> {
+    let dto: McpCallReceiptDto =
+        serde_json::from_value(payload).map_err(|_| ServerError::InvalidPayload)?;
+    let effect_kind = match dto.effect_kind {
+        2 => ToolEffectKind::Process,
+        _ => return Err(ServerError::InvalidPayload),
+    };
+    let receipt = McpCallReceipt {
+        request_hash: dto.request_hash,
+        registry_policy_hash: dto.registry_policy_hash,
+        worker_url_hash: dto.worker_url_hash,
+        tool_name_hash: dto.tool_name_hash,
+        args_hash: dto.args_hash,
+        timeout_ms: dto.timeout_ms,
+        max_output_bytes: dto.max_output_bytes,
+        effect: Effect {
+            kind: effect_kind,
+            digest: dto.effect_digest,
+            metadata: dto.effect_metadata,
+        },
+        response_hash: dto.response_hash,
+        response_bytes: dto.response_bytes,
+        exit_status: dto.exit_status,
+        timed_out: dto.timed_out,
+        receipt_hash: dto.receipt_hash,
+    };
+    if receipt.registry_policy_hash != CapabilityRegistry::canonical().policy_hash()
+        || !receipt.is_contract_valid()
+    {
+        return Err(ServerError::InvalidCommand);
+    }
+    Ok(receipt)
 }
 
 fn decode_submission(payload: serde_json::Value) -> Result<EvidenceSubmission, ServerError> {

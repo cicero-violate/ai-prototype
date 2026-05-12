@@ -1,7 +1,7 @@
 use ai::{
     build_router, resume_durable_runtime, tick, ApiTransportLedger, ApiTransportSession, Command,
     CommandEnvelope, CommandLedger, EvidenceSubmission, EvidenceSubmissionDto, McpCallReceipt,
-    McpCallRequest, RuntimeConfig, State, StateDto, TLog, WorkerAppState,
+    McpCallRequest, RuntimeConfig, State, StateDto, TLog, ToolEffectKind, WorkerAppState,
 };
 use axum::body::{to_bytes, Body};
 use axum::http::{Request, StatusCode};
@@ -93,6 +93,57 @@ fn command_body_with_payload(
         "command_hash": envelope.command_hash,
         "payload_tag": "SubmitEvidence",
         "payload": payload,
+    })
+}
+
+fn mcp_request_payload(request: &McpCallRequest) -> serde_json::Value {
+    serde_json::json!({
+        "registry_policy_hash": request.registry_policy_hash,
+        "worker_url_hash": request.worker_url_hash,
+        "tool_name_hash": request.tool_name_hash,
+        "args_hash": request.args_hash,
+        "timeout_ms": request.timeout_ms,
+        "max_output_bytes": request.max_output_bytes,
+    })
+}
+
+fn mcp_receipt_payload(receipt: &McpCallReceipt) -> serde_json::Value {
+    serde_json::json!({
+        "request_hash": receipt.request_hash,
+        "registry_policy_hash": receipt.registry_policy_hash,
+        "worker_url_hash": receipt.worker_url_hash,
+        "tool_name_hash": receipt.tool_name_hash,
+        "args_hash": receipt.args_hash,
+        "timeout_ms": receipt.timeout_ms,
+        "max_output_bytes": receipt.max_output_bytes,
+        "effect_kind": receipt.effect.kind as u64,
+        "effect_digest": receipt.effect.digest,
+        "effect_metadata": receipt.effect.metadata,
+        "response_hash": receipt.response_hash,
+        "response_bytes": receipt.response_bytes,
+        "exit_status": receipt.exit_status,
+        "timed_out": receipt.timed_out,
+        "receipt_hash": receipt.receipt_hash,
+    })
+}
+
+fn mcp_authorize_body(command_id: u64, request: &McpCallRequest) -> serde_json::Value {
+    let envelope = CommandEnvelope::new(command_id, Command::AuthorizeMcpCall(*request));
+    serde_json::json!({
+        "command_id": envelope.command_id,
+        "command_hash": envelope.command_hash,
+        "payload_tag": "AuthorizeMcpCall",
+        "payload": mcp_request_payload(request),
+    })
+}
+
+fn mcp_receipt_body(command_id: u64, receipt: &McpCallReceipt) -> serde_json::Value {
+    let envelope = CommandEnvelope::new(command_id, Command::SubmitMcpCallReceipt(receipt.clone()));
+    serde_json::json!({
+        "command_id": envelope.command_id,
+        "command_hash": envelope.command_hash,
+        "payload_tag": "SubmitMcpCallReceipt",
+        "payload": mcp_receipt_payload(receipt),
     })
 }
 
@@ -400,6 +451,86 @@ async fn command_route_accepts_mcp_receipt_submission_and_persists_tlog() {
     assert_eq!(response.request_id, 1);
     assert_eq!(response.disposition, "accepted");
     assert_eq!(state.snapshot().unwrap().tlog_len, 2);
+    assert!(std::fs::metadata(&path).unwrap().len() > 0);
+    let _ = std::fs::remove_file(path);
+}
+
+#[tokio::test]
+async fn command_route_authorizes_mcp_then_records_receipt_in_tlog() {
+    let path = tlog_path("mcp-authorize-then-receipt");
+    let _ = std::fs::remove_file(&path);
+    let mut execute_state = State::ready();
+    execute_state.phase = ai::Phase::Execute;
+    let session = ApiTransportSession::from_parts(
+        execute_state,
+        TLog::default(),
+        RuntimeConfig::default(),
+        CommandLedger::default(),
+        ApiTransportLedger::default(),
+    )
+    .expect("execute-phase session should verify");
+    let state = WorkerAppState::new(session, &path);
+    let app = build_router(state.clone());
+
+    let request = McpCallRequest::new(
+        ai::CapabilityRegistry::canonical(),
+        "http://127.0.0.1:38469/mcp_worker",
+        "shell",
+        r#"{"cwd":".","command":"true"}"#,
+        1000,
+        4096,
+    );
+
+    let authorization_response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/v1/command")
+                .header("Content-Type", "application/json")
+                .body(Body::from(mcp_authorize_body(50, &request).to_string()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    let authorization_response: ai::CommandResponseDto =
+        ok_response_json(authorization_response).await;
+    assert!(authorization_response.ok);
+    assert_eq!(authorization_response.disposition, "accepted");
+    assert_eq!(state.snapshot().unwrap().tlog_len, 1);
+
+    let receipt = McpCallReceipt::from_response(
+        &request,
+        br#"{"jsonrpc":"2.0","id":1,"result":{"content":[{"type":"text","text":"ok"}]}}"#,
+        0,
+        false,
+    );
+    assert_eq!(receipt.effect.kind, ToolEffectKind::Process);
+    assert!(receipt.is_valid_for(&request));
+
+    let receipt_response = app
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/v1/command")
+                .header("Content-Type", "application/json")
+                .body(Body::from(mcp_receipt_body(51, &receipt).to_string()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    let receipt_response: ai::CommandResponseDto = ok_response_json(receipt_response).await;
+    assert!(receipt_response.ok);
+    assert_eq!(receipt_response.disposition, "accepted");
+    assert_eq!(state.snapshot().unwrap().tlog_len, 3);
+
+    let replay =
+        ai::replay_report_ndjson(execute_state, &path).expect("authorized mcp tlog replays");
+    assert_eq!(replay.event_count, 3);
+    assert_eq!(
+        replay.final_state.gates.execution.evidence,
+        ai::Evidence::ExecutionReceipt
+    );
     assert!(std::fs::metadata(&path).unwrap().len() > 0);
     let _ = std::fs::remove_file(path);
 }

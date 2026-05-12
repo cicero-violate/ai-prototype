@@ -20,12 +20,12 @@ pub mod timing;
 pub mod validation_harness;
 
 pub use crate::api::protocol::{
-    Command, CommandEnvelope, ControlEventResponse, API_COMMAND_BATCH_LIMIT,
-    API_PROTOCOL_SCHEMA_VERSION,
+    mcp_authorization_submission, Command, CommandEnvelope, ControlEventResponse,
+    API_COMMAND_BATCH_LIMIT, API_PROTOCOL_SCHEMA_VERSION,
 };
 pub use crate::api::server::{
     build_router, CommandEnvelopeDto, CommandResponseDto, ErrorDto, EvidenceSubmissionDto,
-    ServerError, StateDto, WorkerAppState,
+    McpCallReceiptDto, McpCallRequestDto, ServerError, StateDto, WorkerAppState,
 };
 pub use crate::api::transport::{
     api_transport_receipt_replay_classification,
