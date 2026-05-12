@@ -1987,3 +1987,13 @@ Planning-turn update on 2026-05-12 after Active Priorities exhaustion:
 - Inspected `../chatgpt-mcp-connector/src/tools.rs`; `shell(args, workspace)` still combines command parsing, timeout/output limit parsing, workspace cwd resolution, `/bin/sh -c` spawn, bounded stdout/stderr reader tasks, timeout/kill handling, task joins, output rendering, and MCP JSON response construction.
 - Added Active Priorities items 92 and 93. Item 92 is the next executable inspection item. Item 93 is a placeholder implementation item constrained to the item-92-approved helper boundary.
 - `score.md` was not changed because this planning turn produced no implementation, validation, graph refresh, or score-history-worthy capability improvement.
+
+Implementation step 1 evidence on 2026-05-12:
+
+- Selected first unchecked Active Priorities item 92: `../chatgpt-mcp-connector/src/tools.rs` graph-backed inspection for `tools::shell`.
+- Per item scope, no Rust source was edited. Inspection covered `../chatgpt-mcp-connector/src/tools.rs` and `state/rustc/auto-refactor/..__state__rustc__chatgpt_mcp_connector__bin__graph.graph-editor-plan.json`.
+- Confirmed `SplitFn id=ce8d33f07ffdaae6` still targets `tools::shell`, with expected range `61721..67160`, split phases `parse` and `transform`, generated names `shell__parse` and `shell__transform`, and `preserve_original_signature` delegation.
+- Confirmed the smallest safe item 93 boundary is post-execution shell output rendering only: after process wait and stdout/stderr reader joins, assemble stdout/stderr text, truncation annotations, exit/success/timed-out metadata, and final MCP JSON response in helper `render_shell_response(...)`.
+- The item 93 boundary intentionally leaves command validation, `timeout_ms` and `max_output_bytes` parsing, workspace lock/cwd resolution, process spawn, stdout/stderr bounded reader tasks, timeout kill behavior, and pipe-reader join error handling in `shell(...)`.
+- Targeted validation passed: `cd ../chatgpt-mcp-connector && cargo check` completed successfully and refreshed the connector witness with 3,694 nodes, 20,989 facts, and graph hash `7e91fd466d80a1e8ee1d9a171d3c20a5e38ce5046d6e6fa87ec60ab1b2be8009`.
+- Marked item 92 complete in `plan.md`. Scores unchanged because this was inspection/planning evidence, not a score-history-worthy capability change.
