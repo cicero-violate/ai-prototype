@@ -429,6 +429,22 @@ fn write_md_table(
     Ok(())
 }
 
+fn write_aggregate_scores_section(buf: &mut Vec<u8>, agg: &[f64; 6], g: f64) -> Result<()> {
+    writeln!(buf, "## Aggregate Scores")?;
+    writeln!(buf)?;
+    writeln!(buf, "```text")?;
+    for (i, &name) in AXES.iter().enumerate() {
+        let score = agg[i];
+        writeln!(buf, "{name:<20} = {score:.1}")?;
+    }
+    writeln!(buf)?;
+    let g_str = format!("{g:.2}");
+    writeln!(buf, "G (geometric mean)   = {g_str} / 10")?;
+    writeln!(buf, "```")?;
+    writeln!(buf)?;
+    Ok(())
+}
+
 fn write_report(
     path: &Path,
     stats: &[CrateStats],
@@ -446,18 +462,7 @@ fn write_report(
         stats.len()
     )?;
     writeln!(buf)?;
-    writeln!(buf, "## Aggregate Scores")?;
-    writeln!(buf)?;
-    writeln!(buf, "```text")?;
-    for (i, &name) in AXES.iter().enumerate() {
-        let score = agg[i];
-        writeln!(buf, "{name:<20} = {score:.1}")?;
-    }
-    writeln!(buf)?;
-    let g_str = format!("{g:.2}");
-    writeln!(buf, "G (geometric mean)   = {g_str} / 10")?;
-    writeln!(buf, "```")?;
-    writeln!(buf)?;
+    write_aggregate_scores_section(&mut buf, agg, g)?;
 
     // per-crate table: crate name left, all numbers right
     writeln!(buf, "## Per-Crate Breakdown")?;
