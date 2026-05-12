@@ -7,6 +7,7 @@
 use std::env;
 use std::io::{self, Read, Write};
 use std::net::TcpStream;
+use std::thread;
 use std::time::{Duration, Instant};
 
 use serde_json::Value;
@@ -19,6 +20,9 @@ use crate::capability::llm::openai::{
 use crate::capability::llm::transport::{
     chat_completions_path, parse_local_http_endpoint, LocalEndpointError,
 };
+
+const TRANSIENT_ROUTER_ATTEMPTS: u32 = 3;
+const TRANSIENT_ROUTER_BACKOFF_MS: u64 = 250;
 
 pub struct RouterClient {
     inner: OpenAiClient,
@@ -76,7 +80,9 @@ impl RouterClient {
             return Ok(RouterTabCloseOutcome::NoTarget);
         };
 
-        let outcome = close_browser_tab_for_url(&target_url, self.inner.config().timeout_ms)?;
+        let outcome = retry_transient_router_io(|| {
+            close_browser_tab_for_url(&target_url, self.inner.config().timeout_ms)
+        })?;
         if matches!(outcome, RouterTabCloseOutcome::Closed) {
             self.target_url = None;
         }
@@ -90,7 +96,7 @@ impl RouterClient {
             None => OpenAiBrowserOptions::new_chat(),
         };
         let request = request.with_browser(browser);
-        let response = self.inner.chat_with_request(&request)?;
+        let response = retry_transient_router_io(|| self.inner.chat_with_request(&request))?;
         if let Some(url) = response.target_url.clone() {
             self.target_url = Some(url);
         }
@@ -164,6 +170,38 @@ impl RouterClient {
             finish_reason,
         })
     }
+}
+
+fn retry_transient_router_io<T>(
+    mut op: impl FnMut() -> Result<T, OpenAiError>,
+) -> Result<T, OpenAiError> {
+    let mut attempt = 0;
+    loop {
+        match op() {
+            Ok(value) => return Ok(value),
+            Err(err)
+                if is_transient_router_io_error(&err)
+                    && attempt + 1 < TRANSIENT_ROUTER_ATTEMPTS =>
+            {
+                attempt += 1;
+                thread::sleep(Duration::from_millis(
+                    TRANSIENT_ROUTER_BACKOFF_MS * u64::from(attempt),
+                ));
+            }
+            Err(err) => return Err(err),
+        }
+    }
+}
+
+fn is_transient_router_io_error(err: &OpenAiError) -> bool {
+    matches!(
+        err,
+        OpenAiError::Io(io_err)
+            if matches!(
+                io_err.kind(),
+                io::ErrorKind::WouldBlock | io::ErrorKind::TimedOut | io::ErrorKind::Interrupted
+            )
+    )
 }
 
 fn close_browser_tab_for_url(
@@ -561,5 +599,59 @@ mod tests {
         );
         assert!(!response_bytes_have_done_frame(response.as_bytes()));
         assert!(!response_text_has_done_frame(response));
+    }
+
+    #[test]
+    fn transient_router_io_classifier_accepts_retryable_errors() {
+        for kind in [
+            io::ErrorKind::WouldBlock,
+            io::ErrorKind::TimedOut,
+            io::ErrorKind::Interrupted,
+        ] {
+            let err = OpenAiError::Io(io::Error::new(kind, "transient router io"));
+            assert!(is_transient_router_io_error(&err));
+        }
+    }
+
+    #[test]
+    fn transient_router_io_classifier_rejects_non_retryable_errors() {
+        let err = OpenAiError::Io(io::Error::new(
+            io::ErrorKind::ConnectionRefused,
+            "router is down",
+        ));
+        assert!(!is_transient_router_io_error(&err));
+    }
+
+    #[test]
+    fn retry_transient_router_io_retries_then_succeeds() {
+        let mut attempts = 0;
+        let result = retry_transient_router_io(|| {
+            attempts += 1;
+            if attempts == 1 {
+                return Err(OpenAiError::Io(io::Error::new(
+                    io::ErrorKind::WouldBlock,
+                    "router temporarily unavailable",
+                )));
+            }
+            Ok("ok")
+        });
+
+        assert_eq!(result.unwrap(), "ok");
+        assert_eq!(attempts, 2);
+    }
+
+    #[test]
+    fn retry_transient_router_io_does_not_retry_non_transient_error() {
+        let mut attempts = 0;
+        let result: Result<(), OpenAiError> = retry_transient_router_io(|| {
+            attempts += 1;
+            Err(OpenAiError::Io(io::Error::new(
+                io::ErrorKind::ConnectionRefused,
+                "router is down",
+            )))
+        });
+
+        assert!(result.is_err());
+        assert_eq!(attempts, 1);
     }
 }
