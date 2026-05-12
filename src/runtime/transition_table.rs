@@ -10,7 +10,7 @@ pub(crate) struct Transition {
     pub(crate) cause: Cause,
 }
 
-pub(crate) const TRANSITIONS: [Transition; 46] = [
+pub(crate) const TRANSITIONS: [Transition; 49] = [
     Transition {
         from: Phase::Delta,
         to: Phase::Invariant,
@@ -220,6 +220,24 @@ pub(crate) const TRANSITIONS: [Transition; 46] = [
         to: Phase::Done,
         kind: EventKind::Failed,
         cause: Cause::RecoveryLimit,
+    },
+    Transition {
+        from: Phase::Recovery,
+        to: Phase::Recovery,
+        kind: EventKind::Persisted,
+        cause: Cause::Persisted,
+    },
+    Transition {
+        from: Phase::Recovery,
+        to: Phase::Recovery,
+        kind: EventKind::Persisted,
+        cause: Cause::EvidenceSubmitted,
+    },
+    Transition {
+        from: Phase::Persist,
+        to: Phase::Persist,
+        kind: EventKind::Persisted,
+        cause: Cause::EvidenceSubmitted,
     },
     Transition {
         from: Phase::Persist,

@@ -57,6 +57,22 @@ Current date: 2026-05-11.
 
 ## Validation Ledger
 
+### 2026-05-11 — implementation step 3 item 58 full-suite validation blocked by connector HTTP 502
+
+- Scope: Active Priorities item 58, `src/agent/loop_driver.rs::LoopDriver::run_cycle` existing `run_cycle_attempt(...)` helper extraction validation.
+- Command/check: `cargo fmt --check && TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`; follow-up partial check `cargo fmt --check` and `rg -n "fn run_cycle\\(|fn run_cycle_attempt|enum RunCycleAttemptOutcome|fn retry_attempt_label|streaming_turn|ChunkLogger|OpenAiChatRequest" src/agent/loop_driver.rs`.
+- Result: blocked by infrastructure transport.
+- Evidence: the required full-suite validation command returned connector HTTP 502 before usable Rust output. The follow-up `cargo fmt --check` completed successfully, and symbol inspection confirmed `run_cycle` at line 129, `run_cycle_attempt` at line 238, delegated `ChunkLogger`/`OpenAiChatRequest`/`RouterClient::streaming_turn` work at lines 250-257, `retry_attempt_label` at line 684, and the retry-label unit test at line 881. No Rust source, formatter, or test failure was observed, but green full-suite Rust validation output was not obtained.
+- Next action: retry item 58 validation when connector transport can return full command output; mark item 58 complete only after both `cargo fmt --check` and `cargo test --all-targets` return green output.
+
+### 2026-05-11 — implementation step 2 item 58 validation blocked by connector HTTP 502
+
+- Scope: Active Priorities item 58, `src/agent/loop_driver.rs::LoopDriver::run_cycle` existing `run_cycle_attempt(...)` helper extraction validation.
+- Command/check: `cargo fmt --check && TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`; follow-up retry `cargo fmt --check` plus `rg -n "fn run_cycle\\(|fn run_cycle_attempt|enum RunCycleAttemptOutcome|fn retry_attempt_label|streaming_turn|ChunkLogger|OpenAiChatRequest" src/agent/loop_driver.rs`.
+- Result: blocked by infrastructure transport.
+- Evidence: the required full-suite validation command returned connector HTTP 502 before usable Rust output. The follow-up formatter/source-inspection command also returned connector HTTP 502 before output. No Rust source, formatter, or test failure was observed. Item 58 remains unchecked because green full-suite validation output was not obtained.
+- Next action: retry item 58 validation when connector transport can return command output; mark item 58 complete only after both `cargo fmt --check` and `cargo test --all-targets` return green output.
+
 ### 2026-05-11 — implementation step 1 item 58 full-suite validation blocked by connector HTTP 502
 
 - Scope: Active Priorities item 58, `src/agent/loop_driver.rs::LoopDriver::run_cycle` existing `run_cycle_attempt(...)` helper extraction validation.

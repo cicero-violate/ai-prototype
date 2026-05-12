@@ -1,7 +1,7 @@
 //! Stable supervisor binary.
 //!
-//! The supervisor owns worker process lifecycle and serves reload/health routes.
-//! It never proxies API commands; callers submit commands to the active worker.
+//! The supervisor owns worker process lifecycle, serves reload/health routes,
+//! and exposes a stable command gateway for the active worker.
 
 #![forbid(unsafe_code)]
 
@@ -14,8 +14,10 @@ use std::time::{Duration, Instant};
 
 use ai::agent::{AgentLoopConfig, LoopDriver};
 
+use axum::body::Bytes;
 use axum::extract::State as AxumState;
 use axum::http::StatusCode;
+use axum::response::IntoResponse;
 use axum::routing::{get, post};
 use axum::{Json, Router};
 use serde::Serialize;
@@ -81,7 +83,7 @@ fn print_help() {
     println!("usage: supervisor [--help]");
     println!("environment: SUPERVISOR_PORT, AI_TLOG_DIR, AI_WORKER_BIN, AI_MCP_WORKER_URL");
     println!("             AI_AGENT_BIN, CANON_OPENAI_BASE_URL, PROJECT_DIR, MCP_CONNECTOR_URL");
-    println!("routes: GET /health, POST /reload, POST /spawn");
+    println!("routes: GET /health, POST /reload, POST /spawn, POST /v1/command");
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -317,6 +319,13 @@ impl WorkerProcess {
             worker_port,
         })
     }
+
+    fn active_worker_port(&self) -> Result<u16, String> {
+        self.active
+            .as_ref()
+            .map(|worker| worker.port)
+            .ok_or_else(|| "no active worker — call /reload first".to_string())
+    }
 }
 
 struct WorkerInstance {
@@ -377,6 +386,7 @@ fn build_router(state: SupervisorState) -> Router {
         .route("/health", get(health))
         .route("/reload", post(reload))
         .route("/spawn", post(spawn_agent_handler))
+        .route("/v1/command", post(command_gateway))
         .with_state(state)
 }
 
@@ -404,6 +414,67 @@ async fn spawn_agent_handler(
         .spawn_agent(&body.domain, &body.metric, max_steps)
         .map(Json)
         .map_err(error_response)
+}
+
+async fn command_gateway(
+    AxumState(state): AxumState<SupervisorState>,
+    body: Bytes,
+) -> Result<impl IntoResponse, (StatusCode, Json<ErrorDto>)> {
+    let body_len = body.len();
+    let (command_id, payload_tag) = command_log_fields(&body);
+    let worker_port = {
+        let mut guard = state.inner.lock().await;
+        guard.reap_retired().await;
+        guard.active_worker_port().map_err(error_response)?
+    };
+
+    eprintln!(
+        "supervisor: received MCP command via /v1/command  command_id={} payload_tag={} bytes={} -> worker_port={}",
+        command_id, payload_tag, body_len, worker_port
+    );
+
+    let url = format!("http://127.0.0.1:{worker_port}/v1/command");
+    let response = reqwest::Client::new()
+        .post(url)
+        .header("content-type", "application/json")
+        .body(body.to_vec())
+        .send()
+        .await
+        .map_err(|err| error_response(format!("worker command proxy failed: {err}")))?;
+
+    let status = StatusCode::from_u16(response.status().as_u16())
+        .map_err(|err| error_response(format!("invalid worker status: {err}")))?;
+    let bytes = response
+        .bytes()
+        .await
+        .map_err(|err| error_response(format!("worker command body read failed: {err}")))?;
+
+    eprintln!(
+        "supervisor: completed MCP command via /v1/command  command_id={} payload_tag={} status={} response_bytes={}",
+        command_id,
+        payload_tag,
+        status.as_u16(),
+        bytes.len()
+    );
+
+    Ok((status, bytes))
+}
+
+fn command_log_fields(body: &[u8]) -> (String, String) {
+    let Ok(value) = serde_json::from_slice::<serde_json::Value>(body) else {
+        return ("<invalid-json>".to_string(), "<invalid-json>".to_string());
+    };
+    let command_id = value
+        .get("command_id")
+        .and_then(|v| v.as_u64())
+        .map(|v| v.to_string())
+        .unwrap_or_else(|| "<missing>".to_string());
+    let payload_tag = value
+        .get("payload_tag")
+        .and_then(|v| v.as_str())
+        .unwrap_or("<missing>")
+        .to_string();
+    (command_id, payload_tag)
 }
 
 async fn spawn_worker(
