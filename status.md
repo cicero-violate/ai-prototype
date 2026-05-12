@@ -48,7 +48,7 @@ Current date: 2026-05-12.
 - P3 runtime and receipt correctness: complete for current scope.
 - P4 graph source-of-truth integration: mostly complete for deterministic fixture/report evidence; agent-driven graph editing remains intentionally deferred until P5 domain surfaces are validated.
 - P5 domain intelligence layer: active. `src/domain/contracts.rs` constructor and invariant tests through unsafe live-effect rejection are complete in local source, with prior targeted validation passing 7 contract tests.
-- Active Priorities items 25 through 94 are complete in the working tree. The graph-backed `../chatgpt-mcp-connector/src/tools.rs::shell(...)` helper extraction now has green connector validation when tests use a workspace-local `TMPDIR`.
+- Active Priorities items 25 through 94 are complete in the working tree. The graph-backed `../chatgpt-mcp-connector/src/tools.rs::shell(...)` helper extraction now has green connector validation when tests use a workspace-local `TMPDIR`. Planning selected item 95 as the next executable item: inspect `src/agent/loop_driver.rs::run_cycle(...)` and confirm the safe prompt/label derivation helper boundary before item 96 implementation.
 - `src/domain/business.rs` contains `BusinessOpportunity`, `WorkflowAutomationCandidate`, `CustomerFeedbackSignal`, `monetization_score(...)`, compile-smoke test `business_module_records_and_score_helper_compile`, deterministic repeatability test `business_monetization_score_is_deterministic`, and bounded-score test `business_monetization_score_is_bounded`, with broader business validation passing 3 tests after correcting the bounded test scalar assertion.
 - `src/domain/identity.rs` currently contains `DomainHash`, `DomainHashInput<'a>`, `canonical_json_bytes(record)`, `domain_hash_json(record)`, `domain_hash_parts(parts)`, `stable_domain_id(parts)`, and six passing targeted identity tests through `domain_hash_changes_when_schema_version_changes`.
 - `src/domain/scoring.rs` currently contains validated `BoundedScore` helpers, score-input breakdown helpers, conservative `verdict_for_scores(...)`, and passing `verdict_ignore_thresholds`, `verdict_watch_thresholds`, `verdict_research_thresholds`, `verdict_act_business_thresholds`, `verdict_act_finance_research_thresholds`, `verdict_simulate_trading_thresholds`, and `verdict_block_thresholds`; explicit verdict threshold tests are complete for the current scoring scope.
@@ -56,6 +56,14 @@ Current date: 2026-05-12.
 - Domain fixture JSON files exist under `tests/fixtures/domain/` for global signal, business workflow opportunity, finance hypothesis research, trading simulation sandbox, and trading live blocked cases; `tests/test_domain_fixture_contract.py` now includes explicit risk-result and required-field assertions. Item 51 graph analyzer now exists and passes against `state/rustc/ai/graph.json`, reporting 752 compiled P5 domain-node matches. Item 52 malformed-input self-check also passes. Remaining work includes item 50 full-suite Rust validation and later graph evidence refresh/score review items gated on full-suite output.
 
 ## Validation Ledger
+
+### 2026-05-12 — planning selected item 95 LoopDriver run_cycle inspection
+
+- Scope: `plan.md`, `status.md`, `score.md`, `SCORE_REPORT.md`, `state/rustc/auto-refactor/..__state__rustc__ai__graph.graph-editor-plan.json`, and `src/agent/loop_driver.rs`.
+- Command/check: `grep -n "^[0-9][0-9]*\. \[ \]" plan.md | head -20`; auto-refactor JSON inspection for current `SplitFn` candidates; source inspection of `src/agent/loop_driver.rs::run_cycle(...)` and MCP workspace helpers.
+- Result: informational.
+- Evidence: Active Priorities had no unchecked items after item 94. Current graph-derived scores still show Structure as the lowest aggregate axis at `4.8`, with low per-crate structure/simplicity in small loop/example crates and `chatgpt_mcp_connector` structure at `3.4`. Reconnaissance found current split candidates in `state/rustc/auto-refactor/..__state__rustc__ai__graph.graph-editor-plan.json` for `agent::router::send_streaming_request` and `agent::cycle::AgentCycle::run`; local source inspection confirmed `src/agent/loop_driver.rs::run_cycle(...)` remains a current small manual helper-extraction candidate. The next checklist now selects source inspection for `run_cycle(...)` before extracting only per-turn label/mode/prompt derivation.
+- Next action: execute item 95 by inspecting `src/agent/loop_driver.rs::run_cycle(...)` and recording the exact helper boundary; run `cargo check` before marking it complete.
 
 ### 2026-05-12 — implementation step 2 item 94 shell response helper validation
 
