@@ -268,15 +268,16 @@ impl LoopDriver {
     /// Called after each successful loop cycle.
     fn run_certification(&self, cycle_num: u64, tag: &str) {
         let mode = LoopMode::WorkerCertification;
-        let Some(worker_port) = self.config.worker_port else {
+        let Some(mut worker_port) = self.config.worker_port else {
             return;
         };
 
         // If a supervisor is configured, reload the worker to get a fresh state.
         if let Some(sup_port) = self.config.supervisor_port {
             eprintln!("[{tag}] cert: reloading worker via supervisor (port {sup_port})");
-            match supervisor_reload(sup_port) {
-                Ok(_) => {
+            match supervisor_reload(sup_port, worker_port) {
+                Ok(reloaded_worker_port) => {
+                    worker_port = reloaded_worker_port;
                     eprintln!("[{tag}] cert: waiting for worker on port {worker_port}");
                     if !wait_for_worker_healthy(worker_port, 30) {
                         eprintln!(
@@ -755,8 +756,8 @@ fn read_file_truncated(path: &Path, max_chars: usize) -> String {
         .unwrap_or_default()
 }
 
-/// POST /reload to the supervisor and return when it responds 200/204.
-fn supervisor_reload(supervisor_port: u16) -> Result<(), String> {
+/// POST /reload to the supervisor and return the active worker port.
+fn supervisor_reload(supervisor_port: u16, fallback_worker_port: u16) -> Result<u16, String> {
     let mut stream = TcpStream::connect(("127.0.0.1", supervisor_port))
         .map_err(|e| format!("supervisor connect: {e}"))?;
     stream.set_read_timeout(Some(Duration::from_secs(10))).ok();
@@ -780,11 +781,27 @@ fn supervisor_reload(supervisor_port: u16) -> Result<(), String> {
         .and_then(|s| s.parse().ok())
         .unwrap_or(0);
 
-    if status == 200 || status == 204 {
-        Ok(())
-    } else {
-        Err(format!("supervisor /reload returned HTTP {status}"))
+    match status {
+        200 => parse_reload_worker_port(&response),
+        204 => Ok(fallback_worker_port),
+        _ => Err(format!("supervisor /reload returned HTTP {status}")),
     }
+}
+
+fn parse_reload_worker_port(response: &str) -> Result<u16, String> {
+    let body = response
+        .split_once("\r\n\r\n")
+        .map(|(_, body)| body)
+        .or_else(|| response.split_once("\n\n").map(|(_, body)| body))
+        .ok_or_else(|| "supervisor /reload response missing body".to_string())?;
+    let json: serde_json::Value =
+        serde_json::from_str(body).map_err(|e| format!("supervisor /reload JSON: {e}"))?;
+    let port = json
+        .get("active")
+        .and_then(|active| active.get("worker_port"))
+        .and_then(serde_json::Value::as_u64)
+        .ok_or_else(|| "supervisor /reload response missing active.worker_port".to_string())?;
+    u16::try_from(port).map_err(|_| format!("supervisor /reload worker_port out of range: {port}"))
 }
 
 /// Poll the worker health endpoint until it responds OK or the timeout expires.
@@ -867,5 +884,19 @@ mod tests {
         assert!(objective.success_metric.chars().count() <= 301);
 
         let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn supervisor_reload_response_parses_fresh_worker_port() {
+        let response = "HTTP/1.1 200 OK\r\ncontent-type: application/json\r\n\r\n{\"ok\":true,\"active\":{\"generation\":2,\"worker_port\":41234}}";
+
+        assert_eq!(parse_reload_worker_port(response).unwrap(), 41234);
+    }
+
+    #[test]
+    fn supervisor_reload_response_rejects_missing_worker_port() {
+        let response = "HTTP/1.1 200 OK\r\n\r\n{\"ok\":true,\"active\":{\"generation\":2}}";
+
+        assert!(parse_reload_worker_port(response).is_err());
     }
 }
