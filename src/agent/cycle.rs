@@ -169,71 +169,47 @@ impl AgentCycle {
 
             match phase.as_str() {
                 "Analysis" => {
-                    let output = self.llm_phase_turn(
+                    if let Some(reason) = self.run_llm_gate_phase(
                         loop_steps,
                         "Analysis",
-                        "analysis phase",
                         prompt::analysis_prompt(&domain, &metric),
-                    )?;
-                    if output.contains(SENTINEL_REVIEW) {
-                        stop_reason = StopReason::HumanReviewRequired;
+                        &mut invariant_submitted,
+                    )? {
+                        stop_reason = reason;
                         break;
-                    }
-                    let passed = parse_verdict(&output);
-                    if !invariant_submitted {
-                        self.submit_evidence("Invariant", "InvariantProof", true);
-                        invariant_submitted = true;
-                    }
-                    if let Some((gate, evidence)) = phase_gate("Analysis") {
-                        self.submit_evidence(gate, evidence, passed);
                     }
                 }
                 "Judgment" => {
-                    let output = self.llm_phase_turn(
+                    if let Some(reason) = self.run_llm_gate_phase(
                         loop_steps,
                         "Judgment",
-                        "judgment phase",
                         prompt::judgment_prompt(&domain, &self.last_llm_output),
-                    )?;
-                    if output.contains(SENTINEL_REVIEW) {
-                        stop_reason = StopReason::HumanReviewRequired;
+                        &mut invariant_submitted,
+                    )? {
+                        stop_reason = reason;
                         break;
-                    }
-                    let passed = parse_verdict(&output);
-                    if let Some((gate, evidence)) = phase_gate("Judgment") {
-                        self.submit_evidence(gate, evidence, passed);
                     }
                 }
                 "Plan" => {
-                    let output = self.llm_phase_turn(
+                    if let Some(reason) = self.run_llm_gate_phase(
                         loop_steps,
                         "Plan",
-                        "plan phase",
                         prompt::plan_prompt(&domain, &self.last_llm_output),
-                    )?;
-                    if output.contains(SENTINEL_REVIEW) {
-                        stop_reason = StopReason::HumanReviewRequired;
+                        &mut invariant_submitted,
+                    )? {
+                        stop_reason = reason;
                         break;
-                    }
-                    let passed = parse_verdict(&output);
-                    if let Some((gate, evidence)) = phase_gate("Plan") {
-                        self.submit_evidence(gate, evidence, passed);
                     }
                 }
                 "Eval" => {
-                    let output = self.llm_phase_turn(
+                    if let Some(reason) = self.run_llm_gate_phase(
                         loop_steps,
                         "Eval",
-                        "eval phase",
                         prompt::eval_prompt(&domain, &metric, &self.last_llm_output),
-                    )?;
-                    if output.contains(SENTINEL_REVIEW) {
-                        stop_reason = StopReason::HumanReviewRequired;
+                        &mut invariant_submitted,
+                    )? {
+                        stop_reason = reason;
                         break;
-                    }
-                    let passed = parse_verdict(&output);
-                    if let Some((gate, evidence)) = phase_gate("Eval") {
-                        self.submit_evidence(gate, evidence, passed);
                     }
                 }
                 "Recovery" => {
@@ -284,6 +260,30 @@ impl AgentCycle {
             final_phase,
             final_tlog_len,
         })
+    }
+
+    fn run_llm_gate_phase(
+        &mut self,
+        loop_steps: u64,
+        phase: &str,
+        prompt: String,
+        invariant_submitted: &mut bool,
+    ) -> Result<Option<StopReason>, CycleError> {
+        let rationale = format!("{} phase", phase.to_ascii_lowercase());
+        let output = self.llm_phase_turn(loop_steps, phase, rationale, prompt)?;
+        if output.contains(SENTINEL_REVIEW) {
+            return Ok(Some(StopReason::HumanReviewRequired));
+        }
+
+        let passed = parse_verdict(&output);
+        if phase == "Analysis" && !*invariant_submitted {
+            self.submit_evidence("Invariant", "InvariantProof", true);
+            *invariant_submitted = true;
+        }
+        if let Some((gate, evidence)) = phase_gate(phase) {
+            self.submit_evidence(gate, evidence, passed);
+        }
+        Ok(None)
     }
 
     fn run_recovery_phase(
