@@ -57,6 +57,22 @@ Current date: 2026-05-11.
 
 ## Validation Ledger
 
+### 2026-05-11 — planning/status scoped commit blocked by rustc-wrapper hook loader
+
+- Scope: scoped commit for `plan.md` and `status.md` planning-turn updates only.
+- Command/check: `git add plan.md status.md && git commit -m "Plan item 58 validation focus"`.
+- Result: blocked by repository hook infrastructure.
+- Evidence: the pre-commit hook ran `scripts/validate-fast.sh`; `cargo fmt --check` passed, then `cargo check` failed before source validation because `canon-rustc-v3/scripts/canon-rustc-v3` could not load `librustc_driver-61971b66f7da0581.so` and exited 127. This is hook/runtime infrastructure evidence, not a planning-file or Rust source failure. The staged diff is limited to `plan.md` and `status.md`.
+- Next action: retry the scoped commit when the Canon rustc-wrapper hook loader is available, or use a repository-approved wrapper-disabled validation/commit path if policy permits.
+
+### 2026-05-11 — planning turn item 58 remains first incomplete executable item
+
+- Scope: `plan.md`, `status.md`, `score.md`, `SCORE_REPORT.md`, `state/rustc/auto-refactor/*.graph-editor-plan.json`, and `src/agent/loop_driver.rs` symbol inspection.
+- Command/check: inspected current planning/status/scoring files, graph-derived score report, auto-refactor plan inventory, working-tree status, and `src/agent/loop_driver.rs` symbols with `rg -n "struct LoopDriver|fn run_cycle\\(|fn run_cycle_attempt|RunCycleAttemptOutcome|retry_attempt_label|streaming_turn" src/agent/loop_driver.rs`.
+- Result: informational.
+- Evidence: item 58 is the first unchecked executable checklist item. Source inspection found `run_cycle` at line 129, `run_cycle_attempt` at line 238, `RunCycleAttemptOutcome` at line 365, and `retry_attempt_label` at line 684. `SCORE_REPORT.md` still reports Structure as the lowest aggregate graph-derived axis at `4.8`, supporting continued small graph-backed helper-extraction validation before advancing to `sync_mcp_workspace` or other split candidates. The working tree also contains unrelated modified source files `src/agent/cycle.rs` and `src/agent/prompt.rs`; this planning turn does not touch or stage them.
+- Next action: execute Active Priorities item 58 by running `cargo fmt --check && TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`; mark item 58 complete only after green output.
+
 ### 2026-05-11 — implementation step 5 item 58 validation blocked by connector HTTP 502
 
 - Scope: Active Priorities item 58, `src/agent/loop_driver.rs::LoopDriver::run_cycle` existing `run_cycle_attempt(...)` helper extraction validation.
