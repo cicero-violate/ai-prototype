@@ -331,10 +331,10 @@ Ordered execute-turn checklist, one file or one test per item. Implementation it
    - Scope: `scripts/analyze_graph_json.py` only.
    - Done when: the script exits nonzero for malformed graph input or missing required metadata and still passes against `state/rustc/ai/graph.json`.
    - Validation: `python3 scripts/analyze_graph_json.py state/rustc/ai/graph.json && python3 scripts/analyze_graph_json.py tests/fixtures/domain/global_signal_macro.json >/tmp/analyze_graph_json_negative.out 2>/tmp/analyze_graph_json_negative.err; test $? -ne 0` passed on 2026-05-11; the malformed fixture exited 1 with missing graph keys `edges`, `intents`, `meta`, and `nodes`.
-53. [ ] `state/rustc/ai/graph.json`: after item 50 is green, re-capture or regenerate the Rust graph evidence so compiled P5 `domain::` nodes appear.
+53. [x] `state/rustc/ai/graph.json`: after item 50 is green, re-capture or regenerate the Rust graph evidence so compiled P5 `domain::` nodes appear.
    - Scope: `state/rustc/ai/graph.json` and generated graph evidence artifacts only.
    - Done when: refreshed graph evidence includes compiled P5 `domain::` or `src/domain` nodes and current graph hash/counts.
-   - Validation: `python3 scripts/analyze_graph_json.py state/rustc/ai/graph.json`.
+   - Validation: `python3 scripts/analyze_graph_json.py state/rustc/ai/graph.json` passed on 2026-05-11 with schema version 16, graph hash `2399ea73e0eccc81561d2f1f3aaedb1692d965e0a4dfcbe6c0e2c4cb3e67f664`, receipt hash `5fe7df2837b97ed8ebf73c0eb7de3284c57be55ab7d3d8803bf094708ad5bbde`, risk hash `6101aa0240348d6458bd941fd932e5dceb6a577a3e90e04df4790eda615a2a9a`, 5,337 nodes, 33,179 edges, 3,453 intents, and 752 compiled P5 domain-node matches; broader `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets` output captured from the transport-interrupted run shows all listed suites passing with 0 failures.
 54. [ ] `status.md`: record the refreshed graph schema/hash/node evidence after item 53.
    - Scope: `status.md` Evidence Summary and Validation Ledger only.
    - Done when: status records the new graph hash, node count, edge count, intent count, and P5 domain-node evidence.

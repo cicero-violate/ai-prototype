@@ -57,6 +57,14 @@ Current date: 2026-05-11.
 
 ## Validation Ledger
 
+### 2026-05-11 — item 53 refreshed graph evidence
+
+- Scope: Active Priorities item 53, `state/rustc/ai/graph.json` graph evidence refresh/validation.
+- Command/check: `python3 scripts/analyze_graph_json.py state/rustc/ai/graph.json`; broader check `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets` retained output in `/tmp/item53_cargo_test_all_targets.out` after connector HTTP 502 interrupted the tool response.
+- Result: passed for targeted graph validation; broader validation output also showed passing Rust suites with 0 failures.
+- Evidence: analyzer reported schema version 16, graph hash `2399ea73e0eccc81561d2f1f3aaedb1692d965e0a4dfcbe6c0e2c4cb3e67f664`, receipt hash `5fe7df2837b97ed8ebf73c0eb7de3284c57be55ab7d3d8803bf094708ad5bbde`, risk hash `6101aa0240348d6458bd941fd932e5dceb6a577a3e90e04df4790eda615a2a9a`, 5,337 nodes, 33,179 edges, 3,453 intents, node-kind counts `enum 90`, `fn 3453`, `impl 1582`, `struct 206`, `trait 1`, `ty_alias 5`, and 752 compiled P5 domain-node matches. The retained broader-validation output showed 258 library tests, 10 API server contract tests, 20 API transport contract tests, 3 canonical TLog contract tests, 4 domain contract tests, 10 graph mutation CLI contract tests, 9 MCP receipt contract tests, 2 planning contract tests, 5 score contract tests, 2 supervisor binary contract tests, 352 validation harness contract tests, 2 worker binary contract tests, and all listed zero-test binary/example harnesses passing with 0 failures.
+- Next action: proceed to item 54 to record refreshed graph schema/hash/node evidence in the status evidence summary.
+
 ### 2026-05-11 — item 50 full-suite Rust validation green
 
 - Scope: Active Priorities item 50, full Rust workspace validation gate.

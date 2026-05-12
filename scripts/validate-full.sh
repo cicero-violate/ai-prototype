@@ -3,6 +3,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
+export LD_LIBRARY_PATH="$(rustc --print sysroot)/lib:${LD_LIBRARY_PATH:-}"
 
 REPORT_DIR="${REPORT_DIR:-state/rustc}"
 WRAPPER="$ROOT/canon-rustc-v3/target/debug/canon-rustc-v3"
