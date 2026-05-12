@@ -57,6 +57,14 @@ Current date: 2026-05-11.
 
 ## Validation Ledger
 
+### 2026-05-11 — git hooks reload supervisor after passing validation
+
+- Scope: git hook installation and supervisor reload helper.
+- Command/check: `scripts/install-git-hooks.sh`, `scripts/reload-supervisor-after-validation.sh`, `bash -n scripts/reload-supervisor-after-validation.sh`, `bash -n scripts/install-git-hooks.sh`, `bash -n .git/hooks/pre-commit`, and `bash -n .git/hooks/pre-push`.
+- Result: passed.
+- Evidence: `scripts/install-git-hooks.sh` now writes hooks that run `scripts/validate-fast.sh` or `scripts/validate-full.sh` first, then call `scripts/reload-supervisor-after-validation.sh` only after validation succeeds. The installed `.git/hooks/pre-commit` and `.git/hooks/pre-push` both contain the reload helper call. Direct helper execution successfully POSTed `/reload` to supervisor port 9100 and printed `supervisor reload: pass port=9100`; shell syntax checks passed.
+- Next action: preserve post-validation ordering in hooks; set `REQUIRE_SUPERVISOR_RELOAD=1` only in automation that should fail when supervisor reload is unavailable.
+
 ### 2026-05-11 — supervisor hot-reload contract assertion
 
 - Scope: supervisor hot-reload behavior in `tests/supervisor_binary_contract.rs`.

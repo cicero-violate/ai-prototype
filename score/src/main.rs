@@ -83,9 +83,15 @@ struct CrateStats {
 fn collect_stats(graph: &CrateGraph) -> CrateStats {
     let mut fn_count = 0usize;
     let mut trait_impl_count = 0usize;
-    for node in graph.nodes.values() {
+    let mut structural_fns: BTreeSet<&str> = BTreeSet::new();
+    for (name, node) in &graph.nodes {
         match node.kind.as_str() {
-            "fn" => fn_count += 1,
+            "fn" => {
+                if !is_synthetic_derive_fn(name) {
+                    fn_count += 1;
+                    structural_fns.insert(name.as_str());
+                }
+            }
             "trait" | "impl" => trait_impl_count += 1,
             _ => {}
         }
@@ -99,16 +105,22 @@ fn collect_stats(graph: &CrateGraph) -> CrateStats {
 
     for edge in &graph.edges {
         match edge.relation.as_str() {
-            "call" => {
+            "call" if structural_fns.contains(edge.from.as_str()) => {
                 *call_out.entry(edge.from.as_str()).or_insert(0) += 1;
-                *call_in.entry(edge.to.as_str()).or_insert(0) += 1;
+                if structural_fns.contains(edge.to.as_str()) {
+                    *call_in.entry(edge.to.as_str()).or_insert(0) += 1;
+                }
             }
             "similar" => similar_count += 1,
             "phase" => {
-                phase_fns.insert(edge.from.as_str());
+                if structural_fns.contains(edge.from.as_str()) {
+                    phase_fns.insert(edge.from.as_str());
+                }
             }
             "mut" | "io" | "unsafe" | "panic" | "alloc" => {
-                risk_fns.insert(edge.from.as_str());
+                if structural_fns.contains(edge.from.as_str()) {
+                    risk_fns.insert(edge.from.as_str());
+                }
             }
             _ => {}
         }
@@ -117,7 +129,11 @@ fn collect_stats(graph: &CrateGraph) -> CrateStats {
     let pure_with_risk = graph
         .intents
         .iter()
-        .filter(|(path, intent)| *intent == "pure" && risk_fns.contains(path.as_str()))
+        .filter(|(path, intent)| {
+            structural_fns.contains(path.as_str())
+                && *intent == "pure"
+                && risk_fns.contains(path.as_str())
+        })
         .count();
 
     let call_fanout_total: u64 = call_out.values().map(|&v| v as u64).sum();
@@ -139,6 +155,33 @@ fn collect_stats(graph: &CrateGraph) -> CrateStats {
         intents: graph.intents.clone(),
         pure_with_risk,
     }
+}
+
+fn is_synthetic_derive_fn(name: &str) -> bool {
+    if !name.starts_with('<') {
+        return false;
+    }
+
+    let Some((_, method)) = name.rsplit_once("::") else {
+        return false;
+    };
+
+    let derives_trait = [
+        " as std::clone::Clone>",
+        " as std::cmp::Eq>",
+        " as std::cmp::PartialEq>",
+        " as std::default::Default>",
+        " as std::fmt::Debug>",
+        " as std::hash::Hash>",
+    ]
+    .iter()
+    .any(|needle| name.contains(needle));
+
+    derives_trait
+        && matches!(
+            method,
+            "clone" | "assert_fields_are_eq" | "eq" | "default" | "fmt" | "hash"
+        )
 }
 
 // ── scoring ───────────────────────────────────────────────────────────────────

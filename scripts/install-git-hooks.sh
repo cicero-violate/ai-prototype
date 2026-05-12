@@ -14,7 +14,8 @@ cat > "$HOOK_DIR/pre-commit" <<'HOOK'
 set -euo pipefail
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 cd "$REPO_ROOT"
-exec scripts/validate-fast.sh
+scripts/validate-fast.sh
+scripts/reload-supervisor-after-validation.sh
 HOOK
 
 cat > "$HOOK_DIR/pre-push" <<'HOOK'
@@ -22,8 +23,10 @@ cat > "$HOOK_DIR/pre-push" <<'HOOK'
 set -euo pipefail
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 cd "$REPO_ROOT"
-exec scripts/validate-full.sh
+scripts/validate-full.sh
+scripts/reload-supervisor-after-validation.sh
 HOOK
 
+chmod +x "$ROOT/scripts/reload-supervisor-after-validation.sh"
 chmod +x "$HOOK_DIR/pre-commit" "$HOOK_DIR/pre-push"
 echo "installed hooks: $HOOK_DIR/pre-commit $HOOK_DIR/pre-push"

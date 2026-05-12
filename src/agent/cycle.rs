@@ -2,6 +2,13 @@
 //!
 //! Success rule: success=true ONLY when the worker runtime reports phase=Done.
 //! LLM output is a signal, not an authority. The runtime is the authority.
+//!
+//! This type is the small certification loop used after the outer project loop
+//! has finished its file-editing turns. It does not mutate runtime state
+//! directly. Instead it observes the worker phase, asks the router/LLM for the
+//! semantic evidence required by that phase, submits typed evidence through the
+//! worker API, and then observes the next runtime phase. The worker's reducer
+//! and TLog decide whether submitted evidence advances the objective.
 
 use crate::agent::objective::AgentObjective;
 use crate::agent::prompt;
@@ -56,12 +63,20 @@ impl std::fmt::Display for CycleError {
 }
 
 pub struct AgentCycle {
+    /// Router/LLM session used only to produce phase-specific semantic text.
     router: RouterClient,
+    /// Worker API client. All durable state changes pass through this client.
     worker: WorkerClient,
+    /// Stable objective text supplied to every phase prompt.
     objective: AgentObjective,
+    /// Hard stop preventing an unbounded certification loop.
     max_steps: u64,
+    /// Local receipt summary for the LLM turns and evidence submissions made by
+    /// this cycle. The authoritative record remains the worker TLog.
     steps: Vec<AgentStep>,
+    /// Monotonic command id for evidence submissions to the worker.
     next_command_id: u64,
+    /// Most recent LLM output. Later phase prompts use it as semantic context.
     last_llm_output: String,
 }
 
@@ -112,6 +127,10 @@ impl AgentCycle {
         let metric = self.objective.success_metric.clone();
 
         // Step 0: planning turn.
+        //
+        // The plan is intentionally not treated as success. It is just the
+        // first LLM-produced semantic artifact, recorded with a response hash
+        // so later review can connect the phase evidence back to the request.
         self.last_llm_output = {
             let score_report = std::fs::read_to_string("SCORE_REPORT.md").ok();
             let messages = vec![
@@ -147,6 +166,10 @@ impl AgentCycle {
 
         // Phase-dispatch loop. The runtime phase drives submissions; LLM output
         // only supplies semantic content and a pass/fail verdict for LLM phases.
+        //
+        // Invariant: the cycle may submit evidence, but it never declares the
+        // objective complete. Completion is recognized only after observing the
+        // worker in phase=Done.
         let mut stop_reason = StopReason::MaxStepsReached;
         let mut loop_steps = 0u64;
         let mut invariant_submitted = false;
@@ -157,7 +180,9 @@ impl AgentCycle {
             }
             loop_steps += 1;
 
-            // Observe: check worker phase and tlog progress.
+            // Observe: check worker phase and TLog progress before deciding the
+            // next action. This keeps the LLM behind the deterministic runtime
+            // boundary: stale model output cannot skip a phase.
             let state_body = self.observe()?;
             let phase = extract_phase(&state_body).unwrap_or_default();
 
