@@ -237,31 +237,11 @@ impl AgentCycle {
                     }
                 }
                 "Recovery" => {
-                    let failure = extract_json_string(&state_body, "failure")
-                        .unwrap_or_else(|| "Unknown".into());
-                    let recovery_action = extract_json_string(&state_body, "recovery_action");
-                    let target_phase = recovery_action
-                        .as_deref()
-                        .and_then(recovery_target_phase)
-                        .unwrap_or("Unknown");
-                    let output = self.llm_phase_turn(
-                        loop_steps,
-                        "Recovery",
-                        "recovery phase",
-                        prompt::recovery_prompt(&domain, &failure, target_phase),
-                    )?;
-                    if output.contains(SENTINEL_REVIEW) {
-                        stop_reason = StopReason::HumanReviewRequired;
+                    if let Some(reason) =
+                        self.run_recovery_phase(loop_steps, &domain, &state_body)?
+                    {
+                        stop_reason = reason;
                         break;
-                    }
-                    let passed = parse_verdict(&output);
-                    let selected_action = recovery_action
-                        .as_deref()
-                        .or_else(|| recovery_action_for_failure(&failure));
-                    if let Some(action) = selected_action {
-                        if let Some((gate, evidence)) = recovery_gate(action) {
-                            self.submit_evidence(gate, evidence, passed);
-                        }
                     }
                 }
                 "Invariant" => {
@@ -304,6 +284,40 @@ impl AgentCycle {
             final_phase,
             final_tlog_len,
         })
+    }
+
+    fn run_recovery_phase(
+        &mut self,
+        loop_steps: u64,
+        domain: &str,
+        state_body: &str,
+    ) -> Result<Option<StopReason>, CycleError> {
+        let failure =
+            extract_json_string(state_body, "failure").unwrap_or_else(|| "Unknown".into());
+        let recovery_action = extract_json_string(state_body, "recovery_action");
+        let target_phase = recovery_action
+            .as_deref()
+            .and_then(recovery_target_phase)
+            .unwrap_or("Unknown");
+        let output = self.llm_phase_turn(
+            loop_steps,
+            "Recovery",
+            "recovery phase",
+            prompt::recovery_prompt(domain, &failure, target_phase),
+        )?;
+        if output.contains(SENTINEL_REVIEW) {
+            return Ok(Some(StopReason::HumanReviewRequired));
+        }
+        let passed = parse_verdict(&output);
+        let selected_action = recovery_action
+            .as_deref()
+            .or_else(|| recovery_action_for_failure(&failure));
+        if let Some(action) = selected_action {
+            if let Some((gate, evidence)) = recovery_gate(action) {
+                self.submit_evidence(gate, evidence, passed);
+            }
+        }
+        Ok(None)
     }
 
     fn run_planning_turn(&mut self, domain: &str, metric: &str) -> Result<(), CycleError> {
