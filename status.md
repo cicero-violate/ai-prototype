@@ -57,6 +57,38 @@ Current date: 2026-05-11.
 
 ## Validation Ledger
 
+### 2026-05-11 — implementation step 4 item 58 validation blocked by connector HTTP 502
+
+- Scope: Active Priorities item 58, `src/agent/loop_driver.rs::LoopDriver::run_cycle` existing `run_cycle_attempt(...)` helper extraction validation.
+- Command/check: `cargo fmt --check && TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`; retry `cargo fmt --check`.
+- Result: blocked by infrastructure transport.
+- Evidence: the exact validation command returned connector HTTP 502 before usable Rust output. The formatter-only retry also returned connector HTTP 502 before output. No Rust compile, formatting, source-inspection, or test failure was observed. Item 58 remains unchecked because green validation output was not obtained.
+- Next action: retry item 58 validation when connector transport can return command output; mark item 58 complete and commit only after `cargo fmt --check` and full-suite Rust validation return green output.
+
+### 2026-05-11 — implementation step 3 item 58 validation blocked by connector HTTP 502
+
+- Scope: Active Priorities item 58, `src/agent/loop_driver.rs::LoopDriver::run_cycle` existing `run_cycle_attempt(...)` helper extraction validation.
+- Command/check: `cargo fmt --check && TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`; follow-up `rg -n "fn run_cycle\(|fn run_cycle_attempt\(|struct RunCycleAttemptOutcome|fn retry_attempt_label" src/agent/loop_driver.rs && cargo fmt --check`.
+- Result: blocked by infrastructure transport.
+- Evidence: both the exact validation command and the narrower source-symbol/formatting command returned connector HTTP 502 before usable output. No Rust compile, formatting, source-inspection, or test failure was observed. Item 58 remains unchecked because green validation output was not obtained.
+- Next action: retry item 58 validation when connector transport can return command output; mark item 58 complete and commit only after `cargo fmt --check` and full-suite Rust validation return green output.
+
+### 2026-05-11 — implementation step 2 item 58 validation blocked by connector HTTP 502
+
+- Scope: Active Priorities item 58, `src/agent/loop_driver.rs::LoopDriver::run_cycle` existing `run_cycle_attempt(...)` helper extraction validation.
+- Command/check: `cargo fmt --check && TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`; follow-up `rg -n "fn run_cycle\(|fn run_cycle_attempt\(|RunCycleAttemptOutcome|retry_attempt_label" src/agent/loop_driver.rs && sed -n '150,285p' src/agent/loop_driver.rs && cargo fmt --check`.
+- Result: blocked by infrastructure transport.
+- Evidence: both the exact validation command and the narrower source-inspection/formatting command returned connector HTTP 502 before usable output. No Rust compile, formatting, or test failure was observed. The item remains unchecked because full-suite green output was not obtained.
+- Next action: retry item 58 validation when connector transport can return command output; mark item 58 complete and commit only after `cargo fmt --check` and full-suite Rust validation return green output.
+
+### 2026-05-11 — implementation step 1 item 58 validation blocked by connector HTTP 502
+
+- Scope: Active Priorities item 58, `src/agent/loop_driver.rs::LoopDriver::run_cycle` existing `run_cycle_attempt(...)` helper extraction validation.
+- Command/check: `sed -n '150,285p' src/agent/loop_driver.rs && cargo fmt --check && TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`; retry `cargo fmt --check`; typed evaluator suite `rust_full_validation` with candidate `item58-run-cycle-attempt-validation`.
+- Result: blocked by infrastructure transport.
+- Evidence: the exact combined validation command returned connector HTTP 502 before usable source or Rust output. The narrower `cargo fmt --check` retry also returned connector HTTP 502 before output. The first typed evaluator call reported that `candidate_id` was required for failed terminal evidence; the retry with candidate id returned connector HTTP 502 before evaluator output. No Rust compile, formatting, or test failure was observed.
+- Next action: retry item 58 validation when connector transport can return command output; mark item 58 complete and commit only after `cargo fmt --check` and full-suite Rust validation return green output.
+
 ### 2026-05-11 — planning/status commit blocked by rustc-wrapper hook loader
 
 - Scope: Commit for `plan.md` and `status.md` planning/status updates.
