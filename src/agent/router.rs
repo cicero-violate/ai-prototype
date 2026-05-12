@@ -562,7 +562,14 @@ fn send_streaming_request(
         }
     }
 
-    let full_response = String::from_utf8_lossy(&full_response);
+    finalize_streaming_response(&full_response, logger)
+}
+
+fn finalize_streaming_response(
+    full_response: &[u8],
+    logger: &mut ChunkLogger,
+) -> Result<crate::agent::sse::SseResult, OpenAiError> {
+    let full_response = String::from_utf8_lossy(full_response);
 
     let (head, raw_body) = full_response
         .split_once("\r\n\r\n")
