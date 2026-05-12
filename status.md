@@ -57,6 +57,22 @@ Current date: 2026-05-11.
 
 ## Validation Ledger
 
+### 2026-05-11 — planning commit hook blocker
+
+- Scope: planning-only commit for `plan.md` and `status.md`.
+- Command/check: `git add plan.md status.md && git commit -m "Plan post-validation split refactor candidates"`.
+- Result: blocked by repository hook infrastructure.
+- Evidence: pre-commit validation reached `cargo fmt --check` and `cargo check`; `cargo check` failed before product validation because `canon-rustc-v3/scripts/canon-rustc-v3` could not load `librustc_driver-61971b66f7da0581.so`. The failure is the same rustc-wrapper shared-library blocker already observed in item 50 evidence, not a planning-file content failure.
+- Next action: retry the scoped planning commit with the rustc wrapper disabled for the hook environment, or leave the planning changes uncommitted if repository policy requires the wrapper-backed hook.
+
+### 2026-05-11 — planning turn validation-gate and auto-refactor reconnaissance
+
+- Scope: `plan.md`, `status.md`, `score.md`, `SCORE_REPORT.md`, Active Priorities items 50-56, and `state/rustc/auto-refactor/*.graph-editor-plan.json`.
+- Command/check: inspected the current plan/status/score files and graph-derived score report; inspected auto-refactor JSON with Python; attempted a bounded evidence refresh over `scripts/analyze_graph_json.py`, tests, and selected graph symbols.
+- Result: informational planning update completed; scores unchanged.
+- Evidence: item 50 remains the first incomplete Active Priorities item and still requires full Rust workspace output before it can be marked complete. Items 51 and 52 are complete graph-analysis tooling; item 53 remains gated on item 50. `SCORE_REPORT.md` reports Structure as the lowest graph-derived axis at `4.8`. Auto-refactor evidence includes plausible future `SplitFn` candidates for `agent::loop_driver::LoopDriver::run_cycle`, `agent::loop_driver::sync_mcp_workspace`, `agent::cycle::AgentCycle::run`, `agent::router::send_streaming_request`, `graph_mutation::generate_graph_patch`, and `capability::tooling::record::process::LiveSandboxProcessExecutor::execute_authorized_process`; generated `merge_surface` recommendations remain noisy and deferred. One evidence-inspection shell call returned connector HTTP 502, and one later combined bounded shell command was blocked by tool safety checks before product output; neither produced source-failure or score-changing evidence.
+- Next action: retry item 50 when connector transport can return Rust output; after item 50 and refreshed graph evidence are complete, select the smallest graph-backed `SplitFn` planning item rather than broad merge-surface cleanup.
+
 ### 2026-05-11 — score report improvement validation
 
 - Scope: `score/src/main.rs`, `SCORE_REPORT.md`, git hook reload path, and graph-derived score evidence.
