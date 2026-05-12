@@ -623,12 +623,7 @@ fn sync_mcp_workspace(mcp_url: &str, project_dir: &Path) -> Result<(), String> {
     let mut response = String::new();
     stream.read_to_string(&mut response).ok();
 
-    let status: u16 = response
-        .lines()
-        .next()
-        .and_then(|l| l.split_whitespace().nth(1))
-        .and_then(|s| s.parse().ok())
-        .unwrap_or(0);
+    let status = parse_mcp_workspace_status(&response);
 
     if status != 200 && status != 201 {
         return Err(format!("MCP workspace sync returned HTTP {status}"));
@@ -652,6 +647,15 @@ fn parse_mcp_workspace_endpoint(mcp_url: &str) -> Result<(String, u16), String> 
     } else {
         Ok((host_port.to_string(), 80u16))
     }
+}
+
+fn parse_mcp_workspace_status(response: &str) -> u16 {
+    response
+        .lines()
+        .next()
+        .and_then(|line| line.split_whitespace().nth(1))
+        .and_then(|status| status.parse().ok())
+        .unwrap_or(0)
 }
 
 fn build_mcp_workspace_request(host: &str, port: u16, project_dir: &Path) -> String {
@@ -726,6 +730,18 @@ mod tests {
         assert!(parse_mcp_workspace_endpoint("http://localhost:not-a-port")
             .unwrap_err()
             .contains("invalid port"));
+    }
+
+    #[test]
+    fn mcp_workspace_status_parser_accepts_success_and_defaults_invalid() {
+        assert_eq!(parse_mcp_workspace_status("HTTP/1.1 200 OK\r\n"), 200);
+        assert_eq!(parse_mcp_workspace_status("HTTP/1.1 201 Created\r\n"), 201);
+        assert_eq!(parse_mcp_workspace_status("HTTP/1.1 500 Error\r\n"), 500);
+        assert_eq!(
+            parse_mcp_workspace_status("HTTP/1.1 not-a-code Error\r\n"),
+            0
+        );
+        assert_eq!(parse_mcp_workspace_status(""), 0);
     }
 
     #[test]

@@ -48,7 +48,7 @@ Current date: 2026-05-12.
 - P3 runtime and receipt correctness: complete for current scope.
 - P4 graph source-of-truth integration: mostly complete for deterministic fixture/report evidence; agent-driven graph editing remains intentionally deferred until P5 domain surfaces are validated.
 - P5 domain intelligence layer: active. `src/domain/contracts.rs` constructor and invariant tests through unsafe live-effect rejection are complete in local source, with prior targeted validation passing 7 contract tests.
-- Active Priorities items 25 through 76 are complete in the working tree. Item 77 is the next executable item: extract `parse_mcp_workspace_status(response: &str) -> u16` in `src/agent/loop_driver.rs` while preserving `sync_mcp_workspace(...)` endpoint parsing, TCP request/response behavior, and error strings.
+- Active Priorities items 25 through 77 are complete in the working tree. Item 77 extracted the MCP workspace response status parser in `src/agent/loop_driver.rs` while preserving endpoint parsing, request/response behavior, and error strings.
 - `src/domain/business.rs` contains `BusinessOpportunity`, `WorkflowAutomationCandidate`, `CustomerFeedbackSignal`, `monetization_score(...)`, compile-smoke test `business_module_records_and_score_helper_compile`, deterministic repeatability test `business_monetization_score_is_deterministic`, and bounded-score test `business_monetization_score_is_bounded`, with broader business validation passing 3 tests after correcting the bounded test scalar assertion.
 - `src/domain/identity.rs` currently contains `DomainHash`, `DomainHashInput<'a>`, `canonical_json_bytes(record)`, `domain_hash_json(record)`, `domain_hash_parts(parts)`, `stable_domain_id(parts)`, and six passing targeted identity tests through `domain_hash_changes_when_schema_version_changes`.
 - `src/domain/scoring.rs` currently contains validated `BoundedScore` helpers, score-input breakdown helpers, conservative `verdict_for_scores(...)`, and passing `verdict_ignore_thresholds`, `verdict_watch_thresholds`, `verdict_research_thresholds`, `verdict_act_business_thresholds`, `verdict_act_finance_research_thresholds`, `verdict_simulate_trading_thresholds`, and `verdict_block_thresholds`; explicit verdict threshold tests are complete for the current scoring scope.
@@ -56,6 +56,14 @@ Current date: 2026-05-12.
 - Domain fixture JSON files exist under `tests/fixtures/domain/` for global signal, business workflow opportunity, finance hypothesis research, trading simulation sandbox, and trading live blocked cases; `tests/test_domain_fixture_contract.py` now includes explicit risk-result and required-field assertions. Item 51 graph analyzer now exists and passes against `state/rustc/ai/graph.json`, reporting 752 compiled P5 domain-node matches. Item 52 malformed-input self-check also passes. Remaining work includes item 50 full-suite Rust validation and later graph evidence refresh/score review items gated on full-suite output.
 
 ## Validation Ledger
+
+### 2026-05-12 — item 77 MCP workspace status-parser extraction passed
+
+- Scope: Active Priorities item 77, `src/agent/loop_driver.rs`, `sync_mcp_workspace(...)`, and the MCP workspace helper tests.
+- Command/check: targeted status-parser test, grouped `cargo test mcp_workspace`, `cargo fmt --check`, and full `cargo test --all-targets`.
+- Result: passed.
+- Evidence: `sync_mcp_workspace(...)` now delegates response status extraction to a private helper. The focused status-parser test passed with 1 test and 0 failures. The grouped MCP workspace validation passed with 3 tests and 0 failures, covering endpoint parsing, request building, and status parsing. The plan-listed companion command used two Cargo test filters and was replaced by the equivalent grouped filter after Cargo rejected the syntax before running product tests. `cargo fmt --check` passed. Full-suite validation passed with 272 library tests, 11 API server contract tests, 20 API transport contract tests, 3 canonical TLog contract tests, 4 domain contract tests, 10 graph mutation CLI contract tests, 9 MCP receipt contract tests, 2 planning contract tests, 5 score contract tests, 2 supervisor binary contract tests, 352 validation harness contract tests, and 2 worker binary contract tests, all with 0 failures.
+- Next action: run the next planning turn to select the next graph-backed, file-scoped improvement after item 77.
 
 ### 2026-05-12 — planning selected MCP workspace status-parser extraction
 
