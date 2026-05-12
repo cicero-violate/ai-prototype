@@ -286,7 +286,10 @@ impl AgentCycle {
                         break;
                     }
                     let passed = parse_verdict(&output);
-                    if let Some(action) = recovery_action.as_deref() {
+                    let selected_action = recovery_action
+                        .as_deref()
+                        .or_else(|| recovery_action_for_failure(&failure));
+                    if let Some(action) = selected_action {
                         if let Some((gate, evidence)) = recovery_gate(action) {
                             self.submit_evidence(gate, evidence, passed);
                         }
@@ -308,7 +311,11 @@ impl AgentCycle {
                         self.submit_evidence(gate, evidence, true);
                     }
                 }
-                "Persist" => {}
+                "Persist" | "Learn" => {
+                    if let Some((gate, evidence)) = phase_gate("Learning") {
+                        self.submit_evidence(gate, evidence, true);
+                    }
+                }
                 _ => {}
             }
         }
@@ -450,7 +457,7 @@ fn parse_verdict(text: &str) -> bool {
                 None
             }
         })
-        .unwrap_or(true)
+        .unwrap_or(false)
 }
 
 fn phase_gate(phase: &str) -> Option<(&'static str, &'static str)> {
@@ -459,9 +466,26 @@ fn phase_gate(phase: &str) -> Option<(&'static str, &'static str)> {
         "Analysis" => Some(("Analysis", "AnalysisReport")),
         "Judgment" => Some(("Judgment", "JudgmentRecord")),
         "Plan" => Some(("Plan", "TaskReady")),
-        "Execute" => Some(("Execution", "ExecutionReceipt")),
+        "Execute" => Some(("Execution", "ArtifactReceipt")),
         "Verify" => Some(("Verification", "LineageProof")),
         "Eval" => Some(("Eval", "EvalScore")),
+        "Learning" => Some(("Learning", "PolicyPromotion")),
+        _ => None,
+    }
+}
+
+fn recovery_action_for_failure(failure: &str) -> Option<&'static str> {
+    match failure {
+        "InvariantUnknown" | "InvariantBlocked" => Some("RecheckInvariant"),
+        "AnalysisMissing" | "AnalysisFailed" => Some("RunAnalysis"),
+        "JudgmentMissing" | "JudgmentFailed" => Some("Rejudge"),
+        "PlanMissing" | "PlanFailed" => Some("Replan"),
+        "PlanReadyQueueEmpty" => Some("BindReadyTask"),
+        "ExecutionMissing" | "ExecutionFailed" | "TaskReceiptMissing" => Some("Reexecute"),
+        "VerificationUnknown" | "VerificationFailed" => Some("Reverify"),
+        "ArtifactLineageBroken" => Some("RepairArtifactLineage"),
+        "EvalMissing" | "EvalFailed" => Some("RecomputeEval"),
+        "RecoveryExhausted" | "ConvergenceFailed" => Some("Escalate"),
         _ => None,
     }
 }
@@ -656,6 +680,41 @@ mod hash_tests {
     use crate::api::protocol::{Command, CommandEnvelope};
     use crate::capability::{EvidenceSubmission, PacketEffect};
     use crate::kernel::{Evidence, GateId};
+
+    #[test]
+    fn verdict_parser_requires_explicit_verdict() {
+        assert!(parse_verdict("evidence is coherent\nVERDICT: pass"));
+        assert!(!parse_verdict("evidence is missing\nVERDICT: fail"));
+        assert!(!parse_verdict("tool echo without a verdict"));
+    }
+
+    #[test]
+    fn phase_gate_uses_artifact_receipt_for_execute() {
+        assert_eq!(
+            phase_gate("Execute"),
+            Some(("Execution", "ArtifactReceipt"))
+        );
+    }
+
+    #[test]
+    fn recovery_failure_maps_task_receipt_missing_to_reexecute() {
+        assert_eq!(
+            recovery_action_for_failure("TaskReceiptMissing"),
+            Some("Reexecute")
+        );
+        assert_eq!(
+            recovery_gate("Reexecute"),
+            Some(("Execution", "ArtifactReceipt"))
+        );
+    }
+
+    #[test]
+    fn learning_phase_gate_promotes_policy() {
+        assert_eq!(
+            phase_gate("Learning"),
+            Some(("Learning", "PolicyPromotion"))
+        );
+    }
 
     #[test]
     fn submit_evidence_hash_chain_matches_real_types() {

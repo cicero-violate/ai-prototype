@@ -5,8 +5,14 @@ pub fn system_prompt() -> &'static str {
     "You are a Canon agent driving a deterministic runtime. \
      The runtime decides success — not you. \
      Output HUMAN_REVIEW_REQUIRED if you need a human. \
-     Do not claim the objective is complete; the runtime phase does that."
+     Do not claim the objective is complete; the runtime phase does that. \
+     During certification turns, do not call tools, browse, echo, or fetch time. \
+     Return plain text only."
 }
+
+const CERTIFICATION_OUTPUT_RULE: &str =
+    "Do not call tools, browse, echo, or fetch time. Return plain text only. \
+     Output exactly one VERDICT: pass or VERDICT: fail line as the final line.";
 
 /// First turn: ask for a step-by-step plan.
 ///
@@ -42,7 +48,7 @@ pub fn analysis_prompt(domain: &str, goal: &str) -> String {
          Analyze the objective and identify the facts, assumptions, risks, and unknowns \
          that matter for deciding whether the work should proceed. \
          If you need human input, output HUMAN_REVIEW_REQUIRED.\n\
-         Output VERDICT: pass or VERDICT: fail on the last line."
+         {CERTIFICATION_OUTPUT_RULE}"
     )
 }
 
@@ -53,7 +59,7 @@ pub fn judgment_prompt(domain: &str, analysis: &str) -> String {
          Judge whether the analysis supports moving forward. State the decision, \
          confidence, and any blocking concerns. \
          If you need human input, output HUMAN_REVIEW_REQUIRED.\n\
-         Output VERDICT: pass or VERDICT: fail on the last line."
+         {CERTIFICATION_OUTPUT_RULE}"
     )
 }
 
@@ -64,7 +70,7 @@ pub fn plan_prompt(domain: &str, judgment: &str) -> String {
          Produce the concrete plan of work implied by the judgment. Include ordered \
          tasks, expected receipts, and completion criteria. \
          If you need human input, output HUMAN_REVIEW_REQUIRED.\n\
-         Output VERDICT: pass or VERDICT: fail on the last line."
+         {CERTIFICATION_OUTPUT_RULE}"
     )
 }
 
@@ -76,7 +82,7 @@ pub fn eval_prompt(domain: &str, metric: &str, execution: &str) -> String {
          Evaluate the completed work against the success metric. Call out any \
          remaining gaps or reasons the result should not be accepted. \
          If you need human input, output HUMAN_REVIEW_REQUIRED.\n\
-         Output VERDICT: pass or VERDICT: fail on the last line."
+         {CERTIFICATION_OUTPUT_RULE}"
     )
 }
 
@@ -88,6 +94,34 @@ pub fn recovery_prompt(domain: &str, failure: &str, target_phase: &str) -> Strin
          Explain the recovery work needed to return the objective to a coherent \
          state. Focus on the semantic repair, not runtime protocol details. \
          If you need human input, output HUMAN_REVIEW_REQUIRED.\n\
-         Output VERDICT: pass or VERDICT: fail on the last line."
+         {CERTIFICATION_OUTPUT_RULE}"
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn certification_prompts_forbid_tool_calls() {
+        assert!(system_prompt().contains("do not call tools"));
+        assert!(analysis_prompt("domain", "goal").contains("Return plain text only"));
+        assert!(recovery_prompt("domain", "failure", "Execute").contains("Do not call tools"));
+    }
+
+    #[test]
+    fn certification_prompts_require_final_verdict() {
+        let prompts = [
+            analysis_prompt("domain", "goal"),
+            judgment_prompt("domain", "analysis"),
+            plan_prompt("domain", "judgment"),
+            eval_prompt("domain", "metric", "execution"),
+            recovery_prompt("domain", "failure", "Execute"),
+        ];
+
+        for prompt in prompts {
+            assert!(prompt.contains("VERDICT: pass"));
+            assert!(prompt.contains("final line"));
+        }
+    }
 }
