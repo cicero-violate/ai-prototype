@@ -48,7 +48,7 @@ Current date: 2026-05-11.
 - P3 runtime and receipt correctness: complete for current scope.
 - P4 graph source-of-truth integration: mostly complete for deterministic fixture/report evidence; agent-driven graph editing remains intentionally deferred until P5 domain surfaces are validated.
 - P5 domain intelligence layer: active. `src/domain/contracts.rs` constructor and invariant tests through unsafe live-effect rejection are complete in local source, with prior targeted validation passing 7 contract tests.
-- Active Priorities items 25 through 57 are complete in the working tree. Item 58 source extraction is present locally as `src/agent/loop_driver.rs::LoopDriver::run_cycle_attempt`; latest planning reconnaissance confirmed `cargo fmt --check` exits 0 and source-symbol inspection finds the helper boundary, while full-suite validation still returns connector HTTP 502 before Rust output. Item 58 remains unchecked until `cargo test --all-targets` returns green output.
+- Active Priorities items 25 through 58 are complete in the working tree. Item 58 source extraction is present locally as `src/agent/loop_driver.rs::LoopDriver::run_cycle_attempt`; `cargo fmt --check` and full-suite `cargo test --all-targets` returned green output on 2026-05-11. The next executable item is item 59, a planning/inspection item for the graph-backed `sync_mcp_workspace` split candidate.
 - `src/domain/business.rs` contains `BusinessOpportunity`, `WorkflowAutomationCandidate`, `CustomerFeedbackSignal`, `monetization_score(...)`, compile-smoke test `business_module_records_and_score_helper_compile`, deterministic repeatability test `business_monetization_score_is_deterministic`, and bounded-score test `business_monetization_score_is_bounded`, with broader business validation passing 3 tests after correcting the bounded test scalar assertion.
 - `src/domain/identity.rs` currently contains `DomainHash`, `DomainHashInput<'a>`, `canonical_json_bytes(record)`, `domain_hash_json(record)`, `domain_hash_parts(parts)`, `stable_domain_id(parts)`, and six passing targeted identity tests through `domain_hash_changes_when_schema_version_changes`.
 - `src/domain/scoring.rs` currently contains validated `BoundedScore` helpers, score-input breakdown helpers, conservative `verdict_for_scores(...)`, and passing `verdict_ignore_thresholds`, `verdict_watch_thresholds`, `verdict_research_thresholds`, `verdict_act_business_thresholds`, `verdict_act_finance_research_thresholds`, `verdict_simulate_trading_thresholds`, and `verdict_block_thresholds`; explicit verdict threshold tests are complete for the current scoring scope.
@@ -56,6 +56,14 @@ Current date: 2026-05-11.
 - Domain fixture JSON files exist under `tests/fixtures/domain/` for global signal, business workflow opportunity, finance hypothesis research, trading simulation sandbox, and trading live blocked cases; `tests/test_domain_fixture_contract.py` now includes explicit risk-result and required-field assertions. Item 51 graph analyzer now exists and passes against `state/rustc/ai/graph.json`, reporting 752 compiled P5 domain-node matches. Item 52 malformed-input self-check also passes. Remaining work includes item 50 full-suite Rust validation and later graph evidence refresh/score review items gated on full-suite output.
 
 ## Validation Ledger
+
+### 2026-05-11 — item 58 full-suite validation green
+
+- Scope: Active Priorities item 58, `src/agent/loop_driver.rs::LoopDriver::run_cycle_attempt(...)` helper extraction validation.
+- Command/check: `cargo fmt --check && TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
+- Result: passed.
+- Evidence: `cargo fmt --check` passed, then full-suite Rust validation compiled `ai v0.1.0` and completed with 0 failures. The run included 272 library tests, 11 API server contract tests, 20 API transport contract tests, 3 canonical TLog contract tests, 4 domain contract tests, 10 graph mutation CLI contract tests, 9 MCP receipt contract tests, 2 planning contract tests, 5 score contract tests, 2 supervisor binary contract tests, 352 validation harness contract tests, 2 worker binary contract tests, and all listed zero-test binary/example harnesses. This provides green validation evidence for the existing `run_cycle_attempt(...)` extraction while preserving the original `run_cycle(...)` public signature and ownership of turn computation, prompt selection, retry-loop control, completion handling, router-tab close, and certification.
+- Next action: proceed to Active Priorities item 59 to inspect the graph-backed `sync_mcp_workspace` SplitFn candidate and write the next smallest helper-extraction checklist item.
 
 ### 2026-05-11 — planning turn item 58 full-suite gate retained
 
