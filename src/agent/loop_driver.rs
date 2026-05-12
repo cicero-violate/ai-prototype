@@ -619,18 +619,12 @@ fn read_goal_file(project_dir: &Path) -> Result<String, String> {
 fn sync_mcp_workspace(mcp_url: &str, project_dir: &Path) -> Result<(), String> {
     let (host, port) = parse_mcp_workspace_endpoint(mcp_url)?;
 
-    let root = project_dir.to_string_lossy();
-    let body = format!("{{\"root\":\"{root}\"}}");
-
     let mut stream = TcpStream::connect((host.as_str(), port))
         .map_err(|e| format!("MCP connect failed ({host}:{port}): {e}"))?;
     stream.set_read_timeout(Some(Duration::from_secs(10))).ok();
     stream.set_write_timeout(Some(Duration::from_secs(5))).ok();
 
-    let request = format!(
-        "POST /workspace HTTP/1.1\r\nHost: {host}:{port}\r\nContent-Type: application/json\r\nConnection: close\r\nContent-Length: {len}\r\n\r\n{body}",
-        len = body.len(),
-    );
+    let request = build_mcp_workspace_request(&host, port, project_dir);
     stream
         .write_all(request.as_bytes())
         .map_err(|e| format!("MCP request write: {e}"))?;
@@ -668,6 +662,16 @@ fn parse_mcp_workspace_endpoint(mcp_url: &str) -> Result<(String, u16), String> 
     } else {
         Ok((host_port.to_string(), 80u16))
     }
+}
+
+fn build_mcp_workspace_request(host: &str, port: u16, project_dir: &Path) -> String {
+    let root = project_dir.to_string_lossy();
+    let body = format!("{{\"root\":\"{root}\"}}");
+
+    format!(
+        "POST /workspace HTTP/1.1\r\nHost: {host}:{port}\r\nContent-Type: application/json\r\nConnection: close\r\nContent-Length: {len}\r\n\r\n{body}",
+        len = body.len(),
+    )
 }
 
 #[cfg(test)]
@@ -732,5 +736,22 @@ mod tests {
         assert!(parse_mcp_workspace_endpoint("http://localhost:not-a-port")
             .unwrap_err()
             .contains("invalid port"));
+    }
+
+    #[test]
+    fn mcp_workspace_request_builder_preserves_workspace_post() {
+        let request = build_mcp_workspace_request(
+            "127.0.0.1",
+            9100,
+            Path::new("/workspace/ai_sandbox/canon-mini-agent/prototype/ai"),
+        );
+        let expected_body = "{\"root\":\"/workspace/ai_sandbox/canon-mini-agent/prototype/ai\"}";
+
+        assert!(request.starts_with("POST /workspace HTTP/1.1\r\n"));
+        assert!(request.contains("Host: 127.0.0.1:9100\r\n"));
+        assert!(request.contains("Content-Type: application/json\r\n"));
+        assert!(request.contains("Connection: close\r\n"));
+        assert!(request.contains(&format!("Content-Length: {}\r\n", expected_body.len())));
+        assert!(request.ends_with(expected_body));
     }
 }
