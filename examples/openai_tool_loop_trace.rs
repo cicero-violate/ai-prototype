@@ -198,6 +198,15 @@ fn submit_openai_tool_calls(
         receipts.push(receipt);
     }
 
+    submit_openai_process_receipt_batch(receipts, state, tlog, cfg)
+}
+
+fn submit_openai_process_receipt_batch(
+    receipts: Vec<SandboxProcessReceipt>,
+    state: &mut State,
+    tlog: &mut TLog,
+    cfg: RuntimeConfig,
+) -> Result<usize, Box<dyn std::error::Error>> {
     let batch_hash = receipts
         .iter()
         .fold(0x5_7001_ca11_u64, |hash, receipt| {
