@@ -1322,15 +1322,26 @@ pub fn generate_graph_patch(
         diff.push_str(&hunk_for_op(content, op)?);
     }
 
+    let receipt = build_graph_patch_receipt(graph, sources, &sorted_ops, &diff);
+
+    Ok(GraphPatchPlan { diff, receipt })
+}
+
+fn build_graph_patch_receipt(
+    graph: &GraphSnapshotContract,
+    sources: &[GraphSourceFile],
+    sorted_ops: &[GraphMutationOp],
+    diff: &str,
+) -> GraphPatchReceipt {
     let mut receipt = GraphPatchReceipt {
         schema_version: GRAPH_MUTATION_SCHEMA_VERSION,
         record_type: GRAPH_MUTATION_RECEIPT_RECORD,
         graph_schema_version: graph.schema_version,
         op_count: sorted_ops.len() as u64,
-        op_set_hash: op_set_hash(&sorted_ops),
+        op_set_hash: op_set_hash(sorted_ops),
         old_graph_hash: graph.contract_hash(),
         source_set_hash: source_set_hash(sources),
-        patch_hash: hash_text(&diff),
+        patch_hash: hash_text(diff),
         hunk_count: sorted_ops.len() as u64,
         stale_op_count: 0,
         overlap_count: 0,
@@ -1338,8 +1349,7 @@ pub fn generate_graph_patch(
         receipt_hash: 0,
     };
     receipt.receipt_hash = receipt.expected_receipt_hash();
-
-    Ok(GraphPatchPlan { diff, receipt })
+    receipt
 }
 
 fn validate_op_against_graph(
