@@ -335,10 +335,10 @@ Ordered execute-turn checklist, one file or one test per item. Implementation it
    - Scope: `state/rustc/ai/graph.json` and generated graph evidence artifacts only.
    - Done when: refreshed graph evidence includes compiled P5 `domain::` or `src/domain` nodes and current graph hash/counts.
    - Validation: `python3 scripts/analyze_graph_json.py state/rustc/ai/graph.json` passed on 2026-05-11 with schema version 16, graph hash `2399ea73e0eccc81561d2f1f3aaedb1692d965e0a4dfcbe6c0e2c4cb3e67f664`, receipt hash `5fe7df2837b97ed8ebf73c0eb7de3284c57be55ab7d3d8803bf094708ad5bbde`, risk hash `6101aa0240348d6458bd941fd932e5dceb6a577a3e90e04df4790eda615a2a9a`, 5,337 nodes, 33,179 edges, 3,453 intents, and 752 compiled P5 domain-node matches; broader `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets` output captured from the transport-interrupted run shows all listed suites passing with 0 failures.
-54. [ ] `status.md`: record the refreshed graph schema/hash/node evidence after item 53.
+54. [x] `status.md`: record the refreshed graph schema/hash/node evidence after item 53.
    - Scope: `status.md` Evidence Summary and Validation Ledger only.
    - Done when: status records the new graph hash, node count, edge count, intent count, and P5 domain-node evidence.
-   - Validation: `python3 scripts/analyze_graph_json.py state/rustc/ai/graph.json`.
+   - Validation: `python3 scripts/analyze_graph_json.py state/rustc/ai/graph.json` passed on 2026-05-11 with schema version 16, graph hash `2399ea73e0eccc81561d2f1f3aaedb1692d965e0a4dfcbe6c0e2c4cb3e67f664`, 5,337 nodes, 33,179 edges, 3,453 intents, and 752 compiled P5 domain-node matches.
 55. [ ] `score.md`: update score rationale only if item 50 full-suite validation or item 53 refreshed graph evidence justifies a score change.
    - Scope: `score.md` only.
    - Done when: scores either remain explicitly unchanged with rationale, or a value changes with evidence cited from `status.md`.

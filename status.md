@@ -57,6 +57,14 @@ Current date: 2026-05-11.
 
 ## Validation Ledger
 
+### 2026-05-11 — item 54 status evidence summary refresh
+
+- Scope: Active Priorities item 54, `status.md` Evidence Summary and Validation Ledger only.
+- Command/check: `python3 scripts/analyze_graph_json.py state/rustc/ai/graph.json`.
+- Result: passed.
+- Evidence: analyzer reported schema version 16, graph hash `2399ea73e0eccc81561d2f1f3aaedb1692d965e0a4dfcbe6c0e2c4cb3e67f664`, receipt hash `5fe7df2837b97ed8ebf73c0eb7de3284c57be55ab7d3d8803bf094708ad5bbde`, risk hash `6101aa0240348d6458bd941fd932e5dceb6a577a3e90e04df4790eda615a2a9a`, 5,337 nodes, 33,179 edges, 3,453 intents, node-kind counts `enum 90`, `fn 3453`, `impl 1582`, `struct 206`, `trait 1`, `ty_alias 5`, and 752 compiled P5 domain-node matches. The Evidence Summary now records these refreshed graph values and supersedes the stale zero-domain-node summary from 2026-05-10.
+- Next action: proceed to item 55 score/rationale review; do not change numeric scores without explicit score evidence.
+
 ### 2026-05-11 — item 53 refreshed graph evidence
 
 - Scope: Active Priorities item 53, `state/rustc/ai/graph.json` graph evidence refresh/validation.
@@ -1070,24 +1078,22 @@ Current date: 2026-05-11.
 
 ## Evidence Summary
 
-Python inspection of `state/rustc/ai/graph.json` on 2026-05-10:
+Graph analyzer inspection of `state/rustc/ai/graph.json` on 2026-05-11 after item 53:
 
 ```text
 meta.schema_version   = 16
 meta.crate_name       = ai
-meta.graph_hash       = ab2202a8d8ec371b0c462aecc41e28d059920f53e2179dd40ebb6ebb3127fc33
-meta.receipt_hash     = 0a44845e35b656d3d31b481b5e43c456d92994ca8e3179b0fd0f6213954cd4df
-meta.risk_hash        = c28e55e09a0259a6697a67971c16be23a02b59581c77e6973b2e2a44588e665e
-nodes                 = 4473
-edges                 = 31082
-intents               = 2976
-node_kinds            = fn 2976, impl 1283, struct 159, enum 53, trait 1, ty_alias 1
-compiled_domain_nodes = 0
-broad_domain_hits     = 1
-compiled_domain_name_hits = runtime::reducer::raise_domain_failure only
+meta.graph_hash       = 2399ea73e0eccc81561d2f1f3aaedb1692d965e0a4dfcbe6c0e2c4cb3e67f664
+meta.receipt_hash     = 5fe7df2837b97ed8ebf73c0eb7de3284c57be55ab7d3d8803bf094708ad5bbde
+meta.risk_hash        = 6101aa0240348d6458bd941fd932e5dceb6a577a3e90e04df4790eda615a2a9a
+nodes                 = 5337
+edges                 = 33179
+intents               = 3453
+node_kinds            = enum 90, fn 3453, impl 1582, struct 206, trait 1, ty_alias 5
+compiled_domain_nodes = 752
 ```
 
-Relevant interpretation: the graph snapshot is valid evidence for the existing runtime/capability/kernel surface, but it does not yet prove the P5 domain module. Broad `domain` text hits are agent objective/prompt/cycle references and the older runtime domain-failure function, not compiled `src/domain::*` nodes. Domain progress should not be scored as graph-verified until domain tests pass and graph evidence is refreshed.
+Relevant interpretation: the refreshed graph snapshot now proves compiled P5 domain-module presence through `domain::` graph nodes, including domain bridge, business, contracts, and related generated trait implementations. This supersedes the stale 2026-05-10 graph summary that reported zero compiled domain nodes. Score changes still require item 55 score/rationale review rather than automatic inference from graph evidence alone.
 
 ## History
 
