@@ -57,6 +57,14 @@ Current date: 2026-05-12.
 
 ## Validation Ledger
 
+### 2026-05-12 — planning turn selected router request-builder extraction
+
+- Scope: `plan.md`, `status.md`, `score.md`, `SCORE_REPORT.md`, `state/rustc/auto-refactor/..__state__rustc__ai__graph.graph-editor-plan.json`, and `src/agent/router.rs` reconnaissance for the next executable work item.
+- Command/check: inspected current Active Priorities, Current Progress, Validation Ledger, `SCORE_REPORT.md`, auto-refactor plan files, and the `send_streaming_request(...)` source boundary in `src/agent/router.rs`; checked workspace status before editing.
+- Result: informational / planning complete.
+- Evidence: Active Priorities item 69 is the first incomplete item and names a file-scoped extraction in `src/agent/router.rs`; item 68 already records graph evidence for `SplitFn id=1ea38f3cc5f37f85`; `SCORE_REPORT.md` still reports Structure as the lowest graph-derived aggregate axis at `4.8`; no project-level `score.md` numeric score changed because this turn produced planning evidence only.
+- Next action: execute Active Priorities item 69 in `src/agent/router.rs` only and run its targeted builder test, formatter check, and full-suite validation.
+
 ### 2026-05-12 — item 68 router send_streaming_request split inspection complete
 
 - Scope: Active Priorities item 68, `src/agent/router.rs::send_streaming_request(...)` graph-backed split inspection and next-item decomposition.
