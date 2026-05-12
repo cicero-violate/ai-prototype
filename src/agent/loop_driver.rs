@@ -159,18 +159,11 @@ impl LoopDriver {
                     &self.config.working_dir,
                 )
             } else if is_planning {
-                let score_report =
-                    std::fs::read_to_string(self.config.working_dir.join("SCORE_REPORT.md")).ok();
-                let auto_refactor_report = auto_refactor_summary(&self.config.working_dir);
-                planning_prompt(
+                build_project_planning_prompt(
                     &goal,
                     agent_id,
                     self.config.agent_count,
                     &self.config.working_dir,
-                    None,
-                    None,
-                    score_report.as_deref(),
-                    auto_refactor_report.as_deref(),
                 )
             } else {
                 execute_prompt(effective_turn, agent_id, self.config.agent_count)
@@ -287,6 +280,26 @@ struct RunCycleAttemptOutcome {
 }
 
 // ── Prompt builders ───────────────────────────────────────────────────────────
+
+fn build_project_planning_prompt(
+    goal: &str,
+    agent_id: u32,
+    agent_count: u32,
+    working_dir: &Path,
+) -> String {
+    let score_report = fs::read_to_string(working_dir.join("SCORE_REPORT.md")).ok();
+    let auto_refactor_report = auto_refactor_summary(working_dir);
+    planning_prompt(
+        goal,
+        agent_id,
+        agent_count,
+        working_dir,
+        None,
+        None,
+        score_report.as_deref(),
+        auto_refactor_report.as_deref(),
+    )
+}
 
 fn planning_prompt(
     goal: &str,
