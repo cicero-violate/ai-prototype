@@ -1927,3 +1927,13 @@ Implementation step 5 on 2026-05-12:
 - Formatting validation passed: `cargo fmt --check`.
 - Broader validation passed: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets` completed with all reported Rust unit and integration tests passing, including the router builder test in the full library suite.
 - Marked item 71 complete in `plan.md`. Scores unchanged; this closes a validated working-tree state and does not change project-level score rationale.
+
+Planning-turn update on 2026-05-12 after graph-backed checklist rollover:
+
+- Required reconnaissance completed from the connector workspace root, which resolves to `/workspace/ai_sandbox/canon-mini-agent/prototype/ai`.
+- Read `plan.md`; actual Active Priorities items are complete through item 89. The only remaining unchecked matches before this turn were template examples, not executable checklist items.
+- Read `score.md` and `SCORE_REPORT.md`; project scores remain unchanged, while the graph-derived report still shows aggregate `G = 7.93 / 10`, Structure `4.8`, Simplicity `7.1`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2`.
+- Inspected current auto-refactor plans. The next small unused graph-backed candidate selected for planning is `state/rustc/auto-refactor/..__state__rustc__ollama_tool_mcp_loop_trace__bin__graph.graph-editor-plan.json` with `SplitFn id=bf48e302ecddd798` for `submit_llm_mcp_tool_calls`.
+- Inspected `examples/ollama_tool_mcp_loop_trace.rs`; `submit_llm_mcp_tool_calls(...)` still combines request construction, tool-call validation, MCP execution, per-call receipt persistence, and post-loop evidence finalization in one function.
+- Added Active Priorities items 90 and 91. Item 90 is the next executable planning/inspection item. Item 91 is the follow-on helper extraction for post-loop evidence finalization only.
+- `score.md` was not changed because this turn produced planning evidence only, not a score-history-worthy implementation or validation improvement.
