@@ -663,20 +663,8 @@ fn read_goal_file(project_dir: &Path) -> Result<String, String> {
 /// POST {mcp_url}/workspace with the project root. Mirrors syncMcpWorkspace().
 fn sync_mcp_workspace(mcp_url: &str, project_dir: &Path) -> Result<(), String> {
     let (host, port) = parse_mcp_workspace_endpoint(mcp_url)?;
-
-    let mut stream = TcpStream::connect((host.as_str(), port))
-        .map_err(|e| format!("MCP connect failed ({host}:{port}): {e}"))?;
-    stream.set_read_timeout(Some(Duration::from_secs(10))).ok();
-    stream.set_write_timeout(Some(Duration::from_secs(5))).ok();
-
     let request = build_mcp_workspace_request(&host, port, project_dir);
-    stream
-        .write_all(request.as_bytes())
-        .map_err(|e| format!("MCP request write: {e}"))?;
-    stream.flush().ok();
-
-    let mut response = String::new();
-    stream.read_to_string(&mut response).ok();
+    let response = send_mcp_workspace_request(&host, port, &request)?;
 
     let status = parse_mcp_workspace_status(&response);
 
@@ -685,6 +673,22 @@ fn sync_mcp_workspace(mcp_url: &str, project_dir: &Path) -> Result<(), String> {
     }
 
     Ok(())
+}
+
+fn send_mcp_workspace_request(host: &str, port: u16, request: &str) -> Result<String, String> {
+    let mut stream = TcpStream::connect((host, port))
+        .map_err(|e| format!("MCP connect failed ({host}:{port}): {e}"))?;
+    stream.set_read_timeout(Some(Duration::from_secs(10))).ok();
+    stream.set_write_timeout(Some(Duration::from_secs(5))).ok();
+
+    stream
+        .write_all(request.as_bytes())
+        .map_err(|e| format!("MCP request write: {e}"))?;
+    stream.flush().ok();
+
+    let mut response = String::new();
+    stream.read_to_string(&mut response).ok();
+    Ok(response)
 }
 
 fn parse_mcp_workspace_endpoint(mcp_url: &str) -> Result<(String, u16), String> {
