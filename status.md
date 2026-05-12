@@ -57,6 +57,30 @@ Current date: 2026-05-11.
 
 ## Validation Ledger
 
+### 2026-05-11 — planning turn item 50 gate and loop-driver split candidates
+
+- Scope: `plan.md`, `status.md`, `score.md`, `SCORE_REPORT.md`, `state/rustc/auto-refactor/.*.graph-editor-plan.json`, `src/agent/loop_driver.rs`, and existing uncommitted item 50 transport-blocker evidence in `status.md`.
+- Command/check: inspected current planning/status/scoring files, graph-derived score report, Active Priorities item 50 and post-gate items 53-60, auto-refactor JSON, and source locations for `LoopDriver::run_cycle` and `sync_mcp_workspace`.
+- Result: informational planning update completed; scores unchanged.
+- Evidence: item 50 remains the first incomplete Active Priorities item. `SCORE_REPORT.md` still reports Structure as the lowest graph-derived axis at `4.8`; no new full-suite Rust output or refreshed graph evidence was produced. Auto-refactor evidence confirms `SplitFn id=001e821dc83e940a` for `agent::loop_driver::LoopDriver::run_cycle` and `SplitFn id=d535999f445621fb` for `agent::loop_driver::sync_mcp_workspace`; source inspection found `run_cycle` at `src/agent/loop_driver.rs:129` and `sync_mcp_workspace` at `src/agent/loop_driver.rs:667`. Existing uncommitted status entries for item 50 connector HTTP 502 retries were preserved.
+- Next action: retry item 50 until full-suite Rust output is available and green; only after item 50 and refreshed graph evidence are complete should item 57 plan the first loop-driver helper extraction.
+
+### 2026-05-11 — implementation step 2 item 50 full-suite validation retry
+
+- Scope: Active Priorities item 50, full Rust workspace validation only.
+- Command/check: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
+- Result: blocked by infrastructure transport.
+- Evidence: the exact checklist validation command returned connector HTTP 502 before Rust output. No Rust test failure, source failure, score-changing evidence, or graph-refresh evidence was observed. Item 50 remains unchecked in `plan.md`.
+- Next action: retry item 50 when connector transport can return full-suite Rust output; do not select item 53 until item 50 is green.
+
+### 2026-05-11 — implementation step 1 item 50 full-suite validation retry
+
+- Scope: Active Priorities item 50, full Rust workspace validation only.
+- Command/check: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
+- Result: blocked by infrastructure transport.
+- Evidence: the exact checklist validation command returned connector HTTP 502 before Rust output. No Rust test failure, source failure, score-changing evidence, or graph-refresh evidence was observed. Item 50 remains unchecked in `plan.md`.
+- Next action: retry item 50 when connector transport can return full-suite Rust output; do not select item 53 until item 50 is green.
+
 ### 2026-05-11 — planning turn validation gate and refactor candidate refinement
 
 - Scope: `plan.md`, `status.md`, `score.md`, `SCORE_REPORT.md`, `state/rustc/auto-refactor/*.graph-editor-plan.json`, `scripts/analyze_graph_json.py`, `tests/test_domain_fixture_contract.py`, and `tests/fixtures/domain/*.json`.
