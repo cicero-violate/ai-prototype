@@ -5,7 +5,7 @@ Generated: 2026-05-12  |  Schema version: 16  |  Crates: 16
 ## Aggregate Scores
 
 ```text
-Architecture         = 8.9
+Architecture         = 9.0
 Structure            = 4.8
 Simplicity           = 7.1
 Maintainability      = 10.0
@@ -30,7 +30,7 @@ G (geometric mean)   = 7.93 / 10
 | ollama_tool_loop_trace     |    10 |   220 |    7 |  5.0 |    8.9 |    1.2 |  10.0 |   10.0 |   8.0 |
 | ollama_tool_mcp_loop_trace |    15 |   293 |    9 |  5.0 |    9.2 |    1.2 |  10.0 |   10.0 |   8.1 |
 | openai_tool_loop_trace     |    13 |   283 |   10 |  5.0 |    8.7 |    1.7 |  10.0 |   10.0 |   7.7 |
-| root_validate              |   162 |  1971 |  160 |  3.2 |    1.5 |    6.2 |  10.0 |   10.0 |   7.3 |
+| root_validate              |   162 |  1971 |  160 |  3.3 |    1.5 |    6.2 |  10.0 |   10.0 |   7.3 |
 | score                      |    90 |   685 |   54 |  8.3 |    4.4 |    6.5 |  10.0 |   10.0 |   8.2 |
 | supervisor                 |   114 |   709 |   37 |  9.4 |    5.6 |    4.7 |   9.9 |   10.0 |   8.6 |
 | tlog_introspect            |     1 |    49 |    1 |  5.0 |    4.5 |    0.2 |  10.0 |   10.0 |   7.0 |
