@@ -48,7 +48,7 @@ Current date: 2026-05-12.
 - P3 runtime and receipt correctness: complete for current scope.
 - P4 graph source-of-truth integration: mostly complete for deterministic fixture/report evidence; agent-driven graph editing remains intentionally deferred until P5 domain surfaces are validated.
 - P5 domain intelligence layer: active. `src/domain/contracts.rs` constructor and invariant tests through unsafe live-effect rejection are complete in local source, with prior targeted validation passing 7 contract tests.
-- Active Priorities items 25 through 92 are complete in the working tree. Item 93 is the first unchecked executable item: `../chatgpt-mcp-connector/src/tools.rs` helper extraction for `tools::shell`. A prior implementation attempt left validation blocked because `cargo test` for the connector binary exits before normal Rust test output, even though formatting, compile, and `--no-run` checks passed.
+- Active Priorities items 25 through 92 are complete in the working tree. Item 93 is the first unchecked executable item: restore `../chatgpt-mcp-connector/src/mcp_guard.rs::ai_worker_port()` to environment-only behavior so the MCP shell tool no longer forces receipt recording to supervisor port `9100` when `AI_WORKER_PORT` is unset. Item 94 then completes validation for the already-present `../chatgpt-mcp-connector/src/tools.rs` helper extraction for `tools::shell`.
 - `src/domain/business.rs` contains `BusinessOpportunity`, `WorkflowAutomationCandidate`, `CustomerFeedbackSignal`, `monetization_score(...)`, compile-smoke test `business_module_records_and_score_helper_compile`, deterministic repeatability test `business_monetization_score_is_deterministic`, and bounded-score test `business_monetization_score_is_bounded`, with broader business validation passing 3 tests after correcting the bounded test scalar assertion.
 - `src/domain/identity.rs` currently contains `DomainHash`, `DomainHashInput<'a>`, `canonical_json_bytes(record)`, `domain_hash_json(record)`, `domain_hash_parts(parts)`, `stable_domain_id(parts)`, and six passing targeted identity tests through `domain_hash_changes_when_schema_version_changes`.
 - `src/domain/scoring.rs` currently contains validated `BoundedScore` helpers, score-input breakdown helpers, conservative `verdict_for_scores(...)`, and passing `verdict_ignore_thresholds`, `verdict_watch_thresholds`, `verdict_research_thresholds`, `verdict_act_business_thresholds`, `verdict_act_finance_research_thresholds`, `verdict_simulate_trading_thresholds`, and `verdict_block_thresholds`; explicit verdict threshold tests are complete for the current scoring scope.
@@ -56,6 +56,54 @@ Current date: 2026-05-12.
 - Domain fixture JSON files exist under `tests/fixtures/domain/` for global signal, business workflow opportunity, finance hypothesis research, trading simulation sandbox, and trading live blocked cases; `tests/test_domain_fixture_contract.py` now includes explicit risk-result and required-field assertions. Item 51 graph analyzer now exists and passes against `state/rustc/ai/graph.json`, reporting 752 compiled P5 domain-node matches. Item 52 malformed-input self-check also passes. Remaining work includes item 50 full-suite Rust validation and later graph evidence refresh/score review items gated on full-suite output.
 
 ## Validation Ledger
+
+### 2026-05-12 — planning selected item 93 MCP receipt-wrapper blocker handling
+
+- Scope: `plan.md`, `status.md`, `score.md`, `SCORE_REPORT.md`, `state/rustc/auto-refactor/..__state__rustc__chatgpt_mcp_connector__bin__graph.graph-editor-plan.json`, `../chatgpt-mcp-connector/src/tools.rs`, and `../chatgpt-mcp-connector/src/mcp_guard.rs`.
+- Command/check: `grep -n "^[0-9][0-9]*\. \[ \]" plan.md | head -10`; `git -C ../chatgpt-mcp-connector diff -- src/tools.rs`; `git -C ../chatgpt-mcp-connector diff -- src/mcp_guard.rs`; auto-refactor JSON inspection for `tools::shell`.
+- Result: informational.
+- Evidence: item 93 was previously the `tools.rs` helper extraction, but repeated validation attempts were blocked before normal Rust output by `MCP tool call executed but receipt recording failed: worker returned HTTP 400: {"ok":false,"error":"InvalidCommand"}`. Connector diff inspection shows the scoped `src/tools.rs` extraction is limited to `render_shell_response(...)`, while the unrelated dirty `src/mcp_guard.rs` change makes `ai_worker_port()` default to `Some(9100)` when `AI_WORKER_PORT` is unset. The plan now makes that blocker the first unchecked file-scoped executable item and moves the `tools.rs` validation completion gate to item 94.
+- Next action: execute item 93 by restoring `../chatgpt-mcp-connector/src/mcp_guard.rs` to env-only `AI_WORKER_PORT` behavior, then run `git -C ../chatgpt-mcp-connector diff -- src/mcp_guard.rs && cd ../chatgpt-mcp-connector && cargo check`.
+
+### 2026-05-12 — implementation step 5 item 93 still blocked by MCP receipt wrapper
+
+- Scope: Active Priorities item 93, `../chatgpt-mcp-connector/src/tools.rs::shell(...)`, private helper `render_shell_response(...)`, `plan.md`, `status.md`, and `score.md`.
+- Command/check: `pwd; git status --short; grep -n "^[0-9][0-9]*\\. \\[ \\]" plan.md | head -5; sed -n '536,543p' plan.md; sed -n '40,130p' status.md; sed -n '1,85p' score.md; git -C ../chatgpt-mcp-connector status --short; cd ../chatgpt-mcp-connector && cargo check && cargo test`.
+- Result: blocked.
+- Evidence: the step-5 control-file and validation command was attempted through the MCP shell tool, but the tool call again failed before returning normal shell/Rust output with `MCP tool call executed but receipt recording failed: worker returned HTTP 400: {"ok":false,"error":"InvalidCommand"}`. The first unchecked item remains item 93 by prior recorded state, and the required validation has still not returned green. Item 93 was not marked complete and no commit was made.
+- Next action: resolve or revert the out-of-scope MCP receipt-wrapper failure in `../chatgpt-mcp-connector/src/mcp_guard.rs`, then rerun `cd ../chatgpt-mcp-connector && cargo check && cargo test`; mark item 93 complete only after that command returns green.
+
+### 2026-05-12 — implementation step 4 item 93 still blocked by MCP receipt wrapper
+
+- Scope: Active Priorities item 93, `../chatgpt-mcp-connector/src/tools.rs::shell(...)`, private helper `render_shell_response(...)`, `plan.md`, `status.md`, and `score.md`.
+- Command/check: `cd ../chatgpt-mcp-connector && cargo check && cargo test`.
+- Result: blocked.
+- Evidence: item 93 remains the first unchecked implementation item and is scoped only to `../chatgpt-mcp-connector/src/tools.rs`. The connector working tree still contains the scoped `src/tools.rs` helper extraction plus an out-of-scope dirty `src/mcp_guard.rs` change. The required validation command failed again before normal Rust validation output with `MCP tool call executed but receipt recording failed: worker returned HTTP 400: {"ok":false,"error":"InvalidCommand"}`. Item 93 was not marked complete and no commit was made because the required validation did not return green.
+- Next action: resolve or revert the out-of-scope MCP receipt-wrapper failure in `../chatgpt-mcp-connector/src/mcp_guard.rs`, then rerun `cd ../chatgpt-mcp-connector && cargo check && cargo test`; mark item 93 complete only after that command returns green.
+
+### 2026-05-12 — implementation step 3 item 93 still blocked by MCP receipt wrapper
+
+- Scope: Active Priorities item 93, `../chatgpt-mcp-connector/src/tools.rs::shell(...)`, private helper `render_shell_response(...)`, `plan.md`, `status.md`, and `score.md`.
+- Command/check: `cd ../chatgpt-mcp-connector && cargo check && cargo test`.
+- Result: blocked.
+- Evidence: item 93 remains the first unchecked implementation item. Re-reading `plan.md`, `status.md`, and `score.md` confirmed item 93 is still scoped only to `../chatgpt-mcp-connector/src/tools.rs`. The scoped `src/tools.rs` diff still contains the planned helper extraction and no additional in-scope source change was needed. The required validation command again failed before normal Rust validation output because the MCP shell transport reported `MCP tool call executed but receipt recording failed: worker returned HTTP 400: {"ok":false,"error":"InvalidCommand"}`. The sibling connector working tree remains dirty in both scoped `src/tools.rs` and out-of-scope `src/mcp_guard.rs`; item 93 was not marked complete and no commit was made.
+- Next action: resolve or revert the out-of-scope MCP receipt-wrapper failure in `../chatgpt-mcp-connector/src/mcp_guard.rs`, then rerun `cd ../chatgpt-mcp-connector && cargo check && cargo test`; mark item 93 complete only after that command returns green.
+
+### 2026-05-12 — implementation step 2 item 93 still blocked by MCP receipt wrapper
+
+- Scope: Active Priorities item 93, `../chatgpt-mcp-connector/src/tools.rs::shell(...)`, private helper `render_shell_response(...)`, `plan.md`, `status.md`, and `score.md`.
+- Command/check: `cd ../chatgpt-mcp-connector && cargo check && cargo test`.
+- Result: blocked.
+- Evidence: item 93 remains the first unchecked implementation item. Re-reading `plan.md`, `status.md`, and `score.md` confirmed item 93 is still scoped only to `../chatgpt-mcp-connector/src/tools.rs`. The sibling connector working tree remains dirty in both scoped `src/tools.rs` and out-of-scope `src/mcp_guard.rs`. The required validation command again failed at the MCP transport layer rather than returning normal Rust validation output: `MCP tool call executed but receipt recording failed: worker returned HTTP 400: {"ok":false,"error":"InvalidCommand"}`. Because the validation command did not return green, item 93 was not marked complete and no commit was made.
+- Next action: resolve or revert the out-of-scope MCP receipt-wrapper failure in `../chatgpt-mcp-connector/src/mcp_guard.rs`, then rerun `cd ../chatgpt-mcp-connector && cargo check && cargo test`; mark item 93 complete only after that command returns green.
+
+### 2026-05-12 — implementation step 1 item 93 validation blocked by MCP receipt wrapper
+
+- Scope: Active Priorities item 93, `../chatgpt-mcp-connector/src/tools.rs::shell(...)`, private helper `render_shell_response(...)`, `plan.md`, `status.md`, and `score.md`.
+- Command/check: `cd ../chatgpt-mcp-connector && cargo check && cargo test`.
+- Result: blocked.
+- Evidence: item 93 remains the first unchecked implementation item. Source inspection found the scoped helper extraction already present in `../chatgpt-mcp-connector/src/tools.rs`: `shell(...)` delegates only post-join stdout/stderr text assembly and final MCP JSON response construction to `render_shell_response(...)`; command validation, timeout/output-limit parsing, workspace cwd resolution, `/bin/sh -c` spawn, bounded pipe capture, timeout/kill handling, pipe-reader joins, exit metadata, and truncation metadata remain outside the helper. The required validation command could not return normal Rust validation output because the MCP shell transport reported `MCP tool call executed but receipt recording failed: worker returned HTTP 400: {"ok":false,"error":"InvalidCommand"}`. The sibling connector working tree also contains an out-of-scope dirty `src/mcp_guard.rs` change, so item 93 was not marked complete.
+- Next action: resolve or revert the out-of-scope MCP receipt-wrapper failure, then rerun `cd ../chatgpt-mcp-connector && cargo check && cargo test`; mark item 93 complete only after that command returns green.
 
 ### 2026-05-12 — planning reconciled item 93 shell helper blocker
 
