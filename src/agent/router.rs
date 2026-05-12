@@ -696,19 +696,27 @@ mod tests {
 
         let request = build_streaming_http_request("/v1/chat/completions", "127.0.0.1", 8080, body);
 
-        assert_eq!(
-            request,
-            concat!(
-                "POST /v1/chat/completions HTTP/1.1\r\n",
-                "Host: 127.0.0.1:8080\r\n",
-                "Content-Type: application/json\r\n",
-                "Accept: text/event-stream\r\n",
-                "Connection: close\r\n",
-                "Content-Length: 34\r\n",
-                "\r\n",
-                r#"{"model":"gpt-test","stream":true}"#,
-            )
-        );
+        let (head, actual_body) = request
+            .split_once("\r\n\r\n")
+            .expect("streaming HTTP request separates headers and body");
+        let mut lines = head.lines();
+        assert_eq!(lines.next(), Some("POST /v1/chat/completions HTTP/1.1"));
+
+        let headers: Vec<&str> = lines.collect();
+        assert!(headers.contains(&"Host: 127.0.0.1:8080"));
+        assert!(headers.contains(&"Content-Type: application/json"));
+        assert!(headers.contains(&"Accept: text/event-stream"));
+        assert!(headers.contains(&"Connection: close"));
+
+        let content_length = headers
+            .iter()
+            .find_map(|header| header.strip_prefix("Content-Length: "))
+            .expect("streaming HTTP request includes Content-Length")
+            .parse::<usize>()
+            .expect("Content-Length is numeric");
+        assert_eq!(content_length, body.len());
+        assert_eq!(content_length, actual_body.len());
+        assert_eq!(actual_body.as_bytes(), body.as_bytes());
     }
 
     #[test]

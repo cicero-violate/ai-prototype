@@ -48,7 +48,7 @@ Current date: 2026-05-12.
 - P3 runtime and receipt correctness: complete for current scope.
 - P4 graph source-of-truth integration: mostly complete for deterministic fixture/report evidence; agent-driven graph editing remains intentionally deferred until P5 domain surfaces are validated.
 - P5 domain intelligence layer: active. `src/domain/contracts.rs` constructor and invariant tests through unsafe live-effect rejection are complete in local source, with prior targeted validation passing 7 contract tests.
-- Active Priorities items 25 through 102 are complete in the working tree; item 103 is now the first unchecked executable implementation item, followed by graph-derived evidence refresh item 104. The latest graph-derived structural refresh reports `G = 7.93 / 10`, Architecture `9.0`, Structure `4.8`, Simplicity `7.1`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2`; `score.md` remains unchanged because the refresh did not prove a score-history-worthy capability change.
+- Active Priorities items 25 through 103 are complete in the working tree; item 104 is now the first unchecked executable implementation item, followed by in-memory router finalization error coverage in item 105 and graph-derived evidence refresh item 106. The latest graph-derived structural refresh reports `G = 7.93 / 10`, Architecture `9.0`, Structure `4.8`, Simplicity `7.1`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2`; `score.md` remains unchanged because the refresh did not prove a score-history-worthy capability change.
 - `src/domain/business.rs` contains `BusinessOpportunity`, `WorkflowAutomationCandidate`, `CustomerFeedbackSignal`, `monetization_score(...)`, compile-smoke test `business_module_records_and_score_helper_compile`, deterministic repeatability test `business_monetization_score_is_deterministic`, and bounded-score test `business_monetization_score_is_bounded`, with broader business validation passing 3 tests after correcting the bounded test scalar assertion.
 - `src/domain/identity.rs` currently contains `DomainHash`, `DomainHashInput<'a>`, `canonical_json_bytes(record)`, `domain_hash_json(record)`, `domain_hash_parts(parts)`, `stable_domain_id(parts)`, and six passing targeted identity tests through `domain_hash_changes_when_schema_version_changes`.
 - `src/domain/scoring.rs` currently contains validated `BoundedScore` helpers, score-input breakdown helpers, conservative `verdict_for_scores(...)`, and passing `verdict_ignore_thresholds`, `verdict_watch_thresholds`, `verdict_research_thresholds`, `verdict_act_business_thresholds`, `verdict_act_finance_research_thresholds`, `verdict_simulate_trading_thresholds`, and `verdict_block_thresholds`; explicit verdict threshold tests are complete for the current scoring scope.
@@ -56,6 +56,22 @@ Current date: 2026-05-12.
 - Domain fixture JSON files exist under `tests/fixtures/domain/` for global signal, business workflow opportunity, finance hypothesis research, trading simulation sandbox, and trading live blocked cases; `tests/test_domain_fixture_contract.py` now includes explicit risk-result and required-field assertions. Item 51 graph analyzer now exists and passes against `state/rustc/ai/graph.json`, reporting 752 compiled P5 domain-node matches. Item 52 malformed-input self-check also passes. Remaining work includes item 50 full-suite Rust validation and later graph evidence refresh/score review items gated on full-suite output.
 
 ## Validation Ledger
+
+### 2026-05-12 — planning selected item 104 router finalize success coverage
+
+- Scope: `plan.md`, `status.md`, `score.md`, `SCORE_REPORT.md`, `src/agent/router.rs`, and `state/rustc/auto-refactor/..__state__rustc__ai__graph.graph-editor-plan.json`.
+- Command/check: read the first unchecked Active Priorities entries; inspected `src/agent/router.rs::send_streaming_request(...)`, `collect_streaming_response_bytes(...)`, `finalize_streaming_response(...)`, `build_streaming_http_request(...)`, done-frame helpers, and existing `router::tests`; inspected current auto-refactor SplitFn entries.
+- Result: informational.
+- Evidence: item 104 is the first unchecked executable item. Items 101-103 are complete in the working tree. The current graph-backed follow-on split entry is `SplitFn id=c07f9b3fef3c6e37` for `agent::router::collect_streaming_response_bytes`, while the next executable work remains file-scoped in-memory success coverage for `finalize_streaming_response(...)` before any further helper split. `score.md` remains unchanged because this planning check produced no new score-changing capability evidence.
+- Next action: execute Active Priorities item 104 by adding `router::tests::finalize_streaming_response_accepts_in_memory_sse_done_response` and running its targeted validation.
+
+### 2026-05-12 — implementation step 4 item 103 router request builder parsed assertions
+
+- Scope: Active Priorities item 103, `src/agent/router.rs` test module, `plan.md`, and `status.md`.
+- Command/check: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test router::tests::streaming_http_request_builder_preserves_post_headers_and_body -- --test-threads=1`; broader `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
+- Result: passed.
+- Evidence: `streaming_http_request_builder_preserves_post_headers_and_body` now splits the generated HTTP request at `\r\n\r\n`, asserts the request line and Host/Content-Type/Accept/Connection headers, parses numeric `Content-Length`, and verifies it equals both `body.len()` and the actual body byte length. Targeted validation passed with 1 named router test. Broader all-targets validation passed with 272 library/bin tests, integration suites including API/domain/graph/MCP/planning/score/supervisor/worker contracts, 352 root-validation tests, and worker binary tests.
+- Next action: execute Active Priorities item 104 by adding in-memory success coverage for `finalize_streaming_response(...)` with a terminating `data: [DONE]` frame.
 
 ### 2026-05-12 — implementation step 2 item 102 router streaming byte collector extraction
 
@@ -1900,6 +1916,22 @@ Current date: 2026-05-12.
 - Result: blocked.
 - Evidence: pre-commit verification reached `cargo fmt --check` and `cargo check`, then failed before project check output because `canon-rustc-v3/scripts/canon-rustc-v3` could not load shared library `librustc_driver-61971b66f7da0581.so` and exited 127.
 - Next action: keep the blocker recorded as infrastructure evidence; commit the planning-only docs with verification bypass if needed so the planning turn has a durable receipt, while leaving `src/agent/router.rs` unstaged.
+
+### 2026-05-12 — planning contract validation for router test checklist
+
+- Scope: `plan.md` and `status.md` planning-only update.
+- Command/check: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test planning_contract -- --test-threads=1`.
+- Result: passed.
+- Evidence: 2 planning-contract tests passed: `planning_record_blocks_when_all_tasks_complete` and `planning_record_decomposes_objective_with_lineage`; 0 failed.
+- Next action: commit the planning/status update, then execute Active Priorities item 103.
+
+### 2026-05-12 — planning decomposed router in-memory test coverage
+
+- Scope: `plan.md`, `status.md`, `score.md`, `SCORE_REPORT.md`, `src/agent/router.rs`, and `state/rustc/auto-refactor/*.graph-editor-plan.json`.
+- Command/check: inspected the first unchecked Active Priorities item, current router streaming helpers/tests, graph-derived structural scores, and available auto-refactor plan artifacts; checked working tree status before planning edits.
+- Result: informational.
+- Evidence: item 103 was the first unchecked item after the validated `collect_streaming_response_bytes(...)` extraction. Source inspection found existing done-frame tests and a brittle full-string `build_streaming_http_request(...)` assertion, but no in-memory `finalize_streaming_response(...)` success/non-200/missing-done tests. The checklist now decomposes that work into parsed request-header/body coverage, in-memory finalize success coverage, in-memory finalize error coverage, and a follow-up graph score refresh. `score.md` remains unchanged because this planning turn produced no new capability or structural score evidence.
+- Next action: execute Active Priorities item 103 by rewriting `streaming_http_request_builder_preserves_post_headers_and_body` to parse headers/body and validate `Content-Length` against the body bytes.
 
 ## Evidence Summary
 
