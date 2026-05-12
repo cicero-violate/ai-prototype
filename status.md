@@ -57,6 +57,14 @@ Current date: 2026-05-11.
 
 ## Validation Ledger
 
+### 2026-05-11 — planning turn validation gate and refactor candidate refinement
+
+- Scope: `plan.md`, `status.md`, `score.md`, `SCORE_REPORT.md`, `state/rustc/auto-refactor/*.graph-editor-plan.json`, `scripts/analyze_graph_json.py`, `tests/test_domain_fixture_contract.py`, and `tests/fixtures/domain/*.json`.
+- Command/check: inspected current planning/status/scoring files, current graph-derived score report, active checklist items 50-58, graph-analysis tooling, domain fixtures, and graph-editor plans; retried bounded connector inspections after one HTTP 502 transport failure.
+- Result: informational planning update completed; scores unchanged.
+- Evidence: item 50 remains the first incomplete Active Priorities item and is still a full-suite Rust validation gate. `SCORE_REPORT.md` still reports graph-derived Structure as the lowest axis at `4.8`. Auto-refactor JSON contains legitimate future `SplitFn` candidates including `agent::loop_driver::LoopDriver::run_cycle` and `agent::loop_driver::sync_mcp_workspace`; generated `MergeFns`/merge-surface recommendations include noisy self-pair/generated helper suggestions and remain deferred. Plan item 50 now explicitly forbids advancing to graph refresh, score review, or refactor implementation on HTTP 502-only infrastructure evidence, and items 59-60 add a second small post-gate `sync_mcp_workspace` helper-extraction path after the existing `run_cycle` path.
+- Next action: retry item 50 until full-suite Rust output is available and green; only then proceed to graph refresh item 53.
+
 ### 2026-05-11 — implementation step 4 item 50 full-suite validation retry
 
 - Scope: Active Priorities item 50, full Rust workspace validation only.

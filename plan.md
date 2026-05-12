@@ -321,7 +321,7 @@ Ordered execute-turn checklist, one file or one test per item. Implementation it
 50. [ ] `cargo test --all-targets`: retry the full Rust workspace validation gate and record Rust output or connector blocker evidence.
    - Scope: full Rust workspace validation only; do not edit source files while selecting this validation item.
    - Done when: full-suite Rust output is available and green. If connector HTTP 502 or another transport failure occurs before Rust output, leave this item unchecked and record the infrastructure blocker in `status.md`.
-   - Recovery note: repeated transport blockers may temporarily defer this gate; when the loop is in recovery and item 50 has only infrastructure evidence, select item 51 as the next semantic work unit because it is non-mutating graph-evidence tooling and does not claim item 50 is green.
+   - Recovery note: repeated transport blockers are infrastructure evidence only; do not mark this item complete and do not advance to graph refresh, score review, or refactor implementation until full-suite Rust output is available and green.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
 51. [x] `scripts/analyze_graph_json.py`: create the graph-analysis script that reads `state/rustc/ai/graph.json` and prints schema version, graph hash, receipt hash, risk hash, node count, edge count, intent count, node-kind counts, and compiled P5 `domain::`/`src/domain` node matches.
    - Scope: `scripts/analyze_graph_json.py` only.
@@ -355,6 +355,14 @@ Ordered execute-turn checklist, one file or one test per item. Implementation it
    - Scope: `src/agent/loop_driver.rs` only unless the item 57 checklist explicitly names a companion test file.
    - Done when: the source compiles, the original `run_cycle` behavior is delegated through the extracted helper, and no unrelated graph-editing or merge-surface changes are applied.
    - Validation: targeted Rust test named by item 57, then `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
+59. [ ] `src/agent/loop_driver.rs`: after item 58 is green, inspect the graph-backed `SplitFn` candidate `agent::loop_driver::sync_mcp_workspace` and write the smallest helper-extraction implementation checklist item for that exact function.
+   - Scope: `plan.md`, `status.md`, and `src/agent/loop_driver.rs` inspection only; do not edit Rust source in this planning item.
+   - Done when: the next implementation item names the exact helper boundary, expected source function, and targeted validation for `sync_mcp_workspace`.
+   - Validation: `rg -n "sync_mcp_workspace" src/agent/loop_driver.rs` and planning/status review.
+60. [ ] `src/agent/loop_driver.rs`: apply the first approved `sync_mcp_workspace` helper extraction from item 59 while preserving the original public behavior and signature.
+   - Scope: `src/agent/loop_driver.rs` only unless item 59 explicitly names a companion test file.
+   - Done when: the source compiles, `sync_mcp_workspace` behavior is delegated through the extracted helper, and no generated merge-surface changes are applied.
+   - Validation: targeted Rust test named by item 59, then `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
 
 
 ## Additional Validation Notes
