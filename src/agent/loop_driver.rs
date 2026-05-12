@@ -142,37 +142,24 @@ impl LoopDriver {
         };
 
         for turn in 0..total_turns {
-            let effective_turn = turn + turn_offset;
-            let turn_mode = project_turn_mode(effective_turn);
-            let is_planning = !is_spawned && turn_mode == LoopMode::ProjectPlanning;
-            let label = if is_planning {
-                "plan".to_string()
-            } else {
-                format!("execute-{effective_turn}")
-            };
-
-            let prompt = if is_spawned {
-                spawned_prompt(
-                    self.config.domain.as_deref().unwrap_or(""),
-                    self.config.metric.as_deref().unwrap_or(""),
-                    turn + 1,
-                    &self.config.working_dir,
-                )
-            } else if is_planning {
-                build_project_planning_prompt(
-                    &goal,
-                    agent_id,
-                    self.config.agent_count,
-                    &self.config.working_dir,
-                )
-            } else {
-                execute_prompt(effective_turn, agent_id, self.config.agent_count)
-            };
+            let turn_context = build_turn_prompt_context(
+                turn,
+                turn_offset,
+                is_spawned,
+                &goal,
+                agent_id,
+                self.config.agent_count,
+                &self.config.working_dir,
+                self.config.domain.as_deref(),
+                self.config.metric.as_deref(),
+            );
+            debug_assert_eq!(turn_context.effective_turn, turn + turn_offset);
 
             eprintln!(
-                "[{tag}] ── turn {}/{total_turns}: {label} mode={} (cycle {cycle_num})",
+                "[{tag}] ── turn {}/{total_turns}: {} mode={} (cycle {cycle_num})",
                 turn + 1,
-                turn_mode.label(),
+                turn_context.label,
+                turn_context.turn_mode.label(),
             );
 
             let mut completed = false;
@@ -181,14 +168,20 @@ impl LoopDriver {
             for attempt in 0..=self.config.turn_retry_limit {
                 if attempt > 0 {
                     eprintln!(
-                        "[{tag}] turn {label} retry {attempt}/{} after {last_reason}",
-                        self.config.turn_retry_limit
+                        "[{tag}] turn {} retry {attempt}/{} after {last_reason}",
+                        turn_context.label, self.config.turn_retry_limit
                     );
                     thread::sleep(Duration::from_millis(self.config.loop_sleep_ms));
                 }
 
-                let attempt_outcome =
-                    self.run_cycle_attempt(tag, cycle_num, &label, &prompt, attempt, &mut router)?;
+                let attempt_outcome = self.run_cycle_attempt(
+                    tag,
+                    cycle_num,
+                    &turn_context.label,
+                    &turn_context.prompt,
+                    attempt,
+                    &mut router,
+                )?;
                 last_reason = attempt_outcome.reason;
 
                 if attempt_outcome.completed {
@@ -203,7 +196,8 @@ impl LoopDriver {
 
             if !completed {
                 return Err(format!(
-                    "turn {label} did not complete after {} attempt(s): {last_reason}",
+                    "turn {} did not complete after {} attempt(s): {last_reason}",
+                    turn_context.label,
                     self.config.turn_retry_limit + 1,
                 ));
             }
@@ -277,6 +271,54 @@ struct RunCycleAttemptOutcome {
     completed: bool,
     reason: String,
     retry_is_safe: bool,
+}
+
+struct TurnPromptContext {
+    effective_turn: u32,
+    turn_mode: LoopMode,
+    label: String,
+    prompt: String,
+}
+
+fn build_turn_prompt_context(
+    turn: u32,
+    turn_offset: u32,
+    is_spawned: bool,
+    goal: &str,
+    agent_id: u32,
+    agent_count: u32,
+    working_dir: &Path,
+    domain: Option<&str>,
+    metric: Option<&str>,
+) -> TurnPromptContext {
+    let effective_turn = turn + turn_offset;
+    let turn_mode = project_turn_mode(effective_turn);
+    let is_planning = !is_spawned && turn_mode == LoopMode::ProjectPlanning;
+    let label = if is_planning {
+        "plan".to_string()
+    } else {
+        format!("execute-{effective_turn}")
+    };
+
+    let prompt = if is_spawned {
+        spawned_prompt(
+            domain.unwrap_or(""),
+            metric.unwrap_or(""),
+            turn + 1,
+            working_dir,
+        )
+    } else if is_planning {
+        build_project_planning_prompt(goal, agent_id, agent_count, working_dir)
+    } else {
+        execute_prompt(effective_turn, agent_id, agent_count)
+    };
+
+    TurnPromptContext {
+        effective_turn,
+        turn_mode,
+        label,
+        prompt,
+    }
 }
 
 // ── Prompt builders ───────────────────────────────────────────────────────────
