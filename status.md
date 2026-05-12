@@ -48,7 +48,7 @@ Current date: 2026-05-12.
 - P3 runtime and receipt correctness: complete for current scope.
 - P4 graph source-of-truth integration: mostly complete for deterministic fixture/report evidence; agent-driven graph editing remains intentionally deferred until P5 domain surfaces are validated.
 - P5 domain intelligence layer: active. `src/domain/contracts.rs` constructor and invariant tests through unsafe live-effect rejection are complete in local source, with prior targeted validation passing 7 contract tests.
-- Active Priorities items 25 through 96 are complete in the working tree. `src/agent/loop_driver.rs::run_cycle(...)` now delegates only deterministic per-turn context construction to private `build_turn_prompt_context(...)`; retry, router streaming, sleep timing, error handling, spawned-agent behavior, and MCP workspace sync remain outside the helper.
+- Active Priorities items 25 through 96 are complete in the working tree. The next executable item is item 97, `src/agent/loop_driver.rs::sync_mcp_workspace(...)` source/graph inspection before a narrow TCP transport helper extraction. `src/agent/loop_driver.rs::run_cycle(...)` now delegates only deterministic per-turn context construction to private `build_turn_prompt_context(...)`; retry, router streaming, sleep timing, error handling, spawned-agent behavior, and MCP workspace sync remain outside the helper.
 - `src/domain/business.rs` contains `BusinessOpportunity`, `WorkflowAutomationCandidate`, `CustomerFeedbackSignal`, `monetization_score(...)`, compile-smoke test `business_module_records_and_score_helper_compile`, deterministic repeatability test `business_monetization_score_is_deterministic`, and bounded-score test `business_monetization_score_is_bounded`, with broader business validation passing 3 tests after correcting the bounded test scalar assertion.
 - `src/domain/identity.rs` currently contains `DomainHash`, `DomainHashInput<'a>`, `canonical_json_bytes(record)`, `domain_hash_json(record)`, `domain_hash_parts(parts)`, `stable_domain_id(parts)`, and six passing targeted identity tests through `domain_hash_changes_when_schema_version_changes`.
 - `src/domain/scoring.rs` currently contains validated `BoundedScore` helpers, score-input breakdown helpers, conservative `verdict_for_scores(...)`, and passing `verdict_ignore_thresholds`, `verdict_watch_thresholds`, `verdict_research_thresholds`, `verdict_act_business_thresholds`, `verdict_act_finance_research_thresholds`, `verdict_simulate_trading_thresholds`, and `verdict_block_thresholds`; explicit verdict threshold tests are complete for the current scoring scope.
@@ -56,6 +56,14 @@ Current date: 2026-05-12.
 - Domain fixture JSON files exist under `tests/fixtures/domain/` for global signal, business workflow opportunity, finance hypothesis research, trading simulation sandbox, and trading live blocked cases; `tests/test_domain_fixture_contract.py` now includes explicit risk-result and required-field assertions. Item 51 graph analyzer now exists and passes against `state/rustc/ai/graph.json`, reporting 752 compiled P5 domain-node matches. Item 52 malformed-input self-check also passes. Remaining work includes item 50 full-suite Rust validation and later graph evidence refresh/score review items gated on full-suite output.
 
 ## Validation Ledger
+
+### 2026-05-12 — planning turn seeded next LoopDriver MCP workspace refactor checklist
+
+- Scope: `plan.md`, `status.md`, `score.md`, `SCORE_REPORT.md`, `src/agent/loop_driver.rs`, and `state/rustc/auto-refactor/*.graph-editor-plan.json`.
+- Command/check: read operative `## Active Priorities`, `status.md`, `score.md`, `SCORE_REPORT.md`; inspected auto-refactor files; inspected `src/agent/loop_driver.rs::run_cycle(...)`, `build_turn_prompt_context(...)`, `sync_mcp_workspace(...)`, MCP helper functions, and the existing `loop_driver` test module; checked `git status --short`.
+- Result: informational.
+- Evidence: operative checklist had no unchecked item after item 96 completion. Graph-derived `SCORE_REPORT.md` still shows Structure as the lowest aggregate axis (`4.8`) and small `SplitFn` candidates remain preferable to generated `merge_surface` edits. Source inspection selected `src/agent/loop_driver.rs::sync_mcp_workspace(...)` as the next small, current source target; the safest boundary is TCP request/response transport while endpoint parsing, request construction, status parsing, accepted status checks, and public error wording remain in `sync_mcp_workspace(...)`.
+- Next action: execute Active Priorities item 97.
 
 ### 2026-05-12 — implementation step 2 item 96 LoopDriver turn prompt helper extraction
 
