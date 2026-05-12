@@ -811,12 +811,23 @@ mod tests {
             Path::new("/workspace/ai_sandbox/canon-mini-agent/prototype/ai"),
         );
         let expected_body = "{\"root\":\"/workspace/ai_sandbox/canon-mini-agent/prototype/ai\"}";
+        let (headers, body) = request
+            .split_once("\r\n\r\n")
+            .expect("workspace request must separate headers and body");
 
-        assert!(request.starts_with("POST /workspace HTTP/1.1\r\n"));
-        assert!(request.contains("Host: 127.0.0.1:9100\r\n"));
-        assert!(request.contains("Content-Type: application/json\r\n"));
-        assert!(request.contains("Connection: close\r\n"));
-        assert!(request.contains(&format!("Content-Length: {}\r\n", expected_body.len())));
-        assert!(request.ends_with(expected_body));
+        assert!(headers.starts_with("POST /workspace HTTP/1.1\r\n"));
+        assert!(headers.contains("Host: 127.0.0.1:9100\r\n"));
+        assert!(headers.contains("Content-Type: application/json\r\n"));
+        assert!(headers.contains("Connection: close\r\n"));
+        assert_eq!(body, expected_body);
+
+        let content_length = headers
+            .lines()
+            .find_map(|line| line.strip_prefix("Content-Length: "))
+            .expect("workspace request must include Content-Length")
+            .parse::<usize>()
+            .expect("Content-Length must be numeric");
+        assert_eq!(content_length, body.len());
+        assert_eq!(content_length, expected_body.len());
     }
 }

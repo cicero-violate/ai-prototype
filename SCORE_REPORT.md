@@ -5,7 +5,7 @@ Generated: 2026-05-12  |  Schema version: 16  |  Crates: 16
 ## Aggregate Scores
 
 ```text
-Architecture         = 8.9
+Architecture         = 9.0
 Structure            = 4.8
 Simplicity           = 7.1
 Maintainability      = 10.0
