@@ -199,45 +199,16 @@ impl LoopDriver {
                     thread::sleep(Duration::from_millis(self.config.loop_sleep_ms));
                 }
 
-                let attempt_label = retry_attempt_label(&label, attempt);
+                let attempt_outcome =
+                    self.run_cycle_attempt(tag, cycle_num, &label, &prompt, attempt, &mut router)?;
+                last_reason = attempt_outcome.reason;
 
-                let mut logger =
-                    ChunkLogger::new(&self.config.sse_chunks_dir, tag, cycle_num, &attempt_label)
-                        .map_err(|e| e.to_string())?;
-
-                let request = OpenAiChatRequest::new(vec![OpenAiMessage::user(prompt.clone())]);
-                let has_target_url = router.target_url().is_some();
-
-                let result = router
-                    .streaming_turn(
-                        request,
-                        &mut logger,
-                        self.config.router_turn_max_ms,
-                        self.config.router_first_capture_ms,
-                        self.config.router_idle_ms,
-                    )
-                    .map_err(|e| e.to_string())?;
-
-                last_reason = result.reason.clone();
-
-                if result.complete {
+                if attempt_outcome.completed {
                     completed = true;
-                    let preview: String = result.content.chars().take(120).collect();
-                    let preview = preview.replace('\n', " ");
-                    eprintln!(
-                        "[{tag}] turn {label} done — {} — {preview}…",
-                        result.target_url.as_deref().unwrap_or("no url"),
-                    );
                     break;
                 }
 
-                eprintln!(
-                    "[{tag}] turn {label} incomplete — {}; finish={}",
-                    result.reason,
-                    result.finish_reason.as_deref().unwrap_or("none"),
-                );
-
-                if !result.retry_is_safe(has_target_url) {
+                if !attempt_outcome.retry_is_safe {
                     break;
                 }
             }
@@ -262,6 +233,62 @@ impl LoopDriver {
         self.run_certification(cycle_num, tag);
 
         Ok(())
+    }
+
+    fn run_cycle_attempt(
+        &self,
+        tag: &str,
+        cycle_num: u64,
+        label: &str,
+        prompt: &str,
+        attempt: u32,
+        router: &mut RouterClient,
+    ) -> Result<RunCycleAttemptOutcome, String> {
+        let attempt_label = retry_attempt_label(label, attempt);
+
+        let mut logger =
+            ChunkLogger::new(&self.config.sse_chunks_dir, tag, cycle_num, &attempt_label)
+                .map_err(|e| e.to_string())?;
+
+        let request = OpenAiChatRequest::new(vec![OpenAiMessage::user(prompt.to_string())]);
+        let has_target_url = router.target_url().is_some();
+
+        let result = router
+            .streaming_turn(
+                request,
+                &mut logger,
+                self.config.router_turn_max_ms,
+                self.config.router_first_capture_ms,
+                self.config.router_idle_ms,
+            )
+            .map_err(|e| e.to_string())?;
+
+        let reason = result.reason.clone();
+        if result.complete {
+            let preview: String = result.content.chars().take(120).collect();
+            let preview = preview.replace('\n', " ");
+            eprintln!(
+                "[{tag}] turn {label} done — {} — {preview}…",
+                result.target_url.as_deref().unwrap_or("no url"),
+            );
+            return Ok(RunCycleAttemptOutcome {
+                completed: true,
+                reason,
+                retry_is_safe: false,
+            });
+        }
+
+        eprintln!(
+            "[{tag}] turn {label} incomplete — {}; finish={}",
+            result.reason,
+            result.finish_reason.as_deref().unwrap_or("none"),
+        );
+
+        Ok(RunCycleAttemptOutcome {
+            completed: false,
+            reason,
+            retry_is_safe: result.retry_is_safe(has_target_url),
+        })
     }
 
     /// Run an AgentCycle against the worker to stamp evidence gates to the tlog.
@@ -333,6 +360,12 @@ impl LoopDriver {
             Err(e) => eprintln!("[{tag}] cert: browser tab close failed: {e}"),
         }
     }
+}
+
+struct RunCycleAttemptOutcome {
+    completed: bool,
+    reason: String,
+    retry_is_safe: bool,
 }
 
 fn close_router_tab(tag: &str, label: &str, router: &mut RouterClient) {

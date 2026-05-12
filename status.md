@@ -57,6 +57,14 @@ Current date: 2026-05-11.
 
 ## Validation Ledger
 
+### 2026-05-11 — item 58 LoopDriver run_cycle_attempt extraction validation blocker
+
+- Scope: Active Priorities item 58, `src/agent/loop_driver.rs::LoopDriver::run_cycle` retry-attempt helper extraction.
+- Command/check: `cargo fmt --check`; `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`; typed evaluator suite `rust_full_validation`.
+- Result: blocked by infrastructure transport after formatting passed.
+- Evidence: `cargo fmt --check` passed after applying `cargo fmt`. The direct required full-suite command returned connector HTTP 502 before usable Rust output, and the typed `rust_full_validation` evaluator suite also returned connector HTTP 502 before evaluator output. No Rust test failure was observed. Item 58 remains unchecked in `plan.md`, and no commit is made.
+- Next action: retry item 58 full-suite validation when connector transport can return Rust output; if green, mark item 58 complete and commit `src/agent/loop_driver.rs`, `plan.md`, and `status.md`.
+
 ### 2026-05-11 — item 56 P4 graph-editing guardrail review
 
 - Scope: Active Priorities item 56, `plan.md` P4 graph-editing guardrail documentation.
