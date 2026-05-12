@@ -164,6 +164,8 @@ impl LoopDriver {
                     &self.config.working_dir,
                 )
             } else if is_planning {
+                let score_report =
+                    std::fs::read_to_string(self.config.working_dir.join("SCORE_REPORT.md")).ok();
                 planning_prompt(
                     &goal,
                     agent_id,
@@ -171,6 +173,7 @@ impl LoopDriver {
                     &self.config.working_dir,
                     None,
                     None,
+                    score_report.as_deref(),
                 )
             } else {
                 execute_prompt(effective_turn, agent_id, self.config.agent_count)
@@ -345,6 +348,7 @@ fn planning_prompt(
     working_dir: &Path,
     domain: Option<&str>,
     metric: Option<&str>,
+    score_report: Option<&str>,
 ) -> String {
     let agent_line = agent_identity(agent_id, agent_count);
     let focus_block = match (domain, metric) {
@@ -354,6 +358,13 @@ fn planning_prompt(
         (Some(d), None) => format!("## YOUR SPECIFIC TASK\n{d}\n\n"),
         _ => String::new(),
     };
+    let score_block = match score_report {
+        Some(report) => format!(
+            "## STRUCTURAL QUALITY SCORES (SCORE_REPORT.md — graph-derived, updated each commit)\n\
+             ```\n{report}\n```\n\n"
+        ),
+        None => String::new(),
+    };
     format!(
         "{agent_line}\n\
          You are doing the planning turn for this agent loop.\n\n\
@@ -361,6 +372,7 @@ fn planning_prompt(
          All shell commands must run relative to this directory unless the task explicitly requires otherwise.\n\n\
          {focus_block}\
          ## GOAL\n{goal}\n\n\
+         {score_block}\
          ## OPTIMIZATION OBJECTIVE\n\
          The purpose of this planning turn is to choose the next executable work that maximizes expected project goodness. \
          Treat the score axes in `score.md` as the current objective surface. \
@@ -373,8 +385,9 @@ fn planning_prompt(
          1. Read the current `plan.md` and identify the first incomplete item under \"Active Priorities\".\n\
          2. Read `status.md` for current progress, validation evidence, blockers, and history.\n\
          3. Read `score.md` for current score values and score rationale.\n\
-         4. Inspect the files, tests, fixtures, evidence paths, and validation commands named by `plan.md` and `status.md`.\n\
-         5. If project evidence files are named in the plan or status, inspect them with the appropriate local tool before changing the checklist.\n\n\
+         4. Read `SCORE_REPORT.md` for graph-derived structural quality scores (Architecture, Structure, Simplicity, Maintainability, Determinism, Coherency).\n\
+         5. Inspect the files, tests, fixtures, evidence paths, and validation commands named by `plan.md` and `status.md`.\n\
+         6. If project evidence files are named in the plan or status, inspect them with the appropriate local tool before changing the checklist.\n\n\
          Then update `plan.md` so that the active priority section contains a concrete, ordered checklist \
          of file-level tasks (one file or one test per item) that the execute turns can pick up one at a time. \
          Tasks must name specific files, functions, tests, fixtures, or artifacts — not describe intent in prose. \
@@ -651,7 +664,7 @@ mod tests {
     fn project_prompts_do_not_claim_to_be_worker_certification() {
         let goal = "Ship the next deterministic runtime slice.";
         let working_dir = Path::new("/workspace/project");
-        let planning = planning_prompt(goal, 0, 1, working_dir, None, None);
+        let planning = planning_prompt(goal, 0, 1, working_dir, None, None, None);
         let execute = execute_prompt(2, 0, 1);
 
         assert!(planning.contains("planning turn for this agent loop"));

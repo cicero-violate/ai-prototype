@@ -113,9 +113,14 @@ impl AgentCycle {
 
         // Step 0: planning turn.
         self.last_llm_output = {
+            let score_report = std::fs::read_to_string("SCORE_REPORT.md").ok();
             let messages = vec![
                 OpenAiMessage::system(prompt::system_prompt()),
-                OpenAiMessage::user(prompt::planning_prompt(&domain, &metric)),
+                OpenAiMessage::user(prompt::planning_prompt(
+                    &domain,
+                    &metric,
+                    score_report.as_deref(),
+                )),
             ];
             let result = self
                 .router

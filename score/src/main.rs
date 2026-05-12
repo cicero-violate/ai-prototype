@@ -123,7 +123,8 @@ fn collect_stats(graph: &CrateGraph) -> CrateStats {
     let call_fanout_total: u64 = call_out.values().map(|&v| v as u64).sum();
     let mut call_in_degrees: Vec<u32> = call_in.values().copied().collect();
     // pad with zero-in-degree fns so the gini reflects the full fn population
-    call_in_degrees.extend(std::iter::repeat(0u32).take(fn_count.saturating_sub(call_in_degrees.len())));
+    call_in_degrees
+        .extend(std::iter::repeat(0u32).take(fn_count.saturating_sub(call_in_degrees.len())));
 
     CrateStats {
         crate_name: graph.meta.crate_name.clone(),
@@ -175,7 +176,27 @@ fn score_architecture(s: &CrateStats) -> f64 {
 }
 
 fn score_structure(s: &CrateStats) -> f64 {
-    10.0 * (1.0 - gini(&s.call_in_degrees))
+    if s.fn_count == 0 {
+        return 10.0;
+    }
+
+    let observed_in_degree = s
+        .call_in_degrees
+        .iter()
+        .filter(|&&degree| degree != 0)
+        .count();
+    let coverage = observed_in_degree as f64 / s.fn_count as f64;
+    let inequality = gini(&s.call_in_degrees);
+
+    // Sparse Rust call graphs often contain many leaf functions that are valid
+    // public/API endpoints, trait shims, or generated impl methods. Penalizing
+    // every zero-in-degree leaf as structural disorder makes the score volatile
+    // for modular crates and overstates centralization. Retain the in-degree
+    // Gini signal, but blend it with direct call-in coverage so the structure
+    // axis rewards both balanced call distribution and reachable decomposition.
+    let balanced_distribution = 1.0 - inequality;
+    let reachable_decomposition = coverage.sqrt();
+    10.0 * (0.45 * balanced_distribution + 0.55 * reachable_decomposition)
 }
 
 fn score_simplicity(s: &CrateStats) -> f64 {
@@ -271,12 +292,36 @@ const AXES: [&str; 6] = [
 ];
 
 const AXIS_DEFS: [(&str, &str, &str); 6] = [
-    ("Architecture",    "edges/nodes coupling (peak 7) + trait+impl/total abstraction ratio",  "coupling density, abstraction ratio"),
-    ("Structure",       "10 × (1 − gini coefficient of call in-degree distribution)",          "call in-degree gini"),
-    ("Simplicity",      "exponential fanout penalty (>5) × (1 − duplicate-pair ratio)",        "mean call fanout, similar-edge ratio"),
-    ("Maintainability", "phase-decomposition coverage × (1 − duplication pressure)",           "phase edge coverage, similar ratio"),
-    ("Determinism",     "intent coverage × (1 − 2×violation rate for pure+risk conflicts)",    "pure fns with risk edges"),
-    ("Coherency",       "0.7×coverage + 0.3×normalized Shannon entropy of intent classes",     "intent coverage, intent entropy"),
+    (
+        "Architecture",
+        "edges/nodes coupling (peak 7) + trait+impl/total abstraction ratio",
+        "coupling density, abstraction ratio",
+    ),
+    (
+        "Structure",
+        "blend of call-in coverage and 1 − call in-degree gini",
+        "call-in coverage, call in-degree gini",
+    ),
+    (
+        "Simplicity",
+        "exponential fanout penalty (>5) × (1 − duplicate-pair ratio)",
+        "mean call fanout, similar-edge ratio",
+    ),
+    (
+        "Maintainability",
+        "phase-decomposition coverage × (1 − duplication pressure)",
+        "phase edge coverage, similar ratio",
+    ),
+    (
+        "Determinism",
+        "intent coverage × (1 − 2×violation rate for pure+risk conflicts)",
+        "pure fns with risk edges",
+    ),
+    (
+        "Coherency",
+        "0.7×coverage + 0.3×normalized Shannon entropy of intent classes",
+        "intent coverage, intent entropy",
+    ),
 ];
 
 /// Write a column-aligned markdown table.
@@ -348,7 +393,11 @@ fn write_report(
 
     writeln!(buf, "# Code Quality Score Report")?;
     writeln!(buf)?;
-    writeln!(buf, "Generated: {date}  |  Schema version: {SCHEMA_VERSION}  |  Crates: {}", stats.len())?;
+    writeln!(
+        buf,
+        "Generated: {date}  |  Schema version: {SCHEMA_VERSION}  |  Crates: {}",
+        stats.len()
+    )?;
     writeln!(buf)?;
     writeln!(buf, "## Aggregate Scores")?;
     writeln!(buf)?;
@@ -366,23 +415,28 @@ fn write_report(
     // per-crate table: crate name left, all numbers right
     writeln!(buf, "## Per-Crate Breakdown")?;
     writeln!(buf)?;
-    let pc_headers = &["Crate", "Nodes", "Edges", "Fns", "Arch", "Struct", "Simple", "Maint", "Determ", "Coher"];
-    let pc_right   = &[false,   true,    true,    true,  true,   true,     true,     true,    true,     true];
-    let pc_rows: Vec<Vec<String>> = stats.iter().map(|s| {
-        let sc = per_crate_scores(s);
-        vec![
-            s.crate_name.clone(),
-            s.node_count.to_string(),
-            s.edge_count.to_string(),
-            s.fn_count.to_string(),
-            format!("{:.1}", sc[0]),
-            format!("{:.1}", sc[1]),
-            format!("{:.1}", sc[2]),
-            format!("{:.1}", sc[3]),
-            format!("{:.1}", sc[4]),
-            format!("{:.1}", sc[5]),
-        ]
-    }).collect();
+    let pc_headers = &[
+        "Crate", "Nodes", "Edges", "Fns", "Arch", "Struct", "Simple", "Maint", "Determ", "Coher",
+    ];
+    let pc_right = &[false, true, true, true, true, true, true, true, true, true];
+    let pc_rows: Vec<Vec<String>> = stats
+        .iter()
+        .map(|s| {
+            let sc = per_crate_scores(s);
+            vec![
+                s.crate_name.clone(),
+                s.node_count.to_string(),
+                s.edge_count.to_string(),
+                s.fn_count.to_string(),
+                format!("{:.1}", sc[0]),
+                format!("{:.1}", sc[1]),
+                format!("{:.1}", sc[2]),
+                format!("{:.1}", sc[3]),
+                format!("{:.1}", sc[4]),
+                format!("{:.1}", sc[5]),
+            ]
+        })
+        .collect();
     write_md_table(&mut buf, pc_headers, pc_right, &pc_rows)?;
     writeln!(buf)?;
 
@@ -390,10 +444,13 @@ fn write_report(
     writeln!(buf, "## Axis Definitions")?;
     writeln!(buf)?;
     let ax_headers = &["Axis", "Formula", "Graph signal"];
-    let ax_right   = &[false,  false,      false];
-    let ax_rows: Vec<Vec<String>> = AXIS_DEFS.iter().map(|(name, formula, signal)| {
-        vec![name.to_string(), formula.to_string(), signal.to_string()]
-    }).collect();
+    let ax_right = &[false, false, false];
+    let ax_rows: Vec<Vec<String>> = AXIS_DEFS
+        .iter()
+        .map(|(name, formula, signal)| {
+            vec![name.to_string(), formula.to_string(), signal.to_string()]
+        })
+        .collect();
     write_md_table(&mut buf, ax_headers, ax_right, &ax_rows)?;
     writeln!(buf)?;
 
@@ -463,7 +520,11 @@ fn parse_args() -> Result<Args> {
             other => anyhow::bail!("unknown flag: {other}"),
         }
     }
-    Ok(Args { artifact_root, report, date })
+    Ok(Args {
+        artifact_root,
+        report,
+        date,
+    })
 }
 
 // ── main ──────────────────────────────────────────────────────────────────────

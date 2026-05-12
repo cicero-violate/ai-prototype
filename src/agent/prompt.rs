@@ -9,10 +9,26 @@ pub fn system_prompt() -> &'static str {
 }
 
 /// First turn: ask for a step-by-step plan.
-pub fn planning_prompt(domain_hint: &str, success_metric: &str) -> String {
+///
+/// `score_report` is the content of SCORE_REPORT.md if available. When
+/// present the structural quality scores are injected into the prompt so the
+/// agent can factor them into its plan without needing a separate file-read
+/// tool call.
+pub fn planning_prompt(
+    domain_hint: &str,
+    success_metric: &str,
+    score_report: Option<&str>,
+) -> String {
+    let score_section = match score_report {
+        Some(report) => format!(
+            "\n\nStructural quality scores (SCORE_REPORT.md — graph-derived, updated each commit):\n\
+             ```\n{report}\n```"
+        ),
+        None => String::new(),
+    };
     format!(
         "Domain: {domain_hint}\n\
-         Success metric: {success_metric}\n\n\
+         Success metric: {success_metric}{score_section}\n\n\
          Produce a numbered plan. For each step state the action kind \
          (llm_turn | direct_tool_call | observation_ingress | process_execution) \
          and what outcome advances the runtime phase."

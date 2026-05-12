@@ -321,15 +321,16 @@ Ordered execute-turn checklist, one file or one test per item. Implementation it
 50. [ ] `cargo test --all-targets`: retry the full Rust workspace validation gate and record Rust output or connector blocker evidence.
    - Scope: full Rust workspace validation only; do not edit source files while selecting this validation item.
    - Done when: full-suite Rust output is available and green. If connector HTTP 502 or another transport failure occurs before Rust output, leave this item unchecked and record the infrastructure blocker in `status.md`.
+   - Recovery note: repeated transport blockers may temporarily defer this gate; when the loop is in recovery and item 50 has only infrastructure evidence, select item 51 as the next semantic work unit because it is non-mutating graph-evidence tooling and does not claim item 50 is green.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
-51. [ ] `scripts/analyze_graph_json.py`: create the graph-analysis script that reads `state/rustc/ai/graph.json` and prints schema version, graph hash, receipt hash, risk hash, node count, edge count, intent count, node-kind counts, and compiled P5 `domain::`/`src/domain` node matches.
+51. [x] `scripts/analyze_graph_json.py`: create the graph-analysis script that reads `state/rustc/ai/graph.json` and prints schema version, graph hash, receipt hash, risk hash, node count, edge count, intent count, node-kind counts, and compiled P5 `domain::`/`src/domain` node matches.
    - Scope: `scripts/analyze_graph_json.py` only.
    - Done when: the script produces the graph summary and explicit P5 domain-node match count without mutating graph state.
-   - Validation: `python3 scripts/analyze_graph_json.py state/rustc/ai/graph.json`.
-52. [ ] `scripts/analyze_graph_json.py`: add a regression self-check path that fails when required top-level graph keys or metadata hashes are missing.
+   - Validation: `python3 scripts/analyze_graph_json.py state/rustc/ai/graph.json` passed on 2026-05-11 with schema version 16, graph hash `ba0aec3b291b2bbd5a3ae3db140a6636edb38e06ae4511d17d1191b7ca3704bd`, 5,297 nodes, 32,559 edges, 3,423 intents, and 752 P5 domain-node matches.
+52. [x] `scripts/analyze_graph_json.py`: add a regression self-check path that fails when required top-level graph keys or metadata hashes are missing.
    - Scope: `scripts/analyze_graph_json.py` only.
    - Done when: the script exits nonzero for malformed graph input or missing required metadata and still passes against `state/rustc/ai/graph.json`.
-   - Validation: `python3 scripts/analyze_graph_json.py state/rustc/ai/graph.json && python3 scripts/analyze_graph_json.py tests/fixtures/domain/global_signal_macro.json >/tmp/analyze_graph_json_negative.out 2>/tmp/analyze_graph_json_negative.err; test $? -ne 0`.
+   - Validation: `python3 scripts/analyze_graph_json.py state/rustc/ai/graph.json && python3 scripts/analyze_graph_json.py tests/fixtures/domain/global_signal_macro.json >/tmp/analyze_graph_json_negative.out 2>/tmp/analyze_graph_json_negative.err; test $? -ne 0` passed on 2026-05-11; the malformed fixture exited 1 with missing graph keys `edges`, `intents`, `meta`, and `nodes`.
 53. [ ] `state/rustc/ai/graph.json`: after item 50 is green, re-capture or regenerate the Rust graph evidence so compiled P5 `domain::` nodes appear.
    - Scope: `state/rustc/ai/graph.json` and generated graph evidence artifacts only.
    - Done when: refreshed graph evidence includes compiled P5 `domain::` or `src/domain` nodes and current graph hash/counts.

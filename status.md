@@ -53,9 +53,81 @@ Current date: 2026-05-11.
 - `src/domain/identity.rs` currently contains `DomainHash`, `DomainHashInput<'a>`, `canonical_json_bytes(record)`, `domain_hash_json(record)`, `domain_hash_parts(parts)`, `stable_domain_id(parts)`, and six passing targeted identity tests through `domain_hash_changes_when_schema_version_changes`.
 - `src/domain/scoring.rs` currently contains validated `BoundedScore` helpers, score-input breakdown helpers, conservative `verdict_for_scores(...)`, and passing `verdict_ignore_thresholds`, `verdict_watch_thresholds`, `verdict_research_thresholds`, `verdict_act_business_thresholds`, `verdict_act_finance_research_thresholds`, `verdict_simulate_trading_thresholds`, and `verdict_block_thresholds`; explicit verdict threshold tests are complete for the current scoring scope.
 - Current source inventory confirms Rust files exist for `src/domain/bridge.rs`, `src/domain/business.rs`, `src/domain/contracts.rs`, `src/domain/finance.rs`, `src/domain/global_intelligence.rs`, `src/domain/identity.rs`, `src/domain/mod.rs`, `src/domain/risk.rs`, `src/domain/scoring.rs`, and `src/domain/trading.rs`; `src/domain/risk.rs` now includes `RiskEnvelopeViolation`, `check_risk_envelope(...)`, and passing `risk_blocks_live_trading`, `risk_blocks_finance_execution`, and `risk_allows_verified_business_plan_with_rollback_and_invalidation`; `src/domain/bridge.rs` now includes `DomainBridgeDescriptor` plus descriptor-only signal/context/judgment/plan/eval mapping functions with passing targeted bridge validation, passing named record-family descriptor validation, and passing no-live-trading bridge descriptor validation; `src/domain/global_intelligence.rs` exists locally with `SignalClass`, `GlobalSignalProfile`, `stale_for_horizon(...)`, and `actionability_hint(...)`, and compile evidence through `src/domain/mod.rs` now passes targeted validation; `src/domain/finance.rs` exists locally with `AssetUniverse`, `FinanceHypothesis`, `FinanceRiskDimensions`, `finance_research_allowed(...)`, passing behavior test `finance_hypothesis_execution_allowed_is_false`, and passing risk-envelope test `finance_research_plan_passes_research_only_risk_check`; `src/domain/trading.rs` exists locally with `TradingSimulationPlan`, `BacktestReceiptRequirements`, `TradingRiskLimit`, `enforce_sandbox_only(...)`, and passing behavior test `trading_simulation_plan_rejects_live_execution`.
-- Domain fixture JSON files exist under `tests/fixtures/domain/` for global signal, business workflow opportunity, finance hypothesis research, trading simulation sandbox, and trading live blocked cases; `tests/test_domain_fixture_contract.py` now includes explicit risk-result and required-field assertions. Remaining work is item 50 full-suite Rust validation followed by graph evidence analysis/refresh items 51-56; `scripts/analyze_graph_json.py` is still absent and remains item 51.
+- Domain fixture JSON files exist under `tests/fixtures/domain/` for global signal, business workflow opportunity, finance hypothesis research, trading simulation sandbox, and trading live blocked cases; `tests/test_domain_fixture_contract.py` now includes explicit risk-result and required-field assertions. Item 51 graph analyzer now exists and passes against `state/rustc/ai/graph.json`, reporting 752 compiled P5 domain-node matches. Item 52 malformed-input self-check also passes. Remaining work includes item 50 full-suite Rust validation and later graph evidence refresh/score review items gated on full-suite output.
 
 ## Validation Ledger
+
+### 2026-05-11 — supervisor hot-reload contract assertion
+
+- Scope: supervisor hot-reload behavior in `tests/supervisor_binary_contract.rs`.
+- Command/check: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test supervisor_spawns_worker_and_reloads_generation --test supervisor_binary_contract -- --test-threads=1`.
+- Result: passed.
+- Evidence: focused supervisor contract test passed 1 test with 0 failures after adding an assertion that the retired generation-1 worker remains reachable on `/health/worker` during the drain window while generation 2 is active. This proves hot reload starts and health-checks the new worker before retiring the old worker, preserves TLog replay behavior across generations, and keeps old worker capacity briefly available during handoff.
+- Next action: preserve `/reload` generation handoff semantics; broader item 50 full-suite validation remains a separate gate.
+
+### 2026-05-11 — item 50 formatting repair and validation retry
+
+- Scope: Active Priorities item 50 full Rust workspace validation after product output became available.
+- Command/check: inspected typed `rust_full_validation` output, patched the `cargo fmt --check` diffs in `src/agent/cycle.rs` and `src/agent/prompt.rs`, then retried `cargo fmt --check` and wrapper-disabled `cargo test --all-targets` checks.
+- Result: partially repaired; validation retry blocked by infrastructure transport.
+- Evidence: typed Rust full validation returned product output showing `cargo fmt --check` exit code 1 and `cargo test -q` exit code 101. The formatting diffs were limited to `src/agent/cycle.rs` and `src/agent/prompt.rs` and were patched. The `cargo test -q` failure came from `canon-rustc-v3/scripts/canon-rustc-v3` failing to load `librustc_driver-61971b66f7da0581.so`. Subsequent combined and isolated validation retries returned connector HTTP 502 before check output.
+- Next action: rerun `cargo fmt --check` and `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets` when connector transport can return output; item 50 remains unchecked until both are green.
+
+### 2026-05-11 — typed item 50 Rust full-validation retry
+
+- Scope: Active Priorities item 50 full Rust workspace validation after status recovery.
+- Command/check: `canon_execute_evaluator_suite` with suite `rust_full_validation`, candidate id `item-50-rust-full-validation-2026-05-11`, and TLog path `target/canon/rust_full_validation_continue.tlog`.
+- Result: blocked by infrastructure transport.
+- Evidence: the typed evaluator call returned connector HTTP 502 before product or Rust test output. No Rust failure, source failure, or score-changing evidence was observed. Item 50 remains unchecked.
+- Next action: keep item 53 gated; retry item 50 only when connector transport can return full-suite Rust output.
+
+### 2026-05-11 — status recovery shell smoke evaluator
+
+- Scope: typed Canon evaluator suite after `status.md` recovery.
+- Command/check: `canon_execute_evaluator_suite` with suite `shell_smoke_validation`, candidate id `status-md-recovery-2026-05-11`, and TLog path `target/canon/status_recovery_shell_smoke.tlog`.
+- Result: passed.
+- Evidence: evaluator reported score `2/2`, command count `2`, both commands exited 0 without timeouts, durable TLog path `status_recovery_shell_smoke.tlog`, evidence digest `sha256:51adb3d3338bd0c9ca1d5bf782b4bbcb719eda90ae4913be80d9159d20ecf825`, and verified status `Evaluating`.
+- Next action: keep item 50 unchecked until full-suite Rust output is available and green; no score update is justified from shell smoke evidence alone.
+
+### 2026-05-11 — status finalization item 50 full-suite retry
+
+- Scope: full Rust workspace validation and Active Priorities item 50 while finishing `status.md` after recovery.
+- Command/check: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
+- Result: blocked by infrastructure transport.
+- Evidence: the workspace-shell retry returned connector HTTP 502 before Rust output. A typed evaluator-suite attempt also did not yield product validation evidence because the failing-suite recording path required a `candidate_id`. No Rust test failure, source failure, or score-changing product evidence was observed.
+- Next action: leave item 50 unchecked until full-suite Rust output is available and green; do not advance item 53 because it is gated on item 50.
+
+### 2026-05-11 — recovery execution item 52 graph analyzer self-check
+
+- Scope: `scripts/analyze_graph_json.py` and Active Priorities item 52.
+- Command/check: `python3 scripts/analyze_graph_json.py state/rustc/ai/graph.json` and negative check `python3 scripts/analyze_graph_json.py tests/fixtures/domain/global_signal_macro.json`.
+- Result: passed.
+- Evidence: positive graph check printed schema version 16, graph hash `ba0aec3b291b2bbd5a3ae3db140a6636edb38e06ae4511d17d1191b7ca3704bd`, 5,297 nodes, 32,559 edges, 3,423 intents, and 752 P5 domain-node matches. Negative check exited 1 and reported missing top-level graph keys `edges`, `intents`, `meta`, and `nodes`.
+- Next action: return to item 50 when connector transport can produce full-suite Rust output, or select item 53 only when full-suite validation is green because item 53 requires refreshed graph evidence after item 50.
+
+### 2026-05-11 — recovery execution item 51 graph analyzer
+
+- Scope: `scripts/analyze_graph_json.py` and Active Priorities item 51.
+- Command/check: `python3 scripts/analyze_graph_json.py state/rustc/ai/graph.json`.
+- Result: passed.
+- Evidence: analyzer printed schema version 16, graph hash `ba0aec3b291b2bbd5a3ae3db140a6636edb38e06ae4511d17d1191b7ca3704bd`, receipt hash `94d47ad92b4786d20179bb9eb0f0046ac7490b2a6d90ab390689650c59cfbdd5`, risk hash `57fe04e24804f51aa35b631fe63c8cacf4b1494222226e991b9946c85920de71`, 5,297 nodes, 32,559 edges, 3,423 intents, node-kind counts `enum 86`, `fn 3423`, `impl 1584`, `struct 198`, `trait 1`, `ty_alias 5`, and 752 compiled P5 `domain::`/`src/domain` node matches.
+- Next action: select item 52 to add malformed-graph regression self-checks for the analyzer, or return to item 50 when connector transport can produce full-suite Rust output.
+
+### 2026-05-11 — recovery receipt for TaskReceiptMissing semantic loop
+
+- Scope: Plan/Status semantic recovery for missing task receipt and unknown target phase.
+- Command/check: inspected `plan.md`, `status.md`, `score.md`, runtime audit tail, current working tree, and Active Priorities items 50-56.
+- Result: informational recovery receipt recorded.
+- Evidence: item 50 is the first incomplete gate but repeated ledger entries show only connector HTTP 502 before Rust output, not a product/test failure. Item 51 is already defined as a non-mutating graph-analysis script task that can reduce evidence ambiguity while preserving item 50 as unchecked until full-suite Rust output is available and green. Current score evidence is unchanged.
+- Next action: select Active Priorities item 51 as the next semantic work unit during recovery; keep item 50 unchecked and blocked until connector transport returns full-suite Rust output.
+
+### 2026-05-11 — item 50 repeated full-suite transport blocker summary
+
+- Scope: repeated full Rust workspace validation retries for Active Priorities item 50.
+- Command/check: repeated attempts of `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
+- Result: blocked by infrastructure transport.
+- Evidence: repeated retries returned connector HTTP 502 before Rust output. These entries are consolidated here as blocker evidence rather than separate product failures. Item 50 remains unchecked; no score evidence changed.
+- Next action: retry item 50 only when connector transport can return full-suite Rust output, or continue only with work explicitly allowed while item 50 remains blocked.
 
 ### 2026-05-11 — planning commit hook blocker
 

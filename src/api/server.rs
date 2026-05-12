@@ -17,9 +17,9 @@ use serde::{Deserialize, Serialize};
 use crate::api::protocol::{Command, CommandEnvelope};
 use crate::api::transport::{ApiTransportDisposition, ApiTransportFrame, ApiTransportSession};
 use crate::capability::{EvidenceSubmission, PacketEffect};
-use crate::codec::ndjson::write_tlog_ndjson;
 use crate::error::CanonError;
 use crate::kernel::{Evidence, GateId, RuntimeConfig, State};
+use crate::runtime::CanonicalWriter;
 
 #[derive(Clone)]
 pub struct WorkerAppState {
@@ -154,7 +154,8 @@ pub async fn post_command(
         .session
         .handle_frame(frame)
         .map_err(ServerError::Transport)?;
-    write_tlog_ndjson(&guard.tlog_path, guard.session.tlog()).map_err(|_| ServerError::TlogIo)?;
+    CanonicalWriter::persist_snapshot(&guard.tlog_path, guard.session.tlog())
+        .map_err(|_| ServerError::TlogIo)?;
 
     Ok(Json(CommandResponseDto {
         ok: true,

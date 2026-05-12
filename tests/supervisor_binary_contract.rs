@@ -132,6 +132,13 @@ fn supervisor_spawns_worker_and_reloads_generation() {
         .as_u64()
         .expect("new worker port") as u16;
     assert_ne!(first_port, second_port);
+    assert!(
+        reqwest::blocking::get(format!("http://127.0.0.1:{first_port}/health/worker"))
+            .expect("retired worker should remain reachable during drain")
+            .status()
+            .is_success(),
+        "hot reload should keep the retired worker alive during the drain window"
+    );
 
     let second = wait_for_json(&health_url);
     assert_eq!(second["ok"], true);
