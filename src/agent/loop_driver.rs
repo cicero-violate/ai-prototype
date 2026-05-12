@@ -166,6 +166,7 @@ impl LoopDriver {
             } else if is_planning {
                 let score_report =
                     std::fs::read_to_string(self.config.working_dir.join("SCORE_REPORT.md")).ok();
+                let auto_refactor_report = auto_refactor_summary(&self.config.working_dir);
                 planning_prompt(
                     &goal,
                     agent_id,
@@ -174,6 +175,7 @@ impl LoopDriver {
                     None,
                     None,
                     score_report.as_deref(),
+                    auto_refactor_report.as_deref(),
                 )
             } else {
                 execute_prompt(effective_turn, agent_id, self.config.agent_count)
@@ -349,6 +351,7 @@ fn planning_prompt(
     domain: Option<&str>,
     metric: Option<&str>,
     score_report: Option<&str>,
+    auto_refactor_report: Option<&str>,
 ) -> String {
     let agent_line = agent_identity(agent_id, agent_count);
     let focus_block = match (domain, metric) {
@@ -365,6 +368,15 @@ fn planning_prompt(
         ),
         None => String::new(),
     };
+    let auto_refactor_block = match auto_refactor_report {
+        Some(report) if !report.trim().is_empty() => format!(
+            "## AUTO-REFACTOR PLANS (state/rustc/auto-refactor — graph-editor planning evidence)\n\
+             ```\n{report}\n```\n\
+             Treat these as candidate evidence only. Prefer small `SplitFn` operations whose target exists in the current graph. \
+             Do not apply `merge_surface` recommendations blindly; generated serde/self-pair noise must be filtered manually.\n\n"
+        ),
+        _ => String::new(),
+    };
     format!(
         "{agent_line}\n\
          You are doing the planning turn for this agent loop.\n\n\
@@ -373,6 +385,7 @@ fn planning_prompt(
          {focus_block}\
          ## GOAL\n{goal}\n\n\
          {score_block}\
+         {auto_refactor_block}\
          ## OPTIMIZATION OBJECTIVE\n\
          The purpose of this planning turn is to choose the next executable work that maximizes expected project goodness. \
          Treat the score axes in `score.md` as the current objective surface. \
@@ -386,8 +399,9 @@ fn planning_prompt(
          2. Read `status.md` for current progress, validation evidence, blockers, and history.\n\
          3. Read `score.md` for current score values and score rationale.\n\
          4. Read `SCORE_REPORT.md` for graph-derived structural quality scores (Architecture, Structure, Simplicity, Maintainability, Determinism, Coherency).\n\
-         5. Inspect the files, tests, fixtures, evidence paths, and validation commands named by `plan.md` and `status.md`.\n\
-         6. If project evidence files are named in the plan or status, inspect them with the appropriate local tool before changing the checklist.\n\n\
+         5. Inspect `state/rustc/auto-refactor/*.graph-editor-plan.json` when present. Use those plans to identify legitimate, current graph-backed refactor candidates.\n\
+         6. Inspect the files, tests, fixtures, evidence paths, and validation commands named by `plan.md`, `status.md`, and selected auto-refactor plans.\n\
+         7. If project evidence files are named in the plan or status, inspect them with the appropriate local tool before changing the checklist.\n\n\
          Then update `plan.md` so that the active priority section contains a concrete, ordered checklist \
          of file-level tasks (one file or one test per item) that the execute turns can pick up one at a time. \
          Tasks must name specific files, functions, tests, fixtures, or artifacts — not describe intent in prose. \
@@ -396,6 +410,154 @@ fn planning_prompt(
          Keep this turn focused on planning, status, and scoring, and commit those changes at the end of the turn.",
         dir = working_dir.display(),
     )
+}
+
+fn auto_refactor_summary(project_dir: &Path) -> Option<String> {
+    let dir = project_dir
+        .join("state")
+        .join("rustc")
+        .join("auto-refactor");
+    let entries = fs::read_dir(&dir).ok()?;
+    let mut files: Vec<_> = entries
+        .flatten()
+        .map(|entry| entry.path())
+        .filter(|path| path.extension().and_then(|v| v.to_str()) == Some("json"))
+        .collect();
+    files.sort();
+
+    let mut out = String::new();
+    let mut listed = 0usize;
+    for path in files {
+        let Ok(text) = fs::read_to_string(&path) else {
+            continue;
+        };
+        let Some(summary) = summarize_auto_refactor_plan(&path, &text) else {
+            continue;
+        };
+        if !out.is_empty() {
+            out.push('\n');
+        }
+        out.push_str(&summary);
+        listed += 1;
+        if listed >= 20 {
+            break;
+        }
+    }
+
+    (!out.is_empty()).then_some(out)
+}
+
+fn summarize_auto_refactor_plan(path: &Path, text: &str) -> Option<String> {
+    let file_name = path.file_name()?.to_str()?;
+    let crate_name = json_string_field(text, "crate_name").unwrap_or_else(|| "unknown".into());
+    let operation_count = json_usize_field(text, "operation_count").unwrap_or(0);
+    let split_count = text.matches("\"op\": \"SplitFn\"").count();
+    let merge_count = json_array_object_count(text, "merge_surface").unwrap_or(0);
+    let split_targets = json_string_values_after_key(text, "fn_path", 5);
+
+    let mut line = format!(
+        "{file_name}: crate={crate_name} operations={operation_count} split_fn={split_count} merge_surface={merge_count}"
+    );
+    if !split_targets.is_empty() {
+        line.push_str(" split_targets=");
+        line.push_str(&split_targets.join(","));
+    }
+    Some(line)
+}
+
+fn json_string_field(text: &str, key: &str) -> Option<String> {
+    let needle = format!("\"{key}\"");
+    let start = text.find(&needle)? + needle.len();
+    let after_colon = text[start..].find(':')? + start + 1;
+    parse_json_string_at(text, after_colon)
+}
+
+fn json_usize_field(text: &str, key: &str) -> Option<usize> {
+    let needle = format!("\"{key}\"");
+    let start = text.find(&needle)? + needle.len();
+    let after_colon = text[start..].find(':')? + start + 1;
+    let rest = text[after_colon..].trim_start();
+    let digits: String = rest.chars().take_while(|c| c.is_ascii_digit()).collect();
+    digits.parse().ok()
+}
+
+fn json_string_values_after_key(text: &str, key: &str, limit: usize) -> Vec<String> {
+    let needle = format!("\"{key}\"");
+    let mut out = Vec::new();
+    let mut offset = 0usize;
+    while out.len() < limit {
+        let Some(found) = text[offset..].find(&needle) else {
+            break;
+        };
+        let start = offset + found + needle.len();
+        let Some(colon_rel) = text[start..].find(':') else {
+            break;
+        };
+        if let Some(value) = parse_json_string_at(text, start + colon_rel + 1) {
+            out.push(value);
+        }
+        offset = start;
+    }
+    out
+}
+
+fn parse_json_string_at(text: &str, offset: usize) -> Option<String> {
+    let rest = text[offset..].trim_start();
+    let mut chars = rest.chars();
+    if chars.next()? != '"' {
+        return None;
+    }
+    let mut value = String::new();
+    let mut escaped = false;
+    for ch in chars {
+        if escaped {
+            value.push(ch);
+            escaped = false;
+        } else if ch == '\\' {
+            escaped = true;
+        } else if ch == '"' {
+            return Some(value);
+        } else {
+            value.push(ch);
+        }
+    }
+    None
+}
+
+fn json_array_object_count(text: &str, key: &str) -> Option<usize> {
+    let needle = format!("\"{key}\"");
+    let start = text.find(&needle)? + needle.len();
+    let after_colon = text[start..].find(':')? + start + 1;
+    let array_start = text[after_colon..].find('[')? + after_colon;
+    let mut depth = 0i32;
+    let mut count = 0usize;
+    let mut in_string = false;
+    let mut escaped = false;
+    for ch in text[array_start..].chars() {
+        if in_string {
+            if escaped {
+                escaped = false;
+            } else if ch == '\\' {
+                escaped = true;
+            } else if ch == '"' {
+                in_string = false;
+            }
+            continue;
+        }
+        match ch {
+            '"' => in_string = true,
+            '[' => depth += 1,
+            ']' => {
+                depth -= 1;
+                if depth == 0 {
+                    return Some(count);
+                }
+            }
+            '{' if depth == 1 => count += 1,
+            _ => {}
+        }
+    }
+    None
 }
 
 fn spawned_prompt(domain: &str, metric: &str, step: u32, working_dir: &Path) -> String {
@@ -664,7 +826,7 @@ mod tests {
     fn project_prompts_do_not_claim_to_be_worker_certification() {
         let goal = "Ship the next deterministic runtime slice.";
         let working_dir = Path::new("/workspace/project");
-        let planning = planning_prompt(goal, 0, 1, working_dir, None, None, None);
+        let planning = planning_prompt(goal, 0, 1, working_dir, None, None, None, None);
         let execute = execute_prompt(2, 0, 1);
 
         assert!(planning.contains("planning turn for this agent loop"));

@@ -53,14 +53,21 @@ Approximate geometric mean over the listed score axes remains about:
 G ~= 8.12 / 10
 ```
 
-The aggregate score shifts to `G ~= 8.12 / 10` because `Maintainability = 7.8` was added as a new explicit axis. This is a scoring-surface change, not an evidence-backed capability gain. Full-suite validation and refreshed graph evidence remain pending.
+The graph-derived structural score report now reports `G = 7.93 / 10` after the scorer excludes synthetic derived trait shims from structural duplicate-pressure accounting. This is a measurement-quality improvement, not a claim that runtime capability increased by itself. Full-suite validation remains separately gated by item 50.
 
 ## Rationale
 Correctness, determinism, scalability, and coherency are strongest because the kernel, receipts, replay boundaries, graph fixture validation, validation evidence paths, and current planning direction agree on the same evidence-first architecture. Robustness, intelligence, benefit, and maintainability remain lower because live graph editing, self-modification, domain intelligence, and safe-change ergonomics are not yet proven end to end.
 
-Planning reconnaissance on 2026-05-11 did not change scores: finance behavior tests through item 34, trading compile evidence through item 36, trading behavior test item 37, domain integration contract items 38-41, fixture refresh items 42-46, and fixture-contract items 47-49 have passed targeted checks. Item 50 full-suite validation is still blocked by connector HTTP 502 before Rust output, and refreshed graph-domain evidence remains pending. Current graph evidence has zero compiled P5 `domain::` or `src/domain` node matches, so score values remain unchanged until full-suite validation or graph evidence justifies a change.
+Fast validation on 2026-05-11 passed after the score-report fix: semantic spine static validation passed, the score report regenerated with `G = 7.93 / 10`, Simplicity improved to `7.1`, Maintainability improved to `10.0`, and the post-validation supervisor reload succeeded on port 9100. Item 50 full-suite validation remains a separate release gate.
 
 ## Score History
+
+### 2026-05-11 — graph-derived score improved after scorer noise reduction
+
+- Graph-derived `SCORE_REPORT.md` aggregate improved from `G = 7.14 / 10` to `G = 7.93 / 10`.
+- Simplicity improved from `4.9` to `7.1`; Maintainability improved from `7.7` to `10.0`; Determinism remained `10.0`.
+- Reason: duplicate-pressure scoring now applies the same synthetic derived trait shim filter used for structural function counting, preventing generated `Clone`/`Debug`/`Eq`/`PartialEq` methods from distorting duplicate-pressure metrics.
+- Validation: fast validation passed and post-validation supervisor reload reported `supervisor reload: pass port=9100`.
 
 ### 2026-05-10 — baseline retained after status split
 

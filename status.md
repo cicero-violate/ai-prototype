@@ -57,6 +57,14 @@ Current date: 2026-05-11.
 
 ## Validation Ledger
 
+### 2026-05-11 — score report improvement validation
+
+- Scope: `score/src/main.rs`, `SCORE_REPORT.md`, git hook reload path, and graph-derived score evidence.
+- Command/check: fast validation run reported semantic spine static validation, score report generation, and post-validation supervisor reload.
+- Result: passed.
+- Evidence: validation output reported `semantic spine static validation: ok`, score report generation with `score: G = 7.93 / 10`, `Architecture: 8.9`, `Structure: 4.8`, `Simplicity: 7.1`, `Maintainability: 10.0`, `Determinism: 10.0`, `Coherency: 8.2`, `fast validation: pass`, and `supervisor reload: pass port=9100`. Commit `4a7cf8d` recorded the scorer fix and regenerated score report.
+- Next action: continue treating item 50 full-suite validation as the remaining release gate; do not infer full-suite success from fast validation alone.
+
 ### 2026-05-11 — git hooks reload supervisor after passing validation
 
 - Scope: git hook installation and supervisor reload helper.

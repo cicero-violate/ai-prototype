@@ -3,7 +3,8 @@
 //! Loop mode (used when PROJECT_DIR contains GOAL.md):
 //!   PROJECT_DIR, EXECUTE_TURNS, TURN_RETRY_LIMIT, LOOP_SLEEP_MS, AGENT_COUNT,
 //!   MCP_CONNECTOR_URL, SSE_CHUNKS_DIR, ROUTER_TURN_MAX_MS,
-//!   ROUTER_FIRST_CAPTURE_MS, ROUTER_IDLE_MS, CANON_OPENAI_BASE_URL
+//!   ROUTER_FIRST_CAPTURE_MS, ROUTER_IDLE_MS, CANON_OPENAI_BASE_URL.
+//!   Planning also inspects PROJECT_DIR/state/rustc/auto-refactor when present.
 //!
 //! Single-cycle mode (fallback, requires a running canon worker):
 //!   AI_WORKER_PORT, CANON_OPENAI_BASE_URL, AI_AGENT_DOMAIN,
@@ -18,6 +19,7 @@ fn main() {
         println!("usage: agent [--help]");
         println!("  Loop mode:        set PROJECT_DIR pointing to a directory with GOAL.md");
         println!("  Single-cycle mode: AI_WORKER_PORT, AI_AGENT_DOMAIN, AI_AGENT_METRIC");
+        println!("  Planning reads:   plan.md, status.md, score.md, SCORE_REPORT.md, state/rustc/auto-refactor");
         return;
     }
 
