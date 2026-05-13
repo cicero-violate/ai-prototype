@@ -5,14 +5,14 @@ Generated: 2026-05-13  |  Schema version: 16  |  Crates: 14
 ## Aggregate Scores
 
 ```text
-Architecture         = 9.0
+Architecture         = 8.9
 Structure            = 4.8
-Simplicity           = 7.0
+Simplicity           = 7.2
 Maintainability      = 10.0
 Determinism          = 10.0
-Coherency            = 8.2
+Coherency            = 8.4
 
-G (geometric mean)   = 7.92 / 10
+G (geometric mean)   = 7.97 / 10
 ```
 
 ## Per-Crate Breakdown
@@ -26,7 +26,7 @@ G (geometric mean)   = 7.92 / 10
 | browser_router        |     2 |    73 |    2 |  5.0 |    6.1 |    0.7 |  10.0 |   10.0 |   7.0 |
 | canon_rustc_v3        |   352 |  2176 |  177 |  8.9 |    4.3 |    7.6 |  10.0 |   10.0 |   8.1 |
 | canon_rustc_v3        |     2 |    69 |    2 |  5.0 |    6.1 |    0.9 |  10.0 |   10.0 |   8.1 |
-| chatgpt_mcp_connector |  3693 | 21168 | 1683 |  9.0 |    3.5 |    7.5 |  10.0 |   10.0 |   8.3 |
+| chatgpt_mcp_connector |  3693 | 19733 | 1683 |  8.6 |    3.5 |    8.0 |  10.0 |   10.0 |   8.8 |
 | graph_mutation        |    10 |   249 |   10 |  5.0 |    7.8 |    2.2 |  10.0 |   10.0 |   8.0 |
 | root_validate         |   162 |  1971 |  160 |  3.3 |    1.5 |    6.2 |  10.0 |   10.0 |   7.3 |
 | score                 |    90 |   685 |   54 |  8.3 |    4.4 |    6.5 |  10.0 |   10.0 |   8.2 |
