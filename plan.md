@@ -646,6 +646,10 @@ Ordered execute-turn checklist, one file or one test per item. Implementation it
    - Scope: `src/agent/cycle.rs` test module only. Do not call live router endpoints, worker services, external network services, or mutate production behavior.
    - Done when: named cycle tests prove the helper preserves at least one deterministic non-LLM phase path (`Invariant`, `Execute`, `Verify`, or `Persist`/`Learn`) and one stop-producing path already reachable from `AgentCycle::run(...)`.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test cycle::tests -- --test-threads=1`.
+114. [ ] `SCORE_REPORT.md`: refresh graph-derived structural evidence after items 112-113 land, then review whether `score.md` rationale should change without raising project-level scores absent capability evidence.
+   - Scope: `SCORE_REPORT.md`, `score.md`, `status.md`, and `plan.md` only.
+   - Done when: `SCORE_REPORT.md` is regenerated or confirmed current, `status.md` records the new structural evidence, and `score.md` changes only if the refreshed evidence justifies a score-history-worthy capability update.
+   - Validation: `cargo run --manifest-path score/Cargo.toml --quiet -- --artifact-root state/rustc --report SCORE_REPORT.md --date "$(date +%Y-%m-%d)"` plus `git diff -- SCORE_REPORT.md score.md status.md plan.md`.
 
 ## Additional Validation Notes
 
