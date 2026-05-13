@@ -30,9 +30,9 @@ COMMAND_NORMALIZATION_METRIC_KEYS = (
 
 FULL_SUMMARY_REQUIRED_COMMANDS = (
     ("cargo_test_all_targets", ["cargo", "test", "--all-targets"]),
-    ("panic_surface_validation", ["python3", "scripts/validate_rust_panic_surface.py"]),
-    ("policy_learning_trace_validation", ["python3", "scripts/validate_policy_learning_trace.py"]),
-    ("graph_workflow_fixture_validation", ["python3", "scripts/validate_graph_workflow_fixture.py"]),
+    ("panic_surface_validation", ["python3", "../scripts/validate_rust_panic_surface.py"]),
+    ("policy_learning_trace_validation", ["python3", "../scripts/validate_policy_learning_trace.py"]),
+    ("graph_workflow_fixture_validation", ["python3", "../scripts/validate_graph_workflow_fixture.py"]),
 )
 
 FULL_SUMMARY_EXACT_ONCE_MANIFEST_METRICS = tuple(

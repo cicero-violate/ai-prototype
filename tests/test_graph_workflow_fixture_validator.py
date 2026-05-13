@@ -33,7 +33,7 @@ class GraphWorkflowFixtureValidatorTest(unittest.TestCase):
             self.assertEqual(data["event"], "graph_fixture_report")
             self.assertEqual(data["validation_status"], "pass")
             self.assertEqual(data["graph_evidence_status"], "graph_mutation_landed_with_receipt_snapshot")
-            self.assertEqual(data["graph_fixture_validator"], "scripts/validate_graph_workflow_fixture.py")
+            self.assertEqual(data["graph_fixture_validator"], "../scripts/validate_graph_workflow_fixture.py")
             self.assertTrue(data["graph_workflow_fixture_receipt_snapshot_present"])
             self.assertTrue(data["graph_workflow_fixture_integrity_valid"])
             self.assertTrue(data["graph_workflow_fixture_commands_present"])

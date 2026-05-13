@@ -17,7 +17,7 @@ B="$(git rev-parse HEAD)"
 CANON_DELTA_BASE="$B" \
 CANON_RUNTIME_ARCHIVE=/mnt/data/ai-runtime.tar.gz \
 CANON_OBSERVE_REPORT=target/observe/validation-report.ndjson \
-bash scripts/observe_validation.sh
+bash ../scripts/observe_validation.sh
 ```
 
 The observe report is one NDJSON stream with Git hygiene, base-to-head hygiene,
@@ -62,7 +62,7 @@ H="$(git rev-parse HEAD)"
 rm -f /mnt/data/repo-delta-004.bundle /mnt/data/DELTA_MANIFEST.md
 git bundle create /mnt/data/repo-delta-004.bundle "$B..$H"
 git bundle verify /mnt/data/repo-delta-004.bundle
-python3 scripts/write_delta_manifest.py \
+python3 ../scripts/write_delta_manifest.py \
   --base "$B" \
   --head "$H" \
   --report target/observe/validation-report.ndjson \

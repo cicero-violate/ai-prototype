@@ -17682,10 +17682,10 @@ fn python_contract_step() -> StepReceipt {
         }
     };
     let required = [
-        "scripts/validate_rust_panic_surface.py",
-        "scripts/validate_policy_learning_trace.py",
-        "scripts/write_delta_manifest.py",
-        "scripts/observe_validation.sh",
+        "../scripts/validate_rust_panic_surface.py",
+        "../scripts/validate_policy_learning_trace.py",
+        "../scripts/write_delta_manifest.py",
+        "../scripts/observe_validation.sh",
     ];
     if required.iter().all(|path| root.join(path).is_file()) {
         return StepReceipt {
