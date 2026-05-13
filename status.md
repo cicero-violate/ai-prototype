@@ -2367,3 +2367,15 @@ Planning-turn update on 2026-05-13 after item 112 extraction:
 - Inspected `src/agent/cycle.rs`; item 112 has extracted `dispatch_observed_phase(...)`, and `AgentCycle::run(...)` still owns objective validation, worker health gating, planning turn, max-step loop control, observation, phase=`Done` success handling, pre-dispatch human-review sentinel handling, stop-reason assignment, final observation, and summary construction.
 - Updated `plan.md` to split prior broad item 113 into two executable test-level items: item 113 `dispatch_observed_phase_submits_invariant_without_llm` and item 114 `dispatch_observed_phase_stops_when_llm_phase_requests_review`; graph refresh is now item 115.
 - `score.md` was not changed because this planning turn produced planning/test-scope evidence only, not a score-history-worthy capability change.
+
+
+Implementation step 1 evidence on 2026-05-13 for Active Priorities item 113:
+
+- Selected first unchecked Active Priorities item 113: `src/agent/cycle.rs` unit test `dispatch_observed_phase_submits_invariant_without_llm`.
+- Changed only `src/agent/cycle.rs` within source scope, plus planning/status evidence files.
+- Added deterministic loopback-worker test fixture inside `src/agent/cycle.rs` test module. The fixture captures the `/v1/command` POST body from `WorkerClient::submit_command(...)`; the router uses a valid loopback config but is not called for the `Invariant` phase path.
+- Added `dispatch_observed_phase_submits_invariant_without_llm`, which calls `dispatch_observed_phase("Invariant", ...)`, asserts `Ok(None)`, asserts `invariant_submitted = true`, asserts no LLM `AgentStep` was recorded, asserts `next_command_id` advanced once, and compares the captured command body to `build_submit_evidence_json("Invariant", "InvariantProof", true, 1)`.
+- Formatting validation passed: `cargo fmt --check`.
+- The exact targeted validation command from `plan.md` was blocked by the shell safety filter, so equivalent targeted validation used accepted filter `cargo test dispatch_observed -- --test-threads=1`; it ran `agent::cycle::hash_tests::dispatch_observed_phase_submits_invariant_without_llm` successfully.
+- Broader validation passed: `cargo test --all-targets` ran 280 library/bin tests, integration suites, 352 root-validation tests, and worker binary tests successfully.
+- Marked item 113 complete in `plan.md`. `score.md` was not changed because this adds focused regression coverage for an existing helper boundary, not a score-history-worthy capability change.
