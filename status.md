@@ -57,6 +57,14 @@ Current date: 2026-05-13.
 
 ## Validation Ledger
 
+### 2026-05-13 — planning turn item 153 root_validate dispatch-catalog test selection
+
+- Scope: `plan.md`, `status.md`, `score.md`, `SCORE_REPORT.md`, `src/bin/root_validate.rs`, and local graph-editor evidence paths.
+- Command/check: inspected first incomplete Active Priorities entry; reviewed `SCORE_REPORT.md`; checked for `state/rustc/auto-refactor/*.graph-editor-plan.json`; inspected `src/bin/root_validate.rs` references for `COMPACT_MODES`, `root_validate_dispatch_catalog_payload()`, `root_validate_dispatch_catalog_mode()`, `try_run_compact_mode(arg)`, `compact_mode_stdout_for_contract(arg, expected_marker)`, `main()`, and `mirror_validation_outcome(arg, outcome)`; reviewed item 153 and item 154 checklist boundaries.
+- Result: informational.
+- Evidence: first incomplete executable item remains item 153, `src/bin/root_validate.rs` unit test `root_validate_dispatch_catalog_lists_every_compact_mode_once`. `SCORE_REPORT.md` still reports graph-derived `G = 7.97 / 10`, aggregate Structure `4.8`, and `root_validate` Structure `1.5`; no `state/rustc/auto-refactor/*.graph-editor-plan.json` files are currently exposed, so no generated graph-editor recommendation is selectable. `score.md` numeric scores remain unchanged because this turn added planning evidence only.
+- Next action: implement item 153 in `src/bin/root_validate.rs`, then run `cargo test --bin root_validate root_validate_dispatch_catalog_lists_every_compact_mode_once -- --test-threads=1`.
+
 ### 2026-05-13 — planning item 152 root_validate dispatch catalog inspection
 
 - Scope: Active Priorities item 152, `src/bin/root_validate.rs`, `plan.md`, `status.md`, and `score.md`.
