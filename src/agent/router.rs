@@ -74,8 +74,8 @@ impl RouterClient {
     ///
     /// This uses Chrome's local DevTools HTTP API when the returned target URL
     /// is itself a `/devtools/page/<id>` URL, or when `CANON_BROWSER_CDP_URL`,
-    /// `CDP_URL`, `CDP_PORT`, or the default `127.0.0.1:9222` debugging
-    /// endpoint can resolve the tab by URL.
+    /// `CDP_URL`, or `CDP_PORT` explicitly names the debugging endpoint that
+    /// can resolve the tab by URL.
     pub fn close_current_tab(&mut self) -> Result<RouterTabCloseOutcome, OpenAiError> {
         let Some(target_url) = self.target_url.clone() else {
             return Ok(RouterTabCloseOutcome::NoTarget);
@@ -389,7 +389,6 @@ fn cdp_endpoint_from_env() -> Option<String> {
                 .filter(|v| !v.trim().is_empty())
                 .map(|port| format!("http://127.0.0.1:{port}"))
         })
-        .or_else(|| Some("http://127.0.0.1:9222".to_string()))
 }
 
 fn devtools_page_target(target_url: &str) -> Option<(String, u16, String)> {
