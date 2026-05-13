@@ -2721,3 +2721,16 @@ Implementation step 5 blocker on 2026-05-13:
 - Active Priorities still has no remaining real unchecked executable item: items 112 through 115 are complete, and no new scoped implementation, validation, evidence refresh, documentation cleanup, or blocker-resolution task has been added.
 - No source implementation was selected. The next executable work must be added by a planning turn before another implementation step can proceed safely.
 - `score.md` remains unchanged because no implementation or new score evidence was produced.
+
+
+Planning-turn update on 2026-05-13 for policy-selected evaluator transport helper work:
+
+- Required reconnaissance completed from `/workspace/ai_sandbox/canon-mini-agent/prototype/ai` using the connector shell with `cwd=.` because the shell tool workspace root resolves to the required project directory.
+- Read `plan.md`; the first incomplete Active Priorities item is item 139, `../chatgpt-mcp-connector/src/tools.rs::execute_policy_selected_evaluator_suite_tool_inner(...)` helper extraction for policy-selected evaluator transport input parsing and suite/policy lookup preparation.
+- Read `status.md`, `score.md`, and `SCORE_REPORT.md`; project-level scores remain unchanged, while graph-derived evidence still reports aggregate `G = 7.93 / 10`, Structure `4.8`, Simplicity `7.1`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2`.
+- Inspected item 138 and item 139 in `plan.md`; item 138 is complete and already recorded the manual helper boundary for `SplitFn id=60adc335b168c028`, rejecting generated helper names as direct implementation instructions.
+- Inspected `../chatgpt-mcp-connector/src/tools.rs`; the current source contains `execute_policy_selected_evaluator_suite_tool_inner(...)`, `PolicySelectedEvaluatorTransportInputs`, and `prepare_policy_selected_evaluator_transport_inputs(...)`, with the parent function retaining workspace/cwd resolution, `CapabilityRequest` construction, run/actor creation, tlog-path branching, and execution dispatch.
+- Inspected policy-selected evaluator test surface in `../chatgpt-mcp-connector/src/tools.rs`; existing tests include internal policy hit, caller policy authority rejection, durable lookup evidence, allowlist rejection trace persistence, failed score policy support, and completion policy support.
+- Inspected git status before modifying planning files. Unrelated uncommitted changes already exist in `.cargo/config.toml`, `Cargo.toml`, `src/agent/router.rs`, `src/api/server.rs`, `src/bin/supervisor.rs`, and `tests/api_server_contract.rs`; this planning turn leaves those files untouched and stages only planning/status changes.
+- Updated `plan.md` to keep item 139 as the first executable source task and add follow-on item 140 for focused test coverage plus item 141 for graph-derived structural evidence refresh after item 139-140 land.
+- `score.md` was reviewed and left unchanged because this planning turn produced no new implementation, validation, graph refresh, or score-history-worthy capability evidence.
