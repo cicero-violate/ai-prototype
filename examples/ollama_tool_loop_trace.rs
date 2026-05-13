@@ -121,53 +121,70 @@ fn submit_ollama_tool_calls(
 
     let mut receipts = Vec::new();
     for tool_call_index in 1..=TOOL_CALL_TARGET {
-        let spec = tool_spec(tool_call_index)?;
-        println!("llm_tool_intent_call index={tool_call_index} phase=Execute provider=ollama");
-        let response = client.chat(&[
-            OllamaMessage::system("Return exactly the requested tool intent token. No markdown, no punctuation, no explanation."),
-            OllamaMessage::user(format!(
-                "Safe tool menu: RUN_PRINTF, RUN_PWD, RUN_UNAME, RUN_WHOAMI, RUN_TRUE. For tool call number {tool_call_index}, return exactly {}.",
-                spec.intent
-            )),
-        ])?;
-        let normalized = response.content.trim().to_ascii_uppercase();
-        println!(
-            "llm_tool_intent index={} content={:?} response_hash={} raw_hash={} token_count={}",
+        let receipt = execute_one_ollama_tool_call(
+            client,
+            &executor,
+            &mcp_worker_url,
+            mcp_receipt_path,
             tool_call_index,
-            response.content.trim(),
-            response.response_hash,
-            response.raw_hash,
-            response.total_tokens
-        );
-
-        if !matches_tool_intent(&normalized, spec) {
-            return Err(format!("unsupported tool intent: {}", response.content.trim()).into());
-        }
-        println!(
-            "tool_intent_mapped index={} mapped={} mcp_worker_url={} tool_name={} args_json={}",
-            tool_call_index, spec.intent, mcp_worker_url, spec.tool_name, spec.args_json
-        );
-
-        let receipt = executor
-            .execute_call(spec.tool_name, spec.args_json)
-            .map_err(|err| format!("mcp tool execution failed: {err:?}"))?;
-
-        println!(
-            "mcp_tool_receipt index={} tool_name={} exit_status={} timed_out={} response_bytes={} response_hash={} receipt_hash={}",
-            tool_call_index,
-            spec.tool_name,
-            receipt.exit_status,
-            receipt.timed_out,
-            receipt.response_bytes,
-            receipt.response_hash,
-            receipt.receipt_hash
-        );
-        append_mcp_call_receipt_ndjson(mcp_receipt_path, &receipt)
-            .map_err(|err| format!("failed to persist mcp receipt: {err:?}"))?;
+        )?;
         receipts.push(receipt);
     }
 
     submit_ollama_mcp_evidence(&receipts, state, tlog, cfg)
+}
+
+fn execute_one_ollama_tool_call(
+    client: &OllamaClient,
+    executor: &LiveMcpCallExecutor,
+    mcp_worker_url: &str,
+    mcp_receipt_path: &Path,
+    tool_call_index: usize,
+) -> Result<McpCallReceipt, Box<dyn std::error::Error>> {
+    let spec = tool_spec(tool_call_index)?;
+    println!("llm_tool_intent_call index={tool_call_index} phase=Execute provider=ollama");
+    let response = client.chat(&[
+        OllamaMessage::system("Return exactly the requested tool intent token. No markdown, no punctuation, no explanation."),
+        OllamaMessage::user(format!(
+            "Safe tool menu: RUN_PRINTF, RUN_PWD, RUN_UNAME, RUN_WHOAMI, RUN_TRUE. For tool call number {tool_call_index}, return exactly {}.",
+            spec.intent
+        )),
+    ])?;
+    let normalized = response.content.trim().to_ascii_uppercase();
+    println!(
+        "llm_tool_intent index={} content={:?} response_hash={} raw_hash={} token_count={}",
+        tool_call_index,
+        response.content.trim(),
+        response.response_hash,
+        response.raw_hash,
+        response.total_tokens
+    );
+
+    if !matches_tool_intent(&normalized, spec) {
+        return Err(format!("unsupported tool intent: {}", response.content.trim()).into());
+    }
+    println!(
+        "tool_intent_mapped index={} mapped={} mcp_worker_url={} tool_name={} args_json={}",
+        tool_call_index, spec.intent, mcp_worker_url, spec.tool_name, spec.args_json
+    );
+
+    let receipt = executor
+        .execute_call(spec.tool_name, spec.args_json)
+        .map_err(|err| format!("mcp tool execution failed: {err:?}"))?;
+
+    println!(
+        "mcp_tool_receipt index={} tool_name={} exit_status={} timed_out={} response_bytes={} response_hash={} receipt_hash={}",
+        tool_call_index,
+        spec.tool_name,
+        receipt.exit_status,
+        receipt.timed_out,
+        receipt.response_bytes,
+        receipt.response_hash,
+        receipt.receipt_hash
+    );
+    append_mcp_call_receipt_ndjson(mcp_receipt_path, &receipt)
+        .map_err(|err| format!("failed to persist mcp receipt: {err:?}"))?;
+    Ok(receipt)
 }
 
 fn submit_ollama_mcp_evidence(
