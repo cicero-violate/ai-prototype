@@ -57,6 +57,14 @@ Current date: 2026-05-13.
 
 ## Validation Ledger
 
+### 2026-05-13 — planning turn selected root_validate dispatch-catalog unit test
+
+- Scope: `plan.md`, `status.md`, `score.md`, `SCORE_REPORT.md`, `src/bin/root_validate.rs`, local graph evidence paths, `state/rustc/auto-refactor`, and current working-tree status.
+- Command/check: read current planning/status/score files and `SCORE_REPORT.md`; inspected Active Priorities items 149 through 154; checked `COMPACT_MODES`, `root_validate_dispatch_catalog_payload()`, `root_validate_dispatch_catalog_mode()`, `try_run_compact_mode(arg)`, `compact_mode_stdout_for_contract(arg, expected_marker)`, and `mirror_validation_outcome(arg, outcome)` in `src/bin/root_validate.rs`; checked for `state/rustc/auto-refactor/*.graph-editor-plan.json`, `state/rustc/root_validate__bin/graph.json`, `state/rustc/root_validate/graph.json`, and `state/rustc/ai/graph.json`; reviewed `git status --short`.
+- Result: informational.
+- Evidence: first incomplete executable work remains item 153, the single test `root_validate_dispatch_catalog_lists_every_compact_mode_once` in `src/bin/root_validate.rs`. Local `SCORE_REPORT.md` reports graph-derived `G = 7.91 / 10`, aggregate Structure `4.8`, and `root_validate` Structure `1.5`, keeping the next item aligned with the weakest graph-derived local structure surface. `state/rustc/auto-refactor`, `state/rustc/root_validate__bin/graph.json`, `state/rustc/root_validate/graph.json`, and `state/rustc/ai/graph.json` are not exposed in this mounted workspace, so no generated graph-editor operation is selectable. Existing unrelated working-tree modifications remain outside this planning update: `.cargo/config.toml`, `SCORE_REPORT.md`, `USAGE.md`, `run.sh`, `run_supervisor.sh`, `src/bin/supervisor.rs`, `src/bin/worker.rs`, `src/runtime/introspection.rs`, and `tests/canonical_tlog_contract.rs`.
+- Next action: implement item 153 in `src/bin/root_validate.rs`, then run `cargo test --bin root_validate root_validate_dispatch_catalog_lists_every_compact_mode_once -- --test-threads=1`.
+
 ### 2026-05-13 — planning turn reconfirmed root_validate dispatch-catalog test as first executable work
 
 - Scope: `plan.md`, `status.md`, `score.md`, `SCORE_REPORT.md`, `src/bin/root_validate.rs`, `state/rustc/auto-refactor`, and current working-tree status.
