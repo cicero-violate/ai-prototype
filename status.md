@@ -2391,3 +2391,13 @@ Implementation step 2 evidence on 2026-05-13 for Active Priorities item 114:
 - Targeted validation passed: `cargo test dispatch_observed_phase_stops_when_llm_phase_requests_review -- --test-threads=1` ran the named test successfully.
 - Broader validation passed: `cargo test --all-targets` ran 281 library/bin tests, integration suites, 352 root-validation tests, and worker binary tests successfully.
 - Marked item 114 complete in `plan.md`. `score.md` was not changed because this adds focused regression coverage for an existing helper boundary, not a score-history-worthy capability change.
+
+
+Implementation step 3 evidence on 2026-05-13 for Active Priorities item 115:
+
+- Selected first unchecked Active Priorities item 115: `SCORE_REPORT.md` graph-derived structural evidence refresh after items 112-114.
+- Changed only scoped evidence/planning files: `SCORE_REPORT.md`, `plan.md`, and `status.md`. `score.md` was reviewed and left unchanged.
+- Validation passed: `cargo run --manifest-path score/Cargo.toml --quiet -- --artifact-root state/rustc --report SCORE_REPORT.md --date "$(date +%Y-%m-%d)"` completed successfully.
+- Refreshed structural evidence remains unchanged: aggregate `G = 7.93 / 10` across 16 schema-version-16 crates with 2 expected schema-version-12 skips.
+- Refreshed axes remain Architecture `9.0`, Structure `4.8`, Simplicity `7.1`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2`.
+- Marked item 115 complete in `plan.md`. `score.md` numeric scores and rationale were not changed because the refreshed graph evidence confirms the current structural snapshot rather than proving a new score-history-worthy capability change.
