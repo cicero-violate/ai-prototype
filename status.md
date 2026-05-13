@@ -57,6 +57,14 @@ Current date: 2026-05-13.
 
 ## Validation Ledger
 
+### 2026-05-13 — planning corrected first incomplete item for run-cycle-attempt extraction
+
+- Scope: `plan.md`, `status.md`, `score.md`, `SCORE_REPORT.md`, `src/agent/loop_driver.rs::LoopDriver::run_cycle_attempt(...)`, `src/agent/loop_driver.rs` tests, and `state/rustc/auto-refactor/..__state__rustc__ai__graph.graph-editor-plan.json`.
+- Command/check: read current Active Priorities, current progress, score rationale, graph-derived score report, loop-driver source/test structure, and selected auto-refactor split evidence; checked `git status --short` before editing.
+- Result: pass.
+- Evidence: `plan.md` had completed items 113 through 116 but its Active Priorities narrative still named item 113 as first incomplete. Planning now records item 117 as the first unchecked executable item. Source inspection confirms `run_cycle_attempt(...)` still contains the successful `SseResult` finalization block at the planned extraction boundary: receipt writing, completed/incomplete log message, and `RunCycleAttemptOutcome` construction. Auto-refactor evidence still reports `SplitFn id=a688c0ce894f01a8` for `agent::loop_driver::LoopDriver::run_cycle_attempt(...)` with generated names `run_cycle_attempt__parse`/`run_cycle_attempt__transform`; generated names remain evidence only. `SCORE_REPORT.md` remains `G = 7.93 / 10`, Architecture `9.0`, Structure `4.8`, Simplicity `7.1`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2`. Existing unrelated working-tree modifications remain in `.cargo/config.toml`, `Cargo.toml`, `src/agent/loop_driver.rs`, `src/agent/router.rs`, `src/api/server.rs`, `src/bin/supervisor.rs`, and `tests/api_server_contract.rs`; this planning turn changed only `plan.md` and `status.md`.
+- Next action: execute Active Priorities item 117 by extracting `finalize_run_cycle_attempt_result(...)` for successful streaming-turn receipt/outcome finalization only.
+
 ### 2026-05-13 — planning reconciled completed cycle coverage and selected run-cycle-attempt split
 
 - Scope: `plan.md`, `status.md`, `score.md`, `SCORE_REPORT.md`, `src/agent/cycle.rs`, `src/agent/loop_driver.rs::LoopDriver::run_cycle_attempt(...)`, and `state/rustc/auto-refactor/..__state__rustc__ai__graph.graph-editor-plan.json`.
