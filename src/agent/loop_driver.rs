@@ -1140,6 +1140,68 @@ mod tests {
     }
 
     #[test]
+    fn finalize_run_cycle_attempt_result_writes_completed_receipt_and_outcome() {
+        let receipt_dir =
+            std::env::temp_dir().join(format!("canon-agent-turn-receipt-test-{}", timestamp_ms()));
+        let _ = fs::remove_dir_all(&receipt_dir);
+        fs::create_dir_all(&receipt_dir).expect("receipt test dir should be created");
+
+        let content = "completed assistant content";
+        let request_hash = 7_777;
+        let outcome = finalize_run_cycle_attempt_result(
+            &receipt_dir,
+            "agent-a",
+            42,
+            "plan-retry-1",
+            1,
+            request_hash,
+            false,
+            None,
+            RouterStreamingResult {
+                content: content.to_string(),
+                target_url: Some("http://127.0.0.1:9100/target".to_string()),
+                complete: true,
+                reason: "ok".to_string(),
+                finish_reason: Some("stop".to_string()),
+            },
+        );
+
+        assert!(outcome.completed);
+        assert_eq!(outcome.reason, "ok");
+        assert!(!outcome.retry_is_safe);
+
+        let receipt_path = receipt_dir.join("agent-turn-receipts.ndjson");
+        let receipt_text =
+            fs::read_to_string(&receipt_path).expect("completed receipt should be appended");
+        let lines: Vec<_> = receipt_text.lines().collect();
+        assert_eq!(lines.len(), 1);
+        let receipt: serde_json::Value =
+            serde_json::from_str(lines[0]).expect("receipt line should be json");
+
+        assert_eq!(receipt["schema"], "canon.agent.router_turn_receipt.v1");
+        assert_eq!(receipt["agent"], "agent-a");
+        assert_eq!(receipt["cycle"], 42);
+        assert_eq!(receipt["label"], "plan-retry-1");
+        assert_eq!(receipt["attempt"], 1);
+        assert_eq!(receipt["status"], "completed");
+        assert_eq!(receipt["reason"], "ok");
+        assert_eq!(receipt["finish_reason"], "stop");
+        assert_eq!(receipt["request_hash"], request_hash);
+        assert_eq!(receipt["content_len"], content.len());
+        assert_eq!(
+            receipt["content_hash"],
+            stable_agent_hash(content.as_bytes())
+        );
+        assert_eq!(
+            receipt["target_url_hash"],
+            stable_agent_hash("http://127.0.0.1:9100/target".as_bytes())
+        );
+        assert_eq!(receipt["retry_is_safe"], false);
+
+        let _ = fs::remove_dir_all(&receipt_dir);
+    }
+
+    #[test]
     fn local_http_url_parser_accepts_loopback_command_url() {
         assert_eq!(
             parse_local_http_url("http://127.0.0.1:9100/v1/command").unwrap(),
