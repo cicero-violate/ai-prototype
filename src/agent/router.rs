@@ -757,6 +757,61 @@ mod tests {
     }
 
     #[test]
+    fn finalize_streaming_response_rejects_non_200_status() {
+        let temp_dir = std::env::temp_dir().join(format!(
+            "canon-router-finalize-http-status-{}",
+            std::process::id()
+        ));
+        let mut logger = ChunkLogger::new(&temp_dir, "test", 1, "http-status")
+            .expect("chunk logger can be created for in-memory finalize test");
+        let response = concat!(
+            "HTTP/1.1 503 Service Unavailable\r\n",
+            "Content-Type: text/plain\r\n",
+            "Content-Length: 11\r\n",
+            "\r\n",
+            "unavailable"
+        );
+
+        let err = finalize_streaming_response(response.as_bytes(), &mut logger)
+            .err()
+            .expect("non-200 in-memory response should be rejected");
+
+        assert!(matches!(err, OpenAiError::HttpStatus(503)));
+
+        let _ = std::fs::remove_dir_all(temp_dir);
+    }
+
+    #[test]
+    fn finalize_streaming_response_rejects_missing_done_frame() {
+        let temp_dir = std::env::temp_dir().join(format!(
+            "canon-router-finalize-missing-done-{}",
+            std::process::id()
+        ));
+        let mut logger = ChunkLogger::new(&temp_dir, "test", 1, "missing-done")
+            .expect("chunk logger can be created for in-memory finalize test");
+        let body = concat!(
+            r#"data: {"object":"chat.completion.chunk","choices":[{"delta":{"content":"partial"},"finish_reason":null}]}"#,
+            "\n\n"
+        );
+        let response = format!(
+            "HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\nContent-Length: {}\r\n\r\n{}",
+            body.len(),
+            body
+        );
+
+        let err = finalize_streaming_response(response.as_bytes(), &mut logger)
+            .err()
+            .expect("200 in-memory response without [DONE] should be rejected");
+
+        match err {
+            OpenAiError::Io(io_err) => assert_eq!(io_err.kind(), io::ErrorKind::UnexpectedEof),
+            other => panic!("expected missing [DONE] to return UnexpectedEof, got {other:?}"),
+        }
+
+        let _ = std::fs::remove_dir_all(temp_dir);
+    }
+
+    #[test]
     fn transient_router_classifier_accepts_retryable_io_errors() {
         for kind in [
             io::ErrorKind::WouldBlock,

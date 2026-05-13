@@ -12,7 +12,7 @@ Maintainability      = 10.0
 Determinism          = 10.0
 Coherency            = 8.2
 
-G (geometric mean)   = 7.93 / 10
+G (geometric mean)   = 7.94 / 10
 ```
 
 ## Per-Crate Breakdown
