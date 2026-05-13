@@ -521,18 +521,8 @@ fn collect_streaming_response_bytes(
     logger: &mut ChunkLogger,
     stream_deadline_ms: u64,
 ) -> Result<Vec<u8>, OpenAiError> {
-    let mut stream = TcpStream::connect((endpoint_host, endpoint_port)).map_err(OpenAiError::Io)?;
-    stream
-        .set_read_timeout(Some(Duration::from_millis(1_000)))
-        .map_err(OpenAiError::Io)?;
-    stream
-        .set_write_timeout(Some(Duration::from_millis(write_timeout_ms)))
-        .map_err(OpenAiError::Io)?;
-
-    stream
-        .write_all(request.as_bytes())
-        .map_err(OpenAiError::Io)?;
-    stream.flush().map_err(OpenAiError::Io)?;
+    let mut stream =
+        open_streaming_http_stream(endpoint_host, endpoint_port, write_timeout_ms, request)?;
 
     let mut full_response = Vec::new();
     let mut buf = [0_u8; 8192];
@@ -583,6 +573,27 @@ fn collect_streaming_response_bytes(
     }
 
     Ok(full_response)
+}
+
+fn open_streaming_http_stream(
+    endpoint_host: &str,
+    endpoint_port: u16,
+    write_timeout_ms: u64,
+    request: &str,
+) -> Result<TcpStream, OpenAiError> {
+    let mut stream = TcpStream::connect((endpoint_host, endpoint_port)).map_err(OpenAiError::Io)?;
+    stream
+        .set_read_timeout(Some(Duration::from_millis(1_000)))
+        .map_err(OpenAiError::Io)?;
+    stream
+        .set_write_timeout(Some(Duration::from_millis(write_timeout_ms)))
+        .map_err(OpenAiError::Io)?;
+
+    stream
+        .write_all(request.as_bytes())
+        .map_err(OpenAiError::Io)?;
+    stream.flush().map_err(OpenAiError::Io)?;
+    Ok(stream)
 }
 
 fn finalize_streaming_response(

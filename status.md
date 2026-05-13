@@ -2281,3 +2281,14 @@ Planning/inspection update on 2026-05-12 for Active Priorities item 107:
 - Targeted validation passed: `cargo check` completed successfully and refreshed the `ai` witness with 5,429 nodes, 34,817 facts, and graph hash `c7701f6d91f60fa6800ffeeeee142b5e50b516cfb0c6b85ea3b5d62a7bc4e0c6`.
 - Marked item 107 complete in `plan.md`. `score.md` was updated only to align graph-derived structural rationale with the current `SCORE_REPORT.md`; project-level numeric scores and score history were not changed because this was planning/inspection evidence, not a score-history-worthy capability change.
 
+Implementation step 1 evidence on 2026-05-12 for Active Priorities item 108:
+
+- Selected first unchecked Active Priorities item 108: `src/agent/router.rs` helper extraction for `collect_streaming_response_bytes(...)`.
+- Changed only `src/agent/router.rs` within item scope.
+- Extracted private helper `open_streaming_http_stream(endpoint_host, endpoint_port, write_timeout_ms, request) -> Result<TcpStream, OpenAiError>`.
+- Preserved the item boundary: the helper owns only TCP connect, fixed 1,000 ms read timeout setup, configured write timeout setup, request `write_all`, and `flush`; `collect_streaming_response_bytes(...)` still owns response byte accumulation, chunk logging, `[DONE]` detection, deadline checks, timeout handling, EOF behavior, and final byte return.
+- Did not change `send_streaming_request(...)`, `finalize_streaming_response(...)`, SSE parsing, chunked decoding, done-frame checks, or public error variants.
+- Initial validation found only a `cargo fmt --check` formatting diff after `cargo check` passed; `cargo fmt` was applied.
+- Targeted validation passed after formatting: `cargo check`, `cargo fmt --check`, and `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test router::tests -- --test-threads=1` ran 15 router tests successfully.
+- Broader validation passed: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets` passed with 275 library/bin tests, integration suites, 352 root-validation tests, and worker binary tests.
+- Marked item 108 complete in `plan.md`. `score.md` was not changed because this was a narrow structure refactor with validation evidence, not a score-history-worthy project-level capability change.
