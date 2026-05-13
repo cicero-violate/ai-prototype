@@ -57,6 +57,14 @@ Current date: 2026-05-13.
 
 ## Validation Ledger
 
+### 2026-05-13 — implementation step 5 blocked by exhausted Active Priorities
+
+- Scope: `plan.md`, `status.md`, and `score.md` reconnaissance for the current execution loop.
+- Command/check: read `plan.md`, `status.md`, and `score.md`; checked `grep -n "\\[ \\]" plan.md` for selectable unchecked Active Priorities items.
+- Result: blocked.
+- Evidence: no unchecked `N. [ ]` implementation, validation, evidence refresh, documentation, cleanup, or blocker-handling item remains under the current Active Priorities checklist. The only `[ ]` markers in `plan.md` are template/instruction examples at lines 20, 28, and 36. Existing unrelated working-tree modifications remain in `.cargo/config.toml`, `Cargo.toml`, `src/agent/router.rs`, `src/api/server.rs`, `src/bin/supervisor.rs`, and `tests/api_server_contract.rs`; no source, score, or plan file was changed for implementation.
+- Next action: perform a planning turn to add the next concrete file-level, validation-producing Active Priorities item before another implementation step runs.
+
 ### 2026-05-13 — implementation step 4 blocked by exhausted Active Priorities
 
 - Scope: `plan.md`, `status.md`, and `score.md` reconnaissance for the current execution loop.
