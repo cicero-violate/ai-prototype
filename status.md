@@ -57,6 +57,14 @@ Current date: 2026-05-13.
 
 ## Validation Ledger
 
+### 2026-05-13 — planning reconfirmed item 126 Ollama MCP tool-loop boundary
+
+- Scope: `plan.md`, `status.md`, `score.md`, `SCORE_REPORT.md`, `examples/ollama_tool_mcp_loop_trace.rs::submit_llm_mcp_tool_calls(...)`, and `state/rustc/auto-refactor/..__state__rustc__ollama_tool_mcp_loop_trace__bin__graph.graph-editor-plan.json`.
+- Command/check: read current Active Priorities items 120 through 128, current progress, score rationale, graph-derived score report, selected auto-refactor evidence, `submit_llm_mcp_tool_calls(...)`, adjacent helper `submit_llm_mcp_evidence(...)`, and current git status.
+- Result: informational.
+- Evidence: item 126 remains the first incomplete executable item. `SCORE_REPORT.md` still reports `G = 7.93 / 10`, Architecture `9.0`, Structure `4.8`, Simplicity `7.1`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2`; Structure remains the lowest graph-derived aggregate axis. The selected auto-refactor evidence still reports `SplitFn id=bf48e302ecddd798` for `submit_llm_mcp_tool_calls` with expected range `3534..6201`, fan-out `32`, rank `96`, phases `parse`/`transform`/`validate`, and generated names `submit_llm_mcp_tool_calls__parse`/`submit_llm_mcp_tool_calls__transform`/`submit_llm_mcp_tool_calls__validate`; generated names remain evidence only. Source inspection confirms item 127's intended boundary remains one private per-tool-call helper that owns `tool_spec(...)`, Ollama intent request/response validation, MCP call execution, MCP receipt persistence, and receipt return while leaving worker URL resolution, executor configuration, receipt vector ownership, loop range, and final `submit_llm_mcp_evidence(...)` in `submit_llm_mcp_tool_calls(...)`. Existing unrelated working-tree modifications remain in `.cargo/config.toml`, `Cargo.toml`, `src/agent/router.rs`, `src/api/server.rs`, `src/bin/supervisor.rs`, and `tests/api_server_contract.rs`; this planning turn is scoped to `status.md` only.
+- Next action: execute Active Priorities item 126 by recording the exact live helper boundary in `plan.md`/`status.md` and running `cargo check --example ollama_tool_mcp_loop_trace`.
+
 ### 2026-05-13 — planning selected item 126 Ollama MCP tool-loop helper boundary
 
 - Scope: `plan.md`, `status.md`, `score.md`, `SCORE_REPORT.md`, `examples/ollama_tool_mcp_loop_trace.rs::submit_llm_mcp_tool_calls(...)`, and `state/rustc/auto-refactor/..__state__rustc__ollama_tool_mcp_loop_trace__bin__graph.graph-editor-plan.json`.
