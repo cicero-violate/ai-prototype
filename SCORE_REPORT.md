@@ -5,14 +5,14 @@ Generated: 2026-05-13  |  Schema version: 16  |  Crates: 14
 ## Aggregate Scores
 
 ```text
-Architecture         = 9.0
+Architecture         = 8.8
 Structure            = 4.8
-Simplicity           = 6.9
+Simplicity           = 7.4
 Maintainability      = 10.0
 Determinism          = 10.0
-Coherency            = 8.2
+Coherency            = 8.6
 
-G (geometric mean)   = 7.91 / 10
+G (geometric mean)   = 8.04 / 10
 ```
 
 ## Per-Crate Breakdown
@@ -20,17 +20,17 @@ G (geometric mean)   = 7.91 / 10
 | Crate                 | Nodes | Edges | Fns  | Arch | Struct | Simple | Maint | Determ | Coher |
 | :-------------------- | ----: | ----: | ---: | ---: | -----: | -----: | ----: | -----: | ----: |
 | agent                 |     5 |   195 |    5 |  5.0 |    8.5 |    0.5 |  10.0 |   10.0 |   7.8 |
-| ai                    |  5474 | 35300 | 2210 |  9.5 |    6.0 |    7.0 |  10.0 |   10.0 |   8.2 |
+| ai                    |  5474 | 33942 | 2210 |  9.3 |    6.0 |    7.6 |  10.0 |   10.0 |   8.6 |
 | ai                    |     1 |    18 |    1 |  5.0 |    4.5 |    4.5 |  10.0 |   10.0 |   7.0 |
-| browser_router        |   642 |  5627 |  304 |  9.2 |    4.4 |    4.6 |  10.0 |   10.0 |   8.5 |
-| browser_router        |     2 |    74 |    2 |  5.0 |    6.1 |    0.7 |  10.0 |   10.0 |   7.0 |
+| browser_router        |   642 |  5471 |  304 |  9.2 |    4.5 |    4.9 |  10.0 |   10.0 |   8.8 |
+| browser_router        |     2 |    73 |    2 |  5.0 |    6.1 |    0.7 |  10.0 |   10.0 |   7.0 |
 | canon_rustc_v3        |   352 |  2176 |  177 |  8.9 |    4.3 |    7.6 |  10.0 |   10.0 |   8.1 |
 | canon_rustc_v3        |     2 |    69 |    2 |  5.0 |    6.1 |    0.9 |  10.0 |   10.0 |   8.1 |
-| chatgpt_mcp_connector |  3693 | 21168 | 1683 |  8.9 |    3.5 |    7.5 |  10.0 |   10.0 |   8.3 |
+| chatgpt_mcp_connector |  3693 | 19733 | 1683 |  8.6 |    3.5 |    8.0 |  10.0 |   10.0 |   8.8 |
 | graph_mutation        |    10 |   249 |   10 |  5.0 |    7.8 |    2.2 |  10.0 |   10.0 |   8.0 |
 | root_validate         |   162 |  1971 |  160 |  3.3 |    1.5 |    6.2 |  10.0 |   10.0 |   7.3 |
 | score                 |    90 |   685 |   54 |  8.3 |    4.4 |    6.5 |  10.0 |   10.0 |   8.2 |
-| supervisor            |   115 |   772 |   38 |  9.8 |    5.7 |    4.1 |   9.9 |   10.0 |   8.6 |
+| supervisor            |   115 |   739 |   38 |  9.5 |    5.7 |    4.5 |  10.0 |   10.0 |   8.7 |
 | tlog_introspect       |     1 |    49 |    1 |  5.0 |    4.5 |    0.2 |  10.0 |   10.0 |   7.0 |
 | worker                |    18 |   180 |    7 |  5.0 |    8.5 |    2.7 |   9.3 |   10.0 |   9.1 |
 
