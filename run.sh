@@ -31,6 +31,6 @@ echo "agent: using worker_port=${AI_WORKER_PORT} (from supervisor reload)"
 AI_WORKER_PORT="$AI_WORKER_PORT" \
 SUPERVISOR_PORT="$SUPERVISOR_PORT" \
 PROJECT_DIR="${PROJECT_DIR:-/workspace/ai_sandbox/canon-mini-agent/prototype/ai}" \
-CANON_OPENAI_BASE_URL="${CANON_OPENAI_BASE_URL:-http://127.0.0.1:8081/v1}" \
+CANON_OPENAI_BASE_URL="${CANON_OPENAI_BASE_URL:-http://127.0.0.1:8082/v1}" \
 MCP_CONNECTOR_URL="${MCP_CONNECTOR_URL:-http://127.0.0.1:4000}" \
 ./target/release/agent
