@@ -2517,6 +2517,14 @@ Current date: 2026-05-13.
 - Evidence: item 103 was the first unchecked item after the validated `collect_streaming_response_bytes(...)` extraction. Source inspection found existing done-frame tests and a brittle full-string `build_streaming_http_request(...)` assertion, but no in-memory `finalize_streaming_response(...)` success/non-200/missing-done tests. The checklist now decomposes that work into parsed request-header/body coverage, in-memory finalize success coverage, in-memory finalize error coverage, and a follow-up graph score refresh. `score.md` remains unchanged because this planning turn produced no new capability or structural score evidence.
 - Next action: execute Active Priorities item 103 by rewriting `streaming_http_request_builder_preserves_post_headers_and_body` to parse headers/body and validate `Content-Length` against the body bytes.
 
+### 2026-05-13 — planning turn item 153 root_validate dispatch-catalog test selection
+
+- Scope: `plan.md`, `status.md`, `score.md`, `SCORE_REPORT.md`, `src/bin/root_validate.rs`, and `state/rustc/auto-refactor/*.graph-editor-plan.json`.
+- Command/check: inspected the first incomplete Active Priorities item; reviewed `SCORE_REPORT.md`; inspected `src/bin/root_validate.rs` definitions for `COMPACT_MODES`, `root_validate_dispatch_catalog_payload()`, `root_validate_dispatch_catalog_mode()`, `try_run_compact_mode(arg)`, `compact_mode_stdout_for_contract(arg, expected_marker)`, and `main()`; checked the item-153 and item-154 checklist boundaries.
+- Result: informational.
+- Evidence: first incomplete item remains item 153, `src/bin/root_validate.rs` unit test `root_validate_dispatch_catalog_lists_every_compact_mode_once`. The local graph-derived aggregate remains `G = 7.97 / 10` with Structure `4.8`; `root_validate` remains the weakest local crate row with Structure `1.5`, so the next best validation-producing work is focused dispatch-catalog coverage rather than broad refactoring. The mounted workspace still exposes no `state/rustc/auto-refactor/*.graph-editor-plan.json` files. `score.md` numeric scores remain unchanged because this was planning reconnaissance, not new capability evidence.
+- Next action: implement item 153 in `src/bin/root_validate.rs`, then run `cargo test --bin root_validate root_validate_dispatch_catalog_lists_every_compact_mode_once -- --test-threads=1`.
+
 ## Evidence Summary
 
 Graph analyzer inspection of `state/rustc/ai/graph.json` on 2026-05-11 after item 53:
