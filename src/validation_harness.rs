@@ -17712,8 +17712,8 @@ pub fn repo_root_from_current_dir() -> Result<PathBuf, String> {
 
 pub fn run_graph_telemetry_probe() -> Result<GraphTelemetryReceipt, String> {
     let root = repo_root_from_current_dir()?;
-    let wrapper = root.join("canon-rustc-v3/src/wrapper.rs");
-    let script = root.join("canon-rustc-v3/validation/semantic_scale_probe.py");
+    let wrapper = root.join("../canon-rustc-v3/src/wrapper.rs");
+    let script = root.join("../canon-rustc-v3/validation/semantic_scale_probe.py");
     let report = env::temp_dir().join(format!(
         "canon-agent-graph-telemetry-{}.json",
         std::process::id()
@@ -17733,7 +17733,7 @@ pub fn run_graph_telemetry_probe() -> Result<GraphTelemetryReceipt, String> {
             "--report",
         ])
         .arg(&report)
-        .current_dir(root.join("canon-rustc-v3/validation"))
+        .current_dir(root.join("../canon-rustc-v3/validation"))
         .output()
         .map_err(|err| format!("failed to run graph telemetry probe: {err}"))?;
     if !probe.status.success() {

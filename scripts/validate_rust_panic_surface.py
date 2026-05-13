@@ -17,7 +17,7 @@ TEST_MARKERS = (
     "tests/",
     "/examples/",
     "examples/",
-    "canon-rustc-v3/validation/fixtures/",
+    "../canon-rustc-v3/validation/fixtures/",
     "/validation/fixtures/",
 )
 

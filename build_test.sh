@@ -11,7 +11,7 @@ export RUSTC_WRAPPER="${RUSTC_WRAPPER:-}"
 export RUSTC_WORKSPACE_WRAPPER="${RUSTC_WORKSPACE_WRAPPER:-}"
 
 cargo build
-python3 canon-rustc-v3/validation/semantic_spine.py \
+python3 ../canon-rustc-v3/validation/semantic_spine.py \
   --graph state/rustc/ai
 cargo test
 cargo run --example ollama_tool_loop_trace

@@ -1,5 +1,5 @@
 [build]
-rustc-wrapper = "canon-rustc-v3/scripts/canon-rustc-v3"
+rustc-wrapper = "../canon-rustc-v3/scripts/canon-rustc-v3"
 
 rustflags = [
 "-Dwarnings",
@@ -25,7 +25,7 @@ rustflags = [
 CANON_RUSTC_V3_ARTIFACT_DIR = "state/rustc"
 RUST_BACKTRACE = "full"
 SUPERVISOR_PORT = "9100"
-AI_TLOG_DIR = { value = "tlog", relative = true }
+AI_TLOG_DIR = { value = "../tlog", relative = true }
 AI_WORKER_BIN = { value = "target/debug/worker", relative = true }
 AI_AGENT_BIN = { value = "target/debug/agent", relative = true }
 AI_WORKER_PORT = "9100"
