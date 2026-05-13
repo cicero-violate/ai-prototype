@@ -57,6 +57,14 @@ Current date: 2026-05-13.
 
 ## Validation Ledger
 
+### 2026-05-13 — planning turn retained root_validate dispatch-catalog test as next work
+
+- Scope: `plan.md`, `status.md`, `score.md`, `SCORE_REPORT.md`, `src/bin/root_validate.rs`, and `state/rustc/auto-refactor` evidence paths.
+- Command/check: read current planning/status/score files and graph-derived score report; inspected Active Priorities items 149 through 154; checked local symbol locations for `COMPACT_MODES`, `root_validate_dispatch_catalog_payload()`, `root_validate_dispatch_catalog_mode()`, `try_run_compact_mode(arg)`, `compact_mode_stdout_for_contract(arg, expected_marker)`, and `mirror_validation_outcome(arg, outcome)`; checked for exposed `state/rustc/auto-refactor/*.graph-editor-plan.json` files; inspected current working-tree status before patching.
+- Result: informational.
+- Evidence: first incomplete executable work remains item 153, one unit test in `src/bin/root_validate.rs` named `root_validate_dispatch_catalog_lists_every_compact_mode_once`. `SCORE_REPORT.md` reports graph-derived `G = 7.91 / 10`, aggregate Structure `4.8`, and the `root_validate` crate row remains the lowest local Structure target at `1.5`. No local `state/rustc/auto-refactor/*.graph-editor-plan.json` files are exposed, so no generated graph-editor operation is selectable. Existing unrelated working-tree modifications include `.cargo/config.toml`, `SCORE_REPORT.md`, `USAGE.md`, `run.sh`, `run_supervisor.sh`, `src/bin/supervisor.rs`, `src/bin/worker.rs`, `src/runtime/introspection.rs`, and `tests/canonical_tlog_contract.rs`; this planning update is scoped to planning/status evidence only.
+- Next action: implement item 153 in `src/bin/root_validate.rs`, then run `cargo test --bin root_validate root_validate_dispatch_catalog_lists_every_compact_mode_once -- --test-threads=1`.
+
 ### 2026-05-13 — planning commit hook blocked by unrelated supervisor formatting
 
 - Scope: commit attempt for `plan.md`, `status.md`, and `score.md`; unrelated working-tree source file `src/bin/supervisor.rs`.
