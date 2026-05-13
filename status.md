@@ -57,6 +57,14 @@ Current date: 2026-05-13.
 
 ## Validation Ledger
 
+### 2026-05-13 — planning turn sharpens item 112 phase-dispatch extraction
+
+- Scope: `plan.md`, `status.md`, `score.md`, `SCORE_REPORT.md`, `src/agent/cycle.rs::AgentCycle::run(...)`, `src/agent/cycle.rs` tests, and `state/rustc/auto-refactor/..__state__rustc__ai__graph.graph-editor-plan.json`.
+- Command/check: read current Active Priorities, current progress, score rationale, graph-derived score report, auto-refactor plan inventory, `src/agent/cycle.rs::AgentCycle::run(...)`, existing cycle helper/test surfaces, and `git status --short`.
+- Result: informational.
+- Evidence: item 112 remains the first unchecked executable item. The live `ai` auto-refactor split surface still names `agent::cycle::AgentCycle::run` with fan-out `34`, phases `parse`/`transform`, and generated split-boundary labels that remain evidence only. Source inspection confirmed existing helpers `run_llm_gate_phase(...)` and `run_recovery_phase(...)`; the next implementation should extract only the `match phase.as_str()` dispatch body into private helper `dispatch_observed_phase(&phase, loop_steps, &domain, &metric, &state_body, &mut invariant_submitted) -> Result<Option<StopReason>, CycleError>`. `AgentCycle::run(...)` should retain objective validation, worker health gating, planning turn, loop limit control, observe timing, phase=`Done` success handling, pre-dispatch human-review sentinel, stop-reason assignment, final observation, summary construction, and public error behavior. Existing unrelated working-tree modifications remain in `.cargo/config.toml`, `Cargo.toml`, `src/agent/loop_driver.rs`, `src/api/server.rs`, `src/bin/supervisor.rs`, and `tests/api_server_contract.rs`; this planning turn did not modify those files.
+- Next action: execute Active Priorities item 112 by extracting only `dispatch_observed_phase(...)` and running `cargo check && cargo fmt --check && TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
+
 ### 2026-05-13 — planning turn confirms item 112 execution boundary
 
 - Scope: `plan.md`, `status.md`, `score.md`, `SCORE_REPORT.md`, `src/agent/cycle.rs::AgentCycle::run(...)`, and `state/rustc/auto-refactor/..__state__rustc__ai__graph.graph-editor-plan.json`.
