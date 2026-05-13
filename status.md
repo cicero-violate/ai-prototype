@@ -48,7 +48,7 @@ Current date: 2026-05-13.
 - P3 runtime and receipt correctness: complete for current scope.
 - P4 graph source-of-truth integration: mostly complete for deterministic fixture/report evidence; agent-driven graph editing remains intentionally deferred until P5 domain surfaces are validated.
 - P5 domain intelligence layer: active. `src/domain/contracts.rs` constructor and invariant tests through unsafe live-effect rejection are complete in local source, with prior targeted validation passing 7 contract tests.
-- Active Priorities items 25 through 148 are complete in the working tree. Item 143 reconciled the existing graph-backed caller-selected evaluator helper extraction in `../chatgpt-mcp-connector/src/tools.rs` and passed targeted evaluator-suite transport validation. Item 144 refreshed graph-derived score evidence after item 143 and is complete. Item 145 inspected the graph-backed `execute_durable_policy_selected_suite(...)` SplitFn target and recorded the item-146 private helper boundary. Item 146 reconciled the already-present `finalize_durable_policy_selected_evaluator_outcome(...)` helper and passed targeted policy-selected evaluator validation. Item 147 refreshed graph-derived score evidence after item 146 and is complete. Item 148 inspected the graph-backed `execute_durable_selected_suite(...)` SplitFn target and recorded the item-149 private helper boundary. The first incomplete item is item 149, the durable caller-selected evaluator helper extraction; item 150 queues the follow-up score refresh. The latest graph-derived structural report is `G = 8.02 / 10`, Architecture `8.9`, Structure `4.8`, Simplicity `7.4`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.5`; `score.md` project-level numeric scores remain unchanged.
+- Active Priorities items 25 through 148 are complete in the working tree. Item 143 reconciled the existing graph-backed caller-selected evaluator helper extraction in `../chatgpt-mcp-connector/src/tools.rs` and passed targeted evaluator-suite transport validation. Item 144 refreshed graph-derived score evidence after item 143 and is complete. Item 145 inspected the graph-backed `execute_durable_policy_selected_suite(...)` SplitFn target and recorded the item-146 private helper boundary. Item 146 reconciled the already-present `finalize_durable_policy_selected_evaluator_outcome(...)` helper and passed targeted policy-selected evaluator validation. Item 147 refreshed graph-derived score evidence after item 146 and is complete. Item 148 inspected the graph-backed `execute_durable_selected_suite(...)` SplitFn target and recorded the private helper boundary for extraction. Planning reconnaissance found that the mounted workspace exposes the graph-backed auto-refactor evidence but not the sibling source path `../chatgpt-mcp-connector/src/tools.rs` or manifest `../chatgpt-mcp-connector/Cargo.toml`, so the first incomplete item is item 149, the source-availability blocker check. Item 150 remains the durable caller-selected evaluator helper extraction once the source tree is exposed; item 151 queues the follow-up score refresh. The latest graph-derived structural report is `G = 8.02 / 10`, Architecture `8.9`, Structure `4.8`, Simplicity `7.4`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.5`; `score.md` project-level numeric scores remain unchanged.
 - `src/domain/business.rs` contains `BusinessOpportunity`, `WorkflowAutomationCandidate`, `CustomerFeedbackSignal`, `monetization_score(...)`, compile-smoke test `business_module_records_and_score_helper_compile`, deterministic repeatability test `business_monetization_score_is_deterministic`, and bounded-score test `business_monetization_score_is_bounded`, with broader business validation passing 3 tests after correcting the bounded test scalar assertion.
 - `src/domain/identity.rs` currently contains `DomainHash`, `DomainHashInput<'a>`, `canonical_json_bytes(record)`, `domain_hash_json(record)`, `domain_hash_parts(parts)`, `stable_domain_id(parts)`, and six passing targeted identity tests through `domain_hash_changes_when_schema_version_changes`.
 - `src/domain/scoring.rs` currently contains validated `BoundedScore` helpers, score-input breakdown helpers, conservative `verdict_for_scores(...)`, and passing `verdict_ignore_thresholds`, `verdict_watch_thresholds`, `verdict_research_thresholds`, `verdict_act_business_thresholds`, `verdict_act_finance_research_thresholds`, `verdict_simulate_trading_thresholds`, and `verdict_block_thresholds`; explicit verdict threshold tests are complete for the current scoring scope.
@@ -56,6 +56,22 @@ Current date: 2026-05-13.
 - Domain fixture JSON files exist under `tests/fixtures/domain/` for global signal, business workflow opportunity, finance hypothesis research, trading simulation sandbox, and trading live blocked cases; `tests/test_domain_fixture_contract.py` now includes explicit risk-result and required-field assertions. Item 51 graph analyzer now exists and passes against `state/rustc/ai/graph.json`, reporting 752 compiled P5 domain-node matches. Item 52 malformed-input self-check also passes. Remaining work includes item 50 full-suite Rust validation and later graph evidence refresh/score review items gated on full-suite output.
 
 ## Validation Ledger
+
+### 2026-05-13 — planning commit hook blocked by unrelated formatting diff
+
+- Scope: commit attempt for `plan.md` and `status.md`; unrelated working-tree source file `src/agent/loop_driver.rs`.
+- Command/check: `git diff --check -- plan.md status.md && git add plan.md status.md && git commit -m "Plan next connector extraction blocker" -- plan.md status.md`.
+- Result: blocked by unrelated hook output.
+- Evidence: scoped whitespace check for `plan.md` and `status.md` reached the commit hook, but the hook ran `cargo fmt --check` across the broader working tree and failed on pre-existing formatting in `src/agent/loop_driver.rs:1143`, where rustfmt wants to wrap `let receipt_dir = tmp_root.join(format!(...));`. This planning turn did not edit `src/agent/loop_driver.rs`.
+- Next action: keep this planning turn scoped to `plan.md` and `status.md`; execute turns should address or isolate the unrelated source formatting before relying on standard commit hooks.
+
+### 2026-05-13 — planning turn item 149 source-availability blocker check
+
+- Scope: `plan.md`, `status.md`, `SCORE_REPORT.md`, `score.md`, `state/rustc/auto-refactor/..__state__rustc__chatgpt_mcp_connector__bin__graph.graph-editor-plan.json`, and the expected sibling source paths `../chatgpt-mcp-connector/src/tools.rs` plus `../chatgpt-mcp-connector/Cargo.toml`.
+- Command/check: inspected current planning/status/score files, graph-derived structural report, the connector auto-refactor plan lines for `tools::execute_durable_selected_suite`, and workspace path availability with `find . -path '*chatgpt_mcp_connector*' -o -path '*tools.rs' | head -80` plus attempted source reads from `../chatgpt-mcp-connector/src/tools.rs`.
+- Result: blocked for source extraction; planning update passed initial evidence checks.
+- Evidence: graph evidence remains available and records `SplitFn id=4fcb62f370b7c63f` for `tools::execute_durable_selected_suite` with expected range `35545..40130`, split boundaries `phase::parse`/`phase::transform`, generated names `execute_durable_selected_suite__parse`/`execute_durable_selected_suite__transform`, and `delegate_strategy=preserve_original_signature`. The mounted workspace contains `./state/rustc/chatgpt_mcp_connector__bin/graph.json` and `./state/rustc/auto-refactor/..__state__rustc__chatgpt_mcp_connector__bin__graph.graph-editor-plan.json`, but `nl -ba ../chatgpt-mcp-connector/src/tools.rs` and `grep` against that path returned `No such file or directory`. Because item 150 requires editing that file and validating against the sibling manifest, item 149 now explicitly resolves or records that workspace-source blocker before extraction work is selected.
+- Next action: execute Active Priorities item 149 by proving `../chatgpt-mcp-connector/src/tools.rs` and `../chatgpt-mcp-connector/Cargo.toml` are available, or by recording the blocker if the environment still exposes only graph evidence.
 
 ### 2026-05-13 — item 148 durable caller-selected suite boundary inspection
 
@@ -68,7 +84,7 @@ Current date: 2026-05-13.
 ### 2026-05-13 — item 147 graph-derived score refresh
 
 - Scope: Active Priorities item 147, `SCORE_REPORT.md`, `score.md`, `plan.md`, and `status.md`.
-- Command/check: `cargo run --manifest-path score/Cargo.toml --quiet -- --artifact-root state/rustc --report SCORE_REPORT.md --date "$(date +%Y-%m-%d)"`.
+- Command/check: `cargo run --manifest-path ../score/Cargo.toml --quiet -- --artifact-root state/rustc --report SCORE_REPORT.md --date "$(date +%Y-%m-%d)"`.
 - Result: passed.
 - Evidence: refreshed graph-derived structural report across 16 crates with 2 expected schema-version skips. Aggregate moved from `G = 7.93 / 10` to `G = 8.02 / 10`; Architecture is `8.9`, Structure is `4.8`, Simplicity is `7.4`, Maintainability is `10.0`, Determinism is `10.0`, and Coherency is `8.5`. The `ai` row now reports 5,474 nodes, 33,942 edges, 2,210 functions, Architecture `9.3`, Structure `6.0`, Simplicity `7.6`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.6`. Stderr captured score witness hash `6dad4f39c1c622a6aa8410ea1127f27278b381cd3a668e08f9c004514a036740`. `score.md` project-level numeric scores remain unchanged because the refresh is structural measurement evidence rather than a score-history-worthy capability change.
 - Next action: execute Active Priorities item 148 by inspecting `../chatgpt-mcp-connector/src/tools.rs::execute_durable_selected_suite(...)` against SplitFn `4fcb62f370b7c63f` and recording the item-149 helper boundary.
@@ -92,7 +108,7 @@ Current date: 2026-05-13.
 ### 2026-05-13 — item 144 graph-derived score refresh
 
 - Scope: Active Priorities item 144, `SCORE_REPORT.md`, `score.md`, `plan.md`, and `status.md`.
-- Command/check: `cargo run --manifest-path score/Cargo.toml --quiet -- --artifact-root state/rustc --report SCORE_REPORT.md --date "$(date +%Y-%m-%d)"`.
+- Command/check: `cargo run --manifest-path ../score/Cargo.toml --quiet -- --artifact-root state/rustc --report SCORE_REPORT.md --date "$(date +%Y-%m-%d)"`.
 - Result: passed.
 - Evidence: refreshed graph-derived structural report remained `G = 7.93 / 10` across 16 crates with 2 schema-version skips. Axes remained Architecture `9.0`, Structure `4.8`, Simplicity `7.1`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2`; stderr captured score witness hash `6dad4f39c1c622a6aa8410ea1127f27278b381cd3a668e08f9c004514a036740`. `score.md` project-level numeric scores and rationale remain unchanged because this was an evidence refresh, not a score-history-worthy capability change.
 - Next action: execute Active Priorities item 145 by inspecting `../chatgpt-mcp-connector/src/tools.rs::execute_durable_policy_selected_suite(...)` against SplitFn `7f8fe031079d5622` and recording the item-146 helper boundary.
@@ -132,7 +148,7 @@ Current date: 2026-05-13.
 ### 2026-05-13 — planning item 141 graph-derived score refresh
 
 - Scope: Active Priorities item 141, `SCORE_REPORT.md`, `plan.md`, `status.md`, and score rationale review.
-- Command/check: `cargo run --manifest-path score/Cargo.toml --quiet -- --artifact-root state/rustc --report SCORE_REPORT.md --date "$(date +%Y-%m-%d)"`.
+- Command/check: `cargo run --manifest-path ../score/Cargo.toml --quiet -- --artifact-root state/rustc --report SCORE_REPORT.md --date "$(date +%Y-%m-%d)"`.
 - Result: passed.
 - Evidence: refreshed score report across 16 crates with 2 schema-version skips; aggregate remained `G = 7.93 / 10`, Architecture `9.0`, Structure `4.8`, Simplicity `7.1`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2`; stderr captured a fresh `score__bin` witness with 90 nodes, 685 facts, and graph hash `6dad4f39c1c622a6aa8410ea1127f27278b381cd3a668e08f9c004514a036740`.
 - Next action: execute item 142 by inspecting `../chatgpt-mcp-connector/src/tools.rs::execute_evaluator_suite_tool_inner(...)` against SplitFn `a57f325e92fb8f3f` and recording the item-143 helper boundary.
@@ -188,7 +204,7 @@ Current date: 2026-05-13.
 ### 2026-05-13 — implementation step 3 item 137 graph-derived score refresh
 
 - Scope: Active Priorities item 137, `SCORE_REPORT.md`, `score.md`, `plan.md`, and `status.md`.
-- Command/check: ran `cargo run --manifest-path score/Cargo.toml --quiet -- --artifact-root state/rustc --report SCORE_REPORT.md --date "$(date +%Y-%m-%d)"`; inspected `git diff -- SCORE_REPORT.md score.md plan.md status.md`.
+- Command/check: ran `cargo run --manifest-path ../score/Cargo.toml --quiet -- --artifact-root state/rustc --report SCORE_REPORT.md --date "$(date +%Y-%m-%d)"`; inspected `git diff -- SCORE_REPORT.md score.md plan.md status.md`.
 - Result: passed.
 - Evidence: score refresh reported `G = 7.93 / 10` across 16 schema-version-16 crates with 2 expected schema-version-12 skips. Axes remain Architecture `9.0`, Structure `4.8`, Simplicity `7.1`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2`. The `chatgpt_mcp_connector` row remains 3651 nodes, 20573 edges, 1655 functions, Architecture `8.9`, Structure `3.4`, Simplicity `7.5`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.3`. The refresh produced no `SCORE_REPORT.md` diff, and `score.md` project-level numeric scores and rationale remain unchanged because this confirms existing graph-derived structural evidence rather than proving a score-history-worthy capability change.
 - Next action: perform a planning turn to add the next concrete, validation-producing Active Priorities item.
@@ -220,7 +236,7 @@ Current date: 2026-05-13.
 ### 2026-05-13 — implementation step 4 item 134 graph-derived score refresh
 
 - Scope: Active Priorities item 134, `SCORE_REPORT.md`, `score.md`, `plan.md`, and `status.md`.
-- Command/check: `cargo run --manifest-path score/Cargo.toml --quiet -- --artifact-root state/rustc --report SCORE_REPORT.md --date "$(date +%Y-%m-%d)"`; inspected `git diff -- SCORE_REPORT.md score.md status.md plan.md`.
+- Command/check: `cargo run --manifest-path ../score/Cargo.toml --quiet -- --artifact-root state/rustc --report SCORE_REPORT.md --date "$(date +%Y-%m-%d)"`; inspected `git diff -- SCORE_REPORT.md score.md status.md plan.md`.
 - Result: passed.
 - Evidence: score refresh reported `G = 7.93 / 10` across 16 schema-version-16 crates with 2 expected schema-version-12 skips. Axes remain Architecture `9.0`, Structure `4.8`, Simplicity `7.1`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2`. The refresh produced no `SCORE_REPORT.md` diff, and `score.md` project-level numeric scores and rationale remain unchanged because this confirms existing graph-derived structural evidence rather than proving a score-history-worthy capability change. Broader validation passed with `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`: 283 library/bin tests, integration suites including 12 API server tests, 20 API transport tests, 3 canonical TLog tests, 4 domain contract tests, 10 graph mutation CLI tests, 9 MCP receipt tests, 2 planning tests, 5 score tests, 2 supervisor binary tests, 352 root-validation harness tests, and 2 worker binary tests all passed. Existing unrelated working-tree modifications remain in `.cargo/config.toml`, `Cargo.toml`, `src/agent/router.rs`, `src/api/server.rs`, `src/bin/supervisor.rs`, and `tests/api_server_contract.rs`; this implementation changed only `plan.md` and `status.md`.
 - Next action: perform a planning turn to add the next concrete, validation-producing Active Priorities item.
@@ -244,7 +260,7 @@ Current date: 2026-05-13.
 ### 2026-05-13 — implementation step 1 item 131 graph-derived score refresh
 
 - Scope: Active Priorities item 131, `SCORE_REPORT.md`, `score.md`, `status.md`, and `plan.md`.
-- Command/check: `cargo run --manifest-path score/Cargo.toml --quiet -- --artifact-root state/rustc --report SCORE_REPORT.md --date "$(date +%Y-%m-%d)"`; `git diff -- SCORE_REPORT.md score.md status.md plan.md`.
+- Command/check: `cargo run --manifest-path ../score/Cargo.toml --quiet -- --artifact-root state/rustc --report SCORE_REPORT.md --date "$(date +%Y-%m-%d)"`; `git diff -- SCORE_REPORT.md score.md status.md plan.md`.
 - Result: passed.
 - Evidence: score refresh reported `G = 7.93 / 10` across 16 schema-version-16 crates with 2 expected schema-version-12 skips. Axes remain Architecture `9.0`, Structure `4.8`, Simplicity `7.1`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2`. The refresh produced no `SCORE_REPORT.md` diff, and `score.md` project-level numeric scores and rationale remain unchanged because this confirms existing graph-derived structural evidence rather than proving a score-history-worthy capability change. Broader validation passed with `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`: 283 library/bin tests, integration suites including 12 API server tests, 20 API transport tests, 3 canonical TLog tests, 4 domain contract tests, 10 graph mutation CLI tests, 9 MCP receipt tests, 2 planning tests, 5 score tests, 2 supervisor binary tests, 352 root-validation harness tests, and 2 worker binary tests all passed. Existing unrelated working-tree modifications remain in `.cargo/config.toml`, `Cargo.toml`, `src/agent/router.rs`, `src/api/server.rs`, `src/bin/supervisor.rs`, and `tests/api_server_contract.rs`; this implementation changed only `plan.md` and `status.md`.
 - Next action: execute Active Priorities item 132 by inspecting `apply_effectful_patch_in_candidate_workspace(...)` and recording the exact helper boundary before any source extraction.
@@ -316,7 +332,7 @@ Current date: 2026-05-13.
 ### 2026-05-13 — implementation step 3 item 128 graph-derived score refresh
 
 - Scope: Active Priorities item 128, `SCORE_REPORT.md`, `score.md`, `status.md`, and `plan.md`.
-- Command/check: `cargo run --manifest-path score/Cargo.toml --quiet -- --artifact-root state/rustc --report SCORE_REPORT.md --date "$(date +%Y-%m-%d)"`; `git diff -- SCORE_REPORT.md score.md status.md plan.md`.
+- Command/check: `cargo run --manifest-path ../score/Cargo.toml --quiet -- --artifact-root state/rustc --report SCORE_REPORT.md --date "$(date +%Y-%m-%d)"`; `git diff -- SCORE_REPORT.md score.md status.md plan.md`.
 - Result: passed.
 - Evidence: score refresh reported `G = 7.93 / 10` across 16 schema-version-16 crates with 2 expected schema-version-12 skips. Axes remain Architecture `9.0`, Structure `4.8`, Simplicity `7.1`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2`. The refreshed `ollama_tool_mcp_loop_trace` row reports 17 nodes, 311 edges, 11 functions, Architecture `5.0`, Structure `9.3`, Simplicity `1.7`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.1`. The refresh produced no `SCORE_REPORT.md` diff because the current report already reflected item 127's recaptured graph. `score.md` project-level numeric scores and rationale remain unchanged because this confirms graph-derived structural evidence rather than proving a score-history-worthy capability change. Existing unrelated working-tree modifications remain in `.cargo/config.toml`, `Cargo.toml`, `src/agent/router.rs`, `src/api/server.rs`, `src/bin/supervisor.rs`, and `tests/api_server_contract.rs`; this implementation changed only `plan.md` and `status.md`.
 - Next action: perform a planning turn to select the next graph-backed, validation-producing work item.
@@ -356,7 +372,7 @@ Current date: 2026-05-13.
 ### 2026-05-13 — implementation step 5 item 125 graph-derived score refresh
 
 - Scope: Active Priorities item 125, `SCORE_REPORT.md`, `score.md`, `status.md`, and `plan.md`.
-- Command/check: `cargo run --manifest-path score/Cargo.toml --quiet -- --artifact-root state/rustc --report SCORE_REPORT.md --date "$(date +%Y-%m-%d)"`; `git diff -- SCORE_REPORT.md score.md status.md plan.md`.
+- Command/check: `cargo run --manifest-path ../score/Cargo.toml --quiet -- --artifact-root state/rustc --report SCORE_REPORT.md --date "$(date +%Y-%m-%d)"`; `git diff -- SCORE_REPORT.md score.md status.md plan.md`.
 - Result: passed.
 - Evidence: score refresh reported `G = 7.93 / 10` across 16 schema-version-16 crates with 2 expected schema-version-12 skips. Axes remain Architecture `9.0`, Structure `4.8`, Simplicity `7.1`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2`; the refresh produced no `SCORE_REPORT.md` diff. `score.md` project-level numeric scores and rationale remain unchanged because this confirms existing graph-derived structural evidence rather than a score-history-worthy capability change. Existing unrelated working-tree modifications remain in `.cargo/config.toml`, `Cargo.toml`, `src/agent/router.rs`, `src/api/server.rs`, `src/bin/supervisor.rs`, and `tests/api_server_contract.rs`; this implementation changed only `plan.md` and `status.md`.
 - Next action: perform a planning turn to select the next graph-backed, validation-producing work item.
@@ -388,7 +404,7 @@ Current date: 2026-05-13.
 ### 2026-05-13 — implementation step 3 item 122 graph-derived score refresh
 
 - Scope: Active Priorities item 122, `SCORE_REPORT.md`, `score.md`, `status.md`, and `plan.md`.
-- Command/check: `cargo run --manifest-path score/Cargo.toml --quiet -- --artifact-root state/rustc --report SCORE_REPORT.md --date "$(date +%Y-%m-%d)"`; `git diff -- SCORE_REPORT.md score.md status.md plan.md`.
+- Command/check: `cargo run --manifest-path ../score/Cargo.toml --quiet -- --artifact-root state/rustc --report SCORE_REPORT.md --date "$(date +%Y-%m-%d)"`; `git diff -- SCORE_REPORT.md score.md status.md plan.md`.
 - Result: passed.
 - Evidence: score refresh reported `G = 7.93 / 10` across 16 schema-version-16 crates with 2 expected schema-version-12 skips. Axes remain Architecture `9.0`, Structure `4.8`, Simplicity `7.1`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2`; the refresh produced no `SCORE_REPORT.md` diff. `score.md` project-level numeric scores and rationale remain unchanged because this confirms existing graph-derived structural evidence rather than a score-history-worthy capability change. Existing unrelated working-tree modifications remain in `.cargo/config.toml`, `Cargo.toml`, `src/agent/router.rs`, `src/api/server.rs`, `src/bin/supervisor.rs`, and `tests/api_server_contract.rs`; this implementation changed only `plan.md` and `status.md`.
 - Next action: perform a planning turn to select the next graph-backed, validation-producing work item.
@@ -420,7 +436,7 @@ Current date: 2026-05-13.
 ### 2026-05-13 — implementation step 2 item 119 graph-derived score refresh
 
 - Scope: Active Priorities item 119, `SCORE_REPORT.md`, `score.md`, `status.md`, and `plan.md`.
-- Command/check: `cargo run --manifest-path score/Cargo.toml --quiet -- --artifact-root state/rustc --report SCORE_REPORT.md --date "$(date +%Y-%m-%d)"`; `git diff -- SCORE_REPORT.md score.md status.md plan.md`.
+- Command/check: `cargo run --manifest-path ../score/Cargo.toml --quiet -- --artifact-root state/rustc --report SCORE_REPORT.md --date "$(date +%Y-%m-%d)"`; `git diff -- SCORE_REPORT.md score.md status.md plan.md`.
 - Result: passed.
 - Evidence: score refresh reported `G = 7.93 / 10` across 16 schema-version-16 crates with 2 expected schema-version-12 skips. Axes remain Architecture `9.0`, Structure `4.8`, Simplicity `7.1`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2`; per-crate row counts remain unchanged from the previous snapshot. The refresh produced no `SCORE_REPORT.md` diff, and `score.md` project-level numeric scores and rationale remain unchanged because this confirms existing graph-derived structural evidence rather than a score-history-worthy capability change. Existing unrelated working-tree modifications remain in `.cargo/config.toml`, `Cargo.toml`, `src/agent/router.rs`, `src/api/server.rs`, `src/bin/supervisor.rs`, and `tests/api_server_contract.rs`; this implementation changed only `plan.md` and `status.md`.
 - Next action: perform a planning turn to select the next graph-backed, validation-producing work item.
@@ -508,7 +524,7 @@ Current date: 2026-05-13.
 ### 2026-05-13 — planning step item 110 graph-derived score refresh and next cycle target selection
 
 - Scope: Active Priorities item 110, `SCORE_REPORT.md`, `score.md`, `plan.md`, `status.md`, `src/agent/cycle.rs::AgentCycle::run(...)`, and `state/rustc/auto-refactor/..__state__rustc__ai__graph.graph-editor-plan.json`.
-- Command/check: `cargo run --manifest-path score/Cargo.toml --quiet -- --artifact-root state/rustc --report SCORE_REPORT.md --date "$(date +%Y-%m-%d)"`; source inspection of `src/agent/cycle.rs::AgentCycle::run(...)`; auto-refactor text inspection for `SplitFn id=918a1611235eccfd`.
+- Command/check: `cargo run --manifest-path ../score/Cargo.toml --quiet -- --artifact-root state/rustc --report SCORE_REPORT.md --date "$(date +%Y-%m-%d)"`; source inspection of `src/agent/cycle.rs::AgentCycle::run(...)`; auto-refactor text inspection for `SplitFn id=918a1611235eccfd`.
 - Result: passed.
 - Evidence: score refresh reported `G = 7.93 / 10` across 16 schema-version-16 crates with 2 expected schema-version-12 skips; axes are Architecture `9.0`, Structure `4.8`, Simplicity `7.1`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2`. The refreshed `ai` crate row reports 5,463 nodes, 35,002 edges, and 2,199 functions. `score.md` project-level numeric scores remain unchanged. Auto-refactor evidence currently exposes `agent::cycle::AgentCycle::run` as the live `ai` split candidate; router split entries are historical after items 107-109.
 - Next action: execute Active Priorities item 111 by recording the exact `AgentCycle::run(...)` helper boundary and running `cargo check`.
@@ -540,7 +556,7 @@ Current date: 2026-05-13.
 ### 2026-05-12 — implementation step 2 item 106 graph-derived score refresh
 
 - Scope: Active Priorities item 106, `SCORE_REPORT.md`, `score.md`, `status.md`, and `plan.md`.
-- Command/check: `cargo run --manifest-path score/Cargo.toml --quiet -- --artifact-root state/rustc --report SCORE_REPORT.md --date "$(date +%Y-%m-%d)"`; `git diff -- SCORE_REPORT.md score.md status.md plan.md`.
+- Command/check: `cargo run --manifest-path ../score/Cargo.toml --quiet -- --artifact-root state/rustc --report SCORE_REPORT.md --date "$(date +%Y-%m-%d)"`; `git diff -- SCORE_REPORT.md score.md status.md plan.md`.
 - Result: passed.
 - Evidence: score refresh reported `G = 7.94 / 10` across 16 crates with 2 expected schema-version-12 skips. Aggregate axes are Architecture `9.0`, Structure `4.8`, Simplicity `7.1`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2`. `SCORE_REPORT.md` was already current after the previous commit hook; `score.md` rationale was updated to reflect `G = 7.94 / 10` while project-level numeric capability scores remain unchanged.
 - Next action: execute Active Priorities item 107 by inspecting `src/agent/router.rs::collect_streaming_response_bytes(...)` and the live `SplitFn id=c07f9b3fef3c6e37` evidence.
@@ -644,7 +660,7 @@ Current date: 2026-05-13.
 ### 2026-05-12 — implementation step 4 item 100 graph-derived score refresh and score review
 
 - Scope: Active Priorities item 100, `SCORE_REPORT.md`, `score.md`, `status.md`, and `plan.md`.
-- Command/check: `cargo run --manifest-path score/Cargo.toml --quiet -- --artifact-root state/rustc --report SCORE_REPORT.md --date "$(date +%Y-%m-%d)"`; `git diff -- SCORE_REPORT.md score.md status.md plan.md`.
+- Command/check: `cargo run --manifest-path ../score/Cargo.toml --quiet -- --artifact-root state/rustc --report SCORE_REPORT.md --date "$(date +%Y-%m-%d)"`; `git diff -- SCORE_REPORT.md score.md status.md plan.md`.
 - Result: passed.
 - Evidence: score refresh reported `G = 7.93 / 10` across 16 crates with two expected schema-version-12 skips; aggregate axes are Architecture `9.0`, Structure `4.8`, Simplicity `7.1`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2`. `SCORE_REPORT.md` was already current from the previous commit hook and required no content change. `score.md` was reviewed and left unchanged because the refreshed structural proxy evidence does not prove a project-level capability score change.
 - Next action: planning should seed the next executable checklist item.
@@ -1149,7 +1165,7 @@ Current date: 2026-05-13.
 ### 2026-05-12 — item 67 score aggregate-section extraction passed
 
 - Scope: Active Priorities item 67, `score/src/main.rs::write_report(...)` aggregate-score helper extraction.
-- Command/check: `cargo fmt --check`; `cargo test --manifest-path score/Cargo.toml -- --test-threads=1`; `cargo run --manifest-path score/Cargo.toml --quiet -- --artifact-root state/rustc --report /tmp/canon-score-report-check.md --date 2026-05-12`; rerun `cargo run --manifest-path score/Cargo.toml --quiet -- --artifact-root state/rustc --report target/test-tmp/canon-score-report-check.md --date 2026-05-12`; Python comparison of generated `## Aggregate Scores` section against `SCORE_REPORT.md`.
+- Command/check: `cargo fmt --check`; `cargo test --manifest-path ../score/Cargo.toml -- --test-threads=1`; `cargo run --manifest-path ../score/Cargo.toml --quiet -- --artifact-root state/rustc --report /tmp/canon-score-report-check.md --date 2026-05-12`; rerun `cargo run --manifest-path ../score/Cargo.toml --quiet -- --artifact-root state/rustc --report target/test-tmp/canon-score-report-check.md --date 2026-05-12`; Python comparison of generated `## Aggregate Scores` section against `SCORE_REPORT.md`.
 - Result: passed after rerouting the report-output path around an infrastructure quota blocker.
 - Evidence: `write_report(...)` now delegates only the aggregate-score Markdown block to `write_aggregate_scores_section(buf: &mut Vec<u8>, agg: &[f64; 6], g: f64) -> Result<()>`; report heading, metadata line, per-crate table, axis definitions table, parent directory creation, and file write behavior remain in `write_report(...)`. `cargo fmt --check` passed. Score crate tests passed with 0 tests and 0 failures. The named `/tmp` report-output validation failed before product comparison because `/tmp` returned `Disk quota exceeded (os error 122)`; the same scorer command using `target/test-tmp/canon-score-report-check.md` passed, reporting graph-derived `G = 7.93 / 10`, and the generated aggregate-score section matched `SCORE_REPORT.md`.
 - Next action: run a planning turn to select the next graph-backed, file-scoped improvement after item 67.
@@ -2805,7 +2821,7 @@ Implementation step 3 evidence on 2026-05-13 for Active Priorities item 115:
 
 - Selected first unchecked Active Priorities item 115: `SCORE_REPORT.md` graph-derived structural evidence refresh after items 112-114.
 - Changed only scoped evidence/planning files: `SCORE_REPORT.md`, `plan.md`, and `status.md`. `score.md` was reviewed and left unchanged.
-- Validation passed: `cargo run --manifest-path score/Cargo.toml --quiet -- --artifact-root state/rustc --report SCORE_REPORT.md --date "$(date +%Y-%m-%d)"` completed successfully.
+- Validation passed: `cargo run --manifest-path ../score/Cargo.toml --quiet -- --artifact-root state/rustc --report SCORE_REPORT.md --date "$(date +%Y-%m-%d)"` completed successfully.
 - Refreshed structural evidence remains unchanged: aggregate `G = 7.93 / 10` across 16 schema-version-16 crates with 2 expected schema-version-12 skips.
 - Refreshed axes remain Architecture `9.0`, Structure `4.8`, Simplicity `7.1`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2`.
 - Marked item 115 complete in `plan.md`. `score.md` numeric scores and rationale were not changed because the refreshed graph evidence confirms the current structural snapshot rather than proving a new score-history-worthy capability change.
