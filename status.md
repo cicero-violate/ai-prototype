@@ -2904,3 +2904,18 @@ Implementation step 1 evidence on 2026-05-13 for Active Priorities item 139:
 - Targeted validation passed: `cargo test --manifest-path ../chatgpt-mcp-connector/Cargo.toml tools::tests::canon_execute_policy_selected_evaluator_suite -- --test-threads=1` ran 6 policy-selected evaluator tests successfully with 0 failures and 528 filtered tests.
 - Formatting and broader connector validation passed: `cd ../chatgpt-mcp-connector && cargo fmt --check` and `cargo check --manifest-path ../chatgpt-mcp-connector/Cargo.toml`.
 - Marked item 139 complete in `plan.md`. `score.md` was reviewed and left unchanged because this was a scoped structure refactor/reconciliation with validation evidence, not a score-history-worthy project-level capability change.
+
+
+Planning-turn update on 2026-05-13 for source blocker handling and root-validate local work:
+
+- Required reconnaissance completed from `/workspace/ai_sandbox/canon-mini-agent/prototype/ai` using the connector shell with `cwd=.` because the shell tool workspace root resolves to the required project directory.
+- Read `plan.md`; the first incomplete Active Priorities item was item 149, the source-availability blocker check for `../chatgpt-mcp-connector/src/tools.rs` and `../chatgpt-mcp-connector/Cargo.toml`.
+- Read `status.md`, `score.md`, and local `SCORE_REPORT.md`; the prompt snapshot mentioned `G = 8.02 / 10`, but the local file currently reports aggregate `G = 7.93 / 10`, Architecture `9.0`, Structure `4.8`, Simplicity `7.1`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2`.
+- Ran the item-149 validation check: `test -f ../chatgpt-mcp-connector/src/tools.rs && test -f ../chatgpt-mcp-connector/Cargo.toml`; it returned `source_availability_rc=1`.
+- Exact path evidence: `ls` reported `../chatgpt-mcp-connector`, `../chatgpt-mcp-connector/src/tools.rs`, and `../chatgpt-mcp-connector/Cargo.toml` do not exist from the project workspace.
+- Marked item 149 complete as a documented infrastructure/workspace blocker. Items 150 and 151 are now explicitly blocked, non-selectable connector follow-ups until the sibling source tree is exposed.
+- Inspected `state/rustc/auto-refactor/*.graph-editor-plan.json`; local `ai` graph planning evidence currently exposes merge-surface operations only, with no safe local `SplitFn` entries. Generated merge-surface recommendations remain rejected as direct implementation instructions.
+- Selected local fallback work against the lowest graph-derived local crate: `root_validate` reports Structure `1.5` in local `SCORE_REPORT.md`.
+- Inspected `src/bin/root_validate.rs`; the compact-mode dispatch/catalog surface includes `COMPACT_MODES`, `root_validate_dispatch_catalog_payload()`, `root_validate_dispatch_catalog_mode()`, `try_run_compact_mode(arg)`, `compact_mode_stdout_for_contract(arg, expected_marker)`, and `main()`.
+- Added Active Priorities item 152 as the next executable inspection item for the `src/bin/root_validate.rs` compact-mode dispatch/catalog boundary, item 153 as the follow-on focused test/helper item, and item 154 as the graph-derived evidence refresh after item 153 lands.
+- Updated `score.md` rationale to match the local `SCORE_REPORT.md` snapshot (`G = 7.93 / 10`) without changing project-level numeric scores or appending score history, because this is rationale alignment and planning/blocker evidence, not a score-history-worthy capability change.
