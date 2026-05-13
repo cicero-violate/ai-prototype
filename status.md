@@ -57,6 +57,46 @@ Current date: 2026-05-13.
 
 ## Validation Ledger
 
+### 2026-05-13 — implementation step 5 item 149 source path recheck
+
+- Scope: Active Priorities item 149, expected sibling source paths `../chatgpt-mcp-connector/src/tools.rs` and `../chatgpt-mcp-connector/Cargo.toml`, `plan.md`, and `status.md`.
+- Command/check: `test -f ../chatgpt-mcp-connector/src/tools.rs && test -f ../chatgpt-mcp-connector/Cargo.toml`; diagnostic check `printf 'tools='; test -f ../chatgpt-mcp-connector/src/tools.rs; echo $?; printf 'manifest='; test -f ../chatgpt-mcp-connector/Cargo.toml; echo $?; printf 'visible connector evidence:\n'; find . -path '*chatgpt_mcp_connector*' -o -path '*tools.rs' | head -80`.
+- Result: blocked.
+- Evidence: the exact item-149 validation still exits `1`. Diagnostic checks again report `tools=1` and `manifest=1`, confirming both expected sibling paths remain absent. Visible connector artifacts remain limited to `./state/rustc/chatgpt_mcp_connector__bin`, `./state/rustc/chatgpt_mcp_connector__bin/graph.json`, and `./state/rustc/auto-refactor/..__state__rustc__chatgpt_mcp_connector__bin__graph.graph-editor-plan.json`. Item 149 remains unchecked and item 150 remains blocked because the source tree required for extraction is unavailable.
+- Next action: expose or mount the sibling `../chatgpt-mcp-connector` source tree, then rerun item 149's exact validation command.
+
+### 2026-05-13 — implementation step 4 item 149 source path recheck
+
+- Scope: Active Priorities item 149, expected sibling source paths `../chatgpt-mcp-connector/src/tools.rs` and `../chatgpt-mcp-connector/Cargo.toml`, `plan.md`, and `status.md`.
+- Command/check: `test -f ../chatgpt-mcp-connector/src/tools.rs && test -f ../chatgpt-mcp-connector/Cargo.toml`; diagnostic check `printf 'tools='; test -f ../chatgpt-mcp-connector/src/tools.rs; echo $?; printf 'manifest='; test -f ../chatgpt-mcp-connector/Cargo.toml; echo $?; printf 'visible connector evidence:\n'; find . -path '*chatgpt_mcp_connector*' -o -path '*tools.rs' | head -80`.
+- Result: blocked.
+- Evidence: the exact item-149 validation still exits `1`. Diagnostic checks again report `tools=1` and `manifest=1`, confirming both expected sibling paths remain absent. Visible connector artifacts remain limited to `./state/rustc/chatgpt_mcp_connector__bin`, `./state/rustc/chatgpt_mcp_connector__bin/graph.json`, and `./state/rustc/auto-refactor/..__state__rustc__chatgpt_mcp_connector__bin__graph.graph-editor-plan.json`. Item 149 remains unchecked and item 150 remains blocked because the source tree required for extraction is unavailable.
+- Next action: expose or mount the sibling `../chatgpt-mcp-connector` source tree, then rerun item 149's exact validation command.
+
+### 2026-05-13 — implementation step 3 item 149 source path recheck
+
+- Scope: Active Priorities item 149, expected sibling source paths `../chatgpt-mcp-connector/src/tools.rs` and `../chatgpt-mcp-connector/Cargo.toml`, `plan.md`, and `status.md`.
+- Command/check: `test -f ../chatgpt-mcp-connector/src/tools.rs && test -f ../chatgpt-mcp-connector/Cargo.toml`; diagnostic check `printf 'tools='; test -f ../chatgpt-mcp-connector/src/tools.rs; echo $?; printf 'manifest='; test -f ../chatgpt-mcp-connector/Cargo.toml; echo $?; printf 'visible connector evidence:\n'; find . -path '*chatgpt_mcp_connector*' -o -path '*tools.rs' | head -80`.
+- Result: blocked.
+- Evidence: the exact item-149 validation still exits `1`. Diagnostic checks again report `tools=1` and `manifest=1`, confirming both expected sibling paths remain absent. Visible connector artifacts remain limited to `./state/rustc/chatgpt_mcp_connector__bin`, `./state/rustc/chatgpt_mcp_connector__bin/graph.json`, and `./state/rustc/auto-refactor/..__state__rustc__chatgpt_mcp_connector__bin__graph.graph-editor-plan.json`. Item 149 remains unchecked and item 150 remains blocked because the source tree required for extraction is unavailable.
+- Next action: expose or mount the sibling `../chatgpt-mcp-connector` source tree, then rerun item 149's exact validation command.
+
+### 2026-05-13 — implementation step 2 item 149 source path recheck
+
+- Scope: Active Priorities item 149, expected sibling source paths `../chatgpt-mcp-connector/src/tools.rs` and `../chatgpt-mcp-connector/Cargo.toml`, `plan.md`, and `status.md`.
+- Command/check: `test -f ../chatgpt-mcp-connector/src/tools.rs && test -f ../chatgpt-mcp-connector/Cargo.toml`; diagnostic check `printf 'tools='; test -f ../chatgpt-mcp-connector/src/tools.rs; echo $?; printf 'manifest='; test -f ../chatgpt-mcp-connector/Cargo.toml; echo $?; printf 'visible connector evidence:\n'; find . -path '*chatgpt_mcp_connector*' -o -path '*tools.rs' | head -80`.
+- Result: blocked.
+- Evidence: the exact item-149 validation still exits `1`. Diagnostic checks again report `tools=1` and `manifest=1`, confirming both expected sibling paths remain absent. Visible connector artifacts remain limited to `./state/rustc/chatgpt_mcp_connector__bin`, `./state/rustc/chatgpt_mcp_connector__bin/graph.json`, and `./state/rustc/auto-refactor/..__state__rustc__chatgpt_mcp_connector__bin__graph.graph-editor-plan.json`. Item 149 remains unchecked and item 150 remains blocked because the source tree required for extraction is unavailable.
+- Next action: expose or mount the sibling `../chatgpt-mcp-connector` source tree, then rerun item 149's exact validation command.
+
+### 2026-05-13 — implementation step 1 item 149 source path validation
+
+- Scope: Active Priorities item 149, expected sibling source paths `../chatgpt-mcp-connector/src/tools.rs` and `../chatgpt-mcp-connector/Cargo.toml`, `plan.md`, and `status.md`.
+- Command/check: `test -f ../chatgpt-mcp-connector/src/tools.rs && test -f ../chatgpt-mcp-connector/Cargo.toml`; diagnostic check `printf 'tools='; test -f ../chatgpt-mcp-connector/src/tools.rs; echo $?; printf 'manifest='; test -f ../chatgpt-mcp-connector/Cargo.toml; echo $?; printf 'visible connector evidence:\n'; find . -path '*chatgpt_mcp_connector*' -o -path '*tools.rs' | head -80`.
+- Result: blocked.
+- Evidence: the exact item-149 validation exited `1`. Diagnostic checks reported `tools=1` and `manifest=1`, meaning both expected sibling paths are absent from this mounted workspace. The only visible connector artifacts are `./state/rustc/chatgpt_mcp_connector__bin`, `./state/rustc/chatgpt_mcp_connector__bin/graph.json`, and `./state/rustc/auto-refactor/..__state__rustc__chatgpt_mcp_connector__bin__graph.graph-editor-plan.json`. Item 149 remains unchecked because the source/manifest availability check did not pass; item 150 remains blocked.
+- Next action: expose or mount the sibling `../chatgpt-mcp-connector` source tree, then rerun item 149's exact validation command.
+
 ### 2026-05-13 — planning commit hook blocked by unrelated formatting diff
 
 - Scope: commit attempt for `plan.md` and `status.md`; unrelated working-tree source file `src/agent/loop_driver.rs`.

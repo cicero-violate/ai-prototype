@@ -1,7 +1,8 @@
 use ai::{
     build_router, resume_durable_runtime, tick, ApiTransportLedger, ApiTransportSession, Command,
     CommandEnvelope, CommandLedger, EvidenceSubmission, EvidenceSubmissionDto, McpCallReceipt,
-    McpCallRequest, RuntimeConfig, State, StateDto, TLog, ToolEffectKind, WorkerAppState,
+    McpCallRequest, RuntimeConfig, SandboxProcessReceipt, State, StateDto, TLog, ToolEffectKind,
+    WorkerAppState,
 };
 use axum::body::{to_bytes, Body};
 use axum::http::{Request, StatusCode};
@@ -147,11 +148,86 @@ fn mcp_receipt_body(command_id: u64, receipt: &McpCallReceipt) -> serde_json::Va
     })
 }
 
+fn process_receipt_payload(receipt: &SandboxProcessReceipt) -> serde_json::Value {
+    serde_json::json!({
+        "request_hash": receipt.request_hash,
+        "registry_policy_hash": receipt.registry_policy_hash,
+        "command_hash": receipt.command_hash,
+        "argv_hash": receipt.argv_hash,
+        "cwd_hash": receipt.cwd_hash,
+        "env_hash": receipt.env_hash,
+        "timeout_ms": receipt.timeout_ms,
+        "max_output_bytes": receipt.max_output_bytes,
+        "effect_kind": receipt.effect.kind as u64,
+        "effect_digest": receipt.effect.digest,
+        "effect_metadata": receipt.effect.metadata,
+        "stdout_hash": receipt.stdout_hash,
+        "stderr_hash": receipt.stderr_hash,
+        "stdout_bytes": receipt.stdout_bytes,
+        "stderr_bytes": receipt.stderr_bytes,
+        "exit_status": receipt.exit_status,
+        "timed_out": receipt.timed_out,
+        "receipt_hash": receipt.receipt_hash,
+    })
+}
+
+fn process_receipt_body(command_id: u64, receipt: &SandboxProcessReceipt) -> serde_json::Value {
+    let envelope = CommandEnvelope::new(command_id, Command::SubmitProcessReceipt(receipt.clone()));
+    serde_json::json!({
+        "command_id": envelope.command_id,
+        "command_hash": envelope.command_hash,
+        "payload_tag": "SubmitProcessReceipt",
+        "payload": process_receipt_payload(receipt),
+    })
+}
+
 async fn response_json<T: serde::de::DeserializeOwned>(response: axum::response::Response) -> T {
     let body = to_bytes(response.into_body(), usize::MAX)
         .await
         .expect("body should read");
     serde_json::from_slice(&body).expect("body should deserialize")
+}
+
+#[tokio::test]
+async fn worker_accepts_process_receipt_command_over_http() {
+    let path = tlog_path("process-receipt");
+    let _ = std::fs::remove_file(&path);
+    let mut execute_state = State::ready();
+    execute_state.phase = ai::Phase::Execute;
+    let session = ApiTransportSession::from_parts(
+        execute_state,
+        TLog::default(),
+        RuntimeConfig::default(),
+        CommandLedger::default(),
+        ApiTransportLedger::default(),
+    )
+    .expect("execute-phase session should verify");
+    let state = WorkerAppState::new(session, &path);
+    let app = build_router(state.clone());
+    let root = std::path::PathBuf::from("target/test-tmp/process-receipt");
+    std::fs::create_dir_all(&root).expect("process receipt root should exist");
+    let receipt = ai::LiveSandboxProcessExecutor::new(&root)
+        .with_allowed_command("true")
+        .execute_process("true", &[], ".")
+        .expect("true process receipt should be produced");
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/v1/command")
+                .header("Content-Type", "application/json")
+                .body(Body::from(process_receipt_body(60, &receipt).to_string()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    let response: ai::CommandResponseDto = ok_response_json(response).await;
+
+    assert!(response.ok);
+    assert_eq!(response.disposition, "accepted");
+    assert_eq!(state.snapshot().unwrap().tlog_len, 2);
+    let _ = std::fs::remove_file(path);
 }
 
 async fn ok_response_json<T: serde::de::DeserializeOwned>(response: axum::response::Response) -> T {

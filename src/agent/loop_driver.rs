@@ -1141,8 +1141,10 @@ mod tests {
 
     #[test]
     fn finalize_run_cycle_attempt_result_writes_completed_receipt_and_outcome() {
+        let tmp_root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../.tmp");
+        fs::create_dir_all(&tmp_root).expect("canonical temp root should be created");
         let receipt_dir =
-            std::env::temp_dir().join(format!("canon-agent-turn-receipt-test-{}", timestamp_ms()));
+            tmp_root.join(format!("canon-agent-turn-receipt-test-{}", timestamp_ms()));
         let _ = fs::remove_dir_all(&receipt_dir);
         fs::create_dir_all(&receipt_dir).expect("receipt test dir should be created");
 

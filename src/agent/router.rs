@@ -90,6 +90,49 @@ impl RouterClient {
         Ok(outcome)
     }
 
+    fn adopt_target_url(&mut self, next_url: Option<String>) {
+        let Some(next_url) = next_url else {
+            return;
+        };
+
+        if let Some(previous_url) = self.target_url.clone() {
+            if target_url_changed(&previous_url, &next_url) {
+                match retry_transient_router_io(|| {
+                    close_browser_tab_for_url(&previous_url, self.inner.config().timeout_ms)
+                }) {
+                    Ok(outcome) => {
+                        eprintln!(
+                            "agent: closed replaced browser tab outcome={outcome:?} previous_url={previous_url}"
+                        );
+                    }
+                    Err(err) => {
+                        eprintln!(
+                            "agent: failed to close replaced browser tab previous_url={previous_url}: {err}"
+                        );
+                    }
+                }
+            }
+        } else {
+            match retry_transient_router_io(|| {
+                close_stale_chatgpt_tabs_except(&next_url, self.inner.config().timeout_ms)
+            }) {
+                Ok(outcomes) if !outcomes.is_empty() => {
+                    eprintln!(
+                        "agent: closed stale browser tabs keep_url={next_url} outcomes={outcomes:?}"
+                    );
+                }
+                Ok(_) => {}
+                Err(err) => {
+                    eprintln!(
+                        "agent: failed to close stale browser tabs keep_url={next_url}: {err}"
+                    );
+                }
+            }
+        }
+
+        self.target_url = Some(next_url);
+    }
+
     /// Send one turn, threading target_url automatically.
     pub fn turn(&mut self, request: OpenAiChatRequest) -> Result<RouterTurnResult, OpenAiError> {
         let browser = match &self.target_url {
@@ -98,10 +141,8 @@ impl RouterClient {
         };
         let request = request.with_browser(browser);
         let response = retry_transient_router_io(|| self.inner.chat_with_request(&request))?;
-        if let Some(url) = response.target_url.clone() {
-            self.target_url = Some(url);
-        }
         let target_url = response.target_url.clone();
+        self.adopt_target_url(target_url.clone());
         Ok(RouterTurnResult {
             response,
             target_url,
@@ -155,9 +196,7 @@ impl RouterClient {
             router_turn_max_ms.saturating_add(30_000),
         )?;
 
-        if let Some(url) = &sse.target_url {
-            self.target_url = Some(url.clone());
-        }
+        self.adopt_target_url(sse.target_url.clone());
 
         let complete = sse.is_complete();
         let reason = sse.completion_reason().to_string();
@@ -177,6 +216,10 @@ fn retry_transient_router_io<T>(
     mut op: impl FnMut() -> Result<T, OpenAiError>,
 ) -> Result<T, OpenAiError> {
     retry_transient_router_io_with_policy(router_retry_policy(), &mut op)
+}
+
+fn target_url_changed(previous_url: &str, next_url: &str) -> bool {
+    previous_url != next_url
 }
 
 fn retry_transient_router_io_with_policy<T>(
@@ -290,6 +333,51 @@ fn close_browser_tab_for_url(
     close_cdp_target(&endpoint.host, endpoint.port, &target_id, timeout_ms)
 }
 
+fn close_stale_chatgpt_tabs_except(
+    keep_url: &str,
+    timeout_ms: u64,
+) -> Result<Vec<(String, RouterTabCloseOutcome)>, OpenAiError> {
+    let Some(cdp_url) = cdp_endpoint_from_env() else {
+        return Ok(Vec::new());
+    };
+    let endpoint = parse_local_http_endpoint(&cdp_url).map_err(|e| match e {
+        LocalEndpointError::InvalidUrl => OpenAiError::InvalidUrl,
+        LocalEndpointError::NonLocalHost => OpenAiError::InvalidConfig("cdp url must be local"),
+    })?;
+    let (status, body) = cdp_get(&endpoint.host, endpoint.port, "/json/list", timeout_ms)?;
+    if status != 200 {
+        return Ok(vec![(
+            "<json-list>".to_string(),
+            RouterTabCloseOutcome::CloseHttpStatus(status),
+        )]);
+    }
+
+    let value: Value = serde_json::from_str(&body).map_err(|_| OpenAiError::InvalidResponse)?;
+    let Some(entries) = value.as_array() else {
+        return Ok(Vec::new());
+    };
+
+    let mut outcomes = Vec::new();
+    for entry in entries {
+        let Some(obj) = entry.as_object() else {
+            continue;
+        };
+        let Some(id) = obj.get("id").and_then(Value::as_str) else {
+            continue;
+        };
+        let Some(url) = obj.get("url").and_then(Value::as_str) else {
+            continue;
+        };
+        if !is_stale_chatgpt_tab_url(url, keep_url) {
+            continue;
+        }
+
+        let outcome = close_cdp_target(&endpoint.host, endpoint.port, id, timeout_ms)?;
+        outcomes.push((url.to_string(), outcome));
+    }
+    Ok(outcomes)
+}
+
 fn cdp_endpoint_from_env() -> Option<String> {
     env::var("CANON_BROWSER_CDP_URL")
         .ok()
@@ -336,6 +424,10 @@ fn cdp_target_id_for_url(list_body: &str, target_url: &str) -> Option<String> {
             .is_some_and(|url| url == target_url);
         (url_matches || websocket_matches || frontend_matches).then(|| id.to_string())
     })
+}
+
+fn is_stale_chatgpt_tab_url(url: &str, keep_url: &str) -> bool {
+    url != keep_url && (url == "https://chatgpt.com/" || url.starts_with("https://chatgpt.com/"))
 }
 
 fn close_cdp_target(
@@ -681,6 +773,28 @@ mod tests {
             Some("target-1".to_string())
         );
         assert_eq!(cdp_target_id_for_url(body, "https://missing.invalid"), None);
+    }
+
+    #[test]
+    fn target_url_changed_only_for_distinct_urls() {
+        assert!(!target_url_changed(
+            "https://chatgpt.com/c/current",
+            "https://chatgpt.com/c/current"
+        ));
+        assert!(target_url_changed(
+            "https://chatgpt.com/c/old",
+            "https://chatgpt.com/c/new"
+        ));
+    }
+
+    #[test]
+    fn stale_chatgpt_tab_predicate_keeps_current_conversation_only() {
+        let keep = "https://chatgpt.com/c/current";
+        assert!(!is_stale_chatgpt_tab_url(keep, keep));
+        assert!(is_stale_chatgpt_tab_url("https://chatgpt.com/", keep));
+        assert!(is_stale_chatgpt_tab_url("https://chatgpt.com/c/old", keep));
+        assert!(!is_stale_chatgpt_tab_url("chrome://newtab/", keep));
+        assert!(!is_stale_chatgpt_tab_url("https://example.invalid/", keep));
     }
 
     #[test]

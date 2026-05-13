@@ -54,6 +54,7 @@ async fn run() -> Result<(), String> {
         cfg.router_url.clone(),
         cfg.project_dir.clone(),
         cfg.mcp_connector_url.clone(),
+        cfg.addr.port(),
     );
     let state = SupervisorState {
         inner: Arc::new(Mutex::new(process)),
@@ -157,6 +158,7 @@ struct WorkerProcess {
     drain_after: Duration,
     project_dir: PathBuf,
     mcp_connector_url: String,
+    supervisor_port: u16,
     next_spawn: u64,
 }
 
@@ -168,6 +170,7 @@ impl WorkerProcess {
         _router_url: String,
         project_dir: PathBuf,
         mcp_connector_url: String,
+        supervisor_port: u16,
     ) -> Self {
         Self {
             active: None,
@@ -179,6 +182,7 @@ impl WorkerProcess {
             drain_after: Duration::from_secs(30),
             project_dir,
             mcp_connector_url,
+            supervisor_port,
             next_spawn: 0,
         }
     }
@@ -297,7 +301,7 @@ impl WorkerProcess {
             router_first_capture_ms: 60_000,
             router_idle_ms: 2_500,
             worker_port: Some(worker_port),
-            supervisor_port: None,
+            supervisor_port: Some(self.supervisor_port),
             cert_max_steps: 30,
             domain: Some(domain.to_string()),
             metric: Some(metric.to_string()),
@@ -421,7 +425,7 @@ async fn command_gateway(
     body: Bytes,
 ) -> Result<impl IntoResponse, (StatusCode, Json<ErrorDto>)> {
     let body_len = body.len();
-    let (command_id, payload_tag) = command_log_fields(&body);
+    let (command_id, payload_tag, source) = command_log_fields(&body);
     let worker_port = {
         let mut guard = state.inner.lock().await;
         guard.reap_retired().await;
@@ -429,8 +433,8 @@ async fn command_gateway(
     };
 
     eprintln!(
-        "supervisor: received MCP command via /v1/command  command_id={} payload_tag={} bytes={} -> worker_port={}",
-        command_id, payload_tag, body_len, worker_port
+        "supervisor: received kernel command via /v1/command  source={} command_id={} payload_tag={} bytes={} -> worker_port={}",
+        source, command_id, payload_tag, body_len, worker_port
     );
 
     let url = format!("http://127.0.0.1:{worker_port}/v1/command");
@@ -450,7 +454,8 @@ async fn command_gateway(
         .map_err(|err| error_response(format!("worker command body read failed: {err}")))?;
 
     eprintln!(
-        "supervisor: completed MCP command via /v1/command  command_id={} payload_tag={} status={} response_bytes={}",
+        "supervisor: completed kernel command via /v1/command  source={} command_id={} payload_tag={} status={} response_bytes={}",
+        source,
         command_id,
         payload_tag,
         status.as_u16(),
@@ -460,9 +465,13 @@ async fn command_gateway(
     Ok((status, bytes))
 }
 
-fn command_log_fields(body: &[u8]) -> (String, String) {
+fn command_log_fields(body: &[u8]) -> (String, String, String) {
     let Ok(value) = serde_json::from_slice::<serde_json::Value>(body) else {
-        return ("<invalid-json>".to_string(), "<invalid-json>".to_string());
+        return (
+            "<invalid-json>".to_string(),
+            "<invalid-json>".to_string(),
+            "unknown".to_string(),
+        );
     };
     let command_id = value
         .get("command_id")
@@ -474,7 +483,30 @@ fn command_log_fields(body: &[u8]) -> (String, String) {
         .and_then(|v| v.as_str())
         .unwrap_or("<missing>")
         .to_string();
-    (command_id, payload_tag)
+    let source = value
+        .get("source")
+        .and_then(|v| v.as_str())
+        .map(str::to_string)
+        .or_else(|| {
+            value
+                .get("agent_turn")
+                .is_some()
+                .then(|| "agent".to_string())
+        })
+        .or_else(|| {
+            value
+                .get("browser_turn")
+                .is_some()
+                .then(|| "browser-router".to_string())
+        })
+        .unwrap_or_else(|| {
+            if payload_tag.contains("Mcp") {
+                "mcp".to_string()
+            } else {
+                "kernel".to_string()
+            }
+        });
+    (command_id, payload_tag, source)
 }
 
 async fn spawn_worker(
@@ -483,6 +515,7 @@ async fn spawn_worker(
     tlog_dir: &PathBuf,
     mcp_worker_url: &str,
 ) -> Result<WorkerInstance, String> {
+    ensure_worker_binary(binary_path).await?;
     let port = allocate_port()?;
     let mut child = Command::new(binary_path)
         .env("AI_WORKER_MODE", "1")
@@ -508,6 +541,42 @@ async fn spawn_worker(
         port,
         generation,
     })
+}
+
+async fn ensure_worker_binary(binary_path: &PathBuf) -> Result<(), String> {
+    if binary_path.exists() {
+        return Ok(());
+    }
+
+    eprintln!(
+        "supervisor: worker binary missing at {}; building it",
+        binary_path.display()
+    );
+    let mut command = Command::new("cargo");
+    command
+        .arg("build")
+        .arg("--bin")
+        .arg("worker")
+        .current_dir(env!("CARGO_MANIFEST_DIR"))
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::inherit());
+    if binary_path
+        .components()
+        .any(|component| component.as_os_str() == "release")
+    {
+        command.arg("--release");
+    }
+    let status = command
+        .status()
+        .await
+        .map_err(|err| format!("build worker binary failed to spawn: {err}"))?;
+    if !status.success() {
+        return Err(format!("build worker binary exited with {status}"));
+    }
+    binary_path
+        .exists()
+        .then_some(())
+        .ok_or_else(|| format!("built worker binary not found at {}", binary_path.display()))
 }
 
 fn allocate_port() -> Result<u16, String> {

@@ -12,7 +12,9 @@ fn temp_dir(name: &str) -> PathBuf {
         .duration_since(UNIX_EPOCH)
         .expect("system clock before unix epoch")
         .as_nanos();
-    let dir = std::env::temp_dir().join(format!(
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../.tmp");
+    fs::create_dir_all(&root).expect("create canonical temp root");
+    let dir = root.join(format!(
         "canon-graph-cli-{name}-{}-{nanos}",
         std::process::id()
     ));

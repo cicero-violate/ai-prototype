@@ -16,7 +16,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::api::protocol::{Command, CommandEnvelope};
 use crate::api::transport::{ApiTransportDisposition, ApiTransportFrame, ApiTransportSession};
-use crate::capability::tooling::{Effect, McpCallReceipt, McpCallRequest, ToolEffectKind};
+use crate::capability::tooling::{
+    Effect, McpCallReceipt, McpCallRequest, SandboxProcessReceipt, ToolEffectKind,
+};
 use crate::capability::{CapabilityId, CapabilityRegistry, EvidenceSubmission, PacketEffect};
 use crate::error::CanonError;
 use crate::kernel::{Evidence, GateId, RuntimeConfig, State};
@@ -124,6 +126,28 @@ pub struct McpCallReceiptDto {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+pub struct SandboxProcessReceiptDto {
+    pub request_hash: u64,
+    pub registry_policy_hash: u64,
+    pub command_hash: u64,
+    pub argv_hash: u64,
+    pub cwd_hash: u64,
+    pub env_hash: u64,
+    pub timeout_ms: u64,
+    pub max_output_bytes: u64,
+    pub effect_kind: u64,
+    pub effect_digest: u64,
+    pub effect_metadata: u64,
+    pub stdout_hash: u64,
+    pub stderr_hash: u64,
+    pub stdout_bytes: u64,
+    pub stderr_bytes: u64,
+    pub exit_status: u64,
+    pub timed_out: bool,
+    pub receipt_hash: u64,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ErrorDto {
     pub ok: bool,
     pub error: String,
@@ -220,6 +244,20 @@ fn decode_command(dto: &CommandEnvelopeDto) -> Result<Command, ServerError> {
             let receipt = decode_mcp_call_receipt(dto.payload.clone())?;
             Ok(Command::SubmitMcpCallReceipt(receipt))
         }
+        "SubmitProcessReceipt" => {
+            let receipt = decode_sandbox_process_receipt(dto.payload.clone())?;
+            Ok(Command::SubmitProcessReceipt(receipt))
+        }
+        "SubmitProcessReceiptBatch" => {
+            let payloads: Vec<SandboxProcessReceiptDto> =
+                serde_json::from_value(dto.payload.clone())
+                    .map_err(|_| ServerError::InvalidPayload)?;
+            let receipts = payloads
+                .into_iter()
+                .map(sandbox_process_receipt_from_dto)
+                .collect::<Result<Vec<_>, _>>()?;
+            Ok(Command::SubmitProcessReceiptBatch(receipts))
+        }
         _ => Err(ServerError::UnsupportedPayloadTag),
     }
 }
@@ -266,6 +304,51 @@ fn decode_mcp_call_receipt(payload: serde_json::Value) -> Result<McpCallReceipt,
         },
         response_hash: dto.response_hash,
         response_bytes: dto.response_bytes,
+        exit_status: dto.exit_status,
+        timed_out: dto.timed_out,
+        receipt_hash: dto.receipt_hash,
+    };
+    if receipt.registry_policy_hash != CapabilityRegistry::canonical().policy_hash()
+        || !receipt.is_contract_valid()
+    {
+        return Err(ServerError::InvalidCommand);
+    }
+    Ok(receipt)
+}
+
+fn decode_sandbox_process_receipt(
+    payload: serde_json::Value,
+) -> Result<SandboxProcessReceipt, ServerError> {
+    let dto: SandboxProcessReceiptDto =
+        serde_json::from_value(payload).map_err(|_| ServerError::InvalidPayload)?;
+    sandbox_process_receipt_from_dto(dto)
+}
+
+fn sandbox_process_receipt_from_dto(
+    dto: SandboxProcessReceiptDto,
+) -> Result<SandboxProcessReceipt, ServerError> {
+    let effect_kind = match dto.effect_kind {
+        2 => ToolEffectKind::Process,
+        _ => return Err(ServerError::InvalidPayload),
+    };
+    let receipt = SandboxProcessReceipt {
+        request_hash: dto.request_hash,
+        registry_policy_hash: dto.registry_policy_hash,
+        command_hash: dto.command_hash,
+        argv_hash: dto.argv_hash,
+        cwd_hash: dto.cwd_hash,
+        env_hash: dto.env_hash,
+        timeout_ms: dto.timeout_ms,
+        max_output_bytes: dto.max_output_bytes,
+        effect: Effect {
+            kind: effect_kind,
+            digest: dto.effect_digest,
+            metadata: dto.effect_metadata,
+        },
+        stdout_hash: dto.stdout_hash,
+        stderr_hash: dto.stderr_hash,
+        stdout_bytes: dto.stdout_bytes,
+        stderr_bytes: dto.stderr_bytes,
         exit_status: dto.exit_status,
         timed_out: dto.timed_out,
         receipt_hash: dto.receipt_hash,

@@ -306,7 +306,9 @@ mod tests {
     use super::*;
 
     fn parse_fixture(body: &str) -> SseResult {
-        let dir = std::env::temp_dir().join(format!("canon-sse-fixture-{}", std::process::id()));
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../.tmp");
+        fs::create_dir_all(&root).unwrap();
+        let dir = root.join(format!("canon-sse-fixture-{}", std::process::id()));
         let mut logger = ChunkLogger::new(&dir, "fixture", 0, "turn").unwrap();
         parse_sse_body(body, &mut logger)
     }
