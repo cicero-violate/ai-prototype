@@ -824,6 +824,21 @@ Ordered execute-turn checklist, one file or one test per item. Implementation it
    - Done when: `SCORE_REPORT.md` is regenerated from current `state/rustc` artifacts, `status.md` records aggregate and affected crate rows, and `score.md` changes only if the refreshed evidence justifies a score-history-worthy scoring change.
    - Validation: `cargo run --manifest-path score/Cargo.toml --quiet -- --artifact-root state/rustc --report SCORE_REPORT.md --date "$(date +%Y-%m-%d)"`.
 
+145. [ ] `../chatgpt-mcp-connector/src/tools.rs`: inspect live graph-backed `execute_durable_policy_selected_suite(...)` and record the exact helper boundary for the next execution item.
+   - Scope: `../chatgpt-mcp-connector/src/tools.rs::execute_durable_policy_selected_suite(...)`, adjacent policy-selected evaluator response/support helpers, durable orchestrator calls, and `state/rustc/auto-refactor/..__state__rustc__chatgpt_mcp_connector__bin__graph.graph-editor-plan.json`. Do not edit Rust source for this inspection item except planning/status evidence.
+   - Done when: inspection confirms `SplitFn id=7f8fe031079d5622` still targets `tools::execute_durable_policy_selected_suite(...)` with expected range `40132..45772`, rejects generated names `execute_durable_policy_selected_suite__parse`/`execute_durable_policy_selected_suite__transform` as direct instructions, and records one manual helper boundary that reduces durable policy-selected evaluator orchestration complexity without changing public response semantics or persisted TLog semantics.
+   - Validation: `cargo test --manifest-path ../chatgpt-mcp-connector/Cargo.toml tools::tests::canon_execute_policy_selected_evaluator_suite -- --test-threads=1`.
+
+146. [ ] `../chatgpt-mcp-connector/src/tools.rs`: extract the private helper selected by item 145 from `execute_durable_policy_selected_suite(...)` without changing durable policy-selected evaluator semantics.
+   - Scope: `../chatgpt-mcp-connector/src/tools.rs::execute_durable_policy_selected_suite(...)` and one private helper in the same file selected by item 145. Do not change durable TLog creation/opening, planning/execution transition order, policy lookup evidence recording, candidate rejection/acceptance semantics, completion behavior, partial-TLog error reporting, or evaluator response shape.
+   - Done when: `execute_durable_policy_selected_suite(...)` delegates only the item-145 approved sub-sequence to a private helper, keeps durable orchestration and response construction auditable in the caller, and targeted policy-selected evaluator transport tests pass.
+   - Validation: `cargo test --manifest-path ../chatgpt-mcp-connector/Cargo.toml tools::tests::canon_execute_policy_selected_evaluator_suite -- --test-threads=1`.
+
+147. [ ] `SCORE_REPORT.md`: refresh graph-derived structural evidence after item 146 lands, then review whether `score.md` rationale should change without raising project-level scores absent capability evidence.
+   - Scope: `SCORE_REPORT.md`, `score.md`, `plan.md`, and `status.md` only.
+   - Done when: `SCORE_REPORT.md` is regenerated from current `state/rustc` artifacts, `status.md` records aggregate and affected crate rows, and `score.md` changes only if the refreshed evidence justifies a score-history-worthy scoring change.
+   - Validation: `cargo run --manifest-path score/Cargo.toml --quiet -- --artifact-root state/rustc --report SCORE_REPORT.md --date "$(date +%Y-%m-%d)"`.
+
 ## Additional Validation Notes
 
 - Targeted validation for the selected checklist item, as listed under `## Active Priorities`.
