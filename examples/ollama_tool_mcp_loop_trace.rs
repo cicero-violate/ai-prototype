@@ -126,54 +126,72 @@ fn submit_llm_mcp_tool_calls(
 
     let mut receipts = Vec::new();
     for tool_call_index in 1..=TOOL_CALL_TARGET {
-        let spec = tool_spec(tool_call_index)?;
-        println!("llm_mcp_tool_call_request index={tool_call_index} phase=Execute provider=ollama");
-        let response = client.chat(&[
-            OllamaMessage::system(
-                "Return exactly one JSON object and nothing else. The JSON schema is \
-                 {\"tool_name\":\"shell\",\"arguments\":{\"cwd\":\".\",\"command\":\"...\"}}.",
-            ),
-            OllamaMessage::user(format!(
-                "Create MCP tool call JSON for safe shell command number {tool_call_index}. \
-                 The command must be exactly {:?}.",
-                spec.expected_command
-            )),
-        ])?;
-        println!(
-            "llm_mcp_tool_call index={} content={:?} response_hash={} raw_hash={} token_count={}",
+        let receipt = execute_one_llm_mcp_tool_call(
+            client,
+            &executor,
+            &mcp_worker_url,
+            mcp_receipt_path,
             tool_call_index,
-            response.content.trim(),
-            response.response_hash,
-            response.raw_hash,
-            response.total_tokens
-        );
-
-        let parsed = parse_and_validate_mcp_tool_call(response.content.trim(), spec)?;
-        println!(
-            "llm_mcp_tool_call_validated index={} mcp_worker_url={} tool_name={} args_json={}",
-            tool_call_index, mcp_worker_url, parsed.tool_name, parsed.args_json
-        );
-
-        let receipt = executor
-            .execute_call(&parsed.tool_name, &parsed.args_json)
-            .map_err(|err| format!("mcp tool execution failed: {err:?}"))?;
-
-        println!(
-            "mcp_tool_receipt index={} command={:?} exit_status={} timed_out={} response_bytes={} response_hash={} receipt_hash={}",
-            tool_call_index,
-            parsed.command,
-            receipt.exit_status,
-            receipt.timed_out,
-            receipt.response_bytes,
-            receipt.response_hash,
-            receipt.receipt_hash
-        );
-        append_mcp_call_receipt_ndjson(mcp_receipt_path, &receipt)
-            .map_err(|err| format!("failed to persist mcp receipt: {err:?}"))?;
+        )?;
         receipts.push(receipt);
     }
 
     submit_llm_mcp_evidence(&receipts, state, tlog, cfg)
+}
+
+fn execute_one_llm_mcp_tool_call(
+    client: &OllamaClient,
+    executor: &LiveMcpCallExecutor,
+    mcp_worker_url: &str,
+    mcp_receipt_path: &Path,
+    tool_call_index: usize,
+) -> Result<McpCallReceipt, Box<dyn std::error::Error>> {
+    let spec = tool_spec(tool_call_index)?;
+    println!("llm_mcp_tool_call_request index={tool_call_index} phase=Execute provider=ollama");
+    let response = client.chat(&[
+        OllamaMessage::system(
+            "Return exactly one JSON object and nothing else. The JSON schema is \
+             {\"tool_name\":\"shell\",\"arguments\":{\"cwd\":\".\",\"command\":\"...\"}}.",
+        ),
+        OllamaMessage::user(format!(
+            "Create MCP tool call JSON for safe shell command number {tool_call_index}. \
+             The command must be exactly {:?}.",
+            spec.expected_command
+        )),
+    ])?;
+    println!(
+        "llm_mcp_tool_call index={} content={:?} response_hash={} raw_hash={} token_count={}",
+        tool_call_index,
+        response.content.trim(),
+        response.response_hash,
+        response.raw_hash,
+        response.total_tokens
+    );
+
+    let parsed = parse_and_validate_mcp_tool_call(response.content.trim(), spec)?;
+    println!(
+        "llm_mcp_tool_call_validated index={} mcp_worker_url={} tool_name={} args_json={}",
+        tool_call_index, mcp_worker_url, parsed.tool_name, parsed.args_json
+    );
+
+    let receipt = executor
+        .execute_call(&parsed.tool_name, &parsed.args_json)
+        .map_err(|err| format!("mcp tool execution failed: {err:?}"))?;
+
+    println!(
+        "mcp_tool_receipt index={} command={:?} exit_status={} timed_out={} response_bytes={} response_hash={} receipt_hash={}",
+        tool_call_index,
+        parsed.command,
+        receipt.exit_status,
+        receipt.timed_out,
+        receipt.response_bytes,
+        receipt.response_hash,
+        receipt.receipt_hash
+    );
+    append_mcp_call_receipt_ndjson(mcp_receipt_path, &receipt)
+        .map_err(|err| format!("failed to persist mcp receipt: {err:?}"))?;
+
+    Ok(receipt)
 }
 
 fn submit_llm_mcp_evidence(
