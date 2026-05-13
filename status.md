@@ -57,6 +57,14 @@ Current date: 2026-05-13.
 
 ## Validation Ledger
 
+### 2026-05-13 — planning turn confirms item 112 execution boundary
+
+- Scope: `plan.md`, `status.md`, `score.md`, `SCORE_REPORT.md`, `src/agent/cycle.rs::AgentCycle::run(...)`, and `state/rustc/auto-refactor/..__state__rustc__ai__graph.graph-editor-plan.json`.
+- Command/check: read current Active Priorities, current progress, score rationale, graph-derived score report, auto-refactor evidence, `src/agent/cycle.rs::AgentCycle::run(...)`, cycle helper/test surfaces, and current git status.
+- Result: informational.
+- Evidence: item 112 is the first unchecked executable item. Items 60 through 111 are complete. `SplitFn id=918a1611235eccfd` still targets `agent::cycle::AgentCycle::run` with `expected_lo=3897`, `expected_hi=9820`, generated names `run__parse`/`run__transform`, and a split-surface fan-out of `34`; generated helper names remain evidence only. Source inspection confirmed the item-112 helper should receive the already observed `phase`, `loop_steps`, `domain`, `metric`, `state_body`, and mutable `invariant_submitted` state, perform only phase-specific dispatch, and return an optional `StopReason`. `AgentCycle::run(...)` should retain objective validation, worker health gating, planning turn, max-step loop control, observe timing, done-phase success gate, pre-dispatch human-review sentinel, final observation, summary construction, and public error behavior. Existing unrelated working-tree modifications remain in `.cargo/config.toml`, `Cargo.toml`, `src/agent/loop_driver.rs`, `src/api/server.rs`, `src/bin/supervisor.rs`, and `tests/api_server_contract.rs`; this planning turn did not modify those files.
+- Next action: execute Active Priorities item 112 by extracting only the recorded phase-dispatch helper and running `cargo check && cargo fmt --check && TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
+
 ### 2026-05-13 — planning step selected item 112 AgentCycle phase-dispatch extraction
 
 - Scope: `plan.md`, `status.md`, `score.md`, `SCORE_REPORT.md`, `src/agent/cycle.rs::AgentCycle::run(...)`, and `state/rustc/auto-refactor/..__state__rustc__ai__graph.graph-editor-plan.json`.
