@@ -57,6 +57,14 @@ Current date: 2026-05-13.
 
 ## Validation Ledger
 
+### 2026-05-13 — planning turn finalized item 153 execution checklist
+
+- Scope: `plan.md`, `status.md`, `score.md`, `SCORE_REPORT.md`, `src/bin/root_validate.rs`, `state/rustc/auto-refactor`, and local graph evidence paths.
+- Command/check: reviewed the active checklist tail in `plan.md`; read current progress and validation evidence in `status.md`; reviewed `score.md` scores and rationale; read `SCORE_REPORT.md`; checked for `state/rustc/auto-refactor/*.graph-editor-plan.json`, `state/rustc/root_validate__bin/graph.json`, `state/rustc/root_validate/graph.json`, and `state/rustc/ai/graph.json`; inspected `COMPACT_MODES`, `root_validate_dispatch_catalog_payload()`, `root_validate_dispatch_catalog_mode()`, `try_run_compact_mode(arg)`, `compact_mode_stdout_for_contract(arg, expected_marker)`, and `mirror_validation_outcome(arg, outcome)` in `src/bin/root_validate.rs`; reviewed `git status --short`.
+- Result: informational.
+- Evidence: first incomplete executable work remains item 153, one test-only task in `src/bin/root_validate.rs` named `root_validate_dispatch_catalog_lists_every_compact_mode_once`. Local `SCORE_REPORT.md` reports graph-derived `G = 7.91 / 10`, aggregate Structure `4.8`, and `root_validate` Structure `1.5`, so the selected task remains aligned with the weakest local graph-derived structural surface. No `state/rustc/auto-refactor/*.graph-editor-plan.json` files or root-validate graph artifacts are exposed in the mounted workspace. `score.md` project-level scores remain unchanged because this turn changed planning evidence only.
+- Next action: implement item 153 in `src/bin/root_validate.rs`, then run `cargo test --bin root_validate root_validate_dispatch_catalog_lists_every_compact_mode_once -- --test-threads=1`.
+
 ### 2026-05-13 — planning turn refreshed item 153 execution boundary
 
 - Scope: `plan.md`, `status.md`, `score.md`, `SCORE_REPORT.md`, `src/bin/root_validate.rs`, `state/rustc/auto-refactor`, and local graph evidence paths.
