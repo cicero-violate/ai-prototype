@@ -57,6 +57,22 @@ Current date: 2026-05-13.
 
 ## Validation Ledger
 
+### 2026-05-13 — planning turn reconfirmed item 153 without score changes
+
+- Scope: `plan.md`, `status.md`, `score.md`, `SCORE_REPORT.md`, `src/bin/root_validate.rs`, `state/rustc/auto-refactor`, root-validate graph evidence paths, and current working-tree status.
+- Command/check: read the active checklist tail; scanned `src/bin/root_validate.rs` for `COMPACT_MODES`, `root_validate_dispatch_catalog_payload()`, `root_validate_dispatch_catalog_mode()`, `try_run_compact_mode(...)`, `compact_mode_stdout_for_contract(...)`, `mirror_validation_outcome(...)`, and the proposed test name; checked `state/rustc/auto-refactor`, `state/rustc/root_validate__bin/graph.json`, `state/rustc/root_validate/graph.json`, and `state/rustc/ai/graph.json`; reviewed `SCORE_REPORT.md` and `git status --short`.
+- Result: informational.
+- Evidence: first incomplete executable work remains item 153, the test-only `src/bin/root_validate.rs` unit test `root_validate_dispatch_catalog_lists_every_compact_mode_once`. Local source scan found relevant symbols at lines 37, 776, 1486, 2399, 2421, 2428, and 2493. The checked graph and auto-refactor evidence paths are absent in the mounted workspace. Local `SCORE_REPORT.md` still reports graph-derived `G = 7.91 / 10`, aggregate Structure `4.8`, and `root_validate` Structure `1.5`. Existing unrelated working-tree modifications remain outside this planning turn.
+- Next action: implement item 153 in `src/bin/root_validate.rs`, then run `cargo test --bin root_validate root_validate_dispatch_catalog_lists_every_compact_mode_once -- --test-threads=1`.
+
+### 2026-05-13 — planning turn refreshed item 153 execution surface
+
+- Scope: `plan.md`, `status.md`, `score.md`, `SCORE_REPORT.md`, `src/bin/root_validate.rs`, local graph evidence paths, and current working-tree status.
+- Command/check: inspected Active Priorities items 140 through 154; scanned `src/bin/root_validate.rs` for compact dispatch/catalog symbols; checked `state/rustc/auto-refactor`, `state/rustc/root_validate__bin/graph.json`, `state/rustc/root_validate/graph.json`, and `state/rustc/ai/graph.json`; reviewed `SCORE_REPORT.md` and `git status --short`.
+- Result: informational.
+- Evidence: first incomplete executable work remains item 153, one focused unit test named `root_validate_dispatch_catalog_lists_every_compact_mode_once` in `src/bin/root_validate.rs`. Local source scan finds the relevant symbols at lines 37, 776, 1486, 2399, 2421, 2428, and 2493. The checked graph paths are absent in the mounted workspace. `SCORE_REPORT.md` reports graph-derived `G = 7.91 / 10`, aggregate Structure `4.8`, and `root_validate` Structure `1.5`. Existing unrelated working-tree modifications remain outside this planning update.
+- Next action: implement item 153 in `src/bin/root_validate.rs`, then run `cargo test --bin root_validate root_validate_dispatch_catalog_lists_every_compact_mode_once -- --test-threads=1`.
+
 ### 2026-05-13 — planning refresh retained item 153 as next root_validate task
 
 - Scope: `plan.md`, `status.md`, `score.md`, `SCORE_REPORT.md`, `src/bin/root_validate.rs`, `state/rustc/auto-refactor`, `state/rustc/root_validate__bin/graph.json`, `state/rustc/root_validate/graph.json`, `state/rustc/ai/graph.json`, and current working-tree status.
