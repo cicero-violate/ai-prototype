@@ -38,7 +38,7 @@ Use one entry per validation attempt, blocker, or evidence update:
 
 # Canon Agent Status
 
-Current date: 2026-05-12.
+Current date: 2026-05-13.
 
 ## Current Progress
 
@@ -48,7 +48,7 @@ Current date: 2026-05-12.
 - P3 runtime and receipt correctness: complete for current scope.
 - P4 graph source-of-truth integration: mostly complete for deterministic fixture/report evidence; agent-driven graph editing remains intentionally deferred until P5 domain surfaces are validated.
 - P5 domain intelligence layer: active. `src/domain/contracts.rs` constructor and invariant tests through unsafe live-effect rejection are complete in local source, with prior targeted validation passing 7 contract tests.
-- Active Priorities items 25 through 109 are complete in the working tree; item 110 is the first unchecked executable item and is a structural evidence refresh. The latest graph-derived structural report in `SCORE_REPORT.md` reports `G = 7.93 / 10`, Architecture `8.9`, Structure `4.8`, Simplicity `7.1`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2`; `score.md` project-level numeric scores remain unchanged because item 109 added focused test coverage rather than a score-history-worthy capability change.
+- Active Priorities items 25 through 110 are complete in the working tree; item 111 is the first unchecked executable item and is a `src/agent/cycle.rs::AgentCycle::run(...)` boundary inspection. The latest graph-derived structural report in `SCORE_REPORT.md` reports `G = 7.93 / 10`, Architecture `9.0`, Structure `4.8`, Simplicity `7.1`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2`; `score.md` project-level numeric scores remain unchanged because the latest score refresh is structural evidence rather than a score-history-worthy capability change.
 - `src/domain/business.rs` contains `BusinessOpportunity`, `WorkflowAutomationCandidate`, `CustomerFeedbackSignal`, `monetization_score(...)`, compile-smoke test `business_module_records_and_score_helper_compile`, deterministic repeatability test `business_monetization_score_is_deterministic`, and bounded-score test `business_monetization_score_is_bounded`, with broader business validation passing 3 tests after correcting the bounded test scalar assertion.
 - `src/domain/identity.rs` currently contains `DomainHash`, `DomainHashInput<'a>`, `canonical_json_bytes(record)`, `domain_hash_json(record)`, `domain_hash_parts(parts)`, `stable_domain_id(parts)`, and six passing targeted identity tests through `domain_hash_changes_when_schema_version_changes`.
 - `src/domain/scoring.rs` currently contains validated `BoundedScore` helpers, score-input breakdown helpers, conservative `verdict_for_scores(...)`, and passing `verdict_ignore_thresholds`, `verdict_watch_thresholds`, `verdict_research_thresholds`, `verdict_act_business_thresholds`, `verdict_act_finance_research_thresholds`, `verdict_simulate_trading_thresholds`, and `verdict_block_thresholds`; explicit verdict threshold tests are complete for the current scoring scope.
@@ -56,6 +56,14 @@ Current date: 2026-05-12.
 - Domain fixture JSON files exist under `tests/fixtures/domain/` for global signal, business workflow opportunity, finance hypothesis research, trading simulation sandbox, and trading live blocked cases; `tests/test_domain_fixture_contract.py` now includes explicit risk-result and required-field assertions. Item 51 graph analyzer now exists and passes against `state/rustc/ai/graph.json`, reporting 752 compiled P5 domain-node matches. Item 52 malformed-input self-check also passes. Remaining work includes item 50 full-suite Rust validation and later graph evidence refresh/score review items gated on full-suite output.
 
 ## Validation Ledger
+
+### 2026-05-13 — planning step item 110 graph-derived score refresh and next cycle target selection
+
+- Scope: Active Priorities item 110, `SCORE_REPORT.md`, `score.md`, `plan.md`, `status.md`, `src/agent/cycle.rs::AgentCycle::run(...)`, and `state/rustc/auto-refactor/..__state__rustc__ai__graph.graph-editor-plan.json`.
+- Command/check: `cargo run --manifest-path score/Cargo.toml --quiet -- --artifact-root state/rustc --report SCORE_REPORT.md --date "$(date +%Y-%m-%d)"`; source inspection of `src/agent/cycle.rs::AgentCycle::run(...)`; auto-refactor text inspection for `SplitFn id=918a1611235eccfd`.
+- Result: passed.
+- Evidence: score refresh reported `G = 7.93 / 10` across 16 schema-version-16 crates with 2 expected schema-version-12 skips; axes are Architecture `9.0`, Structure `4.8`, Simplicity `7.1`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2`. The refreshed `ai` crate row reports 5,463 nodes, 35,002 edges, and 2,199 functions. `score.md` project-level numeric scores remain unchanged. Auto-refactor evidence currently exposes `agent::cycle::AgentCycle::run` as the live `ai` split candidate; router split entries are historical after items 107-109.
+- Next action: execute Active Priorities item 111 by recording the exact `AgentCycle::run(...)` helper boundary and running `cargo check`.
 
 ### 2026-05-12 — implementation step 1 item 109 router stream helper loopback coverage
 
