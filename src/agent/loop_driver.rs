@@ -651,8 +651,8 @@ fn planning_prompt(
         Some(report) if !report.trim().is_empty() => format!(
             "## AUTO-REFACTOR PLANS (state/rustc/auto-refactor — graph-editor planning evidence)\n\
              ```\n{report}\n```\n\
-             Treat these as candidate evidence only. Prefer small `SplitFn` operations whose target exists in the current graph. \
-             Do not apply `merge_surface` recommendations blindly; generated serde/self-pair noise must be filtered manually.\n\n"
+             Treat these as candidate evidence only. Prefer small `MergeFn` operations whose target exists in the current graph. \
+             Do not apply generated merge recommendations blindly; generated serde/self-pair noise must be filtered manually.\n\n"
         ),
         _ => String::new(),
     };
@@ -730,16 +730,17 @@ fn summarize_auto_refactor_plan(path: &Path, text: &str) -> Option<String> {
     let file_name = path.file_name()?.to_str()?;
     let crate_name = json_string_field(text, "crate_name").unwrap_or_else(|| "unknown".into());
     let operation_count = json_usize_field(text, "operation_count").unwrap_or(0);
+    let merge_count = text.matches("\"op\": \"MergeFn\"").count()
+        + json_array_object_count(text, "merge_surface").unwrap_or(0);
     let split_count = text.matches("\"op\": \"SplitFn\"").count();
-    let merge_count = json_array_object_count(text, "merge_surface").unwrap_or(0);
-    let split_targets = json_string_values_after_key(text, "fn_path", 5);
+    let merge_targets = json_string_values_after_key(text, "target_fn", 5);
 
     let mut line = format!(
-        "{file_name}: crate={crate_name} operations={operation_count} split_fn={split_count} merge_surface={merge_count}"
+        "{file_name}: crate={crate_name} operations={operation_count} merge_fn={merge_count} split_fn={split_count}"
     );
-    if !split_targets.is_empty() {
-        line.push_str(" split_targets=");
-        line.push_str(&split_targets.join(","));
+    if !merge_targets.is_empty() {
+        line.push_str(" merge_targets=");
+        line.push_str(&merge_targets.join(","));
     }
     Some(line)
 }
