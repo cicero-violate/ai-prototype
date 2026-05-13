@@ -658,6 +658,8 @@ fn response_text_has_done_frame(response: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::net::TcpListener;
+    use std::sync::mpsc;
 
     #[test]
     fn devtools_page_target_extracts_local_target_id() {
@@ -728,6 +730,53 @@ mod tests {
         assert_eq!(content_length, body.len());
         assert_eq!(content_length, actual_body.len());
         assert_eq!(actual_body.as_bytes(), body.as_bytes());
+    }
+
+    #[test]
+    fn open_streaming_http_stream_sends_exact_request_to_loopback_listener() {
+        let listener = TcpListener::bind(("127.0.0.1", 0))
+            .expect("loopback listener binds for router stream helper test");
+        let port = listener
+            .local_addr()
+            .expect("loopback listener exposes local address")
+            .port();
+        let request = build_streaming_http_request(
+            "/v1/chat/completions",
+            "127.0.0.1",
+            port,
+            r#"{\"model\":\"gpt-test\",\"stream\":true}"#,
+        );
+        let expected_request = request.as_bytes().to_vec();
+        let expected_len = expected_request.len();
+        let (tx, rx) = mpsc::channel();
+
+        let server = thread::spawn(move || {
+            let (mut stream, _) = listener
+                .accept()
+                .expect("loopback listener accepts helper connection");
+            stream
+                .set_read_timeout(Some(Duration::from_secs(2)))
+                .expect("loopback server read timeout is configured");
+
+            let mut observed = vec![0_u8; expected_len];
+            stream
+                .read_exact(&mut observed)
+                .expect("loopback server reads exact helper request bytes");
+            tx.send(observed)
+                .expect("loopback server sends observed request bytes");
+        });
+
+        let stream = open_streaming_http_stream("127.0.0.1", port, 1_000, &request)
+            .expect("stream helper connects to loopback listener and flushes request");
+        drop(stream);
+
+        let observed = rx
+            .recv_timeout(Duration::from_secs(2))
+            .expect("loopback server reports observed request bytes");
+        assert_eq!(observed, expected_request);
+        server
+            .join()
+            .expect("loopback server thread finishes without panic");
     }
 
     #[test]
