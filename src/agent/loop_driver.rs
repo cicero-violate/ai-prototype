@@ -1,14 +1,20 @@
-use std::fs;
+use std::fs::{self, OpenOptions};
 use std::io::{Read, Write};
 use std::net::TcpStream;
 use std::path::Path;
 use std::thread;
-use std::time::Duration;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
+
+use serde_json::json;
 
 use crate::agent::config::AgentLoopConfig;
-use crate::agent::router::RouterClient;
+use crate::agent::router::{RouterClient, RouterStreamingResult};
 use crate::agent::sse::ChunkLogger;
 use crate::capability::llm::openai::{OpenAiChatRequest, OpenAiMessage};
+use crate::{
+    Command, CommandEnvelope, Evidence, EvidenceSubmission, EvidenceSubmissionDto, GateId,
+    PacketEffect,
+};
 
 /// Outer project-loop driver. Mirrors agentLoop / runCycle from
 /// chatgpt-agent-loop/agent-loop.mjs.
@@ -39,6 +45,10 @@ impl LoopDriver {
         }
 
         eprintln!("agent: project_dir={}", self.config.project_dir.display());
+        match agent_command_url(&self.config) {
+            Some(url) => eprintln!("agent: kernel receipt target={url}"),
+            None => eprintln!("agent: kernel receipt target=disabled"),
+        }
         eprintln!(
             "agent: execute_turns={}  retry_limit={}  loop_sleep={}ms  agents={}",
             self.config.execute_turns,
@@ -227,44 +237,313 @@ impl LoopDriver {
 
         let request = OpenAiChatRequest::new(vec![OpenAiMessage::user(prompt.to_string())]);
         let has_target_url = router.target_url().is_some();
+        let command_url = agent_command_url(&self.config);
 
-        let result = router
-            .streaming_turn(
-                request,
-                &mut logger,
-                self.config.router_turn_max_ms,
-                self.config.router_first_capture_ms,
-                self.config.router_idle_ms,
-            )
-            .map_err(|e| e.to_string())?;
+        let request_hash = stable_agent_hash(prompt.as_bytes());
+        let result = match router.streaming_turn(
+            request,
+            &mut logger,
+            self.config.router_turn_max_ms,
+            self.config.router_first_capture_ms,
+            self.config.router_idle_ms,
+        ) {
+            Ok(result) => result,
+            Err(err) => {
+                write_agent_turn_receipt(AgentTurnReceiptInput {
+                    dir: &self.config.sse_chunks_dir,
+                    tag,
+                    cycle_num,
+                    label: &attempt_label,
+                    attempt,
+                    request_hash,
+                    status: "failed",
+                    reason: &err.to_string(),
+                    finish_reason: None,
+                    target_url: None,
+                    content: "",
+                    retry_is_safe: false,
+                    command_url: command_url.as_deref(),
+                });
+                return Err(err.to_string());
+            }
+        };
 
-        let reason = result.reason.clone();
-        if result.complete {
-            let preview: String = result.content.chars().take(120).collect();
-            let preview = preview.replace('\n', " ");
-            eprintln!(
-                "[{tag}] turn {label} done — {} — {preview}…",
-                result.target_url.as_deref().unwrap_or("no url"),
-            );
-            return Ok(RunCycleAttemptOutcome {
-                completed: true,
-                reason,
-                retry_is_safe: false,
-            });
-        }
-
-        eprintln!(
-            "[{tag}] turn {label} incomplete — {}; finish={}",
-            result.reason,
-            result.finish_reason.as_deref().unwrap_or("none"),
-        );
-
-        Ok(RunCycleAttemptOutcome {
-            completed: false,
-            reason,
-            retry_is_safe: result.retry_is_safe(has_target_url),
-        })
+        Ok(finalize_run_cycle_attempt_result(
+            &self.config.sse_chunks_dir,
+            tag,
+            cycle_num,
+            &attempt_label,
+            attempt,
+            request_hash,
+            has_target_url,
+            command_url.as_deref(),
+            result,
+        ))
     }
+}
+
+fn finalize_run_cycle_attempt_result(
+    receipt_dir: &Path,
+    tag: &str,
+    cycle_num: u64,
+    label: &str,
+    attempt: u32,
+    request_hash: u64,
+    has_target_url: bool,
+    command_url: Option<&str>,
+    result: RouterStreamingResult,
+) -> RunCycleAttemptOutcome {
+    let reason = result.reason.clone();
+    let retry_is_safe = result.retry_is_safe(has_target_url);
+    write_agent_turn_receipt(AgentTurnReceiptInput {
+        dir: receipt_dir,
+        tag,
+        cycle_num,
+        label,
+        attempt,
+        request_hash,
+        status: if result.complete {
+            "completed"
+        } else {
+            "incomplete"
+        },
+        reason: &reason,
+        finish_reason: result.finish_reason.as_deref(),
+        target_url: result.target_url.as_deref(),
+        content: &result.content,
+        retry_is_safe,
+        command_url,
+    });
+    if result.complete {
+        let preview: String = result.content.chars().take(120).collect();
+        let preview = preview.replace('\n', " ");
+        eprintln!(
+            "[{tag}] turn {label} done — {} — {preview}…",
+            result.target_url.as_deref().unwrap_or("no url"),
+        );
+        return RunCycleAttemptOutcome {
+            completed: true,
+            reason,
+            retry_is_safe: false,
+        };
+    }
+
+    eprintln!(
+        "[{tag}] turn {label} incomplete — {}; finish={}",
+        result.reason,
+        result.finish_reason.as_deref().unwrap_or("none"),
+    );
+
+    RunCycleAttemptOutcome {
+        completed: false,
+        reason,
+        retry_is_safe,
+    }
+}
+
+struct AgentTurnReceiptInput<'a> {
+    dir: &'a Path,
+    tag: &'a str,
+    cycle_num: u64,
+    label: &'a str,
+    attempt: u32,
+    request_hash: u64,
+    status: &'a str,
+    reason: &'a str,
+    finish_reason: Option<&'a str>,
+    target_url: Option<&'a str>,
+    content: &'a str,
+    retry_is_safe: bool,
+    command_url: Option<&'a str>,
+}
+
+fn write_agent_turn_receipt(input: AgentTurnReceiptInput<'_>) {
+    let _ = fs::create_dir_all(input.dir);
+    let path = input.dir.join("agent-turn-receipts.ndjson");
+    let receipt = json!({
+        "schema": "canon.agent.router_turn_receipt.v1",
+        "observed_at": timestamp_ms(),
+        "agent": input.tag,
+        "cycle": input.cycle_num,
+        "label": input.label,
+        "attempt": input.attempt,
+        "status": input.status,
+        "reason": input.reason,
+        "finish_reason": input.finish_reason,
+        "request_hash": input.request_hash,
+        "target_url_hash": input.target_url.map(|url| stable_agent_hash(url.as_bytes())),
+        "content_hash": stable_agent_hash(input.content.as_bytes()),
+        "content_len": input.content.len(),
+        "retry_is_safe": input.retry_is_safe,
+    });
+    if let Ok(mut file) = OpenOptions::new().create(true).append(true).open(path) {
+        let _ = writeln!(file, "{receipt}");
+    }
+    if let Some(command_url) = input.command_url {
+        submit_agent_turn_receipt(command_url, &receipt);
+    }
+}
+
+fn agent_command_url(config: &AgentLoopConfig) -> Option<String> {
+    config
+        .supervisor_port
+        .map(|port| format!("http://127.0.0.1:{port}/v1/command"))
+        .or_else(|| {
+            std::env::var("SUPERVISOR_PORT")
+                .ok()
+                .and_then(|value| value.parse::<u16>().ok())
+                .map(|port| format!("http://127.0.0.1:{port}/v1/command"))
+        })
+        .or_else(|| {
+            config
+                .worker_port
+                .map(|port| format!("http://127.0.0.1:{port}/v1/command"))
+        })
+        .or_else(|| {
+            std::env::var("AI_WORKER_PORT")
+                .ok()
+                .and_then(|value| value.parse::<u16>().ok())
+                .map(|port| format!("http://127.0.0.1:{port}/v1/command"))
+        })
+}
+
+fn submit_agent_turn_receipt(command_url: &str, receipt: &serde_json::Value) {
+    let command = agent_turn_kernel_command(receipt);
+    match post_json_local(command_url, &command) {
+        Ok(status) if (200..300).contains(&status) => {
+            eprintln!(
+                "agent: submitted turn receipt to kernel url={} status={}",
+                command_url, status
+            );
+        }
+        Ok(status) => {
+            eprintln!(
+                "agent: failed to submit turn receipt to kernel url={} status={}",
+                command_url, status
+            );
+        }
+        Err(err) => {
+            eprintln!(
+                "agent: failed to submit turn receipt to kernel url={command_url} error={err}"
+            );
+        }
+    }
+}
+
+fn post_json_local(url: &str, value: &serde_json::Value) -> Result<u16, String> {
+    let (host, port, path) = parse_local_http_url(url)?;
+    let body = value.to_string();
+    let mut stream =
+        TcpStream::connect((host.as_str(), port)).map_err(|err| format!("connect: {err}"))?;
+    stream
+        .set_read_timeout(Some(Duration::from_secs(10)))
+        .map_err(|err| format!("set read timeout: {err}"))?;
+    stream
+        .set_write_timeout(Some(Duration::from_secs(5)))
+        .map_err(|err| format!("set write timeout: {err}"))?;
+    let request = format!(
+        "POST {path} HTTP/1.1\r\nHost: {host}:{port}\r\nContent-Type: application/json\r\nConnection: close\r\nContent-Length: {len}\r\n\r\n{body}",
+        len = body.len(),
+    );
+    stream
+        .write_all(request.as_bytes())
+        .map_err(|err| format!("write: {err}"))?;
+    stream.flush().map_err(|err| format!("flush: {err}"))?;
+    let mut response = String::new();
+    stream
+        .read_to_string(&mut response)
+        .map_err(|err| format!("read: {err}"))?;
+    Ok(parse_mcp_workspace_status(&response))
+}
+
+fn parse_local_http_url(url: &str) -> Result<(String, u16, String), String> {
+    let rest = url
+        .strip_prefix("http://")
+        .ok_or_else(|| "url must start with http://".to_string())?;
+    let (authority, path) = rest
+        .split_once('/')
+        .map(|(authority, path)| (authority, format!("/{path}")))
+        .unwrap_or((rest, "/".to_string()));
+    let (host, port) = authority
+        .rsplit_once(':')
+        .ok_or_else(|| "url must include host:port".to_string())?;
+    if !matches!(host, "127.0.0.1" | "localhost") {
+        return Err(format!("url host must be local, got {host}"));
+    }
+    let port = port
+        .parse::<u16>()
+        .map_err(|_| format!("invalid port in url: {url}"))?;
+    Ok((host.to_string(), port, path))
+}
+
+fn agent_turn_kernel_command(receipt: &serde_json::Value) -> serde_json::Value {
+    let payload_hash = stable_agent_hash(receipt.to_string().as_bytes());
+    let plan_payload_hash = stable_agent_hash(
+        json!({
+            "schema": "canon.agent.router_turn_receipt.plan.v1",
+            "agent_receipt_payload_hash": payload_hash,
+        })
+        .to_string()
+        .as_bytes(),
+    );
+    let execution_passed =
+        receipt.get("status").and_then(serde_json::Value::as_str) == Some("completed");
+    let plan_submission = EvidenceSubmission::with_effect_payload(
+        GateId::Plan,
+        Evidence::TaskReady,
+        true,
+        PacketEffect::BindReadyTask,
+        plan_payload_hash,
+    );
+    let execution_submission = EvidenceSubmission::with_payload(
+        GateId::Execution,
+        Evidence::ExecutionReceipt,
+        execution_passed,
+        payload_hash,
+    );
+    let envelope = CommandEnvelope::new(
+        payload_hash,
+        Command::SubmitEvidenceBatch(vec![plan_submission, execution_submission]),
+    );
+    json!({
+        "command_id": envelope.command_id,
+        "command_hash": envelope.command_hash,
+        "payload_tag": "SubmitEvidenceBatch",
+        "source": "agent",
+        "agent_turn": receipt,
+        "payload": [
+            EvidenceSubmissionDto {
+                gate: "Plan".to_string(),
+                evidence: "TaskReady".to_string(),
+                passed: true,
+                effect: Some("BindReadyTask".to_string()),
+                payload_hash: plan_payload_hash,
+            },
+            EvidenceSubmissionDto {
+                gate: "Execution".to_string(),
+                evidence: "ExecutionReceipt".to_string(),
+                passed: execution_passed,
+                effect: Some("None".to_string()),
+                payload_hash,
+            },
+        ],
+    })
+}
+
+fn stable_agent_hash(bytes: &[u8]) -> u64 {
+    let mut h = 0xcbf2_9ce4_8422_2325u64;
+    for byte in bytes {
+        h ^= u64::from(*byte);
+        h = h.wrapping_mul(0x0000_0100_0000_01b3);
+    }
+    h.max(1)
+}
+
+fn timestamp_ms() -> u128 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_millis())
+        .unwrap_or(0)
 }
 
 struct RunCycleAttemptOutcome {
@@ -829,5 +1108,44 @@ mod tests {
             .expect("Content-Length must be numeric");
         assert_eq!(content_length, body.len());
         assert_eq!(content_length, expected_body.len());
+    }
+
+    #[test]
+    fn agent_turn_receipt_builds_kernel_command() {
+        let receipt = json!({
+            "schema": "canon.agent.router_turn_receipt.v1",
+            "agent": "agent",
+            "cycle": 1,
+            "label": "plan",
+            "attempt": 0,
+            "status": "completed",
+            "reason": "ok",
+            "request_hash": 7,
+            "content_hash": 11,
+            "content_len": 42,
+            "retry_is_safe": false,
+        });
+
+        let command = agent_turn_kernel_command(&receipt);
+
+        assert_eq!(command["payload_tag"], "SubmitEvidenceBatch");
+        assert_eq!(command["source"], "agent");
+        assert_eq!(command["agent_turn"]["label"], "plan");
+        assert!(command["command_id"].as_u64().unwrap() != 0);
+        assert!(command["command_hash"].as_u64().unwrap() != 0);
+        assert_eq!(command["payload"][0]["gate"], "Plan");
+        assert_eq!(command["payload"][0]["effect"], "BindReadyTask");
+        assert_eq!(command["payload"][1]["gate"], "Execution");
+        assert_eq!(command["payload"][1]["passed"], true);
+    }
+
+    #[test]
+    fn local_http_url_parser_accepts_loopback_command_url() {
+        assert_eq!(
+            parse_local_http_url("http://127.0.0.1:9100/v1/command").unwrap(),
+            ("127.0.0.1".to_string(), 9100, "/v1/command".to_string())
+        );
+        assert!(parse_local_http_url("https://127.0.0.1:9100/v1/command").is_err());
+        assert!(parse_local_http_url("http://example.com:9100/v1/command").is_err());
     }
 }
