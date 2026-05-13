@@ -167,81 +167,16 @@ impl AgentCycle {
                 break;
             }
 
-            match phase.as_str() {
-                "Analysis" => {
-                    if let Some(reason) = self.run_llm_gate_phase(
-                        loop_steps,
-                        "Analysis",
-                        prompt::analysis_prompt(&domain, &metric),
-                        &mut invariant_submitted,
-                    )? {
-                        stop_reason = reason;
-                        break;
-                    }
-                }
-                "Judgment" => {
-                    if let Some(reason) = self.run_llm_gate_phase(
-                        loop_steps,
-                        "Judgment",
-                        prompt::judgment_prompt(&domain, &self.last_llm_output),
-                        &mut invariant_submitted,
-                    )? {
-                        stop_reason = reason;
-                        break;
-                    }
-                }
-                "Plan" => {
-                    if let Some(reason) = self.run_llm_gate_phase(
-                        loop_steps,
-                        "Plan",
-                        prompt::plan_prompt(&domain, &self.last_llm_output),
-                        &mut invariant_submitted,
-                    )? {
-                        stop_reason = reason;
-                        break;
-                    }
-                }
-                "Eval" => {
-                    if let Some(reason) = self.run_llm_gate_phase(
-                        loop_steps,
-                        "Eval",
-                        prompt::eval_prompt(&domain, &metric, &self.last_llm_output),
-                        &mut invariant_submitted,
-                    )? {
-                        stop_reason = reason;
-                        break;
-                    }
-                }
-                "Recovery" => {
-                    if let Some(reason) =
-                        self.run_recovery_phase(loop_steps, &domain, &state_body)?
-                    {
-                        stop_reason = reason;
-                        break;
-                    }
-                }
-                "Invariant" => {
-                    if let Some((gate, evidence)) = phase_gate("Invariant") {
-                        self.submit_evidence(gate, evidence, true);
-                        invariant_submitted = true;
-                    }
-                }
-                "Execute" => {
-                    if let Some((gate, evidence)) = phase_gate("Execute") {
-                        self.submit_evidence(gate, evidence, true);
-                    }
-                }
-                "Verify" => {
-                    if let Some((gate, evidence)) = phase_gate("Verify") {
-                        self.submit_evidence(gate, evidence, true);
-                    }
-                }
-                "Persist" | "Learn" => {
-                    if let Some((gate, evidence)) = phase_gate("Learning") {
-                        self.submit_evidence(gate, evidence, true);
-                    }
-                }
-                _ => {}
+            if let Some(reason) = self.dispatch_observed_phase(
+                &phase,
+                loop_steps,
+                &domain,
+                &metric,
+                &state_body,
+                &mut invariant_submitted,
+            )? {
+                stop_reason = reason;
+                break;
             }
         }
 
@@ -260,6 +195,70 @@ impl AgentCycle {
             final_phase,
             final_tlog_len,
         })
+    }
+
+    fn dispatch_observed_phase(
+        &mut self,
+        phase: &str,
+        loop_steps: u64,
+        domain: &str,
+        metric: &str,
+        state_body: &str,
+        invariant_submitted: &mut bool,
+    ) -> Result<Option<StopReason>, CycleError> {
+        match phase {
+            "Analysis" => self.run_llm_gate_phase(
+                loop_steps,
+                "Analysis",
+                prompt::analysis_prompt(domain, metric),
+                invariant_submitted,
+            ),
+            "Judgment" => self.run_llm_gate_phase(
+                loop_steps,
+                "Judgment",
+                prompt::judgment_prompt(domain, &self.last_llm_output),
+                invariant_submitted,
+            ),
+            "Plan" => self.run_llm_gate_phase(
+                loop_steps,
+                "Plan",
+                prompt::plan_prompt(domain, &self.last_llm_output),
+                invariant_submitted,
+            ),
+            "Eval" => self.run_llm_gate_phase(
+                loop_steps,
+                "Eval",
+                prompt::eval_prompt(domain, metric, &self.last_llm_output),
+                invariant_submitted,
+            ),
+            "Recovery" => self.run_recovery_phase(loop_steps, domain, state_body),
+            "Invariant" => {
+                if let Some((gate, evidence)) = phase_gate("Invariant") {
+                    self.submit_evidence(gate, evidence, true);
+                    *invariant_submitted = true;
+                }
+                Ok(None)
+            }
+            "Execute" => {
+                if let Some((gate, evidence)) = phase_gate("Execute") {
+                    self.submit_evidence(gate, evidence, true);
+                }
+                Ok(None)
+            }
+            "Verify" => {
+                if let Some((gate, evidence)) = phase_gate("Verify") {
+                    self.submit_evidence(gate, evidence, true);
+                }
+                Ok(None)
+            }
+            "Persist" | "Learn" => {
+                if let Some((gate, evidence)) = phase_gate("Learning") {
+                    self.submit_evidence(gate, evidence, true);
+                }
+                Ok(None)
+            }
+            _ => Ok(None),
+        }
     }
 
     fn run_llm_gate_phase(
