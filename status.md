@@ -2356,3 +2356,14 @@ Implementation step 1 evidence on 2026-05-12 for Active Priorities item 108:
 - Targeted validation passed after formatting: `cargo check`, `cargo fmt --check`, and `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test router::tests -- --test-threads=1` ran 15 router tests successfully.
 - Broader validation passed: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets` passed with 275 library/bin tests, integration suites, 352 root-validation tests, and worker binary tests.
 - Marked item 108 complete in `plan.md`. `score.md` was not changed because this was a narrow structure refactor with validation evidence, not a score-history-worthy project-level capability change.
+
+
+Planning-turn update on 2026-05-13 after item 112 extraction:
+
+- Required reconnaissance completed from `/workspace/ai_sandbox/canon-mini-agent/prototype/ai` using the connector shell.
+- Read `plan.md`; the first incomplete Active Priorities item is item 113, focused unit coverage for `src/agent/cycle.rs::AgentCycle::dispatch_observed_phase(...)`.
+- Read `status.md`, `score.md`, and `SCORE_REPORT.md`; project-level scores remain unchanged, while graph-derived evidence still reports aggregate `G = 7.93 / 10`, Structure `4.8`, Simplicity `7.1`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2`.
+- Inspected `state/rustc/auto-refactor/..__state__rustc__ai__graph.graph-editor-plan.json`; the live `SplitFn id=918a1611235eccfd` remains evidence for `agent::cycle::AgentCycle::run`, but generated names `run__parse`/`run__transform` remain rejected as direct implementation instructions.
+- Inspected `src/agent/cycle.rs`; item 112 has extracted `dispatch_observed_phase(...)`, and `AgentCycle::run(...)` still owns objective validation, worker health gating, planning turn, max-step loop control, observation, phase=`Done` success handling, pre-dispatch human-review sentinel handling, stop-reason assignment, final observation, and summary construction.
+- Updated `plan.md` to split prior broad item 113 into two executable test-level items: item 113 `dispatch_observed_phase_submits_invariant_without_llm` and item 114 `dispatch_observed_phase_stops_when_llm_phase_requests_review`; graph refresh is now item 115.
+- `score.md` was not changed because this planning turn produced planning/test-scope evidence only, not a score-history-worthy capability change.
