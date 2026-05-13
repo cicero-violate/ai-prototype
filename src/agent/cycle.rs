@@ -762,6 +762,74 @@ mod hash_tests {
         .expect("valid unused router config")
     }
 
+    fn read_loopback_http_request_bytes(mut stream: std::net::TcpStream) -> Vec<u8> {
+        let mut bytes = Vec::new();
+        let mut buf = [0u8; 512];
+        let mut header_end = None;
+
+        while header_end.is_none() {
+            let read = stream.read(&mut buf).expect("read request headers");
+            assert!(read > 0, "client closed before request headers");
+            bytes.extend_from_slice(&buf[..read]);
+            header_end = bytes.windows(4).position(|window| window == b"\r\n\r\n");
+        }
+
+        let header_end = header_end.expect("request header terminator") + 4;
+        let headers = String::from_utf8_lossy(&bytes[..header_end]);
+        let content_length = headers
+            .lines()
+            .find_map(|line| {
+                let (name, value) = line.split_once(':')?;
+                name.eq_ignore_ascii_case("content-length")
+                    .then(|| value.trim().parse::<usize>().expect("valid content-length"))
+            })
+            .unwrap_or(0);
+
+        while bytes.len() < header_end + content_length {
+            let read = stream.read(&mut buf).expect("read request body");
+            assert!(read > 0, "client closed before request body");
+            bytes.extend_from_slice(&buf[..read]);
+        }
+
+        bytes
+    }
+
+    fn spawn_review_router() -> (RouterClient, mpsc::Receiver<String>) {
+        let listener = TcpListener::bind("127.0.0.1:0").expect("bind loopback router");
+        let port = listener.local_addr().expect("loopback router addr").port();
+        let (tx, rx) = mpsc::channel();
+
+        thread::spawn(move || {
+            let (mut stream, _) = listener.accept().expect("accept router request");
+            let request = read_loopback_http_request_bytes(
+                stream.try_clone().expect("clone router request stream"),
+            );
+            let request_text = String::from_utf8_lossy(&request).into_owned();
+            tx.send(request_text).expect("send router request");
+
+            let body = format!(
+                r#"{{"id":"review-test","choices":[{{"message":{{"role":"assistant","content":"{}"}}}}],"usage":{{"prompt_tokens":1,"completion_tokens":1,"total_tokens":2}}}}"#,
+                SENTINEL_REVIEW
+            );
+            let response = format!(
+                "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+                body.len(),
+                body
+            );
+            stream
+                .write_all(response.as_bytes())
+                .expect("write router response");
+        });
+
+        let router = RouterClient::new(OpenAiConfig {
+            base_url: format!("http://127.0.0.1:{port}/v1"),
+            model: "review-test-router".to_string(),
+            timeout_ms: 1_000,
+        })
+        .expect("valid review router config");
+        (router, rx)
+    }
+
     #[test]
     fn verdict_parser_requires_explicit_verdict() {
         assert!(parse_verdict("evidence is coherent\nVERDICT: pass"));
@@ -831,6 +899,50 @@ mod hash_tests {
         let expected_body = build_submit_evidence_json("Invariant", "InvariantProof", true, 1)
             .expect("expected invariant command json");
         assert_eq!(actual_body, expected_body);
+    }
+
+    #[test]
+    fn dispatch_observed_phase_stops_when_llm_phase_requests_review() {
+        let listener = TcpListener::bind("127.0.0.1:0").expect("bind unused worker");
+        let worker_port = listener.local_addr().expect("unused worker addr").port();
+        drop(listener);
+        let worker = WorkerClient::new_with_timeout(worker_port, 1_000);
+        let (router, router_request) = spawn_review_router();
+        let objective = AgentObjective::new("cycle-test-domain", "request human review");
+        let mut cycle = AgentCycle::new(router, worker, objective);
+        let mut invariant_submitted = false;
+
+        let stop = cycle
+            .dispatch_observed_phase(
+                "Analysis",
+                7,
+                "cycle-test-domain",
+                "request human review",
+                "{}",
+                &mut invariant_submitted,
+            )
+            .expect("analysis phase dispatch succeeds");
+
+        assert!(
+            matches!(stop, Some(StopReason::HumanReviewRequired)),
+            "sentinel LLM output must stop the run for human review"
+        );
+        assert!(
+            !invariant_submitted,
+            "review stop must happen before analysis auto-submits invariant evidence"
+        );
+        assert_eq!(cycle.steps().len(), 1, "one LLM turn should be recorded");
+        let step = &cycle.steps()[0];
+        assert_eq!(step.step_index, 7);
+        assert_eq!(step.action_kind, AgentActionKind::LlmTurn);
+        assert!(step.success);
+        assert!(cycle.last_llm_output.contains(SENTINEL_REVIEW));
+
+        let request = router_request.recv().expect("captured router request");
+        assert!(
+            request.contains("POST /v1/chat/completions HTTP/1.1"),
+            "analysis phase should call only the local router fixture"
+        );
     }
 
     #[test]

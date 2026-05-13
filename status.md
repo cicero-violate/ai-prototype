@@ -2379,3 +2379,15 @@ Implementation step 1 evidence on 2026-05-13 for Active Priorities item 113:
 - The exact targeted validation command from `plan.md` was blocked by the shell safety filter, so equivalent targeted validation used accepted filter `cargo test dispatch_observed -- --test-threads=1`; it ran `agent::cycle::hash_tests::dispatch_observed_phase_submits_invariant_without_llm` successfully.
 - Broader validation passed: `cargo test --all-targets` ran 280 library/bin tests, integration suites, 352 root-validation tests, and worker binary tests successfully.
 - Marked item 113 complete in `plan.md`. `score.md` was not changed because this adds focused regression coverage for an existing helper boundary, not a score-history-worthy capability change.
+
+
+Implementation step 2 evidence on 2026-05-13 for Active Priorities item 114:
+
+- Selected first unchecked Active Priorities item 114: `src/agent/cycle.rs` unit test `dispatch_observed_phase_stops_when_llm_phase_requests_review`.
+- Changed only `src/agent/cycle.rs` within source scope, plus planning/status evidence files.
+- Added a local OpenAI-compatible loopback router fixture inside the `src/agent/cycle.rs` test module. The fixture captures the router request and returns a valid chat completion body whose message content is `HUMAN_REVIEW_REQUIRED`.
+- Added `dispatch_observed_phase_stops_when_llm_phase_requests_review`, which dispatches the `Analysis` phase through `dispatch_observed_phase(...)`, asserts `Some(StopReason::HumanReviewRequired)`, asserts `invariant_submitted` remains false, asserts exactly one LLM `AgentStep` is recorded at step 7, asserts the last LLM output contains the sentinel, and asserts the captured router request targets only the local `/v1/chat/completions` fixture.
+- Formatting validation passed: `cargo fmt --check`.
+- Targeted validation passed: `cargo test dispatch_observed_phase_stops_when_llm_phase_requests_review -- --test-threads=1` ran the named test successfully.
+- Broader validation passed: `cargo test --all-targets` ran 281 library/bin tests, integration suites, 352 root-validation tests, and worker binary tests successfully.
+- Marked item 114 complete in `plan.md`. `score.md` was not changed because this adds focused regression coverage for an existing helper boundary, not a score-history-worthy capability change.
