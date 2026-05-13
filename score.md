@@ -53,12 +53,12 @@ Approximate geometric mean over the listed score axes remains about:
 G ~= 8.12 / 10
 ```
 
-The graph-derived structural score report now reports `G = 8.03 / 10` in the 2026-05-12 `SCORE_REPORT.md` snapshot after the current graph-derived refresh. This is evidence for graph capture and structural measurement quality; it does not by itself justify changing the project-level numeric capability axes above.
+The graph-derived structural score report now reports `G = 7.93 / 10` in the 2026-05-12 `SCORE_REPORT.md` snapshot after the current graph-derived refresh. This is evidence for graph capture and structural measurement quality; it does not by itself justify changing the project-level numeric capability axes above.
 
 ## Rationale
 Correctness, determinism, scalability, and coherency are strongest because the kernel, receipts, replay boundaries, graph fixture validation, validation evidence paths, and current planning direction agree on the same evidence-first architecture. Robustness, intelligence, benefit, and maintainability remain lower because live graph editing, self-modification, domain intelligence, and safe-change ergonomics are not yet proven end to end.
 
-Validation evidence on 2026-05-11 now includes item 50 full-suite Rust validation passing with 0 failures, item 53 refreshed graph evidence showing 752 compiled P5 domain-node matches, and item 54 status evidence summary capture. The current `SCORE_REPORT.md` reports graph-derived `G = 8.03 / 10`, Structure remains the lowest graph-derived axis at `4.8`, Simplicity is `7.4`, Maintainability is `10.0`, and Coherency is `8.5`. Project-level numeric scores remain unchanged pending a score-history-worthy capability change rather than evidence refresh alone.
+Validation evidence on 2026-05-11 now includes item 50 full-suite Rust validation passing with 0 failures, item 53 refreshed graph evidence showing 752 compiled P5 domain-node matches, and item 54 status evidence summary capture. The current `SCORE_REPORT.md` reports graph-derived `G = 7.93 / 10`, Structure remains the lowest graph-derived axis at `4.8`, Simplicity is `7.1`, Maintainability is `10.0`, and Coherency is `8.2`. Project-level numeric scores remain unchanged pending a score-history-worthy capability change rather than evidence refresh alone.
 
 ## Score History
 
