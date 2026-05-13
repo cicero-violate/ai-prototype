@@ -154,51 +154,62 @@ fn submit_openai_tool_calls(
 
     let mut receipts = Vec::new();
     for tool_call_index in 1..=TOOL_CALL_TARGET {
-        let spec = tool_spec(tool_call_index)?;
-        println!(
-            "llm_tool_intent_call index={tool_call_index} phase=Execute provider=openai-compatible"
-        );
-        let request = tool_intent_request(tool_call_index, spec);
-        let response = client.chat_with_request(&request)?;
-        let normalized = response.content.trim().to_ascii_uppercase();
-        println!(
-            "llm_tool_intent index={} content={:?} response_hash={} raw_hash={} token_count={}",
-            tool_call_index,
-            response.content.trim(),
-            response.response_hash,
-            response.raw_hash,
-            response.total_tokens
-        );
-
-        if !matches_tool_intent(&normalized, spec) {
-            return Err(format!("unsupported tool intent: {}", response.content.trim()).into());
-        }
-        println!(
-            "tool_intent_mapped index={} mapped={} command={} args={:?}",
-            tool_call_index, spec.intent, spec.command, spec.args
-        );
-
-        let receipt = executor
-            .execute_process(spec.command, spec.args, "")
-            .map_err(|err| format!("tool execution failed: {err:?}"))?;
-
-        println!(
-            "tool_receipt index={} command={} exit_status={} timed_out={} stdout_bytes={} stdout_hash={} receipt_hash={}",
-            tool_call_index,
-            spec.command,
-            receipt.exit_status,
-            receipt.timed_out,
-            receipt.stdout_bytes,
-            receipt.stdout_hash,
-            receipt.receipt_hash
-        );
-        append_sandbox_process_receipt_ndjson(process_receipt_path, &receipt)
-            .map_err(|err| format!("process receipt persist failed: {err:?}"))?;
-        submit_openai_tool_result(client, tool_call_index, spec, &receipt)?;
+        let receipt =
+            execute_one_openai_tool_call(client, &executor, process_receipt_path, tool_call_index)?;
         receipts.push(receipt);
     }
 
     submit_openai_process_receipt_batch(receipts, state, tlog, cfg)
+}
+
+fn execute_one_openai_tool_call(
+    client: &OpenAiClient,
+    executor: &LiveSandboxProcessExecutor,
+    process_receipt_path: &Path,
+    tool_call_index: usize,
+) -> Result<SandboxProcessReceipt, Box<dyn std::error::Error>> {
+    let spec = tool_spec(tool_call_index)?;
+    println!(
+        "llm_tool_intent_call index={tool_call_index} phase=Execute provider=openai-compatible"
+    );
+    let request = tool_intent_request(tool_call_index, spec);
+    let response = client.chat_with_request(&request)?;
+    let normalized = response.content.trim().to_ascii_uppercase();
+    println!(
+        "llm_tool_intent index={} content={:?} response_hash={} raw_hash={} token_count={}",
+        tool_call_index,
+        response.content.trim(),
+        response.response_hash,
+        response.raw_hash,
+        response.total_tokens
+    );
+
+    if !matches_tool_intent(&normalized, spec) {
+        return Err(format!("unsupported tool intent: {}", response.content.trim()).into());
+    }
+    println!(
+        "tool_intent_mapped index={} mapped={} command={} args={:?}",
+        tool_call_index, spec.intent, spec.command, spec.args
+    );
+
+    let receipt = executor
+        .execute_process(spec.command, spec.args, "")
+        .map_err(|err| format!("tool execution failed: {err:?}"))?;
+
+    println!(
+        "tool_receipt index={} command={} exit_status={} timed_out={} stdout_bytes={} stdout_hash={} receipt_hash={}",
+        tool_call_index,
+        spec.command,
+        receipt.exit_status,
+        receipt.timed_out,
+        receipt.stdout_bytes,
+        receipt.stdout_hash,
+        receipt.receipt_hash
+    );
+    append_sandbox_process_receipt_ndjson(process_receipt_path, &receipt)
+        .map_err(|err| format!("process receipt persist failed: {err:?}"))?;
+    submit_openai_tool_result(client, tool_call_index, spec, &receipt)?;
+    Ok(receipt)
 }
 
 fn submit_openai_process_receipt_batch(
