@@ -57,6 +57,14 @@ Current date: 2026-05-13.
 
 ## Validation Ledger
 
+### 2026-05-13 — planning turn retained item 153 as next executable root_validate task
+
+- Scope: `plan.md`, `status.md`, `score.md`, `SCORE_REPORT.md`, `src/bin/root_validate.rs`, `state/rustc/auto-refactor`, root-validate graph evidence paths, and current working-tree status.
+- Command/check: re-read current planning/status/score files and graph-derived score report; inspected Active Priorities items 149 through 154; checked for `state/rustc/auto-refactor`, `state/rustc/root_validate__bin/graph.json`, `state/rustc/root_validate/graph.json`, and `state/rustc/ai/graph.json`; scanned `src/bin/root_validate.rs` for `COMPACT_MODES`, dispatch-catalog marker/runner entry, `root_validate_dispatch_catalog_payload()`, `root_validate_dispatch_catalog_mode()`, `try_run_compact_mode(...)`, `compact_mode_stdout_for_contract(...)`, and `mirror_validation_outcome(...)`; reviewed `git status --short`.
+- Result: informational.
+- Evidence: first incomplete executable work remains item 153, the focused unit test `root_validate_dispatch_catalog_lists_every_compact_mode_once` in `src/bin/root_validate.rs`. Local source scan finds the relevant symbols at lines 37, 775-776, 1486, 2399, 2421, 2428, and 2493. `state/rustc/auto-refactor` and the checked root-validate graph evidence paths are absent in this mounted workspace, so no generated graph-editor operation is selectable. `SCORE_REPORT.md` still reports graph-derived `G = 7.91 / 10`, aggregate Structure `4.8`, and `root_validate` Structure `1.5`; `score.md` project-level scores remain unchanged because this turn changed planning evidence only. Existing unrelated working-tree modifications are outside this planning scope.
+- Next action: implement item 153 in `src/bin/root_validate.rs`, then run `cargo test --bin root_validate root_validate_dispatch_catalog_lists_every_compact_mode_once -- --test-threads=1`.
+
 ### 2026-05-13 — planning turn revalidated item 153 root_validate dispatch-catalog unit test
 
 - Scope: `plan.md`, `status.md`, `score.md`, `SCORE_REPORT.md`, `src/bin/root_validate.rs`, `state/rustc/auto-refactor`, and current working-tree status.
