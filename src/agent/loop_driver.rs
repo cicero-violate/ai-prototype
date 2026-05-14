@@ -1358,6 +1358,87 @@ fn load_policy_feedback(working_dir: &Path) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::net::TcpListener;
+
+    fn minimal_loop_config(root: &Path) -> AgentLoopConfig {
+        AgentLoopConfig {
+            execute_turns: 1,
+            turn_retry_limit: 0,
+            loop_sleep_ms: 0,
+            agent_count: 1,
+            project_dir: root.to_path_buf(),
+            working_dir: root.to_path_buf(),
+            sse_chunks_dir: root.join("sse-chunks"),
+            mcp_connector_url: "http://127.0.0.1:4000".to_string(),
+            router_turn_max_ms: 1,
+            router_first_capture_ms: 1,
+            router_idle_ms: 1,
+            worker_port: None,
+            supervisor_port: None,
+            cert_max_steps: 1,
+            domain: None,
+            metric: None,
+        }
+    }
+
+    fn capture_local_json_posts(
+        count: usize,
+    ) -> (String, thread::JoinHandle<Vec<serde_json::Value>>) {
+        let listener = TcpListener::bind("127.0.0.1:0").expect("loopback listener should bind");
+        let url = format!(
+            "http://127.0.0.1:{}/v1/command",
+            listener
+                .local_addr()
+                .expect("listener should expose local addr")
+                .port()
+        );
+        let handle = thread::spawn(move || {
+            let mut bodies = Vec::with_capacity(count);
+            for _ in 0..count {
+                let (mut stream, _) = listener.accept().expect("post connection should arrive");
+                let mut request = Vec::new();
+                let mut buffer = [0u8; 1024];
+                loop {
+                    let read = stream.read(&mut buffer).expect("request should be readable");
+                    if read == 0 {
+                        break;
+                    }
+                    request.extend_from_slice(&buffer[..read]);
+                    let header_end = request
+                        .windows(4)
+                        .position(|window| window == b"\r\n\r\n")
+                        .map(|pos| pos + 4);
+                    if let Some(header_end) = header_end {
+                        let header_text = String::from_utf8_lossy(&request[..header_end]);
+                        let content_length = header_text
+                            .lines()
+                            .find_map(|line| line.strip_prefix("Content-Length: "))
+                            .and_then(|value| value.parse::<usize>().ok())
+                            .expect("request should include content length");
+                        if request.len() >= header_end + content_length {
+                            break;
+                        }
+                    }
+                }
+
+                let header_end = request
+                    .windows(4)
+                    .position(|window| window == b"\r\n\r\n")
+                    .map(|pos| pos + 4)
+                    .expect("request should have header terminator");
+                let body: serde_json::Value = serde_json::from_slice(&request[header_end..])
+                    .expect("captured request body should be json");
+                bodies.push(body);
+                stream
+                    .write_all(
+                        b"HTTP/1.1 200 OK\r\nContent-Length: 0\r\nConnection: close\r\n\r\n",
+                    )
+                    .expect("response should be writable");
+            }
+            bodies
+        });
+        (url, handle)
+    }
 
     #[test]
     fn retry_attempt_labels_preserve_original_and_number_retries() {
@@ -1550,6 +1631,55 @@ mod tests {
         assert_eq!(receipt["retry_is_safe"], false);
 
         let _ = fs::remove_dir_all(&receipt_dir);
+    }
+
+    #[test]
+    fn cycle_start_observation_ingress_preserves_top_level_and_spawned_sources() {
+        let tmp_root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../.tmp");
+        fs::create_dir_all(&tmp_root).expect("canonical temp root should be created");
+        let working_dir = tmp_root.join(format!("cycle-start-observation-test-{}", timestamp_ms()));
+        let _ = fs::remove_dir_all(&working_dir);
+        fs::create_dir_all(&working_dir).expect("test working dir should be created");
+        fs::write(working_dir.join("GOAL.md"), "top-level goal bytes")
+            .expect("goal file should be writable");
+
+        let (command_url, handle) = capture_local_json_posts(2);
+
+        let top_level_driver = LoopDriver::new(minimal_loop_config(&working_dir));
+        top_level_driver.submit_cycle_start_observation_ingress(&command_url, 7, false);
+
+        let mut spawned_config = minimal_loop_config(&working_dir);
+        spawned_config.domain = Some("spawned domain".to_string());
+        spawned_config.metric = Some("spawned metric".to_string());
+        let spawned_driver = LoopDriver::new(spawned_config);
+        spawned_driver.submit_cycle_start_observation_ingress(&command_url, 8, true);
+
+        let captured = handle.join().expect("capture thread should finish");
+        assert_eq!(captured.len(), 2);
+
+        assert_eq!(captured[0]["payload_tag"], "SubmitObservationIngress");
+        assert_eq!(
+            captured[0]["payload"]["source_id"],
+            stable_agent_hash(b"canon:goal:observation")
+        );
+        assert_eq!(
+            captured[0]["payload"]["source_hash"],
+            stable_agent_hash(b"top-level goal bytes")
+        );
+        assert_eq!(captured[0]["payload"]["cursor_last_sequence"], 7);
+
+        assert_eq!(captured[1]["payload_tag"], "SubmitObservationIngress");
+        assert_eq!(
+            captured[1]["payload"]["source_id"],
+            stable_agent_hash(b"canon:domain:observation")
+        );
+        assert_eq!(
+            captured[1]["payload"]["source_hash"],
+            stable_agent_hash(b"spawned domain\nspawned metric")
+        );
+        assert_eq!(captured[1]["payload"]["cursor_last_sequence"], 8);
+
+        let _ = fs::remove_dir_all(&working_dir);
     }
 
     #[test]

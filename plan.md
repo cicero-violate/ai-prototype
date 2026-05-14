@@ -102,7 +102,7 @@ The selected graph-editor plan is schema version 1, contains 1,614 planned opera
    - Done when: `run_cycle(...)` delegates only the `command_url` cycle-start observation branch to one private helper that computes spawned-vs-top-level observation bytes, truncates to `MAX_OBSERVATION_PAYLOAD_BYTES`, and calls `submit_observation_ingress(...)`; total-turn selection, goal loading, turn retry loop, eval evidence submission, post-cycle learning, replay/determinism behavior, and error propagation remain equivalent.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test agent:: -- --test-threads=1`.
 
-2. [ ] `src/agent/loop_driver.rs::LoopDriver::run_cycle`: add or adjust one targeted unit/contract test only if item 1 changes observable behavior or lacks existing coverage for the extracted observation-ingress helper.
+2. [x] `src/agent/loop_driver.rs::LoopDriver::run_cycle`: add or adjust one targeted unit/contract test only if item 1 changes observable behavior or lacks existing coverage for the extracted observation-ingress helper.
    - Scope: `src/agent/loop_driver.rs` tests or existing agent-loop contract tests only.
    - Done when: the helper boundary is covered by an existing passing test or a narrowly scoped new test proves spawned and top-level observation source selection remains stable.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test agent:: -- --test-threads=1`.
