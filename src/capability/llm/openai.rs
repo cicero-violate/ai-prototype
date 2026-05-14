@@ -365,16 +365,23 @@ pub struct OpenAiFunctionTool {
 
 impl OpenAiFunctionTool {
     pub fn new(name: impl Into<String>, parameters_json: impl Into<String>) -> Self {
-        Self {
-            name: name.into(),
-            description: None,
-            parameters_json: parameters_json.into(),
-        }
+        openai_function_tool(name.into(), parameters_json.into(), None)
     }
 
-    pub fn with_description(mut self, description: impl Into<String>) -> Self {
-        self.description = Some(description.into());
-        self
+    pub fn with_description(self, description: impl Into<String>) -> Self {
+        openai_function_tool(self.name, self.parameters_json, Some(description.into()))
+    }
+}
+
+fn openai_function_tool(
+    name: String,
+    parameters_json: String,
+    description: Option<String>,
+) -> OpenAiFunctionTool {
+    OpenAiFunctionTool {
+        name,
+        description,
+        parameters_json,
     }
 }
 
