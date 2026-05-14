@@ -57,6 +57,14 @@ Current date: 2026-05-14.
 
 ## Validation Ledger
 
+### 2026-05-14 — item 46 ApiTransportLedger conflict lookup boundary
+
+- Scope: `src/api/transport.rs`, checklist item 46 in `plan.md`, and `status.md` evidence update.
+- Command/check: targeted `rustfmt --edition 2021 src/api/transport.rs && TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo check --lib`; broader `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
+- Result: passed.
+- Evidence: changed only the item-scoped API transport source. Added private `ApiTransportLedger::receipt_for_frame_request_id(...)`, which delegates to the existing `receipt_for_request_id(...)` lookup boundary, and routed `ApiTransportLedger::has_conflicting_request(...)` through that helper. `ApiTransportLedger::contains_request_id(...)` still uses the same request-id receipt lookup source. Public signatures, `ApiTransportFrame`, `ApiTransportReceipt`, `handle_transport_frame_once(...)`, `push_receipt(...)`, command matching, error variants, replay paths, receipt validation, and frame validation were not changed. Targeted validation passed with `cargo check --lib`. Broader all-target validation passed with 304 library/bin tests, 3 root_validate tests, 13 API server contract tests, 23 API transport contract tests, 3 canonical TLog contract tests, 4 domain contract tests, 10 graph mutation CLI contract tests, 9 MCP receipt contract tests, 2 planning contract tests, 5 score contract tests, 2 supervisor binary contract tests, 2 worker binary contract tests, and all example test targets green.
+- Next action: execute Active Priorities item 47 by strengthening `transport_ledger_conflicting_request_detection_is_payload_hash_scoped` in `tests/api_transport_contract.rs`.
+
 ### 2026-05-14 — planning refresh for non-root ApiTransportLedger graph-backed work
 
 - Scope: `plan.md`, `status.md`, selected graph plan `../state/rustc/auto-refactor/workspace__ai_sandbox__canon-mini-agent__prototype__state__rustc__ai__graph.graph-editor-plan.json`, `src/api/transport.rs`, and `tests/api_transport_contract.rs`.

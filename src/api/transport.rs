@@ -184,12 +184,19 @@ impl ApiTransportLedger {
             .find(|receipt| receipt.request_id == request_id)
     }
 
+    fn receipt_for_frame_request_id(
+        &self,
+        frame: &ApiTransportFrame,
+    ) -> Option<ApiTransportReceipt> {
+        self.receipt_for_request_id(frame.request_id)
+    }
+
     pub fn contains_request_id(&self, request_id: u64) -> bool {
         self.receipt_for_request_id(request_id).is_some()
     }
 
     pub fn has_conflicting_request(&self, frame: &ApiTransportFrame) -> bool {
-        self.receipt_for_request_id(frame.request_id)
+        self.receipt_for_frame_request_id(frame)
             .is_some_and(|receipt| receipt.payload_hash != frame.payload_hash)
     }
 
