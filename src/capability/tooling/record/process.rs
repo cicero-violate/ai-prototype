@@ -131,13 +131,25 @@ impl LiveSandboxProcessExecutor {
         }
     }
 
-    pub fn with_allowed_command(mut self, command: impl Into<String>) -> Self {
-        self.allowed_commands.push(command.into());
-        self
+    pub fn with_allowed_command(self, command: impl Into<String>) -> Self {
+        self.with_policy_entry(Some(command.into()), None)
     }
 
-    pub fn with_locked_env(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
-        self.locked_env.push((key.into(), value.into()));
+    pub fn with_locked_env(self, key: impl Into<String>, value: impl Into<String>) -> Self {
+        self.with_policy_entry(None, Some((key.into(), value.into())))
+    }
+
+    fn with_policy_entry(
+        mut self,
+        allowed_command: Option<String>,
+        locked_env: Option<(String, String)>,
+    ) -> Self {
+        if let Some(command) = allowed_command {
+            self.allowed_commands.push(command);
+        }
+        if let Some((key, value)) = locked_env {
+            self.locked_env.push((key, value));
+        }
         self
     }
 
