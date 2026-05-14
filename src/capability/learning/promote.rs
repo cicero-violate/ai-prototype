@@ -302,6 +302,16 @@ impl PolicyStore {
             .ok_or(PolicyStoreError::InvalidPromotion)
     }
 
+    fn append_valid_promotion_entry_durable(
+        &mut self,
+        path: impl AsRef<Path>,
+        promotion: PolicyPromotion,
+        kind: PolicyPromotionEntryKind,
+    ) -> Result<&PolicyEntry, PolicyStoreError> {
+        let entry = policy_promotion_entry(&promotion, kind)?;
+        self.append_durable(path, entry)
+    }
+
     pub fn promote(
         &mut self,
         promotion: PolicyPromotion,
@@ -321,17 +331,10 @@ impl PolicyStore {
         path: impl AsRef<Path>,
         promotion: PolicyPromotion,
     ) -> Result<&PolicyEntry, PolicyStoreError> {
-        if !promotion.is_valid() {
-            return Err(PolicyStoreError::InvalidPromotion);
-        }
-
-        self.append_durable(
+        self.append_valid_promotion_entry_durable(
             path,
-            PolicyEntry {
-                version: promotion.promoted_policy_version,
-                key: POLICY_PROMOTION_SOURCE_SEQ,
-                value: promotion.source_seq,
-            },
+            promotion,
+            PolicyPromotionEntryKind::SourceSeq,
         )
     }
 
@@ -340,17 +343,10 @@ impl PolicyStore {
         path: impl AsRef<Path>,
         promotion: PolicyPromotion,
     ) -> Result<&PolicyEntry, PolicyStoreError> {
-        if !promotion.is_valid() {
-            return Err(PolicyStoreError::InvalidPromotion);
-        }
-
-        self.append_durable(
+        self.append_valid_promotion_entry_durable(
             path,
-            PolicyEntry {
-                version: promotion.promoted_policy_version,
-                key: POLICY_FEEDBACK_HASH,
-                value: promotion.promoted_policy_hash,
-            },
+            promotion,
+            PolicyPromotionEntryKind::FeedbackHash,
         )
     }
 }
