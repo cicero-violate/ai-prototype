@@ -30,6 +30,20 @@ fn certification_prompt(spec: CertificationPrompt<'_>) -> String {
     )
 }
 
+fn certification_phase_prompt(
+    phase: &'static str,
+    domain: &str,
+    context: String,
+    instruction: &'static str,
+) -> String {
+    certification_prompt(CertificationPrompt {
+        phase,
+        domain,
+        context,
+        instruction,
+    })
+}
+
 /// First turn: ask for a step-by-step plan.
 ///
 /// `score_report` is the content of SCORE_REPORT.md if available. When
@@ -58,48 +72,48 @@ pub fn planning_prompt(
 }
 
 pub fn analysis_prompt(domain: &str, goal: &str) -> String {
-    certification_prompt(CertificationPrompt {
-        phase: "Analysis",
+    certification_phase_prompt(
+        "Analysis",
         domain,
-        context: format!("Goal: {goal}"),
-        instruction: "Analyze the objective and identify the facts, assumptions, risks, and unknowns that matter for deciding whether the work should proceed.",
-    })
+        format!("Goal: {goal}"),
+        "Analyze the objective and identify the facts, assumptions, risks, and unknowns that matter for deciding whether the work should proceed.",
+    )
 }
 
 pub fn judgment_prompt(domain: &str, analysis: &str) -> String {
-    certification_prompt(CertificationPrompt {
-        phase: "Judgment",
+    certification_phase_prompt(
+        "Judgment",
         domain,
-        context: format!("Analysis:\n{analysis}"),
-        instruction: "Judge whether the analysis supports moving forward. State the decision, confidence, and any blocking concerns.",
-    })
+        format!("Analysis:\n{analysis}"),
+        "Judge whether the analysis supports moving forward. State the decision, confidence, and any blocking concerns.",
+    )
 }
 
 pub fn plan_prompt(domain: &str, judgment: &str) -> String {
-    certification_prompt(CertificationPrompt {
-        phase: "Plan",
+    certification_phase_prompt(
+        "Plan",
         domain,
-        context: format!("Judgment:\n{judgment}"),
-        instruction: "Produce the concrete plan of work implied by the judgment. Include ordered tasks, expected receipts, and completion criteria.",
-    })
+        format!("Judgment:\n{judgment}"),
+        "Produce the concrete plan of work implied by the judgment. Include ordered tasks, expected receipts, and completion criteria.",
+    )
 }
 
 pub fn eval_prompt(domain: &str, metric: &str, execution: &str) -> String {
-    certification_prompt(CertificationPrompt {
-        phase: "Eval",
+    certification_phase_prompt(
+        "Eval",
         domain,
-        context: format!("Success metric: {metric}\nExecution context:\n{execution}"),
-        instruction: "Evaluate the completed work against the success metric. Call out any remaining gaps or reasons the result should not be accepted.",
-    })
+        format!("Success metric: {metric}\nExecution context:\n{execution}"),
+        "Evaluate the completed work against the success metric. Call out any remaining gaps or reasons the result should not be accepted.",
+    )
 }
 
 pub fn recovery_prompt(domain: &str, failure: &str, target_phase: &str) -> String {
-    certification_prompt(CertificationPrompt {
-        phase: "Recovery",
+    certification_phase_prompt(
+        "Recovery",
         domain,
-        context: format!("Failure: {failure}\nTarget phase: {target_phase}"),
-        instruction: "Explain the recovery work needed to return the objective to a coherent state. Focus on the semantic repair, not runtime protocol details.",
-    })
+        format!("Failure: {failure}\nTarget phase: {target_phase}"),
+        "Explain the recovery work needed to return the objective to a coherent state. Focus on the semantic repair, not runtime protocol details.",
+    )
 }
 
 #[cfg(test)]
