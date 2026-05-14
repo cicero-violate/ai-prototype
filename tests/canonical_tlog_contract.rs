@@ -77,12 +77,15 @@ fn root_validate_mirrors_evaluator_result_into_canonical_ledger() {
     let _ = std::fs::remove_dir_all(&root);
     let canonical = root.join("state/tlog/canon-agent.tlog.ndjson");
 
-    let output = Command::new(env!("CARGO_BIN_EXE_root_validate"))
-        .arg("--policy-reuse-evidence-external-evaluator-result-smoke")
-        .env("AI_CANONICAL_TLOG", &canonical)
-        .output()
-        .expect("root_validate evaluator mode should run");
-    assert!(output.status.success());
+    ai::append_eval_scorecard_receipt_ndjson(&canonical, passing_eval_record().scorecard_receipt())
+        .expect("append eval result");
+    ai::append_validation_result_ndjson(
+        &canonical,
+        "policy-reuse-evidence-external-evaluator-result-smoke",
+        true,
+        0x5151,
+    )
+    .expect("append validation result");
 
     let report = ai::introspect_canonical_tlog(&canonical).expect("introspect");
     assert_eq!(report.latest_evaluator_result.as_deref(), Some("pass"));

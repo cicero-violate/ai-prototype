@@ -141,7 +141,6 @@ impl AgentCycle {
         // worker in phase=Done.
         let mut stop_reason = StopReason::MaxStepsReached;
         let mut loop_steps = 0u64;
-        let mut invariant_submitted = false;
 
         loop {
             if loop_steps >= self.max_steps {
@@ -167,14 +166,9 @@ impl AgentCycle {
                 break;
             }
 
-            if let Some(reason) = self.dispatch_observed_phase(
-                &phase,
-                loop_steps,
-                &domain,
-                &metric,
-                &state_body,
-                &mut invariant_submitted,
-            )? {
+            if let Some(reason) =
+                self.dispatch_observed_phase(&phase, loop_steps, &domain, &metric, &state_body)?
+            {
                 stop_reason = reason;
                 break;
             }
@@ -204,41 +198,32 @@ impl AgentCycle {
         domain: &str,
         metric: &str,
         state_body: &str,
-        invariant_submitted: &mut bool,
     ) -> Result<Option<StopReason>, CycleError> {
         match phase {
             "Analysis" => self.run_llm_gate_phase(
                 loop_steps,
                 "Analysis",
                 prompt::analysis_prompt(domain, metric),
-                invariant_submitted,
             ),
             "Judgment" => self.run_llm_gate_phase(
                 loop_steps,
                 "Judgment",
                 prompt::judgment_prompt(domain, &self.last_llm_output),
-                invariant_submitted,
             ),
             "Plan" => self.run_llm_gate_phase(
                 loop_steps,
                 "Plan",
                 prompt::plan_prompt(domain, &self.last_llm_output),
-                invariant_submitted,
             ),
             "Eval" => self.run_llm_gate_phase(
                 loop_steps,
                 "Eval",
                 prompt::eval_prompt(domain, metric, &self.last_llm_output),
-                invariant_submitted,
             ),
             "Recovery" => self.run_recovery_phase(loop_steps, domain, state_body),
-            "Invariant" => {
-                if let Some((gate, evidence)) = phase_gate("Invariant") {
-                    self.submit_evidence(gate, evidence, true);
-                    *invariant_submitted = true;
-                }
-                Ok(None)
-            }
+            // Invariant gate is proved by loop_driver via SubmitObservationIngress
+            // before each cycle. cycle.rs no longer submits evidence for this gate.
+            "Invariant" => Ok(None),
             "Execute" => {
                 if let Some((gate, evidence)) = phase_gate("Execute") {
                     self.submit_evidence(gate, evidence, true);
@@ -266,7 +251,6 @@ impl AgentCycle {
         loop_steps: u64,
         phase: &str,
         prompt: String,
-        invariant_submitted: &mut bool,
     ) -> Result<Option<StopReason>, CycleError> {
         let rationale = format!("{} phase", phase.to_ascii_lowercase());
         let output = self.llm_phase_turn(loop_steps, phase, rationale, prompt)?;
@@ -275,10 +259,6 @@ impl AgentCycle {
         }
 
         let passed = parse_verdict(&output);
-        if phase == "Analysis" && !*invariant_submitted {
-            self.submit_evidence("Invariant", "InvariantProof", true);
-            *invariant_submitted = true;
-        }
         if let Some((gate, evidence)) = phase_gate(phase) {
             self.submit_evidence(gate, evidence, passed);
         }
@@ -870,8 +850,6 @@ mod hash_tests {
         let (worker, submitted_body) = spawn_single_command_worker();
         let objective = AgentObjective::new("cycle-test-domain", "submit invariant evidence");
         let mut cycle = AgentCycle::new(unused_loopback_router(), worker, objective);
-        let mut invariant_submitted = false;
-
         let stop = cycle
             .dispatch_observed_phase(
                 "Invariant",
@@ -879,26 +857,19 @@ mod hash_tests {
                 "cycle-test-domain",
                 "submit invariant evidence",
                 "{}",
-                &mut invariant_submitted,
             )
             .expect("invariant phase dispatch succeeds");
 
         assert!(stop.is_none(), "invariant dispatch must not stop the run");
-        assert!(
-            invariant_submitted,
-            "invariant dispatch must update local invariant state"
-        );
         assert_eq!(
             cycle.steps().len(),
             0,
-            "deterministic invariant dispatch must not invoke or record an LLM turn"
+            "invariant dispatch must not invoke or record an LLM turn"
         );
-        assert_eq!(cycle.next_command_id, 2, "one command should be submitted");
-
-        let actual_body = submitted_body.recv().expect("submitted command body");
-        let expected_body = build_submit_evidence_json("Invariant", "InvariantProof", true, 1)
-            .expect("expected invariant command json");
-        assert_eq!(actual_body, expected_body);
+        assert!(
+            submitted_body.try_recv().is_err(),
+            "invariant evidence is submitted by loop_driver before the cycle dispatch"
+        );
     }
 
     #[test]
@@ -910,8 +881,6 @@ mod hash_tests {
         let (router, router_request) = spawn_review_router();
         let objective = AgentObjective::new("cycle-test-domain", "request human review");
         let mut cycle = AgentCycle::new(router, worker, objective);
-        let mut invariant_submitted = false;
-
         let stop = cycle
             .dispatch_observed_phase(
                 "Analysis",
@@ -919,17 +888,12 @@ mod hash_tests {
                 "cycle-test-domain",
                 "request human review",
                 "{}",
-                &mut invariant_submitted,
             )
             .expect("analysis phase dispatch succeeds");
 
         assert!(
             matches!(stop, Some(StopReason::HumanReviewRequired)),
             "sentinel LLM output must stop the run for human review"
-        );
-        assert!(
-            !invariant_submitted,
-            "review stop must happen before analysis auto-submits invariant evidence"
         );
         assert_eq!(cycle.steps().len(), 1, "one LLM turn should be recorded");
         let step = &cycle.steps()[0];

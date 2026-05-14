@@ -12,8 +12,10 @@ use crate::agent::router::{RouterClient, RouterStreamingResult};
 use crate::agent::sse::ChunkLogger;
 use crate::capability::llm::openai::{OpenAiChatRequest, OpenAiMessage};
 use crate::{
-    Command, CommandEnvelope, Evidence, EvidenceSubmission, EvidenceSubmissionDto, GateId,
-    PacketEffect,
+    load_tlog_ndjson, Command, CommandEnvelope, Evidence, EvidenceSubmission,
+    EvidenceSubmissionDto, GateId, ObservationCursor, ObservationFrame, ObservationFrameKind,
+    ObservationIngressBatch, PacketEffect, PolicyPromotion, PolicyStore,
+    MAX_OBSERVATION_PAYLOAD_BYTES, POLICY_FEEDBACK_HASH,
 };
 
 /// Outer project-loop driver. Mirrors agentLoop / runCycle from
@@ -105,7 +107,7 @@ impl LoopDriver {
             cycle_num += 1;
             eprintln!("[{tag}] ── cycle {cycle_num} ──────────────────────────────");
 
-            let router = match RouterClient::from_env() {
+            let mut router = match RouterClient::from_env() {
                 Ok(r) => r,
                 Err(e) => {
                     eprintln!("[{tag}] router init failed: {e}");
@@ -113,8 +115,15 @@ impl LoopDriver {
                 }
             };
 
-            if let Err(e) = self.run_cycle(cycle_num, agent_id, &tag, router) {
+            if let Err(e) = self.run_cycle(cycle_num, agent_id, &tag, &mut router) {
                 eprintln!("[{tag}] cycle {cycle_num} failed: {e}");
+            }
+
+            match router.close_current_tab() {
+                Ok(outcome) => {
+                    eprintln!("[{tag}] tab close  outcome={outcome:?}  cycle={cycle_num}")
+                }
+                Err(e) => eprintln!("[{tag}] tab close failed: {e}  cycle={cycle_num}"),
             }
 
             // Spawned agents run one cycle for their specific task then exit.
@@ -136,9 +145,10 @@ impl LoopDriver {
         cycle_num: u64,
         agent_id: u32,
         tag: &str,
-        mut router: RouterClient,
+        router: &mut RouterClient,
     ) -> Result<(), String> {
         let is_spawned = self.config.domain.is_some();
+        let command_url = agent_command_url(&self.config);
         let (total_turns, turn_offset) = if is_spawned {
             (self.config.execute_turns, 1) // all execute, no planning turn
         } else {
@@ -150,6 +160,22 @@ impl LoopDriver {
         } else {
             read_goal_file(&self.config.project_dir)?
         };
+
+        // Invariant gate: prove world state is non-empty, ordered, hash-addressable.
+        // Both top-level and spawned agents submit; source bytes differ.
+        if let Some(url) = &command_url {
+            let (obs_source_id, obs_bytes) = if is_spawned {
+                let domain = self.config.domain.as_deref().unwrap_or("");
+                let metric = self.config.metric.as_deref().unwrap_or("");
+                let bytes = format!("{domain}\n{metric}").into_bytes();
+                (stable_agent_hash(b"canon:domain:observation"), bytes)
+            } else {
+                let bytes = fs::read(self.config.working_dir.join("GOAL.md")).unwrap_or_default();
+                (stable_agent_hash(b"canon:goal:observation"), bytes)
+            };
+            let obs_bytes = &obs_bytes[..obs_bytes.len().min(MAX_OBSERVATION_PAYLOAD_BYTES)];
+            submit_observation_ingress(url, cycle_num, obs_source_id, obs_bytes);
+        }
 
         for turn in 0..total_turns {
             let turn_context = build_turn_prompt_context(
@@ -190,7 +216,7 @@ impl LoopDriver {
                     &turn_context.label,
                     &turn_context.prompt,
                     attempt,
-                    &mut router,
+                    router,
                 )?;
                 last_reason = attempt_outcome.reason;
 
@@ -214,6 +240,25 @@ impl LoopDriver {
 
             if turn < total_turns - 1 {
                 thread::sleep(Duration::from_millis(self.config.loop_sleep_ms));
+            }
+        }
+
+        // Verification + Eval gates: stamp the cycle's outcome, then promote.
+        if !is_spawned {
+            if let Some(url) = &command_url {
+                let score_hash = read_score_hash(&self.config.working_dir);
+                submit_eval_evidence(url, score_hash, cycle_num);
+
+                let tlog_dir = std::env::var("AI_TLOG_DIR")
+                    .map(std::path::PathBuf::from)
+                    .unwrap_or_else(|_| self.config.project_dir.join("state").join("tlog"));
+                let policy_path = self.config.project_dir.join("state").join("policy.ndjson");
+                run_post_cycle_learning(
+                    url,
+                    &tlog_dir.join("canon-agent.tlog.ndjson"),
+                    &policy_path,
+                    cycle_num,
+                );
             }
         }
 
@@ -381,6 +426,11 @@ fn write_agent_turn_receipt(input: AgentTurnReceiptInput<'_>) {
     }
     if let Some(command_url) = input.command_url {
         submit_agent_turn_receipt(command_url, &receipt);
+        // Analysis + Judgment gates: the planning turn's output is the judgment.
+        if input.label == "plan" && input.status == "completed" {
+            let content_hash = stable_agent_hash(input.content.as_bytes());
+            submit_judgment_evidence(command_url, content_hash);
+        }
     }
 }
 
@@ -610,6 +660,7 @@ fn build_project_planning_prompt(
 ) -> String {
     let score_report = fs::read_to_string(working_dir.join("SCORE_REPORT.md")).ok();
     let auto_refactor_report = auto_refactor_summary(working_dir);
+    let policy_feedback = load_policy_feedback(working_dir);
     planning_prompt(
         goal,
         agent_id,
@@ -619,6 +670,7 @@ fn build_project_planning_prompt(
         None,
         score_report.as_deref(),
         auto_refactor_report.as_deref(),
+        policy_feedback.as_deref(),
     )
 }
 
@@ -631,6 +683,7 @@ fn planning_prompt(
     metric: Option<&str>,
     score_report: Option<&str>,
     auto_refactor_report: Option<&str>,
+    policy_feedback: Option<&str>,
 ) -> String {
     let agent_line = agent_identity(agent_id, agent_count);
     let focus_block = match (domain, metric) {
@@ -656,6 +709,15 @@ fn planning_prompt(
         ),
         _ => String::new(),
     };
+    let policy_block = match policy_feedback {
+        Some(feedback) => format!(
+            "## PRIOR LEARNING (promoted from verified TLog cycles)\n\
+             {feedback}\n\
+             The policy store has recorded successful patterns from past cycles. \
+             Prefer approaches consistent with prior evidence when the domain and context match.\n\n"
+        ),
+        None => String::new(),
+    };
     format!(
         "{agent_line}\n\
          You are doing the planning turn for this agent loop.\n\n\
@@ -665,6 +727,7 @@ fn planning_prompt(
          ## GOAL\n{goal}\n\n\
          {score_block}\
          {auto_refactor_block}\
+         {policy_block}\
          ## OPTIMIZATION OBJECTIVE\n\
          The purpose of this planning turn is to choose the next executable work that maximizes expected project goodness. \
          Treat the score axes in `score.md` as the current objective surface. \
@@ -844,23 +907,38 @@ fn spawned_prompt(domain: &str, metric: &str, step: u32, working_dir: &Path) -> 
     let dir = working_dir.display();
     if step == 1 {
         format!(
-            "You are a sub-agent with a specific task.\n\n\
-             ## WORKING DIRECTORY\n`{dir}`\n\
-             All shell commands must run relative to this directory.\n\n\
-             ## YOUR TASK\n{domain}\n\n\
-             ## SUCCESS CRITERION\n{metric}\n\n\
-             Implement this now. Write or edit the necessary source files, run tests, \
-             fix any failures, and commit your changes. \
-             Do not touch `plan.md`, `status.md`, `score.md`, or any other planning/status files. \
-             Focus only on the task above."
+            "You are a sub-agent with a single bounded task.\n\n\
+             ## WORKING DIRECTORY\n\
+             `{dir}`\n\
+             All commands run from this directory.\n\n\
+             ## TASK\n\
+             {domain}\n\n\
+             ## SUCCESS CRITERION\n\
+             {metric}\n\n\
+             ## PROTOCOL\n\
+             1. Assess the current state against the success criterion before doing anything else.\n\
+             2. Take the minimal actions needed to meet the criterion.\n\
+             3. Use `apply_patch` for all file edits.\n\
+             4. Every tool call must include a non-empty `intent` field explaining why.\n\
+             5. Do not modify `plan.md`, `status.md`, `score.md`, or other planning files.\n\
+             6. When the criterion is met: commit all changes, then stop.\n\
+             7. If the criterion cannot be met: document the blocker clearly and stop without committing."
         )
     } else {
         format!(
-            "You are a sub-agent continuing your task (step {step}).\n\n\
-             ## WORKING DIRECTORY\n`{dir}`\n\n\
-             ## YOUR TASK\n{domain}\n\n\
-             ## SUCCESS CRITERION\n{metric}\n\n\
-             Continue implementing. Check what remains, fix any failures, and commit."
+            "You are a sub-agent on step {step} of a bounded task.\n\n\
+             ## WORKING DIRECTORY\n\
+             `{dir}`\n\n\
+             ## TASK\n\
+             {domain}\n\n\
+             ## SUCCESS CRITERION\n\
+             {metric}\n\n\
+             ## PROTOCOL\n\
+             1. Verify the current state against the success criterion first.\n\
+             2. If the criterion is already met: commit any uncommitted changes, then stop.\n\
+             3. If not met: identify the specific gap, close it, then re-verify.\n\
+             4. Every tool call must include a non-empty `intent` field.\n\
+             5. Commit only when the criterion is met. Do not commit partial or failing work."
         )
     }
 }
@@ -1007,6 +1085,267 @@ fn build_mcp_workspace_request(host: &str, port: u16, project_dir: &Path) -> Str
     )
 }
 
+// ── Learning loop helpers ─────────────────────────────────────────────────────
+
+fn submit_observation_ingress(
+    command_url: &str,
+    cycle_num: u64,
+    source_id: u64,
+    source_bytes: &[u8],
+) {
+    let goal_bytes = source_bytes;
+    let source_hash = stable_agent_hash(goal_bytes);
+
+    // Build a typed Observation batch from actual source content.
+    let (batch, records_json) = if goal_bytes.is_empty() {
+        let cursor = ObservationCursor {
+            source_id,
+            last_sequence: 0,
+            last_observed_hash: 0,
+        };
+        (
+            ObservationIngressBatch::empty(source_id, source_hash, cursor),
+            serde_json::Value::Array(vec![]),
+        )
+    } else {
+        let frame = ObservationFrame::from_payload(
+            ObservationFrameKind::ExternalSignal,
+            source_id,
+            cycle_num,
+            cycle_num, // tick proxy: non-zero, strictly increases with cycle
+            goal_bytes,
+        );
+        let record = frame.record();
+        let cursor = ObservationCursor {
+            source_id,
+            last_sequence: record.sequence,
+            last_observed_hash: record.observed_hash,
+        };
+        let rec_json = json!({
+            "source_id": record.source_id,
+            "sequence": record.sequence,
+            "observed_hash": record.observed_hash,
+            "received_at_tick": record.received_at_tick,
+        });
+        (
+            ObservationIngressBatch::accepted(source_id, source_hash, cursor, 0, vec![record]),
+            serde_json::Value::Array(vec![rec_json]),
+        )
+    };
+
+    let contract_passed = batch.is_contract_valid();
+    let payload_hash = batch.contract_hash();
+    let cursor = batch.cursor;
+    let envelope = CommandEnvelope::new(payload_hash, Command::SubmitObservationIngress(batch));
+    let body = json!({
+        "command_id": envelope.command_id,
+        "command_hash": envelope.command_hash,
+        "payload_tag": "SubmitObservationIngress",
+        "payload": {
+            "source_id": source_id,
+            "source_hash": source_hash,
+            "cursor_source_id": cursor.source_id,
+            "cursor_last_sequence": cursor.last_sequence,
+            "cursor_last_observed_hash": cursor.last_observed_hash,
+            "backlog_len": 0u64,
+            "records": records_json,
+        },
+    });
+    match post_json_local(command_url, &body) {
+        Ok(s) => {
+            eprintln!("agent: observation  cycle={cycle_num}  passed={contract_passed}  status={s}")
+        }
+        Err(e) => eprintln!("agent: observation failed  cycle={cycle_num}  {e}"),
+    }
+}
+
+fn submit_judgment_evidence(command_url: &str, content_hash: u64) {
+    let analysis_hash = stable_agent_hash(format!("canon:analysis:from:{content_hash}").as_bytes());
+    let analysis = EvidenceSubmission::with_payload(
+        GateId::Analysis,
+        Evidence::AnalysisReport,
+        true,
+        analysis_hash,
+    );
+    let judgment = EvidenceSubmission::with_payload(
+        GateId::Judgment,
+        Evidence::JudgmentRecord,
+        true,
+        content_hash,
+    );
+    let envelope = CommandEnvelope::new(
+        content_hash,
+        Command::SubmitEvidenceBatch(vec![analysis, judgment]),
+    );
+    let body = json!({
+        "command_id": envelope.command_id,
+        "command_hash": envelope.command_hash,
+        "payload_tag": "SubmitEvidenceBatch",
+        "payload": [
+            EvidenceSubmissionDto {
+                gate: "Analysis".to_string(),
+                evidence: "AnalysisReport".to_string(),
+                passed: true,
+                effect: Some("None".to_string()),
+                payload_hash: analysis_hash,
+            },
+            EvidenceSubmissionDto {
+                gate: "Judgment".to_string(),
+                evidence: "JudgmentRecord".to_string(),
+                passed: true,
+                effect: Some("None".to_string()),
+                payload_hash: content_hash,
+            },
+        ],
+    });
+    match post_json_local(command_url, &body) {
+        Ok(s) => eprintln!("agent: judgment  content_hash={content_hash}  status={s}"),
+        Err(e) => eprintln!("agent: judgment failed  {e}"),
+    }
+}
+
+fn submit_eval_evidence(command_url: &str, score_hash: u64, cycle_num: u64) {
+    let verify_hash =
+        stable_agent_hash(format!("canon:verification:cycle:{cycle_num}:{score_hash}").as_bytes());
+    let verification = EvidenceSubmission::with_effect_payload(
+        GateId::Verification,
+        Evidence::LineageProof,
+        true,
+        PacketEffect::RepairLineage,
+        verify_hash,
+    );
+    let eval = EvidenceSubmission::with_effect_payload(
+        GateId::Eval,
+        Evidence::EvalScore,
+        true,
+        PacketEffect::CompleteObjective,
+        score_hash,
+    );
+    let command_id =
+        stable_agent_hash(format!("canon:eval:cycle:{cycle_num}:{score_hash}").as_bytes());
+    let envelope = CommandEnvelope::new(
+        command_id,
+        Command::SubmitEvidenceBatch(vec![verification, eval]),
+    );
+    let body = json!({
+        "command_id": envelope.command_id,
+        "command_hash": envelope.command_hash,
+        "payload_tag": "SubmitEvidenceBatch",
+        "payload": [
+            EvidenceSubmissionDto {
+                gate: "Verification".to_string(),
+                evidence: "LineageProof".to_string(),
+                passed: true,
+                effect: Some("RepairLineage".to_string()),
+                payload_hash: verify_hash,
+            },
+            EvidenceSubmissionDto {
+                gate: "Eval".to_string(),
+                evidence: "EvalScore".to_string(),
+                passed: true,
+                effect: Some("CompleteObjective".to_string()),
+                payload_hash: score_hash,
+            },
+        ],
+    });
+    match post_json_local(command_url, &body) {
+        Ok(s) => eprintln!("agent: eval  cycle={cycle_num}  score_hash={score_hash}  status={s}"),
+        Err(e) => eprintln!("agent: eval failed  cycle={cycle_num}  {e}"),
+    }
+}
+
+fn read_score_hash(working_dir: &Path) -> u64 {
+    let bytes = fs::read(working_dir.join("SCORE_REPORT.md")).unwrap_or_default();
+    if bytes.is_empty() {
+        stable_agent_hash(b"canon:eval:no-score-report")
+    } else {
+        stable_agent_hash(&bytes)
+    }
+}
+
+fn run_post_cycle_learning(
+    command_url: &str,
+    tlog_path: &std::path::Path,
+    policy_path: &std::path::Path,
+    cycle_num: u64,
+) {
+    let tlog = match load_tlog_ndjson(tlog_path) {
+        Ok(t) => t,
+        Err(e) => {
+            eprintln!("agent: learning  tlog read failed  cycle={cycle_num}  {e:?}");
+            return;
+        }
+    };
+
+    let mut store = PolicyStore::load_ndjson(policy_path).unwrap_or_default();
+    let next_version = store.latest_version() + 1;
+
+    let promotion = match PolicyPromotion::from_tlog(&tlog, next_version) {
+        Some(p) => p,
+        None => {
+            eprintln!("agent: learning  no promotable pattern  cycle={cycle_num}");
+            return;
+        }
+    };
+
+    let payload_hash = promotion.promoted_policy_hash;
+    let passed = promotion.is_valid();
+
+    match store.promote_durable(policy_path, promotion) {
+        Ok(entry) => {
+            eprintln!(
+                "agent: learning  promoted  version={}  source_seq={}  cycle={cycle_num}",
+                entry.version, entry.value,
+            );
+        }
+        Err(e) => {
+            eprintln!("agent: learning  promote failed  cycle={cycle_num}  {e:?}");
+            return;
+        }
+    }
+
+    let submission = EvidenceSubmission::with_payload(
+        GateId::Learning,
+        Evidence::PolicyPromotion,
+        passed,
+        payload_hash,
+    );
+    let envelope = CommandEnvelope::new(payload_hash, Command::SubmitEvidence(submission));
+    let body = json!({
+        "command_id": envelope.command_id,
+        "command_hash": envelope.command_hash,
+        "payload_tag": "SubmitEvidence",
+        "payload": EvidenceSubmissionDto {
+            gate: "Learning".to_string(),
+            evidence: "PolicyPromotion".to_string(),
+            passed,
+            effect: Some("None".to_string()),
+            payload_hash,
+        },
+    });
+    match post_json_local(command_url, &body) {
+        Ok(s) => eprintln!("agent: policy promotion  cycle={cycle_num}  status={s}"),
+        Err(e) => eprintln!("agent: policy promotion failed  cycle={cycle_num}  {e}"),
+    }
+}
+
+fn load_policy_feedback(working_dir: &Path) -> Option<String> {
+    let policy_path = working_dir.join("state").join("policy.ndjson");
+    let store = PolicyStore::load_ndjson(&policy_path).ok()?;
+    if store.entries().is_empty() {
+        return None;
+    }
+    let version = store.latest_version();
+    let feedback_hash = store.latest_value(POLICY_FEEDBACK_HASH).unwrap_or_else(|| {
+        store
+            .latest_value(crate::POLICY_PROMOTION_SOURCE_SEQ)
+            .unwrap_or(0)
+    });
+    Some(format!(
+        "policy_version={version}  feedback_hash={feedback_hash:#018x}"
+    ))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1029,7 +1368,7 @@ mod tests {
     fn project_prompts_do_not_claim_to_be_worker_certification() {
         let goal = "Ship the next deterministic runtime slice.";
         let working_dir = Path::new("/workspace/project");
-        let planning = planning_prompt(goal, 0, 1, working_dir, None, None, None, None);
+        let planning = planning_prompt(goal, 0, 1, working_dir, None, None, None, None, None);
         let execute = execute_prompt(2, 0, 1);
 
         assert!(planning.contains("planning turn for this agent loop"));

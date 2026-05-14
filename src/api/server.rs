@@ -16,6 +16,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::api::protocol::{Command, CommandEnvelope};
 use crate::api::transport::{ApiTransportDisposition, ApiTransportFrame, ApiTransportSession};
+use crate::capability::observation::{
+    ObservationCursor, ObservationIngressBatch, ObservationRecord,
+};
 use crate::capability::tooling::{
     Effect, McpCallReceipt, McpCallRequest, SandboxProcessReceipt, ToolEffectKind,
 };
@@ -153,6 +156,25 @@ pub struct ErrorDto {
     pub error: String,
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+pub struct ObservationRecordDto {
+    pub source_id: u64,
+    pub sequence: u64,
+    pub observed_hash: u64,
+    pub received_at_tick: u64,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+pub struct ObservationIngressBatchDto {
+    pub source_id: u64,
+    pub source_hash: u64,
+    pub cursor_source_id: u64,
+    pub cursor_last_sequence: u64,
+    pub cursor_last_observed_hash: u64,
+    pub backlog_len: u64,
+    pub records: Vec<ObservationRecordDto>,
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ServerError {
     LockPoisoned,
@@ -225,7 +247,15 @@ fn decode_command(dto: &CommandEnvelopeDto) -> Result<Command, ServerError> {
     match dto.payload_tag.as_str() {
         "SubmitEvidence" => {
             let submission = decode_submission(dto.payload.clone())?;
+            // InvariantProof requires typed Observation path — reject raw submissions.
+            if submission.gate == GateId::Invariant {
+                return Err(ServerError::InvalidCommand);
+            }
             Ok(Command::SubmitEvidence(submission))
+        }
+        "SubmitObservationIngress" => {
+            let batch = decode_observation_ingress(dto.payload.clone())?;
+            Ok(Command::SubmitObservationIngress(batch))
         }
         "SubmitEvidenceBatch" => {
             let payloads: Vec<EvidenceSubmissionDto> = serde_json::from_value(dto.payload.clone())
@@ -365,6 +395,41 @@ fn decode_submission(payload: serde_json::Value) -> Result<EvidenceSubmission, S
     let dto: EvidenceSubmissionDto =
         serde_json::from_value(payload).map_err(|_| ServerError::InvalidPayload)?;
     submission_from_dto(dto)
+}
+
+fn decode_observation_ingress(
+    payload: serde_json::Value,
+) -> Result<ObservationIngressBatch, ServerError> {
+    let dto: ObservationIngressBatchDto =
+        serde_json::from_value(payload).map_err(|_| ServerError::InvalidPayload)?;
+    let cursor = ObservationCursor {
+        source_id: dto.cursor_source_id,
+        last_sequence: dto.cursor_last_sequence,
+        last_observed_hash: dto.cursor_last_observed_hash,
+    };
+    let records: Vec<ObservationRecord> = dto
+        .records
+        .into_iter()
+        .map(|r| {
+            ObservationRecord::new(r.source_id, r.sequence, r.observed_hash, r.received_at_tick)
+        })
+        .collect();
+    let batch = if records.is_empty() {
+        ObservationIngressBatch::empty(dto.source_id, dto.source_hash, cursor)
+    } else {
+        ObservationIngressBatch::accepted(
+            dto.source_id,
+            dto.source_hash,
+            cursor,
+            dto.backlog_len as usize,
+            records,
+        )
+    };
+    // Enforce capability: only Observation may submit InvariantProof.
+    if !CapabilityRegistry::canonical().allows(CapabilityId::Observation, batch.submission()) {
+        return Err(ServerError::InvalidCommand);
+    }
+    Ok(batch)
 }
 
 fn submission_from_dto(dto: EvidenceSubmissionDto) -> Result<EvidenceSubmission, ServerError> {

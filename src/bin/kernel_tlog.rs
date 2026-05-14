@@ -46,7 +46,7 @@ async fn run() -> Result<(), String> {
 }
 
 fn print_help() {
-    println!("usage: worker [--help]");
+    println!("usage: kernel_tlog [--help]");
     println!("environment: PORT, AI_TLOG_DIR, AI_MCP_WORKER_URL, AI_WORKER_GENERATION");
     println!("canonical TLog: AI_TLOG_DIR/canon-agent.tlog.ndjson");
     println!("routes: GET /health/worker, GET /v1/state, POST /v1/command");

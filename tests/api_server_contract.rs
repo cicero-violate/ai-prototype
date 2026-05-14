@@ -62,7 +62,7 @@ fn command_body(command_id: u64, submission: EvidenceSubmission) -> serde_json::
         "command_id": envelope.command_id,
         "command_hash": envelope.command_hash,
         "payload_tag": "SubmitEvidence",
-        "payload": invariant_payload(submission.payload_hash),
+        "payload": EvidenceSubmissionDto { gate: "Analysis".to_string(), evidence: "AnalysisReport".to_string(), passed: true, effect: Some("None".to_string()), payload_hash: submission.payload_hash },
     })
 }
 
@@ -313,8 +313,8 @@ async fn command_route_uses_transport_session_and_persists_tlog() {
     let state = WorkerAppState::new(session, &path);
     let app = build_router(state.clone());
     let submission = EvidenceSubmission::with_payload(
-        ai::GateId::Invariant,
-        ai::Evidence::InvariantProof,
+        ai::GateId::Analysis,
+        ai::Evidence::AnalysisReport,
         true,
         0xabc,
     );
@@ -362,8 +362,8 @@ async fn command_route_maps_tlog_persistence_failure_to_internal_server_error() 
     let state = WorkerAppState::new(session, &path);
     let app = build_router(state.clone());
     let submission = EvidenceSubmission::with_payload(
-        ai::GateId::Invariant,
-        ai::Evidence::InvariantProof,
+        ai::GateId::Analysis,
+        ai::Evidence::AnalysisReport,
         true,
         0xabc,
     );
@@ -408,8 +408,8 @@ async fn command_route_replays_after_durable_resume_without_appending_tlog() {
     let first_state = WorkerAppState::new(initial_session, &path);
     let first_app = build_router(first_state.clone());
     let submission = EvidenceSubmission::with_payload(
-        ai::GateId::Invariant,
-        ai::Evidence::InvariantProof,
+        ai::GateId::Analysis,
+        ai::Evidence::AnalysisReport,
         true,
         0xabc,
     );
@@ -432,7 +432,10 @@ async fn command_route_replays_after_durable_resume_without_appending_tlog() {
     let persisted_disk_len = std::fs::metadata(&path).unwrap().len();
 
     let resumed = resume_durable_runtime(State::default(), &path).unwrap();
-    assert_eq!(resumed.state.phase, ai::Phase::Analysis);
+    assert_eq!(
+        format!("{:?}", resumed.state.phase),
+        persisted_snapshot.phase
+    );
     assert_eq!(resumed.tlog.len(), persisted_snapshot.tlog_len);
     let resumed_session = ApiTransportSession::from_parts(
         resumed.state,

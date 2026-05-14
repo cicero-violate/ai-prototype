@@ -41,7 +41,7 @@ port_is_listening() {
 
 # Supervisor / AI env.
 export SUPERVISOR_PORT="${SUPERVISOR_PORT:-9100}"
-export PROJECT_DIR="${PROJECT_DIR:-$SCRIPT_DIR}"
+export PROJECT_DIR="${PROJECT_DIR:-$PROTOTYPE_DIR}"
 export AI_TLOG_DIR="${AI_TLOG_DIR:-$PROTOTYPE_DIR/state/tlog}"
 export AI_KERNEL_TLOG_BIN="${AI_KERNEL_TLOG_BIN:-$PROTOTYPE_DIR/target/release/kernel_tlog}"
 export AI_AGENT_BIN="${AI_AGENT_BIN:-$PROTOTYPE_DIR/target/release/agent}"

@@ -1,9 +1,0 @@
-schema=canon_runtime_performance_thresholds_v1
-default_max_project_agent_elapsed_ms_p95=10000
-default_max_download_initial_get_ms_p95=2000
-default_max_download_follow_get_ms_p95=2000
-default_max_download_write_ms_p95=1000
-low_budget_smoke_forced_validation_command_duration_ms=2
-low_budget_smoke_forced_max_project_agent_elapsed_ms_p95=1
-low_budget_smoke_expected_status=fail
-rationale=default root validation p95 ceiling is calibrated above normal local validation jitter while explicit low-budget failure remains covered by root_validate --runtime-budget-smoke

@@ -15,8 +15,8 @@ fn temp_tlog_dir(name: &str) -> std::path::PathBuf {
 
 fn worker_command_body(command_id: u64, payload_hash: u64) -> serde_json::Value {
     let submission = EvidenceSubmission::with_payload(
-        ai::GateId::Invariant,
-        ai::Evidence::InvariantProof,
+        ai::GateId::Analysis,
+        ai::Evidence::AnalysisReport,
         true,
         payload_hash,
     );
@@ -26,8 +26,8 @@ fn worker_command_body(command_id: u64, payload_hash: u64) -> serde_json::Value 
         "command_hash": envelope.command_hash,
         "payload_tag": "SubmitEvidence",
         "payload": {
-            "gate": "Invariant",
-            "evidence": "InvariantProof",
+            "gate": "Analysis",
+            "evidence": "AnalysisReport",
             "passed": true,
             "effect": "None",
             "payload_hash": payload_hash

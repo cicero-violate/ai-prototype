@@ -15,14 +15,14 @@ fn temp_tlog_dir(name: &str) -> std::path::PathBuf {
 
 #[test]
 fn worker_help_does_not_require_environment() {
-    let output = Command::new(env!("CARGO_BIN_EXE_worker"))
+    let output = Command::new(env!("CARGO_BIN_EXE_kernel_tlog"))
         .arg("--help")
         .output()
-        .expect("worker --help should run");
+        .expect("kernel_tlog --help should run");
 
     assert!(output.status.success());
     let stdout = String::from_utf8_lossy(&output.stdout);
-    assert!(stdout.contains("usage: worker"));
+    assert!(stdout.contains("usage: kernel_tlog"));
     assert!(stdout.contains("/health/worker"));
     assert!(stdout.contains("canon-agent.tlog.ndjson"));
 }
@@ -33,7 +33,7 @@ fn worker_process_serves_health_and_initializes_tlog() {
     let tlog_dir = temp_tlog_dir("health");
     let _ = std::fs::remove_dir_all(&tlog_dir);
 
-    let mut child = Command::new(env!("CARGO_BIN_EXE_worker"))
+    let mut child = Command::new(env!("CARGO_BIN_EXE_kernel_tlog"))
         .env("PORT", port.to_string())
         .env("AI_TLOG_DIR", &tlog_dir)
         .stdin(Stdio::null())
