@@ -4419,3 +4419,14 @@ Implementation step 1 evidence on 2026-05-14 for Active Priorities item 7:
 - Targeted validation passed: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo check --lib` completed successfully.
 - Broader validation passed: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets` passed with 305 library tests, 3 `root_validate` binary tests, and all integration/example test targets passing.
 - Marked item 7 complete in `plan.md`. `score.md` was reviewed and left unchanged because this is a narrow constructor-structure refactor with validation evidence, not a score-history-worthy project-level capability change.
+
+
+Implementation step 2 evidence on 2026-05-14 for Active Priorities item 8:
+
+- Selected first unchecked Active Priorities item 8: `src/capability/llm/ollama.rs` test `ollama_message_constructors_preserve_role_and_content_boundaries`.
+- Read `plan.md`, `status.md`, and `score.md` before editing. Existing uncommitted non-planning changes in `GOAL.md` and `src/agent/loop_driver.rs` were left untouched.
+- Changed only the item-scoped test module in `src/capability/llm/ollama.rs` plus planning/status evidence files.
+- Added test `ollama_message_constructors_preserve_role_and_content_boundaries`, proving `OllamaMessage::system(...)` uses role `"system"`, `OllamaMessage::user(...)` uses role `"user"`, both constructors preserve distinct content strings exactly, and the two messages are not equal when role/content differ.
+- Targeted validation passed: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test ollama_message_constructors_preserve_role_and_content_boundaries -- --test-threads=1` ran the named test successfully.
+- Broader validation passed: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets` passed with 306 library tests, 3 `root_validate` binary tests, and all integration/example test targets passing.
+- Marked item 8 complete in `plan.md`. `score.md` was reviewed and left unchanged because this is focused regression coverage for an existing constructor boundary, not a score-history-worthy project-level capability change.

@@ -104,7 +104,7 @@ Graph operation `64cfcb1a6f89964d` identifies `capability::llm::ollama::OllamaMe
    - Done when: `OllamaMessage::system(...)` still produces role `"system"`, `OllamaMessage::user(...)` still produces role `"user"`, both preserve the provided content exactly, and both public constructors delegate to the same private helper boundary.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo check --lib`.
 
-8. [ ] `src/capability/llm/ollama.rs` test `ollama_message_constructors_preserve_role_and_content_boundaries`: add regression coverage for the shared constructor helper.
+8. [x] `src/capability/llm/ollama.rs` test `ollama_message_constructors_preserve_role_and_content_boundaries`: add regression coverage for the shared constructor helper.
    - Scope: `src/capability/llm/ollama.rs` test module only; use existing `OllamaMessage` public API. Do not change production code in this item.
    - Done when: the named test proves `OllamaMessage::system("...")` has role `"system"`, `OllamaMessage::user("...")` has role `"user"`, both preserve distinct content strings exactly, and the two messages are not equal when role/content differ. The test must not perform network I/O, filesystem I/O outside normal cargo test execution, environment mutation, or process spawning.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test ollama_message_constructors_preserve_role_and_content_boundaries -- --test-threads=1`.

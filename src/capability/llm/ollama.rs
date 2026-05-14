@@ -1928,7 +1928,19 @@ fn retry_budget_binding_is_valid(
 
 #[cfg(test)]
 mod tests {
-    use super::OllamaConfig;
+    use super::{OllamaConfig, OllamaMessage};
+
+    #[test]
+    fn ollama_message_constructors_preserve_role_and_content_boundaries() {
+        let system = OllamaMessage::system("system boundary content");
+        let user = OllamaMessage::user("user boundary content");
+
+        assert_eq!(system.role, "system");
+        assert_eq!(system.content, "system boundary content");
+        assert_eq!(user.role, "user");
+        assert_eq!(user.content, "user boundary content");
+        assert_ne!(system, user);
+    }
 
     #[test]
     fn ollama_config_id_helpers_preserve_distinct_field_boundaries() {
