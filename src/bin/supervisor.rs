@@ -105,7 +105,7 @@ impl SupervisorConfig {
             .parse::<u16>()
             .map_err(|_| "SUPERVISOR_PORT must be a u16".to_string())?;
         let tlog_dir =
-            PathBuf::from(env::var("AI_TLOG_DIR").unwrap_or_else(|_| "tlog".to_string()));
+            PathBuf::from(env::var("AI_TLOG_DIR").unwrap_or_else(|_| "state/tlog".to_string()));
         let worker_bin = match env::var("AI_WORKER_BIN") {
             Ok(path) => PathBuf::from(path),
             Err(_) => default_worker_bin()?,
@@ -552,12 +552,19 @@ async fn ensure_worker_binary(binary_path: &PathBuf) -> Result<(), String> {
         "supervisor: worker binary missing at {}; building it",
         binary_path.display()
     );
+    let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let workspace_manifest = manifest_dir
+        .parent()
+        .ok_or_else(|| "CARGO_MANIFEST_DIR has no workspace parent".to_string())?
+        .join("Cargo.toml");
+
     let mut command = Command::new("cargo");
     command
         .arg("build")
+        .arg("--manifest-path")
+        .arg(&workspace_manifest)
         .arg("--bin")
         .arg("worker")
-        .current_dir(env!("CARGO_MANIFEST_DIR"))
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit());
     if binary_path

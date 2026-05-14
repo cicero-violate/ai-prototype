@@ -10,7 +10,7 @@ use crate::capability::eval::{decode_eval_scorecard_receipt_ndjson, EvalDecision
 use crate::codec::ndjson::load_tlog_ndjson;
 use crate::error::CanonError;
 
-pub const CANONICAL_TLOG_RELATIVE_PATH: &str = "tlog/canon-agent.tlog.ndjson";
+pub const CANONICAL_TLOG_RELATIVE_PATH: &str = "state/tlog/canon-agent.tlog.ndjson";
 pub const LEGACY_WORKER_TLOG_FILE_NAME: &str = "worker-tlog.ndjson";
 
 #[derive(Clone, Debug, PartialEq, Eq)]

@@ -42,9 +42,9 @@ port_is_listening() {
 # Supervisor / AI env.
 export SUPERVISOR_PORT="${SUPERVISOR_PORT:-9100}"
 export PROJECT_DIR="${PROJECT_DIR:-$SCRIPT_DIR}"
-export AI_TLOG_DIR="${AI_TLOG_DIR:-$PROTOTYPE_DIR/tlog}"
-export AI_WORKER_BIN="${AI_WORKER_BIN:-$SCRIPT_DIR/target/release/worker}"
-export AI_AGENT_BIN="${AI_AGENT_BIN:-$SCRIPT_DIR/target/release/agent}"
+export AI_TLOG_DIR="${AI_TLOG_DIR:-$PROTOTYPE_DIR/state/tlog}"
+export AI_WORKER_BIN="${AI_WORKER_BIN:-$PROTOTYPE_DIR/target/release/worker}"
+export AI_AGENT_BIN="${AI_AGENT_BIN:-$PROTOTYPE_DIR/target/release/agent}"
 export AI_WORKER_PORT="${AI_WORKER_PORT:-$SUPERVISOR_PORT}"
 
 # Router / agent env.
@@ -62,7 +62,7 @@ export MCP_CONNECTOR_PORT="${MCP_CONNECTOR_PORT:-$(url_port "$MCP_CONNECTOR_URL"
 export MCP_CONNECTOR_DIR="${MCP_CONNECTOR_DIR:-$CONNECTOR_DIR_DEFAULT}"
 export MCP_WORKSPACE_ROOT="${MCP_WORKSPACE_ROOT:-$PROTOTYPE_DIR}"
 export MCP_ALLOWED_WORKSPACE_ROOT="${MCP_ALLOWED_WORKSPACE_ROOT:-$PROTOTYPE_DIR}"
-export MCP_WORKER_BIN="${MCP_WORKER_BIN:-$MCP_CONNECTOR_DIR/target/release/chatgpt-mcp-connector}"
+export MCP_WORKER_BIN="${MCP_WORKER_BIN:-$PROTOTYPE_DIR/target/release/chatgpt-mcp-connector}"
 export MCP_WORKER_RESPONSE_TIMEOUT_SECS="${MCP_WORKER_RESPONSE_TIMEOUT_SECS:-600}"
 export AI_MCP_WORKER_URL="${AI_MCP_WORKER_URL:-http://127.0.0.1:38469/mcp_worker}"
 export BASE_URL="${BASE_URL:-https://cheese-server.duckdns.org}"
@@ -97,8 +97,8 @@ run_supervisor: effective env
 EOF
 }
 
-cd "$SCRIPT_DIR"
-mkdir -p "$SCRIPT_DIR/state/rustc" "$SSE_CHUNKS_DIR"
+cd "$PROTOTYPE_DIR"
+mkdir -p "$PROTOTYPE_DIR/state/rustc" "$SSE_CHUNKS_DIR"
 
 print_effective_env
 
@@ -126,4 +126,4 @@ ROUTER_FIRST_CAPTURE_MS="$ROUTER_FIRST_CAPTURE_MS" \
 ROUTER_IDLE_MS="$ROUTER_IDLE_MS" \
 AI_AGENT_DOMAIN="$AI_AGENT_DOMAIN" \
 AI_AGENT_METRIC="$AI_AGENT_METRIC" \
-./target/release/supervisor
+"$PROTOTYPE_DIR/target/release/supervisor"

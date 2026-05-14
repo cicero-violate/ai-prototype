@@ -884,6 +884,7 @@ Deferred connector work, not selectable until the sibling source tree is mounted
    - Scope: `SCORE_REPORT.md`, `score.md`, `plan.md`, and `status.md` only.
    - Done when: `SCORE_REPORT.md` is regenerated from current `state/rustc` artifacts, `status.md` records aggregate and affected crate rows, and `score.md` changes only if the refreshed evidence justifies a score-history-worthy scoring change.
    - Validation: `cargo run --manifest-path ../score/Cargo.toml --quiet -- --artifact-root state/rustc --report SCORE_REPORT.md --date "$(date +%Y-%m-%d)"`.
+   - Blocked on 2026-05-13: the validation command failed with `Error: no compatible graphs under state/rustc (0 skipped)` after emitting only a `score__bin` witness. Step-3, step-4, and step-5 reruns produced the same error, and the mounted workspace still has no `state/rustc` artifact root, so `SCORE_REPORT.md` could not be regenerated and `score.md` was not changed. Leave this item unchecked until compatible graph artifacts are restored or recaptured under `state/rustc`.
 
 ## Additional Validation Notes
 

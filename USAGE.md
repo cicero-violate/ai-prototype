@@ -50,7 +50,7 @@ SUPERVISOR_PORT=9100 \
 PROJECT_DIR=/workspace/ai_sandbox/canon-mini-agent/prototype/ai \
 CANON_OPENAI_BASE_URL=http://127.0.0.1:8081/v1 \
 MCP_CONNECTOR_URL=http://127.0.0.1:4000 \
-AI_TLOG_DIR=tlog \
+AI_TLOG_DIR=state/tlog \
 ./target/release/supervisor
 ```
 
@@ -217,7 +217,7 @@ AI_CERT_MAX_STEPS        AgentCycle step budget for certification (default 30)
 
 ```text
 SUPERVISOR_PORT          HTTP port (default 9100)
-AI_TLOG_DIR              TLog directory (default tlog)
+AI_TLOG_DIR              TLog directory (default state/tlog)
 AI_WORKER_BIN            worker binary path (default: sibling of supervisor binary)
 AI_MCP_WORKER_URL        MCP worker URL (default http://127.0.0.1:38469/mcp_worker)
 PROJECT_DIR              passed to spawned agent threads

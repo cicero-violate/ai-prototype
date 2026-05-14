@@ -7,7 +7,22 @@
 
 set -euo pipefail
 
-cargo build && cargo build --release
+WORKSPACE_ROOT=$(cargo metadata --no-deps --format-version=1     | python -c 'import json,sys; print(json.load(sys.stdin)["workspace_root"])')
+TARGET_DIR=$(cargo metadata --no-deps --format-version=1     | python -c 'import json,sys; print(json.load(sys.stdin)["target_directory"])')
+AGENT_BIN="${TARGET_DIR}/release/agent"
+
+cargo build --manifest-path "${WORKSPACE_ROOT}/Cargo.toml"
+cargo build --release --manifest-path "${WORKSPACE_ROOT}/Cargo.toml" --bin agent
+
+if [[ ! -x "$AGENT_BIN" ]]; then
+    echo "error: expected release agent binary not found or not executable: $AGENT_BIN" >&2
+    exit 1
+fi
+
+if ! strings "$AGENT_BIN" | grep -q 'stream_done_detected'; then
+    echo "warning: $AGENT_BIN does not contain stream_done_detected instrumentation" >&2
+fi
+
 SUPERVISOR_PORT="${SUPERVISOR_PORT:-9100}"
 
 # Resolve the active worker port from supervisor. AI_WORKER_PORT is only a
@@ -34,4 +49,4 @@ PROJECT_DIR="${PROJECT_DIR:-/workspace/ai_sandbox/canon-mini-agent/prototype/ai}
 CANON_OPENAI_BASE_URL="${CANON_OPENAI_BASE_URL:-http://127.0.0.1:8082/v1}" \
 CANON_BROWSER_CDP_URL="${CANON_BROWSER_CDP_URL:-http://127.0.0.1:9223}" \
 MCP_CONNECTOR_URL="${MCP_CONNECTOR_URL:-http://127.0.0.1:4000}" \
-./target/release/agent
+"$AGENT_BIN"

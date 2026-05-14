@@ -2442,18 +2442,17 @@ mod tests {
                 mode.arg
             );
         }
-        assert!(catalog_entries.contains(
-            "--root-validate-dispatch-catalog=>canon_root_validate_dispatch_catalog_v1"
-        ));
+        assert!(catalog_entries
+            .contains("--root-validate-dispatch-catalog=>canon_root_validate_dispatch_catalog_v1"));
 
         let outcome = try_run_compact_mode("--root-validate-dispatch-catalog")
             .expect("dispatch catalog compact mode is registered")
             .expect("dispatch catalog compact mode succeeds");
 
         assert_eq!(outcome.exit_code, 0);
-        assert!(outcome.stdout.contains(
-            "\"schema\":\"canon_root_validate_dispatch_catalog_v1\""
-        ));
+        assert!(outcome
+            .stdout
+            .contains("\"schema\":\"canon_root_validate_dispatch_catalog_v1\""));
         assert!(outcome
             .stdout
             .contains("\"record_type\":\"root_validate_dispatch_catalog\""));

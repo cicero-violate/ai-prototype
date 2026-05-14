@@ -30,8 +30,8 @@ fn passing_eval_record() -> ai::EvalRecord {
 fn canonical_ledger_replays_and_introspects_from_repo_root() {
     let root = temp_root("replay");
     let _ = std::fs::remove_dir_all(&root);
-    std::fs::create_dir_all(root.join("tlog")).expect("test tlog dir");
-    let canonical = root.join("tlog/canon-agent.tlog.ndjson");
+    std::fs::create_dir_all(root.join("state/tlog")).expect("test tlog dir");
+    let canonical = root.join("state/tlog/canon-agent.tlog.ndjson");
     let relative = canonical.to_string_lossy().to_string();
 
     let (state, tlog) =
@@ -75,7 +75,7 @@ fn canonical_ledger_replays_and_introspects_from_repo_root() {
 fn root_validate_mirrors_evaluator_result_into_canonical_ledger() {
     let root = temp_root("root-validate");
     let _ = std::fs::remove_dir_all(&root);
-    let canonical = root.join("tlog/canon-agent.tlog.ndjson");
+    let canonical = root.join("state/tlog/canon-agent.tlog.ndjson");
 
     let output = Command::new(env!("CARGO_BIN_EXE_root_validate"))
         .arg("--policy-reuse-evidence-external-evaluator-result-smoke")
@@ -99,9 +99,9 @@ fn root_validate_mirrors_evaluator_result_into_canonical_ledger() {
 fn stale_legacy_worker_tlogs_are_reported() {
     let root = temp_root("legacy");
     let _ = std::fs::remove_dir_all(&root);
-    std::fs::create_dir_all(root.join("tlog")).expect("test tlog dir");
-    let legacy = root.join("tlog/worker-tlog.ndjson");
-    let canonical = root.join("tlog/canon-agent.tlog.ndjson");
+    std::fs::create_dir_all(root.join("state/tlog")).expect("test tlog dir");
+    let legacy = root.join("state/tlog/worker-tlog.ndjson");
+    let canonical = root.join("state/tlog/canon-agent.tlog.ndjson");
 
     let (state, legacy_tlog) =
         ai::run_until_done(ai::State::ready(), ai::RuntimeConfig::default()).expect("legacy run");

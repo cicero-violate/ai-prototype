@@ -64,7 +64,7 @@ impl WorkerConfig {
             .map_err(|_| "PORT is required".to_string())?
             .parse::<u16>()
             .map_err(|_| "PORT must be a u16".to_string())?;
-        let tlog_dir = env::var("AI_TLOG_DIR").unwrap_or_else(|_| "tlog".to_string());
+        let tlog_dir = env::var("AI_TLOG_DIR").unwrap_or_else(|_| "state/tlog".to_string());
         let tlog_path = tlog_path_from_dir(Path::new(&tlog_dir));
         Ok(Self {
             addr: SocketAddr::from(([127, 0, 0, 1], port)),
