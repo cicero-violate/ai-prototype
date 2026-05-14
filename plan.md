@@ -107,7 +107,7 @@ The selected `ai` graph-editor plan is schema version 1 and contains 1,614 plann
    - Done when: the named unit test asserts `WorkerClient::new(8123)` preserves the requested port and `Duration::from_millis(DEFAULT_TIMEOUT_MS)`, and asserts `WorkerClient::new_with_timeout(8124, 123)` preserves the requested port and custom timeout. The test must not open sockets or require a worker process.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test worker_client_constructors_preserve_default_and_custom_timeouts -- --test-threads=1`.
 
-9. [ ] `SCORE_REPORT.md`: after items 7 and 8 land, refresh graph-derived structural evidence and review whether `score.md` rationale changes without raising project-level scores absent capability evidence.
+9. [x] `SCORE_REPORT.md`: after items 7 and 8 land, refresh graph-derived structural evidence and review whether `score.md` rationale changes without raising project-level scores absent capability evidence.
    - Scope: `SCORE_REPORT.md`, `score.md`, `plan.md`, and `status.md` only.
    - Done when: `scripts/recapture_rustc_graphs.sh --check` validates the configured graph root, `SCORE_REPORT.md` is regenerated from `../state/rustc`, `status.md` records aggregate and affected crate rows, and `score.md` changes only if refreshed evidence differs from the current rationale.
    - Validation: `bash scripts/recapture_rustc_graphs.sh --check && cargo run --manifest-path ../score/Cargo.toml --quiet -- --artifact-root ../state/rustc --report SCORE_REPORT.md --date "$(date +%Y-%m-%d)"`.
