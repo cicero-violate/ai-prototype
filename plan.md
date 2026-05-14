@@ -134,7 +134,7 @@ Graph operation `999e48d20cebd1f5` identifies `capability::judgment::record::Pol
    - Done when: `from_source_hashes(...)` derives `summary_complete` through the shared completion helper, `is_valid(...)` uses the same completion helper and the shared nonzero-source helper, and existing complete/incomplete/tampered catalog behavior remains observable.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo check --lib`.
 
-35. [ ] `src/capability/judgment/record.rs` test `policy_reuse_cost_catalog_helper_boundary_rejects_source_and_completion_tampering`: add direct regression coverage for the shared catalog helper boundary.
+35. [x] `src/capability/judgment/record.rs` test `policy_reuse_cost_catalog_helper_boundary_rejects_source_and_completion_tampering`: add direct regression coverage for the shared catalog helper boundary.
    - Scope: `src/capability/judgment/record.rs` test module only.
    - Done when: the named test builds a complete `PolicyReuseCostCatalogReceipt`, asserts it is valid and passed, independently zeros each source hash and asserts invalidity, then tampers `summary_complete` away from the required-mode/missing-mode predicate and asserts invalidity. The test must not touch the filesystem, start processes, read graph artifacts, perform network I/O, or mutate process-global environment.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test policy_reuse_cost_catalog_helper_boundary_rejects_source_and_completion_tampering -- --test-threads=1`.

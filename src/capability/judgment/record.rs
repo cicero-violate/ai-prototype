@@ -1680,6 +1680,44 @@ mod tests {
     }
 
     #[test]
+    fn policy_reuse_cost_catalog_helper_boundary_rejects_source_and_completion_tampering() {
+        let receipt = PolicyReuseCostCatalogReceipt::from_source_hashes(
+            6, 4, 4, 6, true, true, "none", 0x101, 0x202, 0x303, 0x404, 0x505, 0x606,
+        );
+
+        assert!(receipt.is_valid());
+        assert!(receipt.passed());
+
+        let mut tampered = receipt.clone();
+        tampered.source_policy_reuse_hash = 0;
+        assert!(!tampered.is_valid());
+
+        let mut tampered = receipt.clone();
+        tampered.source_scale_trace_hash = 0;
+        assert!(!tampered.is_valid());
+
+        let mut tampered = receipt.clone();
+        tampered.source_performance_cost_trend_hash = 0;
+        assert!(!tampered.is_valid());
+
+        let mut tampered = receipt.clone();
+        tampered.source_validation_health_hash = 0;
+        assert!(!tampered.is_valid());
+
+        let mut tampered = receipt.clone();
+        tampered.source_validation_duration_hash = 0;
+        assert!(!tampered.is_valid());
+
+        let mut tampered = receipt.clone();
+        tampered.source_runtime_performance_hash = 0;
+        assert!(!tampered.is_valid());
+
+        let mut tampered = receipt.clone();
+        tampered.summary_complete = false;
+        assert!(!tampered.is_valid());
+    }
+
+    #[test]
     fn policy_reuse_cost_catalog_flags_incomplete_coverage() {
         let receipt = PolicyReuseCostCatalogReceipt::from_source_hashes(
             6,
