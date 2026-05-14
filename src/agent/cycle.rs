@@ -486,34 +486,64 @@ fn recovery_action_for_failure(failure: &str) -> Option<&'static str> {
     }
 }
 
-fn recovery_gate(action: &str) -> Option<(&'static str, &'static str)> {
+#[derive(Clone, Copy)]
+struct RecoveryActionSpec {
+    gate: Option<(&'static str, &'static str)>,
+    target_phase: &'static str,
+}
+
+fn recovery_action_spec(action: &str) -> Option<RecoveryActionSpec> {
     match action {
-        "RecheckInvariant" => Some(("Invariant", "InvariantProof")),
-        "RunAnalysis" => Some(("Analysis", "AnalysisReport")),
-        "Rejudge" => Some(("Judgment", "JudgmentRecord")),
-        "Replan" => Some(("Plan", "PlanRecord")),
-        "BindReadyTask" => Some(("Plan", "TaskReady")),
-        "Reexecute" => Some(("Execution", "ArtifactReceipt")),
-        "Reverify" => Some(("Verification", "VerificationReport")),
-        "RepairArtifactLineage" => Some(("Verification", "LineageProof")),
-        "RecomputeEval" => Some(("Eval", "EvalScore")),
-        "Escalate" => None,
+        "RecheckInvariant" => Some(RecoveryActionSpec {
+            gate: Some(("Invariant", "InvariantProof")),
+            target_phase: "Invariant",
+        }),
+        "RunAnalysis" => Some(RecoveryActionSpec {
+            gate: Some(("Analysis", "AnalysisReport")),
+            target_phase: "Analysis",
+        }),
+        "Rejudge" => Some(RecoveryActionSpec {
+            gate: Some(("Judgment", "JudgmentRecord")),
+            target_phase: "Judgment",
+        }),
+        "Replan" => Some(RecoveryActionSpec {
+            gate: Some(("Plan", "PlanRecord")),
+            target_phase: "Plan",
+        }),
+        "BindReadyTask" => Some(RecoveryActionSpec {
+            gate: Some(("Plan", "TaskReady")),
+            target_phase: "Plan",
+        }),
+        "Reexecute" => Some(RecoveryActionSpec {
+            gate: Some(("Execution", "ArtifactReceipt")),
+            target_phase: "Execute",
+        }),
+        "Reverify" => Some(RecoveryActionSpec {
+            gate: Some(("Verification", "VerificationReport")),
+            target_phase: "Verify",
+        }),
+        "RepairArtifactLineage" => Some(RecoveryActionSpec {
+            gate: Some(("Verification", "LineageProof")),
+            target_phase: "Verify",
+        }),
+        "RecomputeEval" => Some(RecoveryActionSpec {
+            gate: Some(("Eval", "EvalScore")),
+            target_phase: "Eval",
+        }),
+        "Escalate" => Some(RecoveryActionSpec {
+            gate: None,
+            target_phase: "Done",
+        }),
         _ => None,
     }
 }
 
+fn recovery_gate(action: &str) -> Option<(&'static str, &'static str)> {
+    recovery_action_spec(action).and_then(|spec| spec.gate)
+}
+
 fn recovery_target_phase(action: &str) -> Option<&'static str> {
-    match action {
-        "RecheckInvariant" => Some("Invariant"),
-        "RunAnalysis" => Some("Analysis"),
-        "Rejudge" => Some("Judgment"),
-        "Replan" | "BindReadyTask" => Some("Plan"),
-        "Reexecute" => Some("Execute"),
-        "Reverify" | "RepairArtifactLineage" => Some("Verify"),
-        "RecomputeEval" => Some("Eval"),
-        "Escalate" => Some("Done"),
-        _ => None,
-    }
+    recovery_action_spec(action).map(|spec| spec.target_phase)
 }
 
 fn gate_id_u64(gate: &str) -> Option<u64> {

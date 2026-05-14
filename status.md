@@ -57,6 +57,14 @@ Current date: 2026-05-14.
 
 ## Validation Ledger
 
+### 2026-05-14 — item 1 cycle recovery action lookup consolidation
+
+- Scope: `src/agent/cycle.rs`, checklist item 1 in `plan.md`, and `status.md` evidence update.
+- Command/check: targeted `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test recovery_ -- --test-threads=1`; broader `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
+- Result: passed.
+- Evidence: `recovery_gate(...)` and `recovery_target_phase(...)` now both delegate to private `recovery_action_spec(action) -> Option<RecoveryActionSpec>`, preserving current action-to-gate/evidence/target-phase mappings including `Escalate` as no gate and target phase `Done`, and unknown actions as `None`. Targeted validation passed with 4 matching unit tests and 1 matching integration test, 0 failures. Broader validation passed with 284 library/bin tests, 3 root_validate tests, 12 API server contract tests, 20 API transport contract tests, 3 canonical TLog contract tests, 4 domain contract tests, 10 graph mutation CLI contract tests, 9 MCP receipt contract tests, 2 planning contract tests, 5 score contract tests, 2 supervisor binary contract tests, 2 worker binary contract tests, and all example test targets green.
+- Next action: perform Active Priorities item 2, adding focused regression coverage for recovery action mappings in `src/agent/cycle.rs`.
+
 ### 2026-05-14 — planning selected non-root_validate cycle mapping work
 
 - Scope: `plan.md`, `status.md`, `score.md`, `SCORE_REPORT.md`, `../state/rustc/auto-refactor/*.graph-editor-plan.json`, selected `../state/rustc/auto-refactor/workspace__ai_sandbox__canon-mini-agent__prototype__state__rustc__ai__graph.graph-editor-plan.json`, and source surfaces in `src/agent/cycle.rs`, `src/agent/loop_driver.rs`, `src/agent/objective.rs`, and `src/agent/prompt.rs`.
