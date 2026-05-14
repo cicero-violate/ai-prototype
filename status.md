@@ -4958,3 +4958,18 @@ Implementation step 5 evidence on 2026-05-14 for Active Priorities item 36:
 - Broader validation passed: TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets passed with 314 library tests, 3 root_validate binary tests, and all integration/example test targets passing.
 - SCORE_REPORT.md and score.md had no diff after refresh because regenerated structural evidence matched the current checked-in report and score rationale.
 - Marked item 36 complete in plan.md. score.md was reviewed and left unchanged because this evidence refresh confirms the current structural snapshot and does not justify project-level numeric score changes.
+
+Planning-turn update on 2026-05-14 for next non-root router CDP split work:
+
+- Required reconnaissance completed from /workspace/ai_sandbox/canon-mini-agent/prototype/ai using the connector shell with cwd=.
+- Read plan.md; Active Priorities items 13 through 36 are complete, so there was no remaining unchecked executable item before this planning turn.
+- Read status.md; latest execution evidence through item 36 confirms the OpenAI proof-event hash cycle completed and refreshed graph evidence remained G = 7.92 / 10.
+- Read score.md and SCORE_REPORT.md; project-level scores remain unchanged, while graph-derived evidence reports aggregate G = 7.92 / 10, Architecture 9.0, Structure 4.9, Simplicity 6.8, Maintainability 10.0, Determinism 10.0, and Coherency 8.2.
+- Inspected ../state/rustc/auto-refactor/*.graph-editor-plan.json; the selected local ai graph-editor plan remains schema version 1, graph schema version 16, and contains 1,582 operations.
+- User direction is explicit: do not continue root_validate work. root_validate remains intentionally non-selectable despite its weak graph row.
+- Inspected graph split surfaces. Rejected agent::loop_driver::LoopDriver::run_cycle for this turn because src/agent/loop_driver.rs has unrelated uncommitted edits. Selected graph split operation f83874fb2b4b9aa3 for agent::router::cdp_get because it is non-root, graph-backed, file-local, and targets the low Structure axis through private phase extraction.
+- Inspected src/agent/router.rs around cdp_get(...), close_cdp_target(...), close_browser_tab_for_url(...), and existing router tests. The selected safe subset is private request-building and response-parsing helper extraction only, preserving the existing cdp_get(...) signature and wire behavior.
+- Rejected direct semantic merges of hash, route, bridge, score, receipt, proof, loader, encoder, kernel contract, and codec enum-conversion candidates unless execution preserves public semantic APIs and consolidates only private construction or folding mechanics.
+- Existing uncommitted non-planning changes in GOAL.md and src/agent/loop_driver.rs were left untouched.
+- Updated plan.md with three executable items: item 37 cdp_get private phase helper extraction in src/agent/router.rs, item 38 focused loopback regression coverage, and item 39 graph-derived evidence refresh.
+- score.md was reviewed and left unchanged because this planning turn produced no implementation, validation refresh, graph refresh, or score-history-worthy capability evidence.

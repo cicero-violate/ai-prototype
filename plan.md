@@ -237,6 +237,24 @@ Next queued graph-backed work after item 33: selected graph operation `e9030dda9
    - Done when: `scripts/recapture_rustc_graphs.sh --check` validates the configured graph root, `SCORE_REPORT.md` is regenerated from `../state/rustc`, `status.md` records aggregate and affected crate rows, and `score.md` changes only if refreshed evidence differs from the current rationale.
    - Validation: `bash scripts/recapture_rustc_graphs.sh --check && cargo run --manifest-path ../score/Cargo.toml --quiet -- --artifact-root ../state/rustc --report SCORE_REPORT.md --date "$(date +%Y-%m-%d)"`.
 
+
+Current planning turn selected graph split operation `f83874fb2b4b9aa3`, covering `agent::router::cdp_get`, as the next safe non-`root_validate` structural candidate. The safe subset is private phase extraction only: keep the public/private call signature of `cdp_get(...)` unchanged, preserve local socket resolution, timeout configuration, HTTP request bytes, response read behavior, CRLF header/body splitting, status parsing, and `OpenAiError` mapping. Do not touch `src/agent/loop_driver.rs`, router turn/session adoption, streaming request code, retry policy, CDP target matching, tab-close outcome semantics, or any network behavior outside the helper's internal decomposition.
+
+37. [ ] `src/agent/router.rs`: split `cdp_get(...)` into private request/response phase helpers while preserving the original `cdp_get(...)` signature.
+   - Scope: `src/agent/router.rs` only; allowed functions are `cdp_get(...)` and at most two new private helpers adjacent to it, such as one helper for building the CDP HTTP GET request bytes and one helper for parsing `(status, body)` from the raw HTTP response string. Do not change `close_browser_tab_for_url(...)`, `close_cdp_target(...)`, `cdp_target_id_for_url(...)`, `devtools_page_target(...)`, retry helpers, streaming helpers, `RouterClient`, `RouterTabCloseOutcome`, or tests in this item.
+   - Done when: `cdp_get(host, port, path, timeout_ms)` still resolves `(host, port)`, connects with `TcpStream::connect_timeout`, applies read/write timeouts, writes exactly `GET {path} HTTP/1.1\r\nHost: {host}:{port}\r\nAccept: application/json\r\nConnection: close\r\n\r\n`, flushes, reads the response to a string, parses the status code from the first response line, returns the body after the first `\r\n\r\n`, and maps malformed responses to `OpenAiError::InvalidResponse`; the request construction and response parsing phases are delegated to private helpers.
+   - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo check --lib`.
+
+38. [ ] `src/agent/router.rs` test `cdp_get_helpers_preserve_http_request_and_response_parsing`: add focused regression coverage for the extracted `cdp_get(...)` helpers.
+   - Scope: `src/agent/router.rs` test module only; use an existing private-test pattern and a local `TcpListener` loopback server inside the test. Do not change production code in this item.
+   - Done when: the named test serves one deterministic local HTTP response, calls `cdp_get("127.0.0.1", port, "/json/list", timeout_ms)`, asserts that the server observed the exact GET request line, Host header, Accept header, and Connection header, and asserts that the returned status and body match the fixture. The test must not perform external network I/O, environment mutation, process spawning, or filesystem I/O outside normal cargo test execution.
+   - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test cdp_get_helpers_preserve_http_request_and_response_parsing -- --test-threads=1`.
+
+39. [ ] `SCORE_REPORT.md`: after items 37 and 38 land, refresh graph-derived structural evidence and review whether `score.md` rationale changes without raising project-level scores absent capability evidence.
+   - Scope: `SCORE_REPORT.md`, `score.md`, `plan.md`, and `status.md` only.
+   - Done when: `scripts/recapture_rustc_graphs.sh --check` validates the configured graph root, `SCORE_REPORT.md` is regenerated from `../state/rustc`, `status.md` records aggregate and affected crate rows, and `score.md` changes only if refreshed evidence differs from the current rationale.
+   - Validation: `bash scripts/recapture_rustc_graphs.sh --check && cargo run --manifest-path ../score/Cargo.toml --quiet -- --artifact-root ../state/rustc --report SCORE_REPORT.md --date "$(date +%Y-%m-%d)"`.
+
 ## Additional Validation Notes
 
 - Targeted validation for the selected checklist item, as listed under `## Active Priorities`.
