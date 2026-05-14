@@ -104,7 +104,7 @@ Graph operation `3371f13b045742b2` identifies `capability::llm::ollama::OllamaCo
    - Done when: both public ID methods still hash their original distinct fields through the same helper boundary, `model_id(...)` remains derived from `self.model`, `base_url_id(...)` remains derived from `self.base_url`, and all config validation/client behavior remains unchanged.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo check --lib`.
 
-50. [ ] `src/capability/llm/ollama.rs` test `ollama_config_id_helpers_preserve_distinct_field_boundaries`: add regression coverage for config ID helper delegation.
+50. [x] `src/capability/llm/ollama.rs` test `ollama_config_id_helpers_preserve_distinct_field_boundaries`: add regression coverage for config ID helper delegation.
    - Scope: `src/capability/llm/ollama.rs` test module only; use existing `OllamaConfig` public API. Do not change production code in this item.
    - Done when: the named test proves `model_id(...)` and `base_url_id(...)` are nonzero, stable across repeated calls, normally distinct for a config with different model/base-url strings, changing only `model` changes only `model_id(...)`, and changing only `base_url` changes only `base_url_id(...)`. The test must not perform network I/O, filesystem I/O outside normal cargo test execution, environment mutation, or process spawning.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test ollama_config_id_helpers_preserve_distinct_field_boundaries -- --test-threads=1`.

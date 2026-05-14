@@ -1924,3 +1924,42 @@ fn retry_budget_binding_is_valid(
         && request_identity_hash
             == policy.request_identity_hash(provider_hash, base_url_hash, model_id, request_hash)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::OllamaConfig;
+
+    #[test]
+    fn ollama_config_id_helpers_preserve_distinct_field_boundaries() {
+        let config = OllamaConfig {
+            base_url: "http://127.0.0.1:11434/v1".to_string(),
+            model: "qwen2.5-coder:7b".to_string(),
+            timeout_ms: 120_000,
+        };
+
+        let model_id = config.model_id();
+        let base_url_id = config.base_url_id();
+
+        assert_ne!(model_id, 0);
+        assert_ne!(base_url_id, 0);
+        assert_eq!(config.model_id(), model_id);
+        assert_eq!(config.base_url_id(), base_url_id);
+        assert_ne!(model_id, base_url_id);
+
+        let model_changed = OllamaConfig {
+            model: "llama3.1:8b".to_string(),
+            ..config.clone()
+        };
+
+        assert_ne!(model_changed.model_id(), model_id);
+        assert_eq!(model_changed.base_url_id(), base_url_id);
+
+        let base_url_changed = OllamaConfig {
+            base_url: "http://localhost:11434/v1".to_string(),
+            ..config
+        };
+
+        assert_eq!(base_url_changed.model_id(), model_id);
+        assert_ne!(base_url_changed.base_url_id(), base_url_id);
+    }
+}
