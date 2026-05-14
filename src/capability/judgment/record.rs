@@ -1346,6 +1346,28 @@ mod tests {
     }
 
     #[test]
+    fn policy_judgment_decision_and_record_share_validity_boundary() {
+        let context = context();
+        let policy = promoted_policy();
+        let mut record = PolicyJudgmentRecord::from_context_policy(&context, &policy);
+
+        let judgment = record.judgment_record();
+
+        assert_eq!(record.decision(), PolicyJudgmentDecision::PolicyHit);
+        assert_eq!(judgment.decision_id, record.decision_id);
+        assert_eq!(judgment.policy_version, record.policy_version);
+        assert_eq!(judgment.rationale_hash, record.rationale_hash);
+
+        record.record_hash ^= 1;
+        let rejected_judgment = record.judgment_record();
+
+        assert_eq!(record.decision(), PolicyJudgmentDecision::PolicyMiss);
+        assert_eq!(rejected_judgment.decision_id, 0);
+        assert_eq!(rejected_judgment.policy_version, 0);
+        assert_eq!(rejected_judgment.rationale_hash, 0);
+    }
+
+    #[test]
     fn policy_judgment_rejects_tampered_policy_lookup_receipt() {
         let context = context();
         let policy = promoted_policy();

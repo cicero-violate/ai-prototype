@@ -119,7 +119,7 @@ Graph operation `1b0f6d104aa96b58` identifies `capability::judgment::record::Pol
    - Done when: `decision(...)` derives `PolicyHit` versus `PolicyMiss` from the shared helper, `judgment_record(...)` derives nonzero versus zero `JudgmentRecord` output from the same helper, and valid/tampered existing records retain their current observable outputs.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo check --lib`.
 
-32. [ ] `src/capability/judgment/record.rs` test `policy_judgment_decision_and_record_share_validity_boundary`: add direct regression coverage for the shared helper boundary.
+32. [x] `src/capability/judgment/record.rs` test `policy_judgment_decision_and_record_share_validity_boundary`: add direct regression coverage for the shared helper boundary.
    - Scope: `src/capability/judgment/record.rs` test module only.
    - Done when: the named test builds a valid `PolicyJudgmentRecord`, asserts `decision()` is `PolicyHit` and `judgment_record()` carries the record decision id, policy version, and rationale hash, then tampers `record_hash` and asserts `decision()` is `PolicyMiss` and `judgment_record()` returns all-zero judgment fields. The test must not touch the filesystem, start processes, read graph artifacts, perform network I/O, or mutate process-global environment.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test policy_judgment_decision_and_record_share_validity_boundary -- --test-threads=1`.
