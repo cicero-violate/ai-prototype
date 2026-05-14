@@ -311,21 +311,36 @@ fn eval_payload_hash(record: &EvalRecord) -> u64 {
 }
 
 fn dimension_order_hash(dimensions: &[EvalDimension]) -> u64 {
-    let mut h = 0x0e7a_0d0e_51a7_0001u64;
-    h = mix(h, dimensions.len() as u64);
-    for dimension in dimensions {
-        h = mix(h, dimension_id_hash(dimension.id));
-    }
-    h.max(1)
+    dimension_hash(
+        0x0e7a_0d0e_51a7_0001u64,
+        dimensions,
+        DimensionHashMode::OrderOnly,
+    )
 }
 
 fn dimension_score_hash(dimensions: &[EvalDimension]) -> u64 {
-    let mut h = 0x0e7a_5c02_e15a_0001u64;
+    dimension_hash(
+        0x0e7a_5c02_e15a_0001u64,
+        dimensions,
+        DimensionHashMode::ScoreAndThreshold,
+    )
+}
+
+#[derive(Clone, Copy)]
+enum DimensionHashMode {
+    OrderOnly,
+    ScoreAndThreshold,
+}
+
+fn dimension_hash(seed: u64, dimensions: &[EvalDimension], mode: DimensionHashMode) -> u64 {
+    let mut h = seed;
     h = mix(h, dimensions.len() as u64);
     for dimension in dimensions {
         h = mix(h, dimension_id_hash(dimension.id));
-        h = mix(h, dimension.score);
-        h = mix(h, dimension.threshold);
+        if matches!(mode, DimensionHashMode::ScoreAndThreshold) {
+            h = mix(h, dimension.score);
+            h = mix(h, dimension.threshold);
+        }
     }
     h.max(1)
 }
