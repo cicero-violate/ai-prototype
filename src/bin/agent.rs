@@ -109,6 +109,25 @@ fn supervisor_reload_worker_port(
     supervisor_port: u16,
     fallback_worker_port: Option<u16>,
 ) -> Result<u16, String> {
+    let response = supervisor_reload_http_exchange(supervisor_port)?;
+
+    let status: u16 = response
+        .lines()
+        .next()
+        .and_then(|line| line.split_whitespace().nth(1))
+        .and_then(|status| status.parse().ok())
+        .unwrap_or(0);
+
+    match status {
+        200 => parse_reload_worker_port(&response),
+        204 => fallback_worker_port.ok_or_else(|| {
+            "supervisor /reload returned 204 and AI_WORKER_PORT is unset".to_string()
+        }),
+        _ => Err(format!("supervisor /reload returned HTTP {status}")),
+    }
+}
+
+fn supervisor_reload_http_exchange(supervisor_port: u16) -> Result<String, String> {
     let mut stream = TcpStream::connect(("127.0.0.1", supervisor_port))
         .map_err(|e| format!("supervisor connect: {e}"))?;
     stream.set_read_timeout(Some(Duration::from_secs(10))).ok();
@@ -126,21 +145,7 @@ fn supervisor_reload_worker_port(
     stream
         .read_to_string(&mut response)
         .map_err(|e| format!("supervisor read: {e}"))?;
-
-    let status: u16 = response
-        .lines()
-        .next()
-        .and_then(|line| line.split_whitespace().nth(1))
-        .and_then(|status| status.parse().ok())
-        .unwrap_or(0);
-
-    match status {
-        200 => parse_reload_worker_port(&response),
-        204 => fallback_worker_port.ok_or_else(|| {
-            "supervisor /reload returned 204 and AI_WORKER_PORT is unset".to_string()
-        }),
-        _ => Err(format!("supervisor /reload returned HTTP {status}")),
-    }
+    Ok(response)
 }
 
 fn parse_reload_worker_port(response: &str) -> Result<u16, String> {
