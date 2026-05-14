@@ -98,12 +98,16 @@ impl OpenAiConfig {
     }
 
     pub fn model_id(&self) -> u64 {
-        provider_text_hash(&self.model)
+        openai_config_text_id(&self.model)
     }
 
     pub fn base_url_id(&self) -> u64 {
-        provider_text_hash(&self.base_url)
+        openai_config_text_id(&self.base_url)
     }
+}
+
+fn openai_config_text_id(text: &str) -> u64 {
+    provider_text_hash(text)
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
