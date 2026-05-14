@@ -922,27 +922,37 @@ impl OllamaJudgmentProofEvent {
     }
 
     pub fn expected_proof_hash(self) -> u64 {
-        let mut h = 0x4f4c_4c41_4d41_5652u64;
-        h = mix(h, self.proof_line_hash);
-        h = mix(h, self.receipt_core_hash);
-        h = mix(h, self.receipt_event_seq);
-        h = mix(h, self.proof_event_seq);
-        h = mix(h, self.receipt_event_hash);
-        h = mix(h, self.base_url_hash);
-        h = mix(h, self.model_id);
-        h = mix(h, self.timeout_ms);
-        h = mix(h, self.retry_count as u64);
-        h = mix(h, self.max_retries as u64);
-        h = mix(h, self.attempt_budget as u64);
-        h = mix(h, self.request_identity_hash);
-        h = mix(h, self.retry_budget_hash);
-        h = mix(h, self.budget_exhausted as u64);
-        h = mix(h, self.duplicate_request as u64);
-        h = mix(h, self.receipt_verified as u64);
-        h = mix(h, self.tamper_rejected as u64);
-        h = mix(h, self.endpoint_verified as u64);
-        h = mix(h, self.phase_plan as u64);
-        h.max(1)
+        Self::fold_ordered_ollama_hash(
+            0x4f4c_4c41_4d41_5652u64,
+            &[
+                self.proof_line_hash,
+                self.receipt_core_hash,
+                self.receipt_event_seq,
+                self.proof_event_seq,
+                self.receipt_event_hash,
+                self.base_url_hash,
+                self.model_id,
+                self.timeout_ms,
+                self.retry_count as u64,
+                self.max_retries as u64,
+                self.attempt_budget as u64,
+                self.request_identity_hash,
+                self.retry_budget_hash,
+                self.budget_exhausted as u64,
+                self.duplicate_request as u64,
+                self.receipt_verified as u64,
+                self.tamper_rejected as u64,
+                self.endpoint_verified as u64,
+                self.phase_plan as u64,
+            ],
+        )
+    }
+
+    fn fold_ordered_ollama_hash(seed: u64, fields: &[u64]) -> u64 {
+        fields
+            .iter()
+            .fold(seed, |hash, field| mix(hash, *field))
+            .max(1)
     }
 
     pub fn proof_flags(self) -> u64 {
@@ -963,18 +973,21 @@ impl OllamaJudgmentProofEvent {
     }
 
     pub fn verifier_context_hash(self) -> u64 {
-        let mut h = 0x4f4c_4c41_4d41_4354u64;
-        h = mix(h, self.base_url_hash);
-        h = mix(h, self.model_id);
-        h = mix(h, self.timeout_ms);
-        h = mix(h, self.retry_count as u64);
-        h = mix(h, self.max_retries as u64);
-        h = mix(h, self.attempt_budget as u64);
-        h = mix(h, self.request_identity_hash);
-        h = mix(h, self.retry_budget_hash);
-        h = mix(h, self.budget_exhausted as u64);
-        h = mix(h, self.duplicate_request as u64);
-        h.max(1)
+        Self::fold_ordered_ollama_hash(
+            0x4f4c_4c41_4d41_4354u64,
+            &[
+                self.base_url_hash,
+                self.model_id,
+                self.timeout_ms,
+                self.retry_count as u64,
+                self.max_retries as u64,
+                self.attempt_budget as u64,
+                self.request_identity_hash,
+                self.retry_budget_hash,
+                self.budget_exhausted as u64,
+                self.duplicate_request as u64,
+            ],
+        )
     }
 
     pub fn to_canonical_effect_proof(
