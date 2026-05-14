@@ -124,14 +124,13 @@ impl ObservationIngressBatch {
     }
 
     pub fn empty(source_id: u64, source_hash: u64, cursor: ObservationCursor) -> Self {
-        Self {
-            decision: ObservationIngressDecision::Empty,
+        Self::without_records(
+            ObservationIngressDecision::Empty,
             source_id,
             source_hash,
             cursor,
-            backlog_len: 0,
-            records: Vec::new(),
-        }
+            0,
+        )
     }
 
     pub fn backpressure(
@@ -140,23 +139,38 @@ impl ObservationIngressBatch {
         cursor: ObservationCursor,
         backlog_len: usize,
     ) -> Self {
-        Self {
-            decision: ObservationIngressDecision::Backpressure,
+        Self::without_records(
+            ObservationIngressDecision::Backpressure,
             source_id,
             source_hash,
             cursor,
             backlog_len,
-            records: Vec::new(),
-        }
+        )
     }
 
     pub fn rejected(source_id: u64, cursor: ObservationCursor) -> Self {
-        Self {
-            decision: ObservationIngressDecision::Rejected,
+        Self::without_records(
+            ObservationIngressDecision::Rejected,
             source_id,
-            source_hash: 0,
+            0,
             cursor,
-            backlog_len: 0,
+            0,
+        )
+    }
+
+    fn without_records(
+        decision: ObservationIngressDecision,
+        source_id: u64,
+        source_hash: u64,
+        cursor: ObservationCursor,
+        backlog_len: usize,
+    ) -> Self {
+        Self {
+            decision,
+            source_id,
+            source_hash,
+            cursor,
+            backlog_len,
             records: Vec::new(),
         }
     }
