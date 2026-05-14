@@ -1930,12 +1930,15 @@ fn sync_parent_dir(path: &Path) -> Result<(), OpenAiError> {
 
 fn message_content_field(body: &str) -> Option<String> {
     let message_idx = body.find("\"message\"")?;
-    let content_idx = body[message_idx..].find("\"content\"")? + message_idx;
-    json_string_at(body, content_idx)
+    scoped_json_string_field(body, message_idx, "\"content\"")
 }
 
 fn json_string_field(body: &str, field: &str) -> Option<String> {
-    let idx = body.find(field)?;
+    scoped_json_string_field(body, 0, field)
+}
+
+fn scoped_json_string_field(body: &str, start_idx: usize, field: &str) -> Option<String> {
+    let idx = body[start_idx..].find(field)? + start_idx;
     json_string_at(body, idx)
 }
 
