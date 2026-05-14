@@ -57,6 +57,7 @@ Current date: 2026-05-14.
 
 - Active Priorities items 25 through 27 are now planned for `src/capability/tooling/record/process.rs` and graph-derived evidence refresh. The first executable item is item 25, which must route `LiveSandboxProcessExecutor::{with_allowed_command, with_locked_env}` through one private builder mutation helper while preserving command allowlist, locked-env, timeout, output-limit, root, registry, process execution, request hashing, receipt hashing, replay, and NDJSON semantics. `root_validate` remains explicitly non-selectable.
 - Active Priorities item 25 is complete: `LiveSandboxProcessExecutor::{with_allowed_command, with_locked_env}` now share one private `with_policy_entry(...)` helper while preserving command allowlist insertion, locked-env insertion, timeout, output-limit, root, registry, process execution, request hashing, receipt hashing, replay, and NDJSON semantics. The next executable item is item 26, the named regression test for builder policy boundaries.
+- Active Priorities item 26 is complete: `live_sandbox_process_executor_builders_preserve_policy_boundaries` now covers command-only, env-only, and combined `LiveSandboxProcessExecutor` builder paths without process spawning, network I/O, or filesystem I/O. The next executable item is item 27, the graph-derived evidence refresh and score-rationale review.
 - `src/domain/business.rs` contains `BusinessOpportunity`, `WorkflowAutomationCandidate`, `CustomerFeedbackSignal`, `monetization_score(...)`, compile-smoke test `business_module_records_and_score_helper_compile`, deterministic repeatability test `business_monetization_score_is_deterministic`, and bounded-score test `business_monetization_score_is_bounded`, with broader business validation passing 3 tests after correcting the bounded test scalar assertion.
 - `src/domain/identity.rs` currently contains `DomainHash`, `DomainHashInput<'a>`, `canonical_json_bytes(record)`, `domain_hash_json(record)`, `domain_hash_parts(parts)`, `stable_domain_id(parts)`, and six passing targeted identity tests through `domain_hash_changes_when_schema_version_changes`.
 - `src/domain/scoring.rs` currently contains validated `BoundedScore` helpers, score-input breakdown helpers, conservative `verdict_for_scores(...)`, and passing `verdict_ignore_thresholds`, `verdict_watch_thresholds`, `verdict_research_thresholds`, `verdict_act_business_thresholds`, `verdict_act_finance_research_thresholds`, `verdict_simulate_trading_thresholds`, and `verdict_block_thresholds`; explicit verdict threshold tests are complete for the current scoring scope.
@@ -65,6 +66,16 @@ Current date: 2026-05-14.
 
 ## Validation Ledger
 
+
+
+
+### 2026-05-14 — item 26 LiveSandboxProcessExecutor builder-boundary regression test
+
+- Scope: `src/capability/tooling/record/process.rs` test module, checklist item 26 in `plan.md`, and `status.md` evidence update.
+- Command/check: targeted `rustfmt --edition 2021 src/capability/tooling/record/process.rs && TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test live_sandbox_process_executor_builders_preserve_policy_boundaries -- --test-threads=1`; broader `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
+- Result: passed.
+- Evidence: changed only the item-scoped process executor test module plus planning/status evidence files. Added `capability::tooling::record::process::tests::live_sandbox_process_executor_builders_preserve_policy_boundaries`, which constructs deterministic-root executors covering command-only, env-only, and combined builder paths. The test asserts allowed-command insertion order, locked-env insertion order, root preservation, default and overridden timeout/output-limit values, canonical registry preservation, and independence between command and locked-env builder paths. It performs no process spawning, network I/O, or filesystem I/O outside normal cargo test execution. Targeted validation passed with 1 named test and 0 failures. Broader all-target validation passed with 312 library/bin tests, 3 root_validate tests, 13 API server contract tests, 23 API transport contract tests, 3 canonical TLog contract tests, 4 domain contract tests, 10 graph mutation CLI contract tests, 9 MCP receipt contract tests, 2 planning contract tests, 5 score contract tests, 2 supervisor binary contract tests, 2 worker binary contract tests, and all example test targets green. `score.md` was reviewed and left unchanged because this targeted regression coverage does not change project-level score values.
+- Next action: execute Active Priorities item 27 by refreshing graph-derived structural evidence and reviewing `score.md` without raising project-level scores absent capability evidence.
 
 
 ### 2026-05-14 — item 25 LiveSandboxProcessExecutor builder helper

@@ -657,3 +657,63 @@ impl EvidenceProducer for SandboxProcessReceipt {
         SandboxProcessReceipt::submission(self)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn live_sandbox_process_executor_builders_preserve_policy_boundaries() {
+        let root = PathBuf::from("/tmp/canon-process-builder-policy");
+
+        let command_only = LiveSandboxProcessExecutor::new(root.clone())
+            .with_allowed_command("printf")
+            .with_allowed_command("/usr/bin/printf");
+        assert_eq!(command_only.root, root);
+        assert_eq!(
+            command_only.allowed_commands,
+            vec!["printf", "/usr/bin/printf"]
+        );
+        assert!(command_only.locked_env.is_empty());
+        assert_eq!(command_only.timeout_ms, 1000);
+        assert_eq!(command_only.max_output_bytes, 64 * 1024);
+        assert_eq!(command_only.registry, CapabilityRegistry::canonical());
+
+        let env_only = LiveSandboxProcessExecutor::new(root.clone())
+            .with_locked_env("CANON_SANDBOX", "1")
+            .with_locked_env("CANON_TRACE", "disabled");
+        assert_eq!(env_only.root, root);
+        assert!(env_only.allowed_commands.is_empty());
+        assert_eq!(
+            env_only.locked_env,
+            vec![
+                ("CANON_SANDBOX".to_string(), "1".to_string()),
+                ("CANON_TRACE".to_string(), "disabled".to_string()),
+            ]
+        );
+        assert_eq!(env_only.timeout_ms, 1000);
+        assert_eq!(env_only.max_output_bytes, 64 * 1024);
+        assert_eq!(env_only.registry, CapabilityRegistry::canonical());
+
+        let combined = LiveSandboxProcessExecutor::new(root.clone())
+            .with_allowed_command("printf")
+            .with_locked_env("CANON_SANDBOX", "1")
+            .with_allowed_command("/usr/bin/printf")
+            .with_locked_env("CANON_TRACE", "disabled")
+            .with_timeout_ms(2500)
+            .with_max_output_bytes(8192);
+
+        assert_eq!(combined.root, root);
+        assert_eq!(combined.allowed_commands, vec!["printf", "/usr/bin/printf"]);
+        assert_eq!(
+            combined.locked_env,
+            vec![
+                ("CANON_SANDBOX".to_string(), "1".to_string()),
+                ("CANON_TRACE".to_string(), "disabled".to_string()),
+            ]
+        );
+        assert_eq!(combined.timeout_ms, 2500);
+        assert_eq!(combined.max_output_bytes, 8192);
+        assert_eq!(combined.registry, CapabilityRegistry::canonical());
+    }
+}
