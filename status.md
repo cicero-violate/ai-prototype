@@ -48,7 +48,7 @@ Current date: 2026-05-14.
 - P3 runtime and receipt correctness: complete for current scope.
 - P4 graph source-of-truth integration: mostly complete for deterministic fixture/report evidence; agent-driven graph editing remains intentionally deferred until P5 domain surfaces are validated.
 - P5 domain intelligence layer: active. `src/domain/contracts.rs` constructor and invariant tests through unsafe live-effect rejection are complete in local source, with prior targeted validation passing 7 contract tests.
-- Active Priorities items 25 through 163, prior refreshed items 1 through 3, completed env/hash fresh items 1 through 5, completed cycle recovery/evidence route items 1 through 5, remaining-ai items 1 through 9, API server parser items 1 through 4, config parser items 1 through 3, cycle hash-domain items 1 through 3, current router parser items 1 through 3, current worker-client items 7 through 9, API transport ledger items 10 through 12, API transport receipt helper item 13, API transport receipt invariant test item 14, API transport receipt evidence refresh item 15, API transport session helper item 16, API transport session invariant test item 17, API transport session evidence refresh item 18, capability route delegation item 19, capability route regression test item 20, capability route evidence refresh item 21, graph mutation row invariant helper item 22, graph mutation row tamper regression test item 23, and graph mutation row evidence refresh item 24 are complete, reconciled, or explicitly blocked with evidence. Items 150 and 151 remain deferred until the sibling connector source tree is exposed, and item 154 remains a historical blocker for the empty local `ai/state/rustc` path. Current planning intentionally stops further `root_validate` work per user direction. The refreshed local `SCORE_REPORT.md` reports `G = 7.99 / 10`, Architecture `8.9`, Structure `4.9`, Simplicity `7.1`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.4`; Structure remains the lowest aggregate axis. `root_validate` remains the weakest current Structure row at `1.5`, but it is non-selectable. Active Priorities items 25 through 51 are complete. Current ApiTransportLedger/OllamaConfig graph-backed checklist is exhausted; non-`root_validate` graph operation `3371f13b045742b2` has helper delegation, targeted regression coverage, and graph-derived structural evidence refresh complete. Active Priorities items 10 through 12 are complete: `OpenAiConfig::{model_id, base_url_id}` now share a private text-id helper, have field-boundary regression coverage, and refreshed graph-derived structural evidence still matches the existing score rationale. A planning turn should select the next executable non-`root_validate` graph-backed work item.
+- Active Priorities items 25 through 163, prior refreshed items 1 through 3, completed env/hash fresh items 1 through 5, completed cycle recovery/evidence route items 1 through 5, remaining-ai items 1 through 9, API server parser items 1 through 4, config parser items 1 through 3, cycle hash-domain items 1 through 3, current router parser items 1 through 3, current worker-client items 7 through 9, API transport ledger items 10 through 12, API transport receipt helper item 13, API transport receipt invariant test item 14, API transport receipt evidence refresh item 15, API transport session helper item 16, API transport session invariant test item 17, API transport session evidence refresh item 18, capability route delegation item 19, capability route regression test item 20, capability route evidence refresh item 21, graph mutation row invariant helper item 22, graph mutation row tamper regression test item 23, and graph mutation row evidence refresh item 24 are complete, reconciled, or explicitly blocked with evidence. Items 150 and 151 remain deferred until the sibling connector source tree is exposed, and item 154 remains a historical blocker for the empty local `ai/state/rustc` path. Current planning intentionally stops further `root_validate` work per user direction. The refreshed local `SCORE_REPORT.md` reports `G = 7.99 / 10`, Architecture `8.9`, Structure `4.9`, Simplicity `7.1`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.4`; Structure remains the lowest aggregate axis. `root_validate` remains the weakest current Structure row at `1.5`, but it is non-selectable. Active Priorities items 25 through 51 are complete. Current ApiTransportLedger/OllamaConfig graph-backed checklist is exhausted; non-`root_validate` graph operation `3371f13b045742b2` has helper delegation, targeted regression coverage, and graph-derived structural evidence refresh complete. Active Priorities items 10 through 12 are complete: `OpenAiConfig::{model_id, base_url_id}` now share a private text-id helper, have field-boundary regression coverage, and refreshed graph-derived structural evidence still matches the existing score rationale. Current planning selected non-`root_validate` OpenAI message constructor work as Active Priorities items 13 through 15.
 - `src/domain/business.rs` contains `BusinessOpportunity`, `WorkflowAutomationCandidate`, `CustomerFeedbackSignal`, `monetization_score(...)`, compile-smoke test `business_module_records_and_score_helper_compile`, deterministic repeatability test `business_monetization_score_is_deterministic`, and bounded-score test `business_monetization_score_is_bounded`, with broader business validation passing 3 tests after correcting the bounded test scalar assertion.
 - `src/domain/identity.rs` currently contains `DomainHash`, `DomainHashInput<'a>`, `canonical_json_bytes(record)`, `domain_hash_json(record)`, `domain_hash_parts(parts)`, `stable_domain_id(parts)`, and six passing targeted identity tests through `domain_hash_changes_when_schema_version_changes`.
 - `src/domain/scoring.rs` currently contains validated `BoundedScore` helpers, score-input breakdown helpers, conservative `verdict_for_scores(...)`, and passing `verdict_ignore_thresholds`, `verdict_watch_thresholds`, `verdict_research_thresholds`, `verdict_act_business_thresholds`, `verdict_act_finance_research_thresholds`, `verdict_simulate_trading_thresholds`, and `verdict_block_thresholds`; explicit verdict threshold tests are complete for the current scoring scope.
@@ -56,6 +56,86 @@ Current date: 2026-05-14.
 - Domain fixture JSON files exist under `tests/fixtures/domain/` for global signal, business workflow opportunity, finance hypothesis research, trading simulation sandbox, and trading live blocked cases; `tests/test_domain_fixture_contract.py` now includes explicit risk-result and required-field assertions. Item 51 graph analyzer now exists and passes against `state/rustc/ai/graph.json`, reporting 752 compiled P5 domain-node matches. Item 52 malformed-input self-check also passes. Remaining work includes item 50 full-suite Rust validation and later graph evidence refresh/score review items gated on full-suite output.
 
 ## Validation Ledger
+
+### 2026-05-14 — planning selected OpenAiMessage constructor helper work
+
+- Scope: `plan.md`, `status.md`, `score.md`, `SCORE_REPORT.md`, all current `../state/rustc/auto-refactor/*.graph-editor-plan.json` paths, selected `../state/rustc/auto-refactor/workspace__ai_sandbox__canon-mini-agent__prototype__state__rustc__ai__graph.graph-editor-plan.json`, and `src/capability/llm/openai.rs` message constructor/test surfaces.
+- Command/check: reconnaissance read of current planning/status/score/report files; current graph-editor plan paths; selected graph plan metadata and OpenAI candidate entries; `src/capability/llm/openai.rs` `OpenAiMessage::{system, user, assistant, assistant_tool_call, tool}`, `message_contract_valid(...)`, `push_message_json(...)`, `messages_from_context(...)`, and current OpenAI tests; working-tree status.
+- Result: informational; planning update prepared.
+- Evidence: no unchecked numbered implementation item existed under `## Active Priorities` before this planning turn; items 10 through 12 were already checked. The current graph-derived report remains `G = 7.99 / 10` with aggregate Structure `4.9`, the lowest aggregate axis. The selected `ai` graph-editor plan remains schema version 1, graph schema version 16, with 1,614 operations. User direction keeps `root_validate` non-selectable despite its Structure row of `1.5`. Previously selected non-root candidates through `OpenAiConfig::{base_url_id, model_id}` are complete or reconciled. The next safe non-root candidate is the `OpenAiMessage` constructor family; the safe subset is private constructor helper delegation only, preserving distinct public role constructors, role strings, content behavior, tool-call-id behavior, tool-call vector behavior, message contract validation, JSON output, context message generation, HTTP/client code, retry-budget behavior, receipt/proof behavior, NDJSON behavior, and network surfaces. Adjacent OpenAI proof hash, receipt hash, NDJSON encoder/loader, and parser-field candidates were rejected as unsafe for this turn because structurally similar wrappers represent distinct semantic record, proof, loader, encoder, or parser domains. Existing uncommitted non-planning changes in `GOAL.md` and `src/agent/loop_driver.rs`, plus pre-existing `status.md` execution-blocker ledger additions, were left intact. `score.md` was reviewed and left unchanged because planning alone produced no implementation, validation, graph refresh, or score-history-worthy capability evidence.
+- Next action: execute Active Priorities item 13 in `src/capability/llm/openai.rs`, then run `cargo check --lib`.
+
+### 2026-05-14 — execution step 5 commit blocked by pre-existing fmt drift
+
+- Scope: scoped commit attempt for `status.md` step 5 blocker evidence.
+- Command/check: `git add status.md && git commit -m "record step 5 exhausted priorities blocker"`.
+- Result: blocked.
+- Evidence: repository pre-commit ran `cargo fmt --check` and reported formatting diffs in `src/api/server.rs` and `src/capability/mod.rs`, which are outside the implementation step 5 scope. No source implementation item was selectable, and unrelated working-tree changes in `GOAL.md` and `src/agent/loop_driver.rs` remained outside this execution scope.
+- Next action: run a dedicated cleanup/planning turn for the existing formatting drift or add the next executable non-`root_validate` Active Priorities item before another implementation turn.
+
+### 2026-05-14 — execution step 5 blocked by exhausted Active Priorities
+
+- Scope: `plan.md` Active Priorities selection for implementation step 5.
+- Command/check: `awk '/^## Active Priorities/{flag=1; next} /^## Additional Validation Notes/{flag=0} flag {print}' plan.md | grep -n '^\s*[0-9][0-9]*\. \[ \]' || true`.
+- Result: blocked.
+- Evidence: no unchecked numbered implementation item exists under `## Active Priorities`; items 10 through 12 are already checked. Existing unrelated working-tree changes in `GOAL.md` and `src/agent/loop_driver.rs` remain outside this execution scope and were not touched.
+- Next action: run a planning turn to add the next executable non-`root_validate` graph-backed Active Priorities item before another implementation turn.
+
+### 2026-05-14 — execution step 4 commit blocked by pre-existing fmt drift
+
+- Scope: scoped commit attempt for `status.md` step 4 blocker evidence.
+- Command/check: `git add status.md && git commit -m "record step 4 exhausted priorities blocker"`.
+- Result: blocked.
+- Evidence: repository pre-commit ran `cargo fmt --check` and reported formatting diffs in `src/api/server.rs` and `src/capability/mod.rs`, which are outside the implementation step 4 scope. No source implementation item was selectable, and unrelated working-tree changes in `GOAL.md` and `src/agent/loop_driver.rs` remained outside this execution scope.
+- Next action: run a dedicated cleanup/planning turn for the existing formatting drift or add the next executable non-`root_validate` Active Priorities item before another implementation turn.
+
+### 2026-05-14 — execution step 4 blocked by exhausted Active Priorities
+
+- Scope: `plan.md` Active Priorities selection for implementation step 4.
+- Command/check: `awk '/^## Active Priorities/{flag=1; next} /^## Additional Validation Notes/{flag=0} flag {print}' plan.md | grep -n '^\s*[0-9][0-9]*\. \[ \]' || true`.
+- Result: blocked.
+- Evidence: no unchecked numbered implementation item exists under `## Active Priorities`; items 10 through 12 are already checked. Existing unrelated working-tree changes in `GOAL.md` and `src/agent/loop_driver.rs` remain outside this execution scope and were not touched.
+- Next action: run a planning turn to add the next executable non-`root_validate` graph-backed Active Priorities item before another implementation turn.
+
+### 2026-05-14 — execution step 3 commit blocked by pre-existing fmt drift
+
+- Scope: scoped commit attempt for `status.md` step 3 blocker evidence.
+- Command/check: `git add status.md && git commit -m "record step 3 exhausted priorities blocker"`.
+- Result: blocked.
+- Evidence: repository pre-commit ran `cargo fmt --check` and reported formatting diffs in `src/api/server.rs` and `src/capability/mod.rs`, which are outside the implementation step 3 scope. No source implementation item was selectable, and unrelated working-tree changes in `GOAL.md` and `src/agent/loop_driver.rs` remained outside this execution scope.
+- Next action: run a dedicated cleanup/planning turn for the existing formatting drift or add the next executable non-`root_validate` Active Priorities item before another implementation turn.
+
+### 2026-05-14 — execution step 3 blocked by exhausted Active Priorities
+
+- Scope: `plan.md` Active Priorities selection for implementation step 3.
+- Command/check: `awk '/^## Active Priorities/{flag=1; next} /^## Additional Validation Notes/{flag=0} flag {print}' plan.md | grep -n '^\s*[0-9][0-9]*\. \[ \]' || true`.
+- Result: blocked.
+- Evidence: no unchecked numbered implementation item exists under `## Active Priorities`; items 10 through 12 are already checked. Existing unrelated working-tree changes in `GOAL.md` and `src/agent/loop_driver.rs` remain outside this execution scope and were not touched.
+- Next action: run a planning turn to add the next executable non-`root_validate` graph-backed Active Priorities item before another implementation turn.
+
+### 2026-05-14 — execution step 2 commit blocked by pre-existing fmt drift
+
+- Scope: scoped commit attempt for `status.md` blocker evidence.
+- Command/check: `git add status.md && git commit -m "record exhausted active priorities blocker"`.
+- Result: blocked.
+- Evidence: repository pre-commit ran `cargo fmt --check` and reported formatting diffs in `src/api/server.rs` and `src/capability/mod.rs`, which are outside the implementation step 2 scope. No source implementation item was selectable, and unrelated working-tree changes in `GOAL.md` and `src/agent/loop_driver.rs` remained unstaged and untouched.
+- Next action: run a dedicated cleanup/planning turn for the existing formatting drift or add the next executable non-`root_validate` Active Priorities item before another implementation turn.
+
+### 2026-05-14 — execution step 2 blocked by exhausted Active Priorities
+
+- Scope: `plan.md` Active Priorities selection for implementation step 2.
+- Command/check: `awk '/^## Active Priorities/{flag=1; next} /^## Additional Validation Notes/{flag=0} flag {print}' plan.md | grep -n '^\s*[0-9][0-9]*\. \[ \]' || true`.
+- Result: blocked.
+- Evidence: no unchecked numbered implementation item exists under `## Active Priorities`; items 10 through 12 are already checked. Existing unrelated working-tree changes in `GOAL.md` and `src/agent/loop_driver.rs` remain outside this execution scope and were not touched.
+- Next action: run a planning turn to add the next executable non-`root_validate` graph-backed Active Priorities item before another implementation turn.
+
+### 2026-05-14 — execution step blocked by exhausted Active Priorities
+
+- Scope: `plan.md` Active Priorities selection for the current execution step.
+- Command/check: `awk '/^## Active Priorities/{flag=1; next} /^## Additional Validation Notes/{flag=0} flag {print}' plan.md | grep -n '^\\s*[0-9][0-9]*\\. \\[ \\]' || true`.
+- Result: blocked.
+- Evidence: no unchecked numbered implementation item exists under `## Active Priorities`; items 10 through 12 are already checked. Current working tree also contains pre-existing unrelated changes in `GOAL.md` and `src/agent/loop_driver.rs`, which were not touched.
+- Next action: run a planning turn to add the next executable non-`root_validate` graph-backed Active Priorities item before another implementation turn.
 
 ### 2026-05-14 — item 12 graph-derived evidence refresh after OpenAiConfig work
 
