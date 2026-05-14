@@ -4923,3 +4923,14 @@ Implementation step 1 evidence on 2026-05-14 for Active Priorities item 33:
 - Broader validation passed: TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets passed with 313 library tests, 3 root_validate binary tests, and all integration/example test targets passing.
 - Updated score.md rationale to reflect the changed graph-derived structural evidence without changing project-level numeric scores.
 - Marked item 33 complete in plan.md.
+
+Implementation step 2 evidence on 2026-05-14 for Active Priorities item 34:
+
+- Selected first unchecked Active Priorities item 34: src/capability/llm/openai.rs proof-event hash helper extraction for OpenAiJudgmentProofEvent::{expected_proof_hash, verifier_context_hash}.
+- Read plan.md, status.md, and score.md before editing. Existing uncommitted non-planning changes in GOAL.md and src/agent/loop_driver.rs were left untouched.
+- Changed only item-scoped source file src/capability/llm/openai.rs plus planning/status evidence files.
+- Added private helper OpenAiJudgmentProofEvent::fold_ordered_openai_hash(seed, fields) and routed expected_proof_hash(...) and verifier_context_hash(...) through it.
+- Preserved expected_proof_hash seed 0x4f50_454e_4149_5052u64, verifier_context_hash seed 0x4f50_454e_4149_4354u64, field ordering, boolean flag mixing, and h.max(1) non-zero behavior.
+- Targeted validation passed: TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo check --lib completed successfully.
+- Broader validation passed: TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets passed with 313 library tests, 3 root_validate binary tests, and all integration/example test targets passing.
+- Marked item 34 complete in plan.md. score.md was reviewed and left unchanged because this is a narrow structure refactor with validation evidence, not a score-history-worthy project-level capability change.
