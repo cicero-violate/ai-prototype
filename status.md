@@ -3689,3 +3689,18 @@ Implementation step 5 blocker on 2026-05-14:
 - Active Priorities has no remaining real unchecked executable item after item 163. Items 150 and 151 are explicitly blocked until the sibling connector source tree is exposed; item 154 remains a historical artifact-root blocker; items 152 through 163 are complete. The only remaining `[ ]` matches in the Active Priorities section are template/instruction examples, not selectable implementation items.
 - No source implementation, validation refresh, evidence refresh, documentation cleanup, or blocker-resolution task was selected because the next executable work must be added by a planning turn before another implementation step can proceed safely.
 - `score.md` remains unchanged because no implementation or new score evidence was produced.
+
+
+Planning-turn update on 2026-05-14 after item 163 completion and root_validate stop directive:
+
+- Required reconnaissance completed from `/workspace/ai_sandbox/canon-mini-agent/prototype/ai` using the connector shell with `cwd=.`.
+- Read `plan.md`; Active Priorities items 1 through 4 were already complete, so there was no remaining unchecked executable item before this planning turn.
+- Read `status.md`; the latest execution blocker confirmed item exhaustion after item 163 and explicitly noted that the next executable work must be added by a planning turn.
+- Read `score.md` and `SCORE_REPORT.md`; project-level scores remain unchanged, while local graph-derived evidence reports aggregate `G = 7.99 / 10`, Architecture `8.9`, Structure `4.9`, Simplicity `7.1`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.4`.
+- Inspected `../state/rustc/auto-refactor/*.graph-editor-plan.json`; the selected local `ai` graph-editor plan remains schema version 1 with 1,614 operations: one already-completed `SplitFn` for `agent::loop_driver::LoopDriver::run_cycle` and 1,613 `MergeFns` candidates.
+- User direction is explicit: do not continue `root_validate` work. `root_validate` remains intentionally non-selectable despite its weak graph row.
+- Inspected `src/agent/config.rs`; the graph-backed `MergeFns id=e82fccc0c01ca02f` candidate covers `agent::config::{env_u32, env_u64}`. Both wrappers already delegate to private generic `env_parsed(...)`, making this a small local parser-surface consolidation candidate.
+- Inspected source/test references for `env_u32`, `env_u64`, `AgentLoopConfig`, and related environment variables. No current tests directly cover `AgentLoopConfig::from_env(...)` numeric parsing behavior, so the plan includes a follow-on focused regression test.
+- Inspected the working tree before changing planning files. Existing uncommitted non-planning changes in `GOAL.md` and `src/agent/loop_driver.rs` were left untouched.
+- Updated `plan.md` with three executable items: item 1 direct typed `env_parsed::<u32/u64>(...)` use in `src/agent/config.rs`, item 2 focused config parser regression coverage, and item 3 graph-derived evidence refresh.
+- `score.md` was reviewed and left unchanged because this planning turn produced no implementation, validation, graph refresh, or score-history-worthy capability evidence.
