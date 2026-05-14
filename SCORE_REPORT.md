@@ -1,26 +1,41 @@
 # Code Quality Score Report
 
-Generated: 2026-05-13  |  Schema version: 16  |  Crates: 2
+Generated: 2026-05-14  |  Schema version: 16  |  Crates: 17
 
 ## Aggregate Scores
 
 ```text
-Architecture         = 9.3
-Structure            = 5.0
+Architecture         = 8.9
+Structure            = 4.9
 Simplicity           = 7.1
 Maintainability      = 10.0
 Determinism          = 10.0
-Coherency            = 8.2
+Coherency            = 8.4
 
-G (geometric mean)   = 8.05 / 10
+G (geometric mean)   = 7.98 / 10
 ```
 
 ## Per-Crate Breakdown
 
-| Crate                 | Nodes | Edges | Fns  | Arch | Struct | Simple | Maint | Determ | Coher |
-| :-------------------- | ----: | ----: | ---: | ---: | -----: | -----: | ----: | -----: | ----: |
-| ai                    |  5472 | 35235 | 2208 |  9.5 |    6.0 |    7.0 |  10.0 |   10.0 |   8.2 |
-| chatgpt_mcp_connector |  3714 | 21661 | 1704 |  9.0 |    3.6 |    7.4 |  10.0 |   10.0 |   8.3 |
+| Crate                      | Nodes | Edges | Fns  | Arch | Struct | Simple | Maint | Determ | Coher |
+| :------------------------- | ----: | ----: | ---: | ---: | -----: | -----: | ----: | -----: | ----: |
+| agent                      |     5 |   177 |    5 |  5.0 |    8.5 |    0.8 |  10.0 |   10.0 |   7.0 |
+| ai                         |  5478 | 34134 | 2214 |  9.3 |    6.0 |    7.5 |  10.0 |   10.0 |   8.6 |
+| ai                         |     1 |    18 |    1 |  5.0 |    4.5 |    4.5 |  10.0 |   10.0 |   7.0 |
+| browser_router             |   659 |  6192 |  319 |  8.7 |    4.6 |    4.3 |  10.0 |   10.0 |   8.5 |
+| browser_router             |     2 |    74 |    2 |  5.0 |    6.1 |    0.7 |  10.0 |   10.0 |   7.0 |
+| chatgpt_mcp_connector      |  3714 | 21661 | 1704 |  9.0 |    3.6 |    7.4 |  10.0 |   10.0 |   8.3 |
+| graph_mutation             |    10 |   249 |   10 |  5.0 |    7.8 |    2.2 |  10.0 |   10.0 |   8.0 |
+| kernel_tlog                |    18 |   180 |    7 |  5.0 |    8.5 |    2.7 |   9.3 |   10.0 |   9.1 |
+| loop_trace                 |     1 |    36 |    1 |  5.0 |    4.5 |    0.8 |  10.0 |   10.0 |   7.0 |
+| ollama_judgment            |     4 |   239 |    4 |  5.0 |    7.7 |    0.1 |  10.0 |   10.0 |   8.6 |
+| ollama_loop_trace          |     2 |    70 |    2 |  5.0 |    6.1 |    0.8 |  10.0 |   10.0 |   7.0 |
+| ollama_tool_loop_trace     |    12 |   238 |    9 |  5.0 |    9.2 |    2.0 |  10.0 |   10.0 |   8.1 |
+| ollama_tool_mcp_loop_trace |    17 |   311 |   11 |  5.0 |    9.3 |    1.7 |  10.0 |   10.0 |   8.1 |
+| openai_tool_loop_trace     |    15 |   308 |   12 |  5.0 |    8.9 |    2.2 |  10.0 |   10.0 |   7.8 |
+| root_validate              |   162 |  1971 |  160 |  3.2 |    1.5 |    6.2 |  10.0 |   10.0 |   7.3 |
+| supervisor                 |   115 |   778 |   38 |  9.8 |    5.7 |    4.1 |   9.9 |   10.0 |   8.6 |
+| tlog_introspect            |     1 |    49 |    1 |  5.0 |    4.5 |    0.2 |  10.0 |   10.0 |   7.0 |
 
 ## Axis Definitions
 
