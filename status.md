@@ -3777,3 +3777,15 @@ Implementation step 1 evidence on 2026-05-14 for Active Priorities item 4:
 - Targeted validation passed: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test recovery_action_spec_preserves_gate_and_target_mappings -- --test-threads=1` ran the named test successfully.
 - Broader validation passed: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets` passed with 292 library tests, 3 `root_validate` binary tests, and all integration/example test targets passing.
 - Marked item 4 complete in `plan.md`. `score.md` was reviewed and left unchanged because this is a narrow structure refactor with validation evidence, not a score-history-worthy project-level capability change.
+
+
+Implementation step 2 evidence on 2026-05-14 for Active Priorities item 5:
+
+- Selected first unchecked Active Priorities item 5: `src/agent/cycle.rs` test `recovery_route_table_preserves_failure_action_and_target_mappings`.
+- Read `plan.md`, `status.md`, and `score.md` before editing. Existing uncommitted non-planning changes in `GOAL.md` and `src/agent/loop_driver.rs` were left untouched.
+- Changed only the item-scoped source file `src/agent/cycle.rs` test module plus planning/status evidence files.
+- Confirmed the named recovery-route test already used `recovery_action_spec(...)` for the required positive action-to-gate and action-to-target mappings after item 4.
+- Added the missing explicit unknown-action assertion to the named test: `recovery_action_spec("UnknownRecoveryAction").is_none()`.
+- Targeted validation passed: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test recovery_route_table_preserves_failure_action_and_target_mappings -- --test-threads=1` ran the named test successfully.
+- Broader validation passed: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets` passed with 292 library tests, 3 `root_validate` binary tests, and all integration/example test targets passing.
+- Marked item 5 complete in `plan.md`. `score.md` was reviewed and left unchanged because this is focused regression coverage for an existing recovery route table, not a score-history-worthy project-level capability change.

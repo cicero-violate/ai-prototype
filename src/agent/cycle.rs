@@ -1173,6 +1173,7 @@ mod hash_tests {
         );
         assert_recovery_spec("RecomputeEval", Some(("Eval", "EvalScore")), "Eval");
         assert_recovery_spec("Escalate", None, "Done");
+        assert!(recovery_action_spec("UnknownRecoveryAction").is_none());
     }
 
     #[test]
