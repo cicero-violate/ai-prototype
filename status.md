@@ -57,6 +57,14 @@ Current date: 2026-05-14.
 
 ## Validation Ledger
 
+### 2026-05-14 — item 31 PolicyJudgmentRecord validity helper extraction
+
+- Scope: `src/capability/judgment/record.rs`, checklist item 31 in `plan.md`, and `status.md` evidence update.
+- Command/check: targeted `rustfmt src/capability/judgment/record.rs && TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo check --lib`; broader `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
+- Result: passed.
+- Evidence: changed only the item-scoped judgment record source. Added private `policy_judgment_hit_record(record: &PolicyJudgmentRecord) -> Option<JudgmentRecord>`, which returns a nonzero `JudgmentRecord` only when `record.is_valid()` is true. `PolicyJudgmentRecord::decision(...)` now derives `PolicyHit` versus `PolicyMiss` from the helper, and `PolicyJudgmentRecord::judgment_record(...)` derives nonzero versus all-zero output from the same helper. `PolicyJudgmentRecord::from_context_policy(...)`, `PolicyJudgmentRecord::from_context_policy_lookup_receipt(...)`, `PolicyJudgmentRecord::is_valid(...)`, `PolicyJudgmentRecord::submission(...)`, `JudgmentRecord`, `judgment_payload_hash(...)`, `policy_judgment_record_hash(...)`, public signatures, receipt hashes, policy lookup semantics, and evidence submission behavior were not changed. Targeted validation passed with `cargo check --lib`. Broader all-target validation passed with 299 library/bin tests, 3 root_validate tests, 13 API server contract tests, 23 API transport contract tests, 3 canonical TLog contract tests, 4 domain contract tests, 10 graph mutation CLI contract tests, 9 MCP receipt contract tests, 2 planning contract tests, 5 score contract tests, 2 supervisor binary contract tests, 2 worker binary contract tests, and all example test targets green.
+- Next action: execute Active Priorities item 32 by adding `policy_judgment_decision_and_record_share_validity_boundary` in `src/capability/judgment/record.rs`.
+
 ### 2026-05-14 — planning selected PolicyJudgmentRecord helper work
 
 - Scope: `plan.md`, `status.md`, `score.md`, `SCORE_REPORT.md`, all current `../state/rustc/auto-refactor/*.graph-editor-plan.json` paths, selected `../state/rustc/auto-refactor/workspace__ai_sandbox__canon-mini-agent__prototype__state__rustc__ai__graph.graph-editor-plan.json`, and `src/capability/judgment/record.rs` decision/judgment-record helper and test surfaces.

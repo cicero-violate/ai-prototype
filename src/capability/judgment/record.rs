@@ -829,7 +829,7 @@ impl PolicyJudgmentRecord {
     }
 
     pub fn decision(&self) -> PolicyJudgmentDecision {
-        if self.is_valid() {
+        if policy_judgment_hit_record(self).is_some() {
             PolicyJudgmentDecision::PolicyHit
         } else {
             PolicyJudgmentDecision::PolicyMiss
@@ -849,24 +849,24 @@ impl PolicyJudgmentRecord {
     }
 
     pub fn judgment_record(&self) -> JudgmentRecord {
-        if self.is_valid() {
-            JudgmentRecord {
-                decision_id: self.decision_id,
-                policy_version: self.policy_version,
-                rationale_hash: self.rationale_hash,
-            }
-        } else {
-            JudgmentRecord {
-                decision_id: 0,
-                policy_version: 0,
-                rationale_hash: 0,
-            }
-        }
+        policy_judgment_hit_record(self).unwrap_or(JudgmentRecord {
+            decision_id: 0,
+            policy_version: 0,
+            rationale_hash: 0,
+        })
     }
 
     pub fn submission(&self) -> EvidenceSubmission {
         self.judgment_record().submission()
     }
+}
+
+fn policy_judgment_hit_record(record: &PolicyJudgmentRecord) -> Option<JudgmentRecord> {
+    record.is_valid().then_some(JudgmentRecord {
+        decision_id: record.decision_id,
+        policy_version: record.policy_version,
+        rationale_hash: record.rationale_hash,
+    })
 }
 
 impl EvidenceProducer for PolicyJudgmentRecord {
