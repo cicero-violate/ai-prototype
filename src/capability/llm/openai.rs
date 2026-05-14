@@ -2123,6 +2123,44 @@ mod tests {
     }
 
     #[test]
+    fn openai_chat_response_parser_preserves_message_scoped_content_fields() {
+        let body = r#"{
+            "id":"chatcmpl-parser-scope",
+            "metadata":{"content":"outer content must not win"},
+            "choices":[{
+                "message":{
+                    "role":"assistant",
+                    "content":"message scoped content wins"
+                }
+            }],
+            "usage":{
+                "prompt_tokens":7,
+                "completion_tokens":11,
+                "total_tokens":18
+            },
+            "browser":{"target_url":"http://127.0.0.1:9222/devtools/page/abc"}
+        }"#;
+
+        let response = parse_chat_response_body(body).expect("body should parse");
+
+        assert_eq!(response.id, "chatcmpl-parser-scope");
+        assert_eq!(response.content, "message scoped content wins");
+        assert_ne!(response.content, "outer content must not win");
+        assert_eq!(response.prompt_tokens, 7);
+        assert_eq!(response.completion_tokens, 11);
+        assert_eq!(response.total_tokens, 18);
+        assert_eq!(
+            response.target_url.as_deref(),
+            Some("http://127.0.0.1:9222/devtools/page/abc")
+        );
+        assert_eq!(response.response_hash, hash_text(&response.content));
+        assert_eq!(response.raw_hash, hash_text(body));
+
+        let repeated = parse_chat_response_body(body).expect("body should parse deterministically");
+        assert_eq!(repeated, response);
+    }
+
+    #[test]
     fn openai_function_tool_constructors_preserve_description_boundary() {
         let parameters_json = r#"{"type":"object","properties":{"query":{"type":"string"}}}"#;
         let bare = OpenAiFunctionTool::new("lookup", parameters_json);
