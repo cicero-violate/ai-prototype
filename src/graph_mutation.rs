@@ -1894,4 +1894,35 @@ mod tests {
         assert_eq!(receipt.valid_row_count, 0);
         assert_eq!(receipt.invalid_row_count, 1);
     }
+
+    #[test]
+    fn graph_mutation_op_row_self_consistency_rejects_each_tampered_field() {
+        let row = GraphMutationOpRow::new(
+            7,
+            GraphMutationOp::RemoveNode {
+                path: "demo::remove".into(),
+                file: "src/lib.rs".into(),
+                lo: 13,
+                hi: 45,
+            },
+        );
+
+        assert!(row.is_self_consistent());
+
+        let mut tampered_schema = row.clone();
+        tampered_schema.schema_version += 1;
+        assert!(!tampered_schema.is_self_consistent());
+
+        let mut tampered_record_type = row.clone();
+        tampered_record_type.record_type += 1;
+        assert!(!tampered_record_type.is_self_consistent());
+
+        let mut tampered_op_hash = row.clone();
+        tampered_op_hash.op_hash ^= 1;
+        assert!(!tampered_op_hash.is_self_consistent());
+
+        let mut tampered_row_hash = row;
+        tampered_row_hash.row_hash ^= 1;
+        assert!(!tampered_row_hash.is_self_consistent());
+    }
 }

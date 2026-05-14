@@ -104,7 +104,7 @@ Graph operation `4906e7371d5af9ed` identifies `graph_mutation::GraphMutationOpRo
    - Done when: `is_self_consistent(...)` still requires `schema_version == GRAPH_MUTATION_SCHEMA_VERSION`, `record_type == GRAPH_MUTATION_OPSET_RECORD`, `op_hash == self.op.hash()`, and `row_hash == self.expected_row_hash()`, but the repeated invariant comparison is centralized in one private helper that can be tested indirectly.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo check --lib`.
 
-23. [ ] `src/graph_mutation.rs` test `graph_mutation_op_row_self_consistency_rejects_each_tampered_field`: add direct row-level regression coverage.
+23. [x] `src/graph_mutation.rs` test `graph_mutation_op_row_self_consistency_rejects_each_tampered_field`: add direct row-level regression coverage.
    - Scope: `src/graph_mutation.rs` test module only.
    - Done when: the named test constructs one `GraphMutationOpRow::new(...)`, asserts the row is self-consistent, then independently tampers `schema_version`, `record_type`, `op_hash`, and `row_hash` and asserts each tampered row is not self-consistent. The test must not touch the filesystem, start processes, read graph artifacts, or mutate process-global environment.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test graph_mutation_op_row_self_consistency_rejects_each_tampered_field -- --test-threads=1`.
