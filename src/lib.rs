@@ -1534,6 +1534,150 @@ mod tests {
     }
 
     #[test]
+    fn openai_proof_event_hash_helpers_preserve_distinct_domains() {
+        fn openai_provider_hash(value: &str) -> u64 {
+            let mut h = 0xcbf29ce484222325u64;
+            h = crate::kernel::mix(h, value.len() as u64);
+            for byte in value.as_bytes() {
+                h = crate::kernel::mix(h, *byte as u64);
+            }
+            h.max(1)
+        }
+
+        let mut state = State {
+            phase: Phase::Judgment,
+            ..State::default()
+        };
+        state.gates.invariant = Gate::pass(Evidence::InvariantProof);
+        state.gates.analysis = Gate::pass(Evidence::AnalysisReport);
+
+        let mut memory = MemoryIndex::default();
+        assert!(memory.insert(MemoryFact::new(state.packet.objective_id, 0xfeed, 7, 1)));
+        let lookup = memory.lookup(state.packet.objective_id, 8);
+        let context = ContextRecord::from_packet_memory(state.packet, 0xabc, &lookup);
+        let policy = PolicyStore::default();
+        let config = OpenAiConfig::default();
+        let client = OpenAiClient::new(config.clone()).unwrap();
+        let request = OpenAiChatRequest::new(openai_messages_from_context(&context, &policy));
+        let request_hash = client.request_hash_for(&request).unwrap();
+        let response = OpenAiChatResponse {
+            id: "chatcmpl-openai-proof-domains".to_string(),
+            content: "Preserve distinct OpenAI proof event hash domains.".to_string(),
+            prompt_tokens: 30,
+            completion_tokens: 8,
+            total_tokens: 38,
+            response_hash: 0x0f0e_d1c0_ba98_7654,
+            raw_hash: 0x1234_5678_9abc_def0,
+            target_url: None,
+        };
+        let retry_budget = OpenAiRetryBudgetPolicy::from_config(&config)
+            .first_attempt(
+                openai_provider_hash(OPENAI_COMPAT_PROVIDER),
+                config.base_url_id(),
+                config.model_id(),
+                request_hash,
+            )
+            .unwrap();
+        let record = LlmStructuredAdapter::record_from_external_response(
+            &context,
+            &policy,
+            config.model_id(),
+            response.response_hash,
+            response.total_tokens.max(1),
+        );
+        let call = OpenAiLlmCall {
+            prompt_hash: record.prompt.prompt_hash,
+            response_hash: record.response.response_hash,
+            token_count: record.response.token_count,
+            payload_hash: record.submission().payload_hash,
+            record,
+            provider_hash: openai_provider_hash(OPENAI_COMPAT_PROVIDER),
+            base_url_hash: config.base_url_id(),
+            model_id: config.model_id(),
+            request_hash,
+            timeout_ms: retry_budget.timeout_ms,
+            retry_count: retry_budget.retry_count,
+            max_retries: retry_budget.max_retries,
+            attempt_budget: retry_budget.attempt_budget,
+            request_identity_hash: retry_budget.request_identity_hash,
+            retry_budget_hash: retry_budget.retry_budget_hash,
+            budget_exhausted: retry_budget.budget_exhausted,
+            duplicate_request: retry_budget.duplicate_request,
+            raw_response_hash: response.raw_hash,
+        };
+        assert!(call.is_valid());
+
+        let envelope = CommandEnvelope::new(
+            call.request_hash,
+            crate::api::protocol::Command::SubmitEvidence(call.submission()),
+        );
+        let command_hash = envelope.command_hash;
+
+        let mut tlog = Vec::new();
+        crate::api::routes::handle_envelope(
+            &mut state,
+            &mut tlog,
+            RuntimeConfig::default(),
+            envelope,
+        )
+        .unwrap();
+        let persisted_event = tlog
+            .iter()
+            .find(|event| {
+                event.kind == EventKind::Persisted
+                    && event.evidence == Evidence::JudgmentRecord
+                    && event.api_command_hash == command_hash
+            })
+            .copied()
+            .unwrap();
+        let base_receipt = call
+            .receipt_for_configured_event(&config, command_hash, &persisted_event)
+            .unwrap();
+        let (receipt, proof_event) = OpenAiJudgmentProofEvent::finalize_receipt_after_tlog(
+            base_receipt,
+            &tlog,
+            true,
+            true,
+            base_receipt.base_url_provenance_verified(&config),
+            state.phase == Phase::Plan,
+        )
+        .unwrap();
+
+        let provider_proof_hash = proof_event.expected_proof_hash();
+        let verifier_context_hash = proof_event.verifier_context_hash();
+        assert_eq!(provider_proof_hash, proof_event.proof_hash);
+        assert_ne!(verifier_context_hash, 0);
+        assert_ne!(verifier_context_hash, provider_proof_hash);
+
+        let (canonical_receipt, effect_proof) =
+            proof_event.to_canonical_effect_proof(receipt).unwrap();
+        assert_eq!(effect_proof.verifier_context_hash, verifier_context_hash);
+        assert_eq!(effect_proof.provider_proof_hash, provider_proof_hash);
+        assert_eq!(effect_proof.receipt.proof_hash, effect_proof.proof_hash);
+        assert_eq!(canonical_receipt.proof_hash, effect_proof.proof_hash);
+        assert!(effect_proof.is_valid());
+
+        let mut proof_only_tamper = proof_event;
+        proof_only_tamper.proof_line_hash ^= 1;
+        assert_ne!(proof_only_tamper.expected_proof_hash(), provider_proof_hash);
+        assert_eq!(
+            proof_only_tamper.verifier_context_hash(),
+            verifier_context_hash
+        );
+
+        let mut verifier_context_tamper = proof_event;
+        verifier_context_tamper.model_id ^= 1;
+        assert_ne!(
+            verifier_context_tamper.expected_proof_hash(),
+            provider_proof_hash
+        );
+        assert_ne!(
+            verifier_context_tamper.verifier_context_hash(),
+            verifier_context_hash
+        );
+    }
+
+    #[test]
     fn generic_verification_proof_replay_rejects_missing_duplicate_and_displaced_events() {
         let initial = State::default();
         let (_, tlog) = run_until_done(initial, RuntimeConfig::default()).unwrap();

@@ -4934,3 +4934,15 @@ Implementation step 2 evidence on 2026-05-14 for Active Priorities item 34:
 - Targeted validation passed: TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo check --lib completed successfully.
 - Broader validation passed: TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets passed with 313 library tests, 3 root_validate binary tests, and all integration/example test targets passing.
 - Marked item 34 complete in plan.md. score.md was reviewed and left unchanged because this is a narrow structure refactor with validation evidence, not a score-history-worthy project-level capability change.
+
+Implementation step 4 evidence on 2026-05-14 for Active Priorities item 35:
+
+- Selected first unchecked Active Priorities item 35: src/lib.rs test openai_proof_event_hash_helpers_preserve_distinct_domains.
+- Read plan.md, status.md, and score.md before editing. Existing uncommitted non-planning changes in GOAL.md and src/agent/loop_driver.rs were left untouched.
+- Changed only item-scoped test file src/lib.rs plus planning/status evidence files.
+- Added openai_proof_event_hash_helpers_preserve_distinct_domains beside the existing Ollama proof-event hash-domain regression.
+- The test constructs an OpenAiJudgmentProofEvent through public OpenAI config, retry-budget, LLM call, receipt, TLog, and canonical effect proof APIs without network I/O, environment mutation, process spawning, or filesystem I/O outside normal cargo test execution.
+- The test asserts expected_proof_hash() equals proof_hash, verifier_context_hash() is non-zero and distinct, canonical effect proof hashes bind to the same values, proof-only tampering changes only expected_proof_hash(), and verifier-context tampering changes both proof and verifier-context hashes.
+- Targeted validation passed: TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test openai_proof_event_hash_helpers_preserve_distinct_domains -- --test-threads=1 ran the named test successfully.
+- Broader validation passed: TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets passed with 314 library tests, 3 root_validate binary tests, and all integration/example test targets passing.
+- Marked item 35 complete in plan.md. score.md was reviewed and left unchanged because this is focused regression coverage for an existing proof-hash boundary, not a score-history-worthy project-level capability change.
