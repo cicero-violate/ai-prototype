@@ -109,7 +109,7 @@ Graph operation `4906e7371d5af9ed` identifies `graph_mutation::GraphMutationOpRo
    - Done when: the named test constructs one `GraphMutationOpRow::new(...)`, asserts the row is self-consistent, then independently tampers `schema_version`, `record_type`, `op_hash`, and `row_hash` and asserts each tampered row is not self-consistent. The test must not touch the filesystem, start processes, read graph artifacts, or mutate process-global environment.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test graph_mutation_op_row_self_consistency_rejects_each_tampered_field -- --test-threads=1`.
 
-24. [ ] `SCORE_REPORT.md`: after items 22 and 23 land, refresh graph-derived structural evidence and review whether `score.md` rationale changes without raising project-level scores absent capability evidence.
+24. [x] `SCORE_REPORT.md`: after items 22 and 23 land, refresh graph-derived structural evidence and review whether `score.md` rationale changes without raising project-level scores absent capability evidence.
    - Scope: `SCORE_REPORT.md`, `score.md`, `plan.md`, and `status.md` only.
    - Done when: `scripts/recapture_rustc_graphs.sh --check` validates the configured graph root, `SCORE_REPORT.md` is regenerated from `../state/rustc`, `status.md` records aggregate and affected crate rows, and `score.md` changes only if refreshed evidence differs from the current rationale.
    - Validation: `bash scripts/recapture_rustc_graphs.sh --check && cargo run --manifest-path ../score/Cargo.toml --quiet -- --artifact-root ../state/rustc --report SCORE_REPORT.md --date "$(date +%Y-%m-%d)"`.
