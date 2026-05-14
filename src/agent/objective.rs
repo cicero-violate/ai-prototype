@@ -20,6 +20,12 @@ pub struct AgentObjective {
     pub stop_condition_hash: u64,
 }
 
+#[derive(Clone, Copy)]
+enum ObjectiveHashSlot {
+    RiskEnvelope,
+    StopCondition,
+}
+
 impl AgentObjective {
     pub fn new(domain_hint: impl Into<String>, success_metric: impl Into<String>) -> Self {
         let domain_hint = domain_hint.into();
@@ -39,13 +45,20 @@ impl AgentObjective {
         }
     }
 
-    pub fn with_risk_envelope(mut self, risk: impl Into<String>) -> Self {
-        self.risk_envelope_hash = hash_str(&risk.into());
-        self
+    pub fn with_risk_envelope(self, risk: impl Into<String>) -> Self {
+        self.set_hash_slot(ObjectiveHashSlot::RiskEnvelope, risk)
     }
 
-    pub fn with_stop_condition(mut self, condition: impl Into<String>) -> Self {
-        self.stop_condition_hash = hash_str(&condition.into());
+    pub fn with_stop_condition(self, condition: impl Into<String>) -> Self {
+        self.set_hash_slot(ObjectiveHashSlot::StopCondition, condition)
+    }
+
+    fn set_hash_slot(mut self, slot: ObjectiveHashSlot, value: impl Into<String>) -> Self {
+        let hash = hash_str(&value.into());
+        match slot {
+            ObjectiveHashSlot::RiskEnvelope => self.risk_envelope_hash = hash,
+            ObjectiveHashSlot::StopCondition => self.stop_condition_hash = hash,
+        }
         self
     }
 }
