@@ -132,7 +132,7 @@ The selected graph-editor plan is schema version 1, contains 1,614 planned opera
    - Done when: all five certification prompt builders share one formatter; each prompt still includes the same phase name, domain, required context labels, human-review sentinel instruction, `CERTIFICATION_OUTPUT_RULE`, and no tool-call permission changes; `planning_prompt(...)` and `system_prompt(...)` remain behaviorally unchanged.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test agent::prompt -- --test-threads=1`.
 
-8. [ ] `src/agent/prompt.rs` test `certification_prompt_formatter_preserves_phase_specific_content`: add focused regression coverage for the item 7 prompt formatter.
+8. [x] `src/agent/prompt.rs` test `certification_prompt_formatter_preserves_phase_specific_content`: add focused regression coverage for the item 7 prompt formatter.
    - Scope: `src/agent/prompt.rs` tests only.
    - Done when: the named test asserts all five certification prompts contain their phase name, `domain`, the expected phase-specific context label or input text, `HUMAN_REVIEW_REQUIRED`, `Do not call tools`, and final `VERDICT: pass` / `VERDICT: fail` requirements.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test certification_prompt_formatter_preserves_phase_specific_content -- --test-threads=1`.

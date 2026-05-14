@@ -128,4 +128,48 @@ mod tests {
             assert!(prompt.contains("final line"));
         }
     }
+
+    #[test]
+    fn certification_prompt_formatter_preserves_phase_specific_content() {
+        let prompts = [
+            (
+                analysis_prompt("domain", "goal"),
+                "Analysis phase",
+                ["Goal: goal"].as_slice(),
+            ),
+            (
+                judgment_prompt("domain", "analysis"),
+                "Judgment phase",
+                ["Analysis:\nanalysis"].as_slice(),
+            ),
+            (
+                plan_prompt("domain", "judgment"),
+                "Plan phase",
+                ["Judgment:\njudgment"].as_slice(),
+            ),
+            (
+                eval_prompt("domain", "metric", "execution"),
+                "Eval phase",
+                ["Success metric: metric", "Execution context:\nexecution"].as_slice(),
+            ),
+            (
+                recovery_prompt("domain", "failure", "Execute"),
+                "Recovery phase",
+                ["Failure: failure", "Target phase: Execute"].as_slice(),
+            ),
+        ];
+
+        for (prompt, phase, phase_specific_content) in prompts {
+            assert!(prompt.contains(phase));
+            assert!(prompt.contains("domain: domain"));
+            assert!(prompt.contains("HUMAN_REVIEW_REQUIRED"));
+            assert!(prompt.contains("Do not call tools"));
+            assert!(prompt.contains("VERDICT: pass"));
+            assert!(prompt.contains("VERDICT: fail"));
+
+            for content in phase_specific_content {
+                assert!(prompt.contains(content));
+            }
+        }
+    }
 }
