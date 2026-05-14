@@ -3704,3 +3704,14 @@ Planning-turn update on 2026-05-14 after item 163 completion and root_validate s
 - Inspected the working tree before changing planning files. Existing uncommitted non-planning changes in `GOAL.md` and `src/agent/loop_driver.rs` were left untouched.
 - Updated `plan.md` with three executable items: item 1 direct typed `env_parsed::<u32/u64>(...)` use in `src/agent/config.rs`, item 2 focused config parser regression coverage, and item 3 graph-derived evidence refresh.
 - `score.md` was reviewed and left unchanged because this planning turn produced no implementation, validation, graph refresh, or score-history-worthy capability evidence.
+
+
+Implementation step 1 evidence on 2026-05-14 for Active Priorities item 1:
+
+- Selected first unchecked Active Priorities item 1: `src/agent/config.rs` parser consolidation for `AgentLoopConfig::from_env(...)`.
+- Changed only the item-scoped source file `src/agent/config.rs` plus planning/status evidence files.
+- Replaced duplicate wrapper calls `env_u32(...)` and `env_u64(...)` with direct typed calls to private generic `env_parsed::<u32>(...)` and `env_parsed::<u64>(...)` for `EXECUTE_TURNS`, `TURN_RETRY_LIMIT`, `AGENT_COUNT`, `LOOP_SLEEP_MS`, `ROUTER_TURN_MAX_MS`, `ROUTER_FIRST_CAPTURE_MS`, `ROUTER_IDLE_MS`, and `AI_CERT_MAX_STEPS`.
+- Removed private duplicate wrappers `env_u32(...)` and `env_u64(...)`; retained private generic `env_parsed(...)` and preserved the same default and invalid-value fallback behavior.
+- Targeted validation passed: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo check --lib` completed successfully.
+- Broader validation passed: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets` passed with 291 library tests, 3 `root_validate` binary tests, and all integration/example test targets passing.
+- Marked item 1 complete in `plan.md`. `score.md` was reviewed and left unchanged because this is a narrow structure refactor with validation evidence, not a score-history-worthy project-level capability change.

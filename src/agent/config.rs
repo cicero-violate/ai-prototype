@@ -62,33 +62,25 @@ impl AgentLoopConfig {
             .ok()
             .and_then(|v| v.parse::<u16>().ok());
         Self {
-            execute_turns: env_u32("EXECUTE_TURNS", 5),
-            turn_retry_limit: env_u32("TURN_RETRY_LIMIT", 2),
-            loop_sleep_ms: env_u64("LOOP_SLEEP_MS", 5000),
-            agent_count: env_u32("AGENT_COUNT", 1),
+            execute_turns: env_parsed::<u32>("EXECUTE_TURNS", 5),
+            turn_retry_limit: env_parsed::<u32>("TURN_RETRY_LIMIT", 2),
+            loop_sleep_ms: env_parsed::<u64>("LOOP_SLEEP_MS", 5000),
+            agent_count: env_parsed::<u32>("AGENT_COUNT", 1),
             project_dir,
             working_dir,
             sse_chunks_dir,
             mcp_connector_url: env::var("MCP_CONNECTOR_URL")
                 .unwrap_or_else(|_| "http://127.0.0.1:4000".into()),
-            router_turn_max_ms: env_u64("ROUTER_TURN_MAX_MS", 600_000),
-            router_first_capture_ms: env_u64("ROUTER_FIRST_CAPTURE_MS", 60_000),
-            router_idle_ms: env_u64("ROUTER_IDLE_MS", 2_500),
+            router_turn_max_ms: env_parsed::<u64>("ROUTER_TURN_MAX_MS", 600_000),
+            router_first_capture_ms: env_parsed::<u64>("ROUTER_FIRST_CAPTURE_MS", 60_000),
+            router_idle_ms: env_parsed::<u64>("ROUTER_IDLE_MS", 2_500),
             worker_port,
             supervisor_port,
-            cert_max_steps: env_u64("AI_CERT_MAX_STEPS", 30),
+            cert_max_steps: env_parsed::<u64>("AI_CERT_MAX_STEPS", 30),
             domain: env::var("AI_AGENT_DOMAIN").ok().filter(|s| !s.is_empty()),
             metric: env::var("AI_AGENT_METRIC").ok().filter(|s| !s.is_empty()),
         }
     }
-}
-
-fn env_u32(key: &str, default: u32) -> u32 {
-    env_parsed(key, default)
-}
-
-fn env_u64(key: &str, default: u64) -> u64 {
-    env_parsed(key, default)
 }
 
 fn env_parsed<T>(key: &str, default: T) -> T
