@@ -117,7 +117,7 @@ The selected `ai` graph-editor plan is schema version 1 and contains 1,614 plann
    - Done when: `is_contract_valid(...)` computes the expected receipt hash through `expected_receipt_hash()`, all nonzero field checks remain explicit, receipt hash values produced by `ApiTransportReceipt::new(...)` remain unchanged, and public API behavior is unchanged.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo check --lib`.
 
-14. [ ] `tests/api_transport_contract.rs` test `api_transport_receipt_contract_rejects_zero_fields_and_tampered_hash`: add direct receipt invariant regression coverage.
+14. [x] `tests/api_transport_contract.rs` test `api_transport_receipt_contract_rejects_zero_fields_and_tampered_hash`: add direct receipt invariant regression coverage.
    - Scope: `tests/api_transport_contract.rs` only.
    - Done when: the named test asserts a valid `ApiTransportReceipt::new(...)` is contract-valid, asserts a receipt with each required field set to zero is contract-invalid, and asserts a receipt with a tampered `receipt_hash` is contract-invalid. The test must not start the API server or require network I/O.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test api_transport_contract api_transport_receipt_contract_rejects_zero_fields_and_tampered_hash -- --test-threads=1`.

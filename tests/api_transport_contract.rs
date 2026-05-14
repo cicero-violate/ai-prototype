@@ -211,6 +211,40 @@ fn transport_frame_receipt_match_is_payload_scoped() {
 }
 
 #[test]
+fn api_transport_receipt_contract_rejects_zero_fields_and_tampered_hash() {
+    let valid = ApiTransportReceipt::new(101, 202, 303, 404, 505);
+    assert!(valid.is_contract_valid());
+
+    let mut zero_request_id = valid;
+    zero_request_id.request_id = 0;
+    assert!(!zero_request_id.is_contract_valid());
+
+    let mut zero_payload_hash = valid;
+    zero_payload_hash.payload_hash = 0;
+    assert!(!zero_payload_hash.is_contract_valid());
+
+    let mut zero_command_id = valid;
+    zero_command_id.command_id = 0;
+    assert!(!zero_command_id.is_contract_valid());
+
+    let mut zero_command_hash = valid;
+    zero_command_hash.command_hash = 0;
+    assert!(!zero_command_hash.is_contract_valid());
+
+    let mut zero_event_hash = valid;
+    zero_event_hash.event_hash = 0;
+    assert!(!zero_event_hash.is_contract_valid());
+
+    let mut zero_receipt_hash = valid;
+    zero_receipt_hash.receipt_hash = 0;
+    assert!(!zero_receipt_hash.is_contract_valid());
+
+    let mut tampered_receipt_hash = valid;
+    tampered_receipt_hash.receipt_hash = tampered_receipt_hash.receipt_hash.wrapping_add(1);
+    assert!(!tampered_receipt_hash.is_contract_valid());
+}
+
+#[test]
 fn transport_ledger_exposes_request_id_membership() {
     let receipt = ApiTransportReceipt::new(101, 202, 303, 404, 505);
     let ledger = match ApiTransportLedger::from_receipts(vec![receipt]) {
