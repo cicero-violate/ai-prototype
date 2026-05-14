@@ -130,3 +130,22 @@ fn parse_response(bytes: Vec<u8>) -> Result<WorkerResponse, WorkerClientError> {
     let body = String::from_utf8_lossy(&bytes[split + 4..]).into_owned();
     Ok(WorkerResponse { status, body })
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn worker_client_constructors_preserve_default_and_custom_timeouts() {
+        let default_client = WorkerClient::new(8123);
+        assert_eq!(default_client.port, 8123);
+        assert_eq!(
+            default_client.timeout,
+            Duration::from_millis(DEFAULT_TIMEOUT_MS)
+        );
+
+        let custom_client = WorkerClient::new_with_timeout(8124, 123);
+        assert_eq!(custom_client.port, 8124);
+        assert_eq!(custom_client.timeout, Duration::from_millis(123));
+    }
+}

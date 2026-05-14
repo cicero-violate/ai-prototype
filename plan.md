@@ -102,7 +102,7 @@ The selected `ai` graph-editor plan is schema version 1 and contains 1,614 plann
    - Done when: `WorkerClient::new(port)` is a thin delegating constructor, `WorkerClient::new_with_timeout(port, timeout_ms)` remains the single struct-literal constructor for `WorkerClient { port, timeout }`, and `from_env()`, HTTP request construction, connect/read timeout behavior, and all existing public signatures remain unchanged.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo check --lib`.
 
-8. [ ] `src/agent/worker_client.rs` test `worker_client_constructors_preserve_default_and_custom_timeouts`: add focused constructor regression coverage.
+8. [x] `src/agent/worker_client.rs` test `worker_client_constructors_preserve_default_and_custom_timeouts`: add focused constructor regression coverage.
    - Scope: `src/agent/worker_client.rs` test module only.
    - Done when: the named unit test asserts `WorkerClient::new(8123)` preserves the requested port and `Duration::from_millis(DEFAULT_TIMEOUT_MS)`, and asserts `WorkerClient::new_with_timeout(8124, 123)` preserves the requested port and custom timeout. The test must not open sockets or require a worker process.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test worker_client_constructors_preserve_default_and_custom_timeouts -- --test-threads=1`.
