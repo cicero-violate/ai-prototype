@@ -93,59 +93,21 @@ objective or world signal
 
 ## Active Priorities
 
-Planning reconnaissance refresh on 2026-05-14 re-read `plan.md`, `status.md`, `score.md`, `SCORE_REPORT.md`, current `../state/rustc/auto-refactor/*.graph-editor-plan.json`, the selected `../state/rustc/auto-refactor/workspace__ai_sandbox__canon-mini-agent__prototype__state__rustc__ai__graph.graph-editor-plan.json`, and source locations for the selected `ai` crate candidates. User direction is explicit: do not continue `root_validate` work. `root_validate` remains a low-scoring graph row, but it is intentionally non-selectable. Current graph-derived aggregate evidence reports `G = 7.98 / 10`, Architecture `8.9`, Structure `4.9`, Simplicity `7.1`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.4`; Structure remains the lowest aggregate axis. The next executable work is graph-backed `ai` crate refactoring from the selected graph-editor plan, starting with high-fanout, current-source `SplitFn` candidates that can produce validation evidence without editing `root_validate`.
+Planning reconnaissance refresh on 2026-05-14 re-read `plan.md`, `status.md`, `score.md`, `SCORE_REPORT.md`, current `../state/rustc/auto-refactor/*.graph-editor-plan.json`, the selected `../state/rustc/auto-refactor/workspace__ai_sandbox__canon-mini-agent__prototype__state__rustc__ai__graph.graph-editor-plan.json`, and source locations for current `ai` crate candidates. User direction is explicit: do not continue `root_validate` work. `root_validate` remains a low-scoring graph row, but it is intentionally non-selectable. Current graph-derived aggregate evidence reports `G = 7.90 / 10`, Architecture `9.0`, Structure `4.9`, Simplicity `6.8`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2`; Structure remains the lowest aggregate axis. The next executable work is graph-backed `ai` crate refactoring from the selected graph-editor plan, using only currently present `SplitFn` operations that can produce validation evidence without editing `root_validate`.
 
-The selected graph-editor plan is schema version 16 for crate `ai`, with 1,628 planned operations. Use only `SplitFn` candidates below; do not apply generated `merge_surface` recommendations blindly. Generated helper names are evidence, not mandatory names, unless they fit the manually inspected Rust boundary.
+The selected graph-editor plan is schema version 1, contains 1,614 planned operations, and currently exposes one `SplitFn` candidate: `agent::loop_driver::LoopDriver::run_cycle` (`id=001e821dc83e940a`, expected range `5192..9865`, phases `parse`/`transform`, generated names `run_cycle__parse`/`run_cycle__transform`). The stale candidate IDs `f2de356b6e3f4b52` and `f83874fb2b4b9aa3` are absent from the current plan and are not selectable. Generated helper names are evidence, not mandatory names, unless they fit the manually inspected Rust boundary.
 
-1. [ ] `src/graph_mutation.rs::generate_graph_patch`: inspect `SplitFn id=f2de356b6e3f4b52` and write a short boundary note for one manual extraction that lowers fanout while preserving `generate_graph_patch(...)` behavior.
-   - Scope: `plan.md`, `status.md`, and source inspection only; do not edit `src/graph_mutation.rs` in this inspection item.
-   - Done when: `status.md` records the current source line, the graph-plan expected range `40386..41673`, phases `parse`/`transform`/`validate`, generated names `generate_graph_patch__parse`/`generate_graph_patch__transform`/`generate_graph_patch__validate`, and the exact private helper boundary to implement next.
-   - Validation: `grep -n "pub fn generate_graph_patch" src/graph_mutation.rs && python3 - <<'PY'
-import json
-from pathlib import Path
-p=Path('../state/rustc/auto-refactor/workspace__ai_sandbox__canon-mini-agent__prototype__state__rustc__ai__graph.graph-editor-plan.json')
-data=json.loads(p.read_text())
-print([op for op in data['operations'] if op.get('id')=='f2de356b6e3f4b52'][0])
-PY`.
-
-2. [ ] `src/graph_mutation.rs::generate_graph_patch`: extract one private helper chosen by item 1 and preserve the public function signature and output contract.
-   - Scope: `src/graph_mutation.rs` only.
-   - Done when: `generate_graph_patch(...)` delegates the selected parse/transform/validate sub-boundary to one private helper; public signature, graph mutation receipt semantics, stale/overlap/path safety checks, and patch text output remain unchanged.
-   - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test graph_mutation_cli_contract -- --test-threads=1`.
-
-3. [ ] `src/agent/loop_driver.rs::LoopDriver::run_cycle`: inspect `SplitFn id=001e821dc83e940a` and write a short boundary note for one manual extraction from `run_cycle(...)`.
-   - Scope: `plan.md`, `status.md`, and source inspection only; do not edit `src/agent/loop_driver.rs` in this inspection item.
-   - Done when: `status.md` records the current source line, the graph-plan expected range `5120..9793`, phases `parse`/`transform`, generated names `run_cycle__parse`/`run_cycle__transform`, and the exact private helper boundary to implement next.
-   - Validation: `grep -n "fn run_cycle" src/agent/loop_driver.rs && python3 - <<'PY'
-import json
-from pathlib import Path
-p=Path('../state/rustc/auto-refactor/workspace__ai_sandbox__canon-mini-agent__prototype__state__rustc__ai__graph.graph-editor-plan.json')
-data=json.loads(p.read_text())
-print([op for op in data['operations'] if op.get('id')=='001e821dc83e940a'][0])
-PY`.
-
-4. [ ] `src/agent/loop_driver.rs::LoopDriver::run_cycle`: extract one private helper chosen by item 3 while preserving cycle state-machine behavior.
-   - Scope: `src/agent/loop_driver.rs` only.
-   - Done when: `run_cycle(...)` delegates the selected sub-boundary to one private helper; cycle request parsing, judgment/task/evidence submission, mailbox handling, replay/determinism behavior, and error propagation remain equivalent.
+1. [ ] `src/agent/loop_driver.rs::LoopDriver::run_cycle`: extract a private helper for the cycle-start observation ingress boundary recorded in `status.md` while preserving cycle state-machine behavior.
+   - Scope: `src/agent/loop_driver.rs` only; preserve pre-existing working-tree edits in this file.
+   - Done when: `run_cycle(...)` delegates only the `command_url` cycle-start observation branch to one private helper that computes spawned-vs-top-level observation bytes, truncates to `MAX_OBSERVATION_PAYLOAD_BYTES`, and calls `submit_observation_ingress(...)`; total-turn selection, goal loading, turn retry loop, eval evidence submission, post-cycle learning, replay/determinism behavior, and error propagation remain equivalent.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test agent:: -- --test-threads=1`.
 
-5. [ ] `src/agent/router.rs::cdp_get`: inspect `SplitFn id=f83874fb2b4b9aa3` and write a short boundary note for one manual extraction from `cdp_get(...)`.
-   - Scope: `plan.md`, `status.md`, and source inspection only; do not edit `src/agent/router.rs` in this inspection item.
-   - Done when: `status.md` records the current source line, the graph-plan expected range `12144..13334`, phases `parse`/`transform`, generated names `cdp_get__parse`/`cdp_get__transform`, and the exact private helper boundary to implement next.
-   - Validation: `grep -n "fn cdp_get" src/agent/router.rs && python3 - <<'PY'
-import json
-from pathlib import Path
-p=Path('../state/rustc/auto-refactor/workspace__ai_sandbox__canon-mini-agent__prototype__state__rustc__ai__graph.graph-editor-plan.json')
-data=json.loads(p.read_text())
-print([op for op in data['operations'] if op.get('id')=='f83874fb2b4b9aa3'][0])
-PY`.
+2. [ ] `src/agent/loop_driver.rs::LoopDriver::run_cycle`: add or adjust one targeted unit/contract test only if item 1 changes observable behavior or lacks existing coverage for the extracted observation-ingress helper.
+   - Scope: `src/agent/loop_driver.rs` tests or existing agent-loop contract tests only.
+   - Done when: the helper boundary is covered by an existing passing test or a narrowly scoped new test proves spawned and top-level observation source selection remains stable.
+   - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test agent:: -- --test-threads=1`.
 
-6. [ ] `src/agent/router.rs::cdp_get`: extract one private helper chosen by item 5 while preserving CDP GET request behavior.
-   - Scope: `src/agent/router.rs` only.
-   - Done when: `cdp_get(...)` delegates the selected sub-boundary to one private helper; URL/path construction, HTTP status handling, body parsing, and error text remain equivalent.
-   - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test router:: -- --test-threads=1`.
-
-7. [ ] `SCORE_REPORT.md`: after one source refactor item lands, refresh graph-derived evidence and review whether `score.md` rationale changes without raising project-level scores absent capability evidence.
+3. [ ] `SCORE_REPORT.md`: after the `run_cycle(...)` source refactor item lands, refresh graph-derived evidence and review whether `score.md` rationale changes without raising project-level scores absent capability evidence.
    - Scope: `SCORE_REPORT.md`, `score.md`, `plan.md`, and `status.md` only.
    - Done when: `scripts/recapture_rustc_graphs.sh --check` validates the configured graph root, `SCORE_REPORT.md` is regenerated from `../state/rustc`, `status.md` records aggregate and affected crate rows, and `score.md` changes only if refreshed evidence differs from the current rationale.
    - Validation: `bash scripts/recapture_rustc_graphs.sh --check && cargo run --manifest-path ../score/Cargo.toml --quiet -- --artifact-root ../state/rustc --report SCORE_REPORT.md --date "$(date +%Y-%m-%d)"`.
