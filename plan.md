@@ -112,7 +112,7 @@ The selected graph-editor plan is schema version 1, contains 1,614 planned opera
    - Done when: gate ids, evidence ids, failed-evidence effect `(0, "null")`, `Execution/ExecutionReceipt` no-effect behavior, and `Plan`/`Execution`/`Verification`/`Eval` effect mappings are unchanged; `build_submit_evidence_json(...)` known vectors from existing tests remain byte-for-byte stable.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test submit_evidence_hash_helpers_preserve_known_vectors -- --test-threads=1`.
 
-4. [ ] `src/agent/cycle.rs` test `gate_evidence_route_tables_preserve_known_values`: add focused regression coverage for the item 3 lookup table before graph refresh.
+4. [x] `src/agent/cycle.rs` test `gate_evidence_route_tables_preserve_known_values`: add focused regression coverage for the item 3 lookup table before graph refresh.
    - Scope: `src/agent/cycle.rs` tests only.
    - Done when: the named test asserts current ids for at least `Invariant`, `Plan`, `Eval`, `InvariantProof`, `TaskReady`, `EvalScore`, unknown gate/evidence `None`, failed evidence no-effect, `Execution/ExecutionReceipt` no-effect, `Plan/TaskReady` bind-ready effect, and `Verification/LineageProof` repair-lineage effect.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test gate_evidence_route_tables_preserve_known_values -- --test-threads=1`.

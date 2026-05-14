@@ -57,6 +57,14 @@ Current date: 2026-05-14.
 
 ## Validation Ledger
 
+### 2026-05-14 — item 4 cycle route-table regression test
+
+- Scope: `src/agent/cycle.rs` tests, checklist item 4 in `plan.md`, and `status.md` evidence update.
+- Command/check: targeted `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test gate_evidence_route_tables_preserve_known_values -- --test-threads=1`; broader `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
+- Result: passed.
+- Evidence: added `agent::cycle::hash_tests::gate_evidence_route_tables_preserve_known_values`, asserting current gate ids for `Invariant`, `Plan`, and `Eval`; evidence ids for `InvariantProof`, `TaskReady`, and `EvalScore`; unknown gate/evidence `None`; failed evidence no-effect; `Execution/ExecutionReceipt` no-effect; `Plan/TaskReady` bind-ready effect; and `Verification/LineageProof` repair-lineage effect. Targeted validation passed with 1 named test and 0 failures. Broader validation passed with 286 library/bin tests, 3 root_validate tests, 12 API server contract tests, 20 API transport contract tests, 3 canonical TLog contract tests, 4 domain contract tests, 10 graph mutation CLI contract tests, 9 MCP receipt contract tests, 2 planning contract tests, 5 score contract tests, 2 supervisor binary contract tests, 2 worker binary contract tests, and all example test targets green.
+- Next action: perform Active Priorities item 5 graph-derived evidence refresh.
+
 ### 2026-05-14 — item 3 cycle gate/evidence/effect route table consolidation
 
 - Scope: `src/agent/cycle.rs`, checklist item 3 in `plan.md`, and `status.md` evidence update.

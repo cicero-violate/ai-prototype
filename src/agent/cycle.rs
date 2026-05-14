@@ -1175,6 +1175,36 @@ mod hash_tests {
     }
 
     #[test]
+    fn gate_evidence_route_tables_preserve_known_values() {
+        assert_eq!(gate_id_u64("Invariant"), Some(1));
+        assert_eq!(gate_id_u64("Plan"), Some(4));
+        assert_eq!(gate_id_u64("Eval"), Some(7));
+        assert_eq!(gate_id_u64("UnknownGate"), None);
+
+        assert_eq!(evidence_u64_value("InvariantProof"), Some(3));
+        assert_eq!(evidence_u64_value("TaskReady"), Some(7));
+        assert_eq!(evidence_u64_value("EvalScore"), Some(12));
+        assert_eq!(evidence_u64_value("UnknownEvidence"), None);
+
+        assert_eq!(
+            effect_for_gate_evidence("Plan", "TaskReady", false),
+            (0, "null")
+        );
+        assert_eq!(
+            effect_for_gate_evidence("Execution", "ExecutionReceipt", true),
+            (0, "null")
+        );
+        assert_eq!(
+            effect_for_gate_evidence("Plan", "TaskReady", true),
+            (1, "\"BindReadyTask\"")
+        );
+        assert_eq!(
+            effect_for_gate_evidence("Verification", "LineageProof", true),
+            (3, "\"RepairLineage\"")
+        );
+    }
+
+    #[test]
     fn submit_evidence_hash_helpers_preserve_known_vectors() {
         let invariant_json =
             build_submit_evidence_json("Invariant", "InvariantProof", true, 1).unwrap();
