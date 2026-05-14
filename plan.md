@@ -109,7 +109,7 @@ Graph operations for `capability::llm::openai::OpenAiMessage::{assistant, system
    - Done when: the named test proves `system(...)`, `user(...)`, `assistant(...)`, `assistant_tool_call(...)`, and `tool(...)` preserve their exact role strings, content presence, tool-call-id presence, tool-call vector cardinality, and `message_contract_valid(...)` behavior. The test must not perform network I/O, filesystem I/O outside normal cargo test execution, environment mutation, or process spawning.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test openai_message_constructors_preserve_role_boundaries -- --test-threads=1`.
 
-15. [ ] `SCORE_REPORT.md`: after items 13 and 14 land, refresh graph-derived structural evidence and review whether `score.md` rationale changes without raising project-level scores absent capability evidence.
+15. [x] `SCORE_REPORT.md`: after items 13 and 14 land, refresh graph-derived structural evidence and review whether `score.md` rationale changes without raising project-level scores absent capability evidence.
    - Scope: `SCORE_REPORT.md`, `score.md`, `plan.md`, and `status.md` only.
    - Done when: `scripts/recapture_rustc_graphs.sh --check` validates the configured graph root, `SCORE_REPORT.md` is regenerated from `../state/rustc`, `status.md` records aggregate and affected crate rows, and `score.md` changes only if refreshed evidence differs from the current rationale.
    - Validation: `bash scripts/recapture_rustc_graphs.sh --check && cargo run --manifest-path ../score/Cargo.toml --quiet -- --artifact-root ../state/rustc --report SCORE_REPORT.md --date "$(date +%Y-%m-%d)"`.
