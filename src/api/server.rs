@@ -549,6 +549,45 @@ mod tests {
     use super::*;
 
     #[test]
+    fn api_submission_token_parser_preserves_gate_and_evidence_mappings() {
+        let gate_cases = [
+            ("Invariant", GateId::Invariant),
+            ("Analysis", GateId::Analysis),
+            ("Judgment", GateId::Judgment),
+            ("Plan", GateId::Plan),
+            ("Execution", GateId::Execution),
+            ("Verification", GateId::Verification),
+            ("Eval", GateId::Eval),
+            ("Learning", GateId::Learning),
+        ];
+        for (input, expected) in gate_cases {
+            assert_eq!(gate_from_str(input), Ok(expected));
+        }
+        assert_eq!(gate_from_str("UnknownGate"), Err(ServerError::InvalidPayload));
+
+        let evidence_cases = [
+            ("InvariantProof", Evidence::InvariantProof),
+            ("AnalysisReport", Evidence::AnalysisReport),
+            ("JudgmentRecord", Evidence::JudgmentRecord),
+            ("PlanRecord", Evidence::PlanRecord),
+            ("TaskReady", Evidence::TaskReady),
+            ("ExecutionReceipt", Evidence::ExecutionReceipt),
+            ("ArtifactReceipt", Evidence::ArtifactReceipt),
+            ("VerificationReport", Evidence::VerificationReport),
+            ("LineageProof", Evidence::LineageProof),
+            ("EvalScore", Evidence::EvalScore),
+            ("PersistedRecord", Evidence::PersistedRecord),
+        ];
+        for (input, expected) in evidence_cases {
+            assert_eq!(evidence_from_str(input), Ok(expected));
+        }
+        assert_eq!(
+            evidence_from_str("UnknownEvidence"),
+            Err(ServerError::InvalidPayload)
+        );
+    }
+
+    #[test]
     fn invalid_replay_transport_error_maps_to_conflict_status() {
         let (status, Json(body)) =
             error_response(ServerError::Transport(CanonError::InvalidReplay));

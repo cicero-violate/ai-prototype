@@ -102,7 +102,7 @@ The selected graph-editor plan is schema version 1, contains 1,614 planned opera
    - Done when: both public call paths still accept `Invariant`, `Analysis`, `Judgment`, `Plan`, `Execution`, `Verification`, `Eval`, `Learning`, `InvariantProof`, `AnalysisReport`, `JudgmentRecord`, `PlanRecord`, `TaskReady`, `ExecutionReceipt`, `ArtifactReceipt`, `VerificationReport`, `LineageProof`, `EvalScore`, and `PersistedRecord`; unknown gate/evidence strings still return `ServerError::InvalidPayload`; no router route, DTO shape, transport session, command envelope, or TLog persistence behavior changes.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test api_server_contract api_rejects_mismatched_evidence_without_mutation -- --test-threads=1`.
 
-2. [ ] `src/api/server.rs` test `api_submission_token_parser_preserves_gate_and_evidence_mappings`: add focused regression coverage for the item 1 parser consolidation.
+2. [x] `src/api/server.rs` test `api_submission_token_parser_preserves_gate_and_evidence_mappings`: add focused regression coverage for the item 1 parser consolidation.
    - Scope: `src/api/server.rs` tests only.
    - Done when: the named test asserts `gate_from_str(...)` outputs for all eight accepted gate strings and an unknown string, and asserts `evidence_from_str(...)` outputs for all eleven accepted evidence strings and an unknown string.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test api_submission_token_parser_preserves_gate_and_evidence_mappings -- --test-threads=1`.
