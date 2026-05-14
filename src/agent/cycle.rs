@@ -274,9 +274,12 @@ impl AgentCycle {
         let failure =
             extract_json_string(state_body, "failure").unwrap_or_else(|| "Unknown".into());
         let recovery_action = extract_json_string(state_body, "recovery_action");
-        let target_phase = recovery_action
+        let selected_action = recovery_action
             .as_deref()
-            .and_then(recovery_target_phase)
+            .or_else(|| recovery_action_for_failure(&failure));
+        let selected_spec = selected_action.and_then(recovery_action_spec);
+        let target_phase = selected_spec
+            .map(|spec| spec.target_phase)
             .unwrap_or("Unknown");
         let output = self.llm_phase_turn(
             loop_steps,
@@ -288,11 +291,8 @@ impl AgentCycle {
             return Ok(Some(StopReason::HumanReviewRequired));
         }
         let passed = parse_verdict(&output);
-        let selected_action = recovery_action
-            .as_deref()
-            .or_else(|| recovery_action_for_failure(&failure));
-        if let Some(action) = selected_action {
-            if let Some((gate, evidence)) = recovery_gate(action) {
+        if let Some(spec) = selected_spec {
+            if let Some((gate, evidence)) = spec.gate {
                 self.submit_evidence(gate, evidence, passed);
             }
         }
@@ -632,14 +632,6 @@ fn recovery_action_for_failure(failure: &str) -> Option<&'static str> {
 
 fn recovery_action_spec(action: &str) -> Option<RecoveryActionSpec> {
     recovery_route_for_action(action).map(|route| route.spec)
-}
-
-fn recovery_gate(action: &str) -> Option<(&'static str, &'static str)> {
-    recovery_action_spec(action).and_then(|spec| spec.gate)
-}
-
-fn recovery_target_phase(action: &str) -> Option<&'static str> {
-    recovery_action_spec(action).map(|spec| spec.target_phase)
 }
 
 #[derive(Clone, Copy)]
@@ -1096,46 +1088,42 @@ mod hash_tests {
         assert_eq!(phase_gate("UnknownPhase"), None);
     }
 
+    fn assert_recovery_spec(
+        action: &str,
+        expected_gate: Option<(&'static str, &'static str)>,
+        expected_target_phase: &'static str,
+    ) {
+        let spec = recovery_action_spec(action).expect("known recovery action spec");
+        assert_eq!(spec.gate, expected_gate);
+        assert_eq!(spec.target_phase, expected_target_phase);
+    }
+
     #[test]
     fn recovery_failure_maps_task_receipt_missing_to_reexecute() {
         assert_eq!(
             recovery_action_for_failure("TaskReceiptMissing"),
             Some("Reexecute")
         );
-        assert_eq!(
-            recovery_gate("Reexecute"),
-            Some(("Execution", "ArtifactReceipt"))
-        );
+        assert_recovery_spec("Reexecute", Some(("Execution", "ArtifactReceipt")), "Execute");
     }
 
     #[test]
     fn recovery_action_spec_preserves_gate_and_target_mappings() {
-        assert_eq!(
-            recovery_gate("RecheckInvariant"),
-            Some(("Invariant", "InvariantProof"))
+        assert_recovery_spec(
+            "RecheckInvariant",
+            Some(("Invariant", "InvariantProof")),
+            "Invariant",
         );
-        assert_eq!(recovery_target_phase("RecheckInvariant"), Some("Invariant"));
-
-        assert_eq!(recovery_gate("BindReadyTask"), Some(("Plan", "TaskReady")));
-        assert_eq!(recovery_target_phase("BindReadyTask"), Some("Plan"));
-
-        assert_eq!(
-            recovery_gate("RepairArtifactLineage"),
-            Some(("Verification", "LineageProof"))
+        assert_recovery_spec("BindReadyTask", Some(("Plan", "TaskReady")), "Plan");
+        assert_recovery_spec(
+            "RepairArtifactLineage",
+            Some(("Verification", "LineageProof")),
+            "Verify",
         );
-        assert_eq!(
-            recovery_target_phase("RepairArtifactLineage"),
-            Some("Verify")
-        );
+        assert_recovery_spec("RecomputeEval", Some(("Eval", "EvalScore")), "Eval");
+        assert_recovery_spec("Escalate", None, "Done");
 
-        assert_eq!(recovery_gate("RecomputeEval"), Some(("Eval", "EvalScore")));
-        assert_eq!(recovery_target_phase("RecomputeEval"), Some("Eval"));
-
-        assert_eq!(recovery_gate("Escalate"), None);
-        assert_eq!(recovery_target_phase("Escalate"), Some("Done"));
-
-        assert_eq!(recovery_gate("UnknownRecoveryAction"), None);
-        assert_eq!(recovery_target_phase("UnknownRecoveryAction"), None);
+        assert!(recovery_action_spec("UnknownRecoveryAction").is_none());
     }
 
     #[test]
@@ -1170,41 +1158,21 @@ mod hash_tests {
         );
         assert_eq!(recovery_action_for_failure("UnknownFailure"), None);
 
-        assert_eq!(
-            recovery_gate("RecheckInvariant"),
-            Some(("Invariant", "InvariantProof"))
+        assert_recovery_spec(
+            "RecheckInvariant",
+            Some(("Invariant", "InvariantProof")),
+            "Invariant",
         );
-        assert_eq!(recovery_target_phase("RecheckInvariant"), Some("Invariant"));
-
-        assert_eq!(
-            recovery_gate("RunAnalysis"),
-            Some(("Analysis", "AnalysisReport"))
+        assert_recovery_spec("RunAnalysis", Some(("Analysis", "AnalysisReport")), "Analysis");
+        assert_recovery_spec("BindReadyTask", Some(("Plan", "TaskReady")), "Plan");
+        assert_recovery_spec("Reexecute", Some(("Execution", "ArtifactReceipt")), "Execute");
+        assert_recovery_spec(
+            "RepairArtifactLineage",
+            Some(("Verification", "LineageProof")),
+            "Verify",
         );
-        assert_eq!(recovery_target_phase("RunAnalysis"), Some("Analysis"));
-
-        assert_eq!(recovery_gate("BindReadyTask"), Some(("Plan", "TaskReady")));
-        assert_eq!(recovery_target_phase("BindReadyTask"), Some("Plan"));
-
-        assert_eq!(
-            recovery_gate("Reexecute"),
-            Some(("Execution", "ArtifactReceipt"))
-        );
-        assert_eq!(recovery_target_phase("Reexecute"), Some("Execute"));
-
-        assert_eq!(
-            recovery_gate("RepairArtifactLineage"),
-            Some(("Verification", "LineageProof"))
-        );
-        assert_eq!(
-            recovery_target_phase("RepairArtifactLineage"),
-            Some("Verify")
-        );
-
-        assert_eq!(recovery_gate("RecomputeEval"), Some(("Eval", "EvalScore")));
-        assert_eq!(recovery_target_phase("RecomputeEval"), Some("Eval"));
-
-        assert_eq!(recovery_gate("Escalate"), None);
-        assert_eq!(recovery_target_phase("Escalate"), Some("Done"));
+        assert_recovery_spec("RecomputeEval", Some(("Eval", "EvalScore")), "Eval");
+        assert_recovery_spec("Escalate", None, "Done");
     }
 
     #[test]

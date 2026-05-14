@@ -3764,3 +3764,16 @@ Planning-turn update on 2026-05-14 for next non-root graph-backed cycle work:
 - Inspected the working tree before changing planning files. Existing uncommitted non-planning changes in `GOAL.md` and `src/agent/loop_driver.rs` were left untouched.
 - Updated `plan.md` with three executable items: item 4 direct `RecoveryActionSpec` use and wrapper removal in `src/agent/cycle.rs`, item 5 focused recovery-route test update, and item 6 graph-derived evidence refresh.
 - `score.md` was reviewed and left unchanged because this planning turn produced no implementation, validation, graph refresh, or score-history-worthy capability evidence.
+
+
+Implementation step 1 evidence on 2026-05-14 for Active Priorities item 4:
+
+- Selected first unchecked Active Priorities item 4: `src/agent/cycle.rs` recovery wrapper removal for `recovery_gate(...)` and `recovery_target_phase(...)`.
+- Read `plan.md`, `status.md`, and `score.md` before editing. Existing uncommitted non-planning changes in `GOAL.md` and `src/agent/loop_driver.rs` were left untouched.
+- Changed only the item-scoped source file `src/agent/cycle.rs` plus planning/status evidence files.
+- Updated `run_recovery_phase(...)` so it selects the recovery action once, resolves one optional `RecoveryActionSpec`, derives `target_phase` from that spec, and submits recovery evidence from the same spec gate after verdict parsing.
+- Removed private wrappers `recovery_gate(...)` and `recovery_target_phase(...)`; retained `recovery_action_spec(...)`, `recovery_action_for_failure(...)`, `recovery_route_for_action(...)`, and `recovery_route_for_failure(...)` with current semantics.
+- Updated scoped recovery tests that directly named the removed wrappers to assert through `recovery_action_spec(...)` and a local `assert_recovery_spec(...)` helper.
+- Targeted validation passed: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test recovery_action_spec_preserves_gate_and_target_mappings -- --test-threads=1` ran the named test successfully.
+- Broader validation passed: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets` passed with 292 library tests, 3 `root_validate` binary tests, and all integration/example test targets passing.
+- Marked item 4 complete in `plan.md`. `score.md` was reviewed and left unchanged because this is a narrow structure refactor with validation evidence, not a score-history-worthy project-level capability change.
