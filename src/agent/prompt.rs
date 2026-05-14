@@ -14,6 +14,22 @@ const CERTIFICATION_OUTPUT_RULE: &str =
     "Do not call tools, browse, echo, or fetch time. Return plain text only. \
      Output exactly one VERDICT: pass or VERDICT: fail line as the final line.";
 
+struct CertificationPrompt<'a> {
+    phase: &'static str,
+    domain: &'a str,
+    context: String,
+    instruction: &'static str,
+}
+
+fn certification_prompt(spec: CertificationPrompt<'_>) -> String {
+    format!(
+        "{} phase — domain: {}\n{}\n\n{} \
+         If you need human input, output HUMAN_REVIEW_REQUIRED.\n\
+         {CERTIFICATION_OUTPUT_RULE}",
+        spec.phase, spec.domain, spec.context, spec.instruction
+    )
+}
+
 /// First turn: ask for a step-by-step plan.
 ///
 /// `score_report` is the content of SCORE_REPORT.md if available. When
@@ -42,60 +58,48 @@ pub fn planning_prompt(
 }
 
 pub fn analysis_prompt(domain: &str, goal: &str) -> String {
-    format!(
-        "Analysis phase — domain: {domain}\n\
-         Goal: {goal}\n\n\
-         Analyze the objective and identify the facts, assumptions, risks, and unknowns \
-         that matter for deciding whether the work should proceed. \
-         If you need human input, output HUMAN_REVIEW_REQUIRED.\n\
-         {CERTIFICATION_OUTPUT_RULE}"
-    )
+    certification_prompt(CertificationPrompt {
+        phase: "Analysis",
+        domain,
+        context: format!("Goal: {goal}"),
+        instruction: "Analyze the objective and identify the facts, assumptions, risks, and unknowns that matter for deciding whether the work should proceed.",
+    })
 }
 
 pub fn judgment_prompt(domain: &str, analysis: &str) -> String {
-    format!(
-        "Judgment phase — domain: {domain}\n\
-         Analysis:\n{analysis}\n\n\
-         Judge whether the analysis supports moving forward. State the decision, \
-         confidence, and any blocking concerns. \
-         If you need human input, output HUMAN_REVIEW_REQUIRED.\n\
-         {CERTIFICATION_OUTPUT_RULE}"
-    )
+    certification_prompt(CertificationPrompt {
+        phase: "Judgment",
+        domain,
+        context: format!("Analysis:\n{analysis}"),
+        instruction: "Judge whether the analysis supports moving forward. State the decision, confidence, and any blocking concerns.",
+    })
 }
 
 pub fn plan_prompt(domain: &str, judgment: &str) -> String {
-    format!(
-        "Plan phase — domain: {domain}\n\
-         Judgment:\n{judgment}\n\n\
-         Produce the concrete plan of work implied by the judgment. Include ordered \
-         tasks, expected receipts, and completion criteria. \
-         If you need human input, output HUMAN_REVIEW_REQUIRED.\n\
-         {CERTIFICATION_OUTPUT_RULE}"
-    )
+    certification_prompt(CertificationPrompt {
+        phase: "Plan",
+        domain,
+        context: format!("Judgment:\n{judgment}"),
+        instruction: "Produce the concrete plan of work implied by the judgment. Include ordered tasks, expected receipts, and completion criteria.",
+    })
 }
 
 pub fn eval_prompt(domain: &str, metric: &str, execution: &str) -> String {
-    format!(
-        "Eval phase — domain: {domain}\n\
-         Success metric: {metric}\n\
-         Execution context:\n{execution}\n\n\
-         Evaluate the completed work against the success metric. Call out any \
-         remaining gaps or reasons the result should not be accepted. \
-         If you need human input, output HUMAN_REVIEW_REQUIRED.\n\
-         {CERTIFICATION_OUTPUT_RULE}"
-    )
+    certification_prompt(CertificationPrompt {
+        phase: "Eval",
+        domain,
+        context: format!("Success metric: {metric}\nExecution context:\n{execution}"),
+        instruction: "Evaluate the completed work against the success metric. Call out any remaining gaps or reasons the result should not be accepted.",
+    })
 }
 
 pub fn recovery_prompt(domain: &str, failure: &str, target_phase: &str) -> String {
-    format!(
-        "Recovery phase — domain: {domain}\n\
-         Failure: {failure}\n\
-         Target phase: {target_phase}\n\n\
-         Explain the recovery work needed to return the objective to a coherent \
-         state. Focus on the semantic repair, not runtime protocol details. \
-         If you need human input, output HUMAN_REVIEW_REQUIRED.\n\
-         {CERTIFICATION_OUTPUT_RULE}"
-    )
+    certification_prompt(CertificationPrompt {
+        phase: "Recovery",
+        domain,
+        context: format!("Failure: {failure}\nTarget phase: {target_phase}"),
+        instruction: "Explain the recovery work needed to return the objective to a coherent state. Focus on the semantic repair, not runtime protocol details.",
+    })
 }
 
 #[cfg(test)]

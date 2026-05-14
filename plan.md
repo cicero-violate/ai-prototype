@@ -127,7 +127,7 @@ The selected graph-editor plan is schema version 1, contains 1,614 planned opera
    - Done when: the named test compares a baseline `AgentObjective::new(...)` against chained `with_risk_envelope(...)` and `with_stop_condition(...)`, proving the two hashes are nonzero, independent for distinct strings, and do not mutate `objective_id`, `objective_hash`, or `success_metric_hash`.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test objective_hash_setters_preserve_independent_fields -- --test-threads=1`.
 
-7. [ ] `src/agent/prompt.rs`: consolidate certification prompt builders around one private certification prompt formatter while preserving exact required safety/verdict language and each prompt's phase-specific inputs.
+7. [x] `src/agent/prompt.rs`: consolidate certification prompt builders around one private certification prompt formatter while preserving exact required safety/verdict language and each prompt's phase-specific inputs.
    - Scope: `src/agent/prompt.rs` functions `analysis_prompt(...)`, `judgment_prompt(...)`, `plan_prompt(...)`, `eval_prompt(...)`, `recovery_prompt(...)`, and a new private formatter/type in the same file only.
    - Done when: all five certification prompt builders share one formatter; each prompt still includes the same phase name, domain, required context labels, human-review sentinel instruction, `CERTIFICATION_OUTPUT_RULE`, and no tool-call permission changes; `planning_prompt(...)` and `system_prompt(...)` remain behaviorally unchanged.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test agent::prompt -- --test-threads=1`.
