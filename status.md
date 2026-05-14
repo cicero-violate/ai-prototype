@@ -3789,3 +3789,16 @@ Implementation step 2 evidence on 2026-05-14 for Active Priorities item 5:
 - Targeted validation passed: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test recovery_route_table_preserves_failure_action_and_target_mappings -- --test-threads=1` ran the named test successfully.
 - Broader validation passed: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets` passed with 292 library tests, 3 `root_validate` binary tests, and all integration/example test targets passing.
 - Marked item 5 complete in `plan.md`. `score.md` was reviewed and left unchanged because this is focused regression coverage for an existing recovery route table, not a score-history-worthy project-level capability change.
+
+
+Implementation step 3 evidence on 2026-05-14 for Active Priorities item 6:
+
+- Selected first unchecked Active Priorities item 6: `SCORE_REPORT.md` graph-derived structural evidence refresh after items 4 and 5.
+- Read `plan.md`, `status.md`, and `score.md` before running validation. Existing uncommitted non-planning changes in `GOAL.md` and `src/agent/loop_driver.rs` were left untouched.
+- Ran the targeted evidence-refresh command: `bash scripts/recapture_rustc_graphs.sh --check && cargo run --manifest-path ../score/Cargo.toml --quiet -- --artifact-root ../state/rustc --report SCORE_REPORT.md --date "$(date +%Y-%m-%d)"`.
+- Targeted validation passed. Graph artifact check passed for the configured `../state/rustc` root with required artifacts, the scorer processed 17 crates with 0 skipped, and regenerated evidence remained `G = 7.99 / 10`.
+- Refreshed aggregate axes remain Architecture `8.9`, Structure `4.9`, Simplicity `7.1`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.4`.
+- Affected crate rows remain unchanged for this cycle-level refresh: local `ai` library crate row is 5,534 nodes, 34,321 edges, 2,236 functions, Architecture `9.4`, Structure `6.0`, Simplicity `7.5`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.6`; `root_validate` remains 163 nodes, 1,990 edges, 161 functions, Architecture `3.3`, Structure `1.5`, Simplicity `6.1`, Maintainability `10.0`, Determinism `10.0`, and Coherency `7.3`.
+- Broader validation passed: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets` passed with 292 library tests, 3 `root_validate` binary tests, and all integration/example test targets passing.
+- `SCORE_REPORT.md` and `score.md` had no diff after refresh because regenerated structural evidence matched the current checked-in report and score rationale.
+- Marked item 6 complete in `plan.md`. `score.md` was reviewed and left unchanged because this evidence refresh confirms the current structural snapshot and does not justify project-level numeric score changes.
