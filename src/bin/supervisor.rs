@@ -82,7 +82,7 @@ async fn run() -> Result<(), String> {
 
 fn print_help() {
     println!("usage: supervisor [--help]");
-    println!("environment: SUPERVISOR_PORT, AI_TLOG_DIR, AI_WORKER_BIN, AI_MCP_WORKER_URL");
+    println!("environment: SUPERVISOR_PORT, AI_TLOG_DIR, AI_KERNEL_TLOG_BIN, AI_MCP_WORKER_URL");
     println!("             AI_AGENT_BIN, CANON_OPENAI_BASE_URL, PROJECT_DIR, MCP_CONNECTOR_URL");
     println!("routes: GET /health, POST /reload, POST /spawn, POST /v1/command");
 }
@@ -106,14 +106,14 @@ impl SupervisorConfig {
             .map_err(|_| "SUPERVISOR_PORT must be a u16".to_string())?;
         let tlog_dir =
             PathBuf::from(env::var("AI_TLOG_DIR").unwrap_or_else(|_| "state/tlog".to_string()));
-        let worker_bin = match env::var("AI_WORKER_BIN") {
+        let worker_bin = match env::var("AI_KERNEL_TLOG_BIN") {
             Ok(path) => PathBuf::from(path),
             Err(_) => default_worker_bin()?,
         };
         let mcp_worker_url = env::var("AI_MCP_WORKER_URL")
             .unwrap_or_else(|_| "http://127.0.0.1:38469/mcp_worker".to_string());
         let router_url = env::var("CANON_OPENAI_BASE_URL")
-            .unwrap_or_else(|_| "http://127.0.0.1:8081/v1".to_string());
+            .unwrap_or_else(|_| "http://127.0.0.1:8082/v1".to_string());
         let project_dir = env::var("PROJECT_DIR")
             .map(PathBuf::from)
             .unwrap_or_else(|_| env::current_dir().unwrap_or_default());
@@ -136,7 +136,7 @@ fn default_worker_bin() -> Result<PathBuf, String> {
     let dir = exe
         .parent()
         .ok_or_else(|| "supervisor binary has no parent directory".to_string())?;
-    let mut path = dir.join("worker");
+    let mut path = dir.join("kernel_tlog");
     if cfg!(windows) {
         path.set_extension("exe");
     }
@@ -564,7 +564,7 @@ async fn ensure_worker_binary(binary_path: &PathBuf) -> Result<(), String> {
         .arg("--manifest-path")
         .arg(&workspace_manifest)
         .arg("--bin")
-        .arg("worker")
+        .arg("kernel_tlog")
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit());
     if binary_path

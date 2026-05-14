@@ -71,7 +71,7 @@ fn supervisor_spawns_worker_and_reloads_generation() {
     let mut child = ProcessCommand::new(env!("CARGO_BIN_EXE_supervisor"))
         .env("SUPERVISOR_PORT", supervisor_port.to_string())
         .env("AI_TLOG_DIR", &tlog_dir)
-        .env("AI_WORKER_BIN", env!("CARGO_BIN_EXE_worker"))
+        .env("AI_KERNEL_TLOG_BIN", env!("CARGO_BIN_EXE_kernel_tlog"))
         .stdin(Stdio::null())
         .stdout(Stdio::null())
         .stderr(Stdio::null())

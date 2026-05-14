@@ -17,12 +17,12 @@ name = "agent"
 path = "src/bin/agent.rs"
 
 [[bin]]
-name = "supervisor"
-path = "src/bin/supervisor.rs"
+name = "kernel_tlog"
+path = "src/bin/kernel_tlog.rs"
 
 [[bin]]
-name = "worker"
-path = "src/bin/worker.rs"
+name = "supervisor"
+path = "src/bin/supervisor.rs"
 
 [dependencies]
 axum = { version = "0.7", features = [] }

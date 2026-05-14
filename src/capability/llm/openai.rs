@@ -42,7 +42,7 @@ pub const OPENAI_JUDGMENT_PROOF_RECORD: u64 = 62;
 pub const OPENAI_JUDGMENT_PROOF_LINE: &str =
     "receipt_verified+tamper_rejected+endpoint_verified+phase_plan";
 
-const DEFAULT_BASE_URL: &str = "http://127.0.0.1:8081/v1";
+const DEFAULT_BASE_URL: &str = "http://127.0.0.1:8082/v1";
 const DEFAULT_MODEL: &str = "chatgpt-project";
 const DEFAULT_TIMEOUT_MS: u64 = 120_000;
 const DEFAULT_MAX_RETRIES: u32 = 0;
