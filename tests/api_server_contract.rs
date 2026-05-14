@@ -646,6 +646,74 @@ async fn invalid_command_does_not_mutate_state() {
 }
 
 #[tokio::test]
+async fn api_server_rejects_unknown_submission_gate_and_evidence() {
+    let path = tlog_path("unknown-submission-token");
+    let _ = std::fs::remove_file(&path);
+    let state = WorkerAppState::new_default(&path);
+    let before = state.snapshot().unwrap();
+    let app = build_router(state.clone());
+    let submission = EvidenceSubmission::with_payload(
+        ai::GateId::Analysis,
+        ai::Evidence::AnalysisReport,
+        true,
+        0x1234,
+    );
+
+    let unknown_gate_body = command_body_with_payload(
+        81,
+        submission,
+        EvidenceSubmissionDto {
+            gate: "UnknownGate".to_string(),
+            evidence: "AnalysisReport".to_string(),
+            passed: true,
+            effect: Some("None".to_string()),
+            payload_hash: submission.payload_hash,
+        },
+    );
+    let unknown_gate_response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/v1/command")
+                .header("Content-Type", "application/json")
+                .body(Body::from(unknown_gate_body.to_string()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(unknown_gate_response.status(), StatusCode::BAD_REQUEST);
+    assert_eq!(state.snapshot().unwrap(), before);
+    assert!(!path.exists());
+
+    let unknown_evidence_body = command_body_with_payload(
+        82,
+        submission,
+        EvidenceSubmissionDto {
+            gate: "Analysis".to_string(),
+            evidence: "UnknownEvidence".to_string(),
+            passed: true,
+            effect: Some("None".to_string()),
+            payload_hash: submission.payload_hash,
+        },
+    );
+    let unknown_evidence_response = app
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/v1/command")
+                .header("Content-Type", "application/json")
+                .body(Body::from(unknown_evidence_body.to_string()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(unknown_evidence_response.status(), StatusCode::BAD_REQUEST);
+    assert_eq!(state.snapshot().unwrap(), before);
+    assert!(!path.exists());
+}
+
+#[tokio::test]
 async fn oversized_batch_command_does_not_mutate_state_or_disk() {
     let path = tlog_path("oversized-batch");
     let _ = std::fs::remove_file(&path);

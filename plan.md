@@ -107,7 +107,7 @@ The selected graph-editor plan is schema version 1, contains 1,614 planned opera
    - Done when: the named test asserts `gate_from_str(...)` outputs for all eight accepted gate strings and an unknown string, and asserts `evidence_from_str(...)` outputs for all eleven accepted evidence strings and an unknown string.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test api_submission_token_parser_preserves_gate_and_evidence_mappings -- --test-threads=1`.
 
-3. [ ] `tests/api_server_contract.rs` test `api_server_rejects_unknown_submission_gate_and_evidence`: add black-box API regression coverage for invalid gate/evidence DTO strings after item 1.
+3. [x] `tests/api_server_contract.rs` test `api_server_rejects_unknown_submission_gate_and_evidence`: add black-box API regression coverage for invalid gate/evidence DTO strings after item 1.
    - Scope: `tests/api_server_contract.rs` only.
    - Done when: the named test posts `SubmitEvidence` payloads with one unknown gate string and one unknown evidence string, and both responses are `400 BAD_REQUEST` without persisted successful command mutation.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test api_server_contract api_server_rejects_unknown_submission_gate_and_evidence -- --test-threads=1`.
