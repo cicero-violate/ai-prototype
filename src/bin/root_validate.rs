@@ -1734,20 +1734,21 @@ fn policy_reuse_evidence_retrieval_result_use_approval_regression_smoke_mode(
 ) -> Result<CompactModeOutcome, String> {
     let receipt = validation_harness::
         policy_reuse_evidence_retrieval_result_use_approval_regression_smoke_receipt();
-    let passed = receipt.is_valid()
-        && !receipt.retrieval_result_use_ready
+    let passed = policy_reuse_common_regression_guards(
+        receipt.is_valid(),
+        receipt.retrieval_read_performed,
+        receipt.retrieval_write_performed,
+        receipt.retrieval_query_executed,
+        receipt.runtime_result_approval_performed,
+        receipt.policy_promotion_performed,
+        receipt.student_training_performed,
+        receipt.external_result_evidence_present,
+        receipt.passed(),
+    ) && !receipt.retrieval_result_use_ready
         && !receipt.retrieval_result_use_manifest_ready
-        && !receipt.retrieval_read_performed
-        && !receipt.retrieval_write_performed
-        && !receipt.retrieval_query_executed
-        && !receipt.runtime_result_approval_performed
-        && !receipt.policy_promotion_performed
-        && !receipt.student_training_performed
-        && receipt.external_result_evidence_present
         && !receipt.retrieval_result_use_approved
         && receipt.result_use_approval_status == "result_use_not_approved"
-        && receipt.not_approved_reason == "readiness_not_ready"
-        && !receipt.passed();
+        && receipt.not_approved_reason == "readiness_not_ready";
     Ok(CompactModeOutcome::controlled_json(
         receipt.to_json(),
         passed,
@@ -1768,20 +1769,21 @@ fn policy_reuse_evidence_retrieval_result_use_manifest_admission_regression_smok
 ) -> Result<CompactModeOutcome, String> {
     let receipt = validation_harness::
         policy_reuse_evidence_retrieval_result_use_manifest_admission_regression_smoke_receipt();
-    let passed = receipt.is_valid()
-        && !receipt.retrieval_result_use_approved
+    let passed = policy_reuse_common_regression_guards(
+        receipt.is_valid(),
+        receipt.retrieval_read_performed,
+        receipt.retrieval_write_performed,
+        receipt.retrieval_query_executed,
+        receipt.runtime_result_approval_performed,
+        receipt.policy_promotion_performed,
+        receipt.student_training_performed,
+        receipt.external_result_evidence_present,
+        receipt.passed(),
+    ) && !receipt.retrieval_result_use_approved
         && !receipt.retrieval_result_use_ready
-        && !receipt.retrieval_read_performed
-        && !receipt.retrieval_write_performed
-        && !receipt.retrieval_query_executed
-        && !receipt.runtime_result_approval_performed
-        && !receipt.policy_promotion_performed
-        && !receipt.student_training_performed
-        && receipt.external_result_evidence_present
         && !receipt.retrieval_result_use_manifest_admitted
         && receipt.result_use_manifest_admission_status == "result_use_manifest_not_admitted"
-        && receipt.not_admitted_reason == "approval_not_granted"
-        && !receipt.passed();
+        && receipt.not_admitted_reason == "approval_not_granted";
     Ok(CompactModeOutcome::controlled_json(
         receipt.to_json(),
         passed,
@@ -1802,20 +1804,21 @@ fn policy_reuse_evidence_retrieval_result_use_summary_regression_smoke_mode(
 ) -> Result<CompactModeOutcome, String> {
     let receipt = validation_harness::
         policy_reuse_evidence_retrieval_result_use_summary_regression_smoke_receipt();
-    let passed = receipt.is_valid()
-        && !receipt.retrieval_result_use_manifest_admitted
+    let passed = policy_reuse_common_regression_guards(
+        receipt.is_valid(),
+        receipt.retrieval_read_performed,
+        receipt.retrieval_write_performed,
+        receipt.retrieval_query_executed,
+        receipt.runtime_result_approval_performed,
+        receipt.policy_promotion_performed,
+        receipt.student_training_performed,
+        receipt.external_result_evidence_present,
+        receipt.passed(),
+    ) && !receipt.retrieval_result_use_manifest_admitted
         && !receipt.retrieval_result_use_approved
-        && !receipt.retrieval_read_performed
-        && !receipt.retrieval_write_performed
-        && !receipt.retrieval_query_executed
-        && !receipt.runtime_result_approval_performed
-        && !receipt.policy_promotion_performed
-        && !receipt.student_training_performed
-        && receipt.external_result_evidence_present
         && !receipt.retrieval_result_use_summary_ready
         && receipt.result_use_summary_status == "result_use_summary_not_ready"
-        && receipt.not_ready_reason == "manifest_not_admitted"
-        && !receipt.passed();
+        && receipt.not_ready_reason == "manifest_not_admitted";
     Ok(CompactModeOutcome::controlled_json(
         receipt.to_json(),
         passed,
@@ -1836,20 +1839,21 @@ fn policy_reuse_evidence_retrieval_result_use_summary_manifest_regression_smoke_
 ) -> Result<CompactModeOutcome, String> {
     let receipt = validation_harness::
         policy_reuse_evidence_retrieval_result_use_summary_manifest_regression_smoke_receipt();
-    let passed = receipt.is_valid()
-        && !receipt.retrieval_result_use_summary_ready
+    let passed = policy_reuse_common_regression_guards(
+        receipt.is_valid(),
+        receipt.retrieval_read_performed,
+        receipt.retrieval_write_performed,
+        receipt.retrieval_query_executed,
+        receipt.runtime_result_approval_performed,
+        receipt.policy_promotion_performed,
+        receipt.student_training_performed,
+        receipt.external_result_evidence_present,
+        receipt.passed(),
+    ) && !receipt.retrieval_result_use_summary_ready
         && !receipt.retrieval_result_use_manifest_admitted
-        && !receipt.retrieval_read_performed
-        && !receipt.retrieval_write_performed
-        && !receipt.retrieval_query_executed
-        && !receipt.runtime_result_approval_performed
-        && !receipt.policy_promotion_performed
-        && !receipt.student_training_performed
-        && receipt.external_result_evidence_present
         && !receipt.retrieval_result_use_summary_manifest_ready
         && receipt.result_use_summary_manifest_status == "result_use_summary_manifest_not_ready"
-        && receipt.not_ready_reason == "summary_not_ready"
-        && !receipt.passed();
+        && receipt.not_ready_reason == "summary_not_ready";
     Ok(CompactModeOutcome::controlled_json(
         receipt.to_json(),
         passed,
@@ -2506,6 +2510,41 @@ mod tests {
             (
                 "--policy-reuse-evidence-retrieval-result-use-readiness-regression-smoke",
                 "result_use_not_ready",
+            ),
+        ];
+
+        for (arg, expected_status) in cases {
+            let outcome = try_run_compact_mode(arg)
+                .unwrap_or_else(|| panic!("compact mode is registered: {arg}"))
+                .unwrap_or_else(|err| panic!("compact mode succeeds for {arg}: {err}"));
+
+            assert_eq!(outcome.exit_code, 0, "unexpected exit code for {arg}");
+            assert!(
+                outcome.stdout.contains(expected_status),
+                "missing expected status {expected_status} in {arg} output: {}",
+                outcome.stdout
+            );
+        }
+    }
+
+    #[test]
+    fn policy_reuse_common_regression_guards_preserve_follow_on_result_modes() {
+        let cases = [
+            (
+                "--policy-reuse-evidence-retrieval-result-use-approval-regression-smoke",
+                "result_use_not_approved",
+            ),
+            (
+                "--policy-reuse-evidence-retrieval-result-use-manifest-admission-regression-smoke",
+                "result_use_manifest_not_admitted",
+            ),
+            (
+                "--policy-reuse-evidence-retrieval-result-use-summary-regression-smoke",
+                "result_use_summary_not_ready",
+            ),
+            (
+                "--policy-reuse-evidence-retrieval-result-use-summary-manifest-regression-smoke",
+                "result_use_summary_manifest_not_ready",
             ),
         ];
 
