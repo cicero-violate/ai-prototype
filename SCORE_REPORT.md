@@ -5,14 +5,14 @@ Generated: 2026-05-13  |  Schema version: 16  |  Crates: 2
 ## Aggregate Scores
 
 ```text
-Architecture         = 9.2
-Structure            = 4.9
-Simplicity           = 7.4
+Architecture         = 9.3
+Structure            = 5.0
+Simplicity           = 7.1
 Maintainability      = 10.0
 Determinism          = 10.0
-Coherency            = 8.4
+Coherency            = 8.2
 
-G (geometric mean)   = 8.10 / 10
+G (geometric mean)   = 8.05 / 10
 ```
 
 ## Per-Crate Breakdown
@@ -20,7 +20,7 @@ G (geometric mean)   = 8.10 / 10
 | Crate                 | Nodes | Edges | Fns  | Arch | Struct | Simple | Maint | Determ | Coher |
 | :-------------------- | ----: | ----: | ---: | ---: | -----: | -----: | ----: | -----: | ----: |
 | ai                    |  5472 | 35235 | 2208 |  9.5 |    6.0 |    7.0 |  10.0 |   10.0 |   8.2 |
-| chatgpt_mcp_connector |  3713 | 20233 | 1703 |  8.7 |    3.6 |    7.9 |  10.0 |   10.0 |   8.8 |
+| chatgpt_mcp_connector |  3714 | 21661 | 1704 |  9.0 |    3.6 |    7.4 |  10.0 |   10.0 |   8.3 |
 
 ## Axis Definitions
 
