@@ -57,6 +57,14 @@ Current date: 2026-05-14.
 
 ## Validation Ledger
 
+### 2026-05-14 — item 19 capability effect route delegation
+
+- Scope: `src/capability/mod.rs`, checklist item 19 in `plan.md`, and `status.md` evidence update.
+- Command/check: targeted `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo check --lib`; broader `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
+- Result: passed.
+- Evidence: changed `CapabilityEffectRoute::allows(...)` so passed submissions delegate capability/gate/evidence/effect tuple matching through `CapabilityEffectRoute::permits_effect(...)`, while failed submissions still require matching capability, gate, evidence, and `PacketEffect::None`. Public signatures, route constants, `CapabilityEffectRoute::new(...)`, `CapabilityEffectRoute::permits_effect(...)`, `CapabilityRegistry::{allows, permits_effect}`, policy hashes, and packet effect semantics remain unchanged. Targeted validation passed with `cargo check --lib`. Broader all-target validation passed with 295 library/bin tests, 3 root_validate tests, 13 API server contract tests, 23 API transport contract tests, 3 canonical TLog contract tests, 4 domain contract tests, 10 graph mutation CLI contract tests, 9 MCP receipt contract tests, 2 planning contract tests, 5 score contract tests, 2 supervisor binary contract tests, 2 worker binary contract tests, and all example test targets green.
+- Next action: execute Active Priorities item 20 by adding `capability_effect_route_allows_preserves_passed_and_failed_submission_semantics` in `src/capability/mod.rs`.
+
 ### 2026-05-14 — planning selected capability effect route delegation work
 
 - Scope: `plan.md`, `status.md`, `score.md`, `SCORE_REPORT.md`, all current `../state/rustc/auto-refactor/*.graph-editor-plan.json` paths, selected `../state/rustc/auto-refactor/workspace__ai_sandbox__canon-mini-agent__prototype__state__rustc__ai__graph.graph-editor-plan.json`, `src/capability/mod.rs`, and existing registry tests in `src/lib.rs`.

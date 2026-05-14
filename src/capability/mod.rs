@@ -103,14 +103,19 @@ impl CapabilityEffectRoute {
     }
 
     pub fn allows(self, capability: CapabilityId, submission: EvidenceSubmission) -> bool {
+        if submission.passed {
+            return self.permits_effect(
+                capability,
+                submission.gate,
+                submission.evidence,
+                submission.effect,
+            );
+        }
+
         self.capability == capability
             && self.gate == submission.gate
             && self.evidence == submission.evidence
-            && if submission.passed {
-                self.allowed_effect == submission.effect
-            } else {
-                submission.effect == PacketEffect::None
-            }
+            && submission.effect == PacketEffect::None
     }
 
     pub fn permits_effect(
