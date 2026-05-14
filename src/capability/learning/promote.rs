@@ -261,43 +261,59 @@ impl EvidenceProducer for PolicyPromotion {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum PolicyPromotionEntryKind {
+    SourceSeq,
+    FeedbackHash,
+}
+
+fn policy_promotion_entry(
+    promotion: &PolicyPromotion,
+    kind: PolicyPromotionEntryKind,
+) -> Result<PolicyEntry, PolicyStoreError> {
+    if !promotion.is_valid() {
+        return Err(PolicyStoreError::InvalidPromotion);
+    }
+
+    let (key, value) = match kind {
+        PolicyPromotionEntryKind::SourceSeq => (POLICY_PROMOTION_SOURCE_SEQ, promotion.source_seq),
+        PolicyPromotionEntryKind::FeedbackHash => {
+            (POLICY_FEEDBACK_HASH, promotion.promoted_policy_hash)
+        }
+    };
+
+    Ok(PolicyEntry {
+        version: promotion.promoted_policy_version,
+        key,
+        value,
+    })
+}
+
 impl PolicyStore {
+    fn append_valid_promotion_entry(
+        &mut self,
+        promotion: PolicyPromotion,
+        kind: PolicyPromotionEntryKind,
+    ) -> Result<&PolicyEntry, PolicyStoreError> {
+        let entry = policy_promotion_entry(&promotion, kind)?;
+        self.try_append(entry)?;
+        self.entries()
+            .last()
+            .ok_or(PolicyStoreError::InvalidPromotion)
+    }
+
     pub fn promote(
         &mut self,
         promotion: PolicyPromotion,
     ) -> Result<&PolicyEntry, PolicyStoreError> {
-        if !promotion.is_valid() {
-            return Err(PolicyStoreError::InvalidPromotion);
-        }
-
-        self.try_append(PolicyEntry {
-            version: promotion.promoted_policy_version,
-            key: POLICY_PROMOTION_SOURCE_SEQ,
-            value: promotion.source_seq,
-        })?;
-
-        self.entries()
-            .last()
-            .ok_or(PolicyStoreError::InvalidPromotion)
+        self.append_valid_promotion_entry(promotion, PolicyPromotionEntryKind::SourceSeq)
     }
 
     pub fn promote_feedback(
         &mut self,
         promotion: PolicyPromotion,
     ) -> Result<&PolicyEntry, PolicyStoreError> {
-        if !promotion.is_valid() {
-            return Err(PolicyStoreError::InvalidPromotion);
-        }
-
-        self.try_append(PolicyEntry {
-            version: promotion.promoted_policy_version,
-            key: POLICY_FEEDBACK_HASH,
-            value: promotion.promoted_policy_hash,
-        })?;
-
-        self.entries()
-            .last()
-            .ok_or(PolicyStoreError::InvalidPromotion)
+        self.append_valid_promotion_entry(promotion, PolicyPromotionEntryKind::FeedbackHash)
     }
 
     pub fn promote_durable(
