@@ -223,6 +223,31 @@ fn transport_ledger_exposes_request_id_membership() {
 }
 
 #[test]
+fn transport_ledger_request_id_lookup_distinguishes_membership_from_payload_conflict() {
+    let frame = observation_frame();
+    let receipt = ApiTransportReceipt::new(
+        frame.request_id,
+        frame.payload_hash,
+        frame.envelope.command_id,
+        frame.envelope.command_hash,
+        55,
+    );
+    let ledger = match ApiTransportLedger::from_receipts(vec![receipt]) {
+        Ok(ledger) => ledger,
+        Err(err) => panic!("transport ledger should accept unique receipt: {err:?}"),
+    };
+
+    assert!(ledger.contains_request_id(frame.request_id));
+    assert!(!ledger.contains_request_id(frame.request_id + 1));
+    assert!(!ledger.has_conflicting_request(&frame));
+
+    let mut conflicting_frame = frame.clone();
+    conflicting_frame.payload_hash ^= 1;
+
+    assert!(ledger.has_conflicting_request(&conflicting_frame));
+}
+
+#[test]
 fn transport_frame_classifies_same_payload_request_id_collision_as_invalid_replay() {
     let cfg = RuntimeConfig::default();
     let mut state = State::default();

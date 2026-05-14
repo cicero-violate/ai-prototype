@@ -102,7 +102,7 @@ The selected `ai` graph-editor plan is schema version 1 and contains 1,614 plann
    - Done when: `contains_request_id(request_id)` delegates to the shared request-id lookup helper, `has_conflicting_request(frame)` uses the same helper before comparing `payload_hash`, public method signatures remain unchanged, `receipt_for(frame)`, `push_receipt(...)`, `push_response(...)`, and transport/session behavior remain unchanged.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo check --lib`.
 
-11. [ ] `tests/api_transport_contract.rs` test `transport_ledger_request_id_lookup_distinguishes_membership_from_payload_conflict`: add direct ledger regression coverage.
+11. [x] `tests/api_transport_contract.rs` test `transport_ledger_request_id_lookup_distinguishes_membership_from_payload_conflict`: add direct ledger regression coverage.
    - Scope: `tests/api_transport_contract.rs` only.
    - Done when: the named test builds an `ApiTransportLedger` from one valid `ApiTransportReceipt`, asserts `contains_request_id(...)` for present and absent request ids, asserts `has_conflicting_request(...)` is false for a frame with the same request id and same payload hash, and asserts `has_conflicting_request(...)` is true for a frame with the same request id and a different payload hash. The test must not start the API server or require network I/O.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test api_transport_contract transport_ledger_request_id_lookup_distinguishes_membership_from_payload_conflict -- --test-threads=1`.
