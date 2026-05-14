@@ -2418,6 +2418,52 @@ fn root_validate_dispatch_catalog_mode() -> Result<CompactModeOutcome, String> {
     Ok(CompactModeOutcome::pass_json(json, true))
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn root_validate_dispatch_catalog_lists_every_compact_mode_once() {
+        let catalog_payload = root_validate_dispatch_catalog_payload();
+        let mut catalog_entries = std::collections::BTreeSet::new();
+
+        for line in catalog_payload.lines() {
+            assert!(
+                catalog_entries.insert(line.to_string()),
+                "duplicate dispatch catalog entry: {line}"
+            );
+        }
+
+        assert_eq!(catalog_entries.len(), COMPACT_MODES.len());
+        for mode in COMPACT_MODES {
+            assert!(
+                catalog_entries.contains(&format!("{}=>{}", mode.arg, mode.marker)),
+                "missing dispatch catalog entry for {}",
+                mode.arg
+            );
+        }
+        assert!(catalog_entries.contains(
+            "--root-validate-dispatch-catalog=>canon_root_validate_dispatch_catalog_v1"
+        ));
+
+        let outcome = try_run_compact_mode("--root-validate-dispatch-catalog")
+            .expect("dispatch catalog compact mode is registered")
+            .expect("dispatch catalog compact mode succeeds");
+
+        assert_eq!(outcome.exit_code, 0);
+        assert!(outcome.stdout.contains(
+            "\"schema\":\"canon_root_validate_dispatch_catalog_v1\""
+        ));
+        assert!(outcome
+            .stdout
+            .contains("\"record_type\":\"root_validate_dispatch_catalog\""));
+        assert!(outcome
+            .stdout
+            .contains(&format!("\"compact_mode_count\":{}", COMPACT_MODES.len())));
+        assert!(outcome.stdout.contains("\"dispatch_catalog_hash\":"));
+    }
+}
+
 fn try_run_compact_mode(arg: &str) -> Option<Result<CompactModeOutcome, String>> {
     COMPACT_MODES
         .iter()
