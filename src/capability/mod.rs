@@ -462,3 +462,52 @@ pub trait EvidenceProducer {
     fn record(&self) -> &Self::Record;
     fn submission(&self) -> EvidenceSubmission;
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn capability_effect_route_allows_preserves_passed_and_failed_submission_semantics() {
+        let route = CapabilityEffectRoute::new(
+            CapabilityId::Tooling,
+            GateId::Execution,
+            Evidence::ArtifactReceipt,
+            PacketEffect::MaterializeArtifact,
+        );
+
+        let passed_allowed = EvidenceSubmission::with_effect(
+            GateId::Execution,
+            Evidence::ArtifactReceipt,
+            true,
+            PacketEffect::MaterializeArtifact,
+        );
+        assert!(route.allows(CapabilityId::Tooling, passed_allowed));
+
+        let passed_wrong_effect = EvidenceSubmission::with_effect(
+            GateId::Execution,
+            Evidence::ArtifactReceipt,
+            true,
+            PacketEffect::None,
+        );
+        assert!(!route.allows(CapabilityId::Tooling, passed_wrong_effect));
+
+        let failed_none = EvidenceSubmission::with_effect(
+            GateId::Execution,
+            Evidence::ArtifactReceipt,
+            false,
+            PacketEffect::None,
+        );
+        assert!(route.allows(CapabilityId::Tooling, failed_none));
+
+        let failed_with_effect = EvidenceSubmission::with_effect(
+            GateId::Execution,
+            Evidence::ArtifactReceipt,
+            false,
+            PacketEffect::MaterializeArtifact,
+        );
+        assert!(!route.allows(CapabilityId::Tooling, failed_with_effect));
+
+        assert!(!route.allows(CapabilityId::Observation, passed_allowed));
+    }
+}

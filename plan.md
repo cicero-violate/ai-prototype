@@ -102,7 +102,7 @@ The selected `ai` graph-editor plan is schema version 1 and contains 1,614 plann
    - Done when: `allows(capability, submission)` still compares capability, gate, evidence, and effect for passed submissions by delegating to `permits_effect(capability, submission.gate, submission.evidence, submission.effect)`, still permits failed submissions only when capability/gate/evidence match and `submission.effect == PacketEffect::None`, and preserves all existing registry behavior.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo check --lib`.
 
-20. [ ] `src/capability/mod.rs` test `capability_effect_route_allows_preserves_passed_and_failed_submission_semantics`: add direct route-level regression coverage.
+20. [x] `src/capability/mod.rs` test `capability_effect_route_allows_preserves_passed_and_failed_submission_semantics`: add direct route-level regression coverage.
    - Scope: `src/capability/mod.rs` test module only.
    - Done when: the named test constructs one `CapabilityEffectRoute`, asserts `allows(...)` accepts a passed `EvidenceSubmission` with the exact allowed effect, rejects a passed submission with the wrong effect, accepts a failed submission with `PacketEffect::None` for the same capability/gate/evidence, rejects a failed submission carrying the route's non-`None` effect, and rejects the same submission under the wrong capability. The test must not call external tools, start servers, or mutate process-global environment.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test capability_effect_route_allows_preserves_passed_and_failed_submission_semantics -- --test-threads=1`.
