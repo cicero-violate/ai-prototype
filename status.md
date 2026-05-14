@@ -4845,3 +4845,13 @@ Implementation step 1 evidence on 2026-05-14 for Active Priorities item 28:
 - Targeted validation passed: TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo check --lib completed successfully.
 - Broader validation passed: TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets passed with 312 library tests, 3 root_validate binary tests, and all integration/example test targets passing.
 - Marked item 28 complete in plan.md. score.md was reviewed and left unchanged because this is a narrow constructor-structure refactor with validation evidence, not a score-history-worthy project-level capability change.
+
+Implementation step 2 evidence on 2026-05-14 for Active Priorities item 29:
+
+- Selected first unchecked Active Priorities item 29: src/agent/worker_client.rs test worker_client_constructors_preserve_default_and_custom_timeouts.
+- Read plan.md, status.md, and score.md before editing. Existing uncommitted non-planning changes in GOAL.md and src/agent/loop_driver.rs were left untouched.
+- Changed only the item-scoped test module in src/agent/worker_client.rs plus planning/status evidence files.
+- Strengthened the existing constructor regression test with explicit distinct-port and distinct-timeout assertions for WorkerClient::new(...) versus WorkerClient::new_with_timeout(...).
+- Targeted validation passed: TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test worker_client_constructors_preserve_default_and_custom_timeouts -- --test-threads=1 ran the named test successfully.
+- Broader validation passed: TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets passed with 312 library tests, 3 root_validate binary tests, and all integration/example test targets passing.
+- Marked item 29 complete in plan.md. score.md was reviewed and left unchanged because this is focused regression coverage for an existing constructor boundary, not a score-history-worthy project-level capability change.

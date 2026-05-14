@@ -151,5 +151,8 @@ mod tests {
         let custom_client = WorkerClient::new_with_timeout(8124, 123);
         assert_eq!(custom_client.port, 8124);
         assert_eq!(custom_client.timeout, Duration::from_millis(123));
+
+        assert_ne!(default_client.port, custom_client.port);
+        assert_ne!(default_client.timeout, custom_client.timeout);
     }
 }

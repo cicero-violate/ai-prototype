@@ -191,7 +191,7 @@ Current planning turn selected graph operation 48 from the selected local ai gra
    - Done when: new(port) still stores the provided port and uses DEFAULT_TIMEOUT_MS; new_with_timeout(port, timeout_ms) still stores the provided port and uses Duration::from_millis(timeout_ms); both public constructors delegate through the same private helper boundary; and no public API or network behavior changes.
    - Validation: TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo check --lib.
 
-29. [ ] src/agent/worker_client.rs test worker_client_constructors_preserve_default_and_custom_timeouts: strengthen focused regression coverage for the shared constructor helper.
+29. [x] src/agent/worker_client.rs test worker_client_constructors_preserve_default_and_custom_timeouts: strengthen focused regression coverage for the shared constructor helper.
    - Scope: src/agent/worker_client.rs test module only; use existing private test access to WorkerClient fields and DEFAULT_TIMEOUT_MS. Do not change production code in this item.
    - Done when: the named test asserts that WorkerClient::new(...) preserves its port and default timeout, WorkerClient::new_with_timeout(...) preserves its port and custom timeout, distinct ports remain distinct, default and custom timeout paths remain distinct, and the test performs no network I/O, filesystem I/O, environment mutation, or process spawning.
    - Validation: TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test worker_client_constructors_preserve_default_and_custom_timeouts -- --test-threads=1.
