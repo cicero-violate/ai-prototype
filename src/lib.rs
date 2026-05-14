@@ -357,6 +357,47 @@ mod tests {
     }
 
     #[test]
+    fn policy_promotion_entry_helpers_preserve_source_and_feedback_entries() {
+        let (_state, tlog) = run_until_done(State::ready(), RuntimeConfig::default()).unwrap();
+        let promotion = PolicyPromotion::from_tlog(&tlog, 1).unwrap();
+        assert!(promotion.is_valid());
+
+        let mut source_store = PolicyStore::default();
+        let source_entry = *source_store.promote(promotion.clone()).unwrap();
+        assert_eq!(source_entry.version, promotion.promoted_policy_version);
+        assert_eq!(source_entry.key, POLICY_PROMOTION_SOURCE_SEQ);
+        assert_eq!(source_entry.value, promotion.source_seq);
+        assert_eq!(source_store.entries(), &[source_entry]);
+
+        let mut feedback_store = PolicyStore::default();
+        let feedback_entry = *feedback_store.promote_feedback(promotion.clone()).unwrap();
+        assert_eq!(feedback_entry.version, promotion.promoted_policy_version);
+        assert_eq!(feedback_entry.key, POLICY_FEEDBACK_HASH);
+        assert_eq!(feedback_entry.value, promotion.promoted_policy_hash);
+        assert_eq!(feedback_store.entries(), &[feedback_entry]);
+
+        let mut invalid_promotion = promotion;
+        invalid_promotion.source_seq = 0;
+        assert!(!invalid_promotion.is_valid());
+
+        let mut rejected_source_store = PolicyStore::default();
+        assert_eq!(
+            rejected_source_store.promote(invalid_promotion.clone()),
+            Err(PolicyStoreError::InvalidPromotion)
+        );
+        assert!(rejected_source_store.entries().is_empty());
+
+        let mut rejected_feedback_store = PolicyStore::default();
+        assert_eq!(
+            rejected_feedback_store.promote_feedback(invalid_promotion),
+            Err(PolicyStoreError::InvalidPromotion)
+        );
+        assert!(rejected_feedback_store.entries().is_empty());
+
+        verify_tlog(&tlog).unwrap();
+    }
+
+    #[test]
     fn durable_policy_store_roundtrips_promoted_policy() {
         let (_state, tlog) = run_until_done(State::ready(), RuntimeConfig::default()).unwrap();
         let promotion = PolicyPromotion::from_tlog(&tlog, 1).unwrap();

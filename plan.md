@@ -155,7 +155,7 @@ Graph operations `50696c68b2277059` and `72dcf1b2a173f2c7` identify `capability:
    - Done when: `promote(...)` and `promote_feedback(...)` both reject invalid promotions before appending through the shared helper, `promote(...)` still appends `POLICY_PROMOTION_SOURCE_SEQ` with `promotion.source_seq`, `promote_feedback(...)` still appends `POLICY_FEEDBACK_HASH` with `promotion.promoted_policy_hash`, and both return the last appended entry as before.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo check --lib`.
 
-38. [ ] `src/lib.rs` test `policy_promotion_entry_helpers_preserve_source_and_feedback_entries`: add direct regression coverage for the shared in-memory promotion helper boundary.
+38. [x] `src/lib.rs` test `policy_promotion_entry_helpers_preserve_source_and_feedback_entries`: add direct regression coverage for the shared in-memory promotion helper boundary.
    - Scope: `src/lib.rs` test module only.
    - Done when: the named test constructs one valid `PolicyPromotion` from a verified TLog, calls `PolicyStore::promote(...)` and `PolicyStore::promote_feedback(...)` on separate stores, asserts the source entry uses `POLICY_PROMOTION_SOURCE_SEQ` and `promotion.source_seq`, asserts the feedback entry uses `POLICY_FEEDBACK_HASH` and `promotion.promoted_policy_hash`, and asserts a deliberately invalid promotion is rejected with `PolicyStoreError::InvalidPromotion` before any store entry is appended. The test must not perform network I/O or mutate process-global environment.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test policy_promotion_entry_helpers_preserve_source_and_feedback_entries -- --test-threads=1`.
