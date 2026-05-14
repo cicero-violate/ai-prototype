@@ -107,7 +107,7 @@ The selected `ai` graph-editor plan is schema version 1 and contains 1,614 plann
    - Done when: the named test asserts fixed known outputs for at least one evidence-contract hash, one submit-evidence command hash, one envelope hash, and a nonzero fallback for an empty field list through the shared descriptor path; it also asserts that the existing `build_submit_evidence_json(...)` known-vector test still exercises the same final command hash for `Invariant/InvariantProof` and `Plan/TaskReady`.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test submit_evidence_hash_domains_preserve_contract_command_and_envelope_vectors -- --test-threads=1`.
 
-3. [ ] `SCORE_REPORT.md`: after items 1 and 2 land, refresh graph-derived structural evidence and review whether `score.md` rationale changes without raising project-level scores absent capability evidence.
+3. [x] `SCORE_REPORT.md`: after items 1 and 2 land, refresh graph-derived structural evidence and review whether `score.md` rationale changes without raising project-level scores absent capability evidence.
    - Scope: `SCORE_REPORT.md`, `score.md`, `plan.md`, and `status.md` only.
    - Done when: `scripts/recapture_rustc_graphs.sh --check` validates the configured graph root, `SCORE_REPORT.md` is regenerated from `../state/rustc`, `status.md` records aggregate and affected crate rows, and `score.md` changes only if refreshed evidence differs from the current rationale.
    - Validation: `bash scripts/recapture_rustc_graphs.sh --check && cargo run --manifest-path ../score/Cargo.toml --quiet -- --artifact-root ../state/rustc --report SCORE_REPORT.md --date "$(date +%Y-%m-%d)"`.
