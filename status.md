@@ -57,6 +57,14 @@ Current date: 2026-05-14.
 
 ## Validation Ledger
 
+### 2026-05-14 — item 2 recovery action mapping regression test
+
+- Scope: `src/agent/cycle.rs` tests, checklist item 2 in `plan.md`, and `status.md` evidence update.
+- Command/check: targeted `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test recovery_action_spec_preserves_gate_and_target_mappings -- --test-threads=1`; broader `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
+- Result: passed.
+- Evidence: added `agent::cycle::hash_tests::recovery_action_spec_preserves_gate_and_target_mappings`, covering current outputs for `RecheckInvariant`, `BindReadyTask`, `RepairArtifactLineage`, `RecomputeEval`, `Escalate`, and `UnknownRecoveryAction` through `recovery_gate(...)` and `recovery_target_phase(...)`. Targeted validation passed with 1 named test and 0 failures. Broader validation passed with 285 library/bin tests, 3 root_validate tests, 12 API server contract tests, 20 API transport contract tests, 3 canonical TLog contract tests, 4 domain contract tests, 10 graph mutation CLI contract tests, 9 MCP receipt contract tests, 2 planning contract tests, 5 score contract tests, 2 supervisor binary contract tests, 2 worker binary contract tests, and all example test targets green.
+- Next action: perform Active Priorities item 3 in `src/agent/cycle.rs`, consolidating gate/evidence/effect mapping helpers while preserving known vectors.
+
 ### 2026-05-14 — item 1 cycle recovery action lookup consolidation
 
 - Scope: `src/agent/cycle.rs`, checklist item 1 in `plan.md`, and `status.md` evidence update.

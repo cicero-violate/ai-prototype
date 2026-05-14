@@ -102,7 +102,7 @@ The selected graph-editor plan is schema version 1, contains 1,614 planned opera
    - Done when: both named helpers delegate to one shared deterministic action lookup; `Escalate` still maps to no recovery gate and target phase `Done`; unknown actions still return `None`; no LLM, worker, router, hash, or phase-dispatch behavior changes.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test recovery_ -- --test-threads=1`.
 
-2. [ ] `src/agent/cycle.rs` test `recovery_action_spec_preserves_gate_and_target_mappings`: add focused regression coverage for the item 1 lookup across representative actions.
+2. [x] `src/agent/cycle.rs` test `recovery_action_spec_preserves_gate_and_target_mappings`: add focused regression coverage for the item 1 lookup across representative actions.
    - Scope: `src/agent/cycle.rs` tests only.
    - Done when: the named test asserts current outputs for `RecheckInvariant`, `BindReadyTask`, `RepairArtifactLineage`, `RecomputeEval`, `Escalate`, and one unknown action through `recovery_gate(...)` and `recovery_target_phase(...)`.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test recovery_action_spec_preserves_gate_and_target_mappings -- --test-threads=1`.

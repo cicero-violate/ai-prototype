@@ -868,6 +868,36 @@ mod hash_tests {
     }
 
     #[test]
+    fn recovery_action_spec_preserves_gate_and_target_mappings() {
+        assert_eq!(
+            recovery_gate("RecheckInvariant"),
+            Some(("Invariant", "InvariantProof"))
+        );
+        assert_eq!(recovery_target_phase("RecheckInvariant"), Some("Invariant"));
+
+        assert_eq!(recovery_gate("BindReadyTask"), Some(("Plan", "TaskReady")));
+        assert_eq!(recovery_target_phase("BindReadyTask"), Some("Plan"));
+
+        assert_eq!(
+            recovery_gate("RepairArtifactLineage"),
+            Some(("Verification", "LineageProof"))
+        );
+        assert_eq!(
+            recovery_target_phase("RepairArtifactLineage"),
+            Some("Verify")
+        );
+
+        assert_eq!(recovery_gate("RecomputeEval"), Some(("Eval", "EvalScore")));
+        assert_eq!(recovery_target_phase("RecomputeEval"), Some("Eval"));
+
+        assert_eq!(recovery_gate("Escalate"), None);
+        assert_eq!(recovery_target_phase("Escalate"), Some("Done"));
+
+        assert_eq!(recovery_gate("UnknownRecoveryAction"), None);
+        assert_eq!(recovery_target_phase("UnknownRecoveryAction"), None);
+    }
+
+    #[test]
     fn learning_phase_gate_promotes_policy() {
         assert_eq!(
             phase_gate("Learning"),
