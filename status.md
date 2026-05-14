@@ -4391,3 +4391,19 @@ Implementation step 5 blocker on 2026-05-14:
 - No implementation, validation refresh, evidence refresh, documentation cleanup, or blocker-resolution task was selected because the next executable work must be added by a planning turn before another implementation step can proceed safely.
 - Existing uncommitted non-planning changes in `GOAL.md` and `src/agent/loop_driver.rs` remain outside this step and were left untouched.
 - `score.md` remains unchanged because no implementation or new score evidence was produced.
+
+
+Planning-turn update on 2026-05-14 for next non-root Ollama message constructor work:
+
+- Required reconnaissance completed from `/workspace/ai_sandbox/canon-mini-agent/prototype/ai` using the connector shell with `cwd=.`.
+- Read `plan.md`; Active Priorities items 4, 5, and 6 were already complete, so there was no remaining unchecked executable item before this planning turn.
+- Read `status.md`; the latest execution blockers confirmed checklist exhaustion after item 6.
+- Read `score.md` and `SCORE_REPORT.md`; project-level scores remain unchanged, while local graph-derived evidence reports aggregate `G = 7.99 / 10`, Architecture `8.9`, Structure `4.9`, Simplicity `7.1`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.4`.
+- Inspected `../state/rustc/auto-refactor/*.graph-editor-plan.json`; the selected local `ai` graph-editor plan remains schema version 1 with 1,614 operations.
+- User direction is explicit: do not continue `root_validate` work. `root_validate` remains intentionally non-selectable despite its weak graph row.
+- Inspected non-root graph candidates in `src/agent/prompt.rs`, `src/agent/objective.rs`, `src/domain/scoring.rs`, `src/domain/bridge.rs`, and `src/capability/llm/ollama.rs`.
+- Rejected `src/agent/loop_driver.rs` graph candidates for this turn because that file has unrelated uncommitted edits. Rejected semantic route/hash/bridge/score/receipt merge candidates as direct public API merges because the similar wrappers encode distinct domain concepts.
+- Selected graph operation `64cfcb1a6f89964d` for `capability::llm::ollama::OllamaMessage::{system, user}` as the next safe non-root candidate, limited to private constructor-helper delegation while preserving distinct public constructors and role semantics.
+- Inspected the working tree before changing planning files. Existing uncommitted non-planning changes in `GOAL.md` and `src/agent/loop_driver.rs` were left untouched.
+- Updated `plan.md` with three executable items: item 7 constructor-helper delegation in `src/capability/llm/ollama.rs`, item 8 focused constructor regression coverage, and item 9 graph-derived evidence refresh.
+- `score.md` was reviewed and left unchanged because this planning turn produced no implementation, validation, graph refresh, or score-history-worthy capability evidence.
