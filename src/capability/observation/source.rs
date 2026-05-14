@@ -654,6 +654,89 @@ mod tests {
         assert!(!receipt.submission().passed);
     }
 
+    fn assert_non_accepted_batch(
+        batch: &ObservationIngressBatch,
+        expected_decision: ObservationIngressDecision,
+        expected_source_id: u64,
+        expected_source_hash: u64,
+        expected_cursor: ObservationCursor,
+        expected_backlog_len: usize,
+    ) {
+        assert_eq!(batch.decision, expected_decision);
+        assert_eq!(batch.source_id, expected_source_id);
+        assert_eq!(batch.source_hash, expected_source_hash);
+        assert_eq!(batch.cursor, expected_cursor);
+        assert_eq!(batch.backlog_len, expected_backlog_len);
+        assert!(batch.records.is_empty());
+        assert!(!batch.is_accepted());
+        assert!(!batch.is_contract_valid());
+
+        let receipt = batch.receipt();
+        assert!(receipt.is_self_consistent());
+        assert!(receipt.is_valid_for(batch));
+        assert_eq!(receipt.decision, expected_decision);
+        assert_eq!(receipt.source_id, expected_source_id);
+        assert_eq!(receipt.source_hash, expected_source_hash);
+        assert_eq!(receipt.cursor_source_id, expected_cursor.source_id);
+        assert_eq!(receipt.cursor_last_sequence, expected_cursor.last_sequence);
+        assert_eq!(
+            receipt.cursor_last_observed_hash,
+            expected_cursor.last_observed_hash
+        );
+        assert_eq!(receipt.backlog_len, expected_backlog_len as u64);
+        assert_eq!(receipt.record_count, 0);
+        assert!(!receipt.contract_valid);
+    }
+
+    #[test]
+    fn observation_ingress_batch_constructors_preserve_decision_boundaries() {
+        let empty_cursor = ObservationCursor {
+            source_id: 7,
+            last_sequence: 0,
+            last_observed_hash: 0,
+        };
+        let backpressure_cursor = ObservationCursor {
+            source_id: 8,
+            last_sequence: 3,
+            last_observed_hash: 404,
+        };
+        let rejected_cursor = ObservationCursor {
+            source_id: 9,
+            last_sequence: 5,
+            last_observed_hash: 505,
+        };
+
+        let empty = ObservationIngressBatch::empty(7, 707, empty_cursor);
+        assert_non_accepted_batch(
+            &empty,
+            ObservationIngressDecision::Empty,
+            7,
+            707,
+            empty_cursor,
+            0,
+        );
+
+        let backpressure = ObservationIngressBatch::backpressure(8, 808, backpressure_cursor, 6);
+        assert_non_accepted_batch(
+            &backpressure,
+            ObservationIngressDecision::Backpressure,
+            8,
+            808,
+            backpressure_cursor,
+            6,
+        );
+
+        let rejected = ObservationIngressBatch::rejected(9, rejected_cursor);
+        assert_non_accepted_batch(
+            &rejected,
+            ObservationIngressDecision::Rejected,
+            9,
+            0,
+            rejected_cursor,
+            0,
+        );
+    }
+
     #[test]
     fn observation_ingress_receipt_rejects_tampered_contract_hash() {
         let batch = accepted_batch();
