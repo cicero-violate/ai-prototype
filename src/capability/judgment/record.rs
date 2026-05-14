@@ -433,9 +433,11 @@ impl PolicyReuseCostCatalogReceipt {
         source_validation_duration_hash: u64,
         source_runtime_performance_hash: u64,
     ) -> Self {
-        let summary_complete = required_healthy_modes_present
-            && required_regression_modes_present
-            && missing_required_modes == "none";
+        let summary_complete = policy_reuse_cost_catalog_summary_complete(
+            required_healthy_modes_present,
+            required_regression_modes_present,
+            missing_required_modes,
+        );
         let mut receipt = Self {
             schema_version: 1,
             record_type: "policy_reuse_cost_catalog",
@@ -501,15 +503,12 @@ impl PolicyReuseCostCatalogReceipt {
             && self.regression_mode_count > 0
             && self.retained_fixture_count > 0
             && self.summary_complete
-                == (self.required_healthy_modes_present
-                    && self.required_regression_modes_present
-                    && self.missing_required_modes == "none")
-            && self.source_policy_reuse_hash != 0
-            && self.source_scale_trace_hash != 0
-            && self.source_performance_cost_trend_hash != 0
-            && self.source_validation_health_hash != 0
-            && self.source_validation_duration_hash != 0
-            && self.source_runtime_performance_hash != 0
+                == policy_reuse_cost_catalog_summary_complete(
+                    self.required_healthy_modes_present,
+                    self.required_regression_modes_present,
+                    self.missing_required_modes,
+                )
+            && policy_reuse_cost_catalog_sources_present(self)
             && self.catalog_hash != 0
             && self.receipt_hash != 0
             && self.catalog_hash == policy_reuse_cost_catalog_content_hash(self)
@@ -519,6 +518,25 @@ impl PolicyReuseCostCatalogReceipt {
     pub fn passed(&self) -> bool {
         self.is_valid() && self.summary_complete
     }
+}
+
+fn policy_reuse_cost_catalog_summary_complete(
+    required_healthy_modes_present: bool,
+    required_regression_modes_present: bool,
+    missing_required_modes: &'static str,
+) -> bool {
+    required_healthy_modes_present
+        && required_regression_modes_present
+        && missing_required_modes == "none"
+}
+
+fn policy_reuse_cost_catalog_sources_present(receipt: &PolicyReuseCostCatalogReceipt) -> bool {
+    receipt.source_policy_reuse_hash != 0
+        && receipt.source_scale_trace_hash != 0
+        && receipt.source_performance_cost_trend_hash != 0
+        && receipt.source_validation_health_hash != 0
+        && receipt.source_validation_duration_hash != 0
+        && receipt.source_runtime_performance_hash != 0
 }
 
 impl PolicyReuseEvaluatorSavingsReceipt {
