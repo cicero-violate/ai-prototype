@@ -4834,3 +4834,14 @@ Planning-turn update on 2026-05-14 for next non-root worker client constructor w
 - Updated plan.md with three executable items: item 28 private constructor helper extraction in src/agent/worker_client.rs, item 29 focused constructor regression strengthening, and item 30 graph-derived evidence refresh.
 - score.md was reviewed and left unchanged because this planning turn produced no implementation, validation, graph refresh, or score-history-worthy capability evidence.
 - Planning validation passed: TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test planning_contract -- --test-threads=1 ran 2 tests successfully.
+
+Implementation step 1 evidence on 2026-05-14 for Active Priorities item 28:
+
+- Selected first unchecked Active Priorities item 28: src/agent/worker_client.rs constructor helper extraction for WorkerClient::{new, new_with_timeout}.
+- Read plan.md, status.md, and score.md before editing. Existing uncommitted non-planning changes in GOAL.md and src/agent/loop_driver.rs were left untouched.
+- Changed only the item-scoped source file src/agent/worker_client.rs plus planning/status evidence files.
+- Added private constructor helper WorkerClient::from_timeout_ms(port, timeout_ms) and routed both public constructors through it.
+- Preserved WorkerClient::new(port) default timeout behavior through DEFAULT_TIMEOUT_MS and preserved WorkerClient::new_with_timeout(port, timeout_ms) custom Duration::from_millis(timeout_ms) behavior.
+- Targeted validation passed: TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo check --lib completed successfully.
+- Broader validation passed: TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets passed with 312 library tests, 3 root_validate binary tests, and all integration/example test targets passing.
+- Marked item 28 complete in plan.md. score.md was reviewed and left unchanged because this is a narrow constructor-structure refactor with validation evidence, not a score-history-worthy project-level capability change.

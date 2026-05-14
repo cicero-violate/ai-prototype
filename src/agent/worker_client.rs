@@ -44,10 +44,14 @@ pub struct WorkerResponse {
 
 impl WorkerClient {
     pub fn new(port: u16) -> Self {
-        Self::new_with_timeout(port, DEFAULT_TIMEOUT_MS)
+        Self::from_timeout_ms(port, DEFAULT_TIMEOUT_MS)
     }
 
     pub fn new_with_timeout(port: u16, timeout_ms: u64) -> Self {
+        Self::from_timeout_ms(port, timeout_ms)
+    }
+
+    fn from_timeout_ms(port: u16, timeout_ms: u64) -> Self {
         Self {
             port,
             timeout: Duration::from_millis(timeout_ms),
