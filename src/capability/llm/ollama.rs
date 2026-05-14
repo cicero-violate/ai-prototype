@@ -50,6 +50,10 @@ const DEFAULT_TIMEOUT_MS: u64 = 120_000;
 const DEFAULT_MAX_RETRIES: u32 = 0;
 const DEFAULT_ATTEMPT_BUDGET: u32 = 1;
 
+fn ollama_config_text_id(value: &str) -> u64 {
+    provider_text_hash(value)
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct OllamaConfig {
     pub base_url: String,
@@ -100,11 +104,11 @@ impl OllamaConfig {
     }
 
     pub fn model_id(&self) -> u64 {
-        provider_text_hash(&self.model)
+        ollama_config_text_id(&self.model)
     }
 
     pub fn base_url_id(&self) -> u64 {
-        provider_text_hash(&self.base_url)
+        ollama_config_text_id(&self.base_url)
     }
 }
 
