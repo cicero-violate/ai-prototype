@@ -57,6 +57,14 @@ Current date: 2026-05-14.
 
 ## Validation Ledger
 
+### 2026-05-14 — planning selected cycle hash-domain wrapper work
+
+- Scope: `plan.md`, `status.md`, `score.md`, `SCORE_REPORT.md`, current `../state/rustc/auto-refactor/*.graph-editor-plan.json`, selected `../state/rustc/auto-refactor/workspace__ai_sandbox__canon-mini-agent__prototype__state__rustc__ai__graph.graph-editor-plan.json`, and `src/agent/cycle.rs`.
+- Command/check: read current planning/status/score/report files; inspected all current auto-refactor plan paths; parsed the selected `ai` graph-editor plan; inspected `src/agent/cycle.rs` functions `compute_evidence_contract_hash(...)`, `compute_submit_evidence_command_hash(...)`, `compute_envelope_hash(...)`, `mix_contract_hash(...)`, recovery route tests, and existing known-vector tests; checked working-tree status.
+- Result: informational; planning contract passed; normal commit hook blocked by out-of-scope formatting.
+- Evidence: planning contract validation passed with 2 tests and 0 failures. A normal `git commit -m "Plan cycle hash-domain refactor work"` attempted after staging only `plan.md` and `status.md` was blocked by the repository `cargo fmt --check` hook on pre-existing formatting diffs in out-of-scope files `src/agent/cycle.rs`, `src/agent/loop_driver.rs`, and `src/api/server.rs`; those source files were not part of this planning scope. Previous Active Priorities items 4 through 6 were complete, leaving no unchecked executable item. User direction keeps `root_validate` non-selectable despite its Structure row of `1.5`. Current `SCORE_REPORT.md` remains `G = 7.99 / 10`, Architecture `8.9`, Structure `4.9`, Simplicity `7.1`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.4`. The selected `ai` graph-editor plan is schema version 1 with 1,614 operations. Operation ids `21edae3cb3c10f1b`, `96af74928d58e034`, and `447858122f87cb5a` identify the `agent::cycle::{compute_evidence_contract_hash, compute_submit_evidence_command_hash, compute_envelope_hash}` wrapper family as a small graph-backed candidate. Directly merging hash helpers into one semantically anonymous function is rejected; the planned safe subset keeps named wrappers and introduces a typed local hash-domain descriptor plus known-vector coverage. Pre-existing out-of-scope working-tree edits remain in `GOAL.md` and `src/agent/loop_driver.rs`.
+- Next action: execute Active Priorities item 1 in `src/agent/cycle.rs`, preserving exact known hash outputs.
+
 ### 2026-05-14 — item 4 graph-derived evidence refresh and score review
 
 - Scope: `SCORE_REPORT.md`, `score.md`, `plan.md`, `status.md`, checklist item 4, and graph artifacts under `../state/rustc`.
