@@ -826,8 +826,8 @@ fn compute_evidence_contract_hash(
     effect_u64: u64,
     payload_hash: u64,
 ) -> u64 {
-    mix_contract_hash(
-        0xcbf29ce484222325u64,
+    compute_domain_contract_hash(
+        HashDomain::EvidenceContract,
         &[
             gate_u64,
             evidence_u64,
@@ -839,15 +839,51 @@ fn compute_evidence_contract_hash(
 }
 
 fn compute_submit_evidence_command_hash(sub_contract_hash: u64) -> u64 {
-    mix_contract_hash(0x9e3779b97f4a7c15u64, &[1u64, sub_contract_hash])
+    compute_domain_contract_hash(HashDomain::SubmitEvidenceCommand, &[sub_contract_hash])
 }
 
 fn compute_envelope_hash(command_id: u64, cmd_contract_hash: u64) -> u64 {
-    const SCHEMA_VERSION: u64 = 6;
-    mix_contract_hash(
-        0x517cc1b727220a95u64,
-        &[SCHEMA_VERSION, command_id, cmd_contract_hash],
+    compute_domain_contract_hash(
+        HashDomain::CommandEnvelope,
+        &[command_id, cmd_contract_hash],
     )
+}
+
+#[derive(Clone, Copy)]
+enum HashDomain {
+    EvidenceContract,
+    SubmitEvidenceCommand,
+    CommandEnvelope,
+}
+
+struct HashDomainDescriptor {
+    seed: u64,
+    prefix_fields: &'static [u64],
+}
+
+impl HashDomain {
+    fn descriptor(self) -> HashDomainDescriptor {
+        match self {
+            Self::EvidenceContract => HashDomainDescriptor {
+                seed: 0xcbf29ce484222325u64,
+                prefix_fields: &[],
+            },
+            Self::SubmitEvidenceCommand => HashDomainDescriptor {
+                seed: 0x9e3779b97f4a7c15u64,
+                prefix_fields: &[1u64],
+            },
+            Self::CommandEnvelope => HashDomainDescriptor {
+                seed: 0x517cc1b727220a95u64,
+                prefix_fields: &[6u64],
+            },
+        }
+    }
+}
+
+fn compute_domain_contract_hash(domain: HashDomain, fields: &[u64]) -> u64 {
+    let descriptor = domain.descriptor();
+    let h = mix_contract_hash(descriptor.seed, descriptor.prefix_fields);
+    mix_contract_hash(h, fields)
 }
 
 fn mix_contract_hash(seed: u64, fields: &[u64]) -> u64 {
@@ -1104,7 +1140,11 @@ mod hash_tests {
             recovery_action_for_failure("TaskReceiptMissing"),
             Some("Reexecute")
         );
-        assert_recovery_spec("Reexecute", Some(("Execution", "ArtifactReceipt")), "Execute");
+        assert_recovery_spec(
+            "Reexecute",
+            Some(("Execution", "ArtifactReceipt")),
+            "Execute",
+        );
     }
 
     #[test]
@@ -1163,9 +1203,17 @@ mod hash_tests {
             Some(("Invariant", "InvariantProof")),
             "Invariant",
         );
-        assert_recovery_spec("RunAnalysis", Some(("Analysis", "AnalysisReport")), "Analysis");
+        assert_recovery_spec(
+            "RunAnalysis",
+            Some(("Analysis", "AnalysisReport")),
+            "Analysis",
+        );
         assert_recovery_spec("BindReadyTask", Some(("Plan", "TaskReady")), "Plan");
-        assert_recovery_spec("Reexecute", Some(("Execution", "ArtifactReceipt")), "Execute");
+        assert_recovery_spec(
+            "Reexecute",
+            Some(("Execution", "ArtifactReceipt")),
+            "Execute",
+        );
         assert_recovery_spec(
             "RepairArtifactLineage",
             Some(("Verification", "LineageProof")),
