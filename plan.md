@@ -109,7 +109,7 @@ Graph operation `64cfcb1a6f89964d` identifies `capability::llm::ollama::OllamaMe
    - Done when: the named test proves `OllamaMessage::system("...")` has role `"system"`, `OllamaMessage::user("...")` has role `"user"`, both preserve distinct content strings exactly, and the two messages are not equal when role/content differ. The test must not perform network I/O, filesystem I/O outside normal cargo test execution, environment mutation, or process spawning.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test ollama_message_constructors_preserve_role_and_content_boundaries -- --test-threads=1`.
 
-9. [ ] `SCORE_REPORT.md`: after items 7 and 8 land, refresh graph-derived structural evidence and review whether `score.md` rationale changes without raising project-level scores absent capability evidence.
+9. [x] `SCORE_REPORT.md`: after items 7 and 8 land, refresh graph-derived structural evidence and review whether `score.md` rationale changes without raising project-level scores absent capability evidence.
    - Scope: `SCORE_REPORT.md`, `score.md`, `plan.md`, and `status.md` only.
    - Done when: `scripts/recapture_rustc_graphs.sh --check` validates the configured graph root, `SCORE_REPORT.md` is regenerated from `../state/rustc`, `status.md` records aggregate and affected crate rows, and `score.md` changes only if refreshed evidence differs from the current rationale.
    - Validation: `bash scripts/recapture_rustc_graphs.sh --check && cargo run --manifest-path ../score/Cargo.toml --quiet -- --artifact-root ../state/rustc --report SCORE_REPORT.md --date "$(date +%Y-%m-%d)"`.
