@@ -176,7 +176,7 @@ Current planning turn selected graph operation `a3d596dc34917ca3`, covering `cap
    - Done when: the named test constructs an executor with a deterministic root, two allowed commands, two locked environment values, a timeout, and an output limit; asserts command insertion order, locked-env insertion order, root preservation, timeout preservation, output-limit preservation, canonical registry preservation, and independence between command and locked-env builders; and performs no process spawning, network I/O, or filesystem I/O outside normal cargo test execution.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test live_sandbox_process_executor_builders_preserve_policy_boundaries -- --test-threads=1`.
 
-27. [ ] `SCORE_REPORT.md`: after items 25 and 26 land, refresh graph-derived structural evidence and review whether `score.md` rationale changes without raising project-level scores absent capability evidence.
+27. [x] `SCORE_REPORT.md`: after items 25 and 26 land, refresh graph-derived structural evidence and review whether `score.md` rationale changes without raising project-level scores absent capability evidence.
    - Scope: `SCORE_REPORT.md`, `score.md`, `plan.md`, and `status.md` only.
    - Done when: `scripts/recapture_rustc_graphs.sh --check` validates the configured graph root, `SCORE_REPORT.md` is regenerated from `../state/rustc`, `status.md` records aggregate and affected crate rows, and `score.md` changes only if refreshed evidence differs from the current rationale.
    - Validation: `bash scripts/recapture_rustc_graphs.sh --check && cargo run --manifest-path ../score/Cargo.toml --quiet -- --artifact-root ../state/rustc --report SCORE_REPORT.md --date "$(date +%Y-%m-%d)"`.
