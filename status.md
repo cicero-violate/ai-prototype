@@ -4910,3 +4910,16 @@ Planning-turn update on 2026-05-14 for graph evidence refresh and next non-root 
 - Existing uncommitted non-planning changes in GOAL.md and src/agent/loop_driver.rs were left untouched.
 - Updated plan.md with queued items 34 through 36 after item 33: OpenAI proof-event hash helper extraction, focused proof-event hash-domain regression coverage, and graph-derived evidence refresh.
 - score.md was reviewed and left unchanged because this planning turn produced no implementation, validation refresh, graph refresh, or score-history-worthy capability evidence.
+
+Implementation step 1 evidence on 2026-05-14 for Active Priorities item 33:
+
+- Selected first unchecked Active Priorities item 33: SCORE_REPORT.md graph-derived structural evidence refresh after completed items 31 and 32.
+- Read plan.md, status.md, and score.md before running validation. Existing uncommitted non-planning changes in GOAL.md and src/agent/loop_driver.rs were left untouched.
+- Changed only item-scoped planning/evidence files: SCORE_REPORT.md, plan.md, status.md, and score.md.
+- Ran the targeted evidence-refresh command: bash scripts/recapture_rustc_graphs.sh --check && cargo run --manifest-path ../score/Cargo.toml --quiet -- --artifact-root ../state/rustc --report SCORE_REPORT.md --date "$(date +%Y-%m-%d)".
+- Targeted validation passed. Graph artifact check passed for the configured ../state/rustc root with required artifacts, the scorer processed 17 crates with 0 skipped, and regenerated evidence now reports G = 7.92 / 10.
+- Refreshed aggregate axes are Architecture 9.0, Structure 4.9, Simplicity 6.8, Maintainability 10.0, Determinism 10.0, and Coherency 8.2.
+- Affected crate rows changed for this refresh: local ai library crate row is 5,607 nodes, 35,789 edges, 2,267 functions, Architecture 9.5, Structure 6.0, Simplicity 7.0, Maintainability 10.0, Determinism 10.0, and Coherency 8.2; agent row is 6 nodes, 208 edges, 6 functions, Architecture 5.0, Structure 8.8, Simplicity 0.8, Maintainability 10.0, Determinism 10.0, and Coherency 7.7; root_validate remains 163 nodes, 1,990 edges, 161 functions, Architecture 3.2, Structure 1.5, Simplicity 6.1, Maintainability 10.0, Determinism 10.0, and Coherency 7.3.
+- Broader validation passed: TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets passed with 313 library tests, 3 root_validate binary tests, and all integration/example test targets passing.
+- Updated score.md rationale to reflect the changed graph-derived structural evidence without changing project-level numeric scores.
+- Marked item 33 complete in plan.md.
