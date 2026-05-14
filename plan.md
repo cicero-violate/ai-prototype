@@ -104,7 +104,7 @@ Graph operation `e5d5eb5627204595` identifies `capability::llm::openai::OpenAiFu
    - Done when: `OpenAiFunctionTool::new(...)` returns the same `name`, `parameters_json`, and `description: None` values as before; `OpenAiFunctionTool::with_description(...)` still preserves the existing `name` and `parameters_json` while setting only `description`; and no request serialization or tool validation behavior changes.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo check --lib`.
 
-44. [ ] `src/capability/llm/openai.rs` test `openai_function_tool_constructors_preserve_description_boundary`: add constructor-boundary regression coverage.
+44. [x] `src/capability/llm/openai.rs` test `openai_function_tool_constructors_preserve_description_boundary`: add constructor-boundary regression coverage.
    - Scope: `src/capability/llm/openai.rs` test module only.
    - Done when: the named test asserts `OpenAiFunctionTool::new("lookup", "{...}")` has `description == None`, preserves the exact `name` and `parameters_json`, and equals the shared-helper construction path exposed through `OpenAiTool::function(...)`; then asserts `.with_description("...")` preserves `name` and `parameters_json`, sets `description == Some(...)`, and changes only the description field relative to the bare constructor. The test must not perform network I/O, filesystem I/O, environment mutation, or process spawning.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test openai_function_tool_constructors_preserve_description_boundary -- --test-threads=1`.

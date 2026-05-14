@@ -2045,3 +2045,38 @@ fn retry_budget_binding_is_valid(
         && request_identity_hash
             == policy.request_identity_hash(provider_hash, base_url_hash, model_id, request_hash)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn openai_function_tool_constructors_preserve_description_boundary() {
+        let parameters_json = r#"{"type":"object","properties":{"query":{"type":"string"}}}"#;
+        let bare = OpenAiFunctionTool::new("lookup", parameters_json);
+
+        assert_eq!(bare.name, "lookup");
+        assert_eq!(bare.parameters_json, parameters_json);
+        assert_eq!(bare.description, None);
+        assert_eq!(
+            bare,
+            OpenAiTool::function("lookup", parameters_json).function
+        );
+
+        let described = bare
+            .clone()
+            .with_description("Lookup local indexed records");
+
+        assert_eq!(described.name, bare.name);
+        assert_eq!(described.parameters_json, bare.parameters_json);
+        assert_eq!(
+            described.description.as_deref(),
+            Some("Lookup local indexed records")
+        );
+
+        let mut expected = bare.clone();
+        expected.description = Some("Lookup local indexed records".to_string());
+        assert_eq!(described, expected);
+        assert_ne!(described, bare);
+    }
+}
