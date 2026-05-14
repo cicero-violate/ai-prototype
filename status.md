@@ -48,7 +48,7 @@ Current date: 2026-05-14.
 - P3 runtime and receipt correctness: complete for current scope.
 - P4 graph source-of-truth integration: mostly complete for deterministic fixture/report evidence; agent-driven graph editing remains intentionally deferred until P5 domain surfaces are validated.
 - P5 domain intelligence layer: active. `src/domain/contracts.rs` constructor and invariant tests through unsafe live-effect rejection are complete in local source, with prior targeted validation passing 7 contract tests.
-- Active Priorities items 25 through 163 plus the prior refreshed items 1 through 3 are complete, reconciled, or explicitly blocked with evidence. Items 150 and 151 remain deferred until the sibling connector source tree is exposed, and item 154 remains a historical blocker for the empty local `ai/state/rustc` path. Current planning intentionally stops further `root_validate` work per user direction. The refreshed local `SCORE_REPORT.md` reports `G = 7.99 / 10`, Architecture `8.9`, Structure `4.9`, Simplicity `7.1`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.4`; Structure remains the lowest aggregate axis. `root_validate` remains the weakest current Structure row at `1.5`, but it is non-selectable. The fresh Active Priorities checklist selects non-`root_validate` `ai` crate merge-surface work in `src/agent/config.rs`, `src/agent/router.rs`, and `src/agent/cycle.rs`, followed by graph evidence refresh. `score.md` project-level numeric scores remain unchanged because this planning turn produced selection evidence, not score-history-worthy capability evidence.
+- Active Priorities items 25 through 163, the prior refreshed items 1 through 3, and the completed env/hash fresh items 1 through 5 are complete, reconciled, or explicitly blocked with evidence. Items 150 and 151 remain deferred until the sibling connector source tree is exposed, and item 154 remains a historical blocker for the empty local `ai/state/rustc` path. Current planning intentionally stops further `root_validate` work per user direction. The refreshed local `SCORE_REPORT.md` reports `G = 7.99 / 10`, Architecture `8.9`, Structure `4.9`, Simplicity `7.1`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.4`; Structure remains the lowest aggregate axis. `root_validate` remains the weakest current Structure row at `1.5`, but it is non-selectable. The next Active Priorities checklist selects fresh non-`root_validate` `src/agent/cycle.rs` mapping-helper work from the current `ai` graph-editor plan, followed by focused tests and a graph-derived evidence refresh. `score.md` project-level numeric scores remain unchanged because this planning turn produced task-selection evidence only, not score-history-worthy capability evidence.
 - `src/domain/business.rs` contains `BusinessOpportunity`, `WorkflowAutomationCandidate`, `CustomerFeedbackSignal`, `monetization_score(...)`, compile-smoke test `business_module_records_and_score_helper_compile`, deterministic repeatability test `business_monetization_score_is_deterministic`, and bounded-score test `business_monetization_score_is_bounded`, with broader business validation passing 3 tests after correcting the bounded test scalar assertion.
 - `src/domain/identity.rs` currently contains `DomainHash`, `DomainHashInput<'a>`, `canonical_json_bytes(record)`, `domain_hash_json(record)`, `domain_hash_parts(parts)`, `stable_domain_id(parts)`, and six passing targeted identity tests through `domain_hash_changes_when_schema_version_changes`.
 - `src/domain/scoring.rs` currently contains validated `BoundedScore` helpers, score-input breakdown helpers, conservative `verdict_for_scores(...)`, and passing `verdict_ignore_thresholds`, `verdict_watch_thresholds`, `verdict_research_thresholds`, `verdict_act_business_thresholds`, `verdict_act_finance_research_thresholds`, `verdict_simulate_trading_thresholds`, and `verdict_block_thresholds`; explicit verdict threshold tests are complete for the current scoring scope.
@@ -56,6 +56,94 @@ Current date: 2026-05-14.
 - Domain fixture JSON files exist under `tests/fixtures/domain/` for global signal, business workflow opportunity, finance hypothesis research, trading simulation sandbox, and trading live blocked cases; `tests/test_domain_fixture_contract.py` now includes explicit risk-result and required-field assertions. Item 51 graph analyzer now exists and passes against `state/rustc/ai/graph.json`, reporting 752 compiled P5 domain-node matches. Item 52 malformed-input self-check also passes. Remaining work includes item 50 full-suite Rust validation and later graph evidence refresh/score review items gated on full-suite output.
 
 ## Validation Ledger
+
+### 2026-05-14 — planning selected non-root_validate cycle mapping work
+
+- Scope: `plan.md`, `status.md`, `score.md`, `SCORE_REPORT.md`, `../state/rustc/auto-refactor/*.graph-editor-plan.json`, selected `../state/rustc/auto-refactor/workspace__ai_sandbox__canon-mini-agent__prototype__state__rustc__ai__graph.graph-editor-plan.json`, and source surfaces in `src/agent/cycle.rs`, `src/agent/loop_driver.rs`, `src/agent/objective.rs`, and `src/agent/prompt.rs`.
+- Command/check: manual reconnaissance with `sed`, `ls`, `rg`, `git status --short`, graph-plan JSON inspection, and source inspection from `/workspace/ai_sandbox/canon-mini-agent/prototype/ai` through the project connector.
+- Result: informational.
+- Evidence: Active Priorities had no unchecked executable item after the previous evidence refresh. User direction explicitly made `root_validate` non-selectable. Current local `SCORE_REPORT.md` remains `G = 7.99 / 10`, Architecture `8.9`, Structure `4.9`, Simplicity `7.1`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.4`. The selected `ai` graph-editor plan exists, uses schema version 1, contains 1,614 operations, and exposes fresh non-`root_validate` `MergeFns` candidates for `agent::cycle::{effect_for_gate_evidence,evidence_u64_value,gate_id_u64,phase_gate,recovery_action_for_failure,recovery_gate,recovery_target_phase,use_teacher}` after already-completed env/hash candidates. `src/agent/cycle.rs` currently contains the selected mapping helpers; `src/agent/loop_driver.rs` has a pre-existing unstaged behavior/formatting diff that previously blocked the normal commit hook and remains outside the selected source scope.
+- Next action: execute Active Priorities item 1 in `src/agent/cycle.rs`, preserving existing function names and current mapping outputs.
+
+### 2026-05-14 — item 5 commit hook blocked by pre-existing out-of-scope loop_driver formatting diff
+
+- Scope: commit attempt for staged `src/agent/config.rs`, `src/agent/router.rs`, `src/agent/cycle.rs`, `plan.md`, and `status.md` changes after item 5 validation.
+- Command/check: `git commit -m "Refresh agent graph evidence"`.
+- Result: blocked.
+- Evidence: the normal commit hook ran `cargo fmt --check` and failed only on pre-existing unstaged formatting diffs in `src/agent/loop_driver.rs`. The item 5 graph-derived evidence refresh command and broader all-target validation both passed before this commit attempt. `src/agent/loop_driver.rs` is outside Active Priorities item 5 scope.
+- Next action: resolve or explicitly scope the pre-existing `src/agent/loop_driver.rs` formatting diff before committing the staged item 1 through item 5 changes.
+
+### 2026-05-14 — item 5 graph-derived evidence refresh
+
+- Scope: `SCORE_REPORT.md`, `score.md`, `plan.md`, and `status.md` only.
+- Command/check: `bash scripts/recapture_rustc_graphs.sh --check && cargo run --manifest-path ../score/Cargo.toml --quiet -- --artifact-root ../state/rustc --report SCORE_REPORT.md --date "$(date +%Y-%m-%d)"`; broader `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
+- Result: passed.
+- Evidence: graph artifact check passed with root `/workspace/ai_sandbox/canon-mini-agent/prototype/chatgpt-mcp-connector-v2/../state/rustc`, required artifact count `2`, and a captured `score__bin` witness with `90` nodes, `685` facts, and graph hash `33beeb8225fde77c885564a05e832fb3461cdd3482166b4e298d8f62a492e044`. Regenerated `SCORE_REPORT.md` remained unchanged at aggregate `G = 7.99 / 10`, Architecture `8.9`, Structure `4.9`, Simplicity `7.1`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.4`; crate rows remained unchanged, including local `ai` library Structure `6.0` / Simplicity `7.5`, `chatgpt_mcp_connector` Structure `3.6`, and non-selectable `root_validate` Structure `1.5`. `score.md` required no update because score values and rationale were already current. Broader all-target validation passed with 284 library/bin tests and 0 failures, plus 3 root_validate tests, 12 API server contract tests, 20 API transport contract tests, 3 canonical TLog contract tests, 4 domain contract tests, 10 graph mutation CLI contract tests, 9 MCP receipt contract tests, 2 planning contract tests, 5 score contract tests, 2 supervisor binary contract tests, 2 worker binary contract tests, and all example test targets green.
+- Next action: a planning turn is required to select fresh non-`root_validate` work, or resolve the pre-existing out-of-scope `src/agent/loop_driver.rs` formatting blocker before committing the staged item 1 through item 5 changes.
+
+### 2026-05-14 — item 4 commit hook blocked by pre-existing out-of-scope loop_driver formatting diff
+
+- Scope: commit attempt for staged `src/agent/config.rs`, `src/agent/router.rs`, `src/agent/cycle.rs`, `plan.md`, and `status.md` changes after item 4 validation.
+- Command/check: `git commit -m "Add cycle regression test"`.
+- Result: blocked.
+- Evidence: the normal commit hook ran `cargo fmt --check` and failed only on pre-existing unstaged formatting diffs in `src/agent/loop_driver.rs`. The item 4 targeted known-vector test and broader all-target validation both passed before this commit attempt. `src/agent/loop_driver.rs` is outside Active Priorities item 4 scope.
+- Next action: resolve or explicitly scope the pre-existing `src/agent/loop_driver.rs` formatting diff before committing the staged item 1 through item 4 changes.
+
+### 2026-05-14 — item 4 cycle known-vector regression test
+
+- Scope: `src/agent/cycle.rs` tests, checklist item 4 in `plan.md`, and `status.md` evidence update.
+- Command/check: targeted `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test submit_evidence_hash_helpers_preserve_known_vectors -- --test-threads=1`; broader `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
+- Result: passed after correcting stale expected literals from the first targeted run.
+- Evidence: added `agent::cycle::hash_tests::submit_evidence_hash_helpers_preserve_known_vectors`, asserting the exact current command JSON for `Invariant/InvariantProof` with command id 1 and `Plan/TaskReady` with command id 2. Targeted validation passed with 1 test and 0 failures. Broader validation passed with 284 library/bin tests and 0 failures, including the new known-vector regression, plus 3 root_validate tests, 12 API server contract tests, 20 API transport contract tests, 3 canonical TLog contract tests, 4 domain contract tests, 10 graph mutation CLI contract tests, 9 MCP receipt contract tests, 2 planning contract tests, 5 score contract tests, 2 supervisor binary contract tests, 2 worker binary contract tests, and all example test targets green.
+- Next action: perform Active Priorities item 5 graph-derived evidence refresh, or resolve the pre-existing out-of-scope `src/agent/loop_driver.rs` formatting blocker before committing the staged item 1 through item 4 changes.
+
+### 2026-05-14 — item 3 commit hook blocked by pre-existing out-of-scope loop_driver formatting diff
+
+- Scope: commit attempt for staged `src/agent/config.rs`, `src/agent/router.rs`, `src/agent/cycle.rs`, `plan.md`, and `status.md` changes.
+- Command/check: `git commit -m "Consolidate agent helper hashing"`.
+- Result: blocked.
+- Evidence: the normal commit hook ran `cargo fmt --check` and failed only on pre-existing unstaged formatting diffs in `src/agent/loop_driver.rs`. The in-scope `src/agent/cycle.rs` formatting issue was corrected and targeted plus broader validation passed after that correction. `src/agent/loop_driver.rs` is outside Active Priorities item 3 scope.
+- Next action: resolve or explicitly scope the pre-existing `src/agent/loop_driver.rs` formatting diff before committing the staged item 1 through item 3 changes.
+
+### 2026-05-14 — item 3 cycle hash helper consolidation
+
+- Scope: `src/agent/cycle.rs`, checklist item 3 in `plan.md`, and `status.md` evidence update.
+- Command/check: targeted `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test build_submit_evidence_json -- --test-threads=1`; broader `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
+- Result: passed with caveat.
+- Evidence: `compute_evidence_contract_hash(...)`, `compute_submit_evidence_command_hash(...)`, and `compute_envelope_hash(...)` now share private deterministic helper `mix_contract_hash(seed, fields)` while preserving the existing field order, seeds, FNV-style multiplier, and `max(1)` behavior. The targeted command completed successfully but matched 0 tests because no test name contains `build_submit_evidence_json`; broader validation passed with 283 library/bin tests and 0 failures, including the existing cycle hash-chain regression `agent::cycle::hash_tests::submit_evidence_hash_chain_matches_real_types`, plus 3 root_validate tests, 12 API server contract tests, 20 API transport contract tests, 3 canonical TLog contract tests, 4 domain contract tests, 10 graph mutation CLI contract tests, 9 MCP receipt contract tests, 2 planning contract tests, 5 score contract tests, 2 supervisor binary contract tests, 2 worker binary contract tests, and all example test targets green.
+- Next action: perform Active Priorities item 4 in `src/agent/cycle.rs`, or resolve the pre-existing out-of-scope `src/agent/loop_driver.rs` formatting blocker before committing the staged item 1 through item 3 changes.
+
+### 2026-05-14 — item 2 commit hook blocked by pre-existing out-of-scope loop_driver formatting diff
+
+- Scope: commit attempt for staged `src/agent/config.rs`, `src/agent/router.rs`, `plan.md`, and `status.md` changes.
+- Command/check: `git commit -m "Consolidate agent env parsing helpers"`.
+- Result: blocked.
+- Evidence: the normal commit hook ran `cargo fmt --check` and failed only on pre-existing unstaged formatting diffs in `src/agent/loop_driver.rs`. The earlier in-scope router formatting issue was corrected and targeted plus broader validation passed after that correction. `src/agent/loop_driver.rs` is outside Active Priorities item 2 scope.
+- Next action: resolve or explicitly scope the pre-existing `src/agent/loop_driver.rs` formatting diff before committing the staged item 1 and item 2 changes.
+
+### 2026-05-14 — item 2 router env helper consolidation
+
+- Scope: `src/agent/router.rs`, checklist item 2 in `plan.md`, and `status.md` evidence update.
+- Command/check: targeted `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test router::tests -- --test-threads=1`; broader `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets` after one connector-network retry.
+- Result: passed.
+- Evidence: router `env_u32(...)` and `env_u64(...)` now both delegate to private generic helper `env_parsed<T>(name, default)`, preserving wrapper names, retry-policy environment keys, retry defaults, and `.max(1)` behavior on attempts only. Targeted validation passed with 17 router tests and 0 failures. The first broader validation attempt failed with a connector network error before product output; the retry passed with 283 library/bin tests, 3 root_validate tests, 12 API server contract tests, 20 API transport contract tests, 3 canonical TLog contract tests, 4 domain contract tests, 10 graph mutation CLI contract tests, 9 MCP receipt contract tests, 2 planning contract tests, 5 score contract tests, 2 supervisor binary contract tests, 2 worker binary contract tests, and all example test targets green.
+- Next action: perform Active Priorities item 3 in `src/agent/cycle.rs`, or resolve the pre-existing out-of-scope commit-hook formatting blocker before committing the staged item 1 and item 2 changes.
+
+### 2026-05-14 — item 1 commit hook blocked by pre-existing out-of-scope formatting diffs
+
+- Scope: commit attempt for staged `src/agent/config.rs`, `plan.md`, and `status.md` changes only.
+- Command/check: `git commit -m "Consolidate agent config env parsing"`.
+- Result: blocked.
+- Evidence: the normal commit hook ran `cargo fmt --check` and failed on pre-existing unstaged formatting diffs in `src/agent/loop_driver.rs` and `src/agent/router.rs`. Those files are outside Active Priorities item 1 scope. Targeted validation and broader all-target validation had already passed for the scoped item 1 changes.
+- Next action: resolve or explicitly scope the pre-existing formatting diffs before committing item 1, or run a policy-approved scoped commit path that does not mutate out-of-scope files.
+
+### 2026-05-14 — item 1 config env helper consolidation
+
+- Scope: `src/agent/config.rs`, checklist item 1 in `plan.md`, and `status.md` evidence update.
+- Command/check: targeted `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test agent:: -- --test-threads=1`; broader `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
+- Result: passed.
+- Evidence: `env_u32(...)` and `env_u64(...)` now both delegate to private generic helper `env_parsed<T>(key, default)`, preserving wrapper names, environment variable keys, defaults, and `AgentLoopConfig::from_env()` call sites. Targeted validation passed with 43 agent tests and 0 failures. Broader all-target validation passed with 283 library/bin tests, 3 root_validate tests, 12 API server contract tests, 20 API transport contract tests, 3 canonical TLog contract tests, 4 domain contract tests, 10 graph mutation CLI contract tests, 9 MCP receipt contract tests, 2 planning contract tests, 5 score contract tests, 2 supervisor binary contract tests, 2 worker binary contract tests, and all example test targets green.
+- Next action: perform Active Priorities item 2 in `src/agent/router.rs`, preserving pre-existing working-tree edits.
 
 ### 2026-05-14 — planning turn selected non-root_validate ai MergeFns work
 

@@ -93,29 +93,29 @@ objective or world signal
 
 ## Active Priorities
 
-Planning reconnaissance refresh on 2026-05-14 re-read `plan.md`, `status.md`, `score.md`, `SCORE_REPORT.md`, current `../state/rustc/auto-refactor/*.graph-editor-plan.json`, the selected `../state/rustc/auto-refactor/workspace__ai_sandbox__canon-mini-agent__prototype__state__rustc__ai__graph.graph-editor-plan.json`, and source locations for current `ai` crate candidates. User direction is explicit: do not continue `root_validate` work. `root_validate` remains a low-scoring graph row, but it is intentionally non-selectable. Current graph-derived aggregate evidence reports `G = 7.99 / 10`, Architecture `8.9`, Structure `4.9`, Simplicity `7.1`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.4`; Structure remains the lowest aggregate axis. The next executable work is graph-backed `ai` crate refactoring from current non-`root_validate` `MergeFns` evidence that can produce validation evidence one file at a time.
+Planning reconnaissance refresh on 2026-05-14 re-read `plan.md`, `status.md`, `score.md`, `SCORE_REPORT.md`, current `../state/rustc/auto-refactor/*.graph-editor-plan.json`, the selected `../state/rustc/auto-refactor/workspace__ai_sandbox__canon-mini-agent__prototype__state__rustc__ai__graph.graph-editor-plan.json`, and source locations for current `ai` crate candidates. User direction is explicit: do not continue `root_validate` work. `root_validate` remains a low-scoring graph row, but it is intentionally non-selectable. Current graph-derived aggregate evidence reports `G = 7.99 / 10`, Architecture `8.9`, Structure `4.9`, Simplicity `7.1`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.4`; Structure remains the lowest aggregate axis. The next executable work is graph-backed `ai` crate refactoring from current non-`root_validate` `MergeFns` evidence that can produce validation evidence one file or one test at a time.
 
-The selected graph-editor plan is schema version 1, contains 1,614 planned operations, and currently exposes one already-completed `SplitFn` candidate for `agent::loop_driver::LoopDriver::run_cycle` plus 1,613 `MergeFns` candidates. The next selected candidates are local `ai` crate merge-surface entries only: `agent::config::{env_u32, env_u64}`, `agent::router::{env_u32, env_u64}`, and `agent::cycle::{compute_envelope_hash, compute_evidence_contract_hash, compute_submit_evidence_command_hash}`. Generated canonical names are evidence, not mandatory names; the implementation must preserve function names consumed by existing call sites unless the selected item explicitly allows a call-site update. `root_validate` graph plans are non-selectable.
+The selected graph-editor plan is schema version 1, contains 1,614 planned operations, and exposes one already-completed `SplitFn` candidate for `agent::loop_driver::LoopDriver::run_cycle` plus 1,613 `MergeFns` candidates. Previously selected candidates for `agent::config::{env_u32, env_u64}`, `agent::router::{env_u32, env_u64}`, and `agent::cycle::{compute_envelope_hash, compute_evidence_contract_hash, compute_submit_evidence_command_hash}` are complete but not yet committed because a pre-existing unstaged `src/agent/loop_driver.rs` diff blocks the normal commit hook. Fresh selectable work starts at the next local `ai` crate merge-surface cluster in `src/agent/cycle.rs`, covering operation ids 6 through 33 for deterministic recovery/gate/evidence/effect mapping helpers. Generated canonical names are evidence, not mandatory names; the implementation must preserve function names consumed by existing call sites unless the selected item explicitly allows a call-site update. `root_validate` graph plans are non-selectable.
 
-1. [ ] `src/agent/config.rs`: consolidate the duplicated `env_u32(...)` and `env_u64(...)` parse/default bodies behind one private generic helper while preserving both wrapper function names and all `AgentLoopConfig::from_env()` behavior.
-   - Scope: `src/agent/config.rs` only.
-   - Done when: `env_u32(...)` and `env_u64(...)` both delegate to one shared private parsing helper, existing environment variable names and defaults are unchanged, and no other file is edited for this item.
-   - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test agent:: -- --test-threads=1`.
+1. [ ] `src/agent/cycle.rs`: consolidate `recovery_gate(...)` and `recovery_target_phase(...)` behind one private `RecoveryActionSpec` lookup while preserving both public-in-file helper names and all current action-to-gate/evidence/phase outputs.
+   - Scope: `src/agent/cycle.rs` functions `recovery_gate(...)`, `recovery_target_phase(...)`, and a new private helper/type immediately adjacent to them only.
+   - Done when: both named helpers delegate to one shared deterministic action lookup; `Escalate` still maps to no recovery gate and target phase `Done`; unknown actions still return `None`; no LLM, worker, router, hash, or phase-dispatch behavior changes.
+   - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test recovery_ -- --test-threads=1`.
 
-2. [ ] `src/agent/router.rs`: consolidate the duplicated router retry-policy `env_u32(...)` and `env_u64(...)` parse/default bodies behind one private generic helper while preserving retry policy defaults and bounds.
-   - Scope: `src/agent/router.rs` only; preserve pre-existing working-tree edits in this file.
-   - Done when: router `env_u32(...)` and `env_u64(...)` both delegate to one shared private parsing helper, `router_retry_policy()` still applies `.max(1)` only to attempts, and no streaming/SSE/router request behavior changes.
-   - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test router::tests -- --test-threads=1`.
-
-3. [ ] `src/agent/cycle.rs`: reduce duplicate hash-mixing structure across `compute_evidence_contract_hash(...)`, `compute_submit_evidence_command_hash(...)`, and `compute_envelope_hash(...)` with one private helper while preserving the exact emitted JSON hashes.
-   - Scope: `src/agent/cycle.rs` helper functions only.
-   - Done when: the three named hash functions share one private deterministic mixing helper, `build_submit_evidence_json(...)` output remains byte-for-byte compatible for existing tests, and no phase-dispatch or worker/router behavior changes.
-   - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test build_submit_evidence_json -- --test-threads=1`.
-
-4. [ ] `src/agent/cycle.rs` test `submit_evidence_hash_helpers_preserve_known_vectors`: add one focused regression test covering at least the current `Invariant/InvariantProof` and `Plan/TaskReady` command JSON outputs after item 3.
+2. [ ] `src/agent/cycle.rs` test `recovery_action_spec_preserves_gate_and_target_mappings`: add focused regression coverage for the item 1 lookup across representative actions.
    - Scope: `src/agent/cycle.rs` tests only.
-   - Done when: the named test asserts stable command JSON or command-hash fields for the two existing evidence vectors without adding network fixtures.
+   - Done when: the named test asserts current outputs for `RecheckInvariant`, `BindReadyTask`, `RepairArtifactLineage`, `RecomputeEval`, `Escalate`, and one unknown action through `recovery_gate(...)` and `recovery_target_phase(...)`.
+   - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test recovery_action_spec_preserves_gate_and_target_mappings -- --test-threads=1`.
+
+3. [ ] `src/agent/cycle.rs`: consolidate `gate_id_u64(...)`, `evidence_u64_value(...)`, and `effect_for_gate_evidence(...)` around one private static route table or lookup helper while preserving exact numeric ids and effect JSON strings.
+   - Scope: `src/agent/cycle.rs` functions `gate_id_u64(...)`, `evidence_u64_value(...)`, `effect_for_gate_evidence(...)`, and a new private helper/type immediately adjacent to them only.
+   - Done when: gate ids, evidence ids, failed-evidence effect `(0, "null")`, `Execution/ExecutionReceipt` no-effect behavior, and `Plan`/`Execution`/`Verification`/`Eval` effect mappings are unchanged; `build_submit_evidence_json(...)` known vectors from existing tests remain byte-for-byte stable.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test submit_evidence_hash_helpers_preserve_known_vectors -- --test-threads=1`.
+
+4. [ ] `src/agent/cycle.rs` test `gate_evidence_route_tables_preserve_known_values`: add focused regression coverage for the item 3 lookup table before graph refresh.
+   - Scope: `src/agent/cycle.rs` tests only.
+   - Done when: the named test asserts current ids for at least `Invariant`, `Plan`, `Eval`, `InvariantProof`, `TaskReady`, `EvalScore`, unknown gate/evidence `None`, failed evidence no-effect, `Execution/ExecutionReceipt` no-effect, `Plan/TaskReady` bind-ready effect, and `Verification/LineageProof` repair-lineage effect.
+   - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test gate_evidence_route_tables_preserve_known_values -- --test-threads=1`.
 
 5. [ ] `SCORE_REPORT.md`: after items 1 through 4 land, refresh graph-derived evidence and review whether `score.md` rationale changes without raising project-level scores absent capability evidence.
    - Scope: `SCORE_REPORT.md`, `score.md`, `plan.md`, and `status.md` only.

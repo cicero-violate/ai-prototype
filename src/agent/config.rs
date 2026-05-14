@@ -84,13 +84,17 @@ impl AgentLoopConfig {
 }
 
 fn env_u32(key: &str, default: u32) -> u32 {
-    env::var(key)
-        .ok()
-        .and_then(|v| v.parse().ok())
-        .unwrap_or(default)
+    env_parsed(key, default)
 }
 
 fn env_u64(key: &str, default: u64) -> u64 {
+    env_parsed(key, default)
+}
+
+fn env_parsed<T>(key: &str, default: T) -> T
+where
+    T: std::str::FromStr,
+{
     env::var(key)
         .ok()
         .and_then(|v| v.parse().ok())

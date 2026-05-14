@@ -263,13 +263,17 @@ fn router_retry_policy() -> RouterRetryPolicy {
 }
 
 fn env_u32(name: &str, default: u32) -> u32 {
-    env::var(name)
-        .ok()
-        .and_then(|value| value.parse().ok())
-        .unwrap_or(default)
+    env_parsed(name, default)
 }
 
 fn env_u64(name: &str, default: u64) -> u64 {
+    env_parsed(name, default)
+}
+
+fn env_parsed<T>(name: &str, default: T) -> T
+where
+    T: std::str::FromStr,
+{
     env::var(name)
         .ok()
         .and_then(|value| value.parse().ok())
@@ -287,6 +291,14 @@ fn is_transient_router_error(err: &OpenAiError) -> bool {
         }
         _ => false,
     }
+}
+
+/// Called from a background thread in loop_driver. No retry, hard 8s cap.
+pub fn close_tab_for_url_with_timeout(
+    target_url: &str,
+    timeout_ms: u64,
+) -> Result<RouterTabCloseOutcome, OpenAiError> {
+    close_browser_tab_for_url(target_url, timeout_ms)
 }
 
 fn close_browser_tab_for_url(
@@ -383,8 +395,19 @@ fn cdp_get(
     path: &str,
     timeout_ms: u64,
 ) -> Result<(u16, String), OpenAiError> {
-    let mut stream = TcpStream::connect((host, port)).map_err(OpenAiError::Io)?;
+    use std::net::ToSocketAddrs;
+    let addr = (host, port)
+        .to_socket_addrs()
+        .map_err(OpenAiError::Io)?
+        .next()
+        .ok_or_else(|| {
+            OpenAiError::Io(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "cdp resolve failed",
+            ))
+        })?;
     let timeout = Duration::from_millis(timeout_ms);
+    let mut stream = TcpStream::connect_timeout(&addr, timeout).map_err(OpenAiError::Io)?;
     stream
         .set_read_timeout(Some(timeout))
         .map_err(OpenAiError::Io)?;

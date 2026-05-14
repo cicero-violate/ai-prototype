@@ -593,37 +593,37 @@ fn compute_evidence_contract_hash(
     effect_u64: u64,
     payload_hash: u64,
 ) -> u64 {
-    let mut h = 0xcbf29ce484222325u64;
-    h ^= gate_u64;
-    h = h.wrapping_mul(0x100000001b3);
-    h ^= evidence_u64;
-    h = h.wrapping_mul(0x100000001b3);
-    h ^= passed as u64;
-    h = h.wrapping_mul(0x100000001b3);
-    h ^= effect_u64;
-    h = h.wrapping_mul(0x100000001b3);
-    h ^= payload_hash;
-    h = h.wrapping_mul(0x100000001b3);
-    h.max(1)
+    mix_contract_hash(
+        0xcbf29ce484222325u64,
+        &[
+            gate_u64,
+            evidence_u64,
+            passed as u64,
+            effect_u64,
+            payload_hash,
+        ],
+    )
 }
 
 fn compute_submit_evidence_command_hash(sub_contract_hash: u64) -> u64 {
-    let mut h = 0x9e3779b97f4a7c15u64;
-    h ^= 1u64; // submission_count = 1
-    h = h.wrapping_mul(0x100000001b3);
-    h ^= sub_contract_hash;
-    h.wrapping_mul(0x100000001b3).max(1)
+    mix_contract_hash(0x9e3779b97f4a7c15u64, &[1u64, sub_contract_hash])
 }
 
 fn compute_envelope_hash(command_id: u64, cmd_contract_hash: u64) -> u64 {
     const SCHEMA_VERSION: u64 = 6;
-    let mut h = 0x517cc1b727220a95u64;
-    h ^= SCHEMA_VERSION;
-    h = h.wrapping_mul(0x100000001b3);
-    h ^= command_id;
-    h = h.wrapping_mul(0x100000001b3);
-    h ^= cmd_contract_hash;
-    h.wrapping_mul(0x100000001b3).max(1)
+    mix_contract_hash(
+        0x517cc1b727220a95u64,
+        &[SCHEMA_VERSION, command_id, cmd_contract_hash],
+    )
+}
+
+fn mix_contract_hash(seed: u64, fields: &[u64]) -> u64 {
+    let mut h = seed;
+    for field in fields {
+        h ^= *field;
+        h = h.wrapping_mul(0x100000001b3);
+    }
+    h.max(1)
 }
 
 fn build_submit_evidence_json(
@@ -997,5 +997,21 @@ mod hash_tests {
         let sub_hash =
             compute_evidence_contract_hash(gate_u64, ev_u64, passed, effect_u64, payload_hash);
         assert_eq!(sub_hash, submission.contract_hash());
+    }
+
+    #[test]
+    fn submit_evidence_hash_helpers_preserve_known_vectors() {
+        let invariant_json =
+            build_submit_evidence_json("Invariant", "InvariantProof", true, 1).unwrap();
+        assert_eq!(
+            invariant_json,
+            r#"{"command_id":1,"command_hash":15885761918420965375,"payload_tag":"SubmitEvidence","payload":{"gate":"Invariant","evidence":"InvariantProof","passed":true,"effect":null,"payload_hash":11251148856225099997}}"#
+        );
+
+        let task_ready_json = build_submit_evidence_json("Plan", "TaskReady", true, 2).unwrap();
+        assert_eq!(
+            task_ready_json,
+            r#"{"command_id":2,"command_hash":11338161946621137912,"payload_tag":"SubmitEvidence","payload":{"gate":"Plan","evidence":"TaskReady","passed":true,"effect":"BindReadyTask","payload_hash":15192544920361791511}}"#
+        );
     }
 }
