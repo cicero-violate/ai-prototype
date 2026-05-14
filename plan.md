@@ -886,10 +886,11 @@ Deferred connector work, not selectable until the sibling source tree is mounted
    - Validation: `cargo run --manifest-path ../score/Cargo.toml --quiet -- --artifact-root state/rustc --report SCORE_REPORT.md --date "$(date +%Y-%m-%d)"`.
    - Blocked on 2026-05-13: the validation command failed with `Error: no compatible graphs under state/rustc (0 skipped)` after emitting only a `score__bin` witness. Step-3, step-4, and step-5 reruns produced the same error, and the mounted workspace still has no `state/rustc` artifact root, so `SCORE_REPORT.md` could not be regenerated and `score.md` was not changed. Item 155 is now the selectable recovery step.
 
-155. [ ] `scripts/recapture_rustc_graphs.sh`: add a deterministic graph-artifact recapture wrapper for item 154.
+155. [x] `scripts/recapture_rustc_graphs.sh`: add a deterministic graph-artifact recapture wrapper for item 154.
    - Scope: new file `scripts/recapture_rustc_graphs.sh` only; may read existing `run.sh`, `src/bin/root_validate.rs`, `docs/03-graph-source-of-truth.md`, and `others/build_test.sh` for command shape. Do not edit generated `state/rustc` artifacts in this item.
    - Done when: the script creates/checks the `state/rustc` artifact root path, documents the exact wrapper/toolchain environment variables it requires, runs the existing root validation or canon-rustc graph telemetry command in check mode without committing generated graphs, and fails closed with actionable stderr if compatible graphs cannot be produced.
-   - Validation: `bash scripts/recapture_rustc_graphs.sh --check`.
+   - Validation: `bash scripts/recapture_rustc_graphs.sh --check` passed on 2026-05-13.
+   - Completed on 2026-05-13: `scripts/recapture_rustc_graphs.sh` now supports `--check`, `--recapture`, and `--help`; resolves `CANON_RUSTC_V3_ARTIFACT_DIR` with default `../state/rustc`; validates required `ai/graph.json` and `root_validate__bin/graph.json`; checks graph schema fields `meta`, `nodes`, `edges`, `meta.crate_name`, `meta.schema_version`, and `meta.graph_hash`; and fails closed with actionable stderr when compatible graph artifacts are unavailable. Targeted validation passed with `graph artifact check: pass`. Broader validation `cargo test --all-targets` passed.
 
 156. [ ] `SCORE_REPORT.md`: rerun the graph-derived structural evidence refresh after item 155 produces compatible graph artifacts, then review whether `score.md` rationale should change without raising project-level scores absent capability evidence.
    - Scope: `SCORE_REPORT.md`, `score.md`, `plan.md`, and `status.md` only.
