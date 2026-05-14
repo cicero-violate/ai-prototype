@@ -411,6 +411,65 @@ mod tests {
     }
 
     #[test]
+    fn eval_dimension_hash_domains_remain_distinct() {
+        let record = passing_record();
+        let reordered_dimensions = vec![record.dimensions[1], record.dimensions[0]];
+        let score_changed_dimensions = vec![
+            EvalDimension {
+                score: record.dimensions[0].score + 1,
+                ..record.dimensions[0]
+            },
+            record.dimensions[1],
+        ];
+        let threshold_changed_dimensions = vec![
+            record.dimensions[0],
+            EvalDimension {
+                threshold: record.dimensions[1].threshold + 1,
+                ..record.dimensions[1]
+            },
+        ];
+
+        assert_ne!(
+            dimension_order_hash(&record.dimensions),
+            dimension_order_hash(&reordered_dimensions)
+        );
+        assert_eq!(
+            dimension_order_hash(&record.dimensions),
+            dimension_order_hash(&score_changed_dimensions)
+        );
+        assert_eq!(
+            dimension_order_hash(&record.dimensions),
+            dimension_order_hash(&threshold_changed_dimensions)
+        );
+        assert_ne!(
+            dimension_score_hash(&record.dimensions),
+            dimension_score_hash(&score_changed_dimensions)
+        );
+        assert_ne!(
+            dimension_score_hash(&record.dimensions),
+            dimension_score_hash(&threshold_changed_dimensions)
+        );
+
+        let score_changed_record = EvalRecord {
+            score: record.score + 1,
+            ..record.clone()
+        };
+        let threshold_changed_record = EvalRecord {
+            threshold_used: record.threshold_used + 1,
+            ..record.clone()
+        };
+
+        assert_ne!(
+            eval_payload_hash(&record),
+            eval_payload_hash(&score_changed_record)
+        );
+        assert_ne!(
+            eval_payload_hash(&record),
+            eval_payload_hash(&threshold_changed_record)
+        );
+    }
+
+    #[test]
     fn scorecard_receipt_rejects_tampered_hash() {
         let record = passing_record();
         let mut receipt = record.scorecard_receipt();

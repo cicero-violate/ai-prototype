@@ -104,7 +104,7 @@ Graph operations `76de2626ddf92d55`, `60f6ec4427231d32`, and `6f2ca76087786cf6` 
    - Done when: `dimension_order_hash(dimensions)` delegates through the shared helper without including score or threshold values, `dimension_score_hash(dimensions)` delegates through the shared helper including score and threshold values, and their outputs for existing inputs remain unchanged.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo check --lib`.
 
-29. [ ] `src/capability/eval/record.rs` test `eval_dimension_hash_domains_remain_distinct`: add direct regression coverage for the extracted helper semantics.
+29. [x] `src/capability/eval/record.rs` test `eval_dimension_hash_domains_remain_distinct`: add direct regression coverage for the extracted helper semantics.
    - Scope: `src/capability/eval/record.rs` test module only.
    - Done when: the named test asserts reordering dimensions changes `dimension_order_hash(...)`, changing only a dimension score or threshold leaves `dimension_order_hash(...)` unchanged, changing only a dimension score or threshold changes `dimension_score_hash(...)`, and `eval_payload_hash(...)` still changes when record-level score or threshold changes. The test must not touch the filesystem, start processes, read graph artifacts, perform network I/O, or mutate process-global environment.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test eval_dimension_hash_domains_remain_distinct -- --test-threads=1`.
