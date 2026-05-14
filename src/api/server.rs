@@ -456,34 +456,48 @@ fn submission_from_dto(dto: EvidenceSubmissionDto) -> Result<EvidenceSubmission,
         .ok_or(ServerError::InvalidCommand)
 }
 
-fn gate_from_str(value: &str) -> Result<GateId, ServerError> {
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum ApiSubmissionToken {
+    Gate(GateId),
+    Evidence(Evidence),
+}
+
+fn api_submission_token_from_str(value: &str) -> Result<ApiSubmissionToken, ServerError> {
     match value {
-        "Invariant" => Ok(GateId::Invariant),
-        "Analysis" => Ok(GateId::Analysis),
-        "Judgment" => Ok(GateId::Judgment),
-        "Plan" => Ok(GateId::Plan),
-        "Execution" => Ok(GateId::Execution),
-        "Verification" => Ok(GateId::Verification),
-        "Eval" => Ok(GateId::Eval),
-        "Learning" => Ok(GateId::Learning),
+        "Invariant" => Ok(ApiSubmissionToken::Gate(GateId::Invariant)),
+        "Analysis" => Ok(ApiSubmissionToken::Gate(GateId::Analysis)),
+        "Judgment" => Ok(ApiSubmissionToken::Gate(GateId::Judgment)),
+        "Plan" => Ok(ApiSubmissionToken::Gate(GateId::Plan)),
+        "Execution" => Ok(ApiSubmissionToken::Gate(GateId::Execution)),
+        "Verification" => Ok(ApiSubmissionToken::Gate(GateId::Verification)),
+        "Eval" => Ok(ApiSubmissionToken::Gate(GateId::Eval)),
+        "Learning" => Ok(ApiSubmissionToken::Gate(GateId::Learning)),
+        "InvariantProof" => Ok(ApiSubmissionToken::Evidence(Evidence::InvariantProof)),
+        "AnalysisReport" => Ok(ApiSubmissionToken::Evidence(Evidence::AnalysisReport)),
+        "JudgmentRecord" => Ok(ApiSubmissionToken::Evidence(Evidence::JudgmentRecord)),
+        "PlanRecord" => Ok(ApiSubmissionToken::Evidence(Evidence::PlanRecord)),
+        "TaskReady" => Ok(ApiSubmissionToken::Evidence(Evidence::TaskReady)),
+        "ExecutionReceipt" => Ok(ApiSubmissionToken::Evidence(Evidence::ExecutionReceipt)),
+        "ArtifactReceipt" => Ok(ApiSubmissionToken::Evidence(Evidence::ArtifactReceipt)),
+        "VerificationReport" => Ok(ApiSubmissionToken::Evidence(Evidence::VerificationReport)),
+        "LineageProof" => Ok(ApiSubmissionToken::Evidence(Evidence::LineageProof)),
+        "EvalScore" => Ok(ApiSubmissionToken::Evidence(Evidence::EvalScore)),
+        "PersistedRecord" => Ok(ApiSubmissionToken::Evidence(Evidence::PersistedRecord)),
         _ => Err(ServerError::InvalidPayload),
     }
 }
 
+fn gate_from_str(value: &str) -> Result<GateId, ServerError> {
+    match api_submission_token_from_str(value)? {
+        ApiSubmissionToken::Gate(gate) => Ok(gate),
+        ApiSubmissionToken::Evidence(_) => Err(ServerError::InvalidPayload),
+    }
+}
+
 fn evidence_from_str(value: &str) -> Result<Evidence, ServerError> {
-    match value {
-        "InvariantProof" => Ok(Evidence::InvariantProof),
-        "AnalysisReport" => Ok(Evidence::AnalysisReport),
-        "JudgmentRecord" => Ok(Evidence::JudgmentRecord),
-        "PlanRecord" => Ok(Evidence::PlanRecord),
-        "TaskReady" => Ok(Evidence::TaskReady),
-        "ExecutionReceipt" => Ok(Evidence::ExecutionReceipt),
-        "ArtifactReceipt" => Ok(Evidence::ArtifactReceipt),
-        "VerificationReport" => Ok(Evidence::VerificationReport),
-        "LineageProof" => Ok(Evidence::LineageProof),
-        "EvalScore" => Ok(Evidence::EvalScore),
-        "PersistedRecord" => Ok(Evidence::PersistedRecord),
-        _ => Err(ServerError::InvalidPayload),
+    match api_submission_token_from_str(value)? {
+        ApiSubmissionToken::Evidence(evidence) => Ok(evidence),
+        ApiSubmissionToken::Gate(_) => Err(ServerError::InvalidPayload),
     }
 }
 
