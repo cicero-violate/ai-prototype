@@ -183,6 +183,24 @@ Current planning turn selected graph operation `a3d596dc34917ca3`, covering `cap
 
 
 
+
+Current planning turn selected graph operation 48 from the selected local ai graph-editor plan, covering agent::worker_client::WorkerClient::{new, new_with_timeout}, as the next safe non-root consolidation area. The safe subset is private constructor-helper delegation only: keep both public constructor names and signatures, preserve the default timeout constant, preserve custom timeout milliseconds, preserve port storage, preserve from_env behavior, and do not touch HTTP request construction, socket connection logic, response parsing, worker API call sites, or network behavior.
+
+28. [ ] src/agent/worker_client.rs: route WorkerClient::{new, new_with_timeout} through one private constructor helper while preserving default and custom timeout semantics.
+   - Scope: src/agent/worker_client.rs only; allowed functions are WorkerClient::new(...), WorkerClient::new_with_timeout(...), and at most one new private helper inside impl WorkerClient. Do not change WorkerClient::from_env(...), health(...), state(...), submit_command(...), get(...), post(...), send(...), parse_response(...), error formatting, HTTP wire strings, socket behavior, or tests in this item.
+   - Done when: new(port) still stores the provided port and uses DEFAULT_TIMEOUT_MS; new_with_timeout(port, timeout_ms) still stores the provided port and uses Duration::from_millis(timeout_ms); both public constructors delegate through the same private helper boundary; and no public API or network behavior changes.
+   - Validation: TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo check --lib.
+
+29. [ ] src/agent/worker_client.rs test worker_client_constructors_preserve_default_and_custom_timeouts: strengthen focused regression coverage for the shared constructor helper.
+   - Scope: src/agent/worker_client.rs test module only; use existing private test access to WorkerClient fields and DEFAULT_TIMEOUT_MS. Do not change production code in this item.
+   - Done when: the named test asserts that WorkerClient::new(...) preserves its port and default timeout, WorkerClient::new_with_timeout(...) preserves its port and custom timeout, distinct ports remain distinct, default and custom timeout paths remain distinct, and the test performs no network I/O, filesystem I/O, environment mutation, or process spawning.
+   - Validation: TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test worker_client_constructors_preserve_default_and_custom_timeouts -- --test-threads=1.
+
+30. [ ] SCORE_REPORT.md: after items 28 and 29 land, refresh graph-derived structural evidence and review whether score.md rationale changes without raising project-level scores absent capability evidence.
+   - Scope: SCORE_REPORT.md, score.md, plan.md, and status.md only.
+   - Done when: scripts/recapture_rustc_graphs.sh --check validates the configured graph root, SCORE_REPORT.md is regenerated from ../state/rustc, status.md records aggregate and affected crate rows, and score.md changes only if refreshed evidence differs from the current rationale.
+   - Validation: bash scripts/recapture_rustc_graphs.sh --check && cargo run --manifest-path ../score/Cargo.toml --quiet -- --artifact-root ../state/rustc --report SCORE_REPORT.md --date "$(date +%Y-%m-%d)".
+
 ## Additional Validation Notes
 
 - Targeted validation for the selected checklist item, as listed under `## Active Priorities`.

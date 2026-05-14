@@ -4816,3 +4816,21 @@ Planning-turn update on 2026-05-14 for next non-root certification prompt helper
 - Existing uncommitted non-planning changes in `GOAL.md` and `src/agent/loop_driver.rs`, plus pre-existing `status.md` ledger edits, were left untouched except for this appended planning entry.
 - Updated `plan.md` with three executable items: item 19 certification prompt helper extraction, item 20 focused regression coverage, and item 21 graph-derived evidence refresh.
 - `score.md` was reviewed and left unchanged because this planning turn produced no implementation, validation, graph refresh, or score-history-worthy capability evidence.
+
+
+Planning-turn update on 2026-05-14 for next non-root worker client constructor work:
+
+- Required reconnaissance completed from /workspace/ai_sandbox/canon-mini-agent/prototype/ai using the connector shell with cwd=.
+- Read plan.md; Active Priorities through item 27 were complete, so there was no remaining unchecked executable item before this planning turn.
+- Read status.md; the latest available evidence and blocker entries confirmed checklist exhaustion and that the next executable work must be added by a planning turn.
+- Read score.md and SCORE_REPORT.md; project-level scores remain unchanged, while graph-derived evidence reports aggregate G = 7.99 / 10, Architecture 8.9, Structure 4.9, Simplicity 7.1, Maintainability 10.0, Determinism 10.0, and Coherency 8.4.
+- Inspected ../state/rustc/auto-refactor/*.graph-editor-plan.json; the selected local ai graph-editor plan remains schema version 1, graph schema version 16, and contains 1,614 operations.
+- User direction is explicit: do not continue root_validate work. root_validate remains intentionally non-selectable despite its weak graph row.
+- Listed remaining early non-root merge candidates from the selected local ai graph-editor plan. Rejected semantic hash, route, bridge, score, receipt, proof, and kernel contract candidates as direct merges because their names encode distinct domain concepts.
+- Rejected src/agent/loop_driver.rs candidates for this turn because the file still has unrelated uncommitted edits.
+- Inspected src/agent/worker_client.rs; selected graph operation 48, covering agent::worker_client::WorkerClient::{new, new_with_timeout}, as a safe private constructor-helper delegation candidate.
+- Confirmed existing focused test worker_client_constructors_preserve_default_and_custom_timeouts already covers default and custom timeout semantics and can be strengthened without network I/O, filesystem I/O, environment mutation, or process spawning.
+- Existing uncommitted non-planning changes in GOAL.md and src/agent/loop_driver.rs were left untouched.
+- Updated plan.md with three executable items: item 28 private constructor helper extraction in src/agent/worker_client.rs, item 29 focused constructor regression strengthening, and item 30 graph-derived evidence refresh.
+- score.md was reviewed and left unchanged because this planning turn produced no implementation, validation, graph refresh, or score-history-worthy capability evidence.
+- Planning validation passed: TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test planning_contract -- --test-threads=1 ran 2 tests successfully.
