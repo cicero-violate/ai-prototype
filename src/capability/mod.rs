@@ -351,13 +351,7 @@ pub struct EvidenceSubmission {
 
 impl EvidenceSubmission {
     pub const fn new(gate: GateId, evidence: Evidence, passed: bool) -> Self {
-        Self::with_effect_payload(
-            gate,
-            evidence,
-            passed,
-            PacketEffect::None,
-            structural_payload_hash(gate, evidence, passed, PacketEffect::None),
-        )
+        Self::with_effect(gate, evidence, passed, PacketEffect::None)
     }
 
     pub const fn with_payload(
