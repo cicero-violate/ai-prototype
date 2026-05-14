@@ -104,7 +104,7 @@ Graph operation `9f1d902307750fc6` identifies `capability::llm::openai::OpenAiCo
    - Done when: `OpenAiConfig::model_id(...)` still derives from `self.model`, `OpenAiConfig::base_url_id(...)` still derives from `self.base_url`, both preserve existing hash values through `provider_text_hash(...)`, and both public methods delegate to the same private helper boundary.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo check --lib`.
 
-11. [ ] `src/capability/llm/openai.rs` test `openai_config_id_helpers_preserve_distinct_field_boundaries`: add regression coverage for the shared text-id helper.
+11. [x] `src/capability/llm/openai.rs` test `openai_config_id_helpers_preserve_distinct_field_boundaries`: add regression coverage for the shared text-id helper.
    - Scope: `src/capability/llm/openai.rs` test module only; use existing `OpenAiConfig` public API. Do not change production code in this item.
    - Done when: the named test proves `model_id(...)` and `base_url_id(...)` are nonzero, stable across repeated calls, distinct when model/base-url strings differ, changing only `model` changes only `model_id(...)`, and changing only `base_url` changes only `base_url_id(...)`. The test must not perform network I/O, filesystem I/O outside normal cargo test execution, environment mutation, or process spawning.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test openai_config_id_helpers_preserve_distinct_field_boundaries -- --test-threads=1`.

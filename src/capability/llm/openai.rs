@@ -2055,6 +2055,38 @@ mod tests {
     use super::*;
 
     #[test]
+    fn openai_config_id_helpers_preserve_distinct_field_boundaries() {
+        let config = OpenAiConfig {
+            base_url: "http://127.0.0.1:8082/v1".to_string(),
+            model: "chatgpt-project".to_string(),
+            timeout_ms: 120_000,
+        };
+
+        let model_id = config.model_id();
+        let base_url_id = config.base_url_id();
+
+        assert_ne!(model_id, 0);
+        assert_ne!(base_url_id, 0);
+        assert_eq!(model_id, config.model_id());
+        assert_eq!(base_url_id, config.base_url_id());
+        assert_ne!(model_id, base_url_id);
+
+        let model_changed = OpenAiConfig {
+            model: "chatgpt-project-alt".to_string(),
+            ..config.clone()
+        };
+        assert_ne!(model_changed.model_id(), model_id);
+        assert_eq!(model_changed.base_url_id(), base_url_id);
+
+        let base_url_changed = OpenAiConfig {
+            base_url: "http://127.0.0.1:8083/v1".to_string(),
+            ..config.clone()
+        };
+        assert_eq!(base_url_changed.model_id(), model_id);
+        assert_ne!(base_url_changed.base_url_id(), base_url_id);
+    }
+
+    #[test]
     fn openai_function_tool_constructors_preserve_description_boundary() {
         let parameters_json = r#"{"type":"object","properties":{"query":{"type":"string"}}}"#;
         let bare = OpenAiFunctionTool::new("lookup", parameters_json);
