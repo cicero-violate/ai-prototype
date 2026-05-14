@@ -1262,7 +1262,6 @@ mod tests {
             call.request_hash,
             crate::api::protocol::Command::SubmitEvidence(call.submission()),
         );
-
         let mut tlog = Vec::new();
         crate::api::routes::handle_envelope(
             &mut state,
@@ -1440,6 +1439,98 @@ mod tests {
         tampered.provider_proof_hash ^= 1;
         tampered.record_hash = tampered.expected_record_hash();
         assert!(verify_verification_proof_record_bindings(&[tampered], &[binding]).is_err());
+    }
+
+    #[test]
+    fn ollama_proof_event_hash_helpers_preserve_distinct_domains() {
+        let mut state = State {
+            phase: Phase::Judgment,
+            ..State::default()
+        };
+        state.gates.invariant = Gate::pass(Evidence::InvariantProof);
+        state.gates.analysis = Gate::pass(Evidence::AnalysisReport);
+
+        let mut memory = MemoryIndex::default();
+        assert!(memory.insert(MemoryFact::new(state.packet.objective_id, 0xfeed, 7, 1)));
+        let lookup = memory.lookup(state.packet.objective_id, 8);
+        let context = ContextRecord::from_packet_memory(state.packet, 0xabc, &lookup);
+        let policy = PolicyStore::default();
+        let client = OllamaClient::new(OllamaConfig::default()).unwrap();
+        let call = client
+            .call_from_response_body(
+                &context,
+                &policy,
+                "{\"id\":\"chatcmpl-1\",\"object\":\"chat.completion\",\"choices\":[{\"index\":0,\"message\":{\"role\":\"assistant\",\"content\":\"Preserve distinct proof event hash domains.\"},\"finish_reason\":\"stop\"}],\"usage\":{\"prompt_tokens\":30,\"completion_tokens\":8,\"total_tokens\":38}}",
+            )
+            .unwrap();
+        let envelope = CommandEnvelope::new(
+            call.request_hash,
+            crate::api::protocol::Command::SubmitEvidence(call.submission()),
+        );
+        let command_hash = envelope.command_hash;
+
+        let mut tlog = Vec::new();
+        crate::api::routes::handle_envelope(
+            &mut state,
+            &mut tlog,
+            RuntimeConfig::default(),
+            envelope,
+        )
+        .unwrap();
+        let persisted_event = tlog
+            .iter()
+            .find(|event| {
+                event.kind == EventKind::Persisted
+                    && event.evidence == Evidence::JudgmentRecord
+                    && event.api_command_hash == command_hash
+            })
+            .copied()
+            .unwrap();
+        let base_receipt = call
+            .receipt_for_configured_event(client.config(), command_hash, &persisted_event)
+            .unwrap();
+        let (receipt, proof_event) = OllamaJudgmentProofEvent::finalize_receipt_after_tlog(
+            base_receipt,
+            &tlog,
+            true,
+            true,
+            base_receipt.base_url_provenance_verified(client.config()),
+            state.phase == Phase::Plan,
+        )
+        .unwrap();
+
+        let provider_proof_hash = proof_event.expected_proof_hash();
+        let verifier_context_hash = proof_event.verifier_context_hash();
+        assert_eq!(provider_proof_hash, proof_event.proof_hash);
+        assert_ne!(verifier_context_hash, 0);
+        assert_ne!(verifier_context_hash, provider_proof_hash);
+
+        let (canonical_receipt, effect_proof) =
+            proof_event.to_canonical_effect_proof(receipt).unwrap();
+        assert_eq!(effect_proof.verifier_context_hash, verifier_context_hash);
+        assert_eq!(effect_proof.provider_proof_hash, provider_proof_hash);
+        assert_eq!(effect_proof.receipt.proof_hash, effect_proof.proof_hash);
+        assert_eq!(canonical_receipt.proof_hash, effect_proof.proof_hash);
+        assert!(effect_proof.is_valid());
+
+        let mut proof_only_tamper = proof_event;
+        proof_only_tamper.proof_line_hash ^= 1;
+        assert_ne!(proof_only_tamper.expected_proof_hash(), provider_proof_hash);
+        assert_eq!(
+            proof_only_tamper.verifier_context_hash(),
+            verifier_context_hash
+        );
+
+        let mut verifier_context_tamper = proof_event;
+        verifier_context_tamper.model_id ^= 1;
+        assert_ne!(
+            verifier_context_tamper.expected_proof_hash(),
+            provider_proof_hash
+        );
+        assert_ne!(
+            verifier_context_tamper.verifier_context_hash(),
+            verifier_context_hash
+        );
     }
 
     #[test]
