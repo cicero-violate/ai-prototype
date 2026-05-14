@@ -27,14 +27,14 @@ PROJECT_DIR = { value = "/workspace/ai_sandbox/canon-mini-agent/prototype/", rel
 AI_TLOG_DIR = { value = "/workspace/ai_sandbox/canon-mini-agent/prototype/state/tlog", relative = false }
 RUST_BACKTRACE = "full"
 SUPERVISOR_PORT = "9100"
-AI_WORKER_BIN = { value = "target/debug/worker", relative = true }
-AI_AGENT_BIN = { value = "target/debug/agent", relative = true }
+AI_WORKER_BIN = { value = "../target/debug/worker", relative = true }
+AI_AGENT_BIN = { value = "../target/debug/agent", relative = true }
 AI_WORKER_PORT = "9100"
 CANON_OPENAI_BASE_URL = "http://127.0.0.1:8082/v1"
 CANON_BROWSER_CDP_URL = "http://127.0.0.1:9223"
 MCP_CONNECTOR_URL = "http://127.0.0.1:4000"
 AI_MCP_WORKER_URL = "http://127.0.0.1:38469/mcp_worker"
-CANON_OPENAI_MODEL = "chatgpt-cdp"
+CANON_OPENAI_MODEL = "chatgpt-project"
 SSE_CHUNKS_DIR = { value = "/workspace/ai_sandbox/canon-mini-agent/prototype/state/agent_state/sse-chunks", relative = true }
 ROUTER_TURN_MAX_MS = "600000"
 ROUTER_FIRST_CAPTURE_MS = "60000"
