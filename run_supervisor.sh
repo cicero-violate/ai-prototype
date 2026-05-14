@@ -67,6 +67,7 @@ export MCP_WORKER_RESPONSE_TIMEOUT_SECS="${MCP_WORKER_RESPONSE_TIMEOUT_SECS:-600
 export AI_MCP_WORKER_URL="${AI_MCP_WORKER_URL:-http://127.0.0.1:38469/mcp_worker}"
 export BASE_URL="${BASE_URL:-https://cheese-server.duckdns.org}"
 export APPLY_PATCH_BIN="${APPLY_PATCH_BIN:-apply_patch}"
+export AI_SUPERVISOR_URL="${AI_SUPERVISOR_URL:-http://127.0.0.1:${SUPERVISOR_PORT}}"
 
 print_effective_env() {
   cat >&2 <<EOF

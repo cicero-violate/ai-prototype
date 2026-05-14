@@ -1,25 +1,26 @@
 # Code Quality Score Report
 
-Generated: 2026-05-13  |  Schema version: 16  |  Crates: 1
+Generated: 2026-05-13  |  Schema version: 16  |  Crates: 2
 
 ## Aggregate Scores
 
 ```text
-Architecture         = 8.7
-Structure            = 3.5
-Simplicity           = 7.9
+Architecture         = 9.2
+Structure            = 4.9
+Simplicity           = 7.4
 Maintainability      = 10.0
 Determinism          = 10.0
-Coherency            = 8.8
+Coherency            = 8.4
 
-G (geometric mean)   = 7.75 / 10
+G (geometric mean)   = 8.10 / 10
 ```
 
 ## Per-Crate Breakdown
 
 | Crate                 | Nodes | Edges | Fns  | Arch | Struct | Simple | Maint | Determ | Coher |
 | :-------------------- | ----: | ----: | ---: | ---: | -----: | -----: | ----: | -----: | ----: |
-| chatgpt_mcp_connector |  3705 | 20084 | 1695 |  8.7 |    3.5 |    7.9 |  10.0 |   10.0 |   8.8 |
+| ai                    |  5472 | 35235 | 2208 |  9.5 |    6.0 |    7.0 |  10.0 |   10.0 |   8.2 |
+| chatgpt_mcp_connector |  3713 | 20233 | 1703 |  8.7 |    3.6 |    7.9 |  10.0 |   10.0 |   8.8 |
 
 ## Axis Definitions
 
