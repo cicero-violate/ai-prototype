@@ -4895,3 +4895,18 @@ Implementation step 3 evidence on 2026-05-14 for Active Priorities item 30:
 - SCORE_REPORT.md and score.md had no diff after refresh because regenerated structural evidence matched the current checked-in report and score rationale.
 - Marked item 30 complete in plan.md. score.md was reviewed and left unchanged because this evidence refresh confirms the current structural snapshot and does not justify project-level numeric score changes.
 - Planning validation passed: TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test planning_contract -- --test-threads=1 ran 2 tests successfully.
+
+Planning-turn update on 2026-05-14 for graph evidence refresh and next non-root OpenAI proof-event hash work:
+
+- Required reconnaissance completed from /workspace/ai_sandbox/canon-mini-agent/prototype/ai using the connector shell with cwd=.
+- Read plan.md; the first incomplete Active Priorities item is item 33, the SCORE_REPORT.md graph-derived structural evidence refresh after completed items 31 and 32.
+- Read status.md; latest committed execution evidence through item 30 is present, while items 31 and 32 are represented in plan.md as complete and recent commits exist for them.
+- Read score.md and SCORE_REPORT.md; project-level scores remain unchanged, while graph-derived evidence reports aggregate G = 7.99 / 10, Architecture 8.9, Structure 4.9, Simplicity 7.1, Maintainability 10.0, Determinism 10.0, and Coherency 8.4.
+- Inspected ../state/rustc/auto-refactor/workspace__ai_sandbox__canon-mini-agent__prototype__state__rustc__ai__graph.graph-editor-plan.json; the selected local ai graph-editor plan remains schema version 1, graph schema version 16, and currently contains 1,582 operations.
+- User direction remains explicit: do not continue root_validate work. root_validate remains intentionally non-selectable despite its weak graph row.
+- Preserved item 33 as the first unchecked executable item because graph evidence refresh must run before starting the next implementation cycle.
+- Inspected src/capability/llm/openai.rs and selected graph operation e9030dda9e8b24ae, covering OpenAiJudgmentProofEvent::{expected_proof_hash, verifier_context_hash}, as the next safe non-root consolidation area after item 33.
+- Rejected direct semantic merges of hash, route, bridge, score, receipt, proof, loader, encoder, kernel contract, and codec enum-conversion candidates unless execution preserves public semantic APIs and consolidates only private construction or folding mechanics.
+- Existing uncommitted non-planning changes in GOAL.md and src/agent/loop_driver.rs were left untouched.
+- Updated plan.md with queued items 34 through 36 after item 33: OpenAI proof-event hash helper extraction, focused proof-event hash-domain regression coverage, and graph-derived evidence refresh.
+- score.md was reviewed and left unchanged because this planning turn produced no implementation, validation refresh, graph refresh, or score-history-worthy capability evidence.
