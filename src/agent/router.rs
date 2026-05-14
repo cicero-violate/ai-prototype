@@ -246,28 +246,20 @@ impl RouterRetryPolicy {
 
 fn router_retry_policy() -> RouterRetryPolicy {
     RouterRetryPolicy {
-        attempts: env_u32(
+        attempts: env_parsed::<u32>(
             "CANON_ROUTER_TRANSIENT_ATTEMPTS",
             DEFAULT_TRANSIENT_ROUTER_ATTEMPTS,
         )
         .max(1),
-        base_backoff_ms: env_u64(
+        base_backoff_ms: env_parsed::<u64>(
             "CANON_ROUTER_TRANSIENT_BACKOFF_MS",
             DEFAULT_TRANSIENT_ROUTER_BACKOFF_MS,
         ),
-        max_backoff_ms: env_u64(
+        max_backoff_ms: env_parsed::<u64>(
             "CANON_ROUTER_TRANSIENT_MAX_BACKOFF_MS",
             DEFAULT_TRANSIENT_ROUTER_MAX_BACKOFF_MS,
         ),
     }
-}
-
-fn env_u32(name: &str, default: u32) -> u32 {
-    env_parsed(name, default)
-}
-
-fn env_u64(name: &str, default: u64) -> u64 {
-    env_parsed(name, default)
 }
 
 fn env_parsed<T>(name: &str, default: T) -> T
