@@ -107,7 +107,7 @@ The selected graph-editor plan is schema version 1, contains 1,614 planned opera
    - Done when: the helper boundary is covered by an existing passing test or a narrowly scoped new test proves spawned and top-level observation source selection remains stable.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test agent:: -- --test-threads=1`.
 
-3. [ ] `SCORE_REPORT.md`: after the `run_cycle(...)` source refactor item lands, refresh graph-derived evidence and review whether `score.md` rationale changes without raising project-level scores absent capability evidence.
+3. [x] `SCORE_REPORT.md`: after the `run_cycle(...)` source refactor item lands, refresh graph-derived evidence and review whether `score.md` rationale changes without raising project-level scores absent capability evidence.
    - Scope: `SCORE_REPORT.md`, `score.md`, `plan.md`, and `status.md` only.
    - Done when: `scripts/recapture_rustc_graphs.sh --check` validates the configured graph root, `SCORE_REPORT.md` is regenerated from `../state/rustc`, `status.md` records aggregate and affected crate rows, and `score.md` changes only if refreshed evidence differs from the current rationale.
    - Validation: `bash scripts/recapture_rustc_graphs.sh --check && cargo run --manifest-path ../score/Cargo.toml --quiet -- --artifact-root ../state/rustc --report SCORE_REPORT.md --date "$(date +%Y-%m-%d)"`.
