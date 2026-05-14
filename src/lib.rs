@@ -398,6 +398,87 @@ mod tests {
     }
 
     #[test]
+    fn policy_promotion_durable_entry_helpers_preserve_source_and_feedback_entries() {
+        let (_state, tlog) = run_until_done(State::ready(), RuntimeConfig::default()).unwrap();
+        let promotion = PolicyPromotion::from_tlog(&tlog, 1).unwrap();
+        assert!(promotion.is_valid());
+
+        let source_path = std::env::temp_dir().join(format!(
+            "ai-policy-source-helper-{}-{}.ndjson",
+            std::process::id(),
+            promotion.source_seq
+        ));
+        let feedback_path = std::env::temp_dir().join(format!(
+            "ai-policy-feedback-helper-{}-{}.ndjson",
+            std::process::id(),
+            promotion.promoted_policy_hash
+        ));
+        std::fs::remove_file(&source_path).ok();
+        std::fs::remove_file(&feedback_path).ok();
+
+        let mut source_store = PolicyStore::default();
+        let source_entry = *source_store
+            .promote_durable(&source_path, promotion.clone())
+            .unwrap();
+        let loaded_source = PolicyStore::load_ndjson(&source_path).unwrap();
+        assert_eq!(source_entry.version, promotion.promoted_policy_version);
+        assert_eq!(source_entry.key, POLICY_PROMOTION_SOURCE_SEQ);
+        assert_eq!(source_entry.value, promotion.source_seq);
+        assert_eq!(source_store.entries(), &[source_entry]);
+        assert_eq!(loaded_source.entries(), &[source_entry]);
+
+        let mut feedback_store = PolicyStore::default();
+        let feedback_entry = *feedback_store
+            .promote_feedback_durable(&feedback_path, promotion.clone())
+            .unwrap();
+        let loaded_feedback = PolicyStore::load_ndjson(&feedback_path).unwrap();
+        assert_eq!(feedback_entry.version, promotion.promoted_policy_version);
+        assert_eq!(feedback_entry.key, POLICY_FEEDBACK_HASH);
+        assert_eq!(feedback_entry.value, promotion.promoted_policy_hash);
+        assert_eq!(feedback_store.entries(), &[feedback_entry]);
+        assert_eq!(loaded_feedback.entries(), &[feedback_entry]);
+
+        std::fs::remove_file(&source_path).ok();
+        std::fs::remove_file(&feedback_path).ok();
+
+        let invalid_source_path = std::env::temp_dir().join(format!(
+            "ai-policy-source-helper-invalid-{}-{}.ndjson",
+            std::process::id(),
+            promotion.source_seq
+        ));
+        let invalid_feedback_path = std::env::temp_dir().join(format!(
+            "ai-policy-feedback-helper-invalid-{}-{}.ndjson",
+            std::process::id(),
+            promotion.promoted_policy_hash
+        ));
+        std::fs::remove_file(&invalid_source_path).ok();
+        std::fs::remove_file(&invalid_feedback_path).ok();
+
+        let mut invalid_promotion = promotion;
+        invalid_promotion.source_seq = 0;
+        assert!(!invalid_promotion.is_valid());
+
+        let mut rejected_source_store = PolicyStore::default();
+        assert_eq!(
+            rejected_source_store.promote_durable(&invalid_source_path, invalid_promotion.clone()),
+            Err(PolicyStoreError::InvalidPromotion)
+        );
+        assert!(rejected_source_store.entries().is_empty());
+        assert!(!invalid_source_path.exists());
+
+        let mut rejected_feedback_store = PolicyStore::default();
+        assert_eq!(
+            rejected_feedback_store
+                .promote_feedback_durable(&invalid_feedback_path, invalid_promotion),
+            Err(PolicyStoreError::InvalidPromotion)
+        );
+        assert!(rejected_feedback_store.entries().is_empty());
+        assert!(!invalid_feedback_path.exists());
+
+        verify_tlog(&tlog).unwrap();
+    }
+
+    #[test]
     fn durable_policy_store_roundtrips_promoted_policy() {
         let (_state, tlog) = run_until_done(State::ready(), RuntimeConfig::default()).unwrap();
         let promotion = PolicyPromotion::from_tlog(&tlog, 1).unwrap();
