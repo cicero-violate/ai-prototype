@@ -104,7 +104,7 @@ Graph operation `e854b50618421884` identifies `capability::EvidenceSubmission::{
    - Done when: `EvidenceSubmission::new(gate, evidence, passed)` returns exactly the same value as `EvidenceSubmission::with_effect(gate, evidence, passed, PacketEffect::None)` for every caller-observable field, including `payload_hash`.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo check --lib`.
 
-26. [ ] `src/capability/mod.rs` test `evidence_submission_new_delegates_to_with_effect_none`: add direct constructor equivalence and contract regression coverage.
+26. [x] `src/capability/mod.rs` test `evidence_submission_new_delegates_to_with_effect_none`: add direct constructor equivalence and contract regression coverage.
    - Scope: `src/capability/mod.rs` test module only.
    - Done when: the named test asserts `EvidenceSubmission::new(GateId::Analysis, Evidence::AnalysisReport, true)` equals `EvidenceSubmission::with_effect(GateId::Analysis, Evidence::AnalysisReport, true, PacketEffect::None)`, asserts both are contract-valid, asserts a failed submission through `new(...)` equals the corresponding `with_effect(..., PacketEffect::None)` value, and asserts an explicit non-`None` effect submission is still distinct from `new(...)`. The test must not touch the filesystem, start processes, read graph artifacts, perform network I/O, or mutate process-global environment.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test evidence_submission_new_delegates_to_with_effect_none -- --test-threads=1`.

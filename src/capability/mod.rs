@@ -462,6 +462,47 @@ mod tests {
     use super::*;
 
     #[test]
+    fn evidence_submission_new_delegates_to_with_effect_none() {
+        let passed_new = EvidenceSubmission::new(
+            GateId::Analysis,
+            Evidence::AnalysisReport,
+            true,
+        );
+        let passed_with_effect = EvidenceSubmission::with_effect(
+            GateId::Analysis,
+            Evidence::AnalysisReport,
+            true,
+            PacketEffect::None,
+        );
+
+        assert_eq!(passed_new, passed_with_effect);
+        assert!(passed_new.is_contract_valid());
+        assert!(passed_with_effect.is_contract_valid());
+
+        let failed_new = EvidenceSubmission::new(
+            GateId::Analysis,
+            Evidence::AnalysisReport,
+            false,
+        );
+        let failed_with_effect = EvidenceSubmission::with_effect(
+            GateId::Analysis,
+            Evidence::AnalysisReport,
+            false,
+            PacketEffect::None,
+        );
+
+        assert_eq!(failed_new, failed_with_effect);
+
+        let explicit_effect = EvidenceSubmission::with_effect(
+            GateId::Analysis,
+            Evidence::AnalysisReport,
+            true,
+            PacketEffect::MaterializeArtifact,
+        );
+        assert_ne!(passed_new, explicit_effect);
+    }
+
+    #[test]
     fn capability_effect_route_allows_preserves_passed_and_failed_submission_semantics() {
         let route = CapabilityEffectRoute::new(
             CapabilityId::Tooling,
