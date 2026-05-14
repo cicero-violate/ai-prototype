@@ -124,7 +124,7 @@ Graph operation `1b0f6d104aa96b58` identifies `capability::judgment::record::Pol
    - Done when: the named test builds a valid `PolicyJudgmentRecord`, asserts `decision()` is `PolicyHit` and `judgment_record()` carries the record decision id, policy version, and rationale hash, then tampers `record_hash` and asserts `decision()` is `PolicyMiss` and `judgment_record()` returns all-zero judgment fields. The test must not touch the filesystem, start processes, read graph artifacts, perform network I/O, or mutate process-global environment.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test policy_judgment_decision_and_record_share_validity_boundary -- --test-threads=1`.
 
-33. [ ] `SCORE_REPORT.md`: after items 31 and 32 land, refresh graph-derived structural evidence and review whether `score.md` rationale changes without raising project-level scores absent capability evidence.
+33. [x] `SCORE_REPORT.md`: after items 31 and 32 land, refresh graph-derived structural evidence and review whether `score.md` rationale changes without raising project-level scores absent capability evidence.
    - Scope: `SCORE_REPORT.md`, `score.md`, `plan.md`, and `status.md` only.
    - Done when: `scripts/recapture_rustc_graphs.sh --check` validates the configured graph root, `SCORE_REPORT.md` is regenerated from `../state/rustc`, `status.md` records aggregate and affected crate rows, and `score.md` changes only if refreshed evidence differs from the current rationale.
    - Validation: `bash scripts/recapture_rustc_graphs.sh --check && cargo run --manifest-path ../score/Cargo.toml --quiet -- --artifact-root ../state/rustc --report SCORE_REPORT.md --date "$(date +%Y-%m-%d)"`.
