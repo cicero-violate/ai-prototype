@@ -329,6 +329,10 @@ impl GraphMutationOpRow {
     }
 
     pub fn is_self_consistent(&self) -> bool {
+        self.has_expected_invariant()
+    }
+
+    fn has_expected_invariant(&self) -> bool {
         self.schema_version == GRAPH_MUTATION_SCHEMA_VERSION
             && self.record_type == GRAPH_MUTATION_OPSET_RECORD
             && self.op_hash == self.op.hash()
