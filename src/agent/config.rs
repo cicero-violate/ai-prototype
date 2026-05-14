@@ -92,3 +92,77 @@ where
         .and_then(|v| v.parse().ok())
         .unwrap_or(default)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::{Mutex, OnceLock};
+
+    const NUMERIC_ENV_KEYS: [&str; 8] = [
+        "EXECUTE_TURNS",
+        "TURN_RETRY_LIMIT",
+        "AGENT_COUNT",
+        "LOOP_SLEEP_MS",
+        "ROUTER_TURN_MAX_MS",
+        "ROUTER_FIRST_CAPTURE_MS",
+        "ROUTER_IDLE_MS",
+        "AI_CERT_MAX_STEPS",
+    ];
+
+    fn env_test_lock() -> &'static Mutex<()> {
+        static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+        LOCK.get_or_init(|| Mutex::new(()))
+    }
+
+    fn restore_env(snapshot: &[(&str, Option<String>)]) {
+        for (key, value) in snapshot {
+            match value {
+                Some(value) => env::set_var(key, value),
+                None => env::remove_var(key),
+            }
+        }
+    }
+
+    #[test]
+    fn agent_loop_config_from_env_preserves_typed_numeric_defaults() {
+        let _guard = env_test_lock()
+            .lock()
+            .expect("env test lock should not be poisoned");
+        let snapshot: Vec<_> = NUMERIC_ENV_KEYS
+            .iter()
+            .map(|key| (*key, env::var(key).ok()))
+            .collect();
+
+        for key in NUMERIC_ENV_KEYS {
+            env::remove_var(key);
+        }
+
+        env::set_var("EXECUTE_TURNS", "11");
+        env::set_var("TURN_RETRY_LIMIT", "12");
+        env::set_var("AGENT_COUNT", "13");
+        env::set_var("LOOP_SLEEP_MS", "1400");
+        env::set_var("ROUTER_TURN_MAX_MS", "1500");
+        env::set_var("ROUTER_FIRST_CAPTURE_MS", "1600");
+        env::set_var("ROUTER_IDLE_MS", "1700");
+        env::set_var("AI_CERT_MAX_STEPS", "18");
+
+        let parsed = AgentLoopConfig::from_env();
+        assert_eq!(parsed.execute_turns, 11);
+        assert_eq!(parsed.turn_retry_limit, 12);
+        assert_eq!(parsed.agent_count, 13);
+        assert_eq!(parsed.loop_sleep_ms, 1400);
+        assert_eq!(parsed.router_turn_max_ms, 1500);
+        assert_eq!(parsed.router_first_capture_ms, 1600);
+        assert_eq!(parsed.router_idle_ms, 1700);
+        assert_eq!(parsed.cert_max_steps, 18);
+
+        env::set_var("EXECUTE_TURNS", "not-a-u32");
+        env::set_var("LOOP_SLEEP_MS", "not-a-u64");
+
+        let defaults = AgentLoopConfig::from_env();
+        assert_eq!(defaults.execute_turns, 5);
+        assert_eq!(defaults.loop_sleep_ms, 5000);
+
+        restore_env(&snapshot);
+    }
+}

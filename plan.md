@@ -102,7 +102,7 @@ The selected graph-editor plan is schema version 1 and contains 1,614 planned op
    - Done when: `AgentLoopConfig::from_env(...)` still reads `EXECUTE_TURNS`, `TURN_RETRY_LIMIT`, `AGENT_COUNT`, `LOOP_SLEEP_MS`, `ROUTER_TURN_MAX_MS`, `ROUTER_FIRST_CAPTURE_MS`, `ROUTER_IDLE_MS`, and `AI_CERT_MAX_STEPS` with the same defaults and invalid-value fallback behavior; private duplicate wrappers `env_u32(...)` and `env_u64(...)` are removed; `env_parsed(...)` remains private and generic; no project directory, worker/supervisor port, connector URL, router, loop-driver, or certification behavior changes.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo check --lib`.
 
-2. [ ] `src/agent/config.rs` test `agent_loop_config_from_env_preserves_typed_numeric_defaults`: add focused regression coverage for the item 1 parser consolidation.
+2. [x] `src/agent/config.rs` test `agent_loop_config_from_env_preserves_typed_numeric_defaults`: add focused regression coverage for the item 1 parser consolidation.
    - Scope: `src/agent/config.rs` tests only.
    - Done when: the named test serializes access to environment mutation, sets valid numeric strings for `EXECUTE_TURNS`, `TURN_RETRY_LIMIT`, `AGENT_COUNT`, `LOOP_SLEEP_MS`, `ROUTER_TURN_MAX_MS`, `ROUTER_FIRST_CAPTURE_MS`, `ROUTER_IDLE_MS`, and `AI_CERT_MAX_STEPS`, asserts the parsed `AgentLoopConfig` numeric fields, then sets representative invalid strings and asserts the documented defaults are restored for at least one `u32` field and one `u64` field.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test agent_loop_config_from_env_preserves_typed_numeric_defaults -- --test-threads=1`.

@@ -3715,3 +3715,14 @@ Implementation step 1 evidence on 2026-05-14 for Active Priorities item 1:
 - Targeted validation passed: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo check --lib` completed successfully.
 - Broader validation passed: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets` passed with 291 library tests, 3 `root_validate` binary tests, and all integration/example test targets passing.
 - Marked item 1 complete in `plan.md`. `score.md` was reviewed and left unchanged because this is a narrow structure refactor with validation evidence, not a score-history-worthy project-level capability change.
+
+
+Implementation step 2 evidence on 2026-05-14 for Active Priorities item 2:
+
+- Selected first unchecked Active Priorities item 2: `src/agent/config.rs` test `agent_loop_config_from_env_preserves_typed_numeric_defaults`.
+- Changed only the item-scoped source file `src/agent/config.rs` plus planning/status evidence files.
+- Added a serialized environment-mutation test fixture using `OnceLock<Mutex<()>>` inside the `src/agent/config.rs` test module.
+- Added `agent_loop_config_from_env_preserves_typed_numeric_defaults`, which sets valid numeric strings for `EXECUTE_TURNS`, `TURN_RETRY_LIMIT`, `AGENT_COUNT`, `LOOP_SLEEP_MS`, `ROUTER_TURN_MAX_MS`, `ROUTER_FIRST_CAPTURE_MS`, `ROUTER_IDLE_MS`, and `AI_CERT_MAX_STEPS`, asserts parsed `AgentLoopConfig` fields, then sets invalid representative `u32` and `u64` strings and asserts defaults for `execute_turns` and `loop_sleep_ms`.
+- Targeted validation passed: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test agent_loop_config_from_env_preserves_typed_numeric_defaults -- --test-threads=1` ran the named test successfully.
+- Broader validation passed: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets` passed with 292 library tests, 3 `root_validate` binary tests, and all integration/example test targets passing.
+- Marked item 2 complete in `plan.md`. `score.md` was reviewed and left unchanged because this adds focused regression coverage for an existing parser boundary, not a score-history-worthy project-level capability change.
