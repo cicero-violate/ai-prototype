@@ -186,4 +186,71 @@ mod tests {
             }
         }
     }
+
+    #[test]
+    fn certification_phase_prompt_helper_preserves_distinct_phase_payloads() {
+        let prompts = [
+            (
+                analysis_prompt("domain", "goal"),
+                "Analysis phase — domain: domain",
+                [
+                    "Goal: goal",
+                    "Analyze the objective and identify the facts, assumptions, risks, and unknowns",
+                ]
+                .as_slice(),
+            ),
+            (
+                judgment_prompt("domain", "analysis"),
+                "Judgment phase — domain: domain",
+                [
+                    "Analysis:\nanalysis",
+                    "Judge whether the analysis supports moving forward",
+                ]
+                .as_slice(),
+            ),
+            (
+                plan_prompt("domain", "judgment"),
+                "Plan phase — domain: domain",
+                [
+                    "Judgment:\njudgment",
+                    "Produce the concrete plan of work implied by the judgment",
+                ]
+                .as_slice(),
+            ),
+            (
+                eval_prompt("domain", "metric", "execution"),
+                "Eval phase — domain: domain",
+                [
+                    "Success metric: metric",
+                    "Execution context:\nexecution",
+                    "Evaluate the completed work against the success metric",
+                ]
+                .as_slice(),
+            ),
+            (
+                recovery_prompt("domain", "failure", "Execute"),
+                "Recovery phase — domain: domain",
+                [
+                    "Failure: failure",
+                    "Target phase: Execute",
+                    "Explain the recovery work needed to return the objective to a coherent state",
+                ]
+                .as_slice(),
+            ),
+        ];
+
+        for (prompt, phase_label, expected_fragments) in prompts {
+            assert!(prompt.contains(phase_label));
+            assert!(prompt.contains("domain: domain"));
+            assert!(prompt.contains("HUMAN_REVIEW_REQUIRED"));
+            assert!(prompt.contains("Do not call tools"));
+            assert!(prompt.contains("Return plain text only"));
+            assert!(prompt.contains("VERDICT: pass"));
+            assert!(prompt.contains("VERDICT: fail"));
+
+            for expected_fragment in expected_fragments {
+                assert!(prompt.contains(expected_fragment));
+            }
+        }
+    }
 }
