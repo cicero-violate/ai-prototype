@@ -57,6 +57,14 @@ Current date: 2026-05-14.
 
 ## Validation Ledger
 
+### 2026-05-14 — item 1 run_cycle observation-ingress helper extraction
+
+- Scope: `src/agent/loop_driver.rs::LoopDriver::run_cycle`, checklist item 1 in `plan.md`, and `status.md` evidence update.
+- Command/check: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test agent:: -- --test-threads=1`; broader gate `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
+- Result: passed.
+- Evidence: `run_cycle(...)` now delegates only the `command_url` cycle-start observation branch to private helper `submit_cycle_start_observation_ingress(...)`; the helper preserves spawned domain/metric bytes with source hash `canon:domain:observation`, top-level `GOAL.md` bytes with source hash `canon:goal:observation`, truncation to `MAX_OBSERVATION_PAYLOAD_BYTES`, and `submit_observation_ingress(...)` submission. Targeted validation passed with 42 agent tests and 0 failures. Broader all-target validation passed, including 282 library/bin tests, 3 root_validate tests, 12 API server contract tests, 20 API transport contract tests, 3 canonical TLog contract tests, 4 domain contract tests, 10 graph mutation CLI contract tests, 9 MCP receipt contract tests, 2 planning contract tests, 5 score contract tests, 2 supervisor binary contract tests, and 2 worker binary contract tests.
+- Next action: perform Active Priorities item 2 only if existing tests are judged insufficient for the helper boundary; otherwise proceed to item 3 graph-derived evidence refresh.
+
 ### 2026-05-14 — planning turn reconfirmed ai run_cycle SplitFn as the next non-root_validate task
 
 - Scope: `plan.md`, `status.md`, `score.md`, `SCORE_REPORT.md`, selected `../state/rustc/auto-refactor/workspace__ai_sandbox__canon-mini-agent__prototype__state__rustc__ai__graph.graph-editor-plan.json`, and `src/agent/loop_driver.rs`.

@@ -164,17 +164,7 @@ impl LoopDriver {
         // Invariant gate: prove world state is non-empty, ordered, hash-addressable.
         // Both top-level and spawned agents submit; source bytes differ.
         if let Some(url) = &command_url {
-            let (obs_source_id, obs_bytes) = if is_spawned {
-                let domain = self.config.domain.as_deref().unwrap_or("");
-                let metric = self.config.metric.as_deref().unwrap_or("");
-                let bytes = format!("{domain}\n{metric}").into_bytes();
-                (stable_agent_hash(b"canon:domain:observation"), bytes)
-            } else {
-                let bytes = fs::read(self.config.working_dir.join("GOAL.md")).unwrap_or_default();
-                (stable_agent_hash(b"canon:goal:observation"), bytes)
-            };
-            let obs_bytes = &obs_bytes[..obs_bytes.len().min(MAX_OBSERVATION_PAYLOAD_BYTES)];
-            submit_observation_ingress(url, cycle_num, obs_source_id, obs_bytes);
+            self.submit_cycle_start_observation_ingress(url, cycle_num, is_spawned);
         }
 
         for turn in 0..total_turns {
@@ -263,6 +253,25 @@ impl LoopDriver {
         }
 
         Ok(())
+    }
+
+    fn submit_cycle_start_observation_ingress(
+        &self,
+        command_url: &str,
+        cycle_num: u64,
+        is_spawned: bool,
+    ) {
+        let (obs_source_id, obs_bytes) = if is_spawned {
+            let domain = self.config.domain.as_deref().unwrap_or("");
+            let metric = self.config.metric.as_deref().unwrap_or("");
+            let bytes = format!("{domain}\n{metric}").into_bytes();
+            (stable_agent_hash(b"canon:domain:observation"), bytes)
+        } else {
+            let bytes = fs::read(self.config.working_dir.join("GOAL.md")).unwrap_or_default();
+            (stable_agent_hash(b"canon:goal:observation"), bytes)
+        };
+        let obs_bytes = &obs_bytes[..obs_bytes.len().min(MAX_OBSERVATION_PAYLOAD_BYTES)];
+        submit_observation_ingress(command_url, cycle_num, obs_source_id, obs_bytes);
     }
 
     fn run_cycle_attempt(
