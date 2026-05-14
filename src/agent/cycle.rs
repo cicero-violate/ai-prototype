@@ -1022,6 +1022,36 @@ mod hash_tests {
     }
 
     #[test]
+    fn phase_route_lookup_preserves_teacher_and_gate_mappings() {
+        assert!(use_teacher("Analysis"));
+        assert!(use_teacher("Judgment"));
+        assert!(use_teacher("Plan"));
+        assert!(use_teacher("Eval"));
+        assert!(use_teacher("Recovery"));
+        assert!(!use_teacher("Execute"));
+        assert!(!use_teacher("UnknownPhase"));
+
+        assert_eq!(
+            phase_gate("Invariant"),
+            Some(("Invariant", "InvariantProof"))
+        );
+        assert_eq!(phase_gate("Analysis"), Some(("Analysis", "AnalysisReport")));
+        assert_eq!(phase_gate("Judgment"), Some(("Judgment", "JudgmentRecord")));
+        assert_eq!(phase_gate("Plan"), Some(("Plan", "TaskReady")));
+        assert_eq!(
+            phase_gate("Execute"),
+            Some(("Execution", "ArtifactReceipt"))
+        );
+        assert_eq!(phase_gate("Verify"), Some(("Verification", "LineageProof")));
+        assert_eq!(phase_gate("Eval"), Some(("Eval", "EvalScore")));
+        assert_eq!(
+            phase_gate("Learning"),
+            Some(("Learning", "PolicyPromotion"))
+        );
+        assert_eq!(phase_gate("UnknownPhase"), None);
+    }
+
+    #[test]
     fn recovery_failure_maps_task_receipt_missing_to_reexecute() {
         assert_eq!(
             recovery_action_for_failure("TaskReceiptMissing"),

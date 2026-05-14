@@ -102,7 +102,7 @@ The selected graph-editor plan is schema version 1, contains 1,614 planned opera
    - Done when: both named helpers delegate to one shared deterministic phase lookup; `Analysis`, `Judgment`, `Plan`, `Eval`, and `Recovery` still require teacher routing; all existing `phase_gate(...)` outputs for `Invariant`, `Analysis`, `Judgment`, `Plan`, `Execute`, `Verify`, `Eval`, and `Learning` remain unchanged; unknown phases still return `false`/`None`; no router, worker, hash, or recovery behavior changes.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test phase_gate_uses_artifact_receipt_for_execute -- --test-threads=1 && TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test learning_phase_gate_promotes_policy -- --test-threads=1`.
 
-2. [ ] `src/agent/cycle.rs` test `phase_route_lookup_preserves_teacher_and_gate_mappings`: add focused regression coverage for the item 1 phase-route lookup.
+2. [x] `src/agent/cycle.rs` test `phase_route_lookup_preserves_teacher_and_gate_mappings`: add focused regression coverage for the item 1 phase-route lookup.
    - Scope: `src/agent/cycle.rs` tests only.
    - Done when: the named test asserts `use_teacher(...)` outputs for `Analysis`, `Judgment`, `Plan`, `Eval`, `Recovery`, `Execute`, and an unknown phase, and asserts `phase_gate(...)` outputs for `Invariant`, `Analysis`, `Judgment`, `Plan`, `Execute`, `Verify`, `Eval`, `Learning`, and an unknown phase.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test phase_route_lookup_preserves_teacher_and_gate_mappings -- --test-threads=1`.
