@@ -57,6 +57,14 @@ Current date: 2026-05-14.
 
 ## Validation Ledger
 
+### 2026-05-14 — item 48 graph-derived evidence refresh after ApiTransportLedger work
+
+- Scope: `SCORE_REPORT.md`, `score.md`, `plan.md`, and `status.md`.
+- Command/check: targeted `bash scripts/recapture_rustc_graphs.sh --check && cargo run --manifest-path ../score/Cargo.toml --quiet -- --artifact-root ../state/rustc --report SCORE_REPORT.md --date "$(date +%Y-%m-%d)"`; broader `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
+- Result: passed.
+- Evidence: graph artifact check passed for the configured `../state/rustc` root with required artifacts. Score regeneration processed 17 crates with 0 skipped and reported `G = 7.99 / 10`, Architecture `8.9`, Structure `4.9`, Simplicity `7.1`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.4`, matching the checked-in `SCORE_REPORT.md`, so no score report content change was produced. The scorer capture emitted a `score__bin` witness with 90 nodes, 685 facts, and graph hash `33beeb8225fde77c885564a05e832fb3461cdd3482166b4e298d8f62a492e044`. `score.md` was reviewed and left unchanged because refreshed graph-derived evidence matched the existing rationale and does not justify project-level numeric score changes. Broader all-target validation passed with 304 library/bin tests, 3 root_validate tests, 13 API server contract tests, 23 API transport contract tests, 3 canonical TLog contract tests, 4 domain contract tests, 10 graph mutation CLI contract tests, 9 MCP receipt contract tests, 2 planning contract tests, 5 score contract tests, 2 supervisor binary contract tests, 2 worker binary contract tests, and all example test targets green.
+- Next action: run a planning turn to select the next executable non-`root_validate` graph-backed work item from current graph evidence.
+
 ### 2026-05-14 — item 47 ApiTransportLedger payload-scoped conflict regression
 
 - Scope: `tests/api_transport_contract.rs`, checklist item 47 in `plan.md`, and `status.md` evidence update.
