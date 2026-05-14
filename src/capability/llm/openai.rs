@@ -2081,6 +2081,45 @@ mod tests {
     }
 
     #[test]
+    fn openai_message_constructors_preserve_role_boundaries() {
+        let system = OpenAiMessage::system("system prompt");
+        assert_eq!(system.role, "system");
+        assert_eq!(system.content.as_deref(), Some("system prompt"));
+        assert_eq!(system.tool_call_id, None);
+        assert!(system.tool_calls.is_empty());
+        assert!(message_contract_valid(&system));
+
+        let user = OpenAiMessage::user("user prompt");
+        assert_eq!(user.role, "user");
+        assert_eq!(user.content.as_deref(), Some("user prompt"));
+        assert_eq!(user.tool_call_id, None);
+        assert!(user.tool_calls.is_empty());
+        assert!(message_contract_valid(&user));
+
+        let assistant = OpenAiMessage::assistant("assistant answer");
+        assert_eq!(assistant.role, "assistant");
+        assert_eq!(assistant.content.as_deref(), Some("assistant answer"));
+        assert_eq!(assistant.tool_call_id, None);
+        assert!(assistant.tool_calls.is_empty());
+        assert!(message_contract_valid(&assistant));
+
+        let tool_call = OpenAiToolCall::function("call-1", "lookup", "{\"query\":\"canon\"}");
+        let assistant_tool_call = OpenAiMessage::assistant_tool_call(tool_call.clone());
+        assert_eq!(assistant_tool_call.role, "assistant");
+        assert_eq!(assistant_tool_call.content, None);
+        assert_eq!(assistant_tool_call.tool_call_id, None);
+        assert_eq!(assistant_tool_call.tool_calls, vec![tool_call]);
+        assert!(message_contract_valid(&assistant_tool_call));
+
+        let tool = OpenAiMessage::tool("call-1", "tool result");
+        assert_eq!(tool.role, "tool");
+        assert_eq!(tool.content.as_deref(), Some("tool result"));
+        assert_eq!(tool.tool_call_id.as_deref(), Some("call-1"));
+        assert!(tool.tool_calls.is_empty());
+        assert!(message_contract_valid(&tool));
+    }
+
+    #[test]
     fn openai_function_tool_constructors_preserve_description_boundary() {
         let parameters_json = r#"{"type":"object","properties":{"query":{"type":"string"}}}"#;
         let bare = OpenAiFunctionTool::new("lookup", parameters_json);
