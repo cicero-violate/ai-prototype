@@ -127,7 +127,7 @@ The selected `ai` graph-editor plan is schema version 1 and contains 1,614 plann
    - Done when: `scripts/recapture_rustc_graphs.sh --check` validates the configured graph root, `SCORE_REPORT.md` is regenerated from `../state/rustc`, `status.md` records aggregate and affected crate rows, and `score.md` changes only if refreshed evidence differs from the current rationale.
    - Validation: `bash scripts/recapture_rustc_graphs.sh --check && cargo run --manifest-path ../score/Cargo.toml --quiet -- --artifact-root ../state/rustc --report SCORE_REPORT.md --date "$(date +%Y-%m-%d)"`.
 
-16. [ ] `src/api/transport.rs`: add a private `ApiTransportSession::verify_parts(tlog, command_ledger, transport_ledger)` helper and delegate session validation through it.
+16. [x] `src/api/transport.rs`: add a private `ApiTransportSession::verify_parts(tlog, command_ledger, transport_ledger)` helper and delegate session validation through it.
    - Scope: `src/api/transport.rs` `impl ApiTransportSession` only; allowed functions are `ApiTransportSession::from_parts(...)`, `ApiTransportSession::verify(...)`, and the new private helper. Do not change `ApiTransportSession::new(...)`, `handle_frame(...)`, `into_parts(...)`, public accessors, command-ledger reconstruction, receipt verification helpers, or public signatures.
    - Done when: `from_parts(...)` and `verify(...)` both call the same private helper for `verify_tlog(...)`, `verify_command_ledger_matches_tlog(...)`, and `verify_api_transport_receipts(...)`; all existing error behavior and successful session construction remain unchanged.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo check --lib`.

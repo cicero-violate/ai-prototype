@@ -246,9 +246,7 @@ impl ApiTransportSession {
         command_ledger: CommandLedger,
         transport_ledger: ApiTransportLedger,
     ) -> Result<Self, CanonError> {
-        verify_tlog(&tlog)?;
-        verify_command_ledger_matches_tlog(&tlog, &command_ledger)?;
-        verify_api_transport_receipts(&tlog, transport_ledger.receipts())?;
+        Self::verify_parts(&tlog, &command_ledger, &transport_ledger)?;
         Ok(Self {
             state,
             tlog,
@@ -289,9 +287,17 @@ impl ApiTransportSession {
     }
 
     pub fn verify(&self) -> Result<(), CanonError> {
-        verify_tlog(&self.tlog)?;
-        verify_command_ledger_matches_tlog(&self.tlog, &self.command_ledger)?;
-        verify_api_transport_receipts(&self.tlog, self.transport_ledger.receipts())
+        Self::verify_parts(&self.tlog, &self.command_ledger, &self.transport_ledger)
+    }
+
+    fn verify_parts(
+        tlog: &TLog,
+        command_ledger: &CommandLedger,
+        transport_ledger: &ApiTransportLedger,
+    ) -> Result<(), CanonError> {
+        verify_tlog(tlog)?;
+        verify_command_ledger_matches_tlog(tlog, command_ledger)?;
+        verify_api_transport_receipts(tlog, transport_ledger.receipts())
     }
 
     pub fn into_parts(
