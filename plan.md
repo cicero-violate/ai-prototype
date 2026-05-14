@@ -102,7 +102,7 @@ The selected `ai` graph-editor plan is schema version 1 and contains 1,614 plann
    - Done when: `router_retry_policy(...)` calls `env_parsed::<u32>(...)` for `CANON_ROUTER_TRANSIENT_ATTEMPTS` and `env_parsed::<u64>(...)` for `CANON_ROUTER_TRANSIENT_BACKOFF_MS` and `CANON_ROUTER_TRANSIENT_MAX_BACKOFF_MS`; private wrappers `env_u32(...)` and `env_u64(...)` are removed; retry defaults, `.max(1)` behavior, backoff bounds, router request/streaming behavior, and tab-close behavior remain unchanged.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo check --lib`.
 
-2. [ ] `src/agent/router.rs` test `router_retry_policy_from_env_preserves_typed_numeric_defaults`: add focused regression coverage for typed router retry environment parsing.
+2. [x] `src/agent/router.rs` test `router_retry_policy_from_env_preserves_typed_numeric_defaults`: add focused regression coverage for typed router retry environment parsing.
    - Scope: `src/agent/router.rs` test module only.
    - Done when: the named test serializes environment mutation, sets valid values for `CANON_ROUTER_TRANSIENT_ATTEMPTS`, `CANON_ROUTER_TRANSIENT_BACKOFF_MS`, and `CANON_ROUTER_TRANSIENT_MAX_BACKOFF_MS`, asserts parsed `RouterRetryPolicy` fields, then sets invalid representative `u32` and `u64` values and asserts default fallback plus attempts lower-bound behavior remain intact.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test router_retry_policy_from_env_preserves_typed_numeric_defaults -- --test-threads=1`.

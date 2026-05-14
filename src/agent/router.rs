@@ -702,7 +702,27 @@ fn response_text_has_done_frame(response: &str) -> bool {
 mod tests {
     use super::*;
     use std::net::TcpListener;
-    use std::sync::mpsc;
+    use std::sync::{mpsc, Mutex, OnceLock};
+
+    const ROUTER_RETRY_ENV_KEYS: [&str; 3] = [
+        "CANON_ROUTER_TRANSIENT_ATTEMPTS",
+        "CANON_ROUTER_TRANSIENT_BACKOFF_MS",
+        "CANON_ROUTER_TRANSIENT_MAX_BACKOFF_MS",
+    ];
+
+    fn env_test_lock() -> &'static Mutex<()> {
+        static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+        LOCK.get_or_init(|| Mutex::new(()))
+    }
+
+    fn restore_env(snapshot: &[(&str, Option<String>)]) {
+        for (key, value) in snapshot {
+            match value {
+                Some(value) => env::set_var(key, value),
+                None => env::remove_var(key),
+            }
+        }
+    }
 
     #[test]
     fn devtools_page_target_extracts_local_target_id() {
@@ -1027,5 +1047,50 @@ mod tests {
         assert_eq!(policy.backoff_ms(2), 1_000);
         assert_eq!(policy.backoff_ms(3), 2_000);
         assert_eq!(policy.backoff_ms(4), 2_000);
+    }
+
+    #[test]
+    fn router_retry_policy_from_env_preserves_typed_numeric_defaults() {
+        let _guard = env_test_lock()
+            .lock()
+            .expect("env test lock should not be poisoned");
+        let snapshot: Vec<_> = ROUTER_RETRY_ENV_KEYS
+            .iter()
+            .map(|key| (*key, env::var(key).ok()))
+            .collect();
+
+        for key in ROUTER_RETRY_ENV_KEYS {
+            env::remove_var(key);
+        }
+
+        env::set_var("CANON_ROUTER_TRANSIENT_ATTEMPTS", "11");
+        env::set_var("CANON_ROUTER_TRANSIENT_BACKOFF_MS", "1200");
+        env::set_var("CANON_ROUTER_TRANSIENT_MAX_BACKOFF_MS", "3400");
+
+        let parsed = router_retry_policy();
+        assert_eq!(parsed.attempts, 11);
+        assert_eq!(parsed.base_backoff_ms, 1200);
+        assert_eq!(parsed.max_backoff_ms, 3400);
+
+        env::set_var("CANON_ROUTER_TRANSIENT_ATTEMPTS", "not-a-u32");
+        env::set_var("CANON_ROUTER_TRANSIENT_BACKOFF_MS", "not-a-u64");
+        env::set_var("CANON_ROUTER_TRANSIENT_MAX_BACKOFF_MS", "not-a-u64");
+
+        let defaults = router_retry_policy();
+        assert_eq!(defaults.attempts, DEFAULT_TRANSIENT_ROUTER_ATTEMPTS);
+        assert_eq!(
+            defaults.base_backoff_ms,
+            DEFAULT_TRANSIENT_ROUTER_BACKOFF_MS
+        );
+        assert_eq!(
+            defaults.max_backoff_ms,
+            DEFAULT_TRANSIENT_ROUTER_MAX_BACKOFF_MS
+        );
+
+        env::set_var("CANON_ROUTER_TRANSIENT_ATTEMPTS", "0");
+        let lower_bound = router_retry_policy();
+        assert_eq!(lower_bound.attempts, 1);
+
+        restore_env(&snapshot);
     }
 }
