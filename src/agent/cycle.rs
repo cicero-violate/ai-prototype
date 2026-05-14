@@ -1139,6 +1139,75 @@ mod hash_tests {
     }
 
     #[test]
+    fn recovery_route_table_preserves_failure_action_and_target_mappings() {
+        assert_eq!(
+            recovery_action_for_failure("InvariantBlocked"),
+            Some("RecheckInvariant")
+        );
+        assert_eq!(
+            recovery_action_for_failure("AnalysisFailed"),
+            Some("RunAnalysis")
+        );
+        assert_eq!(
+            recovery_action_for_failure("PlanReadyQueueEmpty"),
+            Some("BindReadyTask")
+        );
+        assert_eq!(
+            recovery_action_for_failure("TaskReceiptMissing"),
+            Some("Reexecute")
+        );
+        assert_eq!(
+            recovery_action_for_failure("ArtifactLineageBroken"),
+            Some("RepairArtifactLineage")
+        );
+        assert_eq!(
+            recovery_action_for_failure("EvalFailed"),
+            Some("RecomputeEval")
+        );
+        assert_eq!(
+            recovery_action_for_failure("RecoveryExhausted"),
+            Some("Escalate")
+        );
+        assert_eq!(recovery_action_for_failure("UnknownFailure"), None);
+
+        assert_eq!(
+            recovery_gate("RecheckInvariant"),
+            Some(("Invariant", "InvariantProof"))
+        );
+        assert_eq!(recovery_target_phase("RecheckInvariant"), Some("Invariant"));
+
+        assert_eq!(
+            recovery_gate("RunAnalysis"),
+            Some(("Analysis", "AnalysisReport"))
+        );
+        assert_eq!(recovery_target_phase("RunAnalysis"), Some("Analysis"));
+
+        assert_eq!(recovery_gate("BindReadyTask"), Some(("Plan", "TaskReady")));
+        assert_eq!(recovery_target_phase("BindReadyTask"), Some("Plan"));
+
+        assert_eq!(
+            recovery_gate("Reexecute"),
+            Some(("Execution", "ArtifactReceipt"))
+        );
+        assert_eq!(recovery_target_phase("Reexecute"), Some("Execute"));
+
+        assert_eq!(
+            recovery_gate("RepairArtifactLineage"),
+            Some(("Verification", "LineageProof"))
+        );
+        assert_eq!(
+            recovery_target_phase("RepairArtifactLineage"),
+            Some("Verify")
+        );
+
+        assert_eq!(recovery_gate("RecomputeEval"), Some(("Eval", "EvalScore")));
+        assert_eq!(recovery_target_phase("RecomputeEval"), Some("Eval"));
+
+        assert_eq!(recovery_gate("Escalate"), None);
+        assert_eq!(recovery_target_phase("Escalate"), Some("Done"));
+    }
+
+    #[test]
     fn learning_phase_gate_promotes_policy() {
         assert_eq!(
             phase_gate("Learning"),

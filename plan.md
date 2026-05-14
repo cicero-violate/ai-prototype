@@ -112,7 +112,7 @@ The selected graph-editor plan is schema version 1, contains 1,614 planned opera
    - Done when: failure names still map to the same action strings; action strings still map to the same recovery gate/evidence and target phase; `Escalate` remains no gate and target phase `Done`; unknown failures and actions remain `None`; no phase dispatch, hash, router, worker, or evidence JSON behavior changes.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test recovery_ -- --test-threads=1`.
 
-4. [ ] `src/agent/cycle.rs` test `recovery_route_table_preserves_failure_action_and_target_mappings`: add focused regression coverage for the item 3 recovery route table.
+4. [x] `src/agent/cycle.rs` test `recovery_route_table_preserves_failure_action_and_target_mappings`: add focused regression coverage for the item 3 recovery route table.
    - Scope: `src/agent/cycle.rs` tests only.
    - Done when: the named test asserts representative failure-to-action mappings for `InvariantBlocked`, `AnalysisFailed`, `PlanReadyQueueEmpty`, `TaskReceiptMissing`, `ArtifactLineageBroken`, `EvalFailed`, `RecoveryExhausted`, and one unknown failure, plus the corresponding `recovery_gate(...)` and `recovery_target_phase(...)` results for `RecheckInvariant`, `RunAnalysis`, `BindReadyTask`, `Reexecute`, `RepairArtifactLineage`, `RecomputeEval`, and `Escalate`.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test recovery_route_table_preserves_failure_action_and_target_mappings -- --test-threads=1`.
