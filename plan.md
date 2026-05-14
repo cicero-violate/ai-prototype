@@ -109,7 +109,7 @@ Graph operations `76de2626ddf92d55`, `60f6ec4427231d32`, and `6f2ca76087786cf6` 
    - Done when: the named test asserts reordering dimensions changes `dimension_order_hash(...)`, changing only a dimension score or threshold leaves `dimension_order_hash(...)` unchanged, changing only a dimension score or threshold changes `dimension_score_hash(...)`, and `eval_payload_hash(...)` still changes when record-level score or threshold changes. The test must not touch the filesystem, start processes, read graph artifacts, perform network I/O, or mutate process-global environment.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test eval_dimension_hash_domains_remain_distinct -- --test-threads=1`.
 
-30. [ ] `SCORE_REPORT.md`: after items 28 and 29 land, refresh graph-derived structural evidence and review whether `score.md` rationale changes without raising project-level scores absent capability evidence.
+30. [x] `SCORE_REPORT.md`: after items 28 and 29 land, refresh graph-derived structural evidence and review whether `score.md` rationale changes without raising project-level scores absent capability evidence.
    - Scope: `SCORE_REPORT.md`, `score.md`, `plan.md`, and `status.md` only.
    - Done when: `scripts/recapture_rustc_graphs.sh --check` validates the configured graph root, `SCORE_REPORT.md` is regenerated from `../state/rustc`, `status.md` records aggregate and affected crate rows, and `score.md` changes only if refreshed evidence differs from the current rationale.
    - Validation: `bash scripts/recapture_rustc_graphs.sh --check && cargo run --manifest-path ../score/Cargo.toml --quiet -- --artifact-root ../state/rustc --report SCORE_REPORT.md --date "$(date +%Y-%m-%d)"`.
