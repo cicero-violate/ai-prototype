@@ -126,14 +126,17 @@ impl ApiTransportReceipt {
             && self.command_id != 0
             && self.command_hash != 0
             && self.event_hash != 0
-            && self.receipt_hash
-                == api_transport_receipt_hash(
-                    self.request_id,
-                    self.payload_hash,
-                    self.command_id,
-                    self.command_hash,
-                    self.event_hash,
-                )
+            && self.receipt_hash == self.expected_receipt_hash()
+    }
+
+    fn expected_receipt_hash(&self) -> u64 {
+        api_transport_receipt_hash(
+            self.request_id,
+            self.payload_hash,
+            self.command_id,
+            self.command_hash,
+            self.event_hash,
+        )
     }
 
     pub fn matches_event(&self, event: &ControlEvent) -> bool {

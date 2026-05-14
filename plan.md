@@ -112,7 +112,7 @@ The selected `ai` graph-editor plan is schema version 1 and contains 1,614 plann
    - Done when: `scripts/recapture_rustc_graphs.sh --check` validates the configured graph root, `SCORE_REPORT.md` is regenerated from `../state/rustc`, `status.md` records aggregate and affected crate rows, and `score.md` changes only if refreshed evidence differs from the current rationale.
    - Validation: `bash scripts/recapture_rustc_graphs.sh --check && cargo run --manifest-path ../score/Cargo.toml --quiet -- --artifact-root ../state/rustc --report SCORE_REPORT.md --date "$(date +%Y-%m-%d)"`.
 
-13. [ ] `src/api/transport.rs`: add a private `ApiTransportReceipt::expected_receipt_hash()` helper and delegate receipt hash validation through it.
+13. [x] `src/api/transport.rs`: add a private `ApiTransportReceipt::expected_receipt_hash()` helper and delegate receipt hash validation through it.
    - Scope: `src/api/transport.rs` `impl ApiTransportReceipt` only; allowed functions are `ApiTransportReceipt::is_contract_valid(...)` and the new private helper. Do not change `ApiTransportReceipt::new(...)`, `api_transport_receipt_hash(...)`, transport frame hashing, ledger behavior, session behavior, or public signatures.
    - Done when: `is_contract_valid(...)` computes the expected receipt hash through `expected_receipt_hash()`, all nonzero field checks remain explicit, receipt hash values produced by `ApiTransportReceipt::new(...)` remain unchanged, and public API behavior is unchanged.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo check --lib`.
