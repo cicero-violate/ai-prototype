@@ -521,72 +521,117 @@ fn phase_gate(phase: &str) -> Option<(&'static str, &'static str)> {
     phase_route(phase).and_then(|route| route.gate)
 }
 
-fn recovery_action_for_failure(failure: &str) -> Option<&'static str> {
-    match failure {
-        "InvariantUnknown" | "InvariantBlocked" => Some("RecheckInvariant"),
-        "AnalysisMissing" | "AnalysisFailed" => Some("RunAnalysis"),
-        "JudgmentMissing" | "JudgmentFailed" => Some("Rejudge"),
-        "PlanMissing" | "PlanFailed" => Some("Replan"),
-        "PlanReadyQueueEmpty" => Some("BindReadyTask"),
-        "ExecutionMissing" | "ExecutionFailed" | "TaskReceiptMissing" => Some("Reexecute"),
-        "VerificationUnknown" | "VerificationFailed" => Some("Reverify"),
-        "ArtifactLineageBroken" => Some("RepairArtifactLineage"),
-        "EvalMissing" | "EvalFailed" => Some("RecomputeEval"),
-        "RecoveryExhausted" | "ConvergenceFailed" => Some("Escalate"),
-        _ => None,
-    }
-}
-
 #[derive(Clone, Copy)]
 struct RecoveryActionSpec {
     gate: Option<(&'static str, &'static str)>,
     target_phase: &'static str,
 }
 
-fn recovery_action_spec(action: &str) -> Option<RecoveryActionSpec> {
-    match action {
-        "RecheckInvariant" => Some(RecoveryActionSpec {
+struct RecoveryRoute {
+    action: &'static str,
+    failures: &'static [&'static str],
+    spec: RecoveryActionSpec,
+}
+
+const RECOVERY_ROUTES: &[RecoveryRoute] = &[
+    RecoveryRoute {
+        action: "RecheckInvariant",
+        failures: &["InvariantUnknown", "InvariantBlocked"],
+        spec: RecoveryActionSpec {
             gate: Some(("Invariant", "InvariantProof")),
             target_phase: "Invariant",
-        }),
-        "RunAnalysis" => Some(RecoveryActionSpec {
+        },
+    },
+    RecoveryRoute {
+        action: "RunAnalysis",
+        failures: &["AnalysisMissing", "AnalysisFailed"],
+        spec: RecoveryActionSpec {
             gate: Some(("Analysis", "AnalysisReport")),
             target_phase: "Analysis",
-        }),
-        "Rejudge" => Some(RecoveryActionSpec {
+        },
+    },
+    RecoveryRoute {
+        action: "Rejudge",
+        failures: &["JudgmentMissing", "JudgmentFailed"],
+        spec: RecoveryActionSpec {
             gate: Some(("Judgment", "JudgmentRecord")),
             target_phase: "Judgment",
-        }),
-        "Replan" => Some(RecoveryActionSpec {
+        },
+    },
+    RecoveryRoute {
+        action: "Replan",
+        failures: &["PlanMissing", "PlanFailed"],
+        spec: RecoveryActionSpec {
             gate: Some(("Plan", "PlanRecord")),
             target_phase: "Plan",
-        }),
-        "BindReadyTask" => Some(RecoveryActionSpec {
+        },
+    },
+    RecoveryRoute {
+        action: "BindReadyTask",
+        failures: &["PlanReadyQueueEmpty"],
+        spec: RecoveryActionSpec {
             gate: Some(("Plan", "TaskReady")),
             target_phase: "Plan",
-        }),
-        "Reexecute" => Some(RecoveryActionSpec {
+        },
+    },
+    RecoveryRoute {
+        action: "Reexecute",
+        failures: &["ExecutionMissing", "ExecutionFailed", "TaskReceiptMissing"],
+        spec: RecoveryActionSpec {
             gate: Some(("Execution", "ArtifactReceipt")),
             target_phase: "Execute",
-        }),
-        "Reverify" => Some(RecoveryActionSpec {
+        },
+    },
+    RecoveryRoute {
+        action: "Reverify",
+        failures: &["VerificationUnknown", "VerificationFailed"],
+        spec: RecoveryActionSpec {
             gate: Some(("Verification", "VerificationReport")),
             target_phase: "Verify",
-        }),
-        "RepairArtifactLineage" => Some(RecoveryActionSpec {
+        },
+    },
+    RecoveryRoute {
+        action: "RepairArtifactLineage",
+        failures: &["ArtifactLineageBroken"],
+        spec: RecoveryActionSpec {
             gate: Some(("Verification", "LineageProof")),
             target_phase: "Verify",
-        }),
-        "RecomputeEval" => Some(RecoveryActionSpec {
+        },
+    },
+    RecoveryRoute {
+        action: "RecomputeEval",
+        failures: &["EvalMissing", "EvalFailed"],
+        spec: RecoveryActionSpec {
             gate: Some(("Eval", "EvalScore")),
             target_phase: "Eval",
-        }),
-        "Escalate" => Some(RecoveryActionSpec {
+        },
+    },
+    RecoveryRoute {
+        action: "Escalate",
+        failures: &["RecoveryExhausted", "ConvergenceFailed"],
+        spec: RecoveryActionSpec {
             gate: None,
             target_phase: "Done",
-        }),
-        _ => None,
-    }
+        },
+    },
+];
+
+fn recovery_route_for_action(action: &str) -> Option<&'static RecoveryRoute> {
+    RECOVERY_ROUTES.iter().find(|route| route.action == action)
+}
+
+fn recovery_route_for_failure(failure: &str) -> Option<&'static RecoveryRoute> {
+    RECOVERY_ROUTES
+        .iter()
+        .find(|route| route.failures.contains(&failure))
+}
+
+fn recovery_action_for_failure(failure: &str) -> Option<&'static str> {
+    recovery_route_for_failure(failure).map(|route| route.action)
+}
+
+fn recovery_action_spec(action: &str) -> Option<RecoveryActionSpec> {
+    recovery_route_for_action(action).map(|route| route.spec)
 }
 
 fn recovery_gate(action: &str) -> Option<(&'static str, &'static str)> {

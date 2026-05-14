@@ -107,7 +107,7 @@ The selected graph-editor plan is schema version 1, contains 1,614 planned opera
    - Done when: the named test asserts `use_teacher(...)` outputs for `Analysis`, `Judgment`, `Plan`, `Eval`, `Recovery`, `Execute`, and an unknown phase, and asserts `phase_gate(...)` outputs for `Invariant`, `Analysis`, `Judgment`, `Plan`, `Execute`, `Verify`, `Eval`, `Learning`, and an unknown phase.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test phase_route_lookup_preserves_teacher_and_gate_mappings -- --test-threads=1`.
 
-3. [ ] `src/agent/cycle.rs`: consolidate `recovery_action_for_failure(...)` with `recovery_action_spec(...)` through one private recovery route table while preserving all current failure/action/gate/target mappings.
+3. [x] `src/agent/cycle.rs`: consolidate `recovery_action_for_failure(...)` with `recovery_action_spec(...)` through one private recovery route table while preserving all current failure/action/gate/target mappings.
    - Scope: `src/agent/cycle.rs` functions `recovery_action_for_failure(...)`, `recovery_action_spec(...)`, `recovery_gate(...)`, `recovery_target_phase(...)`, and private recovery helper/type definitions immediately adjacent to them only.
    - Done when: failure names still map to the same action strings; action strings still map to the same recovery gate/evidence and target phase; `Escalate` remains no gate and target phase `Done`; unknown failures and actions remain `None`; no phase dispatch, hash, router, worker, or evidence JSON behavior changes.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test recovery_ -- --test-threads=1`.
