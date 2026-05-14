@@ -4973,3 +4973,15 @@ Planning-turn update on 2026-05-14 for next non-root router CDP split work:
 - Existing uncommitted non-planning changes in GOAL.md and src/agent/loop_driver.rs were left untouched.
 - Updated plan.md with three executable items: item 37 cdp_get private phase helper extraction in src/agent/router.rs, item 38 focused loopback regression coverage, and item 39 graph-derived evidence refresh.
 - score.md was reviewed and left unchanged because this planning turn produced no implementation, validation refresh, graph refresh, or score-history-worthy capability evidence.
+
+Implementation step 1 evidence on 2026-05-14 for Active Priorities item 37:
+
+- Selected first unchecked Active Priorities item 37: src/agent/router.rs helper extraction for cdp_get(...).
+- Read plan.md, status.md, and score.md before editing. Existing uncommitted non-planning changes in GOAL.md and src/agent/loop_driver.rs were left untouched.
+- Changed only the item-scoped source file src/agent/router.rs plus planning/status evidence files.
+- Added private helper build_cdp_get_request(host, port, path) for exact CDP HTTP GET request construction.
+- Added private helper parse_cdp_get_response(response) for CRLF header/body splitting, status parsing, and InvalidResponse mapping.
+- Preserved cdp_get(...) signature, socket resolution, TcpStream::connect_timeout usage, read/write timeout setup, request bytes, write/flush behavior, response read behavior, body extraction, status parsing, and OpenAiError mapping.
+- Targeted validation passed: TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo check --lib completed successfully.
+- Broader validation passed: TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets passed with 314 library tests, 3 root_validate binary tests, and all integration/example test targets passing.
+- Marked item 37 complete in plan.md. score.md was reviewed and left unchanged because this is a narrow structure refactor with validation evidence, not a score-history-worthy project-level capability change.

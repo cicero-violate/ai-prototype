@@ -407,9 +407,7 @@ fn cdp_get(
         .set_write_timeout(Some(timeout))
         .map_err(OpenAiError::Io)?;
 
-    let request = format!(
-        "GET {path} HTTP/1.1\r\nHost: {host}:{port}\r\nAccept: application/json\r\nConnection: close\r\n\r\n"
-    );
+    let request = build_cdp_get_request(host, port, path);
     stream
         .write_all(request.as_bytes())
         .map_err(OpenAiError::Io)?;
@@ -419,6 +417,16 @@ fn cdp_get(
     stream
         .read_to_string(&mut response)
         .map_err(OpenAiError::Io)?;
+    parse_cdp_get_response(&response)
+}
+
+fn build_cdp_get_request(host: &str, port: u16, path: &str) -> String {
+    format!(
+        "GET {path} HTTP/1.1\r\nHost: {host}:{port}\r\nAccept: application/json\r\nConnection: close\r\n\r\n"
+    )
+}
+
+fn parse_cdp_get_response(response: &str) -> Result<(u16, String), OpenAiError> {
     let (head, body) = response
         .split_once("\r\n\r\n")
         .ok_or(OpenAiError::InvalidResponse)?;
