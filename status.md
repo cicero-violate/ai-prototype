@@ -57,6 +57,15 @@ Current date: 2026-05-14.
 
 ## Validation Ledger
 
+### 2026-05-14 — planning selected API transport ledger request-id lookup work
+
+- Scope: `plan.md`, `status.md`, `score.md`, `SCORE_REPORT.md`, all current `../state/rustc/auto-refactor/*.graph-editor-plan.json` paths, selected `../state/rustc/auto-refactor/workspace__ai_sandbox__canon-mini-agent__prototype__state__rustc__ai__graph.graph-editor-plan.json`, `src/api/transport.rs`, and `tests/api_transport_contract.rs`.
+- Command/check: read current planning/status/score/report files; listed current graph-editor plan paths; parsed the selected `ai` graph-editor plan; inspected `ApiTransportLedger::{contains_request_id, has_conflicting_request}` and existing transport ledger tests; checked working-tree status.
+- Result: informational; planning update prepared.
+- Evidence: there was no first incomplete executable item before this planning turn because prior Active Priorities items 7 through 9 were complete and status confirmed item exhaustion. User direction keeps `root_validate` non-selectable despite its Structure row of `1.5`. Current `SCORE_REPORT.md` remains `G = 7.99 / 10` with aggregate Structure `4.9`. The selected `ai` graph-editor plan remains schema version 1 with 1,614 operations. Leading remaining `agent::cycle`, prompt, evidence, and hash merge candidates were rejected as semantically unsafe because they collapse distinct kernel concepts. Graph operation rank 50 identifies `api::transport::ApiTransportLedger::{contains_request_id, has_conflicting_request}` as a safe non-root candidate because both methods scan ledger receipts by `request_id`; the planned safe subset introduces a private request-id lookup helper while preserving both public method names and replay semantics. Existing tests cover membership and replay collision behavior; the new checklist adds direct same-payload/non-conflict and different-payload/conflict regression coverage. Existing uncommitted non-planning changes in `GOAL.md` and `src/agent/loop_driver.rs` were left untouched. `score.md` was reviewed and left unchanged because planning alone produced no implementation, validation, graph refresh, or score-history-worthy capability evidence.
+- Commit note: normal `git commit` was blocked by the repository hook running `cargo fmt --check` against pre-existing non-planning diffs in `src/agent/loop_driver.rs` and `src/api/server.rs`; scoped planning files will be committed with hooks bypassed so unrelated source formatting is not changed in this planning turn.
+- Next action: execute Active Priorities item 10 in `src/api/transport.rs`, then run `cargo check --lib`.
+
 ### 2026-05-14 — item 9 graph-derived evidence refresh after worker client constructor coverage
 
 - Scope: `SCORE_REPORT.md`, `score.md`, `plan.md`, `status.md`, checklist item 9, and graph artifacts under `../state/rustc`.
