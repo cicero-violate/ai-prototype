@@ -107,7 +107,7 @@ The selected graph-editor plan is schema version 1, contains 1,614 planned opera
    - Done when: the named test asserts current outputs for `RecheckInvariant`, `BindReadyTask`, `RepairArtifactLineage`, `RecomputeEval`, `Escalate`, and one unknown action through `recovery_gate(...)` and `recovery_target_phase(...)`.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test recovery_action_spec_preserves_gate_and_target_mappings -- --test-threads=1`.
 
-3. [ ] `src/agent/cycle.rs`: consolidate `gate_id_u64(...)`, `evidence_u64_value(...)`, and `effect_for_gate_evidence(...)` around one private static route table or lookup helper while preserving exact numeric ids and effect JSON strings.
+3. [x] `src/agent/cycle.rs`: consolidate `gate_id_u64(...)`, `evidence_u64_value(...)`, and `effect_for_gate_evidence(...)` around one private static route table or lookup helper while preserving exact numeric ids and effect JSON strings.
    - Scope: `src/agent/cycle.rs` functions `gate_id_u64(...)`, `evidence_u64_value(...)`, `effect_for_gate_evidence(...)`, and a new private helper/type immediately adjacent to them only.
    - Done when: gate ids, evidence ids, failed-evidence effect `(0, "null")`, `Execution/ExecutionReceipt` no-effect behavior, and `Plan`/`Execution`/`Verification`/`Eval` effect mappings are unchanged; `build_submit_evidence_json(...)` known vectors from existing tests remain byte-for-byte stable.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test submit_evidence_hash_helpers_preserve_known_vectors -- --test-threads=1`.

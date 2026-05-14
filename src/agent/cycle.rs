@@ -546,36 +546,152 @@ fn recovery_target_phase(action: &str) -> Option<&'static str> {
     recovery_action_spec(action).map(|spec| spec.target_phase)
 }
 
+#[derive(Clone, Copy)]
+struct U64Route {
+    name: &'static str,
+    value: u64,
+}
+
+const GATE_ID_ROUTES: &[U64Route] = &[
+    U64Route {
+        name: "Invariant",
+        value: 1,
+    },
+    U64Route {
+        name: "Analysis",
+        value: 2,
+    },
+    U64Route {
+        name: "Judgment",
+        value: 3,
+    },
+    U64Route {
+        name: "Plan",
+        value: 4,
+    },
+    U64Route {
+        name: "Execution",
+        value: 5,
+    },
+    U64Route {
+        name: "Verification",
+        value: 6,
+    },
+    U64Route {
+        name: "Eval",
+        value: 7,
+    },
+    U64Route {
+        name: "Learning",
+        value: 8,
+    },
+];
+
+const EVIDENCE_U64_ROUTES: &[U64Route] = &[
+    U64Route {
+        name: "InvariantProof",
+        value: 3,
+    },
+    U64Route {
+        name: "AnalysisReport",
+        value: 4,
+    },
+    U64Route {
+        name: "JudgmentRecord",
+        value: 5,
+    },
+    U64Route {
+        name: "PlanRecord",
+        value: 6,
+    },
+    U64Route {
+        name: "TaskReady",
+        value: 7,
+    },
+    U64Route {
+        name: "ExecutionReceipt",
+        value: 8,
+    },
+    U64Route {
+        name: "ArtifactReceipt",
+        value: 9,
+    },
+    U64Route {
+        name: "VerificationReport",
+        value: 10,
+    },
+    U64Route {
+        name: "LineageProof",
+        value: 11,
+    },
+    U64Route {
+        name: "EvalScore",
+        value: 12,
+    },
+    U64Route {
+        name: "PersistedRecord",
+        value: 16,
+    },
+    U64Route {
+        name: "PolicyPromotion",
+        value: 18,
+    },
+];
+
+#[derive(Clone, Copy)]
+struct EffectRoute {
+    gate: &'static str,
+    evidence: Option<&'static str>,
+    effect_u64: u64,
+    effect_json: &'static str,
+}
+
+const EFFECT_ROUTES: &[EffectRoute] = &[
+    EffectRoute {
+        gate: "Execution",
+        evidence: Some("ExecutionReceipt"),
+        effect_u64: 0,
+        effect_json: "null",
+    },
+    EffectRoute {
+        gate: "Plan",
+        evidence: None,
+        effect_u64: 1,
+        effect_json: "\"BindReadyTask\"",
+    },
+    EffectRoute {
+        gate: "Execution",
+        evidence: None,
+        effect_u64: 2,
+        effect_json: "\"MaterializeArtifact\"",
+    },
+    EffectRoute {
+        gate: "Verification",
+        evidence: None,
+        effect_u64: 3,
+        effect_json: "\"RepairLineage\"",
+    },
+    EffectRoute {
+        gate: "Eval",
+        evidence: None,
+        effect_u64: 4,
+        effect_json: "\"CompleteObjective\"",
+    },
+];
+
+fn lookup_u64_route(routes: &[U64Route], name: &str) -> Option<u64> {
+    routes
+        .iter()
+        .find(|route| route.name == name)
+        .map(|route| route.value)
+}
+
 fn gate_id_u64(gate: &str) -> Option<u64> {
-    match gate {
-        "Invariant" => Some(1),
-        "Analysis" => Some(2),
-        "Judgment" => Some(3),
-        "Plan" => Some(4),
-        "Execution" => Some(5),
-        "Verification" => Some(6),
-        "Eval" => Some(7),
-        "Learning" => Some(8),
-        _ => None,
-    }
+    lookup_u64_route(GATE_ID_ROUTES, gate)
 }
 
 fn evidence_u64_value(evidence: &str) -> Option<u64> {
-    match evidence {
-        "InvariantProof" => Some(3),
-        "AnalysisReport" => Some(4),
-        "JudgmentRecord" => Some(5),
-        "PlanRecord" => Some(6),
-        "TaskReady" => Some(7),
-        "ExecutionReceipt" => Some(8),
-        "ArtifactReceipt" => Some(9),
-        "VerificationReport" => Some(10),
-        "LineageProof" => Some(11),
-        "EvalScore" => Some(12),
-        "PersistedRecord" => Some(16),
-        "PolicyPromotion" => Some(18),
-        _ => None,
-    }
+    lookup_u64_route(EVIDENCE_U64_ROUTES, evidence)
 }
 
 // Returns (effect_u64, effect_json_str). PacketEffect repr: None=0, BindReadyTask=1,
@@ -584,14 +700,13 @@ fn effect_for_gate_evidence(gate: &str, evidence: &str, passed: bool) -> (u64, &
     if !passed {
         return (0, "null");
     }
-    match (gate, evidence) {
-        ("Execution", "ExecutionReceipt") => (0, "null"),
-        ("Plan", _) => (1, "\"BindReadyTask\""),
-        ("Execution", _) => (2, "\"MaterializeArtifact\""),
-        ("Verification", _) => (3, "\"RepairLineage\""),
-        ("Eval", _) => (4, "\"CompleteObjective\""),
-        _ => (0, "null"),
-    }
+    EFFECT_ROUTES
+        .iter()
+        .find(|route| {
+            route.gate == gate && route.evidence.map_or(true, |expected| expected == evidence)
+        })
+        .map(|route| (route.effect_u64, route.effect_json))
+        .unwrap_or((0, "null"))
 }
 
 fn compute_structural_payload_hash(

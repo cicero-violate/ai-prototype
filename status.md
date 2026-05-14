@@ -57,6 +57,14 @@ Current date: 2026-05-14.
 
 ## Validation Ledger
 
+### 2026-05-14 — item 3 cycle gate/evidence/effect route table consolidation
+
+- Scope: `src/agent/cycle.rs`, checklist item 3 in `plan.md`, and `status.md` evidence update.
+- Command/check: targeted `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test submit_evidence_hash_helpers_preserve_known_vectors -- --test-threads=1`; broader `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
+- Result: passed.
+- Evidence: `gate_id_u64(...)`, `evidence_u64_value(...)`, and `effect_for_gate_evidence(...)` now use shared private route-table helpers in `src/agent/cycle.rs` while preserving existing function names. The exact known-vector JSON hashes for `Invariant/InvariantProof` and `Plan/TaskReady` remained stable. Targeted validation passed with 1 named known-vector test and 0 failures. Broader validation passed with 285 library/bin tests, 3 root_validate tests, 12 API server contract tests, 20 API transport contract tests, 3 canonical TLog contract tests, 4 domain contract tests, 10 graph mutation CLI contract tests, 9 MCP receipt contract tests, 2 planning contract tests, 5 score contract tests, 2 supervisor binary contract tests, 2 worker binary contract tests, and all example test targets green.
+- Next action: perform Active Priorities item 4 in `src/agent/cycle.rs`, adding focused route-table regression coverage before graph evidence refresh.
+
 ### 2026-05-14 — item 2 recovery action mapping regression test
 
 - Scope: `src/agent/cycle.rs` tests, checklist item 2 in `plan.md`, and `status.md` evidence update.
