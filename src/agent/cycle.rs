@@ -432,11 +432,72 @@ impl AgentCycle {
 
 // ---- Phase dispatch and evidence submission helpers ----------------------
 
+#[derive(Clone, Copy)]
+struct PhaseRoute {
+    phase: &'static str,
+    uses_teacher: bool,
+    gate: Option<(&'static str, &'static str)>,
+}
+
+const PHASE_ROUTES: &[PhaseRoute] = &[
+    PhaseRoute {
+        phase: "Invariant",
+        uses_teacher: false,
+        gate: Some(("Invariant", "InvariantProof")),
+    },
+    PhaseRoute {
+        phase: "Analysis",
+        uses_teacher: true,
+        gate: Some(("Analysis", "AnalysisReport")),
+    },
+    PhaseRoute {
+        phase: "Judgment",
+        uses_teacher: true,
+        gate: Some(("Judgment", "JudgmentRecord")),
+    },
+    PhaseRoute {
+        phase: "Plan",
+        uses_teacher: true,
+        gate: Some(("Plan", "TaskReady")),
+    },
+    PhaseRoute {
+        phase: "Execute",
+        uses_teacher: false,
+        gate: Some(("Execution", "ArtifactReceipt")),
+    },
+    PhaseRoute {
+        phase: "Verify",
+        uses_teacher: false,
+        gate: Some(("Verification", "LineageProof")),
+    },
+    PhaseRoute {
+        phase: "Eval",
+        uses_teacher: true,
+        gate: Some(("Eval", "EvalScore")),
+    },
+    PhaseRoute {
+        phase: "Learning",
+        uses_teacher: false,
+        gate: Some(("Learning", "PolicyPromotion")),
+    },
+    PhaseRoute {
+        phase: "Recovery",
+        uses_teacher: true,
+        gate: None,
+    },
+];
+
+fn phase_route(phase: &str) -> Option<PhaseRoute> {
+    PHASE_ROUTES
+        .iter()
+        .find(|route| route.phase == phase)
+        .copied()
+}
+
 fn use_teacher(phase: &str) -> bool {
-    matches!(
-        phase,
-        "Analysis" | "Judgment" | "Plan" | "Eval" | "Recovery"
-    )
+    phase_route(phase)
+        .map(|route| route.uses_teacher)
+        .unwrap_or(false)
 }
 
 fn parse_verdict(text: &str) -> bool {
@@ -457,17 +518,7 @@ fn parse_verdict(text: &str) -> bool {
 }
 
 fn phase_gate(phase: &str) -> Option<(&'static str, &'static str)> {
-    match phase {
-        "Invariant" => Some(("Invariant", "InvariantProof")),
-        "Analysis" => Some(("Analysis", "AnalysisReport")),
-        "Judgment" => Some(("Judgment", "JudgmentRecord")),
-        "Plan" => Some(("Plan", "TaskReady")),
-        "Execute" => Some(("Execution", "ArtifactReceipt")),
-        "Verify" => Some(("Verification", "LineageProof")),
-        "Eval" => Some(("Eval", "EvalScore")),
-        "Learning" => Some(("Learning", "PolicyPromotion")),
-        _ => None,
-    }
+    phase_route(phase).and_then(|route| route.gate)
 }
 
 fn recovery_action_for_failure(failure: &str) -> Option<&'static str> {
