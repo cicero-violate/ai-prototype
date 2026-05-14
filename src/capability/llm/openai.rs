@@ -315,48 +315,42 @@ pub struct OpenAiMessage {
 
 impl OpenAiMessage {
     pub fn system(content: impl Into<String>) -> Self {
-        Self {
-            role: "system".to_string(),
-            content: Some(content.into()),
-            tool_call_id: None,
-            tool_calls: Vec::new(),
-        }
+        openai_message("system", Some(content.into()), None, Vec::new())
     }
 
     pub fn user(content: impl Into<String>) -> Self {
-        Self {
-            role: "user".to_string(),
-            content: Some(content.into()),
-            tool_call_id: None,
-            tool_calls: Vec::new(),
-        }
+        openai_message("user", Some(content.into()), None, Vec::new())
     }
 
     pub fn assistant(content: impl Into<String>) -> Self {
-        Self {
-            role: "assistant".to_string(),
-            content: Some(content.into()),
-            tool_call_id: None,
-            tool_calls: Vec::new(),
-        }
+        openai_message("assistant", Some(content.into()), None, Vec::new())
     }
 
     pub fn assistant_tool_call(tool_call: OpenAiToolCall) -> Self {
-        Self {
-            role: "assistant".to_string(),
-            content: None,
-            tool_call_id: None,
-            tool_calls: vec![tool_call],
-        }
+        openai_message("assistant", None, None, vec![tool_call])
     }
 
     pub fn tool(tool_call_id: impl Into<String>, content: impl Into<String>) -> Self {
-        Self {
-            role: "tool".to_string(),
-            content: Some(content.into()),
-            tool_call_id: Some(tool_call_id.into()),
-            tool_calls: Vec::new(),
-        }
+        openai_message(
+            "tool",
+            Some(content.into()),
+            Some(tool_call_id.into()),
+            Vec::new(),
+        )
+    }
+}
+
+fn openai_message(
+    role: &str,
+    content: Option<String>,
+    tool_call_id: Option<String>,
+    tool_calls: Vec<OpenAiToolCall>,
+) -> OpenAiMessage {
+    OpenAiMessage {
+        role: role.to_string(),
+        content,
+        tool_call_id,
+        tool_calls,
     }
 }
 
