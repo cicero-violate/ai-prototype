@@ -321,15 +321,16 @@ pub struct OllamaMessage {
 
 impl OllamaMessage {
     pub fn system(content: impl Into<String>) -> Self {
-        Self {
-            role: "system".to_string(),
-            content: content.into(),
-        }
+        Self::new_with_role("system", content)
     }
 
     pub fn user(content: impl Into<String>) -> Self {
+        Self::new_with_role("user", content)
+    }
+
+    fn new_with_role(role: &'static str, content: impl Into<String>) -> Self {
         Self {
-            role: "user".to_string(),
+            role: role.to_string(),
             content: content.into(),
         }
     }

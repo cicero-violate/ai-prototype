@@ -4407,3 +4407,15 @@ Planning-turn update on 2026-05-14 for next non-root Ollama message constructor 
 - Inspected the working tree before changing planning files. Existing uncommitted non-planning changes in `GOAL.md` and `src/agent/loop_driver.rs` were left untouched.
 - Updated `plan.md` with three executable items: item 7 constructor-helper delegation in `src/capability/llm/ollama.rs`, item 8 focused constructor regression coverage, and item 9 graph-derived evidence refresh.
 - `score.md` was reviewed and left unchanged because this planning turn produced no implementation, validation, graph refresh, or score-history-worthy capability evidence.
+
+
+Implementation step 1 evidence on 2026-05-14 for Active Priorities item 7:
+
+- Selected first unchecked Active Priorities item 7: `src/capability/llm/ollama.rs` constructor helper delegation for `OllamaMessage::system(...)` and `OllamaMessage::user(...)`.
+- Read `plan.md`, `status.md`, and `score.md` before editing. Existing uncommitted non-planning changes in `GOAL.md` and `src/agent/loop_driver.rs` were left untouched.
+- Changed only the item-scoped source file `src/capability/llm/ollama.rs` plus planning/status evidence files.
+- Added private helper `OllamaMessage::new_with_role(...)` and routed both public constructors through it.
+- Preserved the public constructor signatures, role strings, and content ownership behavior: `OllamaMessage::system(...)` still uses role `"system"`, and `OllamaMessage::user(...)` still uses role `"user"`.
+- Targeted validation passed: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo check --lib` completed successfully.
+- Broader validation passed: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets` passed with 305 library tests, 3 `root_validate` binary tests, and all integration/example test targets passing.
+- Marked item 7 complete in `plan.md`. `score.md` was reviewed and left unchanged because this is a narrow constructor-structure refactor with validation evidence, not a score-history-worthy project-level capability change.
