@@ -107,7 +107,7 @@ The selected graph-editor plan is schema version 1 and contains 1,614 planned op
    - Done when: the named test serializes access to environment mutation, sets valid numeric strings for `EXECUTE_TURNS`, `TURN_RETRY_LIMIT`, `AGENT_COUNT`, `LOOP_SLEEP_MS`, `ROUTER_TURN_MAX_MS`, `ROUTER_FIRST_CAPTURE_MS`, `ROUTER_IDLE_MS`, and `AI_CERT_MAX_STEPS`, asserts the parsed `AgentLoopConfig` numeric fields, then sets representative invalid strings and asserts the documented defaults are restored for at least one `u32` field and one `u64` field.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test agent_loop_config_from_env_preserves_typed_numeric_defaults -- --test-threads=1`.
 
-3. [ ] `SCORE_REPORT.md`: after items 1 and 2 land, refresh graph-derived evidence and review whether `score.md` rationale changes without raising project-level scores absent capability evidence.
+3. [x] `SCORE_REPORT.md`: after items 1 and 2 land, refresh graph-derived evidence and review whether `score.md` rationale changes without raising project-level scores absent capability evidence.
    - Scope: `SCORE_REPORT.md`, `score.md`, `plan.md`, and `status.md` only.
    - Done when: `scripts/recapture_rustc_graphs.sh --check` validates the configured graph root, `SCORE_REPORT.md` is regenerated from `../state/rustc`, `status.md` records aggregate and affected crate rows, and `score.md` changes only if refreshed evidence differs from the current rationale.
    - Validation: `bash scripts/recapture_rustc_graphs.sh --check && cargo run --manifest-path ../score/Cargo.toml --quiet -- --artifact-root ../state/rustc --report SCORE_REPORT.md --date "$(date +%Y-%m-%d)"`.

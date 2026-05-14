@@ -3726,3 +3726,15 @@ Implementation step 2 evidence on 2026-05-14 for Active Priorities item 2:
 - Targeted validation passed: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test agent_loop_config_from_env_preserves_typed_numeric_defaults -- --test-threads=1` ran the named test successfully.
 - Broader validation passed: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets` passed with 292 library tests, 3 `root_validate` binary tests, and all integration/example test targets passing.
 - Marked item 2 complete in `plan.md`. `score.md` was reviewed and left unchanged because this adds focused regression coverage for an existing parser boundary, not a score-history-worthy project-level capability change.
+
+
+Implementation step 3 evidence on 2026-05-14 for Active Priorities item 3:
+
+- Selected first unchecked Active Priorities item 3: `SCORE_REPORT.md` graph-derived structural evidence refresh after items 1 and 2.
+- Changed only scoped evidence/planning files. No Rust source or tests were edited for this evidence-refresh item.
+- Validation passed: `bash scripts/recapture_rustc_graphs.sh --check && cargo run --manifest-path ../score/Cargo.toml --quiet -- --artifact-root ../state/rustc --report SCORE_REPORT.md --date "$(date +%Y-%m-%d)"` completed successfully.
+- Evidence: graph artifact check passed for the configured `../state/rustc` root with required graph artifacts; score refresh processed 17 crates with 0 skipped.
+- Refreshed aggregate remains `G = 7.99 / 10`, Architecture `8.9`, Structure `4.9`, Simplicity `7.1`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.4`.
+- The local `ai` library crate row remains at 5,534 nodes, 34,321 edges, 2,236 functions, Architecture `9.4`, Structure `6.0`, Simplicity `7.5`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.6`.
+- Planning validation passed: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test planning_contract -- --test-threads=1` ran 2 tests successfully.
+- Marked item 3 complete in `plan.md`. `score.md` was reviewed and left unchanged because the refreshed graph-derived evidence matches the existing score rationale and does not justify project-level numeric score changes.
