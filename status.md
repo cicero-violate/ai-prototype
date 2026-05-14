@@ -57,6 +57,14 @@ Current date: 2026-05-14.
 
 ## Validation Ledger
 
+### 2026-05-14 — item 7 worker client constructor consolidation
+
+- Scope: `src/agent/worker_client.rs`, checklist item 7 in `plan.md`, and `status.md` evidence update.
+- Command/check: targeted `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo check --lib`; broader `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
+- Result: passed.
+- Evidence: `WorkerClient::new(port)` now delegates to `WorkerClient::new_with_timeout(port, DEFAULT_TIMEOUT_MS)`, leaving `WorkerClient::new_with_timeout(port, timeout_ms)` as the single struct-literal constructor for `WorkerClient { port, timeout }`. Public signatures, `from_env()`, HTTP request construction, connect/read timeout behavior, and existing worker call sites remain unchanged. Targeted validation passed with `cargo check --lib`. Broader all-target validation passed with 294 library/bin tests, 3 root_validate tests, 13 API server contract tests, 20 API transport contract tests, 3 canonical TLog contract tests, 4 domain contract tests, 10 graph mutation CLI contract tests, 9 MCP receipt contract tests, 2 planning contract tests, 5 score contract tests, 2 supervisor binary contract tests, 2 worker binary contract tests, and all example test targets green.
+- Next action: execute Active Priorities item 8 by adding focused `worker_client_constructors_preserve_default_and_custom_timeouts` coverage in `src/agent/worker_client.rs`.
+
 ### 2026-05-14 — planning selected worker client constructor consolidation
 
 - Scope: `plan.md`, `status.md`, `score.md`, `SCORE_REPORT.md`, all current `../state/rustc/auto-refactor/*.graph-editor-plan.json` paths, selected `../state/rustc/auto-refactor/workspace__ai_sandbox__canon-mini-agent__prototype__state__rustc__ai__graph.graph-editor-plan.json`, and `src/agent/worker_client.rs` constructor surfaces.
