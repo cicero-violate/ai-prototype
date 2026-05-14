@@ -280,28 +280,32 @@ fn transport_ledger_exposes_request_id_membership() {
 }
 
 #[test]
-fn transport_ledger_request_id_lookup_distinguishes_membership_from_payload_conflict() {
-    let frame = observation_frame();
+fn transport_ledger_conflicting_request_detection_is_payload_hash_scoped() {
+    let same_request_same_payload_frame = observation_frame();
     let receipt = ApiTransportReceipt::new(
-        frame.request_id,
-        frame.payload_hash,
-        frame.envelope.command_id,
-        frame.envelope.command_hash,
+        same_request_same_payload_frame.request_id,
+        same_request_same_payload_frame.payload_hash,
+        same_request_same_payload_frame.envelope.command_id,
+        same_request_same_payload_frame.envelope.command_hash,
         55,
     );
     let ledger = match ApiTransportLedger::from_receipts(vec![receipt]) {
         Ok(ledger) => ledger,
         Err(err) => panic!("transport ledger should accept unique receipt: {err:?}"),
     };
+    let other_request_id = same_request_same_payload_frame.request_id + 1;
 
-    assert!(ledger.contains_request_id(frame.request_id));
-    assert!(!ledger.contains_request_id(frame.request_id + 1));
-    assert!(!ledger.has_conflicting_request(&frame));
+    assert!(ledger.contains_request_id(same_request_same_payload_frame.request_id));
+    assert!(!ledger.contains_request_id(other_request_id));
+    assert!(!ledger.has_conflicting_request(&same_request_same_payload_frame));
 
-    let mut conflicting_frame = frame.clone();
-    conflicting_frame.payload_hash ^= 1;
+    let mut same_request_different_payload_frame = same_request_same_payload_frame.clone();
+    same_request_different_payload_frame.payload_hash ^= 1;
+    assert!(ledger.has_conflicting_request(&same_request_different_payload_frame));
 
-    assert!(ledger.has_conflicting_request(&conflicting_frame));
+    let mut different_request_same_payload_frame = same_request_same_payload_frame.clone();
+    different_request_same_payload_frame.request_id = other_request_id;
+    assert!(!ledger.has_conflicting_request(&different_request_same_payload_frame));
 }
 
 #[test]

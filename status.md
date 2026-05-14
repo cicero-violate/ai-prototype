@@ -57,6 +57,14 @@ Current date: 2026-05-14.
 
 ## Validation Ledger
 
+### 2026-05-14 — item 47 ApiTransportLedger payload-scoped conflict regression
+
+- Scope: `tests/api_transport_contract.rs`, checklist item 47 in `plan.md`, and `status.md` evidence update.
+- Command/check: targeted `rustfmt --edition 2021 tests/api_transport_contract.rs && TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test api_transport_contract transport_ledger_conflicting_request_detection_is_payload_hash_scoped -- --test-threads=1`; broader `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
+- Result: passed.
+- Evidence: changed only the item-scoped API transport contract test file. Renamed the existing request-id/payload conflict regression to `transport_ledger_conflicting_request_detection_is_payload_hash_scoped` and strengthened it to assert that a stored receipt makes `contains_request_id(request_id)` true, leaves `contains_request_id(other_request_id)` false, leaves `has_conflicting_request(&same_request_same_payload_frame)` false, makes `has_conflicting_request(&same_request_different_payload_frame)` true, and leaves `has_conflicting_request(&different_request_same_payload_frame)` false. The test uses existing public API transport fixtures and `ApiTransportLedger` public APIs only; it performs no network I/O, environment mutation, process spawning, or filesystem I/O outside normal cargo test execution. Targeted validation passed with 1 named test and 0 failures. Broader all-target validation passed with 304 library/bin tests, 3 root_validate tests, 13 API server contract tests, 23 API transport contract tests, 3 canonical TLog contract tests, 4 domain contract tests, 10 graph mutation CLI contract tests, 9 MCP receipt contract tests, 2 planning contract tests, 5 score contract tests, 2 supervisor binary contract tests, 2 worker binary contract tests, and all example test targets green.
+- Next action: execute Active Priorities item 48 by refreshing graph-derived structural evidence and reviewing `score.md` without raising project-level scores absent capability evidence.
+
 ### 2026-05-14 — item 46 ApiTransportLedger conflict lookup boundary
 
 - Scope: `src/api/transport.rs`, checklist item 46 in `plan.md`, and `status.md` evidence update.
