@@ -132,7 +132,7 @@ The selected `ai` graph-editor plan is schema version 1 and contains 1,614 plann
    - Done when: `from_parts(...)` and `verify(...)` both call the same private helper for `verify_tlog(...)`, `verify_command_ledger_matches_tlog(...)`, and `verify_api_transport_receipts(...)`; all existing error behavior and successful session construction remain unchanged.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo check --lib`.
 
-17. [ ] `tests/api_transport_contract.rs` test `transport_session_from_parts_and_verify_reject_same_tampered_receipt`: add direct session invariant regression coverage.
+17. [x] `tests/api_transport_contract.rs` test `transport_session_from_parts_and_verify_reject_same_tampered_receipt`: add direct session invariant regression coverage.
    - Scope: `tests/api_transport_contract.rs` only.
    - Done when: the named test builds a valid `ApiTransportSession`, confirms `from_parts(...)` and `verify()` accept the valid parts, tampers one persisted `ApiTransportReceipt::receipt_hash`, then asserts both `ApiTransportSession::from_parts(...)` with the tampered ledger and `session.verify()` after tampering through `into_parts()` reconstruction reject with `CanonError::InvalidApiCommand` or the existing invariant error. The test must not start the API server or require network I/O.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test api_transport_contract transport_session_from_parts_and_verify_reject_same_tampered_receipt -- --test-threads=1`.

@@ -61,6 +61,29 @@ fn accepted_transport_receipts(count: u64) -> (TLog, Vec<ApiTransportReceipt>) {
     (tlog, transport_ledger.receipts().to_vec())
 }
 
+fn tamper_first_transport_receipt_hash_unchecked(transport_ledger: &mut ApiTransportLedger) {
+    assert!(!transport_ledger.receipts().is_empty());
+    let first_receipt = transport_ledger.receipts().as_ptr().cast_mut();
+    unsafe {
+        (*first_receipt).receipt_hash = (*first_receipt).receipt_hash.wrapping_add(1);
+    }
+}
+
+fn tamper_session_transport_receipt_hash_unchecked(session: &mut ApiTransportSession) {
+    let session_base = session as *mut ApiTransportSession as usize;
+    let transport_ledger_addr = session.transport_ledger() as *const ApiTransportLedger as usize;
+    let transport_ledger_offset = transport_ledger_addr
+        .checked_sub(session_base)
+        .expect("transport ledger should be stored inside the session");
+    let transport_ledger = unsafe {
+        ((session as *mut ApiTransportSession as *mut u8).add(transport_ledger_offset))
+            .cast::<ApiTransportLedger>()
+            .as_mut()
+            .expect("transport ledger pointer should be valid")
+    };
+    tamper_first_transport_receipt_hash_unchecked(transport_ledger);
+}
+
 #[test]
 fn transport_frame_replays_same_request_without_state_mutation() {
     let cfg = RuntimeConfig::default();
@@ -655,6 +678,60 @@ fn transport_session_rejects_stale_command_ledger_on_restart() {
             transport_ledger,
         ),
         Err(CanonError::InvalidReplay)
+    );
+}
+
+#[test]
+fn transport_session_from_parts_and_verify_reject_same_tampered_receipt() {
+    let cfg = RuntimeConfig::default();
+    let mut state = State::default();
+    let mut tlog = TLog::default();
+    assert!(tick(&mut state, &mut tlog, cfg).is_ok());
+    let mut session = match ApiTransportSession::from_parts(
+        state,
+        tlog,
+        cfg,
+        CommandLedger::default(),
+        ApiTransportLedger::default(),
+    ) {
+        Ok(session) => session,
+        Err(err) => panic!("transport session should initialize from valid empty parts: {err:?}"),
+    };
+    assert!(session.handle_frame(observation_frame()).is_ok());
+    assert!(session.verify().is_ok());
+
+    let (state, tlog, cfg, command_ledger, transport_ledger) = session.clone().into_parts();
+    assert!(ApiTransportSession::from_parts(
+        state,
+        tlog.clone(),
+        cfg,
+        command_ledger.clone(),
+        transport_ledger.clone(),
+    )
+    .is_ok());
+
+    let mut tampered_transport_ledger = transport_ledger.clone();
+    tamper_first_transport_receipt_hash_unchecked(&mut tampered_transport_ledger);
+    assert_eq!(
+        ApiTransportSession::from_parts(
+            state,
+            tlog.clone(),
+            cfg,
+            command_ledger.clone(),
+            tampered_transport_ledger,
+        ),
+        Err(CanonError::InvalidApiCommand)
+    );
+
+    let mut reconstructed_session =
+        match ApiTransportSession::from_parts(state, tlog, cfg, command_ledger, transport_ledger) {
+            Ok(session) => session,
+            Err(err) => panic!("transport session should reconstruct from valid parts: {err:?}"),
+        };
+    tamper_session_transport_receipt_hash_unchecked(&mut reconstructed_session);
+    assert_eq!(
+        reconstructed_session.verify(),
+        Err(CanonError::InvalidApiCommand)
     );
 }
 
