@@ -62,3 +62,27 @@ impl AgentObjective {
         self
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn objective_hash_setters_preserve_independent_fields() {
+        let baseline = AgentObjective::new("domain", "metric");
+        let objective = baseline
+            .clone()
+            .with_risk_envelope("bounded-risk")
+            .with_stop_condition("phase-done");
+
+        assert_ne!(objective.risk_envelope_hash, 0);
+        assert_ne!(objective.stop_condition_hash, 0);
+        assert_ne!(objective.risk_envelope_hash, objective.stop_condition_hash);
+
+        assert_eq!(objective.objective_id, baseline.objective_id);
+        assert_eq!(objective.objective_hash, baseline.objective_hash);
+        assert_eq!(objective.success_metric_hash, baseline.success_metric_hash);
+        assert_eq!(objective.domain_hint, baseline.domain_hint);
+        assert_eq!(objective.success_metric, baseline.success_metric);
+    }
+}

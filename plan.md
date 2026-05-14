@@ -122,7 +122,7 @@ The selected graph-editor plan is schema version 1, contains 1,614 planned opera
    - Done when: both builder methods delegate to one private deterministic setter, `objective_id`, `objective_hash`, and `success_metric_hash` remain unchanged by these builder calls, and the same input strings still populate only `risk_envelope_hash` or `stop_condition_hash` respectively.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test agent::objective -- --test-threads=1`.
 
-6. [ ] `src/agent/objective.rs` test `objective_hash_setters_preserve_independent_fields`: add focused regression coverage for the item 5 objective hash setter.
+6. [x] `src/agent/objective.rs` test `objective_hash_setters_preserve_independent_fields`: add focused regression coverage for the item 5 objective hash setter.
    - Scope: `src/agent/objective.rs` tests only.
    - Done when: the named test compares a baseline `AgentObjective::new(...)` against chained `with_risk_envelope(...)` and `with_stop_condition(...)`, proving the two hashes are nonzero, independent for distinct strings, and do not mutate `objective_id`, `objective_hash`, or `success_metric_hash`.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test objective_hash_setters_preserve_independent_fields -- --test-threads=1`.
