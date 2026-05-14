@@ -102,7 +102,7 @@ The selected `ai` graph-editor plan is schema version 1 and contains 1,614 plann
    - Done when: `compute_evidence_contract_hash(...)`, `compute_submit_evidence_command_hash(...)`, and `compute_envelope_hash(...)` all delegate through one shared descriptor-based helper; their existing function signatures and call sites remain intact; `compute_structural_payload_hash(...)`, route tables, recovery logic, worker submission JSON shape, and TLog behavior are unchanged.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test submit_evidence_hash_helpers_preserve_known_vectors -- --test-threads=1`.
 
-2. [ ] `src/agent/cycle.rs` test `submit_evidence_hash_domains_preserve_contract_command_and_envelope_vectors`: add focused regression coverage for the descriptor-based hash helper introduced in item 1.
+2. [x] `src/agent/cycle.rs` test `submit_evidence_hash_domains_preserve_contract_command_and_envelope_vectors`: add focused regression coverage for the descriptor-based hash helper introduced in item 1.
    - Scope: `src/agent/cycle.rs` test module only.
    - Done when: the named test asserts fixed known outputs for at least one evidence-contract hash, one submit-evidence command hash, one envelope hash, and a nonzero fallback for an empty field list through the shared descriptor path; it also asserts that the existing `build_submit_evidence_json(...)` known-vector test still exercises the same final command hash for `Invariant/InvariantProof` and `Plan/TaskReady`.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test submit_evidence_hash_domains_preserve_contract_command_and_envelope_vectors -- --test-threads=1`.

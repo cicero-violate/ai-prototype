@@ -1362,6 +1362,58 @@ mod hash_tests {
     }
 
     #[test]
+    fn submit_evidence_hash_domains_preserve_contract_command_and_envelope_vectors() {
+        let invariant_gate = gate_id_u64("Invariant").expect("invariant gate id");
+        let invariant_evidence =
+            evidence_u64_value("InvariantProof").expect("invariant evidence id");
+        let invariant_payload_hash =
+            compute_structural_payload_hash(invariant_gate, invariant_evidence, true, 0);
+        assert_eq!(invariant_payload_hash, 11_251_148_856_225_099_997);
+
+        let invariant_contract_hash = compute_evidence_contract_hash(
+            invariant_gate,
+            invariant_evidence,
+            true,
+            0,
+            invariant_payload_hash,
+        );
+        assert_eq!(invariant_contract_hash, 14_536_423_188_960_378_451);
+
+        let invariant_command_hash = compute_submit_evidence_command_hash(invariant_contract_hash);
+        assert_eq!(invariant_command_hash, 9_478_300_790_639_245_917);
+
+        let invariant_envelope_hash = compute_envelope_hash(1, invariant_command_hash);
+        assert_eq!(invariant_envelope_hash, 15_885_761_918_420_965_375);
+
+        let invariant_json =
+            build_submit_evidence_json("Invariant", "InvariantProof", true, 1).unwrap();
+        assert!(invariant_json.contains(&format!("\"command_hash\":{invariant_envelope_hash}")));
+
+        let plan_gate = gate_id_u64("Plan").expect("plan gate id");
+        let plan_evidence = evidence_u64_value("TaskReady").expect("task ready evidence id");
+        let plan_payload_hash = compute_structural_payload_hash(plan_gate, plan_evidence, true, 1);
+        assert_eq!(plan_payload_hash, 15_192_544_920_361_791_511);
+
+        let plan_contract_hash =
+            compute_evidence_contract_hash(plan_gate, plan_evidence, true, 1, plan_payload_hash);
+        assert_eq!(plan_contract_hash, 17_249_021_275_427_525_055);
+
+        let plan_command_hash = compute_submit_evidence_command_hash(plan_contract_hash);
+        assert_eq!(plan_command_hash, 7_339_961_626_233_781_721);
+
+        let plan_envelope_hash = compute_envelope_hash(2, plan_command_hash);
+        assert_eq!(plan_envelope_hash, 11_338_161_946_621_137_912);
+
+        let plan_json = build_submit_evidence_json("Plan", "TaskReady", true, 2).unwrap();
+        assert!(plan_json.contains(&format!("\"command_hash\":{plan_envelope_hash}")));
+
+        assert_ne!(
+            compute_domain_contract_hash(HashDomain::EvidenceContract, &[]),
+            0
+        );
+    }
+
+    #[test]
     fn plan_gate_has_bind_ready_task_effect() {
         let gate = GateId::Plan;
         let evidence = Evidence::TaskReady;
