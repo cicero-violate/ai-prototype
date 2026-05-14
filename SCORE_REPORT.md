@@ -7,12 +7,12 @@ Generated: 2026-05-13  |  Schema version: 16  |  Crates: 20
 ```text
 Architecture         = 8.9
 Structure            = 4.8
-Simplicity           = 6.8
+Simplicity           = 7.1
 Maintainability      = 10.0
 Determinism          = 10.0
-Coherency            = 8.2
+Coherency            = 8.4
 
-G (geometric mean)   = 7.90 / 10
+G (geometric mean)   = 7.97 / 10
 ```
 
 ## Per-Crate Breakdown
@@ -20,7 +20,7 @@ G (geometric mean)   = 7.90 / 10
 | Crate                      | Nodes | Edges | Fns  | Arch | Struct | Simple | Maint | Determ | Coher |
 | :------------------------- | ----: | ----: | ---: | ---: | -----: | -----: | ----: | -----: | ----: |
 | agent                      |     5 |   195 |    5 |  5.0 |    8.5 |    0.5 |  10.0 |   10.0 |   7.8 |
-| ai                         |  5472 | 35235 | 2208 |  9.5 |    6.0 |    7.0 |  10.0 |   10.0 |   8.2 |
+| ai                         |  5472 | 33876 | 2208 |  9.4 |    6.0 |    7.6 |  10.0 |   10.0 |   8.6 |
 | ai                         |     1 |    18 |    1 |  5.0 |    4.5 |    4.5 |  10.0 |   10.0 |   7.0 |
 | browser_router             |   659 |  6192 |  319 |  8.7 |    4.6 |    4.3 |  10.0 |   10.0 |   8.5 |
 | browser_router             |     2 |    74 |    2 |  5.0 |    6.1 |    0.7 |  10.0 |   10.0 |   7.0 |
@@ -34,7 +34,7 @@ G (geometric mean)   = 7.90 / 10
 | ollama_tool_loop_trace     |    12 |   238 |    9 |  5.0 |    9.2 |    2.0 |  10.0 |   10.0 |   8.1 |
 | ollama_tool_mcp_loop_trace |    17 |   311 |   11 |  5.0 |    9.3 |    1.7 |  10.0 |   10.0 |   8.1 |
 | openai_tool_loop_trace     |    15 |   308 |   12 |  5.0 |    8.9 |    2.2 |  10.0 |   10.0 |   7.8 |
-| root_validate              |   162 |  1971 |  160 |  3.2 |    1.5 |    6.2 |  10.0 |   10.0 |   7.3 |
+| root_validate              |   162 |  1971 |  160 |  3.3 |    1.5 |    6.2 |  10.0 |   10.0 |   7.3 |
 | score                      |    90 |   685 |   54 |  8.3 |    4.4 |    6.5 |  10.0 |   10.0 |   8.2 |
 | supervisor                 |   115 |   778 |   38 |  9.8 |    5.7 |    4.1 |   9.9 |   10.0 |   8.6 |
 | tlog_introspect            |     1 |    49 |    1 |  5.0 |    4.5 |    0.2 |  10.0 |   10.0 |   7.0 |
