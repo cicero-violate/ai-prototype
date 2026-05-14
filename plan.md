@@ -137,7 +137,7 @@ The selected graph-editor plan is schema version 1, contains 1,614 planned opera
    - Done when: the named test asserts all five certification prompts contain their phase name, `domain`, the expected phase-specific context label or input text, `HUMAN_REVIEW_REQUIRED`, `Do not call tools`, and final `VERDICT: pass` / `VERDICT: fail` requirements.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test certification_prompt_formatter_preserves_phase_specific_content -- --test-threads=1`.
 
-9. [ ] `SCORE_REPORT.md`: after items 1 through 8 land, refresh graph-derived evidence and review whether `score.md` rationale changes without raising project-level scores absent capability evidence.
+9. [x] `SCORE_REPORT.md`: after items 1 through 8 land, refresh graph-derived evidence and review whether `score.md` rationale changes without raising project-level scores absent capability evidence.
    - Scope: `SCORE_REPORT.md`, `score.md`, `plan.md`, and `status.md` only.
    - Done when: `scripts/recapture_rustc_graphs.sh --check` validates the configured graph root, `SCORE_REPORT.md` is regenerated from `../state/rustc`, `status.md` records aggregate and affected crate rows, and `score.md` changes only if refreshed evidence differs from the current rationale.
    - Validation: `bash scripts/recapture_rustc_graphs.sh --check && cargo run --manifest-path ../score/Cargo.toml --quiet -- --artifact-root ../state/rustc --report SCORE_REPORT.md --date "$(date +%Y-%m-%d)"`.
