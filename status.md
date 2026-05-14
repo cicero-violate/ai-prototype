@@ -3318,3 +3318,14 @@ Implementation step 3 evidence on 2026-05-14 for Active Priorities item 162:
 - Targeted validation passed: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --bin root_validate policy_reuse_common_regression_guards_preserve_follow_on_result_modes -- --test-threads=1` ran 1 test successfully, then `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo check --bin root_validate` completed successfully.
 - Required broader validation passed: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets` passed, including the previously failing `tests/api_server_contract.rs` cases and all 3 `src/bin/root_validate.rs` unit tests.
 - Marked item 162 complete in `plan.md`. `score.md` was reviewed and left unchanged because this is a narrow root-validate structure/test refactor with validation evidence, not a score-history-worthy project-level capability change.
+
+
+Implementation step 4 evidence on 2026-05-14 for Active Priorities item 163:
+
+- Selected first unchecked Active Priorities item 163: `SCORE_REPORT.md` graph-derived structural evidence refresh after item 162.
+- Changed only scoped evidence/planning files. No Rust source or tests were edited for this evidence-refresh item.
+- Validation passed: `bash scripts/recapture_rustc_graphs.sh --check && cargo run --manifest-path ../score/Cargo.toml --quiet -- --artifact-root ../state/rustc --report SCORE_REPORT.md --date "$(date +%Y-%m-%d)"` completed successfully. Broader validation `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets` also passed.
+- Evidence: graph artifact check passed for the configured `../state/rustc` root with required `ai/graph.json` and `root_validate__bin/graph.json`; score refresh processed 17 crates with 0 skipped; all-target validation passed with 282 library/bin tests plus integration/example test targets passing.
+- Refreshed aggregate remains `G = 7.90 / 10`, Architecture `9.0`, Structure `4.9`, Simplicity `6.8`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2`.
+- Affected crate rows now include `ai` at 5,533 nodes, 35,688 edges, 2,235 functions, Architecture `9.5`, Structure `6.0`, Simplicity `7.0`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2`; `root_validate` at 163 nodes, 1,990 edges, 161 functions, Architecture `3.3`, Structure `1.5`, Simplicity `6.1`, Maintainability `10.0`, Determinism `10.0`, and Coherency `7.3`.
+- Marked item 163 complete in `plan.md`. `score.md` was reviewed and left unchanged because project-level numeric capability scores did not change and this refresh is not a score-history-worthy capability boundary.
