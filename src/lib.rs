@@ -3810,6 +3810,70 @@ mod tests {
     }
 
     #[test]
+    fn process_effect_receipt_hash_helpers_preserve_authority_request_domains() {
+        let effect = Effect::process(0x1111, 0x2222, 12, 0, 0, false);
+        let effect_hash = effect.contract_hash();
+        let receipt = ProcessEffectReceipt {
+            capability: CapabilityId::Tooling,
+            registry_policy_hash: CapabilityRegistry::canonical().policy_hash(),
+            request_hash: 0x3333,
+            receipt_hash: 0x4444,
+            effect_hash,
+            effect,
+            event_seq: 7,
+            event_hash: 0x5555,
+        };
+        assert!(receipt.is_valid());
+
+        let authority_hash = receipt.canonical_authority_hash().unwrap();
+        let request_hash = receipt.canonical_request_hash().unwrap();
+        assert_ne!(authority_hash, 0);
+        assert_ne!(request_hash, 0);
+        assert_ne!(authority_hash, request_hash);
+
+        let canonical_receipt = receipt.canonical_effect_receipt().unwrap();
+        assert_eq!(canonical_receipt.authority_hash, authority_hash);
+        assert_eq!(canonical_receipt.request_hash, request_hash);
+
+        let authority_tamper = ProcessEffectReceipt {
+            registry_policy_hash: CapabilityRegistry::empty().policy_hash(),
+            ..receipt
+        };
+        assert!(authority_tamper.is_valid());
+        assert_ne!(
+            authority_tamper.canonical_authority_hash().unwrap(),
+            authority_hash
+        );
+        assert_eq!(
+            authority_tamper.canonical_request_hash().unwrap(),
+            request_hash
+        );
+
+        let request_tamper = ProcessEffectReceipt {
+            request_hash: receipt.request_hash ^ 1,
+            ..receipt
+        };
+        assert!(request_tamper.is_valid());
+        assert_eq!(
+            request_tamper.canonical_authority_hash().unwrap(),
+            authority_hash
+        );
+        assert_ne!(
+            request_tamper.canonical_request_hash().unwrap(),
+            request_hash
+        );
+
+        let invalid_receipt = ProcessEffectReceipt {
+            request_hash: 0,
+            ..receipt
+        };
+        assert!(!invalid_receipt.is_valid());
+        assert_eq!(invalid_receipt.canonical_authority_hash(), None);
+        assert_eq!(invalid_receipt.canonical_request_hash(), None);
+        assert_eq!(invalid_receipt.canonical_effect_receipt(), None);
+    }
+
+    #[test]
     fn api_rejects_duplicate_process_receipt_batch_atomically() {
         let sandbox_root = std::env::temp_dir().join(format!(
             "canon-duplicate-process-batch-{}-{}",
