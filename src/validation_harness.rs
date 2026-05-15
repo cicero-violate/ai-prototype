@@ -17841,4 +17841,46 @@ mod tests {
         assert_eq!(regression.baseline_capacity_status, "pass");
         assert_eq!(regression.current_capacity_status, "pass");
     }
+
+    #[test]
+    fn validation_harness_cost_catalog_builder_preserves_complete_and_incomplete_boundaries() {
+        let complete = policy_reuse_cost_catalog_smoke_receipt();
+        assert_eq!(complete.record_type, POLICY_REUSE_COST_CATALOG_SMOKE_STEP);
+        assert_eq!(complete.evidence_family_count, 6);
+        assert_eq!(complete.healthy_mode_count, 4);
+        assert_eq!(complete.regression_mode_count, 4);
+        assert_eq!(complete.retained_fixture_count, 6);
+        assert!(complete.required_healthy_modes_present);
+        assert!(complete.required_regression_modes_present);
+        assert!(complete.summary_complete);
+        assert_eq!(complete.missing_required_modes, "none");
+        assert_ne!(complete.catalog_hash, 0);
+        assert_ne!(complete.receipt_hash, 0);
+        assert!(complete.is_valid());
+        assert!(complete.passed());
+
+        let incomplete = policy_reuse_cost_catalog_incomplete_smoke_receipt();
+        assert_eq!(
+            incomplete.record_type,
+            POLICY_REUSE_COST_CATALOG_INCOMPLETE_SMOKE_STEP
+        );
+        assert_eq!(incomplete.evidence_family_count, 6);
+        assert_eq!(incomplete.healthy_mode_count, 4);
+        assert_eq!(incomplete.regression_mode_count, 3);
+        assert_eq!(incomplete.retained_fixture_count, 6);
+        assert!(incomplete.required_healthy_modes_present);
+        assert!(!incomplete.required_regression_modes_present);
+        assert!(!incomplete.summary_complete);
+        assert_eq!(
+            incomplete.missing_required_modes,
+            "required_regression_modes"
+        );
+        assert_ne!(incomplete.catalog_hash, 0);
+        assert_ne!(incomplete.receipt_hash, 0);
+        assert!(incomplete.is_valid());
+        assert!(!incomplete.passed());
+
+        assert_ne!(complete.catalog_hash, incomplete.catalog_hash);
+        assert_ne!(complete.receipt_hash, incomplete.receipt_hash);
+    }
 }

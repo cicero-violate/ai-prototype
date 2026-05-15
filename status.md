@@ -42,6 +42,8 @@ Current date: 2026-05-15.
 
 ## Current Progress
 
+- Active Priorities item 158 is complete: `src/validation_harness.rs` now includes `validation_harness_cost_catalog_builder_preserves_complete_and_incomplete_boundaries`, covering complete and incomplete policy reuse cost-catalog smoke receipt record types, count tuples, required-mode flags, missing-mode surfaces, computed completion status, validity, pass/non-pass status, non-zero hashes, and distinct catalog/receipt hashes. Targeted named-test validation passed. Broader all-target Rust validation passed. The next executable item is item 159, graph-derived structural evidence refresh. `score.md` remains unchanged because this is focused regression coverage, not a project-level score change.
+
 - Planning turn on 2026-05-15 selected the next ordered non-`root_validate` graph-backed work after item 157 exhausted the previous queue. The next executable item is Active Priorities item 158 in `src/validation_harness.rs`, adding focused regression coverage for the shared policy reuse cost-catalog smoke receipt builder; item 159 refreshes graph-derived evidence; item 160 then targets graph operation `73022b99d7f6436b` in `src/validation_harness.rs` by consolidating `policy_reuse_scaling_projection_hash(...)` and `policy_reuse_distillation_readiness_hash(...)` through one private ordered receipt-field hash helper; item 161 adds focused projection/readiness hash-boundary coverage; item 162 refreshes graph-derived evidence. Reconnaissance inspected `plan.md`, `status.md`, `score.md`, `SCORE_REPORT.md`, the selected `ai` graph-editor plan with Python, candidate source ranges in `src/validation_harness.rs`, and existing Ollama loader/verification candidates. `root_validate` remains intentionally non-selected. `score.md` remains unchanged because this planning turn produced no implementation, graph refresh, or score-changing capability evidence.
 
 - Implementation step 5 found no unchecked Active Priorities item after item 157; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `plan.md`, `status.md`, and `score.md` were read; `score.md` remains unchanged because no implementation or score-changing evidence was produced.
@@ -419,6 +421,22 @@ Current date: 2026-05-15.
 - Implementation step 4 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 - Implementation step 5 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 ## Validation Ledger
+
+### 2026-05-15 — Active Priorities item 158 validation_harness cost-catalog regression test
+
+- Scope: `src/validation_harness.rs`, `plan.md`, and `status.md`.
+- Command/check: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test validation_harness_cost_catalog_builder_preserves_complete_and_incomplete_boundaries -- --test-threads=1`.
+- Result: passed.
+- Evidence: 1 named test passed, 0 failed, covering complete and incomplete policy reuse cost-catalog smoke receipt boundaries. Cargo emitted the known non-fatal cache warning.
+- Next action: Run graph-derived structural evidence refresh item 159.
+
+### 2026-05-15 — Active Priorities item 158 broader validation
+
+- Scope: full Rust workspace after item 158 validation_harness cost-catalog regression coverage.
+- Command/check: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
+- Result: passed.
+- Evidence: 353 library tests passed, 3 `root_validate` binary tests passed, and all integration, binary, and example test suites passed with 0 failures. Cargo emitted the known non-fatal cache warning.
+- Next action: Run graph-derived structural evidence refresh item 159.
 
 ### 2026-05-15 — planning turn for Active Priorities items 158 through 162
 
