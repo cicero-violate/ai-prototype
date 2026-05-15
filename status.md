@@ -67,6 +67,9 @@ Current date: 2026-05-15.
 ## Current Progress
 
 
+- Implementation step 4 on 2026-05-15 found no unchecked Active Priorities item after item 154; items 152 through 154 remain complete and the current queue is exhausted. No implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `plan.md`, `status.md`, and `score.md` were read; the working tree was clean before this status update; `score.md` remains unchanged because no implementation or score-changing evidence was produced.
+
+
 - Active Priorities item 154 is complete: graph-derived structural evidence was refreshed after items 152 and 153. `scripts/recapture_rustc_graphs.sh --check` passed for the configured `../state/rustc` graph root, and score report regeneration processed 18 crates with 0 skipped. The refreshed `SCORE_REPORT.md` reports aggregate `G = 7.94 / 10`, Architecture `8.9`, Structure `5.0`, Simplicity `6.9`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2`. The affected local `ai` library crate row is now 5,678 nodes, 35,039 edges, 2,314 functions, Architecture `9.2`, Structure `6.2`, Simplicity `7.2`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2`; the secondary `ai` row remains 1 node, 18 edges, 1 function, Architecture `5.0`, Structure `4.5`, Simplicity `4.5`, Maintainability `10.0`, Determinism `10.0`, and Coherency `7.0`; `root_validate` remains 163 nodes, 1,990 edges, 161 functions, Architecture `3.2`, Structure `1.5`, Simplicity `6.1`, Maintainability `10.0`, Determinism `10.0`, and Coherency `7.3`. Broader `cargo test --all-targets` passed with 359 library tests, 3 `root_validate` binary tests, and all integration, binary, and example targets green. Cargo emitted recurring non-fatal global-cache warnings reporting `database or disk is full`. `score.md` rationale was updated only to replace stale graph row values and include item 154 evidence; project-level numeric scores and score history remain unchanged because this is graph evidence refresh, not a score-history-worthy capability change. Active Priorities are exhausted.
 
 
@@ -493,6 +496,24 @@ Current date: 2026-05-15.
 - Implementation step 4 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 - Implementation step 5 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 ## Validation Ledger
+
+
+### 2026-05-15 — implementation step 4 planning-contract validation
+
+- Scope: `status.md` status-only exhausted-queue update.
+- Command/check: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test planning_contract -- --test-threads=1`.
+- Result: passed.
+- Evidence: 2 planning-contract tests passed, 0 failed. Cargo emitted recurring non-fatal global-cache warnings reporting `database or disk is full`.
+- Next action: planning turn should select the next non-`root_validate` graph-backed item.
+
+
+### 2026-05-15 — implementation step 4 no unchecked Active Priorities item
+
+- Scope: `plan.md`, `status.md`, and `score.md` review; `status.md` exhaustion note.
+- Command/check: parsed `# Canon Agent Plan` / `## Active Priorities` and found 0 unchecked checklist items; confirmed last Active Priorities items 152 through 154 are complete.
+- Result: informational.
+- Evidence: no selectable implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item remained under Active Priorities after item 154; working tree was clean before this status update.
+- Next action: planning turn should select the next non-`root_validate` graph-backed item.
 
 
 ### 2026-05-15 — Active Priorities item 154 graph evidence refresh and broad validation
