@@ -7908,33 +7908,46 @@ pub fn compare_policy_orchestration_capacity_trend(
 
 pub fn policy_orchestration_capacity_trend_smoke_receipt() -> PolicyOrchestrationCapacityTrendReceipt
 {
-    let (hit, miss) = policy_reuse_smoke_records();
-    let baseline_reuse = crate::capability::judgment::PolicyReuseReceipt::from_policy_judgments(&[
-        hit.clone(),
-        miss,
-    ]);
-    let current_reuse =
-        crate::capability::judgment::PolicyReuseReceipt::from_policy_judgments(&[hit.clone(), hit]);
-    let baseline = policy_orchestration_capacity_receipt_from_reuse(
-        POLICY_ORCHESTRATION_CAPACITY_SMOKE_STEP,
-        &baseline_reuse,
-    );
-    let current = policy_orchestration_capacity_receipt_from_reuse(
-        POLICY_ORCHESTRATION_CAPACITY_SMOKE_STEP,
-        &current_reuse,
-    );
-    compare_policy_orchestration_capacity_trend(&baseline, &current)
+    policy_orchestration_capacity_trend_smoke_receipt_from_hit_counts(
+        POLICY_ORCHESTRATION_CAPACITY_TREND_SMOKE_STEP,
+        1,
+        1,
+        2,
+        0,
+    )
 }
 
 pub fn policy_orchestration_capacity_regression_smoke_receipt(
 ) -> PolicyOrchestrationCapacityTrendReceipt {
+    policy_orchestration_capacity_trend_smoke_receipt_from_hit_counts(
+        POLICY_ORCHESTRATION_CAPACITY_REGRESSION_SMOKE_STEP,
+        2,
+        0,
+        1,
+        1,
+    )
+}
+
+fn policy_orchestration_capacity_trend_smoke_receipt_from_hit_counts(
+    record_type: &'static str,
+    baseline_hit_count: usize,
+    baseline_miss_count: usize,
+    current_hit_count: usize,
+    current_miss_count: usize,
+) -> PolicyOrchestrationCapacityTrendReceipt {
     let (hit, miss) = policy_reuse_smoke_records();
-    let baseline_reuse = crate::capability::judgment::PolicyReuseReceipt::from_policy_judgments(&[
-        hit.clone(),
-        hit.clone(),
-    ]);
+    let baseline_records: Vec<_> = std::iter::repeat_with(|| hit.clone())
+        .take(baseline_hit_count)
+        .chain(std::iter::repeat_with(|| miss.clone()).take(baseline_miss_count))
+        .collect();
+    let current_records: Vec<_> = std::iter::repeat_with(|| hit.clone())
+        .take(current_hit_count)
+        .chain(std::iter::repeat_with(|| miss.clone()).take(current_miss_count))
+        .collect();
+    let baseline_reuse =
+        crate::capability::judgment::PolicyReuseReceipt::from_policy_judgments(&baseline_records);
     let current_reuse =
-        crate::capability::judgment::PolicyReuseReceipt::from_policy_judgments(&[hit, miss]);
+        crate::capability::judgment::PolicyReuseReceipt::from_policy_judgments(&current_records);
     let baseline = policy_orchestration_capacity_receipt_from_reuse(
         POLICY_ORCHESTRATION_CAPACITY_SMOKE_STEP,
         &baseline_reuse,
@@ -7944,7 +7957,7 @@ pub fn policy_orchestration_capacity_regression_smoke_receipt(
         &current_reuse,
     );
     let mut receipt = compare_policy_orchestration_capacity_trend(&baseline, &current);
-    receipt.record_type = POLICY_ORCHESTRATION_CAPACITY_REGRESSION_SMOKE_STEP;
+    receipt.record_type = record_type;
     receipt
 }
 
