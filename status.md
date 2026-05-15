@@ -120,7 +120,35 @@ Current date: 2026-05-14.
 - Implementation step 4 found no unchecked Active Priorities item after item 63; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 - Implementation step 5 found no unchecked Active Priorities item after item 63; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 
+- Active Priorities items 64 through 66 are now planned for `src/agent/cycle.rs` and graph-derived evidence refresh. The first executable item is item 64, which must route `recovery_route_for_action(...)` and `recovery_route_for_failure(...)` through one private recovery-route lookup helper while preserving action lookup, failure lookup, unknown-input, `RecoveryActionSpec`, recovery phase, route-table, and runtime behavior. `root_validate` remains explicitly non-selectable.
 ## Validation Ledger
+
+### 2026-05-14 — commit hook blocked by pre-existing rustfmt drift outside planning scope
+
+- Scope: staged `plan.md` and `status.md` planning/status-only changes; unstaged Rust formatting drift in `src/api/server.rs` and `src/capability/mod.rs` is outside this planning turn.
+- Command/check: `git add plan.md status.md && git commit -m "Plan recovery route lookup refactor"`.
+- Result: blocked.
+- Evidence: pre-commit `cargo fmt --check` reported formatting diffs in `src/api/server.rs` and `src/capability/mod.rs`; the staged diff contains only `plan.md` and `status.md`.
+- Next action: Commit the scoped planning/status changes without modifying unrelated Rust files; leave the rustfmt drift for a separate implementation/cleanup turn.
+
+
+### 2026-05-14 — planning contract validation for recovery-route planning turn
+
+- Scope: `plan.md` and `status.md` planning/status-only changes for Active Priorities items 64 through 66.
+- Command/check: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test planning_contract -- --test-threads=1`.
+- Result: passed.
+- Evidence: 2 planning contract tests passed: `planning_record_blocks_when_all_tasks_complete` and `planning_record_decomposes_objective_with_lineage`; 0 failed.
+- Next action: Commit the planning/status update, then execute Active Priorities item 64.
+
+
+### 2026-05-14 — planning turn selected cycle recovery-route lookup helper
+
+- Scope: `plan.md`, `status.md`, `score.md`, `SCORE_REPORT.md`, `../state/rustc/auto-refactor/workspace__ai_sandbox__canon-mini-agent__prototype__state__rustc__ai__graph.graph-editor-plan.json`, and `src/agent/cycle.rs` candidate surfaces.
+- Command/check: `python - <<'PY' ... PY` summaries for active checklist status, score/report evidence, graph-plan operations, candidate source snippets, and working tree state.
+- Result: informational.
+- Evidence: Active Priorities had no unchecked item before this planning turn; `SCORE_REPORT.md` still reports aggregate `G = 7.99 / 10` with Structure `4.9` as the lowest aggregate axis; selected ai graph-editor plan has schema version 1, graph schema version 16, and 1,582 operations; graph operation `3531e5dc63009037` is already reconciled by `lookup_u64_route(...)`; graph operation `ee47b6f1c6db70eb` remains a safe non-`root_validate` candidate for private helper delegation in `src/agent/cycle.rs`.
+- Next action: Execute Active Priorities item 64 in `src/agent/cycle.rs`.
+
 
 ### 2026-05-14 — implementation step 5 Active Priorities exhausted after item 63
 
