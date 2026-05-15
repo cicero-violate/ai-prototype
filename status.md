@@ -112,8 +112,17 @@ Current date: 2026-05-14.
 - Active Priorities item 59 is complete: `tool_hash_wrappers_preserve_distinct_domains_and_vectors` now covers command/input/output hash non-zero and pairwise-distinct domains, `ToolRequest::from_packet(...)` hash binding, `ToolRequest::matches_packet(...)` packet binding, ready-task and revision input-vector sensitivity without command-hash drift, and output-hash sensitivity to command/input hash drift. The next executable item is item 60, the graph-derived evidence refresh and score-rationale review.
 - Active Priorities item 60 is complete: graph-derived structural evidence refresh passed after the tooling record hash helper/test work. `SCORE_REPORT.md` still reports `G = 7.99 / 10`, Architecture `8.9`, Structure `4.9`, Simplicity `7.1`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.4`; the `ai` crate row remains `Nodes = 5610`, `Edges = 34384`, `Fns = 2270`, Structure `6.0`, and Simplicity `7.6`. `score.md` remains unchanged because refreshed graph-derived evidence matched the existing rationale and does not justify project-level numeric score changes. Active Priorities are exhausted; a planning turn must select the next executable non-`root_validate` graph-backed item.
 - Implementation step 4 found no unchecked Active Priorities item after item 60; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
+- Implementation step 5 found no unchecked Active Priorities item after item 60; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 
 ## Validation Ledger
+
+### 2026-05-14 — implementation step 5 Active Priorities exhausted after item 60
+
+- Scope: `plan.md`, `status.md`, and `score.md` review.
+- Command/check: manual checklist scan after reading `plan.md`, `status.md`, and `score.md`; `git status --short` workspace check.
+- Result: blocked.
+- Evidence: Active Priorities items 58 through 60 are marked complete and no `[ ]` item remains under `## Active Priorities`; `score.md` remains unchanged because no implementation or score-changing evidence was produced.
+- Next action: run a planning turn to select the next executable non-`root_validate` graph-backed item.
 
 ### 2026-05-14 — implementation step 4 Active Priorities exhausted after item 60
 
