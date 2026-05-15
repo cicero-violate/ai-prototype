@@ -962,10 +962,7 @@ fn policy_rationale_hash(
 }
 
 fn fold_ordered_policy_judgment_hash(seed: u64, fields: &[u64]) -> u64 {
-    fields
-        .iter()
-        .fold(seed, |hash, field| mix(hash, *field))
-        .max(1)
+    fold_ordered_u64_hash(seed, fields)
 }
 
 fn policy_reuse_record_set_hash(records: &[PolicyJudgmentRecord]) -> u64 {
@@ -1120,10 +1117,7 @@ fn policy_reuse_scale_trace_receipt_hash(receipt: &PolicyReuseScaleTraceReceipt)
 }
 
 fn fold_ordered_policy_reuse_receipt_hash(seed: u64, fields: &[u64]) -> u64 {
-    fields
-        .iter()
-        .fold(seed, |hash, field| mix(hash, *field))
-        .max(1)
+    fold_ordered_u64_hash(seed, fields)
 }
 
 fn policy_reuse_performance_cost_trend_receipt_hash(
@@ -1286,6 +1280,10 @@ fn policy_reuse_evaluator_savings_content_hash(
 }
 
 fn fold_ordered_policy_reuse_content_hash(seed: u64, fields: &[u64]) -> u64 {
+    fold_ordered_u64_hash(seed, fields)
+}
+
+fn fold_ordered_u64_hash(seed: u64, fields: &[u64]) -> u64 {
     fields
         .iter()
         .fold(seed, |hash, field| mix(hash, *field))

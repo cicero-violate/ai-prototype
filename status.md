@@ -42,6 +42,8 @@ Current date: 2026-05-15.
 
 ## Current Progress
 
+- Active Priorities item 137 is complete: `src/capability/judgment/record.rs` now routes `fold_ordered_policy_judgment_hash(...)`, `fold_ordered_policy_reuse_receipt_hash(...)`, and `fold_ordered_policy_reuse_content_hash(...)` through one private `fold_ordered_u64_hash(...)` helper while preserving all existing wrapper names, signatures, caller-provided seed domains, field-order folding, and non-zero `.max(1)` behavior. Targeted validation `cargo check --lib` passed. Broader `cargo test --all-targets` passed with 345 library tests, 3 `root_validate` binary tests, and all integration/binary/example targets green. Cargo emitted the known non-fatal last-use cache warning reporting `database or disk is full`. The next executable item is item 138, focused regression coverage for the shared fold-helper boundary. `score.md` remains unchanged because this is a narrow structure refactor with validation evidence, not a project-level score change.
+
 - Planning turn on 2026-05-15 selected the next non-`root_validate` graph-backed work queue after confirming items 134 through 136 were complete and no unchecked Active Priorities item remained. The next executable item is Active Priorities item 137 in `src/capability/judgment/record.rs`, consolidating the three private ordered judgment/policy-reuse hash-fold wrappers through one private helper while preserving all caller domains; item 138 adds focused regression coverage; item 139 refreshes graph-derived evidence. `score.md` remains unchanged because this planning turn produced no implementation or score-changing validation evidence.
 
 - Implementation step 5 on 2026-05-15 found no unchecked Active Priorities item after item 136; items 134 through 136 remain complete and the current queue is exhausted. No implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. Planning/doc validation `cargo test --test planning_contract -- --test-threads=1` passed with 2 tests and 0 failures. Cargo emitted the known non-fatal last-use cache warning reporting `database or disk is full`. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
@@ -341,6 +343,14 @@ Current date: 2026-05-15.
 - Implementation step 4 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 - Implementation step 5 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 ## Validation Ledger
+
+### 2026-05-15 — Active Priorities item 137 targeted and broader validation
+
+- Scope: `src/capability/judgment/record.rs`; private judgment/policy-reuse ordered hash-fold wrappers only.
+- Command/check: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo check --lib`; `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
+- Result: passed.
+- Evidence: targeted `cargo check --lib` finished successfully; broader `cargo test --all-targets` passed with 345 library tests, 3 `root_validate` binary tests, 13 API server contract tests, 23 API transport contract tests, 3 canonical TLog contract tests, 4 domain contract tests, 10 graph mutation CLI contract tests, 9 MCP receipt contract tests, 2 planning contract tests, 5 score contract tests, 2 supervisor binary contract tests, 2 worker binary contract tests, and all example targets green. Cargo emitted the known non-fatal last-use cache warning reporting `database or disk is full`.
+- Next action: implement Active Priorities item 138, focused regression coverage for `policy_reuse_hash_fold_wrappers_preserve_distinct_domains`.
 
 ### 2026-05-15 — implementation step 5 exhausted Active Priorities check
 
