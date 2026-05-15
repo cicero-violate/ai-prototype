@@ -42,6 +42,8 @@ Current date: 2026-05-15.
 
 ## Current Progress
 
+- Active Priorities item 125 is complete: `src/capability/eval/record.rs` now routes `eval_payload_hash(...)` through the private `dimension_hash(...)` fold helper using `DimensionHashMode::Payload`, preserving record score and threshold prefix folding, ordered dimension id/score/threshold folding, non-zero hash behavior, dimension order hash count/id-only behavior, dimension score hash count/id/score/threshold behavior, receipt validity, NDJSON behavior, and public API shape. Targeted `cargo check --lib` passed. Broader `cargo test --all-targets` passed with 341 library tests, 3 `root_validate` binary tests, and all integration/binary/example suites green. Cargo emitted the known non-fatal last-use cache warning reporting `database or disk is full`. The next executable item is item 126, focused eval hash-fold boundary regression coverage. `score.md` remains unchanged because this is a narrow structure refactor with validation evidence, not a project-level score change.
+
 - Planning turn on 2026-05-15 completed Python-assisted reconnaissance after Active Priorities item 124. Active Priorities items 125 through 127 are now planned for `src/capability/eval/record.rs` eval hash-fold helper consolidation, focused payload/dimension hash-boundary regression coverage, and graph-derived structural evidence refresh. The first executable item is item 125. Selection is backed by `../state/rustc/auto-refactor/workspace__ai_sandbox__canon-mini-agent__prototype__state__rustc__ai__graph.graph-editor-plan.json` operation `fabb83c558fc5ecd`, covering `capability::eval::record::{dimension_hash, eval_payload_hash}`. `root_validate` remains intentionally non-selectable per user direction. `score.md` remains unchanged because planning alone produced no implementation, graph refresh, or score-changing evidence.
 
 - Implementation step 5 on 2026-05-15 found no unchecked Active Priorities item after item 124; items 122 through 124 remain complete and the current queue is exhausted. No implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. Planning/doc validation `cargo test --test planning_contract -- --test-threads=1` passed with 2 tests and 0 failures. Cargo emitted the known non-fatal last-use cache warning reporting `database or disk is full`. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
@@ -293,6 +295,14 @@ Current date: 2026-05-15.
 - Implementation step 4 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 - Implementation step 5 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 ## Validation Ledger
+
+### 2026-05-15 — Active Priorities item 125 eval payload hash-fold implementation
+
+- Scope: `src/capability/eval/record.rs` and `plan.md`/`status.md` evidence updates.
+- Command/check: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo check --lib`; `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
+- Result: passed.
+- Evidence: targeted library check completed successfully; broader all-target validation passed with 341 library tests, 3 `root_validate` binary tests, and all integration/binary/example suites green. Cargo emitted the known non-fatal last-use cache warning reporting `database or disk is full`.
+- Next action: execute Active Priorities item 126 in `src/capability/eval/record.rs` test module.
 
 ### 2026-05-15 — planning reconnaissance for eval record hash-fold task
 
