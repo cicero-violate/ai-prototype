@@ -1762,6 +1762,139 @@ mod tests {
     }
 
     #[test]
+    fn policy_reuse_hash_fold_wrappers_preserve_distinct_domains() {
+        let fields = [0x101u64, 0x202, 0x303, 0x404];
+        let judgment_seed = 0x4a55_4447_504f_4c48u64;
+        let receipt_seed = 0x504f_4c52_4350_5448u64;
+        let content_seed = 0x504f_4c52_4341_5441u64;
+
+        let judgment_fold = fold_ordered_policy_judgment_hash(judgment_seed, &fields);
+        let receipt_fold = fold_ordered_policy_reuse_receipt_hash(receipt_seed, &fields);
+        let content_fold = fold_ordered_policy_reuse_content_hash(content_seed, &fields);
+
+        assert_ne!(judgment_fold, 0);
+        assert_ne!(receipt_fold, 0);
+        assert_ne!(content_fold, 0);
+        assert_ne!(judgment_fold, receipt_fold);
+        assert_ne!(judgment_fold, content_fold);
+        assert_ne!(receipt_fold, content_fold);
+
+        let same_seed = 0x7777_8888_9999_aaaau64;
+        assert_eq!(
+            fold_ordered_policy_judgment_hash(same_seed, &fields),
+            fold_ordered_policy_reuse_receipt_hash(same_seed, &fields)
+        );
+        assert_eq!(
+            fold_ordered_policy_judgment_hash(same_seed, &fields),
+            fold_ordered_policy_reuse_content_hash(same_seed, &fields)
+        );
+
+        let wrappers: [fn(u64, &[u64]) -> u64; 3] = [
+            fold_ordered_policy_judgment_hash,
+            fold_ordered_policy_reuse_receipt_hash,
+            fold_ordered_policy_reuse_content_hash,
+        ];
+        let mut reordered_fields = fields;
+        reordered_fields.swap(1, 2);
+        for wrapper in wrappers {
+            let baseline = wrapper(same_seed, &fields);
+            assert_eq!(baseline, wrapper(same_seed, &fields));
+            assert_ne!(baseline, wrapper(same_seed ^ 1, &fields));
+            assert_ne!(baseline, wrapper(same_seed, &reordered_fields));
+        }
+
+        let context = context();
+        let policy = promoted_policy();
+        let (_, lookup_receipt) = policy.feedback_lookup_with_receipt();
+        let record = PolicyJudgmentRecord::from_context_policy_lookup_receipt(
+            &context,
+            &policy,
+            &lookup_receipt,
+        );
+        assert!(record.is_valid());
+        assert_eq!(
+            record.decision_id,
+            fold_ordered_policy_judgment_hash(
+                judgment_seed,
+                &[
+                    context.objective_id,
+                    context.context_hash,
+                    context.memory_aggregate_hash,
+                    policy.latest_version(),
+                    policy.fingerprint(),
+                    policy.feedback_hash(),
+                    lookup_receipt.receipt_hash,
+                ],
+            )
+        );
+
+        let miss = PolicyJudgmentRecord::from_context_policy(&context, &PolicyStore::default());
+        let reuse = PolicyReuseReceipt::from_policy_judgments(&[record.clone(), miss]);
+        let summary = PolicyReuseLedgerSummaryReceipt::from_reuse_validation_counts(&reuse, 2, 0);
+        assert!(summary.is_valid());
+        assert_eq!(
+            summary.receipt_hash,
+            fold_ordered_policy_reuse_receipt_hash(
+                0x504f_4c52_4c45_4447u64,
+                &[
+                    summary.schema_version,
+                    1,
+                    summary.policy_hits as u64,
+                    summary.policy_misses as u64,
+                    summary.llm_fallbacks as u64,
+                    summary.validation_passes as u64,
+                    summary.validation_failures as u64,
+                    summary.reuse_rate_bps,
+                    u64::from(summary.regression_flag),
+                    summary.source_receipt_hash,
+                ],
+            )
+        );
+
+        let catalog = PolicyReuseCostCatalogReceipt::from_source_hashes(
+            6,
+            4,
+            4,
+            6,
+            true,
+            true,
+            "none",
+            reuse.receipt_hash,
+            0x202,
+            0x303,
+            0x404,
+            0x505,
+            0x606,
+        );
+        assert!(catalog.is_valid());
+        assert_eq!(
+            catalog.catalog_hash,
+            fold_ordered_policy_reuse_content_hash(
+                content_seed,
+                &[
+                    catalog.schema_version,
+                    1,
+                    catalog.catalog_version,
+                    catalog.evidence_family_count as u64,
+                    catalog.healthy_mode_count as u64,
+                    catalog.regression_mode_count as u64,
+                    catalog.retained_fixture_count as u64,
+                    u64::from(catalog.required_healthy_modes_present),
+                    u64::from(catalog.required_regression_modes_present),
+                    u64::from(catalog.summary_complete),
+                    1,
+                    catalog.source_policy_reuse_hash,
+                    catalog.source_scale_trace_hash,
+                    catalog.source_performance_cost_trend_hash,
+                    catalog.source_validation_health_hash,
+                    catalog.source_validation_duration_hash,
+                    catalog.source_runtime_performance_hash,
+                ],
+            )
+        );
+    }
+
+    #[test]
     fn policy_reuse_ledger_summary_accepts_empty_zero_baseline() {
         let summary = PolicyReuseLedgerSummaryReceipt::empty();
 
