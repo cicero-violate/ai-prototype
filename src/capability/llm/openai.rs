@@ -1541,7 +1541,7 @@ pub fn append_openai_llm_effect_receipt_ndjson(
 pub fn load_openai_llm_effect_receipts_ndjson(
     path: impl AsRef<Path>,
 ) -> Result<Vec<OpenAiLlmEffectReceipt>, OpenAiError> {
-    load_openai_ndjson_records(
+    load_openai_ndjson_record_domain(
         path,
         OPENAI_LLM_EFFECT_RECEIPT_RECORD,
         decode_openai_llm_effect_receipt_fields,
@@ -1583,7 +1583,7 @@ pub fn append_openai_judgment_proof_event_ndjson(
 pub fn load_openai_judgment_proof_events_ndjson(
     path: impl AsRef<Path>,
 ) -> Result<Vec<OpenAiJudgmentProofEvent>, OpenAiError> {
-    load_openai_ndjson_records(
+    load_openai_ndjson_record_domain(
         path,
         OPENAI_JUDGMENT_PROOF_RECORD,
         decode_openai_judgment_proof_event_fields,
@@ -1879,11 +1879,19 @@ fn parse_u64_fields(line: &str) -> Result<Vec<u64>, OpenAiError> {
 fn load_openai_llm_effect_receipts_ndjson_unchecked(
     path: impl AsRef<Path>,
 ) -> Result<Vec<OpenAiLlmEffectReceipt>, OpenAiError> {
-    load_openai_ndjson_records(
+    load_openai_ndjson_record_domain(
         path,
         OPENAI_LLM_EFFECT_RECEIPT_RECORD,
         decode_openai_llm_effect_receipt_fields_unchecked,
     )
+}
+
+fn load_openai_ndjson_record_domain<T>(
+    path: impl AsRef<Path>,
+    record_tag: u64,
+    decode: fn(&[u64]) -> Result<T, OpenAiError>,
+) -> Result<Vec<T>, OpenAiError> {
+    load_openai_ndjson_records(path, record_tag, decode)
 }
 
 fn append_openai_ndjson_record(
