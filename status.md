@@ -42,6 +42,8 @@ Current date: 2026-05-15.
 
 ## Current Progress
 
+- Implementation step 5 on 2026-05-15 found no unchecked Active Priorities item after item 162; items 160 through 162 remain complete and the current queue is exhausted. No implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `plan.md`, `status.md`, and `score.md` were read; the working tree was clean before this status update; `score.md` remains unchanged because no implementation or score-changing evidence was produced.
+
 - Active Priorities item 162 is complete: graph-derived structural evidence refresh passed after items 160 and 161. `scripts/recapture_rustc_graphs.sh --check` reported `graph artifact check: pass` for `../state/rustc`, and score report regeneration from `../state/rustc` reports aggregate `G = 7.94 / 10`, Architecture `8.9`, Structure `4.9`, Simplicity `6.9`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2` across 18 crates. `SCORE_REPORT.md` already matched the regenerated report, including `ai` crate Nodes `5663`, Edges `35419`, Fns `2308`, Architecture `9.3`, Structure `6.1`, Simplicity `7.2`, and `root_validate` Architecture `3.3`, Structure `1.5`. Broader `cargo test --all-targets` passed with 354 library tests, 3 `root_validate` binary tests, and all integration, binary, and example suites green. `score.md` rationale was refreshed for item 162 evidence, but project-level numeric scores remain unchanged because this is structural evidence refresh rather than score-history-worthy capability evidence. Active Priorities are exhausted.
 
 - Active Priorities item 161 is complete: `src/validation_harness.rs` now includes focused in-module regression coverage in `validation_harness_projection_and_distillation_hash_helper_preserves_boundaries`. The test uses existing public projection and distillation readiness smoke receipt constructors, proves projection and readiness smoke receipts remain valid and passed, proves projection hash, projection receipt hash, readiness hash, and readiness receipt hash are non-zero and separated across receipt families, proves projection and readiness regression-reason changes alter the expected hash family and invalidate the mutated receipt boundary, and proves projected reasoning cost units and validation guarded test count changes alter the corresponding hash. Targeted named-test validation passed. Broader `cargo test --all-targets` passed with 354 library tests, 3 `root_validate` binary tests, and all integration, binary, and example suites green. Cargo emitted the known non-fatal cache warning reporting `database or disk is full`. The next executable item is item 162, graph-derived structural evidence refresh. `score.md` remains unchanged because this is focused regression coverage, not a project-level score change.
@@ -431,6 +433,22 @@ Current date: 2026-05-15.
 - Implementation step 4 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 - Implementation step 5 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 ## Validation Ledger
+
+### 2026-05-15 — Implementation step 5 exhausted Active Priorities queue
+
+- Scope: `plan.md`, `status.md`, and `score.md` read-only reconnaissance plus `status.md` progress recording.
+- Command/check: Python inspection of the `## Active Priorities` section in `plan.md` and current `status.md`/`score.md` state.
+- Result: informational.
+- Evidence: no unchecked `[ ]` Active Priorities item remains after item 162; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation task is selectable in this execution step.
+- Next action: Run a planning turn to write the next ordered non-`root_validate` graph-backed task.
+
+### 2026-05-15 — Implementation step 5 planning artifact validation
+
+- Scope: `status.md` after recording the exhausted Active Priorities queue.
+- Command/check: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test planning_contract -- --test-threads=1`.
+- Result: passed.
+- Evidence: 2 planning contract tests passed, 0 failed. Cargo emitted the known non-fatal cache warning reporting `database or disk is full`.
+- Next action: Commit the status update.
 
 ### 2026-05-15 — Active Priorities item 162 planning artifact validation
 
