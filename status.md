@@ -42,6 +42,8 @@ Current date: 2026-05-15.
 
 ## Current Progress
 
+- Active Priorities item 159 is complete: graph-derived structural evidence refresh passed after item 158. `scripts/recapture_rustc_graphs.sh --check` reported `graph artifact check: pass` for `../state/rustc`, and score report regeneration from `../state/rustc` reports aggregate `G = 7.94 / 10`, Architecture `8.9`, Structure `4.9`, Simplicity `6.9`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2` across 18 crates. `SCORE_REPORT.md` already matched the regenerated report, including `ai` crate Nodes `5662`, Edges `35644`, Fns `2307`, Architecture `9.4`, Structure `6.1`, Simplicity `7.2`, and `root_validate` Architecture `3.2`, Structure `1.5`. Broader `cargo test --all-targets` passed. `score.md` rationale was refreshed for item 159 evidence, but project-level numeric scores remain unchanged because this is structural evidence refresh rather than score-history-worthy capability evidence. The next executable item is item 160 in `src/validation_harness.rs`.
+
 - Planning turn on 2026-05-15 confirmed the first incomplete Active Priorities item is item 159, graph-derived structural evidence refresh after item 158. The next implementation item after that remains item 160 in `src/validation_harness.rs`, graph operation `73022b99d7f6436b`, consolidating `policy_reuse_scaling_projection_hash(...)` and `policy_reuse_distillation_readiness_hash(...)` through one private ordered receipt-field hash helper; item 161 adds focused projection/readiness boundary coverage; item 162 refreshes graph-derived evidence. Reconnaissance used Python to inspect the selected `ai` graph-editor plan, confirmed `validation_harness` remains the largest non-`root_validate` operation cluster, inspected the candidate hash functions and smoke receipt constructors, checked the working tree, and left `score.md` unchanged because no implementation or score-changing evidence was produced.
 
 - Active Priorities item 158 is complete: `src/validation_harness.rs` now includes `validation_harness_cost_catalog_builder_preserves_complete_and_incomplete_boundaries`, covering complete and incomplete policy reuse cost-catalog smoke receipt record types, count tuples, required-mode flags, missing-mode surfaces, computed completion status, validity, pass/non-pass status, non-zero hashes, and distinct catalog/receipt hashes. Targeted named-test validation passed. Broader all-target Rust validation passed. The next executable item is item 159, graph-derived structural evidence refresh. `score.md` remains unchanged because this is focused regression coverage, not a project-level score change.
@@ -423,6 +425,30 @@ Current date: 2026-05-15.
 - Implementation step 4 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 - Implementation step 5 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 ## Validation Ledger
+
+### 2026-05-15 — Active Priorities item 159 planning artifact validation
+
+- Scope: `plan.md`, `score.md`, and `status.md` after marking item 159 complete.
+- Command/check: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test planning_contract -- --test-threads=1`.
+- Result: passed.
+- Evidence: 2 planning contract tests passed, 0 failed. Cargo emitted the known non-fatal cache warning reporting `database or disk is full`.
+- Next action: Commit item 159 planning/evidence updates.
+
+### 2026-05-15 — Active Priorities item 159 graph-derived evidence refresh
+
+- Scope: `SCORE_REPORT.md`, `score.md`, `plan.md`, and `status.md`.
+- Command/check: `bash scripts/recapture_rustc_graphs.sh --check && cargo run --manifest-path ../score/Cargo.toml --quiet -- --artifact-root ../state/rustc --report SCORE_REPORT.md --date "$(date +%Y-%m-%d)"`.
+- Result: passed.
+- Evidence: graph artifact check passed for `../state/rustc`; regenerated score report reports aggregate `G = 7.94 / 10`, Architecture `8.9`, Structure `4.9`, Simplicity `6.9`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2` across 18 crates; `SCORE_REPORT.md` already matched the regenerated report. Cargo emitted the known non-fatal cache warning reporting `database or disk is full`.
+- Next action: Run Active Priorities item 160 in `src/validation_harness.rs`.
+
+### 2026-05-15 — Active Priorities item 159 broader validation
+
+- Scope: full Rust workspace after graph-derived evidence refresh.
+- Command/check: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
+- Result: passed.
+- Evidence: 353 library tests passed, 0 failed; 3 `root_validate` binary tests passed; all integration, binary, and example suites passed. Cargo emitted the known non-fatal cache warning reporting `database or disk is full`.
+- Next action: Commit item 159 planning/evidence updates.
 
 ### 2026-05-15 — Planning artifact contract validation after items 159-162 reconnaissance
 
