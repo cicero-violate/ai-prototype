@@ -928,6 +928,21 @@ Current planning turn selected graph operation `3531e5dc63009037`, covering `age
    - Done when: `scripts/recapture_rustc_graphs.sh --check` validates the configured graph root, `SCORE_REPORT.md` is regenerated from `../state/rustc`, `status.md` records aggregate and affected crate rows, and `score.md` changes only if refreshed evidence differs from the current rationale.
    - Validation: `bash scripts/recapture_rustc_graphs.sh --check && cargo run --manifest-path ../score/Cargo.toml --quiet -- --artifact-root ../state/rustc --report SCORE_REPORT.md --date "$(date +%Y-%m-%d)"`.
 
+80. [ ] `src/capability/llm/ollama.rs`: route `OllamaJudgmentProofEvent::{expected_proof_hash, verifier_context_hash}` through one private ordered hash-fold helper while preserving distinct Ollama proof-event hash domains.
+   - Scope: `src/capability/llm/ollama.rs` only; allowed functions are `OllamaJudgmentProofEvent::expected_proof_hash`, `OllamaJudgmentProofEvent::verifier_context_hash`, and one private helper near the existing `fold_ordered_ollama_hash(...)`. Do not change receipt finalization, proof binding, replay verification, NDJSON encode/decode/load functions, HTTP/client behavior, OpenAI code, Ollama request execution, tests, or `root_validate`.
+   - Done when: both public methods keep their names and signatures, keep distinct proof versus verifier-context seed constants, keep exact current field order and boolean casts, preserve non-zero `max(1)` hash behavior through the existing fold primitive, and share only the private field-folding path.
+   - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo check --lib`.
+
+81. [ ] `src/capability/llm/ollama.rs` test `ollama_proof_event_hash_helpers_preserve_distinct_domains`: add focused regression coverage for the shared `OllamaJudgmentProofEvent` proof/verifier hash helper.
+   - Scope: `src/capability/llm/ollama.rs` test module only; use existing `valid_test_receipt()` and `OllamaJudgmentProofEvent::finalize_receipt(...)` test helpers. Do not change production code in this item.
+   - Done when: the named test proves valid proof-event construction, non-zero distinct `expected_proof_hash()` and `verifier_context_hash()` values, proof hash binding to the finalized event, canonical proof projection using the verifier-context hash, proof-only tampering rejection, and verifier-context-only tampering changing the verifier hash without changing the bound proof hash. The test must not perform network I/O, filesystem I/O outside normal cargo test execution, environment mutation, or process spawning.
+   - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test ollama_proof_event_hash_helpers_preserve_distinct_domains -- --test-threads=1`.
+
+82. [ ] `SCORE_REPORT.md`: after items 80 and 81 land, refresh graph-derived structural evidence and review whether `score.md` rationale changes without raising project-level scores absent capability evidence.
+   - Scope: `SCORE_REPORT.md`, `score.md`, `plan.md`, and `status.md` only.
+   - Done when: `scripts/recapture_rustc_graphs.sh --check` validates the configured graph root, `SCORE_REPORT.md` is regenerated from `../state/rustc`, `status.md` records aggregate and affected crate rows, and `score.md` changes only if refreshed evidence differs from the current rationale.
+   - Validation: `bash scripts/recapture_rustc_graphs.sh --check && cargo run --manifest-path ../score/Cargo.toml --quiet -- --artifact-root ../state/rustc --report SCORE_REPORT.md --date "$(date +%Y-%m-%d)"`.
+
 ## Suggested Validation
 
 For planning/doc-only changes:

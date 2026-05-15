@@ -42,6 +42,7 @@ Current date: 2026-05-15.
 
 ## Current Progress
 
+- Planning turn on 2026-05-15 completed Python-assisted reconnaissance after Active Priorities item 79. Active Priorities items 80 through 82 are now planned for `src/capability/llm/ollama.rs` and graph-derived evidence refresh. The first executable item is item 80, which must route `OllamaJudgmentProofEvent::{expected_proof_hash, verifier_context_hash}` through one private ordered hash-fold helper while preserving distinct Ollama proof-event hash domains. `root_validate` remains explicitly non-selectable.
 - Implementation step 5 found no unchecked Active Priorities item after item 79; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 - Implementation step 4 found no unchecked Active Priorities item after item 79; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 - Active Priorities item 79 is complete: graph-derived structural evidence refresh passed after items 77 and 78. `SCORE_REPORT.md` now reports `G = 7.92 / 10`, Architecture `9.0`, Structure `4.9`, Simplicity `6.9`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2`; the `ai` crate row is Nodes `5625`, Edges `35762`, Fns `2281`, Architecture `9.4`, Structure `6.1`, Simplicity `7.1`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2`. `score.md` rationale was updated to match refreshed evidence; project-level numeric scores remain unchanged because this is evidence refresh, not a new capability score change. Active Priorities are exhausted.
@@ -149,6 +150,22 @@ Current date: 2026-05-15.
 - Implementation step 4 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 - Implementation step 5 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 ## Validation Ledger
+
+### 2026-05-15 — planning contract validation after item 80-82 planning
+
+- Scope: `plan.md` and `status.md` planning-only update for Active Priorities items 80 through 82.
+- Command/check: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test planning_contract -- --test-threads=1`.
+- Result: passed.
+- Evidence: 2 planning-contract tests passed with 0 failures; Cargo emitted a global-cache last-use warning (`database or disk is full`) after the test binary completed, but the test result passed.
+- Next action: Commit the planning-only update.
+
+### 2026-05-15 — planning item 80-82 selection from ai graph-editor plan
+
+- Scope: `plan.md`, `status.md`, `score.md`, `SCORE_REPORT.md`, `../state/rustc/auto-refactor/workspace__ai_sandbox__canon-mini-agent__prototype__state__rustc__ai__graph.graph-editor-plan.json`, and `src/capability/llm/ollama.rs`.
+- Command/check: Python-assisted reconnaissance over current planning files, current `SCORE_REPORT.md`, the selected `ai` graph-editor plan, and `src/capability/llm/ollama.rs` proof-event hash/test surface.
+- Result: informational.
+- Evidence: Active Priorities were exhausted after item 79; graph-derived aggregate remains `G = 7.92 / 10` with Structure `4.9` as the lowest aggregate axis; the selected non-`root_validate` graph operation is `cef5bdfc17f274a8`, covering `capability::llm::ollama::OllamaJudgmentProofEvent::{expected_proof_hash, verifier_context_hash}` with similarity `1.0`; `src/capability/llm/ollama.rs` already has `fold_ordered_ollama_hash(...)` plus local `valid_test_receipt()` test support.
+- Next action: Execute Active Priorities item 80 in `src/capability/llm/ollama.rs`.
 
 ### 2026-05-15 — implementation step 5 planning contract validation
 
