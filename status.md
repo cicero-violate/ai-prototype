@@ -42,6 +42,7 @@ Current date: 2026-05-15.
 
 ## Current Progress
 
+- Implementation step 4 found no unchecked Active Priorities item after item 76; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 - Active Priorities item 76 is complete: graph-derived structural evidence refresh passed after items 74 and 75. `SCORE_REPORT.md` reports `G = 7.93 / 10`, Architecture `9.0`, Structure `4.9`, Simplicity `6.9`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2`; the `ai` crate row is Nodes `5622`, Edges `35759`, Fns `2281`, Architecture `9.5`, Structure `6.1`, Simplicity `7.1`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2`. `score.md` rationale was updated to match refreshed evidence, but project-level numeric scores remain unchanged.
 - Active Priorities item 75 is complete: `cdp_get_helpers_preserve_http_request_and_response_parsing` now directly covers the CDP request builder, extracted `cdp_get_request_transport_response(...)` boundary, raw response shape, `parse_cdp_get_response(...)`, observed loopback request bytes, status/body extraction, and server-thread completion. Targeted loopback validation and broader all-target Rust validation passed. The next executable item is item 76, the graph-derived structural evidence refresh.
 - Active Priorities item 74 is complete: `src/agent/router.rs::cdp_get(...)` now delegates socket/request/response collection through private `cdp_get_request_transport_response(...)` while preserving the original signature, address resolution, timeout configuration, request bytes, response read behavior, final `parse_cdp_get_response(...)` delegation, and `OpenAiError` mapping. Targeted loopback validation and broader all-target Rust validation passed. The next executable item is item 75, the focused router regression-test extension.
@@ -140,6 +141,14 @@ Current date: 2026-05-15.
 - Implementation step 4 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 - Implementation step 5 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 ## Validation Ledger
+
+### 2026-05-15 — implementation step 4 checklist exhausted
+
+- Scope: `plan.md`, `status.md`, and `score.md` inspection; status-only record.
+- Command/check: read `plan.md`, `status.md`, and `score.md`; searched `## Active Priorities` for unchecked `N. [ ]` items; checked `git status --short`.
+- Result: no selectable implementation item remains.
+- Evidence: Active Priorities items 74 through 76 are all checked; no unchecked item appears under `## Active Priorities`; working tree was clean before this status-only record; `score.md` remains unchanged.
+- Next action: run a planning turn to select the next executable non-`root_validate` graph-backed task.
 
 ### 2026-05-15 — item 76 graph-derived structural evidence refresh
 
