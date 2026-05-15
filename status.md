@@ -42,6 +42,8 @@ Current date: 2026-05-15.
 
 ## Current Progress
 
+- Planning turn on 2026-05-15 selected the next non-`root_validate` graph-backed work queue after confirming Active Priorities items 149 through 151 were complete and no unchecked executable item remained. The next executable item is Active Priorities item 152 in `src/capability/llm/openai.rs`, consolidating OpenAI NDJSON checked receipt, checked proof-event, and unchecked receipt loaders through one private typed dispatch helper while preserving loader domains and record filtering; item 153 adds focused in-module regression coverage; item 154 refreshes graph-derived evidence. Reconnaissance inspected `plan.md`, `status.md`, `score.md`, `SCORE_REPORT.md`, `../state/rustc/auto-refactor/*.graph-editor-plan.json`, the selected `ai` graph-editor plan, and candidate OpenAI loader source/tests. `root_validate` remains intentionally non-selected. `score.md` remains unchanged because this planning turn produced no implementation, graph refresh, or score-changing capability evidence.
+
 - Implementation step 5 on 2026-05-15 found no unchecked Active Priorities item after item 151; items 149 through 151 remain complete and the current queue is exhausted. No implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. Working tree was clean before this status update. `score.md` remains unchanged because no implementation or score-changing evidence was produced in this step.
 
 - Implementation step 4 on 2026-05-15 found no unchecked Active Priorities item after item 151; items 149 through 151 remain complete and the current queue is exhausted. No implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. Working tree was clean before this status update. `score.md` remains unchanged because no implementation or score-changing evidence was produced in this step.
@@ -399,6 +401,14 @@ Current date: 2026-05-15.
 - Implementation step 4 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 - Implementation step 5 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 ## Validation Ledger
+
+### 2026-05-15 — planning-contract validation for OpenAI NDJSON loader planning queue
+
+- Scope: `plan.md` and `status.md` planning-turn update for Active Priorities items 152 through 154.
+- Command/check: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test planning_contract -- --test-threads=1`.
+- Result: passed.
+- Evidence: 2 planning-contract tests passed, 0 failed. Cargo emitted the known non-fatal last-use/cache warning reporting `database or disk is full`.
+- Next action: implement Active Priorities item 152 in `src/capability/llm/openai.rs`.
 
 ### 2026-05-15 — implementation step 5 no selectable Active Priorities item
 
