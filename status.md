@@ -42,6 +42,7 @@ Current date: 2026-05-15.
 
 ## Current Progress
 
+- Active Priorities item 82 is complete: graph-derived structural evidence refresh passed after items 80 and 81. `SCORE_REPORT.md` reports `G = 7.92 / 10`, Architecture `8.9`, Structure `4.9`, Simplicity `6.9`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2`; the `ai` crate row is Nodes `5626`, Edges `35765`, Fns `2282`, Architecture `9.4`, Structure `6.1`, Simplicity `7.1`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2`. `score.md` rationale was updated to match refreshed evidence; project-level numeric scores remain unchanged because this is evidence refresh, not a capability score change. Active Priorities are exhausted.
 - Active Priorities item 81 is complete: `ollama_proof_event_hash_helpers_preserve_distinct_domains` now provides focused local-module coverage for valid Ollama proof-event construction, non-zero distinct provider proof and verifier-context hashes, receipt/proof binding, canonical proof projection, proof-only tamper rejection, and verifier-context tamper separation. Targeted and broader Rust validation passed. The next executable item is item 82, the graph-derived evidence refresh and score-rationale review.
 - Active Priorities item 80 is complete: `OllamaJudgmentProofEvent::{expected_proof_hash, verifier_context_hash}` now route through the shared private `fold_ordered_ollama_proof_event_hash(...)` helper while preserving distinct proof and verifier-context seed constants, field order, boolean casts, non-zero fold behavior, receipt/proof binding, and Ollama proof-event semantics. Targeted `cargo check --lib` and broader `cargo test --all-targets` passed. The next executable item is item 81, the focused Ollama proof-event hash regression test.
 - Planning turn on 2026-05-15 completed Python-assisted reconnaissance after Active Priorities item 79. Active Priorities items 80 through 82 are now planned for `src/capability/llm/ollama.rs` and graph-derived evidence refresh. The first executable item is item 80, which must route `OllamaJudgmentProofEvent::{expected_proof_hash, verifier_context_hash}` through one private ordered hash-fold helper while preserving distinct Ollama proof-event hash domains. `root_validate` remains explicitly non-selectable.
@@ -152,6 +153,22 @@ Current date: 2026-05-15.
 - Implementation step 4 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 - Implementation step 5 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 ## Validation Ledger
+
+### 2026-05-15 — Active Priorities item 82 post-bookkeeping validation
+
+- Scope: `SCORE_REPORT.md`, `score.md`, `plan.md`, and `status.md` after item 82 bookkeeping.
+- Command/check: `bash scripts/recapture_rustc_graphs.sh --check && cargo run --manifest-path ../score/Cargo.toml --quiet -- --artifact-root ../state/rustc --report SCORE_REPORT.md --date "$(date +%Y-%m-%d)" && TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test planning_contract -- --test-threads=1`.
+- Result: passed.
+- Evidence: graph artifact check passed; score report regenerated with 18 crates and 0 skipped at `G = 7.92 / 10`, Architecture `8.9`, Structure `4.9`, Simplicity `6.9`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2`; planning-contract validation passed 2 tests with 0 failures. Cargo emitted the recurring global-cache warning (`database or disk is full`), but validation results passed.
+- Next action: Commit the item 82 evidence refresh.
+
+### 2026-05-15 — Active Priorities item 82 graph-derived evidence refresh
+
+- Scope: `SCORE_REPORT.md`, `score.md`, `plan.md`, and `status.md`.
+- Command/check: `bash scripts/recapture_rustc_graphs.sh --check && cargo run --manifest-path ../score/Cargo.toml --quiet -- --artifact-root ../state/rustc --report SCORE_REPORT.md --date "$(date +%Y-%m-%d)"`.
+- Result: passed.
+- Evidence: graph artifact check passed for root `/workspace/ai_sandbox/canon-mini-agent/prototype/state/rustc` with required artifact count 2; refreshed score report has 18 crates and 0 skipped, aggregate `G = 7.92 / 10`, Architecture `8.9`, Structure `4.9`, Simplicity `6.9`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2`. The `ai` crate row is Nodes `5626`, Edges `35765`, Fns `2282`, Architecture `9.4`, Structure `6.1`, Simplicity `7.1`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2`. Cargo emitted the recurring global-cache warning (`database or disk is full`), but the refresh command passed.
+- Next action: Run planning-contract validation and commit the evidence refresh.
 
 ### 2026-05-15 — Active Priorities item 81 targeted and broader validation
 
