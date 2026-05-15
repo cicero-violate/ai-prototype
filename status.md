@@ -42,6 +42,8 @@ Current date: 2026-05-15.
 
 ## Current Progress
 
+- Active Priorities item 163 is complete: `src/validation_harness.rs` now routes `policy_reuse_evidence_batch_readiness_hash(...)`, `policy_reuse_evidence_batch_execution_plan_hash(...)`, `policy_reuse_evidence_batch_evaluation_admission_hash(...)`, and `policy_reuse_evidence_batch_run_request_hash(...)` through private helper `policy_reuse_ordered_batch_evidence_hash(...)` while preserving distinct readiness, plan, admission, and request seeds, ordered schema/record-type folding, ordered numeric fields, zero-source rejection checks, status/reason code mappings, receipt-hash binding, smoke/regression outputs, public APIs, and `root_validate` boundaries. Targeted `cargo check --lib` passed. Broader `cargo test --all-targets` passed with 354 library tests, 3 `root_validate` binary tests, and all integration, binary, and example suites green. Cargo emitted the known non-fatal cache warning reporting `database or disk is full`. The next executable item is item 164, focused regression coverage for the shared batch-evidence hash helper. `score.md` remains unchanged because this is a narrow structure refactor with validation evidence, not a project-level score change.
+
 - Planning turn on 2026-05-15 selected the next ordered non-`root_validate` graph-backed work after item 162 exhausted the previous queue. The next executable item is Active Priorities item 163 in `src/validation_harness.rs`, consolidating `policy_reuse_evidence_batch_readiness_hash(...)`, `policy_reuse_evidence_batch_execution_plan_hash(...)`, `policy_reuse_evidence_batch_evaluation_admission_hash(...)`, and `policy_reuse_evidence_batch_run_request_hash(...)` through one private ordered batch-evidence hash helper; item 164 adds focused readiness/plan/admission/request boundary coverage; item 165 refreshes graph-derived evidence. Reconnaissance inspected `plan.md`, `status.md`, `score.md`, `SCORE_REPORT.md`, the selected `ai` graph-editor plan with Python, current candidate source ranges in `src/validation_harness.rs`, and the working tree. `root_validate` remains intentionally non-selected. `score.md` remains unchanged because this planning turn produced no implementation, graph refresh, or score-changing capability evidence.
 
 - Implementation step 5 on 2026-05-15 found no unchecked Active Priorities item after item 162; items 160 through 162 remain complete and the current queue is exhausted. No implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `plan.md`, `status.md`, and `score.md` were read; the working tree was clean before this status update; `score.md` remains unchanged because no implementation or score-changing evidence was produced.
@@ -435,6 +437,30 @@ Current date: 2026-05-15.
 - Implementation step 4 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 - Implementation step 5 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 ## Validation Ledger
+
+### 2026-05-15 — Active Priorities item 163 planning artifact validation
+
+- Scope: `plan.md` and `status.md` after marking item 163 complete.
+- Command/check: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test planning_contract -- --test-threads=1`.
+- Result: passed.
+- Evidence: 2 planning contract tests passed, 0 failed. Cargo emitted the known non-fatal cache warning reporting `database or disk is full`.
+- Next action: commit item 163.
+
+### 2026-05-15 — Active Priorities item 163 broader validation
+
+- Scope: `src/validation_harness.rs`, `plan.md`, `status.md`, and `score.md` after item 163 implementation.
+- Command/check: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
+- Result: passed.
+- Evidence: 354 library tests passed, 3 `root_validate` binary tests passed, and all integration, binary, and example suites passed. Cargo emitted the known non-fatal cache warning reporting `database or disk is full`.
+- Next action: run planning artifact validation, then commit item 163.
+
+### 2026-05-15 — Active Priorities item 163 targeted validation
+
+- Scope: `src/validation_harness.rs` production hash helper change for item 163.
+- Command/check: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo check --lib`.
+- Result: passed.
+- Evidence: library crate check completed successfully after routing the four scoped batch-evidence hash functions through `policy_reuse_ordered_batch_evidence_hash(...)`. Cargo emitted the known non-fatal cache warning reporting `database or disk is full`.
+- Next action: run broader all-target validation.
 
 ### 2026-05-15 — Active Priorities items 163-165 planning artifact validation
 

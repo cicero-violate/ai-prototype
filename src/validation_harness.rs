@@ -14186,6 +14186,21 @@ fn policy_reuse_evidence_compact_validation_receipt_hash(
     nonzero_receipt_hash(compact_hash ^ 0x504f_4c52_4356_4452u64)
 }
 
+fn policy_reuse_ordered_batch_evidence_hash(
+    seed: u64,
+    schema: &str,
+    record_type: &str,
+    fields: &[u64],
+) -> u64 {
+    let mut h = seed;
+    h = mix_receipt_str_hash(h, schema);
+    h = mix_receipt_str_hash(h, record_type);
+    for field in fields {
+        h = mix_receipt_hash(h, *field);
+    }
+    nonzero_receipt_hash(h)
+}
+
 fn policy_reuse_evidence_batch_readiness_hash(
     receipt: &PolicyReuseEvidenceBatchReadinessReceipt,
 ) -> u64 {
@@ -14212,23 +14227,26 @@ fn policy_reuse_evidence_batch_readiness_hash(
     if batch_status_code == 0 || not_ready_reason_code == 0 {
         return 0;
     }
-    let mut h = 0x504f_4c52_4252_4448u64;
-    h = mix_receipt_str_hash(h, receipt.schema);
-    h = mix_receipt_str_hash(h, receipt.record_type);
-    h = mix_receipt_hash(h, receipt.batch_readiness_version);
-    h = mix_receipt_hash(h, receipt.source_compact_validation_hash);
-    h = mix_receipt_hash(h, receipt.source_retrieval_readiness_hash);
-    h = mix_receipt_hash(h, receipt.source_scaling_projection_hash);
-    h = mix_receipt_hash(h, u64::from(receipt.compact_validation_passed));
-    h = mix_receipt_hash(h, u64::from(receipt.retrieval_ready));
-    h = mix_receipt_hash(h, u64::from(receipt.scaling_projection_passed));
-    h = mix_receipt_hash(h, receipt.batch_capacity_limit as u64);
-    h = mix_receipt_hash(h, receipt.projected_llm_calls_avoided_per_full_batch as u64);
-    h = mix_receipt_hash(h, receipt.projected_llm_fallbacks_per_full_batch as u64);
-    h = mix_receipt_hash(h, u64::from(receipt.batch_ready));
-    h = mix_receipt_hash(h, batch_status_code);
-    h = mix_receipt_hash(h, not_ready_reason_code);
-    nonzero_receipt_hash(h)
+    policy_reuse_ordered_batch_evidence_hash(
+        0x504f_4c52_4252_4448u64,
+        receipt.schema,
+        receipt.record_type,
+        &[
+            receipt.batch_readiness_version,
+            receipt.source_compact_validation_hash,
+            receipt.source_retrieval_readiness_hash,
+            receipt.source_scaling_projection_hash,
+            u64::from(receipt.compact_validation_passed),
+            u64::from(receipt.retrieval_ready),
+            u64::from(receipt.scaling_projection_passed),
+            receipt.batch_capacity_limit as u64,
+            receipt.projected_llm_calls_avoided_per_full_batch as u64,
+            receipt.projected_llm_fallbacks_per_full_batch as u64,
+            u64::from(receipt.batch_ready),
+            batch_status_code,
+            not_ready_reason_code,
+        ],
+    )
 }
 
 fn policy_reuse_evidence_batch_readiness_receipt_hash(
@@ -14266,23 +14284,26 @@ fn policy_reuse_evidence_batch_execution_plan_hash(
     if plan_status_code == 0 || not_plannable_reason_code == 0 {
         return 0;
     }
-    let mut h = 0x504f_4c52_4250_4448u64;
-    h = mix_receipt_str_hash(h, receipt.schema);
-    h = mix_receipt_str_hash(h, receipt.record_type);
-    h = mix_receipt_hash(h, receipt.execution_plan_version);
-    h = mix_receipt_hash(h, receipt.source_batch_readiness_hash);
-    h = mix_receipt_hash(h, receipt.source_compact_validation_hash);
-    h = mix_receipt_hash(h, u64::from(receipt.batch_ready));
-    h = mix_receipt_hash(h, u64::from(receipt.compact_validation_passed));
-    h = mix_receipt_hash(h, u64::from(receipt.no_execute_plan));
-    h = mix_receipt_hash(h, receipt.proposed_batch_capacity as u64);
-    h = mix_receipt_hash(h, receipt.proposed_policy_reuse_cases as u64);
-    h = mix_receipt_hash(h, receipt.proposed_llm_fallback_cases as u64);
-    h = mix_receipt_hash(h, u64::from(receipt.execution_performed));
-    h = mix_receipt_hash(h, u64::from(receipt.plan_ready));
-    h = mix_receipt_hash(h, plan_status_code);
-    h = mix_receipt_hash(h, not_plannable_reason_code);
-    nonzero_receipt_hash(h)
+    policy_reuse_ordered_batch_evidence_hash(
+        0x504f_4c52_4250_4448u64,
+        receipt.schema,
+        receipt.record_type,
+        &[
+            receipt.execution_plan_version,
+            receipt.source_batch_readiness_hash,
+            receipt.source_compact_validation_hash,
+            u64::from(receipt.batch_ready),
+            u64::from(receipt.compact_validation_passed),
+            u64::from(receipt.no_execute_plan),
+            receipt.proposed_batch_capacity as u64,
+            receipt.proposed_policy_reuse_cases as u64,
+            receipt.proposed_llm_fallback_cases as u64,
+            u64::from(receipt.execution_performed),
+            u64::from(receipt.plan_ready),
+            plan_status_code,
+            not_plannable_reason_code,
+        ],
+    )
 }
 
 fn policy_reuse_evidence_batch_execution_plan_receipt_hash(
@@ -14320,23 +14341,26 @@ fn policy_reuse_evidence_batch_evaluation_admission_hash(
     if admission_status_code == 0 || not_admitted_reason_code == 0 {
         return 0;
     }
-    let mut h = 0x504f_4c52_4241_4448u64;
-    h = mix_receipt_str_hash(h, receipt.schema);
-    h = mix_receipt_str_hash(h, receipt.record_type);
-    h = mix_receipt_hash(h, receipt.admission_version);
-    h = mix_receipt_hash(h, receipt.source_batch_execution_plan_hash);
-    h = mix_receipt_hash(h, receipt.source_batch_readiness_hash);
-    h = mix_receipt_hash(h, u64::from(receipt.plan_ready));
-    h = mix_receipt_hash(h, u64::from(receipt.batch_ready));
-    h = mix_receipt_hash(h, u64::from(receipt.no_execute_plan));
-    h = mix_receipt_hash(h, u64::from(receipt.execution_performed));
-    h = mix_receipt_hash(h, receipt.proposed_batch_capacity as u64);
-    h = mix_receipt_hash(h, receipt.admitted_policy_reuse_cases as u64);
-    h = mix_receipt_hash(h, receipt.admitted_llm_fallback_cases as u64);
-    h = mix_receipt_hash(h, u64::from(receipt.batch_evaluation_admitted));
-    h = mix_receipt_hash(h, admission_status_code);
-    h = mix_receipt_hash(h, not_admitted_reason_code);
-    nonzero_receipt_hash(h)
+    policy_reuse_ordered_batch_evidence_hash(
+        0x504f_4c52_4241_4448u64,
+        receipt.schema,
+        receipt.record_type,
+        &[
+            receipt.admission_version,
+            receipt.source_batch_execution_plan_hash,
+            receipt.source_batch_readiness_hash,
+            u64::from(receipt.plan_ready),
+            u64::from(receipt.batch_ready),
+            u64::from(receipt.no_execute_plan),
+            u64::from(receipt.execution_performed),
+            receipt.proposed_batch_capacity as u64,
+            receipt.admitted_policy_reuse_cases as u64,
+            receipt.admitted_llm_fallback_cases as u64,
+            u64::from(receipt.batch_evaluation_admitted),
+            admission_status_code,
+            not_admitted_reason_code,
+        ],
+    )
 }
 
 fn policy_reuse_evidence_batch_evaluation_admission_receipt_hash(
@@ -14374,23 +14398,26 @@ fn policy_reuse_evidence_batch_run_request_hash(
     if request_status_code == 0 || not_requestable_reason_code == 0 {
         return 0;
     }
-    let mut h = 0x504f_4c52_4252_5148u64;
-    h = mix_receipt_str_hash(h, receipt.schema);
-    h = mix_receipt_str_hash(h, receipt.record_type);
-    h = mix_receipt_hash(h, receipt.request_version);
-    h = mix_receipt_hash(h, receipt.source_batch_evaluation_admission_hash);
-    h = mix_receipt_hash(h, receipt.source_batch_execution_plan_hash);
-    h = mix_receipt_hash(h, u64::from(receipt.batch_evaluation_admitted));
-    h = mix_receipt_hash(h, u64::from(receipt.plan_ready));
-    h = mix_receipt_hash(h, u64::from(receipt.no_execute_request));
-    h = mix_receipt_hash(h, u64::from(receipt.execution_performed));
-    h = mix_receipt_hash(h, receipt.requested_batch_capacity as u64);
-    h = mix_receipt_hash(h, receipt.requested_policy_reuse_cases as u64);
-    h = mix_receipt_hash(h, receipt.requested_llm_fallback_cases as u64);
-    h = mix_receipt_hash(h, u64::from(receipt.batch_request_ready));
-    h = mix_receipt_hash(h, request_status_code);
-    h = mix_receipt_hash(h, not_requestable_reason_code);
-    nonzero_receipt_hash(h)
+    policy_reuse_ordered_batch_evidence_hash(
+        0x504f_4c52_4252_5148u64,
+        receipt.schema,
+        receipt.record_type,
+        &[
+            receipt.request_version,
+            receipt.source_batch_evaluation_admission_hash,
+            receipt.source_batch_execution_plan_hash,
+            u64::from(receipt.batch_evaluation_admitted),
+            u64::from(receipt.plan_ready),
+            u64::from(receipt.no_execute_request),
+            u64::from(receipt.execution_performed),
+            receipt.requested_batch_capacity as u64,
+            receipt.requested_policy_reuse_cases as u64,
+            receipt.requested_llm_fallback_cases as u64,
+            u64::from(receipt.batch_request_ready),
+            request_status_code,
+            not_requestable_reason_code,
+        ],
+    )
 }
 
 fn policy_reuse_evidence_batch_run_request_receipt_hash(

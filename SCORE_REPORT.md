@@ -6,7 +6,7 @@ Generated: 2026-05-15  |  Schema version: 16  |  Crates: 18
 
 ```text
 Architecture         = 8.9
-Structure            = 4.9
+Structure            = 5.0
 Simplicity           = 6.9
 Maintainability      = 10.0
 Determinism          = 10.0
@@ -20,7 +20,7 @@ G (geometric mean)   = 7.94 / 10
 | Crate                      | Nodes | Edges | Fns  | Arch | Struct | Simple | Maint | Determ | Coher |
 | :------------------------- | ----: | ----: | ---: | ---: | -----: | -----: | ----: | -----: | ----: |
 | agent                      |     6 |   208 |    6 |  5.0 |    8.8 |    0.8 |  10.0 |   10.0 |   7.7 |
-| ai                         |  5663 | 35419 | 2308 |  9.3 |    6.1 |    7.2 |  10.0 |   10.0 |   8.2 |
+| ai                         |  5664 | 34997 | 2309 |  9.3 |    6.1 |    7.2 |  10.0 |   10.0 |   8.2 |
 | ai                         |     1 |    18 |    1 |  5.0 |    4.5 |    4.5 |  10.0 |   10.0 |   7.0 |
 | browser_router             |   656 |  5986 |  316 |  9.0 |    4.6 |    4.5 |  10.0 |   10.0 |   8.5 |
 | browser_router             |     2 |    74 |    2 |  5.0 |    6.1 |    0.7 |  10.0 |   10.0 |   7.0 |
