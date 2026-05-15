@@ -513,19 +513,28 @@ impl ProcessEffectReceipt {
         if !self.is_valid() {
             return None;
         }
-        let mut h = 0x5052_4f43_4155_5448u64;
-        h = mix(h, self.capability as u64);
-        h = mix(h, self.registry_policy_hash);
-        Some(h.max(1))
+        Some(Self::canonical_process_hash(
+            0x5052_4f43_4155_5448u64,
+            &[self.capability as u64, self.registry_policy_hash],
+        ))
     }
 
     pub fn canonical_request_hash(self) -> Option<u64> {
         if !self.is_valid() {
             return None;
         }
-        let mut h = 0x5052_4f43_5251_5354u64;
-        h = mix(h, self.request_hash);
-        Some(h.max(1))
+        Some(Self::canonical_process_hash(
+            0x5052_4f43_5251_5354u64,
+            &[self.request_hash],
+        ))
+    }
+
+    fn canonical_process_hash(seed: u64, fields: &[u64]) -> u64 {
+        let mut h = seed;
+        for field in fields {
+            h = mix(h, *field);
+        }
+        h.max(1)
     }
 
     pub fn canonical_effect(self) -> Option<CanonicalEffect> {

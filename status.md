@@ -114,8 +114,17 @@ Current date: 2026-05-14.
 - Implementation step 4 found no unchecked Active Priorities item after item 60; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 - Implementation step 5 found no unchecked Active Priorities item after item 60; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 - Active Priorities items 61 through 63 are now planned for `src/capability/tooling/record/receipt.rs`, `src/lib.rs`, and graph-derived evidence refresh. The first executable item is item 61, which must route `ProcessEffectReceipt::{canonical_authority_hash, canonical_request_hash}` through one private ordered hash-vector helper while preserving distinct process receipt authority/request hash domains, `is_valid()` gating, canonical effect receipt binding, verification proof binding, provider proof hashing, replay, NDJSON, filesystem, sandbox, and process behavior. `root_validate` remains explicitly non-selectable.
+- Active Priorities item 61 is complete: `ProcessEffectReceipt::{canonical_authority_hash, canonical_request_hash}` now share one private `canonical_process_hash(...)` helper while preserving distinct authority/request domain seeds, exact field order, `is_valid()` gating, non-zero `h.max(1)` behavior, canonical effect receipt binding, verification proof binding, provider proof hashing, replay, NDJSON, filesystem, sandbox, and process behavior. The next executable item is item 62, the focused regression test for process effect receipt authority/request hash domains.
 
 ## Validation Ledger
+
+### 2026-05-14 — Active Priorities item 61 process effect receipt hash helper
+
+- Scope: `src/capability/tooling/record/receipt.rs`, `plan.md`, `status.md`, and `score.md` review.
+- Command/check: targeted `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo check --lib`; broader `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
+- Result: passed.
+- Evidence: `cargo check --lib` completed successfully. Broader all-target validation passed with 322 library/bin tests, 3 `root_validate` binary tests, 13 API server contract tests, 23 API transport contract tests, 3 canonical TLog contract tests, 4 domain contract tests, 10 graph mutation CLI contract tests, 9 MCP receipt contract tests, 2 planning contract tests, 5 score contract tests, 2 supervisor binary contract tests, 2 worker binary contract tests, and all example test targets green. The scoped source change added private `ProcessEffectReceipt::canonical_process_hash(seed, fields)` and routed `canonical_authority_hash(...)` and `canonical_request_hash(...)` through it without changing public APIs or receipt semantics. `score.md` was reviewed and left unchanged because this is a narrow structure refactor with validation evidence, not a score-history-worthy project-level capability change.
+- Next action: execute Active Priorities item 62.
 
 ### 2026-05-14 — planning turn selected process effect receipt hash helper work
 
