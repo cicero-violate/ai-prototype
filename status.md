@@ -6519,3 +6519,17 @@ Implementation step 2 evidence on 2026-05-15 for Active Priorities item 111:
 - Broader validation passed: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets` passed with 337 library tests, 3 `root_validate` binary tests, and all integration/example test targets passing.
 - Cargo emitted a non-blocking cache last-use warning, `database or disk is full`, during validation; no Rust validation failure occurred.
 - Marked item 111 complete in `plan.md`. `score.md` was reviewed and left unchanged because this is focused regression coverage for an existing hash-folding boundary, not a score-history-worthy project-level capability change.
+
+
+Implementation step 3 evidence on 2026-05-15 for Active Priorities item 112:
+
+- Selected first unchecked Active Priorities item 112: `SCORE_REPORT.md` graph-derived structural evidence refresh after items 110 and 111.
+- Read `plan.md`, `status.md`, `score.md`, and `SCORE_REPORT.md` before running validation.
+- Ran the targeted evidence-refresh command: `bash scripts/recapture_rustc_graphs.sh --check && cargo run --manifest-path ../score/Cargo.toml --quiet -- --artifact-root ../state/rustc --report SCORE_REPORT.md --date "$(date +%Y-%m-%d)"`.
+- Targeted validation passed. Graph artifact check passed for the configured `../state/rustc` root with required artifacts, the scorer processed 18 crates with 0 skipped, and regenerated evidence remained `G = 7.93 / 10`.
+- Refreshed aggregate axes remain Architecture `8.9`, Structure `4.9`, Simplicity `6.9`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2`.
+- Affected rows after items 110 and 111 remained unchanged in the checked-in report: local `ai` library crate row is 5,637 nodes, 35,737 edges, 2,293 functions, Architecture `9.4`, Structure `6.1`, Simplicity `7.1`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2`; `root_validate` remains 163 nodes, 1,990 edges, 161 functions, Architecture `3.2`, Structure `1.5`, Simplicity `6.1`, Maintainability `10.0`, Determinism `10.0`, and Coherency `7.3`.
+- Broader validation passed: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets` passed with 337 library tests, 3 `root_validate` binary tests, and all integration/example test targets passing.
+- `SCORE_REPORT.md` and `score.md` had no diff after refresh because regenerated structural evidence matched the current checked-in report and score rationale.
+- Cargo emitted a non-blocking cache last-use warning, `database or disk is full`, during validation; no Rust validation failure occurred.
+- Marked item 112 complete in `plan.md`. `score.md` was reviewed and left unchanged because this evidence refresh confirms the current structural snapshot and does not justify project-level numeric score changes.
