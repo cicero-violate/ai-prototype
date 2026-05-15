@@ -18009,4 +18009,227 @@ mod tests {
             policy_reuse_distillation_readiness_hash(&readiness_guard_changed)
         );
     }
+
+    #[test]
+    fn validation_harness_batch_evidence_hash_helper_preserves_readiness_plan_admission_and_request_boundaries(
+    ) {
+        let readiness = policy_reuse_evidence_batch_readiness_smoke_receipt();
+        let plan = policy_reuse_evidence_batch_execution_plan_smoke_receipt();
+        let admission = policy_reuse_evidence_batch_evaluation_admission_smoke_receipt();
+        let request = policy_reuse_evidence_batch_run_request_smoke_receipt();
+
+        assert!(readiness.is_valid());
+        assert!(readiness.passed());
+        assert!(plan.is_valid());
+        assert!(plan.passed());
+        assert!(admission.is_valid());
+        assert!(admission.passed());
+        assert!(request.is_valid());
+        assert!(request.passed());
+
+        assert_ne!(readiness.batch_hash, 0);
+        assert_ne!(readiness.receipt_hash, 0);
+        assert_ne!(plan.plan_hash, 0);
+        assert_ne!(plan.receipt_hash, 0);
+        assert_ne!(admission.admission_hash, 0);
+        assert_ne!(admission.receipt_hash, 0);
+        assert_ne!(request.request_hash, 0);
+        assert_ne!(request.receipt_hash, 0);
+
+        assert_eq!(
+            readiness.batch_hash,
+            policy_reuse_evidence_batch_readiness_hash(&readiness)
+        );
+        assert_eq!(
+            readiness.receipt_hash,
+            policy_reuse_evidence_batch_readiness_receipt_hash(&readiness)
+        );
+        assert_eq!(
+            plan.plan_hash,
+            policy_reuse_evidence_batch_execution_plan_hash(&plan)
+        );
+        assert_eq!(
+            plan.receipt_hash,
+            policy_reuse_evidence_batch_execution_plan_receipt_hash(&plan)
+        );
+        assert_eq!(
+            admission.admission_hash,
+            policy_reuse_evidence_batch_evaluation_admission_hash(&admission)
+        );
+        assert_eq!(
+            admission.receipt_hash,
+            policy_reuse_evidence_batch_evaluation_admission_receipt_hash(&admission)
+        );
+        assert_eq!(
+            request.request_hash,
+            policy_reuse_evidence_batch_run_request_hash(&request)
+        );
+        assert_eq!(
+            request.receipt_hash,
+            policy_reuse_evidence_batch_run_request_receipt_hash(&request)
+        );
+
+        let family_hashes = [
+            readiness.batch_hash,
+            readiness.receipt_hash,
+            plan.plan_hash,
+            plan.receipt_hash,
+            admission.admission_hash,
+            admission.receipt_hash,
+            request.request_hash,
+            request.receipt_hash,
+        ];
+        for (left_index, left_hash) in family_hashes.iter().enumerate() {
+            for right_hash in family_hashes.iter().skip(left_index + 1) {
+                assert_ne!(left_hash, right_hash);
+            }
+        }
+
+        let readiness_regression = policy_reuse_evidence_batch_readiness_regression_smoke_receipt();
+        assert!(readiness_regression.is_valid());
+        assert!(!readiness_regression.passed());
+        assert_eq!(readiness_regression.batch_readiness_status, "not_ready");
+        assert_eq!(
+            readiness_regression.not_ready_reason,
+            "compact_validation_failed"
+        );
+        assert_ne!(readiness.batch_hash, readiness_regression.batch_hash);
+        assert_ne!(readiness.receipt_hash, readiness_regression.receipt_hash);
+
+        let plan_regression = policy_reuse_evidence_batch_execution_plan_regression_smoke_receipt();
+        assert!(plan_regression.is_valid());
+        assert!(!plan_regression.passed());
+        assert_eq!(plan_regression.plan_status, "not_plannable");
+        assert_eq!(plan_regression.not_plannable_reason, "batch_not_ready");
+        assert_ne!(plan.plan_hash, plan_regression.plan_hash);
+        assert_ne!(plan.receipt_hash, plan_regression.receipt_hash);
+
+        let admission_regression =
+            policy_reuse_evidence_batch_evaluation_admission_regression_smoke_receipt();
+        assert!(admission_regression.is_valid());
+        assert!(!admission_regression.passed());
+        assert_eq!(admission_regression.admission_status, "not_admitted");
+        assert_eq!(admission_regression.not_admitted_reason, "plan_not_ready");
+        assert_ne!(
+            admission.admission_hash,
+            admission_regression.admission_hash
+        );
+        assert_ne!(admission.receipt_hash, admission_regression.receipt_hash);
+
+        let request_regression = policy_reuse_evidence_batch_run_request_regression_smoke_receipt();
+        assert!(request_regression.is_valid());
+        assert!(!request_regression.passed());
+        assert_eq!(request_regression.request_status, "not_requestable");
+        assert_eq!(
+            request_regression.not_requestable_reason,
+            "admission_not_granted"
+        );
+        assert_ne!(request.request_hash, request_regression.request_hash);
+        assert_ne!(request.receipt_hash, request_regression.receipt_hash);
+
+        let mut readiness_status_changed = readiness.clone();
+        readiness_status_changed.batch_readiness_status = "not_ready";
+        assert_ne!(
+            readiness.batch_hash,
+            policy_reuse_evidence_batch_readiness_hash(&readiness_status_changed)
+        );
+        assert_eq!(
+            0,
+            policy_reuse_evidence_batch_readiness_receipt_hash(&readiness_status_changed)
+        );
+
+        let mut readiness_reason_changed = readiness.clone();
+        readiness_reason_changed.not_ready_reason = "compact_validation_failed";
+        assert_ne!(
+            readiness.batch_hash,
+            policy_reuse_evidence_batch_readiness_hash(&readiness_reason_changed)
+        );
+        assert_eq!(
+            0,
+            policy_reuse_evidence_batch_readiness_receipt_hash(&readiness_reason_changed)
+        );
+
+        let mut plan_status_changed = plan.clone();
+        plan_status_changed.plan_status = "not_plannable";
+        assert_ne!(
+            plan.plan_hash,
+            policy_reuse_evidence_batch_execution_plan_hash(&plan_status_changed)
+        );
+        assert_eq!(
+            0,
+            policy_reuse_evidence_batch_execution_plan_receipt_hash(&plan_status_changed)
+        );
+
+        let mut plan_reason_changed = plan.clone();
+        plan_reason_changed.not_plannable_reason = "batch_not_ready";
+        assert_ne!(
+            plan.plan_hash,
+            policy_reuse_evidence_batch_execution_plan_hash(&plan_reason_changed)
+        );
+        assert_eq!(
+            0,
+            policy_reuse_evidence_batch_execution_plan_receipt_hash(&plan_reason_changed)
+        );
+
+        let mut admission_status_changed = admission.clone();
+        admission_status_changed.admission_status = "not_admitted";
+        assert_ne!(
+            admission.admission_hash,
+            policy_reuse_evidence_batch_evaluation_admission_hash(&admission_status_changed)
+        );
+        assert_eq!(
+            0,
+            policy_reuse_evidence_batch_evaluation_admission_receipt_hash(
+                &admission_status_changed
+            )
+        );
+
+        let mut admission_reason_changed = admission.clone();
+        admission_reason_changed.not_admitted_reason = "plan_not_ready";
+        assert_ne!(
+            admission.admission_hash,
+            policy_reuse_evidence_batch_evaluation_admission_hash(&admission_reason_changed)
+        );
+        assert_eq!(
+            0,
+            policy_reuse_evidence_batch_evaluation_admission_receipt_hash(
+                &admission_reason_changed
+            )
+        );
+
+        let mut request_status_changed = request.clone();
+        request_status_changed.request_status = "not_requestable";
+        assert_ne!(
+            request.request_hash,
+            policy_reuse_evidence_batch_run_request_hash(&request_status_changed)
+        );
+        assert_eq!(
+            0,
+            policy_reuse_evidence_batch_run_request_receipt_hash(&request_status_changed)
+        );
+
+        let mut request_reason_changed = request.clone();
+        request_reason_changed.not_requestable_reason = "admission_not_granted";
+        assert_ne!(
+            request.request_hash,
+            policy_reuse_evidence_batch_run_request_hash(&request_reason_changed)
+        );
+        assert_eq!(
+            0,
+            policy_reuse_evidence_batch_run_request_receipt_hash(&request_reason_changed)
+        );
+
+        assert_eq!(
+            plan.plan_hash,
+            policy_reuse_evidence_batch_execution_plan_hash(&plan)
+        );
+        assert_eq!(
+            admission.admission_hash,
+            policy_reuse_evidence_batch_evaluation_admission_hash(&admission)
+        );
+        assert_eq!(
+            request.request_hash,
+            policy_reuse_evidence_batch_run_request_hash(&request)
+        );
+    }
 }
