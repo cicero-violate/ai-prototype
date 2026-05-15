@@ -499,6 +499,54 @@ mod tests {
     }
 
     #[test]
+    fn canonical_effect_named_constructors_preserve_kind_and_validation_boundaries() {
+        let cases: [(
+            fn(u64, u64) -> Option<CanonicalEffect>,
+            CanonicalEffectKind,
+            ProofSubjectKind,
+        ); 5] = [
+            (
+                CanonicalEffect::artifact,
+                CanonicalEffectKind::Artifact,
+                ProofSubjectKind::ArtifactEffect,
+            ),
+            (
+                CanonicalEffect::process,
+                CanonicalEffectKind::Process,
+                ProofSubjectKind::ProcessEffect,
+            ),
+            (
+                CanonicalEffect::semantic_verification,
+                CanonicalEffectKind::SemanticVerification,
+                ProofSubjectKind::SemanticVerification,
+            ),
+            (
+                CanonicalEffect::policy,
+                CanonicalEffectKind::Policy,
+                ProofSubjectKind::PolicyEffect,
+            ),
+            (
+                CanonicalEffect::observation,
+                CanonicalEffectKind::Observation,
+                ProofSubjectKind::ObservationEffect,
+            ),
+        ];
+
+        for (constructor, expected_kind, expected_subject) in cases {
+            let effect = constructor(0xfeed_beef, 0xcafe_f00d).unwrap();
+
+            assert_eq!(effect.kind, expected_kind);
+            assert_eq!(effect.digest, 0xfeed_beef);
+            assert_eq!(effect.metadata, 0xcafe_f00d);
+            assert_ne!(effect.contract_hash(), 0);
+            assert_eq!(effect.kind.proof_subject(), expected_subject);
+            assert_eq!(expected_kind.proof_subject(), expected_subject);
+            assert_eq!(constructor(0, 0xcafe_f00d), None);
+            assert_eq!(constructor(0xfeed_beef, 0), None);
+        }
+    }
+
+    #[test]
     fn policy_effect_projects_into_generic_verification_spine() {
         let (_state, tlog) = run_until_done(State::ready(), RuntimeConfig::default()).unwrap();
         let promotion = PolicyPromotion::from_tlog(&tlog, 1).unwrap();

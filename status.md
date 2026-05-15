@@ -94,7 +94,17 @@ Current date: 2026-05-14.
 
 - Active Priorities item 52 is complete: `CanonicalEffect::{artifact, process, semantic_verification, policy, observation}` now share one private `named_kind(...)` helper while preserving distinct `CanonicalEffectKind` values, zero digest/metadata rejection through `CanonicalEffect::new(...)`, `CanonicalEffect::llm(...)` metadata hashing, `contract_hash(...)`, canonical receipt/proof behavior, and all tooling/LLM/policy call-site semantics. The next executable item is item 53, the focused regression test for named constructor kind and validation boundaries.
 
+- Active Priorities item 53 is complete: `canonical_effect_named_constructors_preserve_kind_and_validation_boundaries` now proves `CanonicalEffect::{artifact, process, semantic_verification, policy, observation}` preserve exact `CanonicalEffectKind`, digest, metadata, non-zero contract hash, expected `ProofSubjectKind` mapping, and zero digest/metadata rejection. The next executable item is item 54, the graph-derived evidence refresh and score-rationale review.
+
 ## Validation Ledger
+
+### 2026-05-14 — Active Priorities item 53 CanonicalEffect named constructor regression test
+
+- Scope: `src/lib.rs`, `plan.md`, `status.md`, and `score.md` review.
+- Command/check: targeted `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test canonical_effect_named_constructors_preserve_kind_and_validation_boundaries -- --test-threads=1`; broader `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
+- Result: passed.
+- Evidence: the named test passed with 1 selected test. It covers all five public named `CanonicalEffect` constructors, asserts exact `CanonicalEffectKind`, digest, metadata, non-zero `contract_hash()`, `CanonicalEffectKind::proof_subject()` mappings to `ProofSubjectKind`, and rejection of zero digest or zero metadata. Broader all-target validation passed with 320 library/bin tests, 3 `root_validate` binary tests, 13 API server contract tests, 23 API transport contract tests, 3 canonical TLog contract tests, 4 domain contract tests, 10 graph mutation CLI contract tests, 9 MCP receipt contract tests, 2 planning contract tests, 5 score contract tests, 2 supervisor binary contract tests, 2 worker binary contract tests, and all example test targets green. `score.md` was reviewed and left unchanged because this is focused regression coverage for an existing constructor boundary, not a score-history-worthy project-level capability change.
+- Next action: execute Active Priorities item 54 by refreshing graph-derived structural evidence and reviewing `score.md` without raising project-level scores absent capability evidence.
 
 ### 2026-05-14 — Active Priorities item 52 CanonicalEffect named-kind helper
 
