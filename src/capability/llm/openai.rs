@@ -854,11 +854,7 @@ impl OpenAiLlmEffectReceipt {
     }
 
     fn fold_ordered_effect_receipt_hash(seed: u64, fields: &[u64]) -> u64 {
-        let mut h = seed;
-        for field in fields {
-            h = mix(h, *field);
-        }
-        h.max(1)
+        fold_ordered_openai_hash(seed, fields)
     }
 
     pub fn verification_proof_binding(self) -> Option<VerificationProofBinding> {
@@ -874,6 +870,13 @@ impl OpenAiLlmEffectReceipt {
             self.proof_hash,
         )
     }
+}
+
+fn fold_ordered_openai_hash(seed: u64, fields: &[u64]) -> u64 {
+    fields
+        .iter()
+        .fold(seed, |hash, field| mix(hash, *field))
+        .max(1)
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -1023,10 +1026,7 @@ impl OpenAiJudgmentProofEvent {
     }
 
     fn fold_ordered_openai_proof_event_hash(seed: u64, fields: &[u64]) -> u64 {
-        fields
-            .iter()
-            .fold(seed, |hash, field| mix(hash, *field))
-            .max(1)
+        fold_ordered_openai_hash(seed, fields)
     }
 
     pub fn proof_flags(self) -> u64 {
