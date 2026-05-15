@@ -233,4 +233,50 @@ mod tests {
 
         assert_ne!(before, index.fingerprint());
     }
+
+    #[test]
+    fn memory_hash_fold_helper_preserves_lookup_and_index_boundaries() {
+        let facts = vec![MemoryFact::new(7, 70, 2, 2), MemoryFact::new(7, 90, 5, 1)];
+        let lookup_aggregate = aggregate_memory_hash(7, &facts);
+        let index_fingerprint = aggregate_index_hash(&facts);
+
+        assert_ne!(lookup_aggregate, 0);
+        assert_ne!(index_fingerprint, 0);
+        assert_ne!(lookup_aggregate, index_fingerprint);
+
+        assert_ne!(aggregate_memory_hash(8, &facts), lookup_aggregate);
+        assert_eq!(aggregate_index_hash(&facts), index_fingerprint);
+
+        for changed in [
+            vec![MemoryFact::new(8, 70, 2, 2), facts[1]],
+            vec![MemoryFact::new(7, 71, 2, 2), facts[1]],
+            vec![MemoryFact::new(7, 70, 3, 2), facts[1]],
+            vec![MemoryFact::new(7, 70, 2, 3), facts[1]],
+        ] {
+            assert_ne!(aggregate_memory_hash(7, &changed), lookup_aggregate);
+            assert_ne!(aggregate_index_hash(&changed), index_fingerprint);
+        }
+
+        let reversed = vec![facts[1], facts[0]];
+        assert_ne!(aggregate_memory_hash(7, &reversed), lookup_aggregate);
+        assert_ne!(aggregate_index_hash(&reversed), index_fingerprint);
+
+        let mut inserted_forward = MemoryIndex::default();
+        assert!(inserted_forward.insert(facts[0]));
+        assert!(inserted_forward.insert(facts[1]));
+
+        let mut inserted_reverse = MemoryIndex::default();
+        assert!(inserted_reverse.insert(facts[1]));
+        assert!(inserted_reverse.insert(facts[0]));
+
+        assert_eq!(inserted_forward.facts(), inserted_reverse.facts());
+        assert_eq!(inserted_forward.fingerprint(), inserted_reverse.fingerprint());
+
+        let (lookup, receipt) = inserted_forward.lookup_with_receipt(7, 2);
+        assert_eq!(lookup.aggregate_hash, aggregate_memory_hash(7, &lookup.matches));
+        assert_eq!(receipt.aggregate_hash, lookup.aggregate_hash);
+        assert_eq!(receipt.index_fingerprint, inserted_forward.fingerprint());
+        assert_eq!(receipt.index_fingerprint, aggregate_index_hash(inserted_forward.facts()));
+        assert!(receipt.is_valid_for(&lookup));
+    }
 }
