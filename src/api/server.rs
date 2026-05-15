@@ -616,6 +616,67 @@ mod tests {
     }
 
     #[test]
+    fn api_submission_token_extractors_preserve_gate_evidence_and_error_boundaries() {
+        let gate_cases = [
+            ("Invariant", GateId::Invariant),
+            ("Analysis", GateId::Analysis),
+            ("Judgment", GateId::Judgment),
+            ("Plan", GateId::Plan),
+            ("Execution", GateId::Execution),
+            ("Verification", GateId::Verification),
+            ("Eval", GateId::Eval),
+            ("Learning", GateId::Learning),
+        ];
+        for (input, expected) in gate_cases {
+            assert_eq!(gate_from_str(input), Ok(expected));
+            assert_eq!(evidence_from_str(input), Err(ServerError::InvalidPayload));
+        }
+
+        let evidence_cases = [
+            ("InvariantProof", Evidence::InvariantProof),
+            ("AnalysisReport", Evidence::AnalysisReport),
+            ("JudgmentRecord", Evidence::JudgmentRecord),
+            ("PlanRecord", Evidence::PlanRecord),
+            ("TaskReady", Evidence::TaskReady),
+            ("ExecutionReceipt", Evidence::ExecutionReceipt),
+            ("ArtifactReceipt", Evidence::ArtifactReceipt),
+            ("VerificationReport", Evidence::VerificationReport),
+            ("LineageProof", Evidence::LineageProof),
+            ("EvalScore", Evidence::EvalScore),
+            ("PersistedRecord", Evidence::PersistedRecord),
+        ];
+        for (input, expected) in evidence_cases {
+            assert_eq!(evidence_from_str(input), Ok(expected));
+            assert_eq!(gate_from_str(input), Err(ServerError::InvalidPayload));
+        }
+
+        assert_eq!(
+            gate_from_str("UnknownSubmissionToken"),
+            Err(ServerError::InvalidPayload)
+        );
+        assert_eq!(
+            evidence_from_str("UnknownSubmissionToken"),
+            Err(ServerError::InvalidPayload)
+        );
+
+        let submission = submission_from_dto(EvidenceSubmissionDto {
+            gate: "Plan".to_string(),
+            evidence: "TaskReady".to_string(),
+            passed: true,
+            effect: Some("BindReadyTask".to_string()),
+            payload_hash: 0xfeed_cafe,
+        })
+        .expect("valid plan/task-ready DTO should build a submission");
+
+        assert_eq!(submission.gate, GateId::Plan);
+        assert_eq!(submission.evidence, Evidence::TaskReady);
+        assert!(submission.passed);
+        assert_eq!(submission.effect, PacketEffect::BindReadyTask);
+        assert_eq!(submission.payload_hash, 0xfeed_cafe);
+        assert!(submission.is_contract_valid());
+    }
+
+    #[test]
     fn mcp_call_decoders_preserve_request_receipt_boundaries() {
         let request = McpCallRequest::new(
             CapabilityRegistry::canonical(),
