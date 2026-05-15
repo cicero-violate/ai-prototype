@@ -42,6 +42,7 @@ Current date: 2026-05-15.
 
 ## Current Progress
 
+- Planning turn on 2026-05-15 completed Python-assisted reconnaissance after Active Priorities item 88. Active Priorities items 89 through 91 are now planned for `src/capability/llm/transport.rs` and graph-derived evidence refresh. The first executable item is item 89, which must route `retry_policy_hash(...)` and `request_identity_hash(...)` through one private ordered transport hash-fold helper while preserving distinct caller-provided seeds, field order, and non-zero hash behavior. `root_validate` remains explicitly non-selectable.
 - Active Priorities item 88 is complete: graph-derived structural evidence refresh passed after items 86 and 87. `SCORE_REPORT.md` now reports `G = 7.92 / 10`, Architecture `8.9`, Structure `4.9`, Simplicity `6.9`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2`; the `ai` crate row is Nodes `5629`, Edges `35766`, Fns `2285`, Architecture `9.4`, Structure `6.1`, Simplicity `7.1`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2`. `score.md` rationale was updated to match refreshed graph evidence; project-level numeric scores remain unchanged because this is evidence refresh, not a capability score change. Active Priorities are exhausted.
 - Active Priorities item 87 is complete: `policy_judgment_hash_helpers_preserve_decision_rationale_boundaries` now covers valid policy judgment construction, non-zero distinct decision/rationale hashes, direct helper equality with record fields, invalid/zero input rejection, decision-domain sensitivity, rationale-domain sensitivity, and `policy_judgment_record_hash(...)` binding. Targeted and broader Rust validation passed. The next executable item is item 88, the graph-derived evidence refresh and score-rationale review.
 - Active Priorities item 86 is complete: `src/capability/judgment/record.rs` now routes `policy_decision_id(...)` and `policy_rationale_hash(...)` through shared private `fold_ordered_policy_judgment_hash(...)` while preserving distinct decision/rationale domain seeds, validity guards, field order, and non-zero hash behavior. Targeted `cargo check --lib` and broader `cargo test --all-targets` passed. The next executable item is item 87, the focused policy judgment hash helper regression test.
@@ -165,6 +166,14 @@ Current date: 2026-05-15.
 - Implementation step 4 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 - Implementation step 5 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 ## Validation Ledger
+
+### 2026-05-15 — planning reconnaissance for transport hash helper items 89-91
+
+- Scope: `plan.md`, `status.md`, `score.md`, `SCORE_REPORT.md`, `../state/rustc/auto-refactor/workspace__ai_sandbox__canon-mini-agent__prototype__state__rustc__ai__graph.graph-editor-plan.json`, and `src/capability/llm/transport.rs`.
+- Command/check: Python-assisted inspection of the current plan/status/score files, graph-derived score report, selected `ai` graph-editor plan, candidate source/test surface, and `git status --short` through the project connector.
+- Result: informational.
+- Evidence: Active Priorities were complete through item 88 with no first incomplete executable item. Current `SCORE_REPORT.md` reports aggregate `G = 7.92 / 10`, Structure `4.9`, Simplicity `6.9`, and the `ai` crate row Structure `6.1`. The selected `ai` graph-editor plan is schema version 1, graph schema version 16, and contains 1,571 operations. Operation `f26c507839cfaf73` covers `capability::llm::transport::{request_identity_hash, retry_policy_hash}` and is safe to plan as private ordered hash-fold helper extraction with focused regression coverage. `root_validate` remains explicitly non-selectable.
+- Next action: Execute Active Priorities item 89 in `src/capability/llm/transport.rs`.
 
 ### 2026-05-15 — item 88 graph-derived score refresh after policy judgment hash work
 
