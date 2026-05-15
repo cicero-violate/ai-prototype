@@ -42,6 +42,8 @@ Current date: 2026-05-15.
 
 ## Current Progress
 
+- Implementation step 5 found no unchecked Active Priorities item after item 157; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `plan.md`, `status.md`, and `score.md` were read; `score.md` remains unchanged because no implementation or score-changing evidence was produced.
+
 - Active Priorities item 157 is complete: `src/validation_harness.rs` now routes `policy_reuse_cost_catalog_smoke_receipt(...)` and `policy_reuse_cost_catalog_incomplete_smoke_receipt(...)` through private `policy_reuse_cost_catalog_smoke_receipt_from_counts(...)` while preserving the complete tuple `(6, 4, 4, 6, true, true, "none")`, the incomplete tuple `(6, 4, 3, 6, true, false, "required_regression_modes")`, source hash gathering through `policy_reuse_cost_catalog_source_hashes(...)`, smoke/incomplete record types, and canonical catalog/receipt hashes. Targeted `cargo check --lib` passed. Broader `cargo test --all-targets` passed with 352 library tests, 3 `root_validate` binary tests, and all integration, binary, and example suites green. Cargo emitted the known non-fatal last-use/cache warning reporting `database or disk is full`. `score.md` remains unchanged because this is a narrow structure refactor with validation evidence, not a project-level score change.
 
 - Active Priorities item 156 is complete: `src/validation_harness.rs` now includes focused in-module regression coverage in `validation_harness_capacity_trend_builder_preserves_smoke_boundaries`. The test uses existing public smoke receipt functions and in-memory assertions; proves the trend receipt keeps the trend smoke record type, pass trend status, pass verdict, non-negative hit-rate delta, and non-negative avoided-LLM-call delta; proves the regression receipt keeps the regression smoke record type, regressed trend status, fail verdict, negative hit-rate delta, and negative avoided-LLM-call delta; and proves both receipts share the same batch capacity limit and expected pass capacity statuses. Targeted named-test validation passed. Broader `cargo test --all-targets` passed with 352 library tests, 3 `root_validate` binary tests, and all integration, binary, and example suites green. Cargo emitted the known non-fatal last-use/cache warning reporting `database or disk is full`. The next executable item is item 157 in `src/validation_harness.rs`. `score.md` remains unchanged because this is focused regression coverage, not a project-level score change.
@@ -415,6 +417,22 @@ Current date: 2026-05-15.
 - Implementation step 4 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 - Implementation step 5 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 ## Validation Ledger
+
+### 2026-05-15 — implementation step 5 Active Priorities queue exhausted
+
+- Scope: `plan.md`, `status.md`, and `score.md` inspection; `status.md` blocker note only.
+- Command/check: Python checklist inspection of the latest `## Active Priorities` section in `plan.md`.
+- Result: blocked; no unchecked executable item exists.
+- Evidence: 24 Active Priorities checklist items were found in the latest section and all were checked. First unchecked item: none.
+- Next action: Run a planning turn before selecting new implementation work.
+
+### 2026-05-15 — implementation step 5 planning-contract validation
+
+- Scope: `status.md` queue-exhausted blocker note.
+- Command/check: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test planning_contract -- --test-threads=1`.
+- Result: passed.
+- Evidence: 2 planning-contract tests passed, 0 failed. Cargo emitted the known non-fatal last-use/cache warning reporting `database or disk is full`.
+- Next action: Run a planning turn before selecting new implementation work.
 
 ### 2026-05-15 — Active Priorities item 157 validation_harness cost catalog helper
 
