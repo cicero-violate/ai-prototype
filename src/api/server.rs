@@ -293,8 +293,7 @@ fn decode_command(dto: &CommandEnvelopeDto) -> Result<Command, ServerError> {
 }
 
 fn decode_mcp_call_request(payload: serde_json::Value) -> Result<McpCallRequest, ServerError> {
-    let dto: McpCallRequestDto =
-        serde_json::from_value(payload).map_err(|_| ServerError::InvalidPayload)?;
+    let dto: McpCallRequestDto = decode_mcp_call_payload(payload)?;
     let request = McpCallRequest {
         capability: CapabilityId::Tooling,
         registry_policy_hash: dto.registry_policy_hash,
@@ -304,17 +303,15 @@ fn decode_mcp_call_request(payload: serde_json::Value) -> Result<McpCallRequest,
         timeout_ms: dto.timeout_ms,
         max_output_bytes: dto.max_output_bytes,
     };
-    if request.registry_policy_hash != CapabilityRegistry::canonical().policy_hash()
-        || !request.is_admissible()
-    {
+    validate_mcp_registry_policy(request.registry_policy_hash)?;
+    if !request.is_admissible() {
         return Err(ServerError::InvalidCommand);
     }
     Ok(request)
 }
 
 fn decode_mcp_call_receipt(payload: serde_json::Value) -> Result<McpCallReceipt, ServerError> {
-    let dto: McpCallReceiptDto =
-        serde_json::from_value(payload).map_err(|_| ServerError::InvalidPayload)?;
+    let dto: McpCallReceiptDto = decode_mcp_call_payload(payload)?;
     let effect_kind = match dto.effect_kind {
         2 => ToolEffectKind::Process,
         _ => return Err(ServerError::InvalidPayload),
@@ -338,12 +335,25 @@ fn decode_mcp_call_receipt(payload: serde_json::Value) -> Result<McpCallReceipt,
         timed_out: dto.timed_out,
         receipt_hash: dto.receipt_hash,
     };
-    if receipt.registry_policy_hash != CapabilityRegistry::canonical().policy_hash()
-        || !receipt.is_contract_valid()
-    {
+    validate_mcp_registry_policy(receipt.registry_policy_hash)?;
+    if !receipt.is_contract_valid() {
         return Err(ServerError::InvalidCommand);
     }
     Ok(receipt)
+}
+
+fn decode_mcp_call_payload<T>(payload: serde_json::Value) -> Result<T, ServerError>
+where
+    T: serde::de::DeserializeOwned,
+{
+    serde_json::from_value(payload).map_err(|_| ServerError::InvalidPayload)
+}
+
+fn validate_mcp_registry_policy(registry_policy_hash: u64) -> Result<(), ServerError> {
+    if registry_policy_hash != CapabilityRegistry::canonical().policy_hash() {
+        return Err(ServerError::InvalidCommand);
+    }
+    Ok(())
 }
 
 fn decode_sandbox_process_receipt(

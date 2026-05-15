@@ -42,6 +42,7 @@ Current date: 2026-05-15.
 
 ## Current Progress
 
+- Active Priorities item 83 is complete: `src/api/server.rs` now routes `decode_mcp_call_request(...)` and `decode_mcp_call_receipt(...)` through shared private `decode_mcp_call_payload(...)` and `validate_mcp_registry_policy(...)` helpers while preserving distinct request admissibility checks, receipt contract checks, `ToolEffectKind::Process` validation, `CapabilityId::Tooling`, field mapping, and `InvalidPayload` versus `InvalidCommand` error classification. Targeted `cargo check --lib` and broader `cargo test --all-targets` passed. The next executable item is item 84, the focused MCP-call decoder boundary regression test.
 - Planning turn on 2026-05-15 completed Python-assisted reconnaissance after Active Priorities item 82. Active Priorities items 83 through 85 are now planned for `src/api/server.rs` and graph-derived evidence refresh. The first executable item is item 83, which must route `decode_mcp_call_request(...)` and `decode_mcp_call_receipt(...)` through private DTO/registry validation helpers while preserving distinct request admissibility, receipt contract, process effect-kind, field mapping, and error-classification boundaries. `root_validate` remains explicitly non-selectable.
 - Implementation step 5 found no unchecked Active Priorities item after item 82; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 - Implementation step 4 found no unchecked Active Priorities item after item 82; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
@@ -156,6 +157,14 @@ Current date: 2026-05-15.
 - Implementation step 4 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 - Implementation step 5 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 ## Validation Ledger
+
+### 2026-05-15 — item 83 MCP-call decoder helper refactor
+
+- Scope: `src/api/server.rs`, Active Priorities item 83.
+- Command/check: `cargo fmt -- src/api/server.rs`; `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo check --lib`; `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
+- Result: passed.
+- Evidence: `cargo check --lib` finished successfully; `cargo test --all-targets` passed the full current suite, including 327 library tests plus integration and binary contract tests with 0 failures. Cargo emitted the recurring global-cache warning (`database or disk is full`) while saving last-use data, but compilation and tests passed.
+- Next action: Execute Active Priorities item 84 in `src/api/server.rs` test module only.
 
 ### 2026-05-15 — planning reconnaissance for items 83-85
 
