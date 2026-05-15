@@ -42,6 +42,8 @@ Current date: 2026-05-15.
 
 ## Current Progress
 
+- Active Priorities item 140 is complete: `src/api/server.rs` now routes `gate_from_str(...)` and `evidence_from_str(...)` through the shared private `extract_api_submission_token(...)` helper while preserving the existing `ApiSubmissionToken` mappings, gate/evidence domain separation, unknown-string `ServerError::InvalidPayload` behavior, and cross-kind rejection behavior. Targeted validation `cargo check --lib` passed. Broader `cargo test --all-targets` passed with 346 library tests, 3 `root_validate` binary tests, and all integration/binary/example suites green. Cargo emitted the known non-fatal last-use/cache warning reporting `database or disk is full`. The next executable item is item 141, focused in-module regression coverage. `score.md` remains unchanged because this is a narrow structure refactor with validation evidence, not a project-level score change.
+
 - Planning turn on 2026-05-15 selected the next non-`root_validate` graph-backed work queue after confirming items 137 through 139 were complete and no unchecked Active Priorities item remained. The next executable item is Active Priorities item 140 in `src/api/server.rs`, consolidating `gate_from_str(...)` and `evidence_from_str(...)` through one private typed API submission-token extraction helper while preserving all gate/evidence mappings and invalid-payload boundaries; item 141 adds focused regression coverage; item 142 refreshes graph-derived evidence. Reconnaissance inspected `plan.md`, `status.md`, `score.md`, `SCORE_REPORT.md`, the selected `ai` graph-editor plan, and candidate API server source/tests. `root_validate` remains intentionally non-selected. `score.md` remains unchanged because this planning turn produced no implementation, validation refresh, graph refresh, or score-changing capability evidence.
 
 - Implementation step 5 on 2026-05-15 found no unchecked Active Priorities item after item 139; items 137 through 139 remain complete and the current queue is exhausted. No implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. Planning/doc validation `cargo test --test planning_contract -- --test-threads=1` passed with 2 tests and 0 failures. Cargo emitted the known non-fatal last-use cache warning reporting `database or disk is full`. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
@@ -353,6 +355,14 @@ Current date: 2026-05-15.
 - Implementation step 4 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 - Implementation step 5 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 ## Validation Ledger
+
+### 2026-05-15 — item 140 API submission token extractor helper
+
+- Scope: `src/api/server.rs`, `plan.md`, and `status.md`.
+- Command/check: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo check --lib`; `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
+- Result: passed.
+- Evidence: targeted library check passed; broader validation passed with 346 library tests, 3 `root_validate` binary tests, 13 API server contract tests, 23 API transport contract tests, and all remaining integration/binary/example suites green. Cargo emitted the known non-fatal last-use/cache auto-clean warning reporting `database or disk is full`.
+- Next action: implement Active Priorities item 141 in `src/api/server.rs` test module.
 
 ### 2026-05-15 — planning contract validation after item 140 queue selection
 

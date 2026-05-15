@@ -497,17 +497,32 @@ fn api_submission_token_from_str(value: &str) -> Result<ApiSubmissionToken, Serv
     }
 }
 
+fn extract_api_submission_token(
+    value: &str,
+    predicate: impl FnOnce(ApiSubmissionToken) -> Option<ApiSubmissionToken>,
+) -> Result<ApiSubmissionToken, ServerError> {
+    predicate(api_submission_token_from_str(value)?).ok_or(ServerError::InvalidPayload)
+}
+
 fn gate_from_str(value: &str) -> Result<GateId, ServerError> {
-    match api_submission_token_from_str(value)? {
+    match extract_api_submission_token(value, |token| match token {
+        ApiSubmissionToken::Gate(_) => Some(token),
+        ApiSubmissionToken::Evidence(_) => None,
+    })? {
         ApiSubmissionToken::Gate(gate) => Ok(gate),
-        ApiSubmissionToken::Evidence(_) => Err(ServerError::InvalidPayload),
+        ApiSubmissionToken::Evidence(_) => unreachable!("gate extractor only returns gate tokens"),
     }
 }
 
 fn evidence_from_str(value: &str) -> Result<Evidence, ServerError> {
-    match api_submission_token_from_str(value)? {
+    match extract_api_submission_token(value, |token| match token {
+        ApiSubmissionToken::Gate(_) => None,
+        ApiSubmissionToken::Evidence(_) => Some(token),
+    })? {
         ApiSubmissionToken::Evidence(evidence) => Ok(evidence),
-        ApiSubmissionToken::Gate(_) => Err(ServerError::InvalidPayload),
+        ApiSubmissionToken::Gate(_) => {
+            unreachable!("evidence extractor only returns evidence tokens")
+        }
     }
 }
 
