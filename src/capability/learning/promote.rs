@@ -302,6 +302,14 @@ impl PolicyStore {
             .ok_or(PolicyStoreError::InvalidPromotion)
     }
 
+    fn append_in_memory_promotion_route(
+        &mut self,
+        promotion: PolicyPromotion,
+        kind: PolicyPromotionEntryKind,
+    ) -> Result<&PolicyEntry, PolicyStoreError> {
+        self.append_valid_promotion_entry(promotion, kind)
+    }
+
     fn append_valid_promotion_entry_durable(
         &mut self,
         path: impl AsRef<Path>,
@@ -316,14 +324,14 @@ impl PolicyStore {
         &mut self,
         promotion: PolicyPromotion,
     ) -> Result<&PolicyEntry, PolicyStoreError> {
-        self.append_valid_promotion_entry(promotion, PolicyPromotionEntryKind::SourceSeq)
+        self.append_in_memory_promotion_route(promotion, PolicyPromotionEntryKind::SourceSeq)
     }
 
     pub fn promote_feedback(
         &mut self,
         promotion: PolicyPromotion,
     ) -> Result<&PolicyEntry, PolicyStoreError> {
-        self.append_valid_promotion_entry(promotion, PolicyPromotionEntryKind::FeedbackHash)
+        self.append_in_memory_promotion_route(promotion, PolicyPromotionEntryKind::FeedbackHash)
     }
 
     pub fn promote_durable(

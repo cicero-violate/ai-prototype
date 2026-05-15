@@ -7662,3 +7662,16 @@ Planning update on 2026-05-15 for Active Priorities items 149 through 151:
 - Selected graph operations `50696c68b2277059` and `72dcf1b2a173f2c7` in `capability::learning::promote::<impl capability::policy::store::PolicyStore>` as the most appropriate next non-root work because they target duplicated promotion route wrappers while preserving public APIs and existing policy-learning evidence.
 - Added ordered file-level tasks: item 149 for `src/capability/learning/promote.rs`, item 150 for focused `src/lib.rs` regression coverage, and item 151 for graph-derived evidence refresh. The next executable item is item 149.
 - `score.md` was reviewed and left unchanged; this planning turn adds evidence-producing tasks but does not itself produce new implementation or validation evidence justifying numeric score changes.
+
+
+Implementation step 1 evidence on 2026-05-15 for Active Priorities item 149:
+
+- Selected first unchecked Active Priorities item 149: `src/capability/learning/promote.rs` in-memory promotion-route helper.
+- Read `plan.md`, `status.md`, and `score.md` before editing.
+- Changed only `src/capability/learning/promote.rs` within the item scope. Added private helper `append_in_memory_promotion_route(...)` adjacent to the existing promotion append helper.
+- `PolicyStore::promote(...)` now routes through `append_in_memory_promotion_route(...)` with `PolicyPromotionEntryKind::SourceSeq`; `PolicyStore::promote_feedback(...)` now routes through the same helper with `PolicyPromotionEntryKind::FeedbackHash`.
+- Durable promotion methods, `PolicyPromotion`, `PolicyPromotionEntryKind`, `policy_promotion_entry(...)`, distillation export functions, public APIs, persistence behavior, and `root_validate` were unchanged.
+- Targeted validation passed: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo check --lib`.
+- Broader validation passed: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets` passed with 355 library tests, 3 `root_validate` binary tests, and all integration/example test targets passing.
+- Cargo emitted a non-blocking cache last-use warning, `database or disk is full`, during validation; no Rust validation failure occurred.
+- Marked item 149 complete in `plan.md`. `score.md` was reviewed and left unchanged because this helper consolidation does not by itself justify a project-level score change before the focused regression and graph-derived evidence refresh items land.
