@@ -17331,24 +17331,25 @@ fn policy_reuse_scaling_projection_hash(receipt: &PolicyReuseScalingProjectionRe
     if regression_reason_code == 0 {
         return 0;
     }
-    let mut h = 0x504f_4c52_5350_4a48u64;
-    h = mix_receipt_str_hash(h, receipt.schema);
-    h = mix_receipt_str_hash(h, receipt.record_type);
-    h = mix_receipt_hash(h, receipt.projection_version);
-    h = mix_receipt_hash(h, receipt.source_evaluator_savings_hash);
-    h = mix_receipt_hash(h, receipt.source_orchestration_capacity_hash);
-    h = mix_receipt_hash(h, receipt.batch_capacity_limit as u64);
-    h = mix_receipt_hash(h, receipt.retained_sample_runs as u64);
-    h = mix_receipt_hash(h, receipt.retained_llm_calls_avoided as u64);
-    h = mix_receipt_hash(h, receipt.retained_cost_units_avoided);
-    h = mix_receipt_hash(h, receipt.cost_units_per_llm_call);
-    h = mix_receipt_hash(h, receipt.projected_llm_calls_avoided_per_full_batch as u64);
-    h = h.wrapping_mul(0x100000001b3)
-        ^ receipt.projected_reasoning_cost_units_avoided_per_full_batch;
-    h = mix_receipt_hash(h, receipt.projected_llm_fallbacks_per_full_batch as u64);
-    h = mix_receipt_hash(h, u64::from(receipt.projection_passed));
-    h = mix_receipt_hash(h, regression_reason_code);
-    nonzero_receipt_hash(h)
+    policy_reuse_ordered_receipt_field_hash(
+        0x504f_4c52_5350_4a48u64,
+        &[receipt.schema, receipt.record_type],
+        &[
+            receipt.projection_version,
+            receipt.source_evaluator_savings_hash,
+            receipt.source_orchestration_capacity_hash,
+            receipt.batch_capacity_limit as u64,
+            receipt.retained_sample_runs as u64,
+            receipt.retained_llm_calls_avoided as u64,
+            receipt.retained_cost_units_avoided,
+            receipt.cost_units_per_llm_call,
+            receipt.projected_llm_calls_avoided_per_full_batch as u64,
+            receipt.projected_reasoning_cost_units_avoided_per_full_batch,
+            receipt.projected_llm_fallbacks_per_full_batch as u64,
+            u64::from(receipt.projection_passed),
+            regression_reason_code,
+        ],
+    )
 }
 
 fn policy_reuse_scaling_projection_receipt_hash(
@@ -17384,27 +17385,43 @@ fn policy_reuse_distillation_readiness_hash(
     if regression_reason_code == 0 {
         return 0;
     }
-    let mut h = 0x504f_4c52_4452_4459u64;
-    h = mix_receipt_str_hash(h, receipt.schema);
-    h = mix_receipt_str_hash(h, receipt.record_type);
-    h = mix_receipt_hash(h, receipt.readiness_version);
-    h = mix_receipt_hash(h, receipt.source_policy_reuse_hash);
-    h = mix_receipt_hash(h, receipt.source_cost_catalog_hash);
-    h = mix_receipt_hash(h, receipt.source_evaluator_savings_hash);
-    h = mix_receipt_hash(h, receipt.source_scaling_projection_hash);
-    h = mix_receipt_hash(h, receipt.source_validation_health_hash);
-    h = mix_receipt_hash(h, receipt.verified_policy_hits as u64);
-    h = mix_receipt_hash(h, receipt.verified_llm_calls_avoided as u64);
-    h = mix_receipt_hash(h, receipt.projected_llm_calls_avoided_per_full_batch as u64);
-    h = h.wrapping_mul(0x100000001b3)
-        ^ receipt.projected_reasoning_cost_units_avoided_per_full_batch;
-    h = mix_receipt_hash(h, receipt.validation_guarded_test_count as u64);
-    h = mix_receipt_hash(h, u64::from(receipt.catalog_complete));
-    h = mix_receipt_hash(h, u64::from(receipt.evaluator_savings_passed));
-    h = mix_receipt_hash(h, u64::from(receipt.scaling_projection_passed));
-    h = mix_receipt_hash(h, u64::from(receipt.validation_health_passed));
-    h = mix_receipt_hash(h, u64::from(receipt.distillation_ready));
-    h = mix_receipt_hash(h, regression_reason_code);
+    policy_reuse_ordered_receipt_field_hash(
+        0x504f_4c52_4452_4459u64,
+        &[receipt.schema, receipt.record_type],
+        &[
+            receipt.readiness_version,
+            receipt.source_policy_reuse_hash,
+            receipt.source_cost_catalog_hash,
+            receipt.source_evaluator_savings_hash,
+            receipt.source_scaling_projection_hash,
+            receipt.source_validation_health_hash,
+            receipt.verified_policy_hits as u64,
+            receipt.verified_llm_calls_avoided as u64,
+            receipt.projected_llm_calls_avoided_per_full_batch as u64,
+            receipt.projected_reasoning_cost_units_avoided_per_full_batch,
+            receipt.validation_guarded_test_count as u64,
+            u64::from(receipt.catalog_complete),
+            u64::from(receipt.evaluator_savings_passed),
+            u64::from(receipt.scaling_projection_passed),
+            u64::from(receipt.validation_health_passed),
+            u64::from(receipt.distillation_ready),
+            regression_reason_code,
+        ],
+    )
+}
+
+fn policy_reuse_ordered_receipt_field_hash(
+    seed: u64,
+    string_fields: &[&str],
+    numeric_fields: &[u64],
+) -> u64 {
+    let mut h = seed;
+    for field in string_fields {
+        h = mix_receipt_str_hash(h, field);
+    }
+    for field in numeric_fields {
+        h = mix_receipt_hash(h, *field);
+    }
     nonzero_receipt_hash(h)
 }
 
