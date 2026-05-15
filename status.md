@@ -117,8 +117,17 @@ Current date: 2026-05-14.
 - Active Priorities item 61 is complete: `ProcessEffectReceipt::{canonical_authority_hash, canonical_request_hash}` now share one private `canonical_process_hash(...)` helper while preserving distinct authority/request domain seeds, exact field order, `is_valid()` gating, non-zero `h.max(1)` behavior, canonical effect receipt binding, verification proof binding, provider proof hashing, replay, NDJSON, filesystem, sandbox, and process behavior. The next executable item is item 62, the focused regression test for process effect receipt authority/request hash domains.
 - Active Priorities item 62 is complete: `process_effect_receipt_hash_helpers_preserve_authority_request_domains` now covers valid `ProcessEffectReceipt` canonical authority/request hashes, canonical receipt binding, authority-only tamper behavior, request-only tamper behavior, and invalid-receipt `None` behavior without network I/O, process spawning, environment mutation, or filesystem I/O outside normal cargo test execution. The next executable item is item 63, the graph-derived evidence refresh and score-rationale review.
 - Active Priorities item 63 is complete: graph-derived structural evidence refresh passed after the process effect receipt hash helper/test work. `SCORE_REPORT.md` still reports `G = 7.99 / 10`, Architecture `8.9`, Structure `4.9`, Simplicity `7.1`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.4`; the `ai` crate row remains `Nodes = 5610`, `Edges = 34384`, `Fns = 2270`, Structure `6.0`, and Simplicity `7.6`. `score.md` remains unchanged because refreshed graph-derived evidence matched the existing rationale and does not justify project-level numeric score changes. Active Priorities are exhausted; a planning turn must select the next executable non-`root_validate` graph-backed item.
+- Implementation step 4 found no unchecked Active Priorities item after item 63; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 
 ## Validation Ledger
+
+### 2026-05-14 — implementation step 4 Active Priorities exhausted after item 63
+
+- Scope: `plan.md`, `status.md`, and `score.md` review.
+- Command/check: manual checklist scan after reading `plan.md`, `status.md`, and `score.md`; `git status --short` workspace check.
+- Result: blocked.
+- Evidence: Active Priorities items 61 through 63 are marked complete and no `[ ]` item remains under `## Active Priorities`; `score.md` remains unchanged because no implementation or score-changing evidence was produced.
+- Next action: run a planning turn to select the next executable non-`root_validate` graph-backed item.
 
 ### 2026-05-14 — Active Priorities item 63 graph-derived evidence refresh after process effect receipt work
 
