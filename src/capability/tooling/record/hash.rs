@@ -9,28 +9,38 @@ use super::request::ToolRequest;
 use super::types::{ToolEffectKind, ToolSandboxError};
 
 pub(crate) fn tool_command_hash(packet: Packet) -> u64 {
-    let mut h = 0xbb67ae8584caa73bu64;
-    h = mix(h, packet.objective_id);
-    h = mix(h, packet.active_task_id);
-    h.max(1)
+    tool_ordered_hash(
+        0xbb67ae8584caa73bu64,
+        &[packet.objective_id, packet.active_task_id],
+    )
 }
 
 pub(crate) fn tool_input_hash(packet: Packet) -> u64 {
-    let mut h = 0x13198a2e03707344u64;
-    h = mix(h, packet.objective_id);
-    h = mix(h, packet.active_task_id);
-    h = mix(h, packet.ready_tasks as u64);
-    h = mix(h, packet.revision);
-    h.max(1)
+    tool_ordered_hash(
+        0x13198a2e03707344u64,
+        &[
+            packet.objective_id,
+            packet.active_task_id,
+            packet.ready_tasks as u64,
+            packet.revision,
+        ],
+    )
 }
 
 pub(crate) fn tool_output_hash(request: ToolRequest) -> u64 {
-    let mut h = 0x243f6a8885a308d3u64;
-    h = mix(h, request.objective_id);
-    h = mix(h, request.task_id);
-    h = mix(h, request.command_hash);
-    h = mix(h, request.input_hash);
-    h.max(1)
+    tool_ordered_hash(
+        0x243f6a8885a308d3u64,
+        &[
+            request.objective_id,
+            request.task_id,
+            request.command_hash,
+            request.input_hash,
+        ],
+    )
+}
+
+fn tool_ordered_hash(seed: u64, fields: &[u64]) -> u64 {
+    fields.iter().fold(seed, |h, field| mix(h, *field)).max(1)
 }
 
 pub(crate) fn tool_effect_output_hash(before: Packet, after: Packet) -> u64 {
