@@ -5217,3 +5217,16 @@ Planning-turn update on 2026-05-14 for next non-root Ollama NDJSON encoder work:
 - Rejected `root_validate`; rejected `src/agent/loop_driver.rs` because prior notes indicate unrelated uncommitted edits; rejected loader, decoder, receipt-finalization, HTTP/client, and OpenAI surfaces for this planning slice.
 - Updated `plan.md` with three executable items: item 49 Ollama NDJSON encoder helper extraction in `src/capability/llm/ollama.rs`, item 50 focused encoder layout regression coverage, and item 51 graph-derived evidence refresh.
 - `score.md` was reviewed and left unchanged because this planning turn produced no implementation, validation refresh, graph refresh, or score-history-worthy capability evidence.
+
+
+Implementation step 1 evidence on 2026-05-14 for Active Priorities item 49:
+
+- Selected first unchecked Active Priorities item 49: `src/capability/llm/ollama.rs` Ollama NDJSON numeric-field encoder helper extraction.
+- Read `plan.md`, `status.md`, and `score.md` before editing.
+- Changed only the item-scoped source file `src/capability/llm/ollama.rs` plus planning/status evidence files.
+- Added private helper `encode_ollama_u64_fields_ndjson(fields)` for shared numeric-field JSON-array formatting.
+- Routed `encode_ollama_llm_effect_receipt_ndjson(...)` and `encode_ollama_judgment_proof_event_ndjson(...)` through the helper while preserving their distinct field arrays, schema-version fields, record-type fields, field order, numeric casts, and bracketed comma-separated NDJSON output.
+- Did not change append functions, decode functions, load functions, verification functions, receipt/proof structs, receipt/proof hashing, replay verification, API/TLog call sites, OpenAI code, HTTP/client code, or tests.
+- Targeted validation passed: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo check --lib` completed successfully.
+- Broader validation passed: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets` passed with 318 library tests, 3 `root_validate` binary tests, and all integration/example test targets passing.
+- Marked item 49 complete in `plan.md`. `score.md` was reviewed and left unchanged because this is a narrow structure refactor with validation evidence, not a score-history-worthy project-level capability change.

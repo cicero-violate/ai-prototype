@@ -1582,12 +1582,7 @@ pub fn encode_ollama_llm_effect_receipt_ndjson(receipt: OllamaLlmEffectReceipt) 
         receipt.proof_hash,
         receipt.receipt_hash,
     ];
-    let body = fields
-        .iter()
-        .map(u64::to_string)
-        .collect::<Vec<_>>()
-        .join(",");
-    format!("[{body}]")
+    encode_ollama_u64_fields_ndjson(&fields)
 }
 
 pub fn encode_ollama_judgment_proof_event_ndjson(event: OllamaJudgmentProofEvent) -> String {
@@ -1616,6 +1611,10 @@ pub fn encode_ollama_judgment_proof_event_ndjson(event: OllamaJudgmentProofEvent
         event.phase_plan as u64,
         event.proof_hash,
     ];
+    encode_ollama_u64_fields_ndjson(&fields)
+}
+
+fn encode_ollama_u64_fields_ndjson(fields: &[u64]) -> String {
     let body = fields
         .iter()
         .map(u64::to_string)
