@@ -84,8 +84,17 @@ Current date: 2026-05-14.
 - Implementation step 4 found no unchecked Active Priorities item after item 45; no implementation, validation refresh, documentation, cleanup, or blocker-handling checklist item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task.
 - Implementation step 5 found no unchecked Active Priorities item after item 45; no implementation, validation refresh, documentation, cleanup, or blocker-handling checklist item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task.
 - Active Priorities items 46 through 48 are now planned for `src/capability/llm/openai.rs`, `src/lib.rs`, and graph-derived evidence refresh. The first executable item is item 46, which must route `OpenAiLlmEffectReceipt::{canonical_authority_hash, canonical_request_hash}` through one private ordered hash-fold helper while preserving distinct authority/request hash domains, `is_valid()` gating, canonical receipt bindings, replay/NDJSON behavior, and network behavior. `root_validate` remains explicitly non-selectable.
+- Active Priorities item 46 is complete: `OpenAiLlmEffectReceipt::{canonical_authority_hash, canonical_request_hash}` now share one private ordered hash-fold helper while preserving distinct authority/request domain seeds, exact field order, `is_valid()` gating, `h.max(1)` behavior, canonical receipt bindings, replay/NDJSON behavior, and network behavior. The next executable item is item 47, the focused regression test for OpenAI effect-receipt authority/request hash domains.
 
 ## Validation Ledger
+
+### 2026-05-14 — Active Priorities item 46 OpenAI effect-receipt hash helper
+
+- Scope: `src/capability/llm/openai.rs`, `plan.md`, `status.md`, and `score.md` review.
+- Command/check: targeted `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo check --lib`; broader `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
+- Result: passed.
+- Evidence: `OpenAiLlmEffectReceipt::canonical_authority_hash(...)` and `canonical_request_hash(...)` now delegate to one private `fold_ordered_effect_receipt_hash(...)` helper. The authority hash preserves seed `0x4f50_454e_4149_4155u64` and ordered fields `provider_hash`, `base_url_hash`, `model_id`, `timeout_ms`, `max_retries`, `attempt_budget`, and `retry_budget_hash`. The request hash preserves seed `0x4f50_454e_4149_5251u64` and ordered fields `request_hash`, `command_hash`, and `request_identity_hash`. Targeted validation passed. Broader all-target validation passed with 317 library/bin tests, 3 root_validate binary tests, 13 API server contract tests, 23 API transport contract tests, 3 canonical TLog contract tests, 4 domain contract tests, 10 graph mutation CLI contract tests, 9 MCP receipt contract tests, 2 planning contract tests, 5 score contract tests, 2 supervisor binary contract tests, 2 worker binary contract tests, and all example test targets green. `score.md` was reviewed and left unchanged because this is a narrow structure refactor with validation evidence, not a score-history-worthy project-level capability change.
+- Next action: execute Active Priorities item 47 by adding `openai_effect_receipt_hash_helpers_preserve_authority_request_domains` in `src/lib.rs`.
 
 ### 2026-05-14 — planning update for OpenAI effect-receipt hash helper work
 

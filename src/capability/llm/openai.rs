@@ -827,24 +827,38 @@ impl OpenAiLlmEffectReceipt {
 
     pub fn canonical_authority_hash(self) -> Option<u64> {
         self.is_valid().then_some(())?;
-        let mut h = 0x4f50_454e_4149_4155u64;
-        h = mix(h, self.provider_hash);
-        h = mix(h, self.base_url_hash);
-        h = mix(h, self.model_id);
-        h = mix(h, self.timeout_ms);
-        h = mix(h, self.max_retries as u64);
-        h = mix(h, self.attempt_budget as u64);
-        h = mix(h, self.retry_budget_hash);
-        Some(h.max(1))
+        Some(Self::fold_ordered_effect_receipt_hash(
+            0x4f50_454e_4149_4155u64,
+            &[
+                self.provider_hash,
+                self.base_url_hash,
+                self.model_id,
+                self.timeout_ms,
+                self.max_retries as u64,
+                self.attempt_budget as u64,
+                self.retry_budget_hash,
+            ],
+        ))
     }
 
     pub fn canonical_request_hash(self) -> Option<u64> {
         self.is_valid().then_some(())?;
-        let mut h = 0x4f50_454e_4149_5251u64;
-        h = mix(h, self.request_hash);
-        h = mix(h, self.command_hash);
-        h = mix(h, self.request_identity_hash);
-        Some(h.max(1))
+        Some(Self::fold_ordered_effect_receipt_hash(
+            0x4f50_454e_4149_5251u64,
+            &[
+                self.request_hash,
+                self.command_hash,
+                self.request_identity_hash,
+            ],
+        ))
+    }
+
+    fn fold_ordered_effect_receipt_hash(seed: u64, fields: &[u64]) -> u64 {
+        let mut h = seed;
+        for field in fields {
+            h = mix(h, *field);
+        }
+        h.max(1)
     }
 
     pub fn verification_proof_binding(self) -> Option<VerificationProofBinding> {
