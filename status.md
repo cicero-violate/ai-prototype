@@ -7675,3 +7675,16 @@ Implementation step 1 evidence on 2026-05-15 for Active Priorities item 149:
 - Broader validation passed: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets` passed with 355 library tests, 3 `root_validate` binary tests, and all integration/example test targets passing.
 - Cargo emitted a non-blocking cache last-use warning, `database or disk is full`, during validation; no Rust validation failure occurred.
 - Marked item 149 complete in `plan.md`. `score.md` was reviewed and left unchanged because this helper consolidation does not by itself justify a project-level score change before the focused regression and graph-derived evidence refresh items land.
+
+
+Implementation step 2 evidence on 2026-05-15 for Active Priorities item 150:
+
+- Selected first unchecked Active Priorities item 150: `src/lib.rs` test `policy_promotion_route_helper_preserves_source_and_feedback_entries`.
+- Read `plan.md`, `status.md`, and `score.md` before editing.
+- Changed only `src/lib.rs` within the item scope. Added focused regression test `policy_promotion_route_helper_preserves_source_and_feedback_entries` next to the existing in-memory policy promotion helper coverage.
+- The new test proves `promote(...)` and `promote_feedback(...)` accept the same valid `PolicyPromotion`, produce distinct policy entries, preserve promoted policy version, preserve source-sequence versus feedback-hash keys and values, reject an invalid promotion through both in-memory routes, leave rejected stores empty, and verifies the source TLog.
+- Production code, durable promotion behavior, filesystem behavior, public APIs, and `root_validate` were unchanged.
+- Targeted validation passed: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test policy_promotion_route_helper_preserves_source_and_feedback_entries -- --test-threads=1`.
+- Broader validation passed: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets` passed with 356 library tests, 3 `root_validate` binary tests, and all integration/example test targets passing.
+- Cargo emitted a non-blocking cache last-use warning, `database or disk is full`, during validation; no Rust validation failure occurred.
+- Marked item 150 complete in `plan.md`. `score.md` was reviewed and left unchanged because this focused regression coverage does not by itself justify a project-level score change before the graph-derived evidence refresh item lands.
