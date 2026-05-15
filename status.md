@@ -42,6 +42,7 @@ Current date: 2026-05-15.
 
 ## Current Progress
 
+- Implementation step 4 found no unchecked Active Priorities item after item 79; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 - Active Priorities item 79 is complete: graph-derived structural evidence refresh passed after items 77 and 78. `SCORE_REPORT.md` now reports `G = 7.92 / 10`, Architecture `9.0`, Structure `4.9`, Simplicity `6.9`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2`; the `ai` crate row is Nodes `5625`, Edges `35762`, Fns `2281`, Architecture `9.4`, Structure `6.1`, Simplicity `7.1`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2`. `score.md` rationale was updated to match refreshed evidence; project-level numeric scores remain unchanged because this is evidence refresh, not a new capability score change. Active Priorities are exhausted.
 - Active Priorities item 78 is complete: `u64_route_lookup_helpers_preserve_gate_and_evidence_boundaries` now proves representative gate ids, representative evidence values, cross-domain gate/evidence rejection, unknown-input `None` behavior, and representative `effect_for_gate_evidence(...)` behavior for the shared typed route-table lookup helper. Targeted and broader Rust validation passed. The next executable item is item 79, the graph-derived evidence refresh and score-rationale review.
 - Active Priorities item 77 is complete: `src/agent/cycle.rs` now routes `gate_id_u64(...)` and `evidence_u64_value(...)` through the shared typed `lookup_u64_route(...)` helper using `U64RouteTable`, preserving distinct gate and evidence route tables, unknown-input `None` behavior, submit-evidence packet/envelope behavior, and runtime receipt semantics. Targeted `cargo check --lib` and broader `cargo test --all-targets` passed. The next executable item is item 78, the focused route-boundary regression test.
@@ -147,6 +148,22 @@ Current date: 2026-05-15.
 - Implementation step 4 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 - Implementation step 5 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 ## Validation Ledger
+
+### 2026-05-15 — implementation step 4 planning contract validation
+
+- Scope: `status.md`; status-only exhausted-check record after Active Priorities item 79.
+- Command/check: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test planning_contract -- --test-threads=1`.
+- Result: passed.
+- Evidence: planning contract integration test passed `2` tests with `0` failures: `planning_record_blocks_when_all_tasks_complete` and `planning_record_decomposes_objective_with_lineage`. Cargo emitted a non-fatal global cache warning: `database or disk is full`; product validation still passed.
+- Next action: commit the status-only exhausted-check update.
+
+### 2026-05-15 — implementation step 4 checklist exhausted after item 79
+
+- Scope: `plan.md`, `status.md`, and `score.md` inspection; status-only record.
+- Command/check: read `plan.md`, `status.md`, and `score.md`; searched the operational `## Active Priorities` section for unchecked `N. [ ]` items; checked `git status --short`.
+- Result: no selectable implementation item remains.
+- Evidence: Active Priorities items 77 through 79 are all checked; no unchecked item appears under the operational `## Active Priorities`; working tree was clean before this status-only record; `score.md` remains unchanged.
+- Next action: run a planning turn to select the next executable non-`root_validate` graph-backed task.
 
 ### 2026-05-15 — item 79 graph-derived structural evidence refresh
 
