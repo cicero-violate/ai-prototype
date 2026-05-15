@@ -644,6 +644,12 @@ struct U64Route {
     value: u64,
 }
 
+#[derive(Clone, Copy)]
+enum U64RouteTable {
+    GateId,
+    EvidenceValue,
+}
+
 const GATE_ID_ROUTES: &[U64Route] = &[
     U64Route {
         name: "Invariant",
@@ -771,7 +777,12 @@ const EFFECT_ROUTES: &[EffectRoute] = &[
     },
 ];
 
-fn lookup_u64_route(routes: &[U64Route], name: &str) -> Option<u64> {
+fn lookup_u64_route(table: U64RouteTable, name: &str) -> Option<u64> {
+    let routes = match table {
+        U64RouteTable::GateId => GATE_ID_ROUTES,
+        U64RouteTable::EvidenceValue => EVIDENCE_U64_ROUTES,
+    };
+
     routes
         .iter()
         .find(|route| route.name == name)
@@ -779,11 +790,11 @@ fn lookup_u64_route(routes: &[U64Route], name: &str) -> Option<u64> {
 }
 
 fn gate_id_u64(gate: &str) -> Option<u64> {
-    lookup_u64_route(GATE_ID_ROUTES, gate)
+    lookup_u64_route(U64RouteTable::GateId, gate)
 }
 
 fn evidence_u64_value(evidence: &str) -> Option<u64> {
-    lookup_u64_route(EVIDENCE_U64_ROUTES, evidence)
+    lookup_u64_route(U64RouteTable::EvidenceValue, evidence)
 }
 
 // Returns (effect_u64, effect_json_str). PacketEffect repr: None=0, BindReadyTask=1,
