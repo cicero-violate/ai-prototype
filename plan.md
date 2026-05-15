@@ -250,7 +250,7 @@ Current planning turn selected graph split operation `f83874fb2b4b9aa3`, coverin
    - Done when: the named test serves one deterministic local HTTP response, calls `cdp_get("127.0.0.1", port, "/json/list", timeout_ms)`, asserts that the server observed the exact GET request line, Host header, Accept header, and Connection header, and asserts that the returned status and body match the fixture. The test must not perform external network I/O, environment mutation, process spawning, or filesystem I/O outside normal cargo test execution.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test cdp_get_helpers_preserve_http_request_and_response_parsing -- --test-threads=1`.
 
-39. [ ] `SCORE_REPORT.md`: after items 37 and 38 land, refresh graph-derived structural evidence and review whether `score.md` rationale changes without raising project-level scores absent capability evidence.
+39. [x] `SCORE_REPORT.md`: after items 37 and 38 land, refresh graph-derived structural evidence and review whether `score.md` rationale changes without raising project-level scores absent capability evidence.
    - Scope: `SCORE_REPORT.md`, `score.md`, `plan.md`, and `status.md` only.
    - Done when: `scripts/recapture_rustc_graphs.sh --check` validates the configured graph root, `SCORE_REPORT.md` is regenerated from `../state/rustc`, `status.md` records aggregate and affected crate rows, and `score.md` changes only if refreshed evidence differs from the current rationale.
    - Validation: `bash scripts/recapture_rustc_graphs.sh --check && cargo run --manifest-path ../score/Cargo.toml --quiet -- --artifact-root ../state/rustc --report SCORE_REPORT.md --date "$(date +%Y-%m-%d)"`.
