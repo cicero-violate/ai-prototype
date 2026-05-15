@@ -284,26 +284,19 @@ impl ArtifactSemanticProfile {
     }
 
     pub fn expected_receipt_hash(self) -> u64 {
-        let mut h = 0x243f6a8885a308d3u64;
-        h = mix(h, self.objective_id);
-        h = mix(h, self.active_task_id);
-        h = mix(h, self.parent_artifact_id);
-        h = mix(h, self.artifact_id);
-        h = mix(h, self.artifact_bytes);
-        h = mix(h, self.revision);
-        h
+        semantic_profile_artifact_hash(
+            0x243f6a8885a308d3u64,
+            self,
+            SemanticProfileArtifactHashKind::Receipt,
+        )
     }
 
     pub fn expected_lineage_hash(self) -> u64 {
-        let mut h = 0x9e3779b97f4a7c15u64;
-        h = mix(h, self.objective_id);
-        h = mix(h, self.active_task_id);
-        h = mix(h, self.parent_artifact_id);
-        h = mix(h, self.artifact_id);
-        h = mix(h, self.artifact_bytes);
-        h = mix(h, self.receipt_hash);
-        h = mix(h, self.revision);
-        h
+        semantic_profile_artifact_hash(
+            0x9e3779b97f4a7c15u64,
+            self,
+            SemanticProfileArtifactHashKind::Lineage,
+        )
     }
 
     pub fn semantic_hash(self) -> u64 {
@@ -321,6 +314,29 @@ impl ArtifactSemanticProfile {
         h = mix(h, self.revision);
         h.max(1)
     }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum SemanticProfileArtifactHashKind {
+    Receipt,
+    Lineage,
+}
+
+fn semantic_profile_artifact_hash(
+    seed: u64,
+    profile: ArtifactSemanticProfile,
+    kind: SemanticProfileArtifactHashKind,
+) -> u64 {
+    let mut h = seed;
+    h = mix(h, profile.objective_id);
+    h = mix(h, profile.active_task_id);
+    h = mix(h, profile.parent_artifact_id);
+    h = mix(h, profile.artifact_id);
+    h = mix(h, profile.artifact_bytes);
+    if kind == SemanticProfileArtifactHashKind::Lineage {
+        h = mix(h, profile.receipt_hash);
+    }
+    mix(h, profile.revision)
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
