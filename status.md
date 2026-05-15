@@ -42,6 +42,8 @@ Current date: 2026-05-15.
 
 ## Current Progress
 
+- Active Priorities item 143 is complete: `src/capability/policy/store.rs` now routes `PolicyProofReceipt::receipt_core_hash(...)` and `PolicyProofReceipt::verifier_context_hash(...)` through one private `fold_policy_proof_hash(...)` helper while preserving the distinct receipt-core seed `0x504f_4c49_4359_434fu64`, verifier-context seed `0x504f_4c49_4359_4354u64`, ordered field vectors, `entry_hash()?` invalid-key propagation, and non-zero `max(1)` behavior. No policy store persistence, lookup receipts, canonical effect/proof conversion, tests, filesystem behavior, or `root_validate` were changed. Targeted validation `cargo check --lib` passed. Broader `cargo test --all-targets` passed with 347 library tests, 3 `root_validate` binary tests, and all integration/binary/example suites green. Cargo emitted the known non-fatal last-use/cache warning reporting `database or disk is full`. The next executable item is item 144, focused in-module regression coverage. `score.md` remains unchanged because this is a narrow structure refactor with validation evidence, not a project-level score change.
+
 - Planning turn on 2026-05-15 selected the next non-`root_validate` graph-backed work queue after confirming items 140 through 142 were complete and no unchecked Active Priorities item remained. The next executable item is Active Priorities item 143 in `src/capability/policy/store.rs`, consolidating `PolicyProofReceipt::receipt_core_hash(...)` and `PolicyProofReceipt::verifier_context_hash(...)` through one private ordered policy proof hash-fold helper while preserving distinct receipt-core and verifier-context domains; item 144 adds focused regression coverage; item 145 refreshes graph-derived evidence. Reconnaissance inspected `plan.md`, `status.md`, `score.md`, `SCORE_REPORT.md`, the selected `ai` graph-editor plan, and candidate policy store source/tests. `root_validate` remains intentionally non-selected. `score.md` remains unchanged because this planning turn produced no implementation, validation refresh, graph refresh, or score-changing capability evidence. Planning/doc validation `cargo test --test planning_contract -- --test-threads=1` passed with 2 tests and 0 failures; Cargo emitted the known non-fatal last-use/cache warning reporting `database or disk is full`.
 
 - Implementation step 5 on 2026-05-15 found no unchecked Active Priorities item after item 142; items 140 through 142 remain complete and the current queue is exhausted. No implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. Planning/doc validation `cargo test --test planning_contract -- --test-threads=1` passed with 2 tests and 0 failures. Cargo emitted the known non-fatal last-use/cache warning reporting `database or disk is full`. `score.md` remains unchanged because no implementation or score-changing evidence was produced in this step.
@@ -365,6 +367,14 @@ Current date: 2026-05-15.
 - Implementation step 4 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 - Implementation step 5 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 ## Validation Ledger
+
+### 2026-05-15 — Active Priorities item 143 policy proof receipt hash helper
+
+- Scope: `src/capability/policy/store.rs`, `plan.md`, and `status.md`.
+- Command/check: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo check --lib`; `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
+- Result: passed.
+- Evidence: `cargo check --lib` completed successfully. `cargo test --all-targets` passed with 347 library tests, 3 `root_validate` binary tests, and all integration/binary/example suites green. Cargo emitted the known non-fatal last-use/cache warning reporting `database or disk is full`.
+- Next action: execute Active Priorities item 144 in `src/capability/policy/store.rs`.
 
 ### 2026-05-15 — planning contract validation after policy proof receipt planning
 

@@ -254,12 +254,15 @@ impl PolicyProofReceipt {
     }
 
     pub fn receipt_core_hash(self) -> Option<u64> {
-        let mut h = 0x504f_4c49_4359_434fu64;
-        h = mix(h, self.entry_hash()?);
-        h = mix(h, self.policy_store_hash);
-        h = mix(h, self.receipt_event_seq);
-        h = mix(h, self.receipt_event_hash);
-        Some(h.max(1))
+        Some(fold_policy_proof_hash(
+            0x504f_4c49_4359_434fu64,
+            &[
+                self.entry_hash()?,
+                self.policy_store_hash,
+                self.receipt_event_seq,
+                self.receipt_event_hash,
+            ],
+        ))
     }
 
     pub fn expected_receipt_hash(self) -> Option<u64> {
@@ -271,11 +274,14 @@ impl PolicyProofReceipt {
     }
 
     pub fn verifier_context_hash(self) -> Option<u64> {
-        let mut h = 0x504f_4c49_4359_4354u64;
-        h = mix(h, ProofSubjectKind::PolicyEffect as u64);
-        h = mix(h, self.entry_hash()?);
-        h = mix(h, self.policy_store_hash);
-        Some(h.max(1))
+        Some(fold_policy_proof_hash(
+            0x504f_4c49_4359_4354u64,
+            &[
+                ProofSubjectKind::PolicyEffect as u64,
+                self.entry_hash()?,
+                self.policy_store_hash,
+            ],
+        ))
     }
 
     pub fn provider_proof_hash(self, proof_event_seq: u64) -> Option<u64> {
@@ -363,6 +369,10 @@ impl PolicyProofReceipt {
             .1
             .to_verification_proof_record()
     }
+}
+
+fn fold_policy_proof_hash(seed: u64, fields: &[u64]) -> u64 {
+    fields.iter().copied().fold(seed, mix).max(1)
 }
 
 fn append_policy_ndjson(
