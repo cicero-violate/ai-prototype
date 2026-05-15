@@ -7701,3 +7701,16 @@ Implementation step 3 evidence on 2026-05-15 for Active Priorities item 151:
 - Updated `score.md` rationale only to replace stale graph-derived Structure and `ai` row counts with the refreshed report values; project-level numeric scores and score history remain unchanged because this is evidence refresh, not a score-history-worthy capability change.
 - Cargo emitted a non-blocking cache warning, `database or disk is full`, during validation; no Rust validation failure occurred.
 - Marked item 151 complete in `plan.md`.
+
+
+Implementation step 4 evidence on 2026-05-15 for Active Priorities item 165:
+
+- Selected first unchecked Active Priorities item 165: `SCORE_REPORT.md` graph-derived structural evidence refresh after items 163 and 164.
+- Read `plan.md`, `status.md`, and `score.md` before running validation.
+- Ran the targeted evidence-refresh command: `bash scripts/recapture_rustc_graphs.sh --check && cargo run --manifest-path ../score/Cargo.toml --quiet -- --artifact-root ../state/rustc --report SCORE_REPORT.md --date "$(date +%Y-%m-%d)"`.
+- Targeted validation passed. Graph artifact check passed for configured `../state/rustc` with required artifacts, the scorer processed 18 crates with 0 skipped, and regenerated evidence remained `G = 7.94 / 10`.
+- Refreshed aggregate axes remain Architecture `8.9`, Structure `5.0`, Simplicity `6.9`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2`.
+- Affected rows after items 163 and 164 match the checked-in structural snapshot: local `ai` library crate row is 5,665 nodes, 35,000 edges, 2,310 functions, Architecture `9.3`, Structure `6.1`, Simplicity `7.2`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2`; `root_validate` remains 163 nodes, 1,990 edges, 161 functions, Architecture `3.3`, Structure `1.5`, Simplicity `6.1`, Maintainability `10.0`, Determinism `10.0`, and Coherency `7.3`.
+- `SCORE_REPORT.md` had no diff after refresh and `score.md` was reviewed and left unchanged because refreshed evidence matches the current rationale and does not justify project-level numeric score changes.
+- Cargo emitted a non-blocking cache warning, `database or disk is full`, during validation; no Rust validation failure occurred.
+- Marked item 165 complete in `plan.md`.
