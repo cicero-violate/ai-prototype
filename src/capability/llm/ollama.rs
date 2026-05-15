@@ -1405,7 +1405,7 @@ pub fn load_ollama_llm_effect_receipts_ndjson(
 ) -> Result<Vec<OllamaLlmEffectReceipt>, OllamaError> {
     load_ollama_ndjson_records(
         path,
-        OLLAMA_LLM_EFFECT_RECEIPT_RECORD,
+        OllamaNdjsonRecordKind::LlmEffectReceipt,
         decode_ollama_llm_effect_receipt_fields,
     )
 }
@@ -1447,7 +1447,7 @@ pub fn load_ollama_judgment_proof_events_ndjson(
 ) -> Result<Vec<OllamaJudgmentProofEvent>, OllamaError> {
     load_ollama_ndjson_records(
         path,
-        OLLAMA_JUDGMENT_PROOF_RECORD,
+        OllamaNdjsonRecordKind::JudgmentProofEvent,
         decode_ollama_judgment_proof_event_fields,
     )
 }
@@ -1754,9 +1754,24 @@ fn load_ollama_llm_effect_receipts_ndjson_unchecked(
 ) -> Result<Vec<OllamaLlmEffectReceipt>, OllamaError> {
     load_ollama_ndjson_records(
         path,
-        OLLAMA_LLM_EFFECT_RECEIPT_RECORD,
+        OllamaNdjsonRecordKind::LlmEffectReceipt,
         decode_ollama_llm_effect_receipt_fields_unchecked,
     )
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum OllamaNdjsonRecordKind {
+    LlmEffectReceipt,
+    JudgmentProofEvent,
+}
+
+impl OllamaNdjsonRecordKind {
+    fn tag(self) -> u64 {
+        match self {
+            OllamaNdjsonRecordKind::LlmEffectReceipt => OLLAMA_LLM_EFFECT_RECEIPT_RECORD,
+            OllamaNdjsonRecordKind::JudgmentProofEvent => OLLAMA_JUDGMENT_PROOF_RECORD,
+        }
+    }
 }
 
 fn append_ollama_ndjson_record(
@@ -1777,7 +1792,7 @@ fn append_ollama_ndjson_record(
 
 fn load_ollama_ndjson_records<T, F>(
     path: impl AsRef<Path>,
-    record_tag: u64,
+    record_kind: OllamaNdjsonRecordKind,
     decode: F,
 ) -> Result<Vec<T>, OllamaError>
 where
@@ -1791,6 +1806,7 @@ where
     let file = File::open(path)?;
     let reader = BufReader::new(file);
     let mut records = Vec::new();
+    let record_tag = record_kind.tag();
     for line in reader.lines() {
         let line = line?;
         if line.trim().is_empty() {
