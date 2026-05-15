@@ -471,6 +471,66 @@ mod tests {
     }
 
     #[test]
+    fn eval_hash_fold_helper_preserves_payload_and_dimension_boundaries() {
+        let record = passing_record();
+        let payload_hash = eval_payload_hash(&record);
+        let order_hash = dimension_order_hash(&record.dimensions);
+        let score_hash = dimension_score_hash(&record.dimensions);
+
+        assert_ne!(payload_hash, 0);
+        assert_ne!(order_hash, 0);
+        assert_ne!(score_hash, 0);
+        assert_ne!(payload_hash, order_hash);
+        assert_ne!(payload_hash, score_hash);
+        assert_ne!(order_hash, score_hash);
+
+        let receipt = EvalScorecardReceipt::from_record(&record);
+        assert_eq!(receipt.payload_hash, payload_hash);
+        assert_eq!(receipt.dimension_order_hash, order_hash);
+        assert_eq!(receipt.dimension_score_hash, score_hash);
+
+        let score_changed_record = EvalRecord {
+            score: record.score + 1,
+            ..record.clone()
+        };
+        let threshold_changed_record = EvalRecord {
+            threshold_used: record.threshold_used + 1,
+            ..record.clone()
+        };
+        assert_ne!(payload_hash, eval_payload_hash(&score_changed_record));
+        assert_ne!(payload_hash, eval_payload_hash(&threshold_changed_record));
+
+        let reordered_dimensions = vec![record.dimensions[1], record.dimensions[0]];
+        assert_ne!(order_hash, dimension_order_hash(&reordered_dimensions));
+
+        let score_changed_dimensions = vec![
+            EvalDimension {
+                score: record.dimensions[0].score + 1,
+                ..record.dimensions[0]
+            },
+            record.dimensions[1],
+        ];
+        let threshold_changed_dimensions = vec![
+            record.dimensions[0],
+            EvalDimension {
+                threshold: record.dimensions[1].threshold + 1,
+                ..record.dimensions[1]
+            },
+        ];
+
+        assert_eq!(order_hash, dimension_order_hash(&score_changed_dimensions));
+        assert_eq!(
+            order_hash,
+            dimension_order_hash(&threshold_changed_dimensions)
+        );
+        assert_ne!(score_hash, dimension_score_hash(&score_changed_dimensions));
+        assert_ne!(
+            score_hash,
+            dimension_score_hash(&threshold_changed_dimensions)
+        );
+    }
+
+    #[test]
     fn scorecard_receipt_rejects_tampered_hash() {
         let record = passing_record();
         let mut receipt = record.scorecard_receipt();
