@@ -12,7 +12,7 @@ Maintainability      = 10.0
 Determinism          = 10.0
 Coherency            = 8.2
 
-G (geometric mean)   = 7.92 / 10
+G (geometric mean)   = 7.93 / 10
 ```
 
 ## Per-Crate Breakdown
@@ -20,7 +20,7 @@ G (geometric mean)   = 7.92 / 10
 | Crate                      | Nodes | Edges | Fns  | Arch | Struct | Simple | Maint | Determ | Coher |
 | :------------------------- | ----: | ----: | ---: | ---: | -----: | -----: | ----: | -----: | ----: |
 | agent                      |     6 |   208 |    6 |  5.0 |    8.8 |    0.8 |  10.0 |   10.0 |   7.7 |
-| ai                         |  5629 | 35766 | 2285 |  9.4 |    6.1 |    7.1 |  10.0 |   10.0 |   8.2 |
+| ai                         |  5630 | 35768 | 2286 |  9.4 |    6.1 |    7.1 |  10.0 |   10.0 |   8.2 |
 | ai                         |     1 |    18 |    1 |  5.0 |    4.5 |    4.5 |  10.0 |   10.0 |   7.0 |
 | browser_router             |   656 |  5986 |  316 |  9.0 |    4.6 |    4.5 |  10.0 |   10.0 |   8.5 |
 | browser_router             |     2 |    74 |    2 |  5.0 |    6.1 |    0.7 |  10.0 |   10.0 |   7.0 |

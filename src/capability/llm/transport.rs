@@ -76,12 +76,19 @@ pub fn provider_config_hash(provider: &str, base_url: &str, model: &str) -> u64 
     h.max(1)
 }
 
-pub fn retry_policy_hash(seed: u64, timeout_ms: u64, max_retries: u32, attempt_budget: u32) -> u64 {
+fn fold_ordered_transport_hash(seed: u64, fields: &[u64]) -> u64 {
     let mut h = seed;
-    h = mix(h, timeout_ms);
-    h = mix(h, max_retries as u64);
-    h = mix(h, attempt_budget as u64);
+    for field in fields {
+        h = mix(h, *field);
+    }
     h.max(1)
+}
+
+pub fn retry_policy_hash(seed: u64, timeout_ms: u64, max_retries: u32, attempt_budget: u32) -> u64 {
+    fold_ordered_transport_hash(
+        seed,
+        &[timeout_ms, max_retries as u64, attempt_budget as u64],
+    )
 }
 
 pub fn request_identity_hash(
@@ -91,12 +98,10 @@ pub fn request_identity_hash(
     model_id: u64,
     request_hash: u64,
 ) -> u64 {
-    let mut h = seed;
-    h = mix(h, provider_hash);
-    h = mix(h, base_url_hash);
-    h = mix(h, model_id);
-    h = mix(h, request_hash);
-    h.max(1)
+    fold_ordered_transport_hash(
+        seed,
+        &[provider_hash, base_url_hash, model_id, request_hash],
+    )
 }
 
 #[cfg(test)]
