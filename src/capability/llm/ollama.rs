@@ -2063,6 +2063,91 @@ mod tests {
     }
 
     #[test]
+    fn ollama_ndjson_loader_helper_preserves_checked_unchecked_boundaries() {
+        let base_receipt = valid_test_receipt();
+        let (receipt, proof_event) =
+            OllamaJudgmentProofEvent::finalize_receipt(base_receipt, true, true, true, true)
+                .unwrap();
+
+        let dir = std::env::temp_dir().join(format!(
+            "canon-ollama-ndjson-loader-{}",
+            std::thread::current().name().unwrap_or("unnamed")
+        ));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let mixed_path = dir.join("mixed.ndjson");
+        let unchecked_path = dir.join("unchecked.ndjson");
+        let missing_path = dir.join("missing.ndjson");
+
+        let unrelated_line = encode_ollama_u64_fields_ndjson(&[
+            OLLAMA_LLM_EFFECT_RECEIPT_SCHEMA_VERSION,
+            OLLAMA_LLM_EFFECT_RECEIPT_RECORD + OLLAMA_JUDGMENT_PROOF_RECORD,
+            1,
+        ]);
+        let mixed_body = [
+            unrelated_line.as_str(),
+            "",
+            &encode_ollama_llm_effect_receipt_ndjson(receipt),
+            &encode_ollama_judgment_proof_event_ndjson(proof_event),
+        ]
+        .join("\n");
+        std::fs::write(&mixed_path, format!("{mixed_body}\n")).unwrap();
+
+        assert_eq!(
+            load_ollama_llm_effect_receipts_ndjson(&mixed_path).unwrap(),
+            vec![receipt]
+        );
+        assert_eq!(
+            load_ollama_judgment_proof_events_ndjson(&mixed_path).unwrap(),
+            vec![proof_event]
+        );
+        assert_eq!(
+            load_ollama_llm_effect_receipts_ndjson_unchecked(&mixed_path).unwrap(),
+            vec![receipt]
+        );
+
+        let mut unchecked_only = receipt;
+        unchecked_only.receipt_hash ^= 1;
+        assert!(!unchecked_only.is_valid());
+        std::fs::write(
+            &unchecked_path,
+            format!(
+                "{}\n{}\n",
+                encode_ollama_u64_fields_ndjson(&[
+                    OLLAMA_JUDGMENT_PROOF_SCHEMA_VERSION,
+                    OLLAMA_JUDGMENT_PROOF_RECORD + OLLAMA_LLM_EFFECT_RECEIPT_RECORD,
+                    2,
+                ]),
+                encode_ollama_llm_effect_receipt_ndjson(unchecked_only)
+            ),
+        )
+        .unwrap();
+
+        assert!(matches!(
+            load_ollama_llm_effect_receipts_ndjson(&unchecked_path),
+            Err(OllamaError::InvalidReceipt)
+        ));
+        assert_eq!(
+            load_ollama_llm_effect_receipts_ndjson_unchecked(&unchecked_path).unwrap(),
+            vec![unchecked_only]
+        );
+
+        assert!(load_ollama_llm_effect_receipts_ndjson(&missing_path)
+            .unwrap()
+            .is_empty());
+        assert!(
+            load_ollama_llm_effect_receipts_ndjson_unchecked(&missing_path)
+                .unwrap()
+                .is_empty()
+        );
+        assert!(load_ollama_judgment_proof_events_ndjson(&missing_path)
+            .unwrap()
+            .is_empty());
+
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
     fn ollama_proof_event_hash_helpers_preserve_distinct_domains() {
         let base_receipt = valid_test_receipt();
         let (receipt, proof_event) =
