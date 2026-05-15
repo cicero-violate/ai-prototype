@@ -42,6 +42,10 @@ Current date: 2026-05-15.
 
 ## Current Progress
 
+- Active Priorities item 135 is complete: `src/agent/prompt.rs` now includes focused in-module regression coverage in `certification_phase_dispatch_preserves_public_prompt_outputs`. The test proves all five public certification prompt builders preserve distinct phase labels, input-derived context payloads, phase-specific instructions, shared safety/output rules, final verdict requirements, and pairwise-distinct outputs. It performs no file I/O, network I/O, environment mutation, thread spawning, or process spawning. Targeted named-test validation passed. Broader `cargo test --all-targets` passed with 345 library tests, 3 `root_validate` binary tests, and all integration/binary/example targets green. Cargo emitted the known non-fatal last-use cache warning reporting `database or disk is full`. The next executable item is item 136, graph-derived structural evidence refresh. `score.md` remains unchanged because this is focused regression coverage for an existing helper boundary, not a project-level score change.
+
+- Active Priorities item 134 is complete: `src/agent/prompt.rs` now routes `analysis_prompt(...)`, `judgment_prompt(...)`, `plan_prompt(...)`, `eval_prompt(...)`, and `recovery_prompt(...)` through a private `CertificationPhase` dispatch helper while preserving all public prompt signatures and output text. `system_prompt(...)`, `planning_prompt(...)`, runtime call sites, tests, and `root_validate` were not changed. Targeted validation `cargo check --lib` passed. Broader `cargo test --all-targets` passed with 344 library tests, 3 `root_validate` binary tests, and all integration/binary/example targets green. Cargo emitted the known non-fatal last-use cache warning reporting `database or disk is full`. The next executable item is item 135, focused prompt dispatch regression coverage. `score.md` remains unchanged because this is a narrow structure refactor with validation evidence, not a score-history-worthy project-level capability change.
+
 - Planning turn on 2026-05-15 selected the next non-`root_validate` graph-backed work queue after confirming items 131 through 133 were complete and no unchecked Active Priorities item remained. The next executable item is Active Priorities item 134 in `src/agent/prompt.rs`, consolidating public certification prompt wrappers through a private dispatch helper while preserving output semantics; item 135 adds focused regression coverage; item 136 refreshes graph-derived evidence. `score.md` remains unchanged because this planning turn produced no implementation or score-changing validation evidence.
 
 - Implementation step 5 on 2026-05-15 found no unchecked Active Priorities item after item 133; items 131 through 133 remain complete and the current queue is exhausted. No implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
@@ -329,6 +333,22 @@ Current date: 2026-05-15.
 - Implementation step 4 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 - Implementation step 5 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 ## Validation Ledger
+
+### 2026-05-15 — Active Priorities item 135 prompt dispatch regression
+
+- Scope: `src/agent/prompt.rs` test module, `plan.md`, `status.md`, and `score.md` review.
+- Command/check: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test certification_phase_dispatch_preserves_public_prompt_outputs -- --test-threads=1`; `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
+- Result: passed.
+- Evidence: targeted named test passed with 1 test and 344 filtered library tests; broader `cargo test --all-targets` passed with 345 library tests, 3 `root_validate` binary tests, and all integration/binary/example targets green. Cargo emitted the known non-fatal cache last-use warning, `database or disk is full`, without Rust validation failure.
+- Next action: execute Active Priorities item 136 and refresh graph-derived structural evidence with `bash scripts/recapture_rustc_graphs.sh --check && cargo run --manifest-path ../score/Cargo.toml --quiet -- --artifact-root ../state/rustc --report SCORE_REPORT.md --date "$(date +%Y-%m-%d)"`.
+
+### 2026-05-15 — Active Priorities item 134 prompt dispatch helper
+
+- Scope: `src/agent/prompt.rs`, `plan.md`, `status.md`, and `score.md` review.
+- Command/check: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo check --lib`; `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
+- Result: passed.
+- Evidence: production prompt wrappers now use private `CertificationPhase` dispatch; targeted `cargo check --lib` completed successfully; broader `cargo test --all-targets` passed with 344 library tests, 3 `root_validate` binary tests, and all integration/binary/example targets green. Cargo emitted the known non-fatal cache last-use warning, `database or disk is full`, without Rust validation failure.
+- Next action: execute Active Priorities item 135 in `src/agent/prompt.rs` and validate with `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test certification_phase_dispatch_preserves_public_prompt_outputs -- --test-threads=1`.
 
 ### 2026-05-15 — planning selection for agent prompt graph-backed consolidation
 

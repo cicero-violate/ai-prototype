@@ -21,6 +21,66 @@ struct CertificationPrompt<'a> {
     instruction: &'static str,
 }
 
+enum CertificationPhase<'a> {
+    Analysis {
+        goal: &'a str,
+    },
+    Judgment {
+        analysis: &'a str,
+    },
+    Plan {
+        judgment: &'a str,
+    },
+    Eval {
+        metric: &'a str,
+        execution: &'a str,
+    },
+    Recovery {
+        failure: &'a str,
+        target_phase: &'a str,
+    },
+}
+
+impl CertificationPhase<'_> {
+    fn prompt(self, domain: &str) -> String {
+        match self {
+            Self::Analysis { goal } => certification_phase_prompt(
+                "Analysis",
+                domain,
+                format!("Goal: {goal}"),
+                "Analyze the objective and identify the facts, assumptions, risks, and unknowns that matter for deciding whether the work should proceed.",
+            ),
+            Self::Judgment { analysis } => certification_phase_prompt(
+                "Judgment",
+                domain,
+                format!("Analysis:\n{analysis}"),
+                "Judge whether the analysis supports moving forward. State the decision, confidence, and any blocking concerns.",
+            ),
+            Self::Plan { judgment } => certification_phase_prompt(
+                "Plan",
+                domain,
+                format!("Judgment:\n{judgment}"),
+                "Produce the concrete plan of work implied by the judgment. Include ordered tasks, expected receipts, and completion criteria.",
+            ),
+            Self::Eval { metric, execution } => certification_phase_prompt(
+                "Eval",
+                domain,
+                format!("Success metric: {metric}\nExecution context:\n{execution}"),
+                "Evaluate the completed work against the success metric. Call out any remaining gaps or reasons the result should not be accepted.",
+            ),
+            Self::Recovery {
+                failure,
+                target_phase,
+            } => certification_phase_prompt(
+                "Recovery",
+                domain,
+                format!("Failure: {failure}\nTarget phase: {target_phase}"),
+                "Explain the recovery work needed to return the objective to a coherent state. Focus on the semantic repair, not runtime protocol details.",
+            ),
+        }
+    }
+}
+
 fn certification_prompt(spec: CertificationPrompt<'_>) -> String {
     format!(
         "{} phase — domain: {}\n{}\n\n{} \
@@ -72,48 +132,27 @@ pub fn planning_prompt(
 }
 
 pub fn analysis_prompt(domain: &str, goal: &str) -> String {
-    certification_phase_prompt(
-        "Analysis",
-        domain,
-        format!("Goal: {goal}"),
-        "Analyze the objective and identify the facts, assumptions, risks, and unknowns that matter for deciding whether the work should proceed.",
-    )
+    CertificationPhase::Analysis { goal }.prompt(domain)
 }
 
 pub fn judgment_prompt(domain: &str, analysis: &str) -> String {
-    certification_phase_prompt(
-        "Judgment",
-        domain,
-        format!("Analysis:\n{analysis}"),
-        "Judge whether the analysis supports moving forward. State the decision, confidence, and any blocking concerns.",
-    )
+    CertificationPhase::Judgment { analysis }.prompt(domain)
 }
 
 pub fn plan_prompt(domain: &str, judgment: &str) -> String {
-    certification_phase_prompt(
-        "Plan",
-        domain,
-        format!("Judgment:\n{judgment}"),
-        "Produce the concrete plan of work implied by the judgment. Include ordered tasks, expected receipts, and completion criteria.",
-    )
+    CertificationPhase::Plan { judgment }.prompt(domain)
 }
 
 pub fn eval_prompt(domain: &str, metric: &str, execution: &str) -> String {
-    certification_phase_prompt(
-        "Eval",
-        domain,
-        format!("Success metric: {metric}\nExecution context:\n{execution}"),
-        "Evaluate the completed work against the success metric. Call out any remaining gaps or reasons the result should not be accepted.",
-    )
+    CertificationPhase::Eval { metric, execution }.prompt(domain)
 }
 
 pub fn recovery_prompt(domain: &str, failure: &str, target_phase: &str) -> String {
-    certification_phase_prompt(
-        "Recovery",
-        domain,
-        format!("Failure: {failure}\nTarget phase: {target_phase}"),
-        "Explain the recovery work needed to return the objective to a coherent state. Focus on the semantic repair, not runtime protocol details.",
-    )
+    CertificationPhase::Recovery {
+        failure,
+        target_phase,
+    }
+    .prompt(domain)
 }
 
 #[cfg(test)]
@@ -250,6 +289,79 @@ mod tests {
 
             for expected_fragment in expected_fragments {
                 assert!(prompt.contains(expected_fragment));
+            }
+        }
+    }
+
+    #[test]
+    fn certification_phase_dispatch_preserves_public_prompt_outputs() {
+        let prompts = [
+            (
+                analysis_prompt("domain", "goal"),
+                "Analysis phase — domain: domain",
+                [
+                    "Goal: goal",
+                    "Analyze the objective and identify the facts, assumptions, risks, and unknowns",
+                ]
+                .as_slice(),
+            ),
+            (
+                judgment_prompt("domain", "analysis"),
+                "Judgment phase — domain: domain",
+                [
+                    "Analysis:\nanalysis",
+                    "Judge whether the analysis supports moving forward",
+                ]
+                .as_slice(),
+            ),
+            (
+                plan_prompt("domain", "judgment"),
+                "Plan phase — domain: domain",
+                [
+                    "Judgment:\njudgment",
+                    "Produce the concrete plan of work implied by the judgment",
+                ]
+                .as_slice(),
+            ),
+            (
+                eval_prompt("domain", "metric", "execution"),
+                "Eval phase — domain: domain",
+                [
+                    "Success metric: metric",
+                    "Execution context:\nexecution",
+                    "Evaluate the completed work against the success metric",
+                ]
+                .as_slice(),
+            ),
+            (
+                recovery_prompt("domain", "failure", "Execute"),
+                "Recovery phase — domain: domain",
+                [
+                    "Failure: failure",
+                    "Target phase: Execute",
+                    "Explain the recovery work needed to return the objective to a coherent state",
+                ]
+                .as_slice(),
+            ),
+        ];
+
+        for (index, (prompt, phase_label, expected_fragments)) in prompts.iter().enumerate() {
+            assert!(prompt.contains(phase_label));
+            assert!(prompt.contains("domain: domain"));
+            assert!(prompt.contains("HUMAN_REVIEW_REQUIRED"));
+            assert!(prompt.contains("Do not call tools"));
+            assert!(prompt.contains("Return plain text only"));
+            assert!(prompt.contains("VERDICT: pass"));
+            assert!(prompt.contains("VERDICT: fail"));
+
+            for expected_fragment in *expected_fragments {
+                assert!(prompt.contains(expected_fragment));
+            }
+
+            for (other_index, (other_prompt, _, _)) in prompts.iter().enumerate() {
+                if index != other_index {
+                    assert_ne!(prompt, other_prompt);
+                }
             }
         }
     }

@@ -151,12 +151,12 @@ Current graph-derived aggregate evidence remains `G = 7.93 / 10`, Architecture `
    - Validation: `bash scripts/recapture_rustc_graphs.sh --check && cargo run --manifest-path ../score/Cargo.toml --quiet -- --artifact-root ../state/rustc --report SCORE_REPORT.md --date "$(date +%Y-%m-%d)"`.
 
 
-134. [ ] `src/agent/prompt.rs`: consolidate certification phase prompt wrappers behind one private phase-spec dispatch helper while preserving all public prompt outputs.
+134. [x] `src/agent/prompt.rs`: consolidate certification phase prompt wrappers behind one private phase-spec dispatch helper while preserving all public prompt outputs.
    - Scope: `src/agent/prompt.rs` only; allowed production functions are `analysis_prompt(...)`, `judgment_prompt(...)`, `plan_prompt(...)`, `eval_prompt(...)`, `recovery_prompt(...)`, `certification_phase_prompt(...)`, and at most one new private helper/enum/struct adjacent to those definitions. Do not change `system_prompt(...)`, `planning_prompt(...)`, public function names or signatures, prompt wording, runtime call sites, tests outside this file, or `root_validate` in this item.
    - Done when: each public certification wrapper still emits the same phase label, domain line, phase-specific context, phase-specific instruction, `HUMAN_REVIEW_REQUIRED`, no-tool rule, plain-text rule, and final `VERDICT: pass` / `VERDICT: fail` requirement; common phase construction lives behind a single private helper path; and no public API changes are introduced.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo check --lib`.
 
-135. [ ] `src/agent/prompt.rs` test `certification_phase_dispatch_preserves_public_prompt_outputs`: add focused regression coverage for the prompt dispatch helper boundary.
+135. [x] `src/agent/prompt.rs` test `certification_phase_dispatch_preserves_public_prompt_outputs`: add focused regression coverage for the prompt dispatch helper boundary.
    - Scope: `src/agent/prompt.rs` test module only; use in-memory prompt strings from `analysis_prompt(...)`, `judgment_prompt(...)`, `plan_prompt(...)`, `eval_prompt(...)`, and `recovery_prompt(...)`. Do not change production code in this item.
    - Done when: the named test proves all five public certification prompt builders contain their distinct phase labels, input-derived context payloads, phase-specific instructions, shared safety/output rules, and are pairwise distinct; the test must perform no file I/O, network I/O, environment mutation, thread spawning, or process spawning.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test certification_phase_dispatch_preserves_public_prompt_outputs -- --test-threads=1`.
