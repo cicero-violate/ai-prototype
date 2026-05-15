@@ -17900,4 +17900,86 @@ mod tests {
         assert_ne!(complete.catalog_hash, incomplete.catalog_hash);
         assert_ne!(complete.receipt_hash, incomplete.receipt_hash);
     }
+
+    #[test]
+    fn validation_harness_projection_and_distillation_hash_helper_preserves_boundaries() {
+        let projection = policy_reuse_scaling_projection_smoke_receipt();
+        assert!(projection.is_valid());
+        assert!(projection.passed());
+        assert_ne!(projection.projection_hash, 0);
+        assert_ne!(projection.receipt_hash, 0);
+        assert_eq!(
+            projection.projection_hash,
+            policy_reuse_scaling_projection_hash(&projection)
+        );
+        assert_eq!(
+            projection.receipt_hash,
+            policy_reuse_scaling_projection_receipt_hash(&projection)
+        );
+
+        let readiness = policy_reuse_distillation_readiness_smoke_receipt();
+        assert!(readiness.is_valid());
+        assert!(readiness.passed());
+        assert_ne!(readiness.readiness_hash, 0);
+        assert_ne!(readiness.receipt_hash, 0);
+        assert_eq!(
+            readiness.readiness_hash,
+            policy_reuse_distillation_readiness_hash(&readiness)
+        );
+        assert_eq!(
+            readiness.receipt_hash,
+            policy_reuse_distillation_readiness_receipt_hash(&readiness)
+        );
+
+        assert_ne!(projection.projection_hash, projection.receipt_hash);
+        assert_ne!(readiness.readiness_hash, readiness.receipt_hash);
+        assert_ne!(projection.projection_hash, readiness.readiness_hash);
+        assert_ne!(projection.projection_hash, readiness.receipt_hash);
+        assert_ne!(projection.receipt_hash, readiness.readiness_hash);
+        assert_ne!(projection.receipt_hash, readiness.receipt_hash);
+
+        let mut projection_reason_changed = projection.clone();
+        projection_reason_changed.regression_reason = "capacity_failed";
+        let projection_reason_hash =
+            policy_reuse_scaling_projection_hash(&projection_reason_changed);
+        assert_ne!(projection_reason_hash, 0);
+        assert_ne!(projection.projection_hash, projection_reason_hash);
+        projection_reason_changed.projection_hash = projection_reason_hash;
+        projection_reason_changed.receipt_hash =
+            policy_reuse_scaling_projection_receipt_hash(&projection_reason_changed);
+        assert!(!projection_reason_changed.is_valid());
+        assert_eq!(
+            readiness.readiness_hash,
+            policy_reuse_distillation_readiness_hash(&readiness)
+        );
+
+        let mut readiness_reason_changed = readiness.clone();
+        readiness_reason_changed.regression_reason = "validation_health_failed";
+        let readiness_reason_hash =
+            policy_reuse_distillation_readiness_hash(&readiness_reason_changed);
+        assert_ne!(readiness_reason_hash, 0);
+        assert_ne!(readiness.readiness_hash, readiness_reason_hash);
+        readiness_reason_changed.readiness_hash = readiness_reason_hash;
+        readiness_reason_changed.receipt_hash =
+            policy_reuse_distillation_readiness_receipt_hash(&readiness_reason_changed);
+        assert!(!readiness_reason_changed.is_valid());
+        assert_eq!(
+            projection.projection_hash,
+            policy_reuse_scaling_projection_hash(&projection)
+        );
+
+        let mut projection_cost_changed = projection.clone();
+        projection_cost_changed.projected_reasoning_cost_units_avoided_per_full_batch += 1;
+        assert_ne!(
+            projection.projection_hash,
+            policy_reuse_scaling_projection_hash(&projection_cost_changed)
+        );
+
+        let mut readiness_guard_changed = readiness.clone();
+        readiness_guard_changed.validation_guarded_test_count += 1;
+        assert_ne!(
+            readiness.readiness_hash,
+            policy_reuse_distillation_readiness_hash(&readiness_guard_changed)
+        );
+    }
 }
