@@ -42,6 +42,8 @@ Current date: 2026-05-15.
 
 ## Current Progress
 
+- Planning turn on 2026-05-15 added the next non-`root_validate` graph-backed execution queue after confirming items 125 through 127 were complete and no unchecked Active Priorities item remained. The new queue selects graph operation `c57778031a3fd233` from `../state/rustc/auto-refactor/workspace__ai_sandbox__canon-mini-agent__prototype__state__rustc__ai__graph.graph-editor-plan.json`, covering `capability::memory::store::{aggregate_index_hash, aggregate_memory_hash}`. New Active Priorities item 128 targets `src/capability/memory/store.rs` production-only private hash-fold helper extraction; item 129 targets focused in-module regression coverage; item 130 targets graph-derived structural evidence refresh. `root_validate` remains intentionally non-selected. `score.md` remains unchanged because this was planning only and produced no implementation, validation refresh, graph refresh, or score-changing capability evidence.
+
 - Implementation step 5 on 2026-05-15 found no unchecked Active Priorities item after item 127; items 125 through 127 remain complete and the current queue is exhausted. No implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. Planning/doc validation `cargo test --test planning_contract -- --test-threads=1` passed with 2 tests and 0 failures. Cargo emitted the known non-fatal last-use cache warning reporting `database or disk is full`. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 
 - Implementation step 4 on 2026-05-15 found no unchecked Active Priorities item after item 127; items 125 through 127 remain complete and the current queue is exhausted. No implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. Planning/doc validation `cargo test --test planning_contract -- --test-threads=1` passed with 2 tests and 0 failures. Cargo emitted the known non-fatal last-use cache warning reporting `database or disk is full`. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
@@ -303,6 +305,14 @@ Current date: 2026-05-15.
 - Implementation step 4 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 - Implementation step 5 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 ## Validation Ledger
+
+### 2026-05-15 — planning turn selected memory-store graph-backed hash-fold task
+
+- Scope: `plan.md`, `status.md`, `score.md`, `SCORE_REPORT.md`, `../state/rustc/auto-refactor/workspace__ai_sandbox__canon-mini-agent__prototype__state__rustc__ai__graph.graph-editor-plan.json`, and `src/capability/memory/store.rs`.
+- Command/check: Python inspection of the current Active Priorities checklist, current status/score/score-report snapshots, selected graph-editor plan JSON, and memory-store source/test surface.
+- Result: informational.
+- Evidence: Active Priorities had no unchecked executable item before this update; graph-derived aggregate remained `G = 7.93 / 10` with Structure `4.9` as the lowest aggregate axis; selected non-`root_validate` graph operation `c57778031a3fd233` covers `capability::memory::store::{aggregate_index_hash, aggregate_memory_hash}`; inspected `src/capability/memory/store.rs` confirmed both functions are private, deterministic, file-local hash folds over `MemoryFact` fields and already have in-module receipt/fingerprint tests suitable for focused regression expansion.
+- Next action: implement Active Priorities item 128 in `src/capability/memory/store.rs` without changing public memory APIs or `root_validate`.
 
 ### 2026-05-15 — implementation step 5 no unchecked Active Priorities item
 
