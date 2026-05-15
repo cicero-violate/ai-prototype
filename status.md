@@ -6476,3 +6476,18 @@ Implementation step 3 evidence on 2026-05-14 for Active Priorities item 51:
 - Broader validation passed: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets` passed with 319 library tests, 3 `root_validate` binary tests, and all integration/example test targets passing.
 - `SCORE_REPORT.md` and `score.md` had no diff after refresh because regenerated structural evidence matched the current checked-in report and score rationale.
 - Marked item 51 complete in `plan.md`. `score.md` was reviewed and left unchanged because this evidence refresh confirms the current structural snapshot and does not justify project-level numeric score changes.
+
+
+Planning-turn update on 2026-05-15 for next non-root LLM record hash-folding work:
+
+- Required reconnaissance completed from `/workspace/ai_sandbox/canon-mini-agent/prototype/ai` using the project connector shell.
+- Read `plan.md`; Active Priorities items 107 through 109 are complete, so there was no remaining unchecked executable item before this planning turn.
+- Read `status.md`; latest execution evidence confirms the worker-client constructor helper cycle completed through item 109 with graph-derived evidence refreshed.
+- Read `score.md` and `SCORE_REPORT.md`; project-level scores remain unchanged, while graph-derived evidence reports aggregate `G = 7.93 / 10`, Architecture `8.9`, Structure `4.9`, Simplicity `6.9`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2`.
+- Inspected `../state/rustc/auto-refactor/*.graph-editor-plan.json`; the selected local `ai` graph-editor plan is schema version 1, graph schema version 16, and currently contains 1,570 operations.
+- User direction remains explicit: do not continue `root_validate` work. `root_validate` remains intentionally non-selectable despite its weak graph row.
+- Inspected the top `ai` merge candidates and rejected already reconciled or semantically risky direct merges in `agent::cycle`, `agent::loop_driver`, `agent::prompt`, `agent::objective`, `api::transport`, OpenAI/Ollama constructor or encoder surfaces, receipt/proof loaders, policy promotion, and route helpers unless execution preserves semantic APIs and consolidates only private mechanics.
+- Inspected graph operation `95dfbd77e8746d4f`, covering `capability::llm::record::{llm_payload_hash, prompt_hash}`. Selected the broader private hash-folding family in `src/capability/llm/record.rs` because it is non-root, graph-backed, file-local, deterministic, and targets the low Structure axis through one safe helper boundary.
+- Inspected `src/capability/llm/record.rs` around `prompt_hash(...)`, `response_hash(...)`, `rationale_hash(...)`, `llm_payload_hash(...)`, retry-budget helpers, and `token_count(...)`; inspected `src/lib.rs` LLM record assertions for a focused regression surface.
+- Updated `plan.md` with three executable items: item 110 private ordered hash-folding helper extraction in `src/capability/llm/record.rs`, item 111 focused LLM record hash-domain regression coverage in `src/lib.rs`, and item 112 graph-derived evidence refresh.
+- `score.md` was reviewed and left unchanged because this planning turn produced no implementation, validation refresh, graph refresh, or score-history-worthy capability evidence.
