@@ -42,6 +42,8 @@ Current date: 2026-05-15.
 
 ## Current Progress
 
+- Planning turn on 2026-05-15 selected the next non-`root_validate` graph-backed work queue after confirming items 143 through 145 were complete and no unchecked Active Priorities item remained. The next executable item is Active Priorities item 146 in `src/capability/tooling/record/receipt.rs`, consolidating artifact/process tooling effect receipt core and verifier-context hash folding behind one private helper while preserving distinct domains; item 147 adds focused regression coverage; item 148 refreshes graph-derived evidence. Reconnaissance inspected `plan.md`, `status.md`, `score.md`, `SCORE_REPORT.md`, the selected `ai` graph-editor plan, and candidate tooling receipt source/tests. `root_validate` remains intentionally non-selected. `score.md` remains unchanged because this planning turn produced no implementation, validation refresh, graph refresh, or score-changing capability evidence.
+
 - Implementation step 5 on 2026-05-15 found no unchecked Active Priorities item after item 145; items 143 through 145 remain complete and the current queue is exhausted. No implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. Planning/doc validation `cargo test --test planning_contract -- --test-threads=1` passed with 2 tests and 0 failures. Cargo emitted the known non-fatal last-use/cache warning reporting `database or disk is full`. `score.md` remains unchanged because no implementation or score-changing evidence was produced in this step.
 
 - Implementation step 4 on 2026-05-15 found no unchecked Active Priorities item after item 145; items 143 through 145 remain complete and the current queue is exhausted. No implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. Planning/doc validation `cargo test --test planning_contract -- --test-threads=1` passed with 2 tests and 0 failures. Cargo emitted the known non-fatal last-use/cache warning reporting `database or disk is full`. `score.md` remains unchanged because no implementation or score-changing evidence was produced in this step.
@@ -375,6 +377,14 @@ Current date: 2026-05-15.
 - Implementation step 4 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 - Implementation step 5 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 ## Validation Ledger
+
+### 2026-05-15 — planning selection for tooling effect receipt hash-fold work
+
+- Scope: `plan.md`, `status.md`, `score.md`, `SCORE_REPORT.md`, `../state/rustc/auto-refactor/workspace__ai_sandbox__canon-mini-agent__prototype__state__rustc__ai__graph.graph-editor-plan.json`, and `src/capability/tooling/record/receipt.rs`.
+- Command/check: Python/read-only reconnaissance over planning files, current graph score report, selected auto-refactor JSON, candidate source/tests, and `git status --short`.
+- Result: informational.
+- Evidence: Active Priorities items 143 through 145 were complete; no unchecked item existed before this update; selected non-`root_validate` graph operations `f2d6d8e4d613ea4d` and `61c3b175b2a4b5f3`; current graph aggregate remains `G = 7.94 / 10` with Structure `4.9`; `root_validate` was excluded by explicit user direction.
+- Next action: Execute Active Priorities item 146 in `src/capability/tooling/record/receipt.rs`.
 
 ### 2026-05-15 — implementation step 5 no unchecked Active Priorities item
 
@@ -6209,6 +6219,19 @@ compiled_domain_nodes = 752
 Relevant interpretation: the refreshed graph snapshot now proves compiled P5 domain-module presence through `domain::` graph nodes, including domain bridge, business, contracts, and related generated trait implementations. This supersedes the stale 2026-05-10 graph summary that reported zero compiled domain nodes. Score changes still require item 55 score/rationale review rather than automatic inference from graph evidence alone.
 
 ## History
+
+Planning-turn update on 2026-05-15 for tooling effect receipt hash-fold work:
+
+- Required reconnaissance completed from `/workspace/ai_sandbox/canon-mini-agent/prototype/ai` using the project connector shell.
+- Read `plan.md`; Active Priorities items 143 through 145 are complete, so there was no remaining unchecked executable item before this planning turn.
+- Read `status.md`; latest execution evidence confirms the policy proof receipt helper cycle completed through item 145 with graph-derived evidence refreshed.
+- Read `score.md` and `SCORE_REPORT.md`; project-level scores remain unchanged, while graph-derived evidence reports aggregate `G = 7.94 / 10`, Architecture `8.9`, Structure `4.9`, Simplicity `6.9`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2`.
+- Inspected `../state/rustc/auto-refactor/*.graph-editor-plan.json`; the selected local `ai` graph-editor plan is schema version 1, graph schema version 16, and currently contains 1,552 operations.
+- User direction remains explicit: do not continue `root_validate` work. `root_validate` remains intentionally non-selectable despite its weak graph row.
+- Inspected top remaining `ai` merge candidates and selected operations `f2d6d8e4d613ea4d` and `61c3b175b2a4b5f3`, covering `ToolEffectReceipt::{receipt_core_hash, verifier_context_hash}` and `ProcessEffectReceipt::{receipt_core_hash, verifier_context_hash}` in `src/capability/tooling/record/receipt.rs`.
+- Updated `plan.md` with three executable items: item 146 private ordered tooling effect receipt hash-fold helper extraction, item 147 focused artifact/process receipt hash-domain regression coverage, and item 148 graph-derived evidence refresh.
+- `score.md` was reviewed and left unchanged because this planning turn produced no implementation, validation refresh, graph refresh, or score-history-worthy capability evidence.
+
 
 Implementation step 2 evidence on 2026-05-10:
 
