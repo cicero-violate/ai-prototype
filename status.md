@@ -42,6 +42,8 @@ Current date: 2026-05-15.
 
 ## Current Progress
 
+- Implementation step 4 on 2026-05-15 found no unchecked Active Priorities item after item 142; items 140 through 142 remain complete and the current queue is exhausted. No implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. Planning/doc validation `cargo test --test planning_contract -- --test-threads=1` passed with 2 tests and 0 failures. Cargo emitted the known non-fatal last-use/cache warning reporting `database or disk is full`. `score.md` remains unchanged because no implementation or score-changing evidence was produced in this step.
+
 - Active Priorities item 142 is complete: graph-derived structural evidence refresh passed after items 140 and 141. `SCORE_REPORT.md` still reports aggregate `G = 7.94 / 10`, Architecture `8.9`, Structure `4.9`, Simplicity `6.9`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2`. The refreshed `ai` crate row is Nodes `5656`, Edges `35665`, Fns `2301`, Architecture `9.4`, Structure `6.1`, Simplicity `7.2`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2`; relative to the item-139 evidence this is `+1` node, `+16` edges, `+1` function, and no score-axis change after the API submission token extractor helper and focused boundary regression. `root_validate` remains intentionally non-selected and still reports Architecture `3.2`, Structure `1.5`, Simplicity `6.1`, Maintainability `10.0`, Determinism `10.0`, and Coherency `7.3`. The configured graph artifact check and score report regeneration passed. `score.md` rationale was refreshed for item 142 evidence, but project-level numeric scores remain unchanged because this is structural evidence refresh rather than score-history-worthy capability evidence. Active Priorities are exhausted.
 
 - Active Priorities item 141 is complete: `src/api/server.rs` now includes focused in-module regression coverage in `api_submission_token_extractors_preserve_gate_evidence_and_error_boundaries`. The test proves all accepted gate strings map to their exact `GateId` variants, all accepted evidence strings map to their exact `Evidence` variants, gate strings are rejected by `evidence_from_str(...)`, evidence strings are rejected by `gate_from_str(...)`, unknown strings return `ServerError::InvalidPayload` for both wrappers, and a representative `EvidenceSubmissionDto` builds a contract-valid Plan/TaskReady submission with the expected effect and payload fields. Targeted named-test validation passed. Broader `cargo test --all-targets` passed with 347 library tests, 3 `root_validate` binary tests, and all integration/binary/example suites green. Cargo emitted the known non-fatal last-use/cache warning reporting `database or disk is full`. The next executable item is item 142, graph-derived structural evidence refresh. `score.md` remains unchanged because this is focused regression coverage for an existing helper boundary, not a project-level score change.
@@ -359,6 +361,14 @@ Current date: 2026-05-15.
 - Implementation step 4 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 - Implementation step 5 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 ## Validation Ledger
+
+### 2026-05-15 — implementation step 4 exhausted Active Priorities check after item 142
+
+- Scope: `plan.md`, `status.md`, and `score.md` review; `status.md` evidence update only.
+- Command/check: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test planning_contract -- --test-threads=1`.
+- Result: passed.
+- Evidence: 2 planning contract tests passed, 0 failed. Cargo emitted the known non-fatal last-use/cache auto-clean warning reporting `database or disk is full`.
+- Next action: Active Priorities are exhausted; a planning turn must select the next ordered non-`root_validate` graph-backed task.
 
 ### 2026-05-15 — item 142 graph-derived structural evidence refresh
 
