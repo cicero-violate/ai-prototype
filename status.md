@@ -42,6 +42,7 @@ Current date: 2026-05-15.
 
 ## Current Progress
 
+- Active Priorities item 85 is complete: graph-derived structural evidence refresh passed after items 83 and 84. `SCORE_REPORT.md` reports `G = 7.93 / 10`, Architecture `9.0`, Structure `4.9`, Simplicity `6.9`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2`; the `ai` crate row is Nodes `5628`, Edges `35770`, Fns `2284`, Architecture `9.4`, Structure `6.1`, Simplicity `7.1`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2`. `score.md` rationale was updated to match refreshed graph evidence; project-level numeric scores remain unchanged because this is evidence refresh, not a capability score change. Active Priorities are exhausted.
 - Active Priorities item 84 is complete: `mcp_call_decoders_preserve_request_receipt_boundaries` now covers valid MCP call request decoding, valid MCP call receipt decoding, `CapabilityId::Tooling`, `ToolEffectKind::Process`, field preservation, request admissibility, receipt contract validity, malformed DTO `InvalidPayload` handling, registry-policy `InvalidCommand` handling, and invalid receipt `effect_kind` rejection. Targeted and broader Rust validation passed. The next executable item is item 85, the graph-derived evidence refresh and score-rationale review.
 - Active Priorities item 83 is complete: `src/api/server.rs` now routes `decode_mcp_call_request(...)` and `decode_mcp_call_receipt(...)` through shared private `decode_mcp_call_payload(...)` and `validate_mcp_registry_policy(...)` helpers while preserving distinct request admissibility checks, receipt contract checks, `ToolEffectKind::Process` validation, `CapabilityId::Tooling`, field mapping, and `InvalidPayload` versus `InvalidCommand` error classification. Targeted `cargo check --lib` and broader `cargo test --all-targets` passed. The next executable item is item 84, the focused MCP-call decoder boundary regression test.
 - Planning turn on 2026-05-15 completed Python-assisted reconnaissance after Active Priorities item 82. Active Priorities items 83 through 85 are now planned for `src/api/server.rs` and graph-derived evidence refresh. The first executable item is item 83, which must route `decode_mcp_call_request(...)` and `decode_mcp_call_receipt(...)` through private DTO/registry validation helpers while preserving distinct request admissibility, receipt contract, process effect-kind, field mapping, and error-classification boundaries. `root_validate` remains explicitly non-selectable.
@@ -158,6 +159,14 @@ Current date: 2026-05-15.
 - Implementation step 4 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 - Implementation step 5 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 ## Validation Ledger
+
+### 2026-05-15 — item 85 graph-derived evidence refresh
+
+- Scope: `SCORE_REPORT.md`, `score.md`, `plan.md`, and `status.md`, Active Priorities item 85.
+- Command/check: `bash scripts/recapture_rustc_graphs.sh --check && cargo run --manifest-path ../score/Cargo.toml --quiet -- --artifact-root ../state/rustc --report SCORE_REPORT.md --date "$(date +%Y-%m-%d)"`.
+- Result: passed.
+- Evidence: graph artifact check passed for `../state/rustc`; `SCORE_REPORT.md` regenerated with `G = 7.93 / 10`, Architecture `9.0`, Structure `4.9`, Simplicity `6.9`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2`. The `ai` crate row is Nodes `5628`, Edges `35770`, Fns `2284`, Architecture `9.4`, Structure `6.1`, Simplicity `7.1`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2`. Cargo emitted the recurring global-cache warning (`database or disk is full`) while saving last-use data, but the validation commands passed.
+- Next action: Active Priorities are exhausted; a planning turn must select the next executable non-`root_validate` graph-backed item.
 
 ### 2026-05-15 — item 84 MCP-call decoder boundary regression
 
