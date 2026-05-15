@@ -42,6 +42,8 @@ Current date: 2026-05-15.
 
 ## Current Progress
 
+- Planning turn on 2026-05-15 confirmed the first incomplete Active Priorities item is item 159, graph-derived structural evidence refresh after item 158. The next implementation item after that remains item 160 in `src/validation_harness.rs`, graph operation `73022b99d7f6436b`, consolidating `policy_reuse_scaling_projection_hash(...)` and `policy_reuse_distillation_readiness_hash(...)` through one private ordered receipt-field hash helper; item 161 adds focused projection/readiness boundary coverage; item 162 refreshes graph-derived evidence. Reconnaissance used Python to inspect the selected `ai` graph-editor plan, confirmed `validation_harness` remains the largest non-`root_validate` operation cluster, inspected the candidate hash functions and smoke receipt constructors, checked the working tree, and left `score.md` unchanged because no implementation or score-changing evidence was produced.
+
 - Active Priorities item 158 is complete: `src/validation_harness.rs` now includes `validation_harness_cost_catalog_builder_preserves_complete_and_incomplete_boundaries`, covering complete and incomplete policy reuse cost-catalog smoke receipt record types, count tuples, required-mode flags, missing-mode surfaces, computed completion status, validity, pass/non-pass status, non-zero hashes, and distinct catalog/receipt hashes. Targeted named-test validation passed. Broader all-target Rust validation passed. The next executable item is item 159, graph-derived structural evidence refresh. `score.md` remains unchanged because this is focused regression coverage, not a project-level score change.
 
 - Planning turn on 2026-05-15 selected the next ordered non-`root_validate` graph-backed work after item 157 exhausted the previous queue. The next executable item is Active Priorities item 158 in `src/validation_harness.rs`, adding focused regression coverage for the shared policy reuse cost-catalog smoke receipt builder; item 159 refreshes graph-derived evidence; item 160 then targets graph operation `73022b99d7f6436b` in `src/validation_harness.rs` by consolidating `policy_reuse_scaling_projection_hash(...)` and `policy_reuse_distillation_readiness_hash(...)` through one private ordered receipt-field hash helper; item 161 adds focused projection/readiness hash-boundary coverage; item 162 refreshes graph-derived evidence. Reconnaissance inspected `plan.md`, `status.md`, `score.md`, `SCORE_REPORT.md`, the selected `ai` graph-editor plan with Python, candidate source ranges in `src/validation_harness.rs`, and existing Ollama loader/verification candidates. `root_validate` remains intentionally non-selected. `score.md` remains unchanged because this planning turn produced no implementation, graph refresh, or score-changing capability evidence.
@@ -421,6 +423,22 @@ Current date: 2026-05-15.
 - Implementation step 4 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 - Implementation step 5 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 ## Validation Ledger
+
+### 2026-05-15 — Planning artifact contract validation after items 159-162 reconnaissance
+
+- Scope: `plan.md` and `status.md` planning artifact updates.
+- Command/check: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test planning_contract -- --test-threads=1`.
+- Result: passed.
+- Evidence: 2 planning contract tests passed, 0 failed. Cargo emitted the known non-fatal cache warning reporting `database or disk is full`.
+- Next action: Commit the planning artifact update, then run Active Priorities item 159 graph-derived structural evidence refresh.
+
+### 2026-05-15 — Planning reconnaissance for Active Priorities items 159-162
+
+- Scope: `plan.md`, `status.md`, `score.md`, `SCORE_REPORT.md`, `../state/rustc/auto-refactor/*.graph-editor-plan.json`, and `src/validation_harness.rs`.
+- Command/check: Python inspection of planning files, graph-editor plan JSON, selected `src/validation_harness.rs` functions, available graph plans, and `git status --short`.
+- Result: informational.
+- Evidence: Item 159 is the first incomplete Active Priorities item; selected `ai` graph-editor plan reports schema version 1, graph schema version 16, and 1,552 operations; `validation_harness` has 1,345 non-root matches; operation `73022b99d7f6436b` covers `policy_reuse_scaling_projection_hash(...)` and `policy_reuse_distillation_readiness_hash(...)`; working tree was clean before this planning update.
+- Next action: Run Active Priorities item 159 graph-derived structural evidence refresh.
 
 ### 2026-05-15 — Active Priorities item 158 validation_harness cost-catalog regression test
 
