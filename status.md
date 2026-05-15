@@ -42,6 +42,8 @@ Current date: 2026-05-15.
 
 ## Current Progress
 
+- Planning turn on 2026-05-15 completed Python-assisted reconnaissance after Active Priorities item 115. Active Priorities items 116 through 118 are now planned for `src/capability/judgment/record.rs` policy-reuse current/trend receipt hash folding through the existing helper, focused receipt-boundary regression coverage, and graph-derived evidence refresh. The first executable item is item 116. `root_validate` remains intentionally non-selectable per user direction. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
+
 - Implementation step 5 found no unchecked Active Priorities item after item 115; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. Planning/doc validation `cargo test --test planning_contract -- --test-threads=1` passed with 2 tests and 0 failures. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 
 - Implementation step 4 found no unchecked Active Priorities item after item 115; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. Planning/doc validation `cargo test --test planning_contract -- --test-threads=1` passed with 2 tests and 0 failures. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
@@ -259,6 +261,22 @@ Current date: 2026-05-15.
 - Implementation step 4 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 - Implementation step 5 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 ## Validation Ledger
+
+### 2026-05-15 — planning contract validation after items 116-118 update
+
+- Scope: `plan.md` and `status.md`.
+- Command/check: `cargo test --test planning_contract -- --test-threads=1`.
+- Result: passed.
+- Evidence: 2 tests passed, 0 failed; Cargo emitted the known non-fatal last-use cache warning reporting `database or disk is full`.
+- Next action: Commit the planning artifacts for the next execution turn.
+
+### 2026-05-15 — planning reconnaissance for items 116-118
+
+- Scope: `plan.md`, `status.md`, `score.md`, `SCORE_REPORT.md`, `../state/rustc/auto-refactor/*.graph-editor-plan.json`, and `src/capability/judgment/record.rs`.
+- Command/check: Python-assisted inspection of planning artifacts, graph-editor plans, `SCORE_REPORT.md`, and candidate source/tests; selected `../state/rustc/auto-refactor/workspace__ai_sandbox__canon-mini-agent__prototype__state__rustc__ai__graph.graph-editor-plan.json` operation `7f0881931a92916d`.
+- Result: informational.
+- Evidence: Active Priorities were exhausted after item 115; current graph-derived aggregate remains `G = 7.93 / 10` with Structure `4.9`; selected next non-`root_validate` executable work is `src/capability/judgment/record.rs` policy-reuse current/trend receipt hash helper consolidation plus focused regression coverage and graph refresh.
+- Next action: Execute item 116: route `policy_reuse_receipt_hash(...)` and `policy_reuse_trend_receipt_hash(...)` through `fold_ordered_policy_reuse_receipt_hash(...)`.
 
 ### 2026-05-15 — implementation step 5 no unchecked Active Priorities item
 
