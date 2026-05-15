@@ -108,11 +108,11 @@ impl CanonicalEffect {
     }
 
     pub fn artifact(digest: u64, metadata: u64) -> Option<Self> {
-        Self::new(CanonicalEffectKind::Artifact, digest, metadata)
+        Self::named_kind(CanonicalEffectKind::Artifact, digest, metadata)
     }
 
     pub fn process(digest: u64, metadata: u64) -> Option<Self> {
-        Self::new(CanonicalEffectKind::Process, digest, metadata)
+        Self::named_kind(CanonicalEffectKind::Process, digest, metadata)
     }
 
     pub fn llm(
@@ -135,15 +135,19 @@ impl CanonicalEffect {
     }
 
     pub fn semantic_verification(digest: u64, metadata: u64) -> Option<Self> {
-        Self::new(CanonicalEffectKind::SemanticVerification, digest, metadata)
+        Self::named_kind(CanonicalEffectKind::SemanticVerification, digest, metadata)
     }
 
     pub fn policy(digest: u64, metadata: u64) -> Option<Self> {
-        Self::new(CanonicalEffectKind::Policy, digest, metadata)
+        Self::named_kind(CanonicalEffectKind::Policy, digest, metadata)
     }
 
     pub fn observation(digest: u64, metadata: u64) -> Option<Self> {
-        Self::new(CanonicalEffectKind::Observation, digest, metadata)
+        Self::named_kind(CanonicalEffectKind::Observation, digest, metadata)
+    }
+
+    fn named_kind(kind: CanonicalEffectKind, digest: u64, metadata: u64) -> Option<Self> {
+        Self::new(kind, digest, metadata)
     }
 
     pub fn is_valid(self) -> bool {

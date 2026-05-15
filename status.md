@@ -92,7 +92,17 @@ Current date: 2026-05-14.
 
 - Active Priorities items 52 through 54 are now planned for `src/capability/verification/proof.rs`, `src/lib.rs`, and graph-derived evidence refresh. The first executable item is item 52, which must route `CanonicalEffect::{artifact, process, semantic_verification, policy, observation}` through one private named-kind constructor helper while preserving distinct `CanonicalEffectKind` values, zero-value rejection through the existing validation path, `CanonicalEffect::llm(...)`, receipt/proof behavior, tooling/LLM/policy call sites, and all runtime side-effect boundaries. `root_validate` remains explicitly non-selectable.
 
+- Active Priorities item 52 is complete: `CanonicalEffect::{artifact, process, semantic_verification, policy, observation}` now share one private `named_kind(...)` helper while preserving distinct `CanonicalEffectKind` values, zero digest/metadata rejection through `CanonicalEffect::new(...)`, `CanonicalEffect::llm(...)` metadata hashing, `contract_hash(...)`, canonical receipt/proof behavior, and all tooling/LLM/policy call-site semantics. The next executable item is item 53, the focused regression test for named constructor kind and validation boundaries.
+
 ## Validation Ledger
+
+### 2026-05-14 — Active Priorities item 52 CanonicalEffect named-kind helper
+
+- Scope: `src/capability/verification/proof.rs`, `plan.md`, `status.md`, and `score.md` review.
+- Command/check: targeted `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo check --lib`; broader `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
+- Result: passed.
+- Evidence: `CanonicalEffect::{artifact, process, semantic_verification, policy, observation}` now delegate through private `named_kind(...)`, which delegates to existing `CanonicalEffect::new(...)`; this preserves each public wrapper signature, each distinct `CanonicalEffectKind`, existing zero-value rejection through `is_valid()`, `CanonicalEffect::llm(...)`, `contract_hash(...)`, canonical receipts/proofs, tooling/LLM/policy call sites, and runtime side-effect boundaries. Targeted validation passed. Broader all-target validation passed with 319 library/bin tests, 3 `root_validate` binary tests, 13 API server contract tests, 23 API transport contract tests, 3 canonical TLog contract tests, 4 domain contract tests, 10 graph mutation CLI contract tests, 9 MCP receipt contract tests, 2 planning contract tests, 5 score contract tests, 2 supervisor binary contract tests, 2 worker binary contract tests, and all example test targets green.
+- Next action: execute Active Priorities item 53 by adding `canonical_effect_named_constructors_preserve_kind_and_validation_boundaries` in `src/lib.rs`.
 
 ### 2026-05-14 — planning-contract validation for CanonicalEffect planning update
 
