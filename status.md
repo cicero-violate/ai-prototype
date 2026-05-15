@@ -42,6 +42,7 @@ Current date: 2026-05-15.
 
 ## Current Progress
 
+- Planning turn on 2026-05-15 completed Python-assisted reconnaissance after Active Priorities item 82. Active Priorities items 83 through 85 are now planned for `src/api/server.rs` and graph-derived evidence refresh. The first executable item is item 83, which must route `decode_mcp_call_request(...)` and `decode_mcp_call_receipt(...)` through private DTO/registry validation helpers while preserving distinct request admissibility, receipt contract, process effect-kind, field mapping, and error-classification boundaries. `root_validate` remains explicitly non-selectable.
 - Implementation step 5 found no unchecked Active Priorities item after item 82; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 - Implementation step 4 found no unchecked Active Priorities item after item 82; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 - Active Priorities item 82 is complete: graph-derived structural evidence refresh passed after items 80 and 81. `SCORE_REPORT.md` reports `G = 7.92 / 10`, Architecture `8.9`, Structure `4.9`, Simplicity `6.9`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2`; the `ai` crate row is Nodes `5626`, Edges `35765`, Fns `2282`, Architecture `9.4`, Structure `6.1`, Simplicity `7.1`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2`. `score.md` rationale was updated to match refreshed evidence; project-level numeric scores remain unchanged because this is evidence refresh, not a capability score change. Active Priorities are exhausted.
@@ -155,6 +156,14 @@ Current date: 2026-05-15.
 - Implementation step 4 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 - Implementation step 5 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 ## Validation Ledger
+
+### 2026-05-15 — planning reconnaissance for items 83-85
+
+- Scope: `plan.md`, `status.md`, `score.md`, `SCORE_REPORT.md`, selected `../state/rustc/auto-refactor/workspace__ai_sandbox__canon-mini-agent__prototype__state__rustc__ai__graph.graph-editor-plan.json`, `src/api/server.rs`, and `src/agent/cycle.rs`.
+- Command/check: Python-assisted inspection of the active checklist, current status/score evidence, graph-derived score report, selected graph-editor plan, candidate source surfaces, and `git status --short` through the project shell connector.
+- Result: informational.
+- Evidence: Active Priorities were exhausted after item 82; selected graph plan exists with schema version 1, graph schema version 16, and 1,571 operations; `agent::cycle::{recovery_route_for_action, recovery_route_for_failure}` was rejected as already consolidated through `recovery_route_matching(...)` and already covered by recovery-route tests; graph operation `9225db29fcc89658` was selected for `api::server::{decode_mcp_call_request, decode_mcp_call_receipt}` because it is a current non-`root_validate` parser/validation duplication candidate with bounded file-level scope. Working tree was clean before this planning patch.
+- Next action: Execute Active Priorities item 83 in `src/api/server.rs` only.
 
 ### 2026-05-15 — implementation step 5 planning-contract validation
 
