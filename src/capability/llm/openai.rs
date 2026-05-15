@@ -2301,6 +2301,100 @@ mod tests {
     }
 
     #[test]
+    fn openai_ndjson_loader_dispatch_preserves_record_boundaries() {
+        let receipt = valid_test_openai_receipt();
+        let (finalized_receipt, proof_event) = OpenAiJudgmentProofEvent::finalize_receipt_at_seq(
+            receipt,
+            receipt.event_seq + 1,
+            true,
+            true,
+            true,
+            true,
+        )
+        .expect("valid receipt should finalize into proof event");
+
+        let mut path = std::env::temp_dir();
+        path.push(format!(
+            "canon-openai-loader-dispatch-{}-{:016x}.ndjson",
+            std::process::id(),
+            hash_text("openai loader dispatch valid")
+        ));
+        let _ = std::fs::remove_file(&path);
+
+        let valid_lines = [
+            encode_openai_llm_effect_receipt_ndjson(finalized_receipt),
+            String::new(),
+            "[1,16045690984503098046,42]".to_string(),
+            encode_openai_judgment_proof_event_ndjson(proof_event),
+            String::new(),
+        ]
+        .join("\n");
+        std::fs::write(&path, valid_lines).expect("loader fixture should be writable");
+
+        assert_eq!(
+            load_openai_llm_effect_receipts_ndjson(&path).expect("checked receipts should load"),
+            vec![finalized_receipt]
+        );
+        assert_eq!(
+            load_openai_judgment_proof_events_ndjson(&path)
+                .expect("checked proof events should load"),
+            vec![proof_event]
+        );
+        assert_eq!(
+            load_openai_llm_effect_receipts_ndjson_unchecked(&path)
+                .expect("unchecked receipts should load"),
+            vec![finalized_receipt]
+        );
+
+        let mut missing_path = path.clone();
+        missing_path.set_file_name(format!(
+            "canon-openai-loader-dispatch-missing-{}-{:016x}.ndjson",
+            std::process::id(),
+            hash_text("openai loader dispatch missing")
+        ));
+        let _ = std::fs::remove_file(&missing_path);
+        assert_eq!(
+            load_openai_llm_effect_receipts_ndjson(&missing_path)
+                .expect("missing checked receipt file should be empty"),
+            Vec::<OpenAiLlmEffectReceipt>::new()
+        );
+        assert_eq!(
+            load_openai_judgment_proof_events_ndjson(&missing_path)
+                .expect("missing checked proof file should be empty"),
+            Vec::<OpenAiJudgmentProofEvent>::new()
+        );
+        assert_eq!(
+            load_openai_llm_effect_receipts_ndjson_unchecked(&missing_path)
+                .expect("missing unchecked receipt file should be empty"),
+            Vec::<OpenAiLlmEffectReceipt>::new()
+        );
+
+        let mut malformed_path = path.clone();
+        malformed_path.set_file_name(format!(
+            "canon-openai-loader-dispatch-malformed-{}-{:016x}.ndjson",
+            std::process::id(),
+            hash_text("openai loader dispatch malformed")
+        ));
+        let _ = std::fs::remove_file(&malformed_path);
+        std::fs::write(
+            &malformed_path,
+            format!(
+                "[{},{},{}]\n",
+                OPENAI_LLM_EFFECT_RECEIPT_SCHEMA_VERSION,
+                OPENAI_LLM_EFFECT_RECEIPT_RECORD,
+                finalized_receipt.provider_hash
+            ),
+        )
+        .expect("malformed loader fixture should be writable");
+        assert!(load_openai_llm_effect_receipts_ndjson(&malformed_path).is_err());
+        assert!(load_openai_llm_effect_receipts_ndjson_unchecked(&malformed_path).is_err());
+
+        let _ = std::fs::remove_file(&path);
+        let _ = std::fs::remove_file(&missing_path);
+        let _ = std::fs::remove_file(&malformed_path);
+    }
+
+    #[test]
     fn openai_effect_and_proof_hash_fold_helper_preserves_distinct_domains() {
         let receipt = valid_test_openai_receipt();
         let (finalized_receipt, proof_event) = OpenAiJudgmentProofEvent::finalize_receipt_at_seq(
