@@ -42,6 +42,8 @@ Current date: 2026-05-15.
 
 ## Current Progress
 
+- Planning turn on 2026-05-15 selected the next non-`root_validate` graph-backed work queue after confirming items 131 through 133 were complete and no unchecked Active Priorities item remained. The next executable item is Active Priorities item 134 in `src/agent/prompt.rs`, consolidating public certification prompt wrappers through a private dispatch helper while preserving output semantics; item 135 adds focused regression coverage; item 136 refreshes graph-derived evidence. `score.md` remains unchanged because this planning turn produced no implementation or score-changing validation evidence.
+
 - Implementation step 5 on 2026-05-15 found no unchecked Active Priorities item after item 133; items 131 through 133 remain complete and the current queue is exhausted. No implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 
 - Implementation step 4 on 2026-05-15 found no unchecked Active Priorities item after item 133; items 131 through 133 remain complete and the current queue is exhausted. No implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
@@ -327,6 +329,14 @@ Current date: 2026-05-15.
 - Implementation step 4 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 - Implementation step 5 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 ## Validation Ledger
+
+### 2026-05-15 — planning selection for agent prompt graph-backed consolidation
+
+- Scope: `plan.md`, `status.md`, `score.md`, `SCORE_REPORT.md`, `../state/rustc/auto-refactor/workspace__ai_sandbox__canon-mini-agent__prototype__state__rustc__ai__graph.graph-editor-plan.json`, and `src/agent/prompt.rs`.
+- Command/check: Python/read-only inspection of current planning/status/scoring artifacts, the selected graph-editor plan, candidate source, and prompt tests; `git status --short` before edits.
+- Result: informational.
+- Evidence: Active Priorities items 131 through 133 were already complete and no unchecked item remained; the selected graph-editor plan exists, uses schema version 1 and graph schema version 16, and contains 1,563 operations; current `SCORE_REPORT.md` remains `G = 7.93 / 10` with Structure `4.9`; `root_validate` was explicitly excluded per user direction; selected operations cover `agent::prompt::{analysis_prompt, judgment_prompt, plan_prompt, eval_prompt, recovery_prompt}` with a safe private-dispatch subset.
+- Next action: execute Active Priorities item 134 in `src/agent/prompt.rs` and validate with `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo check --lib`.
 
 ### 2026-05-15 — implementation step 5 no unchecked Active Priorities item after item 133
 

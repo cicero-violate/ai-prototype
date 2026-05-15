@@ -270,13 +270,22 @@ mod tests {
         assert!(inserted_reverse.insert(facts[0]));
 
         assert_eq!(inserted_forward.facts(), inserted_reverse.facts());
-        assert_eq!(inserted_forward.fingerprint(), inserted_reverse.fingerprint());
+        assert_eq!(
+            inserted_forward.fingerprint(),
+            inserted_reverse.fingerprint()
+        );
 
         let (lookup, receipt) = inserted_forward.lookup_with_receipt(7, 2);
-        assert_eq!(lookup.aggregate_hash, aggregate_memory_hash(7, &lookup.matches));
+        assert_eq!(
+            lookup.aggregate_hash,
+            aggregate_memory_hash(7, &lookup.matches)
+        );
         assert_eq!(receipt.aggregate_hash, lookup.aggregate_hash);
         assert_eq!(receipt.index_fingerprint, inserted_forward.fingerprint());
-        assert_eq!(receipt.index_fingerprint, aggregate_index_hash(inserted_forward.facts()));
+        assert_eq!(
+            receipt.index_fingerprint,
+            aggregate_index_hash(inserted_forward.facts())
+        );
         assert!(receipt.is_valid_for(&lookup));
     }
 }
