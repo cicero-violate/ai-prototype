@@ -818,4 +818,98 @@ mod tests {
         tampered_receipt.event_hash = tampered_receipt.event_hash.wrapping_add(1);
         assert!(!tampered_receipt.is_contract_valid());
     }
+
+    #[test]
+    fn api_transport_ledger_lookup_helper_preserves_frame_and_request_boundaries() {
+        let frame = ApiTransportFrame::new(101, observation_envelope(11));
+        let matching_receipt = ApiTransportReceipt::new(
+            frame.request_id,
+            frame.payload_hash,
+            frame.envelope.command_id,
+            frame.envelope.command_hash,
+            505,
+        );
+        let matching_ledger = ApiTransportLedger::from_receipts(vec![matching_receipt])
+            .expect("matching receipt builds ledger");
+
+        assert_eq!(matching_ledger.receipt_for(&frame), Some(matching_receipt));
+        assert_eq!(
+            matching_ledger.receipt_for_request_id(frame.request_id),
+            Some(matching_receipt)
+        );
+        assert!(matching_ledger.contains_request_id(frame.request_id));
+        assert!(!matching_ledger.has_conflicting_request(&frame));
+
+        let different_payload_receipt = ApiTransportReceipt::new(
+            frame.request_id,
+            frame.payload_hash.wrapping_add(1),
+            frame.envelope.command_id,
+            frame.envelope.command_hash,
+            506,
+        );
+        let different_payload_ledger =
+            ApiTransportLedger::from_receipts(vec![different_payload_receipt])
+                .expect("different payload receipt builds ledger");
+        assert_eq!(different_payload_ledger.receipt_for(&frame), None);
+        assert_eq!(
+            different_payload_ledger.receipt_for_request_id(frame.request_id),
+            Some(different_payload_receipt)
+        );
+        assert!(different_payload_ledger.contains_request_id(frame.request_id));
+        assert!(different_payload_ledger.has_conflicting_request(&frame));
+
+        let different_command_id_receipt = ApiTransportReceipt::new(
+            frame.request_id,
+            frame.payload_hash,
+            frame.envelope.command_id.wrapping_add(1),
+            frame.envelope.command_hash,
+            507,
+        );
+        let different_command_id_ledger =
+            ApiTransportLedger::from_receipts(vec![different_command_id_receipt])
+                .expect("different command id receipt builds ledger");
+        assert_eq!(different_command_id_ledger.receipt_for(&frame), None);
+        assert_eq!(
+            different_command_id_ledger.receipt_for_request_id(frame.request_id),
+            Some(different_command_id_receipt)
+        );
+        assert!(different_command_id_ledger.contains_request_id(frame.request_id));
+        assert!(!different_command_id_ledger.has_conflicting_request(&frame));
+
+        let different_command_hash_receipt = ApiTransportReceipt::new(
+            frame.request_id,
+            frame.payload_hash,
+            frame.envelope.command_id,
+            frame.envelope.command_hash.wrapping_add(1),
+            508,
+        );
+        let different_command_hash_ledger =
+            ApiTransportLedger::from_receipts(vec![different_command_hash_receipt])
+                .expect("different command hash receipt builds ledger");
+        assert_eq!(different_command_hash_ledger.receipt_for(&frame), None);
+        assert_eq!(
+            different_command_hash_ledger.receipt_for_request_id(frame.request_id),
+            Some(different_command_hash_receipt)
+        );
+        assert!(different_command_hash_ledger.contains_request_id(frame.request_id));
+        assert!(!different_command_hash_ledger.has_conflicting_request(&frame));
+
+        let different_request_receipt = ApiTransportReceipt::new(
+            frame.request_id.wrapping_add(1),
+            frame.payload_hash,
+            frame.envelope.command_id,
+            frame.envelope.command_hash,
+            509,
+        );
+        let different_request_ledger =
+            ApiTransportLedger::from_receipts(vec![different_request_receipt])
+                .expect("different request receipt builds ledger");
+        assert_eq!(different_request_ledger.receipt_for(&frame), None);
+        assert_eq!(
+            different_request_ledger.receipt_for_request_id(frame.request_id),
+            None
+        );
+        assert!(!different_request_ledger.contains_request_id(frame.request_id));
+        assert!(!different_request_ledger.has_conflicting_request(&frame));
+    }
 }
