@@ -52,10 +52,11 @@ impl WorkerClient {
     }
 
     fn from_timeout_ms(port: u16, timeout_ms: u64) -> Self {
-        Self {
-            port,
-            timeout: Duration::from_millis(timeout_ms),
-        }
+        Self::from_timeout(port, Duration::from_millis(timeout_ms))
+    }
+
+    fn from_timeout(port: u16, timeout: Duration) -> Self {
+        Self { port, timeout }
     }
 
     pub fn from_env() -> Result<Self, WorkerClientError> {
