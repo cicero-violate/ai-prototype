@@ -7650,3 +7650,15 @@ Implementation step 3 evidence on 2026-05-15 for Active Priorities item 112:
 - `SCORE_REPORT.md` and `score.md` had no diff after refresh because regenerated structural evidence matched the current checked-in report and score rationale.
 - Cargo emitted a non-blocking cache last-use warning, `database or disk is full`, during validation; no Rust validation failure occurred.
 - Marked item 112 complete in `plan.md`. `score.md` was reviewed and left unchanged because this evidence refresh confirms the current structural snapshot and does not justify project-level numeric score changes.
+
+
+Planning update on 2026-05-15 for Active Priorities items 149 through 151:
+
+- Re-read `plan.md`, `status.md`, `score.md`, and `SCORE_REPORT.md` before updating the checklist.
+- Confirmed the first incomplete item under `## Active Priorities` did not exist before this update: items 146 through 148 were complete and no unchecked executable item remained.
+- Inspected the requested graph-backed plan `../state/rustc/auto-refactor/workspace__ai_sandbox__canon-mini-agent__prototype__state__rustc__ai__graph.graph-editor-plan.json` with Python. The plan reports schema version 1, graph schema version 16, crate `ai`, and 1,271 merge operations.
+- Current structural evidence from `SCORE_REPORT.md`: aggregate `G = 7.94 / 10`, Architecture `8.9`, Structure `5.0`, Simplicity `6.9`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2`; `ai` row is 5,664 nodes, 34,997 edges, 2,309 functions, Architecture `9.3`, Structure `6.1`, Simplicity `7.2`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2`; `root_validate` row is 163 nodes, 1,990 edges, 161 functions, Architecture `3.2`, Structure `1.5`, Simplicity `6.1`, Maintainability `10.0`, Determinism `10.0`, and Coherency `7.3`.
+- Honored the explicit blocker/direction not to continue `root_validate`; it remains non-selectable despite being the weakest graph row.
+- Selected graph operations `50696c68b2277059` and `72dcf1b2a173f2c7` in `capability::learning::promote::<impl capability::policy::store::PolicyStore>` as the most appropriate next non-root work because they target duplicated promotion route wrappers while preserving public APIs and existing policy-learning evidence.
+- Added ordered file-level tasks: item 149 for `src/capability/learning/promote.rs`, item 150 for focused `src/lib.rs` regression coverage, and item 151 for graph-derived evidence refresh. The next executable item is item 149.
+- `score.md` was reviewed and left unchanged; this planning turn adds evidence-producing tasks but does not itself produce new implementation or validation evidence justifying numeric score changes.
