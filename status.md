@@ -42,6 +42,8 @@ Current date: 2026-05-15.
 
 ## Current Progress
 
+- Planning turn on 2026-05-15 completed Python-assisted reconnaissance after Active Priorities item 94. Active Priorities items 95 through 97 are now planned for `src/capability/llm/openai.rs` OpenAI NDJSON encoder helper extraction, focused encoder-layout regression coverage, and graph-derived evidence refresh. The first executable item is item 95. `root_validate` remains intentionally non-selectable per user direction.
+
 - Implementation step 5 found no unchecked Active Priorities item after item 94; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 
 - Implementation step 4 found no unchecked Active Priorities item after item 94; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
@@ -183,6 +185,14 @@ Current date: 2026-05-15.
 - Implementation step 4 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 - Implementation step 5 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 ## Validation Ledger
+
+### 2026-05-15 — planning reconnaissance for non-root OpenAI NDJSON encoder work
+
+- Scope: `plan.md`, `status.md`, `score.md`, `SCORE_REPORT.md`, `../state/rustc/auto-refactor/*.graph-editor-plan.json`, `src/codec/ndjson.rs`, and `src/capability/llm/openai.rs`.
+- Command/check: `python3` reconnaissance via connector shell to inspect planning files, graph-editor plans, candidate source surfaces, and working-tree state.
+- Result: informational.
+- Evidence: Active Priorities items 92 through 94 are complete and no unchecked item existed before this planning update; current `SCORE_REPORT.md` aggregate remains `G = 7.93 / 10` with Structure `4.9` as the lowest aggregate axis; selected `ai` graph-editor plan has schema version 1, graph schema version 16, and 1,570 operations; `codec::ndjson` enum-decoder cluster was rejected as stale/no-op because `enum_from_u64(...)` and `decode_enum_from_u64!` already consolidate those helpers; graph operation `4823eaed82cc2de7` was selected for the next safe non-`root_validate` OpenAI NDJSON encoder helper slice; working tree was clean before planning edits; `score.md` was reviewed and left unchanged because this planning turn produced no implementation, validation refresh, graph refresh, or score-history-worthy capability evidence.
+- Next action: Execute Active Priorities item 95 in `src/capability/llm/openai.rs`.
 
 ### 2026-05-15 — implementation step 5 exhausted Active Priorities check after item 94
 
