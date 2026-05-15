@@ -142,4 +142,73 @@ mod tests {
             provider_config_hash("ollama", "http://127.0.0.1:11434/v1", "qwen")
         );
     }
+
+    #[test]
+    fn transport_hash_helpers_preserve_retry_and_request_identity_boundaries() {
+        let retry_seed = 0x7472_616e_7370_0001u64;
+        let retry_hash = retry_policy_hash(retry_seed, 30_000, 2, 3);
+        assert_ne!(retry_hash, 0);
+        assert_eq!(retry_hash, retry_policy_hash(retry_seed, 30_000, 2, 3));
+        assert_ne!(retry_hash, retry_policy_hash(retry_seed, 30_001, 2, 3));
+        assert_ne!(retry_hash, retry_policy_hash(retry_seed, 30_000, 3, 3));
+        assert_ne!(retry_hash, retry_policy_hash(retry_seed, 30_000, 2, 4));
+        assert_ne!(retry_hash, retry_policy_hash(retry_seed + 1, 30_000, 2, 3));
+
+        let provider_hash =
+            provider_config_hash("openai-compatible", "http://127.0.0.1:11434/v1", "qwen");
+        let alternate_provider_hash =
+            provider_config_hash("ollama", "http://127.0.0.1:11434/v1", "qwen");
+        let base_url_hash =
+            provider_config_hash("base-url", "http://127.0.0.1:11434/v1", "transport");
+        let alternate_base_url_hash =
+            provider_config_hash("base-url", "http://localhost:11434/v1", "transport");
+        let request_seed = 0x7472_616e_7370_0002u64;
+        let request_identity =
+            request_identity_hash(request_seed, provider_hash, base_url_hash, 17, 0xabcdu64);
+
+        assert_ne!(request_identity, 0);
+        assert_eq!(
+            request_identity,
+            request_identity_hash(request_seed, provider_hash, base_url_hash, 17, 0xabcdu64)
+        );
+        assert_ne!(
+            request_identity,
+            request_identity_hash(
+                request_seed,
+                alternate_provider_hash,
+                base_url_hash,
+                17,
+                0xabcdu64,
+            )
+        );
+        assert_ne!(
+            request_identity,
+            request_identity_hash(
+                request_seed,
+                provider_hash,
+                alternate_base_url_hash,
+                17,
+                0xabcdu64,
+            )
+        );
+        assert_ne!(
+            request_identity,
+            request_identity_hash(request_seed, provider_hash, base_url_hash, 18, 0xabcdu64)
+        );
+        assert_ne!(
+            request_identity,
+            request_identity_hash(request_seed, provider_hash, base_url_hash, 17, 0xabceu64)
+        );
+        assert_ne!(
+            request_identity,
+            request_identity_hash(
+                request_seed + 1,
+                provider_hash,
+                base_url_hash,
+                17,
+                0xabcdu64
+            )
+        );
+        assert_ne!(retry_hash, request_identity);
+    }
 }
