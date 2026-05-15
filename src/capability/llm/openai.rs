@@ -2293,6 +2293,151 @@ mod tests {
     }
 
     #[test]
+    fn openai_effect_and_proof_hash_fold_helper_preserves_distinct_domains() {
+        let receipt = valid_test_openai_receipt();
+        let (finalized_receipt, proof_event) = OpenAiJudgmentProofEvent::finalize_receipt_at_seq(
+            receipt,
+            receipt.event_seq + 1,
+            true,
+            true,
+            true,
+            true,
+        )
+        .expect("valid receipt should finalize into proof event");
+
+        let authority_hash = finalized_receipt
+            .canonical_authority_hash()
+            .expect("valid receipt should have authority hash");
+        let request_hash = finalized_receipt
+            .canonical_request_hash()
+            .expect("valid receipt should have request hash");
+        let provider_proof_hash = proof_event.expected_proof_hash();
+        let verifier_context_hash = proof_event.verifier_context_hash();
+
+        assert_ne!(authority_hash, 0);
+        assert_ne!(request_hash, 0);
+        assert_ne!(provider_proof_hash, 0);
+        assert_ne!(verifier_context_hash, 0);
+        assert_ne!(authority_hash, request_hash);
+        assert_ne!(authority_hash, provider_proof_hash);
+        assert_ne!(authority_hash, verifier_context_hash);
+        assert_ne!(request_hash, provider_proof_hash);
+        assert_ne!(request_hash, verifier_context_hash);
+        assert_ne!(provider_proof_hash, verifier_context_hash);
+        assert_eq!(provider_proof_hash, proof_event.proof_hash);
+
+        assert_eq!(
+            authority_hash,
+            fold_ordered_openai_hash(
+                0x4f50_454e_4149_4155u64,
+                &[
+                    finalized_receipt.provider_hash,
+                    finalized_receipt.base_url_hash,
+                    finalized_receipt.model_id,
+                    finalized_receipt.timeout_ms,
+                    finalized_receipt.max_retries as u64,
+                    finalized_receipt.attempt_budget as u64,
+                    finalized_receipt.retry_budget_hash,
+                ],
+            )
+        );
+        assert_eq!(
+            request_hash,
+            fold_ordered_openai_hash(
+                0x4f50_454e_4149_5251u64,
+                &[
+                    finalized_receipt.request_hash,
+                    finalized_receipt.command_hash,
+                    finalized_receipt.request_identity_hash,
+                ],
+            )
+        );
+        assert_eq!(
+            provider_proof_hash,
+            fold_ordered_openai_hash(
+                0x4f50_454e_4149_5052u64,
+                &[
+                    proof_event.proof_line_hash,
+                    proof_event.receipt_core_hash,
+                    proof_event.receipt_event_seq,
+                    proof_event.proof_event_seq,
+                    proof_event.receipt_event_hash,
+                    proof_event.base_url_hash,
+                    proof_event.model_id,
+                    proof_event.timeout_ms,
+                    proof_event.retry_count as u64,
+                    proof_event.max_retries as u64,
+                    proof_event.attempt_budget as u64,
+                    proof_event.request_identity_hash,
+                    proof_event.retry_budget_hash,
+                    proof_event.budget_exhausted as u64,
+                    proof_event.duplicate_request as u64,
+                    proof_event.receipt_verified as u64,
+                    proof_event.tamper_rejected as u64,
+                    proof_event.endpoint_verified as u64,
+                    proof_event.phase_plan as u64,
+                ],
+            )
+        );
+        assert_eq!(
+            verifier_context_hash,
+            fold_ordered_openai_hash(
+                0x4f50_454e_4149_4354u64,
+                &[
+                    proof_event.base_url_hash,
+                    proof_event.model_id,
+                    proof_event.timeout_ms,
+                    proof_event.retry_count as u64,
+                    proof_event.max_retries as u64,
+                    proof_event.attempt_budget as u64,
+                    proof_event.request_identity_hash,
+                    proof_event.retry_budget_hash,
+                    proof_event.budget_exhausted as u64,
+                    proof_event.duplicate_request as u64,
+                ],
+            )
+        );
+
+        let authority_field_changed = fold_ordered_openai_hash(
+            0x4f50_454e_4149_4155u64,
+            &[
+                finalized_receipt.provider_hash,
+                finalized_receipt.base_url_hash ^ 1,
+                finalized_receipt.model_id,
+                finalized_receipt.timeout_ms,
+                finalized_receipt.max_retries as u64,
+                finalized_receipt.attempt_budget as u64,
+                finalized_receipt.retry_budget_hash,
+            ],
+        );
+        assert_ne!(authority_field_changed, authority_hash);
+
+        let mut proof_only_tamper = proof_event;
+        proof_only_tamper.proof_line_hash ^= 1;
+        assert_ne!(proof_only_tamper.expected_proof_hash(), provider_proof_hash);
+        assert_eq!(
+            proof_only_tamper.verifier_context_hash(),
+            verifier_context_hash
+        );
+
+        let mut verifier_context_tamper = proof_event;
+        verifier_context_tamper.model_id ^= 1;
+        assert_ne!(
+            verifier_context_tamper.verifier_context_hash(),
+            verifier_context_hash
+        );
+        assert_ne!(
+            verifier_context_tamper.expected_proof_hash(),
+            provider_proof_hash
+        );
+
+        let (_canonical_receipt, effect_proof) = proof_event
+            .to_canonical_effect_proof(finalized_receipt)
+            .expect("valid proof event should project into canonical proof");
+        assert_eq!(effect_proof.verifier_context_hash, verifier_context_hash);
+    }
+
+    #[test]
     fn openai_function_tool_constructors_preserve_description_boundary() {
         let parameters_json = r#"{"type":"object","properties":{"query":{"type":"string"}}}"#;
         let bare = OpenAiFunctionTool::new("lookup", parameters_json);
