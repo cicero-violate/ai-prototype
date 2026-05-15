@@ -510,4 +510,162 @@ mod lookup_receipt_tests {
         let (_, original_receipt) = store.feedback_lookup_with_receipt();
         assert!(!original_receipt.is_valid_for(&changed_store, POLICY_FEEDBACK_HASH));
     }
+
+    #[test]
+    fn policy_proof_hash_helper_preserves_receipt_and_verifier_boundaries() {
+        let mut store = PolicyStore::default();
+        store
+            .try_append(PolicyEntry {
+                version: 1,
+                key: POLICY_FEEDBACK_HASH,
+                value: 0xfeed,
+            })
+            .unwrap();
+        let entry = store.latest(POLICY_FEEDBACK_HASH).copied().unwrap();
+        let policy_store_hash = store.fingerprint();
+        let receipt = PolicyProofReceipt::new(entry, policy_store_hash, 7, 0xabc).unwrap();
+
+        let entry_hash = receipt.entry_hash().unwrap();
+        let receipt_core_hash = receipt.receipt_core_hash().unwrap();
+        let expected_receipt_hash = receipt.expected_receipt_hash().unwrap();
+        let verifier_context_hash = receipt.verifier_context_hash().unwrap();
+        let canonical_authority_hash = receipt.canonical_authority_hash().unwrap();
+        let canonical_request_hash = receipt.canonical_request_hash().unwrap();
+
+        for value in [
+            entry_hash,
+            receipt_core_hash,
+            expected_receipt_hash,
+            verifier_context_hash,
+            canonical_authority_hash,
+            canonical_request_hash,
+        ] {
+            assert_ne!(value, 0);
+        }
+        assert_ne!(entry_hash, receipt_core_hash);
+        assert_ne!(entry_hash, expected_receipt_hash);
+        assert_ne!(entry_hash, verifier_context_hash);
+        assert_ne!(entry_hash, canonical_authority_hash);
+        assert_ne!(entry_hash, canonical_request_hash);
+        assert_ne!(receipt_core_hash, expected_receipt_hash);
+        assert_ne!(receipt_core_hash, verifier_context_hash);
+        assert_ne!(receipt_core_hash, canonical_authority_hash);
+        assert_ne!(receipt_core_hash, canonical_request_hash);
+        assert_ne!(expected_receipt_hash, verifier_context_hash);
+        assert_ne!(expected_receipt_hash, canonical_authority_hash);
+        assert_ne!(expected_receipt_hash, canonical_request_hash);
+        assert_ne!(verifier_context_hash, canonical_authority_hash);
+        assert_ne!(verifier_context_hash, canonical_request_hash);
+        assert_ne!(canonical_authority_hash, canonical_request_hash);
+
+        assert_eq!(
+            receipt_core_hash,
+            fold_policy_proof_hash(
+                0x504f_4c49_4359_434fu64,
+                &[
+                    entry_hash,
+                    policy_store_hash,
+                    receipt.receipt_event_seq,
+                    receipt.receipt_event_hash,
+                ],
+            )
+        );
+        assert_eq!(
+            verifier_context_hash,
+            fold_policy_proof_hash(
+                0x504f_4c49_4359_4354u64,
+                &[
+                    ProofSubjectKind::PolicyEffect as u64,
+                    entry_hash,
+                    policy_store_hash,
+                ],
+            )
+        );
+        assert_eq!(receipt.receipt_hash, expected_receipt_hash);
+        assert_eq!(
+            PolicyProofReceipt::new(entry, policy_store_hash, 7, 0xabc)
+                .unwrap()
+                .receipt_core_hash(),
+            Some(receipt_core_hash)
+        );
+        assert_eq!(
+            PolicyProofReceipt::new(entry, policy_store_hash, 7, 0xabc)
+                .unwrap()
+                .verifier_context_hash(),
+            Some(verifier_context_hash)
+        );
+
+        let changed_store_hash = PolicyProofReceipt::new(entry, policy_store_hash ^ 1, 7, 0xabc)
+            .unwrap()
+            .receipt_core_hash();
+        assert_ne!(changed_store_hash, Some(receipt_core_hash));
+        assert_ne!(
+            PolicyProofReceipt::new(entry, policy_store_hash ^ 1, 7, 0xabc)
+                .unwrap()
+                .verifier_context_hash(),
+            Some(verifier_context_hash)
+        );
+        assert_ne!(
+            PolicyProofReceipt::new(entry, policy_store_hash, 8, 0xabc)
+                .unwrap()
+                .receipt_core_hash(),
+            Some(receipt_core_hash)
+        );
+        assert_eq!(
+            PolicyProofReceipt::new(entry, policy_store_hash, 8, 0xabc)
+                .unwrap()
+                .verifier_context_hash(),
+            Some(verifier_context_hash)
+        );
+        assert_ne!(
+            PolicyProofReceipt::new(entry, policy_store_hash, 7, 0xabd)
+                .unwrap()
+                .receipt_core_hash(),
+            Some(receipt_core_hash)
+        );
+        assert_eq!(
+            PolicyProofReceipt::new(entry, policy_store_hash, 7, 0xabd)
+                .unwrap()
+                .verifier_context_hash(),
+            Some(verifier_context_hash)
+        );
+
+        let changed_entry = PolicyEntry {
+            version: 2,
+            key: POLICY_FEEDBACK_HASH,
+            value: 0xfeed,
+        };
+        assert_ne!(
+            PolicyProofReceipt::new(changed_entry, policy_store_hash, 7, 0xabc)
+                .unwrap()
+                .receipt_core_hash(),
+            Some(receipt_core_hash)
+        );
+        assert_ne!(
+            PolicyProofReceipt::new(changed_entry, policy_store_hash, 7, 0xabc)
+                .unwrap()
+                .verifier_context_hash(),
+            Some(verifier_context_hash)
+        );
+
+        let (effect_receipt, effect_proof) = receipt.to_canonical_effect_proof(8).unwrap();
+        assert!(effect_receipt.is_valid());
+        assert!(effect_proof.is_valid());
+        assert_eq!(effect_proof.verifier_context_hash, verifier_context_hash);
+
+        let invalid_key_receipt = PolicyProofReceipt {
+            entry: PolicyEntry {
+                version: 1,
+                key: "unknown.policy.key",
+                value: 0xfeed,
+            },
+            policy_store_hash,
+            receipt_event_seq: 7,
+            receipt_event_hash: 0xabc,
+            receipt_hash: 1,
+        };
+        assert_eq!(invalid_key_receipt.entry_hash(), None);
+        assert_eq!(invalid_key_receipt.receipt_core_hash(), None);
+        assert_eq!(invalid_key_receipt.verifier_context_hash(), None);
+    }
 }
