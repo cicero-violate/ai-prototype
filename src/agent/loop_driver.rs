@@ -153,19 +153,12 @@ impl LoopDriver {
         tag: &str,
         router: &mut RouterClient,
     ) -> Result<(), String> {
-        let is_spawned = self.config.domain.is_some();
-        let command_url = agent_command_url(&self.config);
-        let (total_turns, turn_offset) = if is_spawned {
-            (self.config.execute_turns, 1) // all execute, no planning turn
-        } else {
-            (self.config.execute_turns + 1, 0) // 1 plan + N execute
-        };
-
-        let goal = if is_spawned {
-            String::new()
-        } else {
-            read_goal_file(&self.config.project_dir)?
-        };
+        let cycle_plan = prepare_run_cycle(&self.config)?;
+        let is_spawned = cycle_plan.is_spawned;
+        let command_url = cycle_plan.command_url;
+        let total_turns = cycle_plan.total_turns;
+        let turn_offset = cycle_plan.turn_offset;
+        let goal = cycle_plan.goal;
 
         // Invariant gate: prove world state is non-empty, ordered, hash-addressable.
         // Both top-level and spawned agents submit; source bytes differ.
@@ -615,6 +608,38 @@ struct RunCycleAttemptOutcome {
     completed: bool,
     reason: String,
     retry_is_safe: bool,
+}
+
+struct RunCyclePlan {
+    is_spawned: bool,
+    command_url: Option<String>,
+    total_turns: u32,
+    turn_offset: u32,
+    goal: String,
+}
+
+fn prepare_run_cycle(config: &AgentLoopConfig) -> Result<RunCyclePlan, String> {
+    let is_spawned = config.domain.is_some();
+    let command_url = agent_command_url(config);
+    let (total_turns, turn_offset) = if is_spawned {
+        (config.execute_turns, 1) // all execute, no planning turn
+    } else {
+        (config.execute_turns + 1, 0) // 1 plan + N execute
+    };
+
+    let goal = if is_spawned {
+        String::new()
+    } else {
+        read_goal_file(&config.project_dir)?
+    };
+
+    Ok(RunCyclePlan {
+        is_spawned,
+        command_url,
+        total_turns,
+        turn_offset,
+        goal,
+    })
 }
 
 struct TurnPromptContext {

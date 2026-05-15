@@ -68,6 +68,7 @@ Current date: 2026-05-14.
 - Implementation step 3 found no unchecked Active Priorities item after item 39; no implementation, validation refresh, documentation, cleanup, or blocker-handling checklist item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task.
 - Implementation step 4 found no unchecked Active Priorities item after item 39; no implementation, validation refresh, documentation, cleanup, or blocker-handling checklist item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task.
 - Planning turn selected Active Priorities items 40 through 42 from graph operation `001e821dc83e940a`: split `LoopDriver::run_cycle(...)` only by extracting private cycle-preparation mechanics in `src/agent/loop_driver.rs`, add focused schedule-regression coverage, then refresh graph-derived structural evidence.
+- Active Priorities item 40 is complete: `LoopDriver::run_cycle(...)` now delegates spawned/project mode cycle preparation to private `prepare_run_cycle(...)` and `RunCyclePlan` in `src/agent/loop_driver.rs`, preserving command URL, turn counts, turn offset, goal loading, retry loop, router calls, receipt/eval/learning behavior, and error propagation. The next executable item is item 41, the focused regression test for cycle-preparation schedules.
 - `src/domain/business.rs` contains `BusinessOpportunity`, `WorkflowAutomationCandidate`, `CustomerFeedbackSignal`, `monetization_score(...)`, compile-smoke test `business_module_records_and_score_helper_compile`, deterministic repeatability test `business_monetization_score_is_deterministic`, and bounded-score test `business_monetization_score_is_bounded`, with broader business validation passing 3 tests after correcting the bounded test scalar assertion.
 - `src/domain/identity.rs` currently contains `DomainHash`, `DomainHashInput<'a>`, `canonical_json_bytes(record)`, `domain_hash_json(record)`, `domain_hash_parts(parts)`, `stable_domain_id(parts)`, and six passing targeted identity tests through `domain_hash_changes_when_schema_version_changes`.
 - `src/domain/scoring.rs` currently contains validated `BoundedScore` helpers, score-input breakdown helpers, conservative `verdict_for_scores(...)`, and passing `verdict_ignore_thresholds`, `verdict_watch_thresholds`, `verdict_research_thresholds`, `verdict_act_business_thresholds`, `verdict_act_finance_research_thresholds`, `verdict_simulate_trading_thresholds`, and `verdict_block_thresholds`; explicit verdict threshold tests are complete for the current scoring scope.
@@ -75,6 +76,14 @@ Current date: 2026-05-14.
 - Domain fixture JSON files exist under `tests/fixtures/domain/` for global signal, business workflow opportunity, finance hypothesis research, trading simulation sandbox, and trading live blocked cases; `tests/test_domain_fixture_contract.py` now includes explicit risk-result and required-field assertions. Item 51 graph analyzer now exists and passes against `state/rustc/ai/graph.json`, reporting 752 compiled P5 domain-node matches. Item 52 malformed-input self-check also passes. Remaining work includes item 50 full-suite Rust validation and later graph evidence refresh/score review items gated on full-suite output.
 
 ## Validation Ledger
+
+### 2026-05-14 — Active Priorities item 40 loop-driver cycle preparation helper
+
+- Scope: `src/agent/loop_driver.rs`, `plan.md`, and `status.md`.
+- Command/check: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo check --lib`; `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
+- Result: passed.
+- Evidence: `cargo check --lib` completed successfully. `cargo test --all-targets` passed with 315 library tests, 3 root_validate binary tests, and all integration/example test targets passing, including `planning_contract` 2 tests and worker/supervisor contract tests. `run_cycle(...)` now delegates `is_spawned`, `command_url`, `total_turns`, `turn_offset`, and `goal` preparation to private `prepare_run_cycle(...)` without changing retry, router, receipt, eval, learning, sleep, or error behavior.
+- Next action: implement Active Priorities item 41, `run_cycle_preparation_preserves_project_and_spawned_turn_schedules`.
 
 ### 2026-05-14 — planning turn selected loop-driver cycle-preparation split
 
