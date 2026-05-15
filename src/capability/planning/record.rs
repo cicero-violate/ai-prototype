@@ -309,11 +309,14 @@ fn plan_tasks(objective_id: u64, required: u8, completed: u8) -> Vec<PlanTask> {
 }
 
 fn objective_hash(packet: Packet) -> u64 {
-    let mut h = 0x4f42_4a45_4354_0001u64;
-    h = mix(h, packet.objective_id);
-    h = mix(h, u64::from(packet.objective_required_tasks));
-    h = mix(h, packet.revision.max(1));
-    h.max(1)
+    fold_ordered_plan_hash(
+        0x4f42_4a45_4354_0001u64,
+        &[
+            packet.objective_id,
+            u64::from(packet.objective_required_tasks),
+            packet.revision.max(1),
+        ],
+    )
 }
 
 fn dependency_hash(tasks: &[PlanTask]) -> u64 {
@@ -341,26 +344,36 @@ fn lineage_hash(
     plan_revision: u64,
     completed_tasks: u8,
 ) -> u64 {
-    let mut h = 0x4c49_4e45_4147_4501u64;
-    h = mix(h, PLAN_SCHEMA_VERSION);
-    h = mix(h, objective_hash);
-    h = mix(h, dependency_hash);
-    h = mix(h, ready_set_hash);
-    h = mix(h, plan_revision);
-    h = mix(h, u64::from(completed_tasks));
-    h.max(1)
+    fold_ordered_plan_hash(
+        0x4c49_4e45_4147_4501u64,
+        &[
+            PLAN_SCHEMA_VERSION,
+            objective_hash,
+            dependency_hash,
+            ready_set_hash,
+            plan_revision,
+            u64::from(completed_tasks),
+        ],
+    )
 }
 
 fn plan_payload_hash(record: &PlanRecord) -> u64 {
-    let mut h = 0x9e37_79b9_7f4a_7c15u64;
-    h = mix(h, record.objective_id);
-    h = mix(h, record.task_id);
-    h = mix(h, u64::from(record.ready_tasks));
-    h = mix(h, record.dependency_hash);
-    h = mix(h, record.objective_hash);
-    h = mix(h, record.ready_set_hash);
-    h = mix(h, record.lineage_hash);
-    h.max(1)
+    fold_ordered_plan_hash(
+        0x9e37_79b9_7f4a_7c15u64,
+        &[
+            record.objective_id,
+            record.task_id,
+            u64::from(record.ready_tasks),
+            record.dependency_hash,
+            record.objective_hash,
+            record.ready_set_hash,
+            record.lineage_hash,
+        ],
+    )
+}
+
+fn fold_ordered_plan_hash(seed: u64, fields: &[u64]) -> u64 {
+    fields.iter().fold(seed, |h, field| mix(h, *field)).max(1)
 }
 
 #[cfg(test)]
