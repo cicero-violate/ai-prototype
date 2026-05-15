@@ -1486,6 +1486,54 @@ mod tests {
     }
 
     #[test]
+    fn run_cycle_preparation_preserves_project_and_spawned_turn_schedules() {
+        let tmp_root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../.tmp");
+        fs::create_dir_all(&tmp_root).expect("canonical temp root should be created");
+        let project_root = tmp_root.join(format!("run-cycle-prep-project-{}", timestamp_ms()));
+        let spawned_root = tmp_root.join(format!("run-cycle-prep-spawned-{}", timestamp_ms()));
+        let _ = fs::remove_dir_all(&project_root);
+        let _ = fs::remove_dir_all(&spawned_root);
+        fs::create_dir_all(&project_root).expect("project fixture dir should be created");
+        fs::create_dir_all(&spawned_root).expect("spawned fixture dir should be created");
+
+        let goal = "deterministic project goal";
+        fs::write(project_root.join("GOAL.md"), goal).expect("project goal should be writable");
+
+        let mut project_config = minimal_loop_config(&project_root);
+        project_config.execute_turns = 3;
+        project_config.supervisor_port = Some(9_101);
+        let project_plan =
+            prepare_run_cycle(&project_config).expect("project cycle should prepare");
+        assert!(!project_plan.is_spawned);
+        assert_eq!(
+            project_plan.command_url.as_deref(),
+            Some("http://127.0.0.1:9101/v1/command")
+        );
+        assert_eq!(project_plan.total_turns, project_config.execute_turns + 1);
+        assert_eq!(project_plan.turn_offset, 0);
+        assert_eq!(project_plan.goal, goal);
+
+        let mut spawned_config = minimal_loop_config(&spawned_root);
+        spawned_config.execute_turns = 2;
+        spawned_config.supervisor_port = Some(9_102);
+        spawned_config.domain = Some("spawned domain".to_string());
+        spawned_config.metric = Some("spawned metric".to_string());
+        let spawned_plan =
+            prepare_run_cycle(&spawned_config).expect("spawned cycle should prepare");
+        assert!(spawned_plan.is_spawned);
+        assert_eq!(
+            spawned_plan.command_url.as_deref(),
+            Some("http://127.0.0.1:9102/v1/command")
+        );
+        assert_eq!(spawned_plan.total_turns, spawned_config.execute_turns);
+        assert_eq!(spawned_plan.turn_offset, 1);
+        assert_eq!(spawned_plan.goal, "");
+
+        let _ = fs::remove_dir_all(&project_root);
+        let _ = fs::remove_dir_all(&spawned_root);
+    }
+
+    #[test]
     fn project_prompts_do_not_claim_to_be_worker_certification() {
         let goal = "Ship the next deterministic runtime slice.";
         let working_dir = Path::new("/workspace/project");
