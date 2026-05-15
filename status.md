@@ -42,6 +42,7 @@ Current date: 2026-05-15.
 
 ## Current Progress
 
+- Active Priorities item 74 is complete: `src/agent/router.rs::cdp_get(...)` now delegates socket/request/response collection through private `cdp_get_request_transport_response(...)` while preserving the original signature, address resolution, timeout configuration, request bytes, response read behavior, final `parse_cdp_get_response(...)` delegation, and `OpenAiError` mapping. Targeted loopback validation and broader all-target Rust validation passed. The next executable item is item 75, the focused router regression-test extension.
 - Planning turn on 2026-05-15 completed reconnaissance after Active Priorities item 72 and selected the next executable non-`root_validate` graph-backed task. Active Priorities item 73 cleared the commit-hook rustfmt blocker in `src/api/server.rs` and `src/capability/mod.rs`; items 74 through 76 are now planned for `src/agent/router.rs` and graph-derived evidence refresh. The first incomplete executable item is item 74, which must split `cdp_get(...)` into private request/transport and response-parse phase helpers while preserving local loopback behavior. `root_validate` remains explicitly non-selectable.
 - Active Priorities item 72 is complete: graph-derived structural evidence refresh passed after items 70 and 71, `SCORE_REPORT.md` was regenerated for 2026-05-15, and scores remained unchanged at `G = 7.99 / 10`, Architecture `8.9`, Structure `4.9`, Simplicity `7.1`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.4`. The `ai` crate row remains Nodes `5610`, Edges `34384`, Fns `2270`, Architecture `9.2`, Structure `6.0`, Simplicity `7.6`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.6`. `score.md` remains unchanged because refreshed evidence matches the existing rationale.
 - Active Priorities item 71 is complete: `policy_reuse_receipt_hash_helpers_preserve_distinct_record_boundaries` now covers valid ledger-summary and scale-trace receipts from the same reuse summary, non-zero distinct receipt hashes, invalid record-type rejection, `reuse_rate_bps > 10_000` rejection, source-hash tampering rejection, and scale-trace-only field binding. Targeted and broader Rust validation passed. The next executable item is item 72, the graph-derived structural evidence refresh.
@@ -137,6 +138,14 @@ Current date: 2026-05-15.
 - Implementation step 4 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 - Implementation step 5 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 ## Validation Ledger
+
+### 2026-05-15 — item 74 router cdp_get phase split
+
+- Scope: `src/agent/router.rs`; Active Priorities item 74.
+- Command/check: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test cdp_get_helpers_preserve_http_request_and_response_parsing -- --test-threads=1`; `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
+- Result: passed.
+- Evidence: targeted command passed the named loopback test with `1` passed and `0` failed; broader `cargo test --all-targets` passed with `325` library tests, `3` root-validate binary tests, `13` API server contract tests, `23` API transport contract tests, `3` canonical TLog contract tests, `4` domain contract tests, `10` graph mutation CLI contract tests, `9` MCP receipt contract tests, `2` planning contract tests, `5` score contract tests, `2` supervisor binary contract tests, `2` worker binary contract tests, and no failures across remaining zero-test targets. The implementation keeps `cdp_get(...)` parsing through `parse_cdp_get_response(...)` and moves CDP socket/request/response collection into private `cdp_get_request_transport_response(...)`.
+- Next action: Execute Active Priorities item 75 in `src/agent/router.rs`.
 
 ### 2026-05-15 — planning selected router cdp_get split after clearing commit format blocker
 

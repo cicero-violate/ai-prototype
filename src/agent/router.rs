@@ -387,6 +387,16 @@ fn cdp_get(
     path: &str,
     timeout_ms: u64,
 ) -> Result<(u16, String), OpenAiError> {
+    let response = cdp_get_request_transport_response(host, port, path, timeout_ms)?;
+    parse_cdp_get_response(&response)
+}
+
+fn cdp_get_request_transport_response(
+    host: &str,
+    port: u16,
+    path: &str,
+    timeout_ms: u64,
+) -> Result<String, OpenAiError> {
     use std::net::ToSocketAddrs;
     let addr = (host, port)
         .to_socket_addrs()
@@ -417,7 +427,7 @@ fn cdp_get(
     stream
         .read_to_string(&mut response)
         .map_err(OpenAiError::Io)?;
-    parse_cdp_get_response(&response)
+    Ok(response)
 }
 
 fn build_cdp_get_request(host: &str, port: u16, path: &str) -> String {
