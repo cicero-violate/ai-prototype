@@ -638,3 +638,180 @@ fn fold_api_transport_hash(seed: u64, fields: &[u64]) -> u64 {
     }
     h.max(1)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::api::protocol::Command;
+    use crate::capability::observation::ObservationRecord;
+
+    fn observation_envelope(command_id: u64) -> CommandEnvelope {
+        let observation = ObservationRecord::new(1, 1, 0xabc, 1);
+        CommandEnvelope::new(
+            command_id,
+            Command::SubmitEvidence(observation.submission()),
+        )
+    }
+
+    #[test]
+    fn api_transport_hash_helpers_preserve_frame_and_receipt_boundaries() {
+        let envelope = observation_envelope(11);
+        let frame_hash = transport_frame_hash(
+            API_TRANSPORT_SCHEMA_VERSION,
+            API_TRANSPORT_ROUTE_COMMAND,
+            101,
+            &envelope,
+        );
+        let same_frame_hash = transport_frame_hash(
+            API_TRANSPORT_SCHEMA_VERSION,
+            API_TRANSPORT_ROUTE_COMMAND,
+            101,
+            &envelope,
+        );
+        let frame = ApiTransportFrame::new(101, envelope.clone());
+
+        assert_ne!(frame_hash, 0);
+        assert_eq!(frame_hash, same_frame_hash);
+        assert_eq!(frame.payload_hash, frame_hash);
+        assert!(frame.is_contract_valid());
+
+        assert_ne!(
+            frame_hash,
+            transport_frame_hash(
+                API_TRANSPORT_SCHEMA_VERSION + 1,
+                API_TRANSPORT_ROUTE_COMMAND,
+                101,
+                &envelope,
+            )
+        );
+        assert_ne!(
+            frame_hash,
+            transport_frame_hash(
+                API_TRANSPORT_SCHEMA_VERSION,
+                API_TRANSPORT_ROUTE_COMMAND + 1,
+                101,
+                &envelope,
+            )
+        );
+        assert_ne!(
+            frame_hash,
+            transport_frame_hash(
+                API_TRANSPORT_SCHEMA_VERSION,
+                API_TRANSPORT_ROUTE_COMMAND,
+                102,
+                &envelope,
+            )
+        );
+
+        let mut command_id_changed = envelope.clone();
+        command_id_changed.command_id = command_id_changed.command_id.wrapping_add(1);
+        assert_ne!(
+            frame_hash,
+            transport_frame_hash(
+                API_TRANSPORT_SCHEMA_VERSION,
+                API_TRANSPORT_ROUTE_COMMAND,
+                101,
+                &command_id_changed,
+            )
+        );
+
+        let mut command_hash_changed = envelope.clone();
+        command_hash_changed.command_hash = command_hash_changed.command_hash.wrapping_add(1);
+        assert_ne!(
+            frame_hash,
+            transport_frame_hash(
+                API_TRANSPORT_SCHEMA_VERSION,
+                API_TRANSPORT_ROUTE_COMMAND,
+                101,
+                &command_hash_changed,
+            )
+        );
+
+        let receipt_hash = api_transport_receipt_hash(
+            101,
+            frame_hash,
+            envelope.command_id,
+            envelope.command_hash,
+            505,
+        );
+        let same_receipt_hash = api_transport_receipt_hash(
+            101,
+            frame_hash,
+            envelope.command_id,
+            envelope.command_hash,
+            505,
+        );
+        let receipt = ApiTransportReceipt::new(
+            101,
+            frame_hash,
+            envelope.command_id,
+            envelope.command_hash,
+            505,
+        );
+
+        assert_ne!(receipt_hash, 0);
+        assert_eq!(receipt_hash, same_receipt_hash);
+        assert_ne!(frame_hash, receipt_hash);
+        assert_eq!(receipt.receipt_hash, receipt_hash);
+        assert!(receipt.is_contract_valid());
+
+        assert_ne!(
+            receipt_hash,
+            api_transport_receipt_hash(
+                102,
+                frame_hash,
+                envelope.command_id,
+                envelope.command_hash,
+                505,
+            )
+        );
+        assert_ne!(
+            receipt_hash,
+            api_transport_receipt_hash(
+                101,
+                frame_hash.wrapping_add(1),
+                envelope.command_id,
+                envelope.command_hash,
+                505,
+            )
+        );
+        assert_ne!(
+            receipt_hash,
+            api_transport_receipt_hash(
+                101,
+                frame_hash,
+                envelope.command_id.wrapping_add(1),
+                envelope.command_hash,
+                505,
+            )
+        );
+        assert_ne!(
+            receipt_hash,
+            api_transport_receipt_hash(
+                101,
+                frame_hash,
+                envelope.command_id,
+                envelope.command_hash.wrapping_add(1),
+                505,
+            )
+        );
+        assert_ne!(
+            receipt_hash,
+            api_transport_receipt_hash(
+                101,
+                frame_hash,
+                envelope.command_id,
+                envelope.command_hash,
+                506,
+            )
+        );
+
+        let mut tampered_frame = frame;
+        tampered_frame.payload_hash = tampered_frame.payload_hash.wrapping_add(1);
+        assert!(!tampered_frame.is_contract_valid());
+
+        let mut tampered_receipt = receipt;
+        tampered_receipt.event_hash = tampered_receipt.event_hash.wrapping_add(1);
+        assert!(!tampered_receipt.is_contract_valid());
+    }
+}
