@@ -171,17 +171,21 @@ impl ApiTransportLedger {
     }
 
     pub fn receipt_for(&self, frame: &ApiTransportFrame) -> Option<ApiTransportReceipt> {
-        self.receipts
-            .iter()
-            .copied()
-            .find(|receipt| frame.matches_receipt(*receipt))
+        self.receipt_matching(|receipt| frame.matches_receipt(receipt))
     }
 
     fn receipt_for_request_id(&self, request_id: u64) -> Option<ApiTransportReceipt> {
+        self.receipt_matching(|receipt| receipt.request_id == request_id)
+    }
+
+    fn receipt_matching(
+        &self,
+        predicate: impl Fn(ApiTransportReceipt) -> bool,
+    ) -> Option<ApiTransportReceipt> {
         self.receipts
             .iter()
             .copied()
-            .find(|receipt| receipt.request_id == request_id)
+            .find(|receipt| predicate(*receipt))
     }
 
     fn receipt_for_frame_request_id(
