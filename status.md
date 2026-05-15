@@ -42,6 +42,8 @@ Current date: 2026-05-15.
 
 ## Current Progress
 
+- Planning turn on 2026-05-15 completed Python-assisted reconnaissance after Active Priorities item 106. Active Priorities items 107 through 109 are now planned for `src/agent/worker_client.rs` worker-client constructor helper extraction, focused timeout-boundary regression coverage, and graph-derived evidence refresh. The first executable item is item 107. `root_validate` remains intentionally non-selectable per user direction. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
+
 - Implementation step 5 found no unchecked Active Priorities item after item 106; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 
 - Implementation step 4 found no unchecked Active Priorities item after item 106; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
@@ -235,6 +237,14 @@ Current date: 2026-05-15.
 - Implementation step 4 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 - Implementation step 5 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 ## Validation Ledger
+
+### 2026-05-15 — planning reconnaissance for worker-client constructor helper
+
+- Scope: `plan.md`, `status.md`, `score.md`, `SCORE_REPORT.md`, `../state/rustc/auto-refactor/workspace__ai_sandbox__canon-mini-agent__prototype__state__rustc__ai__graph.graph-editor-plan.json`, `src/agent/worker_client.rs`, and nearby worker-client call sites in `src/agent/cycle.rs`.
+- Command/check: Python-assisted inspection of planning files, score files, graph-editor plan JSON, selected source/test surfaces, and `git status --short` through the project connector.
+- Result: informational.
+- Evidence: Existing Active Priorities were complete through item 106; graph-derived evidence remains aggregate `G = 7.93 / 10` with Structure `4.9`; selected non-`root_validate` operation `6e26c91f6053b823` covers `agent::worker_client::WorkerClient::{new, new_with_timeout}`; `src/agent/worker_client.rs` already exposes constructor fields to in-module tests and has existing coverage for default/custom timeout semantics.
+- Next action: Execute Active Priorities item 107 in `src/agent/worker_client.rs`.
 
 ### 2026-05-15 — implementation step 5 no unchecked Active Priorities item
 
