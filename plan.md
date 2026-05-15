@@ -161,7 +161,7 @@ Current graph-derived aggregate evidence remains `G = 7.93 / 10`, Architecture `
    - Done when: the named test proves all five public certification prompt builders contain their distinct phase labels, input-derived context payloads, phase-specific instructions, shared safety/output rules, and are pairwise distinct; the test must perform no file I/O, network I/O, environment mutation, thread spawning, or process spawning.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test certification_phase_dispatch_preserves_public_prompt_outputs -- --test-threads=1`.
 
-136. [ ] `SCORE_REPORT.md`: after items 134 and 135 land, refresh graph-derived structural evidence and review whether `score.md` rationale changes without raising project-level scores absent capability evidence.
+136. [x] `SCORE_REPORT.md`: after items 134 and 135 land, refresh graph-derived structural evidence and review whether `score.md` rationale changes without raising project-level scores absent capability evidence.
    - Scope: `SCORE_REPORT.md`, `score.md`, `plan.md`, and `status.md` only.
    - Done when: `scripts/recapture_rustc_graphs.sh --check` validates the configured graph root, `SCORE_REPORT.md` is regenerated from `../state/rustc`, `status.md` records aggregate and affected crate rows including `ai` and any changed function counts, and `score.md` changes only if refreshed evidence differs from the current rationale.
    - Validation: `bash scripts/recapture_rustc_graphs.sh --check && cargo run --manifest-path ../score/Cargo.toml --quiet -- --artifact-root ../state/rustc --report SCORE_REPORT.md --date "$(date +%Y-%m-%d)"`.
