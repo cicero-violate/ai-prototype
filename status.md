@@ -42,6 +42,8 @@ Current date: 2026-05-15.
 
 ## Current Progress
 
+- Planning turn on 2026-05-15 selected the next non-`root_validate` graph-backed work queue after confirming items 137 through 139 were complete and no unchecked Active Priorities item remained. The next executable item is Active Priorities item 140 in `src/api/server.rs`, consolidating `gate_from_str(...)` and `evidence_from_str(...)` through one private typed API submission-token extraction helper while preserving all gate/evidence mappings and invalid-payload boundaries; item 141 adds focused regression coverage; item 142 refreshes graph-derived evidence. Reconnaissance inspected `plan.md`, `status.md`, `score.md`, `SCORE_REPORT.md`, the selected `ai` graph-editor plan, and candidate API server source/tests. `root_validate` remains intentionally non-selected. `score.md` remains unchanged because this planning turn produced no implementation, validation refresh, graph refresh, or score-changing capability evidence.
+
 - Implementation step 5 on 2026-05-15 found no unchecked Active Priorities item after item 139; items 137 through 139 remain complete and the current queue is exhausted. No implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. Planning/doc validation `cargo test --test planning_contract -- --test-threads=1` passed with 2 tests and 0 failures. Cargo emitted the known non-fatal last-use cache warning reporting `database or disk is full`. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 
 - Implementation step 4 on 2026-05-15 found no unchecked Active Priorities item after item 139; items 137 through 139 remain complete and the current queue is exhausted. No implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. Planning/doc validation `cargo test --test planning_contract -- --test-threads=1` passed with 2 tests and 0 failures. Cargo emitted the known non-fatal last-use cache warning reporting `database or disk is full`. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
@@ -351,6 +353,14 @@ Current date: 2026-05-15.
 - Implementation step 4 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 - Implementation step 5 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 ## Validation Ledger
+
+### 2026-05-15 — planning contract validation after item 140 queue selection
+
+- Scope: `plan.md` and `status.md` planning-only update for Active Priorities items 140 through 142.
+- Command/check: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test planning_contract -- --test-threads=1`.
+- Result: passed.
+- Evidence: 2 planning contract tests passed, 0 failed. Cargo emitted the known non-fatal last-use/cache auto-clean warning reporting `database or disk is full`.
+- Next action: implement Active Priorities item 140 in `src/api/server.rs`.
 
 ### 2026-05-15 — implementation step 5 exhausted Active Priorities check after item 139
 
