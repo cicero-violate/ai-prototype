@@ -67,6 +67,9 @@ Current date: 2026-05-15.
 ## Current Progress
 
 
+- Implementation step 5 on 2026-05-15 found no unchecked Active Priorities item after item 154; the current queue remains exhausted. No implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `plan.md`, `status.md`, and `score.md` were read; the working tree was clean before this status update; `score.md` remains unchanged because no implementation or score-changing evidence was produced.
+
+
 - Implementation step 4 on 2026-05-15 found no unchecked Active Priorities item after item 154; items 152 through 154 remain complete and the current queue is exhausted. No implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `plan.md`, `status.md`, and `score.md` were read; the working tree was clean before this status update; `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 
 
@@ -496,6 +499,24 @@ Current date: 2026-05-15.
 - Implementation step 4 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 - Implementation step 5 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 ## Validation Ledger
+
+
+### 2026-05-15 — implementation step 5 planning-contract validation
+
+- Scope: `status.md` status-only exhausted-queue update.
+- Command/check: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test planning_contract -- --test-threads=1`.
+- Result: passed.
+- Evidence: 2 planning-contract tests passed, 0 failed. Cargo emitted recurring non-fatal global-cache warnings reporting `database or disk is full`.
+- Next action: planning turn should select the next non-`root_validate` graph-backed item.
+
+
+### 2026-05-15 — implementation step 5 no unchecked Active Priorities item
+
+- Scope: `plan.md`, `status.md`, and `score.md` review; `status.md` exhaustion note.
+- Command/check: parsed `# Canon Agent Plan` / `## Active Priorities` and found 0 unchecked checklist items; confirmed last Active Priorities items 152 through 154 are complete.
+- Result: informational.
+- Evidence: no selectable implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item remained under Active Priorities after item 154; working tree was clean before this status update.
+- Next action: planning turn should select the next non-`root_validate` graph-backed item.
 
 
 ### 2026-05-15 — implementation step 4 planning-contract validation
