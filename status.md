@@ -42,6 +42,7 @@ Current date: 2026-05-15.
 
 ## Current Progress
 
+- Active Priorities item 78 is complete: `u64_route_lookup_helpers_preserve_gate_and_evidence_boundaries` now proves representative gate ids, representative evidence values, cross-domain gate/evidence rejection, unknown-input `None` behavior, and representative `effect_for_gate_evidence(...)` behavior for the shared typed route-table lookup helper. Targeted and broader Rust validation passed. The next executable item is item 79, the graph-derived evidence refresh and score-rationale review.
 - Active Priorities item 77 is complete: `src/agent/cycle.rs` now routes `gate_id_u64(...)` and `evidence_u64_value(...)` through the shared typed `lookup_u64_route(...)` helper using `U64RouteTable`, preserving distinct gate and evidence route tables, unknown-input `None` behavior, submit-evidence packet/envelope behavior, and runtime receipt semantics. Targeted `cargo check --lib` and broader `cargo test --all-targets` passed. The next executable item is item 78, the focused route-boundary regression test.
 - Planning turn on 2026-05-15 completed Python-assisted reconnaissance against the selected `ai` graph-editor plan after Active Priorities item 76. Active Priorities items 77 through 79 are now planned for `src/agent/cycle.rs` and graph-derived evidence refresh. The first executable item is item 77, which must route `gate_id_u64(...)` and `evidence_u64_value(...)` through one private typed route-table lookup helper while preserving distinct gate and evidence domains. `root_validate` remains explicitly non-selectable.
 
@@ -145,6 +146,14 @@ Current date: 2026-05-15.
 - Implementation step 4 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 - Implementation step 5 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 ## Validation Ledger
+
+### 2026-05-15 — item 78 agent cycle u64 route lookup boundary regression
+
+- Scope: `src/agent/cycle.rs`; Active Priorities item 78.
+- Command/check: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test u64_route_lookup_helpers_preserve_gate_and_evidence_boundaries -- --test-threads=1`; `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
+- Result: passed.
+- Evidence: targeted command passed `1` named test with `0` failures; broader `cargo test --all-targets` passed with `326` library tests, `3` root-validate binary tests, `13` API server contract tests, `23` API transport contract tests, `3` canonical TLog contract tests, `4` domain contract tests, `10` graph mutation CLI contract tests, `9` MCP receipt contract tests, `2` planning contract tests, `5` score contract tests, `2` supervisor binary contract tests, `2` worker binary contract tests, and no failures across remaining zero-test targets. Cargo also emitted a non-fatal global cache last-use warning: `database or disk is full`; product validation still passed.
+- Next action: Execute Active Priorities item 79, the graph-derived structural evidence refresh.
 
 ### 2026-05-15 — item 77 agent cycle typed u64 route lookup helper
 

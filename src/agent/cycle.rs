@@ -1626,6 +1626,37 @@ mod hash_tests {
     }
 
     #[test]
+    fn u64_route_lookup_helpers_preserve_gate_and_evidence_boundaries() {
+        assert_eq!(gate_id_u64("Invariant"), Some(1));
+        assert_eq!(gate_id_u64("Execution"), Some(5));
+        assert_eq!(gate_id_u64("Eval"), Some(7));
+
+        assert_eq!(evidence_u64_value("InvariantProof"), Some(3));
+        assert_eq!(evidence_u64_value("ExecutionReceipt"), Some(8));
+        assert_eq!(evidence_u64_value("EvalScore"), Some(12));
+
+        assert_eq!(evidence_u64_value("Invariant"), None);
+        assert_eq!(evidence_u64_value("Execution"), None);
+        assert_eq!(evidence_u64_value("Eval"), None);
+
+        assert_eq!(gate_id_u64("InvariantProof"), None);
+        assert_eq!(gate_id_u64("ExecutionReceipt"), None);
+        assert_eq!(gate_id_u64("EvalScore"), None);
+
+        assert_eq!(gate_id_u64("UnknownGate"), None);
+        assert_eq!(evidence_u64_value("UnknownEvidence"), None);
+
+        assert_eq!(
+            effect_for_gate_evidence("Plan", "TaskReady", true),
+            (1, "\"BindReadyTask\"")
+        );
+        assert_eq!(
+            effect_for_gate_evidence("Plan", "TaskReady", false),
+            (0, "null")
+        );
+    }
+
+    #[test]
     fn submit_evidence_hash_helpers_preserve_known_vectors() {
         let invariant_json =
             build_submit_evidence_json("Invariant", "InvariantProof", true, 1).unwrap();
