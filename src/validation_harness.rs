@@ -18555,4 +18555,215 @@ mod tests {
             policy_reuse_evidence_batch_run_request_hash(&request)
         );
     }
+
+    #[test]
+    fn validation_harness_evidence_bundle_hash_helper_preserves_learning_and_bundle_boundaries() {
+        let bundle = policy_reuse_evidence_bundle_smoke_receipt();
+        let compact = policy_reuse_evidence_compact_validation_smoke_receipt();
+        let evaluator = policy_reuse_evidence_external_evaluator_result_smoke_receipt();
+        let learning = policy_reuse_evidence_learning_admission_smoke_receipt();
+        let candidate = policy_reuse_evidence_learning_candidate_smoke_receipt();
+        let data_admission = policy_reuse_evidence_learning_data_admission_smoke_receipt();
+
+        assert!(bundle.is_valid());
+        assert!(bundle.passed());
+        assert!(compact.is_valid());
+        assert!(compact.passed());
+        assert!(evaluator.is_valid());
+        assert!(evaluator.passed());
+        assert!(learning.is_valid());
+        assert!(learning.passed());
+        assert!(candidate.is_valid());
+        assert!(candidate.passed());
+        assert!(data_admission.is_valid());
+        assert!(data_admission.passed());
+
+        assert_eq!(
+            bundle.bundle_hash,
+            policy_reuse_evidence_bundle_hash(&bundle)
+        );
+        assert_eq!(
+            compact.compact_hash,
+            policy_reuse_evidence_compact_validation_hash(&compact)
+        );
+        assert_eq!(
+            evaluator.evaluator_hash,
+            policy_reuse_evidence_external_evaluator_result_hash(&evaluator)
+        );
+        assert_eq!(
+            learning.admission_hash,
+            policy_reuse_evidence_learning_admission_hash(&learning)
+        );
+        assert_eq!(
+            candidate.candidate_hash,
+            policy_reuse_evidence_learning_candidate_hash(&candidate)
+        );
+        assert_eq!(
+            data_admission.admission_hash,
+            policy_reuse_evidence_learning_data_admission_hash(&data_admission)
+        );
+
+        let payload_hashes = [
+            bundle.bundle_hash,
+            compact.compact_hash,
+            evaluator.evaluator_hash,
+            learning.admission_hash,
+            candidate.candidate_hash,
+            data_admission.admission_hash,
+        ];
+        for (left_index, left_hash) in payload_hashes.iter().enumerate() {
+            assert_ne!(*left_hash, 0);
+            for right_hash in payload_hashes.iter().skip(left_index + 1) {
+                assert_ne!(left_hash, right_hash);
+            }
+        }
+
+        let receipt_pairs = [
+            (
+                bundle.bundle_hash,
+                bundle.receipt_hash,
+                policy_reuse_evidence_bundle_receipt_hash(&bundle),
+            ),
+            (
+                compact.compact_hash,
+                compact.receipt_hash,
+                policy_reuse_evidence_compact_validation_receipt_hash(&compact),
+            ),
+            (
+                evaluator.evaluator_hash,
+                evaluator.receipt_hash,
+                policy_reuse_evidence_external_evaluator_result_receipt_hash(&evaluator),
+            ),
+            (
+                learning.admission_hash,
+                learning.receipt_hash,
+                policy_reuse_evidence_learning_admission_receipt_hash(&learning),
+            ),
+            (
+                candidate.candidate_hash,
+                candidate.receipt_hash,
+                policy_reuse_evidence_learning_candidate_receipt_hash(&candidate),
+            ),
+            (
+                data_admission.admission_hash,
+                data_admission.receipt_hash,
+                policy_reuse_evidence_learning_data_admission_receipt_hash(&data_admission),
+            ),
+        ];
+        for (payload_hash, stored_receipt_hash, expected_receipt_hash) in receipt_pairs {
+            assert_ne!(stored_receipt_hash, 0);
+            assert_eq!(stored_receipt_hash, expected_receipt_hash);
+            assert_ne!(payload_hash, stored_receipt_hash);
+        }
+
+        let bundle_regression = policy_reuse_evidence_bundle_regression_smoke_receipt();
+        let compact_regression =
+            policy_reuse_evidence_compact_validation_regression_smoke_receipt();
+        let evaluator_regression =
+            policy_reuse_evidence_external_evaluator_result_regression_smoke_receipt();
+        let learning_regression =
+            policy_reuse_evidence_learning_admission_regression_smoke_receipt();
+        let candidate_regression =
+            policy_reuse_evidence_learning_candidate_regression_smoke_receipt();
+        let data_admission_regression =
+            policy_reuse_evidence_learning_data_admission_regression_smoke_receipt();
+
+        assert!(bundle_regression.is_valid());
+        assert!(!bundle_regression.passed());
+        assert_eq!(
+            bundle_regression.regression_reason,
+            "surface_index_incomplete"
+        );
+        assert_ne!(bundle.bundle_hash, bundle_regression.bundle_hash);
+
+        assert!(compact_regression.is_valid());
+        assert!(!compact_regression.passed());
+        assert_eq!(compact_regression.compact_validation_status, "fail");
+        assert_eq!(compact_regression.failure_reason, "retrieval_not_ready");
+        assert_ne!(compact.compact_hash, compact_regression.compact_hash);
+
+        assert!(evaluator_regression.is_valid());
+        assert!(!evaluator_regression.passed());
+        assert_eq!(evaluator_regression.evaluator_status, "failed");
+        assert_eq!(
+            evaluator_regression.evaluator_failure_reason,
+            "external_evaluator_failed"
+        );
+        assert_ne!(
+            evaluator.evaluator_hash,
+            evaluator_regression.evaluator_hash
+        );
+
+        assert!(learning_regression.is_valid());
+        assert!(!learning_regression.passed());
+        assert_eq!(learning_regression.admission_status, "not_admissible");
+        assert_eq!(
+            learning_regression.not_admissible_reason,
+            "rollout_not_ready"
+        );
+        assert_ne!(learning.admission_hash, learning_regression.admission_hash);
+
+        assert!(candidate_regression.is_valid());
+        assert!(!candidate_regression.passed());
+        assert_eq!(candidate_regression.candidate_status, "not_candidate");
+        assert_eq!(
+            candidate_regression.not_candidate_reason,
+            "evaluator_not_passed"
+        );
+        assert_ne!(
+            candidate.candidate_hash,
+            candidate_regression.candidate_hash
+        );
+
+        assert!(data_admission_regression.is_valid());
+        assert!(!data_admission_regression.passed());
+        assert_eq!(data_admission_regression.admission_status, "not_admitted");
+        assert_eq!(
+            data_admission_regression.not_admitted_reason,
+            "candidate_not_ready"
+        );
+        assert_ne!(
+            data_admission.admission_hash,
+            data_admission_regression.admission_hash
+        );
+
+        let mut invalid_bundle = bundle.clone();
+        invalid_bundle.bundle_version = 0;
+        assert_eq!(0, policy_reuse_evidence_bundle_hash(&invalid_bundle));
+
+        let mut invalid_compact = compact.clone();
+        invalid_compact.compact_validation_version = 0;
+        assert_eq!(
+            0,
+            policy_reuse_evidence_compact_validation_hash(&invalid_compact)
+        );
+
+        let mut invalid_evaluator = evaluator.clone();
+        invalid_evaluator.evaluator_result_version = 0;
+        assert_eq!(
+            0,
+            policy_reuse_evidence_external_evaluator_result_hash(&invalid_evaluator)
+        );
+
+        let mut invalid_learning = learning.clone();
+        invalid_learning.admission_version = 0;
+        assert_eq!(
+            0,
+            policy_reuse_evidence_learning_admission_hash(&invalid_learning)
+        );
+
+        let mut invalid_candidate = candidate.clone();
+        invalid_candidate.learning_candidate_version = 0;
+        assert_eq!(
+            0,
+            policy_reuse_evidence_learning_candidate_hash(&invalid_candidate)
+        );
+
+        let mut invalid_data_admission = data_admission.clone();
+        invalid_data_admission.data_admission_version = 0;
+        assert_eq!(
+            0,
+            policy_reuse_evidence_learning_data_admission_hash(&invalid_data_admission)
+        );
+    }
 }
