@@ -66,6 +66,9 @@ Current date: 2026-05-15.
 
 ## Current Progress
 
+
+- Planning turn on 2026-05-15 selected the next executable non-`root_validate` graph-backed work after confirming the current Active Priorities checklist had no unchecked executable item. The new queue is items 152 through 154: first refactor `src/capability/verification/record.rs` so `ArtifactSemanticProfile::expected_receipt_hash(...)` and `ArtifactSemanticProfile::expected_lineage_hash(...)` share a private ordered semantic-profile hash-fold helper, then add focused regression coverage for receipt/lineage hash boundaries, then refresh graph-derived structural evidence. Reconnaissance inspected the selected `ai` graph-editor plan with Python, current `SCORE_REPORT.md`, candidate source/test surfaces, and the working tree. `root_validate` remains intentionally non-selected. `score.md` remains unchanged because this planning turn produced no implementation, graph refresh, or score-changing capability evidence.
+
 - Active Priorities item 170 is complete: `src/validation_harness.rs` now includes test `validation_harness_learning_data_admission_builder_preserves_smoke_and_regression_boundaries`. The test uses only in-memory public smoke/regression constructors and proves smoke learning-data admission remains valid, passed, admitted, source-bound to smoke candidate/evaluator receipts, side-effect-free, and hash-bound; proves regression learning-data admission remains valid but non-passing, not admitted, source-bound to regression candidate/evaluator receipts, side-effect-free, and hash-bound; and proves smoke/regression admission and receipt hashes remain distinct. Targeted validation passed. Broader `cargo test --all-targets` passed with 358 library tests and all binary, integration, and example targets green. Cargo emitted the known non-fatal cache warning reporting `database or disk is full`. `score.md` remains unchanged because this is test evidence for a narrow structural refactor, not a project-level score change. The next executable item is item 171, graph-derived structural evidence refresh.
 
 - Active Priorities item 169 is complete: `src/validation_harness.rs` now routes `policy_reuse_evidence_learning_data_admission_smoke_receipt(...)` and `policy_reuse_evidence_learning_data_admission_regression_smoke_receipt(...)` through private `policy_reuse_evidence_learning_data_admission_smoke_or_regression(...)`. The change preserves public constructor names and signatures, `OnceLock` caching, cloned return behavior, smoke versus regression source receipt selection, side-effect flags, not-admitted reasons, `policy_reuse_evidence_learning_data_admission_from_sources(...)`, finalization, hash functions, receipt structs, root-validate mode functions, public APIs, and `root_validate` boundaries. Targeted `cargo check --lib` passed. Broader `cargo test --all-targets` passed with 357 library tests, 3 `root_validate` binary tests, and all integration, binary, and example suites green. Cargo emitted the known non-fatal cache warning reporting `database or disk is full`. `score.md` remains unchanged because this is a narrow structural refactor, not a project-level score change. The next executable item is item 170, focused regression coverage for the new helper boundary.
@@ -481,6 +484,24 @@ Current date: 2026-05-15.
 - Implementation step 4 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 - Implementation step 5 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 ## Validation Ledger
+
+
+### 2026-05-15 — planning-contract validation for items 152-154 planning update
+
+- Scope: `plan.md` and `status.md` planning-only update for Active Priorities items 152 through 154.
+- Command/check: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test planning_contract -- --test-threads=1`.
+- Result: passed.
+- Evidence: 2 planning-contract tests passed, 0 failed. Cargo emitted the known non-fatal global-cache warnings reporting `database or disk is full`.
+- Next action: commit the planning and status update, then execute Active Priorities item 152.
+
+
+### 2026-05-15 — planning reconnaissance for items 152-154
+
+- Scope: `plan.md`, `status.md`, `score.md`, `SCORE_REPORT.md`, selected `ai` graph-editor plan, and candidate source/test surfaces.
+- Command/check: Python inspection of `../state/rustc/auto-refactor/workspace__ai_sandbox__canon-mini-agent__prototype__state__rustc__ai__graph.graph-editor-plan.json`; source inspection of `src/capability/learning/promote.rs`, `src/capability/observation/source.rs`, `src/capability/tooling/record/hash.rs`, `src/capability/verification/proof.rs`, `src/codec/ndjson.rs`, `src/domain/bridge.rs`, `src/domain/scoring.rs`, and `src/capability/verification/record.rs`; working-tree check through the project connector.
+- Result: informational.
+- Evidence: selected graph operation `214042e11a8adf1d` for `capability::verification::record::ArtifactSemanticProfile::{expected_receipt_hash, expected_lineage_hash}` after skipping `root_validate` and stale/already-covered higher-ranked non-root candidates. Current `SCORE_REPORT.md` remains `G = 7.94 / 10`, Architecture `8.9`, Structure `5.0`, Simplicity `6.9`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2`.
+- Next action: execute Active Priorities item 152 in `src/capability/verification/record.rs`.
 
 ### 2026-05-15 — Active Priorities item 170 targeted and broad validation
 
