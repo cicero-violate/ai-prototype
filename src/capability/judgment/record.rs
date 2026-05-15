@@ -922,15 +922,18 @@ fn policy_decision_id(
     {
         return 0;
     }
-    let mut h = 0x4a55_4447_504f_4c48u64;
-    h = mix(h, context.objective_id);
-    h = mix(h, context.context_hash);
-    h = mix(h, context.memory_aggregate_hash);
-    h = mix(h, policy_version);
-    h = mix(h, policy_hash);
-    h = mix(h, policy_feedback_hash);
-    h = mix(h, policy_lookup_receipt_hash);
-    h.max(1)
+    fold_ordered_policy_judgment_hash(
+        0x4a55_4447_504f_4c48u64,
+        &[
+            context.objective_id,
+            context.context_hash,
+            context.memory_aggregate_hash,
+            policy_version,
+            policy_hash,
+            policy_feedback_hash,
+            policy_lookup_receipt_hash,
+        ],
+    )
 }
 
 fn policy_rationale_hash(
@@ -946,13 +949,23 @@ fn policy_rationale_hash(
     {
         return 0;
     }
-    let mut h = 0x5241_544c_504f_4c48u64;
-    h = mix(h, context.observation_hash);
-    h = mix(h, context.memory_receipt_hash);
-    h = mix(h, decision_id);
-    h = mix(h, policy_feedback_hash);
-    h = mix(h, policy_lookup_receipt_hash);
-    h.max(1)
+    fold_ordered_policy_judgment_hash(
+        0x5241_544c_504f_4c48u64,
+        &[
+            context.observation_hash,
+            context.memory_receipt_hash,
+            decision_id,
+            policy_feedback_hash,
+            policy_lookup_receipt_hash,
+        ],
+    )
+}
+
+fn fold_ordered_policy_judgment_hash(seed: u64, fields: &[u64]) -> u64 {
+    fields
+        .iter()
+        .fold(seed, |hash, field| mix(hash, *field))
+        .max(1)
 }
 
 fn policy_reuse_record_set_hash(records: &[PolicyJudgmentRecord]) -> u64 {

@@ -42,6 +42,7 @@ Current date: 2026-05-15.
 
 ## Current Progress
 
+- Active Priorities item 86 is complete: `src/capability/judgment/record.rs` now routes `policy_decision_id(...)` and `policy_rationale_hash(...)` through shared private `fold_ordered_policy_judgment_hash(...)` while preserving distinct decision/rationale domain seeds, validity guards, field order, and non-zero hash behavior. Targeted `cargo check --lib` and broader `cargo test --all-targets` passed. The next executable item is item 87, the focused policy judgment hash helper regression test.
 - Planning turn on 2026-05-15 completed Python-assisted reconnaissance after Active Priorities item 85. Active Priorities items 86 through 88 are now planned for `src/capability/judgment/record.rs` and graph-derived evidence refresh. The first executable item is item 86, which must route `policy_decision_id(...)` and `policy_rationale_hash(...)` through one private ordered judgment hash-fold helper while preserving distinct decision/rationale hash domains, existing guards, field order, and policy judgment record behavior. `root_validate` remains explicitly non-selectable.
 - Implementation step 5 found no unchecked Active Priorities item; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 - Implementation step 4 found no unchecked Active Priorities item after item 85; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
@@ -162,6 +163,14 @@ Current date: 2026-05-15.
 - Implementation step 4 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 - Implementation step 5 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 ## Validation Ledger
+
+### 2026-05-15 — item 86 policy judgment hash helper extraction
+
+- Scope: `src/capability/judgment/record.rs`, `plan.md`, and `status.md`, Active Priorities item 86.
+- Command/check: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo check --lib`; `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
+- Result: passed.
+- Evidence: `policy_decision_id(...)` and `policy_rationale_hash(...)` now delegate their ordered field folding to shared private `fold_ordered_policy_judgment_hash(...)` while preserving existing guards, seeds, field vectors, and `h.max(1)` behavior. Targeted `cargo check --lib` finished successfully. Broader `cargo test --all-targets` passed with 328 library tests, 3 `root_validate` binary tests, 13 API server contract tests, 23 API transport contract tests, 3 canonical TLog contract tests, 4 domain contract tests, 10 graph mutation CLI contract tests, 9 MCP receipt contract tests, 2 planning contract tests, 5 score contract tests, 2 supervisor binary contract tests, 2 worker binary contract tests, and all example test targets passing. Cargo emitted the recurring global-cache warning (`database or disk is full`) during targeted validation, but compilation and tests passed.
+- Next action: Execute Active Priorities item 87 in the `src/capability/judgment/record.rs` test module only.
 
 ### 2026-05-15 — planning selected policy judgment hash helper work
 
