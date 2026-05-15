@@ -1237,6 +1237,115 @@ mod tests {
     }
 
     #[test]
+    fn ollama_effect_receipt_hash_helpers_preserve_authority_request_domains() {
+        let mut state = State {
+            phase: Phase::Judgment,
+            ..State::default()
+        };
+        state.gates.invariant = Gate::pass(Evidence::InvariantProof);
+        state.gates.analysis = Gate::pass(Evidence::AnalysisReport);
+
+        let mut memory = MemoryIndex::default();
+        assert!(memory.insert(MemoryFact::new(state.packet.objective_id, 0xfeed, 7, 1)));
+        let lookup = memory.lookup(state.packet.objective_id, 8);
+        let context = ContextRecord::from_packet_memory(state.packet, 0xabc, &lookup);
+        let policy = PolicyStore::default();
+        let client = OllamaClient::new(OllamaConfig::default()).unwrap();
+        let call = client
+            .call_from_response_body(
+                &context,
+                &policy,
+                "{\"id\":\"chatcmpl-1\",\"object\":\"chat.completion\",\"choices\":[{\"index\":0,\"message\":{\"role\":\"assistant\",\"content\":\"Preserve distinct effect receipt hash domains.\"},\"finish_reason\":\"stop\"}],\"usage\":{\"prompt_tokens\":30,\"completion_tokens\":8,\"total_tokens\":38}}",
+            )
+            .unwrap();
+        let envelope = CommandEnvelope::new(
+            call.request_hash,
+            crate::api::protocol::Command::SubmitEvidence(call.submission()),
+        );
+        let command_hash = envelope.command_hash;
+
+        let mut tlog = Vec::new();
+        crate::api::routes::handle_envelope(
+            &mut state,
+            &mut tlog,
+            RuntimeConfig::default(),
+            envelope,
+        )
+        .unwrap();
+        let persisted_event = tlog
+            .iter()
+            .find(|event| {
+                event.kind == EventKind::Persisted
+                    && event.evidence == Evidence::JudgmentRecord
+                    && event.api_command_hash == command_hash
+            })
+            .copied()
+            .unwrap();
+        let receipt = call
+            .receipt_for_configured_event(client.config(), command_hash, &persisted_event)
+            .unwrap();
+        assert!(receipt.is_valid());
+
+        let authority_hash = receipt.canonical_authority_hash().unwrap();
+        let request_hash = receipt.canonical_request_hash().unwrap();
+        assert_ne!(authority_hash, 0);
+        assert_ne!(request_hash, 0);
+        assert_ne!(authority_hash, request_hash);
+
+        let canonical_receipt = receipt.canonical_effect_receipt().unwrap();
+        assert_eq!(canonical_receipt.authority_hash, authority_hash);
+        assert_eq!(canonical_receipt.request_hash, request_hash);
+
+        let authority_policy = OllamaRetryBudgetPolicy::new(
+            receipt.timeout_ms.saturating_add(1),
+            receipt.max_retries,
+            receipt.attempt_budget,
+        )
+        .unwrap();
+        let mut authority_tamper = OllamaLlmEffectReceipt {
+            timeout_ms: authority_policy.timeout_ms,
+            retry_budget_hash: authority_policy.policy_hash(),
+            receipt_hash: 0,
+            ..receipt
+        };
+        authority_tamper.receipt_hash = authority_tamper.expected_receipt_hash();
+        assert!(authority_tamper.is_valid());
+        assert_ne!(
+            authority_tamper.canonical_authority_hash().unwrap(),
+            authority_hash
+        );
+        assert_eq!(
+            authority_tamper.canonical_request_hash().unwrap(),
+            request_hash
+        );
+
+        let mut request_tamper = OllamaLlmEffectReceipt {
+            command_hash: receipt.command_hash ^ 1,
+            receipt_hash: 0,
+            ..receipt
+        };
+        request_tamper.receipt_hash = request_tamper.expected_receipt_hash();
+        assert!(request_tamper.is_valid());
+        assert_eq!(
+            request_tamper.canonical_authority_hash().unwrap(),
+            authority_hash
+        );
+        assert_ne!(
+            request_tamper.canonical_request_hash().unwrap(),
+            request_hash
+        );
+
+        let invalid_receipt = OllamaLlmEffectReceipt {
+            command_hash: 0,
+            ..receipt
+        };
+        assert!(!invalid_receipt.is_valid());
+        assert_eq!(invalid_receipt.canonical_authority_hash(), None);
+        assert_eq!(invalid_receipt.canonical_request_hash(), None);
+        assert_eq!(invalid_receipt.canonical_effect_receipt(), None);
+    }
+
+    #[test]
     fn ollama_judgment_final_proof_persists_as_verification_event() {
         let mut state = State {
             phase: Phase::Judgment,
