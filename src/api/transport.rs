@@ -597,17 +597,16 @@ fn transport_frame_hash(
     request_id: u64,
     envelope: &CommandEnvelope,
 ) -> u64 {
-    let mut h = 0x7472_616e_7370_6f72u64;
-    h ^= schema_version;
-    h = h.wrapping_mul(0x100000001b3);
-    h ^= route_id;
-    h = h.wrapping_mul(0x100000001b3);
-    h ^= request_id;
-    h = h.wrapping_mul(0x100000001b3);
-    h ^= envelope.command_id;
-    h = h.wrapping_mul(0x100000001b3);
-    h ^= envelope.command_hash;
-    h.wrapping_mul(0x100000001b3).max(1)
+    fold_api_transport_hash(
+        0x7472_616e_7370_6f72u64,
+        &[
+            schema_version,
+            route_id,
+            request_id,
+            envelope.command_id,
+            envelope.command_hash,
+        ],
+    )
 }
 
 fn api_transport_receipt_hash(
@@ -617,19 +616,25 @@ fn api_transport_receipt_hash(
     command_hash: u64,
     event_hash: u64,
 ) -> u64 {
-    let mut h = 0x6170_695f_7472_6374u64;
-    h ^= API_TRANSPORT_RECEIPT_SCHEMA_VERSION;
-    h = h.wrapping_mul(0x100000001b3);
-    h ^= API_TRANSPORT_RECEIPT_RECORD;
-    h = h.wrapping_mul(0x100000001b3);
-    h ^= request_id;
-    h = h.wrapping_mul(0x100000001b3);
-    h ^= payload_hash;
-    h = h.wrapping_mul(0x100000001b3);
-    h ^= command_id;
-    h = h.wrapping_mul(0x100000001b3);
-    h ^= command_hash;
-    h = h.wrapping_mul(0x100000001b3);
-    h ^= event_hash;
-    h.wrapping_mul(0x100000001b3).max(1)
+    fold_api_transport_hash(
+        0x6170_695f_7472_6374u64,
+        &[
+            API_TRANSPORT_RECEIPT_SCHEMA_VERSION,
+            API_TRANSPORT_RECEIPT_RECORD,
+            request_id,
+            payload_hash,
+            command_id,
+            command_hash,
+            event_hash,
+        ],
+    )
+}
+
+fn fold_api_transport_hash(seed: u64, fields: &[u64]) -> u64 {
+    let mut h = seed;
+    for field in fields {
+        h ^= *field;
+        h = h.wrapping_mul(0x100000001b3);
+    }
+    h.max(1)
 }

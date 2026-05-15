@@ -42,6 +42,8 @@ Current date: 2026-05-15.
 
 ## Current Progress
 
+- Active Priorities item 98 is complete: `src/api/transport.rs` now routes `transport_frame_hash(...)` and `api_transport_receipt_hash(...)` through shared private `fold_api_transport_hash(...)` while preserving distinct seeds, ordered field vectors, and non-zero `max(1)` behavior. Targeted `cargo check --lib` and broader `cargo test --all-targets` passed. Cargo emitted non-fatal last-use cache warnings reporting `database or disk is full`, but compilation and tests completed successfully. The next executable item is item 99, focused API transport hash-boundary regression coverage. `score.md` remains unchanged because this is a narrow structure refactor with validation evidence, not a project-level score change.
+
 - Planning turn on 2026-05-15 completed Python-assisted reconnaissance after Active Priorities item 97. Active Priorities items 98 through 100 are now planned for `src/api/transport.rs` API transport hash-fold helper extraction, focused hash-boundary regression coverage, and graph-derived evidence refresh. The first executable item is item 98. `root_validate` remains intentionally non-selectable per user direction. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 
 - Implementation step 5 found no unchecked Active Priorities item after item 97; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
@@ -197,6 +199,14 @@ Current date: 2026-05-15.
 - Implementation step 4 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 - Implementation step 5 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 ## Validation Ledger
+
+### 2026-05-15 — Active Priorities item 98 API transport hash helper extraction
+
+- Scope: `src/api/transport.rs`, `plan.md`, and `status.md`.
+- Command/check: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo check --lib`; `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
+- Result: passed.
+- Evidence: `transport_frame_hash(...)` and `api_transport_receipt_hash(...)` now delegate ordered field vectors through shared private `fold_api_transport_hash(...)`; targeted library check passed; broader all-target validation passed with 332 library tests plus integration and binary contract tests, including 23 `api_transport_contract` tests. Cargo emitted non-fatal global cache last-use warnings reporting `database or disk is full`, but compilation and tests completed successfully.
+- Next action: Execute Active Priorities item 99, the focused API transport hash helper regression test.
 
 ### 2026-05-15 — planning turn selected API transport hash helper work
 
