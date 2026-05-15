@@ -785,3 +785,214 @@ pub fn decode_process_effect_receipt_ndjson(
 
     Ok(receipt)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn artifact_receipt() -> ToolEffectReceipt {
+        let effect_hash = 0x1010;
+        let artifact_path_hash = 0x2020;
+        let artifact_content_hash = 0x3030;
+        let artifact_bytes = 0x40;
+        let sandbox_root_hash = 0x5050;
+        ToolEffectReceipt {
+            capability: CapabilityId::Tooling,
+            registry_policy_hash: CapabilityRegistry::canonical().policy_hash(),
+            request_hash: 0x6060,
+            receipt_hash: 0x7070,
+            effect_hash,
+            effect: Effect::artifact(
+                effect_hash,
+                artifact_path_hash,
+                artifact_content_hash,
+                artifact_bytes,
+                sandbox_root_hash,
+            ),
+            event_seq: 8,
+            event_hash: 0x8080,
+            artifact_id: 0x9090,
+            artifact_receipt_hash: 0xa0a0,
+            artifact_path_hash,
+            artifact_content_hash,
+            artifact_bytes,
+            sandbox_root_hash,
+        }
+    }
+
+    fn process_receipt() -> ProcessEffectReceipt {
+        let effect = Effect::process(0x1111, 0x2222, 12, 3, 0, false);
+        ProcessEffectReceipt {
+            capability: CapabilityId::Tooling,
+            registry_policy_hash: CapabilityRegistry::canonical().policy_hash(),
+            request_hash: 0x3333,
+            receipt_hash: 0x4444,
+            effect_hash: effect.contract_hash(),
+            effect,
+            event_seq: 7,
+            event_hash: 0x5555,
+        }
+    }
+
+    #[test]
+    fn tooling_effect_receipt_hash_fold_helper_preserves_artifact_and_process_boundaries() {
+        let artifact = artifact_receipt();
+        let process = process_receipt();
+
+        assert!(artifact.is_valid());
+        assert!(process.is_valid());
+
+        let artifact_core = artifact.receipt_core_hash();
+        let artifact_verifier = artifact.verifier_context_hash();
+        let process_core = process.receipt_core_hash();
+        let process_verifier = process.verifier_context_hash();
+
+        assert_ne!(artifact_core, 0);
+        assert_ne!(artifact_verifier, 0);
+        assert_ne!(process_core, 0);
+        assert_ne!(process_verifier, 0);
+        assert_ne!(artifact_core, artifact_verifier);
+        assert_ne!(process_core, process_verifier);
+        assert_ne!(artifact_core, process_core);
+        assert_ne!(artifact_verifier, process_verifier);
+
+        assert_eq!(
+            artifact_core,
+            fold_tooling_effect_receipt_hash(
+                0x7a7d_efc7_0019_04a1u64,
+                &[
+                    artifact.capability as u64,
+                    artifact.registry_policy_hash,
+                    artifact.request_hash,
+                    artifact.effect_hash,
+                    artifact.effect.contract_hash(),
+                    artifact.event_seq,
+                    artifact.event_hash,
+                    artifact.artifact_id,
+                    artifact.artifact_receipt_hash,
+                    artifact.artifact_path_hash,
+                    artifact.artifact_content_hash,
+                    artifact.artifact_bytes,
+                    artifact.sandbox_root_hash,
+                ],
+            )
+        );
+        assert_eq!(
+            artifact_verifier,
+            fold_tooling_effect_receipt_hash(
+                0x3a15_b204_c097_994du64,
+                &[
+                    ProofSubjectKind::ArtifactEffect as u64,
+                    artifact.registry_policy_hash,
+                    artifact.request_hash,
+                    artifact.effect.contract_hash(),
+                    artifact.artifact_receipt_hash,
+                ],
+            )
+        );
+        assert_eq!(
+            process_core,
+            fold_tooling_effect_receipt_hash(
+                0x61c0_7e28_fef2_9e5du64,
+                &[
+                    process.capability as u64,
+                    process.registry_policy_hash,
+                    process.request_hash,
+                    process.effect_hash,
+                    process.effect.contract_hash(),
+                    process.event_seq,
+                    process.event_hash,
+                ],
+            )
+        );
+        assert_eq!(
+            process_verifier,
+            fold_tooling_effect_receipt_hash(
+                0x0700_35ee_fcf3_88d9u64,
+                &[
+                    ProofSubjectKind::ProcessEffect as u64,
+                    process.registry_policy_hash,
+                    process.request_hash,
+                    process.effect.contract_hash(),
+                ],
+            )
+        );
+
+        let artifact_core_only_tamper = ToolEffectReceipt {
+            artifact_id: artifact.artifact_id ^ 1,
+            ..artifact
+        };
+        assert!(artifact_core_only_tamper.is_valid());
+        assert_ne!(artifact_core_only_tamper.receipt_core_hash(), artifact_core);
+        assert_eq!(
+            artifact_core_only_tamper.verifier_context_hash(),
+            artifact_verifier
+        );
+
+        let artifact_verifier_tamper = ToolEffectReceipt {
+            artifact_receipt_hash: artifact.artifact_receipt_hash ^ 1,
+            ..artifact
+        };
+        assert!(artifact_verifier_tamper.is_valid());
+        assert_ne!(artifact_verifier_tamper.receipt_core_hash(), artifact_core);
+        assert_ne!(
+            artifact_verifier_tamper.verifier_context_hash(),
+            artifact_verifier
+        );
+
+        let process_core_only_tamper = ProcessEffectReceipt {
+            event_hash: process.event_hash ^ 1,
+            ..process
+        };
+        assert!(process_core_only_tamper.is_valid());
+        assert_ne!(process_core_only_tamper.receipt_core_hash(), process_core);
+        assert_eq!(
+            process_core_only_tamper.verifier_context_hash(),
+            process_verifier
+        );
+
+        let process_verifier_tamper = ProcessEffectReceipt {
+            request_hash: process.request_hash ^ 1,
+            ..process
+        };
+        assert!(process_verifier_tamper.is_valid());
+        assert_ne!(process_verifier_tamper.receipt_core_hash(), process_core);
+        assert_ne!(
+            process_verifier_tamper.verifier_context_hash(),
+            process_verifier
+        );
+
+        let artifact_proof_event_seq = artifact.event_seq + 5;
+        let (_, artifact_proof) = artifact
+            .to_canonical_effect_proof(artifact_proof_event_seq)
+            .unwrap();
+        assert_eq!(artifact_proof.verifier_context_hash, artifact_verifier);
+        assert_eq!(
+            artifact_proof.receipt.proof_event_seq,
+            artifact_proof_event_seq
+        );
+        assert_eq!(artifact_proof.receipt.proof_hash, artifact_proof.proof_hash);
+
+        let process_proof_event_seq = process.event_seq + 5;
+        let (_, process_proof) = process
+            .to_canonical_effect_proof(process_proof_event_seq)
+            .unwrap();
+        assert_eq!(process_proof.verifier_context_hash, process_verifier);
+        assert_eq!(
+            process_proof.receipt.proof_event_seq,
+            process_proof_event_seq
+        );
+        assert_eq!(process_proof.receipt.proof_hash, process_proof.proof_hash);
+
+        let artifact_provider = artifact
+            .provider_proof_hash(artifact_proof_event_seq)
+            .unwrap();
+        let process_provider = process
+            .provider_proof_hash(process_proof_event_seq)
+            .unwrap();
+        assert_ne!(artifact_provider, artifact_core);
+        assert_ne!(artifact_provider, artifact_verifier);
+        assert_ne!(process_provider, process_core);
+        assert_ne!(process_provider, process_verifier);
+    }
+}
