@@ -113,8 +113,17 @@ Current date: 2026-05-14.
 - Active Priorities item 60 is complete: graph-derived structural evidence refresh passed after the tooling record hash helper/test work. `SCORE_REPORT.md` still reports `G = 7.99 / 10`, Architecture `8.9`, Structure `4.9`, Simplicity `7.1`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.4`; the `ai` crate row remains `Nodes = 5610`, `Edges = 34384`, `Fns = 2270`, Structure `6.0`, and Simplicity `7.6`. `score.md` remains unchanged because refreshed graph-derived evidence matched the existing rationale and does not justify project-level numeric score changes. Active Priorities are exhausted; a planning turn must select the next executable non-`root_validate` graph-backed item.
 - Implementation step 4 found no unchecked Active Priorities item after item 60; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 - Implementation step 5 found no unchecked Active Priorities item after item 60; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
+- Active Priorities items 61 through 63 are now planned for `src/capability/tooling/record/receipt.rs`, `src/lib.rs`, and graph-derived evidence refresh. The first executable item is item 61, which must route `ProcessEffectReceipt::{canonical_authority_hash, canonical_request_hash}` through one private ordered hash-vector helper while preserving distinct process receipt authority/request hash domains, `is_valid()` gating, canonical effect receipt binding, verification proof binding, provider proof hashing, replay, NDJSON, filesystem, sandbox, and process behavior. `root_validate` remains explicitly non-selectable.
 
 ## Validation Ledger
+
+### 2026-05-14 — planning turn selected process effect receipt hash helper work
+
+- Scope: `plan.md`, `status.md`, `score.md`, `SCORE_REPORT.md`, `../state/rustc/auto-refactor/workspace__ai_sandbox__canon-mini-agent__prototype__state__rustc__ai__graph.graph-editor-plan.json`, and `src/capability/tooling/record/receipt.rs`.
+- Command/check: manual required reconnaissance plus Python inspection of the selected graph-editor plan and source/test candidate surfaces.
+- Result: passed.
+- Evidence: Active Priorities items 58 through 60 were complete and no unchecked item remained before this planning turn. The selected graph-editor plan exists, is schema version 1 / graph schema version 16, and contains 1,582 operations. Root-validation work was excluded by user direction. Graph operation `729490216f0ede3b` was selected for `ProcessEffectReceipt::{canonical_authority_hash, canonical_request_hash}` because it is non-root, graph-backed, file-local, deterministic, and constrained to private hash-vector helper delegation. `score.md` was reviewed and left unchanged because this planning turn produced no implementation, validation refresh, graph refresh, or score-history-worthy capability evidence.
+- Next action: execute Active Priorities item 61.
 
 ### 2026-05-14 — implementation step 5 Active Priorities exhausted after item 60
 
