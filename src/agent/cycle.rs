@@ -1142,6 +1142,76 @@ mod hash_tests {
         assert_eq!(spec.target_phase, expected_target_phase);
     }
 
+    fn assert_recovery_lookup_boundary(
+        action: &'static str,
+        expected_failures: &'static [&'static str],
+        expected_gate: Option<(&'static str, &'static str)>,
+        expected_target_phase: &'static str,
+    ) {
+        let action_route = recovery_route_for_action(action).expect("known recovery action");
+        assert_eq!(action_route.action, action);
+        assert_eq!(action_route.failures, expected_failures);
+        assert_eq!(action_route.spec.gate, expected_gate);
+        assert_eq!(action_route.spec.target_phase, expected_target_phase);
+
+        for failure in expected_failures {
+            let failure_route =
+                recovery_route_for_failure(failure).expect("known recovery failure");
+            assert_eq!(failure_route.action, action);
+            assert_eq!(failure_route.failures, expected_failures);
+            assert_eq!(failure_route.spec.gate, expected_gate);
+            assert_eq!(failure_route.spec.target_phase, expected_target_phase);
+            assert_eq!(recovery_action_for_failure(failure), Some(action));
+        }
+
+        assert_recovery_spec(action, expected_gate, expected_target_phase);
+    }
+
+    #[test]
+    fn recovery_route_lookup_helper_preserves_action_failure_boundaries() {
+        assert_recovery_lookup_boundary(
+            "RecheckInvariant",
+            &["InvariantUnknown", "InvariantBlocked"],
+            Some(("Invariant", "InvariantProof")),
+            "Invariant",
+        );
+        assert_recovery_lookup_boundary(
+            "BindReadyTask",
+            &["PlanReadyQueueEmpty"],
+            Some(("Plan", "TaskReady")),
+            "Plan",
+        );
+        assert_recovery_lookup_boundary(
+            "Reexecute",
+            &["ExecutionMissing", "ExecutionFailed", "TaskReceiptMissing"],
+            Some(("Execution", "ArtifactReceipt")),
+            "Execute",
+        );
+        assert_recovery_lookup_boundary(
+            "RepairArtifactLineage",
+            &["ArtifactLineageBroken"],
+            Some(("Verification", "LineageProof")),
+            "Verify",
+        );
+        assert_recovery_lookup_boundary(
+            "RecomputeEval",
+            &["EvalMissing", "EvalFailed"],
+            Some(("Eval", "EvalScore")),
+            "Eval",
+        );
+        assert_recovery_lookup_boundary(
+            "Escalate",
+            &["RecoveryExhausted", "ConvergenceFailed"],
+            None,
+            "Done",
+        );
+
+        assert!(recovery_route_for_action("UnknownRecoveryAction").is_none());
+        assert!(recovery_route_for_failure("UnknownFailure").is_none());
+        assert_eq!(recovery_action_for_failure("UnknownFailure"), None);
+        assert!(recovery_action_spec("UnknownRecoveryAction").is_none());
+    }
+
     #[test]
     fn recovery_failure_maps_task_receipt_missing_to_reexecute() {
         assert_eq!(
