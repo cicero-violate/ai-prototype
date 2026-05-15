@@ -101,8 +101,25 @@ Current date: 2026-05-14.
 - Implementation step 4 found no unchecked Active Priorities item after item 54; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 
 - Implementation step 5 found no unchecked Active Priorities item after item 54; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
+- Active Priorities items 55 through 57 are now planned for `src/agent/cycle.rs` and graph-derived evidence refresh. The first executable item is item 55, which must route `compute_evidence_contract_hash(...)`, `compute_submit_evidence_command_hash(...)`, and `compute_envelope_hash(...)` through one private domain-hash vector helper while preserving distinct hash domains, exact field order, known hash vectors, JSON wire format, real kernel hash equality, runtime behavior, and receipt behavior. `root_validate` remains explicitly non-selectable.
 
 ## Validation Ledger
+
+### 2026-05-14 — planning contract validation after agent cycle hash-domain planning
+
+- Scope: `plan.md` and `status.md` planning updates.
+- Command/check: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test planning_contract -- --test-threads=1`.
+- Result: passed.
+- Evidence: 2 tests passed, 0 failed: `planning_record_blocks_when_all_tasks_complete` and `planning_record_decomposes_objective_with_lineage`.
+- Next action: commit the planning-only update and execute Active Priorities item 55.
+
+### 2026-05-14 — planning selected agent cycle hash-domain wrapper work
+
+- Scope: `plan.md`, `status.md`, `SCORE_REPORT.md`, `score.md`, `../state/rustc/auto-refactor/workspace__ai_sandbox__canon-mini-agent__prototype__state__rustc__ai__graph.graph-editor-plan.json`, and `src/agent/cycle.rs`.
+- Command/check: `python3` inspection of active priorities and graph-editor plan operations; `sed -n '760,910p' src/agent/cycle.rs`; `sed -n '1280,1465p' src/agent/cycle.rs`; `git status --short`.
+- Result: informational.
+- Evidence: Active Priorities items 52 through 54 were complete and implementation steps 4 and 5 were blocked by checklist exhaustion. The selected `ai` graph-editor plan reports schema version 1, graph schema version 16, and 1,582 planned operations. Non-`root_validate` graph operations `21edae3cb3c10f1b`, `96af74928d58e034`, and `447858122f87cb5a` identify duplicated `agent::cycle::{compute_evidence_contract_hash, compute_submit_evidence_command_hash, compute_envelope_hash}` domain-hash wrapper mechanics. `src/agent/cycle.rs` already contains `HashDomain`, `compute_domain_contract_hash(...)`, `mix_contract_hash(...)`, and existing hash-chain tests, making a private helper delegation and focused regression item safe to execute.
+- Next action: execute Active Priorities item 55 in `src/agent/cycle.rs`.
 
 ### 2026-05-14 — implementation step 5 Active Priorities exhausted after item 54
 
