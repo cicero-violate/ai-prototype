@@ -42,6 +42,14 @@ Current date: 2026-05-15.
 
 ## Current Progress
 
+- Planning turn on 2026-05-15 completed reconnaissance after Active Priorities item 72 and selected the next executable non-`root_validate` graph-backed task. Active Priorities item 73 cleared the commit-hook rustfmt blocker in `src/api/server.rs` and `src/capability/mod.rs`; items 74 through 76 are now planned for `src/agent/router.rs` and graph-derived evidence refresh. The first incomplete executable item is item 74, which must split `cdp_get(...)` into private request/transport and response-parse phase helpers while preserving local loopback behavior. `root_validate` remains explicitly non-selectable.
+- Active Priorities item 72 is complete: graph-derived structural evidence refresh passed after items 70 and 71, `SCORE_REPORT.md` was regenerated for 2026-05-15, and scores remained unchanged at `G = 7.99 / 10`, Architecture `8.9`, Structure `4.9`, Simplicity `7.1`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.4`. The `ai` crate row remains Nodes `5610`, Edges `34384`, Fns `2270`, Architecture `9.2`, Structure `6.0`, Simplicity `7.6`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.6`. `score.md` remains unchanged because refreshed evidence matches the existing rationale.
+- Active Priorities item 71 is complete: `policy_reuse_receipt_hash_helpers_preserve_distinct_record_boundaries` now covers valid ledger-summary and scale-trace receipts from the same reuse summary, non-zero distinct receipt hashes, invalid record-type rejection, `reuse_rate_bps > 10_000` rejection, source-hash tampering rejection, and scale-trace-only field binding. Targeted and broader Rust validation passed. The next executable item is item 72, the graph-derived structural evidence refresh.
+- Active Priorities item 70 is complete: `policy_reuse_ledger_summary_receipt_hash(...)` and `policy_reuse_scale_trace_receipt_hash(...)` now delegate through shared private `fold_ordered_policy_reuse_receipt_hash(...)` while preserving distinct seeds, record-type validation, source-hash validation, `reuse_rate_bps` guard behavior, field order, and non-zero hash behavior. Targeted and broader Rust validation passed. The next executable item is item 71, the focused regression test in `src/capability/judgment/record.rs`.
+- Planning turn on 2026-05-15 completed reconnaissance and selected the next executable non-`root_validate` graph-backed task. There was no unchecked item under `## Active Priorities` before this planning update. Active Priorities items 70 through 72 are now planned for `src/capability/judgment/record.rs` and graph-derived evidence refresh. The first executable item is item 70, which must route `policy_reuse_ledger_summary_receipt_hash(...)` and `policy_reuse_scale_trace_receipt_hash(...)` through one private ordered policy-reuse receipt hash-fold helper while preserving distinct receipt domains. `root_validate` remains explicitly non-selectable.
+- Active Priorities item 69 is complete: graph-derived structural evidence refresh passed after items 67 and 68, `SCORE_REPORT.md` was regenerated for 2026-05-15, and scores remained unchanged at `G = 7.99 / 10`, Architecture `8.9`, Structure `4.9`, Simplicity `7.1`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.4`. The `ai` crate row remains Nodes `5610`, Edges `34384`, Fns `2270`, Architecture `9.2`, Structure `6.0`, Simplicity `7.6`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.6`. `score.md` remains unchanged because refreshed evidence matches the existing rationale.
+- Active Priorities item 68 is complete: existing `src/lib.rs` regression test `openai_proof_event_hash_helpers_preserve_distinct_domains` was confirmed to cover valid `OpenAiJudgmentProofEvent` construction, provider proof hash binding, verifier-context hash separation, canonical proof projection, proof-only tampering, and verifier-context tampering. Targeted and broader Rust validation passed. The next executable item is item 69, the graph-derived structural evidence refresh.
+- Active Priorities item 67 is complete: `OpenAiJudgmentProofEvent::{expected_proof_hash, verifier_context_hash}` now delegate through the shared private `fold_ordered_openai_proof_event_hash(...)` helper while preserving distinct proof and verifier-context domain seeds, exact field order, non-zero hash behavior, and OpenAI receipt/proof semantics. Targeted and broader Rust validation passed. The next executable item is item 68, the focused regression test in `src/lib.rs`.
 - Planning turn on 2026-05-15 completed reconnaissance and selected the next executable non-`root_validate` graph-backed task. Active Priorities items 13 through 66 are complete; items 67 through 69 are now planned for `src/capability/llm/openai.rs`, `src/lib.rs`, and graph-derived evidence refresh. The first executable item is item 67, which must route `OpenAiJudgmentProofEvent::{expected_proof_hash, verifier_context_hash}` through one private ordered hash-fold helper while preserving distinct OpenAI proof-event hash domains. `root_validate` remains explicitly non-selectable.
 - P0 validation baseline: complete.
 - P1 validation evidence reporting: complete.
@@ -129,6 +137,126 @@ Current date: 2026-05-15.
 - Implementation step 4 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 - Implementation step 5 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 ## Validation Ledger
+
+### 2026-05-15 — planning selected router cdp_get split after clearing commit format blocker
+
+- Scope: `plan.md`, `status.md`, `src/api/server.rs`, `src/capability/mod.rs`, and selected graph-backed candidate `src/agent/router.rs::cdp_get`; Active Priorities items 73 through 76.
+- Command/check: read `plan.md`, `status.md`, `score.md`, `SCORE_REPORT.md`; inspected `../state/rustc/auto-refactor/workspace__ai_sandbox__canon-mini-agent__prototype__state__rustc__ai__graph.graph-editor-plan.json`; inspected `src/api/server.rs`, `src/capability/mod.rs`, and `src/agent/router.rs`; applied only rustfmt-equivalent edits in the two hook-reported files; ran `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo fmt --check`; checked `git status --short`.
+- Result: passed.
+- Evidence: `cargo fmt --check` passed after formatting `src/api/server.rs` and `src/capability/mod.rs`; the selected `ai` graph-editor plan remains schema version 1, graph schema version 16, and contains 1,582 planned operations; operation `f83874fb2b4b9aa3` identifies `agent::router::cdp_get` as the next non-`root_validate` split candidate with `phase::parse` and `phase::transform` boundaries; current graph evidence remains unchanged at `G = 7.99 / 10` with aggregate Structure `4.9`; `score.md` remains unchanged because this turn produced planning and formatter-unblock evidence, not new capability evidence.
+- Next action: Execute Active Priorities item 74 in `src/agent/router.rs`.
+
+### 2026-05-15 — item 72 commit blocked by unrelated rustfmt drift
+
+- Scope: `src/capability/judgment/record.rs`, `SCORE_REPORT.md`, `plan.md`, and `status.md`; unrelated rustfmt drift in `src/api/server.rs` and `src/capability/mod.rs`.
+- Command/check: `git commit --only src/capability/judgment/record.rs SCORE_REPORT.md plan.md status.md -m "Refresh policy reuse receipt hash evidence"`.
+- Result: blocked.
+- Evidence: commit hook ran `cargo fmt --check` and reported formatting diffs only in `src/api/server.rs` and `src/capability/mod.rs`; those files are outside Active Priorities item 72 scope and were not modified by this validation/evidence refresh. The graph refresh command and broader `cargo test --all-targets` had already passed.
+- Next action: Resolve or explicitly scope a formatting cleanup for `src/api/server.rs` and `src/capability/mod.rs`, then commit the validated items 70 through 72 changes.
+
+### 2026-05-15 — item 72 graph-derived structural evidence refresh
+
+- Scope: `SCORE_REPORT.md`, `score.md`, `plan.md`, and `status.md`; Active Priorities item 72.
+- Command/check: `bash scripts/recapture_rustc_graphs.sh --check && cargo run --manifest-path ../score/Cargo.toml --quiet -- --artifact-root ../state/rustc --report SCORE_REPORT.md --date "$(date +%Y-%m-%d)"`; `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
+- Result: passed.
+- Evidence: graph artifact check passed for `../state/rustc` with required artifact count `2`; scorer regenerated `SCORE_REPORT.md` for 2026-05-15 with 18 crates and `0` skipped; aggregate remained `G = 7.99 / 10`, Architecture `8.9`, Structure `4.9`, Simplicity `7.1`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.4`; `ai` crate row remained Nodes `5610`, Edges `34384`, Fns `2270`, Architecture `9.2`, Structure `6.0`, Simplicity `7.6`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.6`; broader `cargo test --all-targets` passed with 325 library tests, 3 root-validate binary tests, 13 API server contract tests, 23 API transport contract tests, 3 canonical TLog contract tests, 4 domain contract tests, 10 graph mutation CLI contract tests, 9 MCP receipt contract tests, 2 planning contract tests, 5 score contract tests, 2 supervisor binary contract tests, 2 worker binary contract tests, and no failures across remaining zero-test targets. `score.md` was reviewed and left unchanged because refreshed evidence matches the existing rationale.
+- Next action: Attempt to commit the validated items 70 through 72 changes, subject to the existing unrelated rustfmt hook blocker.
+
+### 2026-05-15 — item 71 commit blocked by unrelated rustfmt drift
+
+- Scope: `src/capability/judgment/record.rs`, `plan.md`, and `status.md`; unrelated rustfmt drift in `src/api/server.rs` and `src/capability/mod.rs`.
+- Command/check: `git commit --only src/capability/judgment/record.rs plan.md status.md -m "Validate policy reuse receipt hash boundaries"`.
+- Result: blocked.
+- Evidence: after formatting the in-scope `src/capability/judgment/record.rs` assertions and rerunning targeted plus broader validation successfully, the commit hook still ran `cargo fmt --check` and reported only unrelated formatting diffs in `src/api/server.rs` and `src/capability/mod.rs`; those files are outside Active Priorities item 71 scope and were not modified by this implementation step.
+- Next action: Resolve or explicitly scope a formatting cleanup for `src/api/server.rs` and `src/capability/mod.rs`, then commit items 70 and 71 with their validated `src/capability/judgment/record.rs`, `plan.md`, and `status.md` changes.
+
+### 2026-05-15 — item 71 policy-reuse receipt hash helper regression test
+
+- Scope: `src/capability/judgment/record.rs`; Active Priorities item 71.
+- Command/check: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test policy_reuse_receipt_hash_helpers_preserve_distinct_record_boundaries -- --test-threads=1`; `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
+- Result: passed.
+- Evidence: targeted command passed `1` named test with `0` failures; broader `cargo test --all-targets` passed with 325 library tests, 3 root-validate binary tests, 13 API server contract tests, 23 API transport contract tests, 3 canonical TLog contract tests, 4 domain contract tests, 10 graph mutation CLI contract tests, 9 MCP receipt contract tests, 2 planning contract tests, 5 score contract tests, 2 supervisor binary contract tests, 2 worker binary contract tests, and no failures across remaining zero-test targets. The new test proves ledger-summary and scale-trace receipt hash domains remain distinct and reject record-type, rate, source-hash, and scale-trace-only field tampering.
+- Next action: Execute Active Priorities item 72, the graph-derived structural evidence refresh.
+
+### 2026-05-15 — item 70 commit blocked by unrelated rustfmt drift
+
+- Scope: `src/capability/judgment/record.rs`, `plan.md`, and `status.md`; unrelated rustfmt drift in `src/api/server.rs` and `src/capability/mod.rs`.
+- Command/check: `git commit --only src/capability/judgment/record.rs plan.md status.md -m "Refactor policy reuse receipt hash helper"`.
+- Result: blocked.
+- Evidence: commit hook ran `cargo fmt --check` and reported formatting diffs in `src/api/server.rs` and `src/capability/mod.rs`; those files are outside Active Priorities item 70 scope and were not modified by this implementation step. Targeted `cargo check --lib` and broader `cargo test --all-targets` had already passed.
+- Next action: Resolve or explicitly scope a formatting cleanup for `src/api/server.rs` and `src/capability/mod.rs`, then commit item 70 with its validated `src/capability/judgment/record.rs`, `plan.md`, and `status.md` changes.
+
+### 2026-05-15 — item 70 policy-reuse receipt hash helper
+
+- Scope: `src/capability/judgment/record.rs`; Active Priorities item 70.
+- Command/check: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo check --lib`; `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
+- Result: passed.
+- Evidence: `cargo check --lib` finished successfully for `ai`; broader `cargo test --all-targets` passed with 324 library tests, 3 root-validate binary tests, 13 API server contract tests, 23 API transport contract tests, 3 canonical TLog contract tests, 4 domain contract tests, 10 graph mutation CLI contract tests, 9 MCP receipt contract tests, 2 planning contract tests, 5 score contract tests, 2 supervisor binary contract tests, 2 worker binary contract tests, and no failures across remaining zero-test targets. The implementation adds shared private `fold_ordered_policy_reuse_receipt_hash(...)` delegation for ledger-summary and scale-trace receipt hash functions only.
+- Next action: Execute Active Priorities item 71 in `src/capability/judgment/record.rs`.
+
+### 2026-05-15 — planning commit blocked by unrelated rustfmt drift for policy-reuse receipt hash plan
+
+- Scope: `plan.md` and `status.md` planning update for Active Priorities items 70 through 72; unrelated rustfmt drift in `src/api/server.rs` and `src/capability/mod.rs`.
+- Command/check: `git add plan.md status.md && git diff --cached --name-only && git commit -m "Plan policy reuse receipt hash consolidation"`.
+- Result: blocked.
+- Evidence: commit hook ran `cargo fmt --check` and reported formatting diffs in `src/api/server.rs` and `src/capability/mod.rs`; those files are outside this planning scope and were not modified by this planning turn. The hook also printed pre-existing staged paths `SCORE_REPORT.md` and `src/capability/llm/openai.rs`, confirming prior execution artifacts remain staged outside this planning update.
+- Next action: Resolve or explicitly scope the formatting cleanup for `src/api/server.rs` and `src/capability/mod.rs`, then commit the staged validated execution artifacts plus the current planning update.
+
+### 2026-05-15 — planning selected policy-reuse receipt hash helper consolidation
+
+- Scope: `plan.md`, `status.md`, and selected graph-backed candidates in `src/capability/judgment/record.rs`; Active Priorities items 70 through 72.
+- Command/check: read `plan.md`, `status.md`, `score.md`, `SCORE_REPORT.md`; inspected `../state/rustc/auto-refactor/workspace__ai_sandbox__canon-mini-agent__prototype__state__rustc__ai__graph.graph-editor-plan.json`; inspected `src/capability/judgment/record.rs`; checked `git status --short`.
+- Result: informational.
+- Evidence: no unchecked Active Priorities item existed before this planning update; the selected `ai` graph-editor plan is schema version 1, graph schema version 16, and contains 1,582 planned operations; non-`root_validate` graph operations `49c79f21e5fd37ff`, `62b32fc740a94d50`, and `c19be7a443dd01b9` identify duplicated policy-reuse receipt hash helper mechanics; `src/capability/judgment/record.rs` contains existing targeted tests for policy-reuse ledger summary, scale trace, performance-cost trend, cost catalog, and evaluator savings receipts. Current graph evidence remains unchanged at `G = 7.99 / 10` with aggregate Structure `4.9`; `score.md` remains unchanged because this turn produced planning only, not new validation evidence.
+- Next action: Execute Active Priorities item 70 in `src/capability/judgment/record.rs`.
+
+### 2026-05-15 — item 69 commit blocked by unrelated rustfmt drift
+
+- Scope: staged `src/capability/llm/openai.rs`, `SCORE_REPORT.md`, `plan.md`, and `status.md`; unrelated rustfmt drift in `src/api/server.rs` and `src/capability/mod.rs`.
+- Command/check: `git commit -m "Refresh OpenAI proof hash graph evidence"`.
+- Result: blocked.
+- Evidence: commit hook ran `cargo fmt --check` and reported formatting diffs in `src/api/server.rs` and `src/capability/mod.rs`; those files are outside Active Priorities item 69 scope and were not modified by this implementation step. The graph refresh command and broader `cargo test --all-targets` had already passed.
+- Next action: Resolve or explicitly scope a formatting cleanup for `src/api/server.rs` and `src/capability/mod.rs`, then commit validated items 67 through 69 changes.
+
+### 2026-05-15 — item 69 graph-derived structural evidence refresh
+
+- Scope: `SCORE_REPORT.md`, `score.md`, `plan.md`, and `status.md`; Active Priorities item 69.
+- Command/check: `bash scripts/recapture_rustc_graphs.sh --check && cargo run --manifest-path ../score/Cargo.toml --quiet -- --artifact-root ../state/rustc --report SCORE_REPORT.md --date "$(date +%Y-%m-%d)"`; `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
+- Result: passed.
+- Evidence: graph artifact check passed for `../state/rustc`; scorer regenerated `SCORE_REPORT.md` for 2026-05-15 with 18 crates and `0` skipped; aggregate remained `G = 7.99 / 10`, Architecture `8.9`, Structure `4.9`, Simplicity `7.1`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.4`; `ai` crate row remained Nodes `5610`, Edges `34384`, Fns `2270`, Architecture `9.2`, Structure `6.0`, Simplicity `7.6`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.6`; broader `cargo test --all-targets` passed with 324 library tests and all listed integration/binary contract tests. `score.md` was reviewed and left unchanged because refreshed evidence matched the existing rationale.
+- Next action: Attempt to commit the validated items 67 through 69 changes, subject to the existing unrelated rustfmt hook blocker.
+
+### 2026-05-15 — item 68 commit blocked by unrelated rustfmt drift
+
+- Scope: staged `src/capability/llm/openai.rs`, `plan.md`, and `status.md`; unrelated rustfmt drift in `src/api/server.rs` and `src/capability/mod.rs`.
+- Command/check: `git commit -m "Validate OpenAI proof event hash regression"`.
+- Result: blocked.
+- Evidence: commit hook ran `cargo fmt --check` and reported formatting diffs in `src/api/server.rs` and `src/capability/mod.rs`; those files are outside Active Priorities item 68 scope and were not modified by this implementation step. Targeted `cargo test openai_proof_event_hash_helpers_preserve_distinct_domains -- --test-threads=1` and broader `cargo test --all-targets` had already passed.
+- Next action: Resolve or explicitly scope a formatting cleanup for `src/api/server.rs` and `src/capability/mod.rs`, then commit items 67 and 68 changes.
+
+### 2026-05-15 — item 68 OpenAI proof-event hash regression test
+
+- Scope: `src/lib.rs`; Active Priorities item 68.
+- Command/check: inspected `src/lib.rs` test `openai_proof_event_hash_helpers_preserve_distinct_domains`; `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test openai_proof_event_hash_helpers_preserve_distinct_domains -- --test-threads=1`; `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
+- Result: passed.
+- Evidence: targeted command ran the named regression and passed `1` test with `0` failures; broader command passed with 324 library tests, 3 root-validate binary tests, 13 API server contract tests, 23 API transport contract tests, 3 canonical TLog contract tests, 4 domain contract tests, 10 graph mutation CLI contract tests, 9 MCP receipt contract tests, 2 planning contract tests, 5 score contract tests, 2 supervisor binary contract tests, 2 worker binary contract tests, and no failures across remaining zero-test targets.
+- Next action: Execute Active Priorities item 69 to refresh graph-derived structural evidence.
+
+### 2026-05-15 — item 67 commit blocked by unrelated rustfmt drift
+
+- Scope: staged `src/capability/llm/openai.rs`, `plan.md`, and `status.md`; unrelated rustfmt drift in `src/api/server.rs` and `src/capability/mod.rs`.
+- Command/check: `git commit -m "Refactor OpenAI proof event hash helper"`.
+- Result: blocked.
+- Evidence: commit hook ran `cargo fmt --check` and reported formatting diffs in `src/api/server.rs` and `src/capability/mod.rs`; those files are outside Active Priorities item 67 scope and were not modified by this implementation step. Targeted `cargo check --lib` and broader `cargo test --all-targets` had already passed.
+- Next action: Resolve or explicitly scope a formatting cleanup for `src/api/server.rs` and `src/capability/mod.rs`, then commit item 67 changes.
+
+### 2026-05-15 — item 67 OpenAI proof-event hash helper
+
+- Scope: `src/capability/llm/openai.rs`; Active Priorities item 67.
+- Command/check: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo check --lib`; `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
+- Result: passed.
+- Evidence: `cargo check --lib` finished successfully for `ai`; `cargo test --all-targets` passed with 324 library tests, 3 root-validate binary tests, 13 API server contract tests, 23 API transport contract tests, 3 canonical TLog contract tests, 4 domain contract tests, 10 graph mutation CLI contract tests, 9 MCP receipt contract tests, 2 planning contract tests, 5 score contract tests, 2 supervisor binary contract tests, 2 worker binary contract tests, and no failures across remaining zero-test targets.
+- Next action: Execute Active Priorities item 68 in `src/lib.rs`.
 
 ### 2026-05-15 — planning commit hook blocked by pre-existing rustfmt drift
 

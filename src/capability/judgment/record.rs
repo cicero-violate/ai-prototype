@@ -1051,18 +1051,21 @@ fn policy_reuse_ledger_summary_receipt_hash(receipt: &PolicyReuseLedgerSummaryRe
     if record_type_code == 0 || receipt.reuse_rate_bps > 10_000 {
         return 0;
     }
-    let mut h = 0x504f_4c52_4c45_4447u64;
-    h = mix(h, receipt.schema_version);
-    h = mix(h, record_type_code);
-    h = mix(h, receipt.policy_hits as u64);
-    h = mix(h, receipt.policy_misses as u64);
-    h = mix(h, receipt.llm_fallbacks as u64);
-    h = mix(h, receipt.validation_passes as u64);
-    h = mix(h, receipt.validation_failures as u64);
-    h = mix(h, receipt.reuse_rate_bps);
-    h = mix(h, u64::from(receipt.regression_flag));
-    h = mix(h, receipt.source_receipt_hash);
-    h.max(1)
+    fold_ordered_policy_reuse_receipt_hash(
+        0x504f_4c52_4c45_4447u64,
+        &[
+            receipt.schema_version,
+            record_type_code,
+            receipt.policy_hits as u64,
+            receipt.policy_misses as u64,
+            receipt.llm_fallbacks as u64,
+            receipt.validation_passes as u64,
+            receipt.validation_failures as u64,
+            receipt.reuse_rate_bps,
+            u64::from(receipt.regression_flag),
+            receipt.source_receipt_hash,
+        ],
+    )
 }
 
 fn policy_reuse_scale_trace_receipt_hash(receipt: &PolicyReuseScaleTraceReceipt) -> u64 {
@@ -1078,20 +1081,30 @@ fn policy_reuse_scale_trace_receipt_hash(receipt: &PolicyReuseScaleTraceReceipt)
     if record_type_code == 0 || receipt.reuse_rate_bps > 10_000 {
         return 0;
     }
-    let mut h = 0x504f_4c52_5343_414cu64;
-    h = mix(h, receipt.schema_version);
-    h = mix(h, record_type_code);
-    h = mix(h, receipt.batch_size as u64);
-    h = mix(h, receipt.policy_hits as u64);
-    h = mix(h, receipt.policy_misses as u64);
-    h = mix(h, receipt.llm_fallbacks as u64);
-    h = mix(h, receipt.validation_passes as u64);
-    h = mix(h, receipt.validation_failures as u64);
-    h = mix(h, receipt.reuse_rate_bps);
-    h = mix(h, u64::from(receipt.regression_flag));
-    h = mix(h, receipt.avoided_llm_calls_per_batch as u64);
-    h = mix(h, receipt.source_receipt_hash);
-    h.max(1)
+    fold_ordered_policy_reuse_receipt_hash(
+        0x504f_4c52_5343_414cu64,
+        &[
+            receipt.schema_version,
+            record_type_code,
+            receipt.batch_size as u64,
+            receipt.policy_hits as u64,
+            receipt.policy_misses as u64,
+            receipt.llm_fallbacks as u64,
+            receipt.validation_passes as u64,
+            receipt.validation_failures as u64,
+            receipt.reuse_rate_bps,
+            u64::from(receipt.regression_flag),
+            receipt.avoided_llm_calls_per_batch as u64,
+            receipt.source_receipt_hash,
+        ],
+    )
+}
+
+fn fold_ordered_policy_reuse_receipt_hash(seed: u64, fields: &[u64]) -> u64 {
+    fields
+        .iter()
+        .fold(seed, |hash, field| mix(hash, *field))
+        .max(1)
 }
 
 fn policy_reuse_performance_cost_trend_receipt_hash(
@@ -1599,6 +1612,93 @@ mod tests {
 
         trace.avoided_llm_calls_per_batch += 1;
         assert!(!trace.is_valid());
+    }
+
+    #[test]
+    fn policy_reuse_receipt_hash_helpers_preserve_distinct_record_boundaries() {
+        let context = context();
+        let policy = promoted_policy();
+        let hit = PolicyJudgmentRecord::from_context_policy(&context, &policy);
+        let miss = PolicyJudgmentRecord::from_context_policy(&context, &PolicyStore::default());
+        let reuse = PolicyReuseReceipt::from_policy_judgments(&[hit, miss]);
+
+        let summary = PolicyReuseLedgerSummaryReceipt::from_reuse_validation_counts(&reuse, 2, 0);
+        let trace = PolicyReuseScaleTraceReceipt::from_reuse_validation_counts(&reuse, 2, 2, 0);
+
+        assert!(summary.is_valid());
+        assert!(trace.is_valid());
+        assert_ne!(summary.receipt_hash, 0);
+        assert_ne!(trace.receipt_hash, 0);
+        assert_ne!(summary.receipt_hash, trace.receipt_hash);
+        assert_eq!(
+            summary.receipt_hash,
+            policy_reuse_ledger_summary_receipt_hash(&summary)
+        );
+        assert_eq!(
+            trace.receipt_hash,
+            policy_reuse_scale_trace_receipt_hash(&trace)
+        );
+
+        let mut wrong_summary_type = summary.clone();
+        wrong_summary_type.record_type = "policy_reuse_scale_trace";
+        assert_eq!(
+            policy_reuse_ledger_summary_receipt_hash(&wrong_summary_type),
+            0
+        );
+        assert!(!wrong_summary_type.is_valid());
+
+        let mut wrong_trace_type = trace.clone();
+        wrong_trace_type.record_type = "policy_reuse_ledger_summary";
+        assert_eq!(policy_reuse_scale_trace_receipt_hash(&wrong_trace_type), 0);
+        assert!(!wrong_trace_type.is_valid());
+
+        let mut excessive_summary_rate = summary.clone();
+        excessive_summary_rate.reuse_rate_bps = 10_001;
+        assert_eq!(
+            policy_reuse_ledger_summary_receipt_hash(&excessive_summary_rate),
+            0
+        );
+        assert!(!excessive_summary_rate.is_valid());
+
+        let mut excessive_trace_rate = trace.clone();
+        excessive_trace_rate.reuse_rate_bps = 10_001;
+        assert_eq!(
+            policy_reuse_scale_trace_receipt_hash(&excessive_trace_rate),
+            0
+        );
+        assert!(!excessive_trace_rate.is_valid());
+
+        let mut source_tampered_summary = summary.clone();
+        source_tampered_summary.source_receipt_hash ^= 1;
+        assert_ne!(
+            policy_reuse_ledger_summary_receipt_hash(&source_tampered_summary),
+            summary.receipt_hash
+        );
+        assert!(!source_tampered_summary.is_valid());
+
+        let mut source_tampered_trace = trace.clone();
+        source_tampered_trace.source_receipt_hash ^= 1;
+        assert_ne!(
+            policy_reuse_scale_trace_receipt_hash(&source_tampered_trace),
+            trace.receipt_hash
+        );
+        assert!(!source_tampered_trace.is_valid());
+
+        let mut scale_only_avoided_calls = trace.clone();
+        scale_only_avoided_calls.avoided_llm_calls_per_batch += 1;
+        assert_ne!(
+            policy_reuse_scale_trace_receipt_hash(&scale_only_avoided_calls),
+            trace.receipt_hash
+        );
+        assert!(!scale_only_avoided_calls.is_valid());
+
+        let mut scale_only_batch_size = trace.clone();
+        scale_only_batch_size.batch_size += 1;
+        assert_ne!(
+            policy_reuse_scale_trace_receipt_hash(&scale_only_batch_size),
+            trace.receipt_hash
+        );
+        assert!(!scale_only_batch_size.is_valid());
     }
 
     #[test]

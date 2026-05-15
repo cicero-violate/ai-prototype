@@ -996,7 +996,7 @@ impl OpenAiJudgmentProofEvent {
     }
 
     pub fn expected_proof_hash(self) -> u64 {
-        Self::fold_ordered_openai_hash(
+        Self::fold_ordered_openai_proof_event_hash(
             0x4f50_454e_4149_5052u64,
             &[
                 self.proof_line_hash,
@@ -1022,7 +1022,7 @@ impl OpenAiJudgmentProofEvent {
         )
     }
 
-    fn fold_ordered_openai_hash(seed: u64, fields: &[u64]) -> u64 {
+    fn fold_ordered_openai_proof_event_hash(seed: u64, fields: &[u64]) -> u64 {
         fields
             .iter()
             .fold(seed, |hash, field| mix(hash, *field))
@@ -1047,7 +1047,7 @@ impl OpenAiJudgmentProofEvent {
     }
 
     pub fn verifier_context_hash(self) -> u64 {
-        Self::fold_ordered_openai_hash(
+        Self::fold_ordered_openai_proof_event_hash(
             0x4f50_454e_4149_4354u64,
             &[
                 self.base_url_hash,

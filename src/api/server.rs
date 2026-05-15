@@ -563,7 +563,10 @@ mod tests {
         for (input, expected) in gate_cases {
             assert_eq!(gate_from_str(input), Ok(expected));
         }
-        assert_eq!(gate_from_str("UnknownGate"), Err(ServerError::InvalidPayload));
+        assert_eq!(
+            gate_from_str("UnknownGate"),
+            Err(ServerError::InvalidPayload)
+        );
 
         let evidence_cases = [
             ("InvariantProof", Evidence::InvariantProof),

@@ -463,11 +463,7 @@ mod tests {
 
     #[test]
     fn evidence_submission_new_delegates_to_with_effect_none() {
-        let passed_new = EvidenceSubmission::new(
-            GateId::Analysis,
-            Evidence::AnalysisReport,
-            true,
-        );
+        let passed_new = EvidenceSubmission::new(GateId::Analysis, Evidence::AnalysisReport, true);
         let passed_with_effect = EvidenceSubmission::with_effect(
             GateId::Analysis,
             Evidence::AnalysisReport,
@@ -479,11 +475,7 @@ mod tests {
         assert!(passed_new.is_contract_valid());
         assert!(passed_with_effect.is_contract_valid());
 
-        let failed_new = EvidenceSubmission::new(
-            GateId::Analysis,
-            Evidence::AnalysisReport,
-            false,
-        );
+        let failed_new = EvidenceSubmission::new(GateId::Analysis, Evidence::AnalysisReport, false);
         let failed_with_effect = EvidenceSubmission::with_effect(
             GateId::Analysis,
             Evidence::AnalysisReport,
