@@ -42,6 +42,7 @@ Current date: 2026-05-15.
 
 ## Current Progress
 
+- Planning turn on 2026-05-15 completed Python-assisted reconnaissance after Active Priorities item 85. Active Priorities items 86 through 88 are now planned for `src/capability/judgment/record.rs` and graph-derived evidence refresh. The first executable item is item 86, which must route `policy_decision_id(...)` and `policy_rationale_hash(...)` through one private ordered judgment hash-fold helper while preserving distinct decision/rationale hash domains, existing guards, field order, and policy judgment record behavior. `root_validate` remains explicitly non-selectable.
 - Implementation step 5 found no unchecked Active Priorities item; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 - Implementation step 4 found no unchecked Active Priorities item after item 85; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 - Active Priorities item 85 is complete: graph-derived structural evidence refresh passed after items 83 and 84. `SCORE_REPORT.md` reports `G = 7.93 / 10`, Architecture `9.0`, Structure `4.9`, Simplicity `6.9`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2`; the `ai` crate row is Nodes `5628`, Edges `35770`, Fns `2284`, Architecture `9.4`, Structure `6.1`, Simplicity `7.1`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2`. `score.md` rationale was updated to match refreshed graph evidence; project-level numeric scores remain unchanged because this is evidence refresh, not a capability score change. Active Priorities are exhausted.
@@ -161,6 +162,14 @@ Current date: 2026-05-15.
 - Implementation step 4 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 - Implementation step 5 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 ## Validation Ledger
+
+### 2026-05-15 — planning selected policy judgment hash helper work
+
+- Scope: `plan.md`, `status.md`, `score.md`, `SCORE_REPORT.md`, `../state/rustc/auto-refactor/workspace__ai_sandbox__canon-mini-agent__prototype__state__rustc__ai__graph.graph-editor-plan.json`, and `src/capability/judgment/record.rs`.
+- Command/check: Python-assisted inspection of the active checklist, current status/score evidence, graph-derived score report, selected graph-editor plan, candidate source surfaces, and `git status --short` through the project shell connector.
+- Result: informational.
+- Evidence: Active Priorities were exhausted after item 85; selected graph plan exists with schema version 1, graph schema version 16, and 1,570 operations; operation `9c529c749f8588e3` covers `capability::judgment::record::{policy_decision_id, policy_rationale_hash}` and was selected because it is a current non-`root_validate`, file-local, high-similarity Structure candidate with a safe private helper boundary. Current `SCORE_REPORT.md` reports aggregate `G = 7.93 / 10`, Structure `4.9`, Simplicity `6.9`, and the local `ai` row at Structure `6.1`; planning-contract validation passed 2 tests with 0 failures after this edit; `score.md` was reviewed and left unchanged because this planning turn produced no implementation or refreshed score evidence.
+- Next action: Execute Active Priorities item 86 in `src/capability/judgment/record.rs` only.
 
 ### 2026-05-15 — implementation step 5 exhausted Active Priorities check
 
