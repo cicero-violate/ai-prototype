@@ -41,6 +41,14 @@ pub struct ToolEffectReceipt {
     pub sandbox_root_hash: u64,
 }
 
+fn fold_tooling_effect_receipt_hash(seed: u64, fields: &[u64]) -> u64 {
+    let mut h = seed;
+    for field in fields {
+        h = mix(h, *field);
+    }
+    h.max(1)
+}
+
 impl ToolEffectReceipt {
     pub fn from_persisted_event(
         record: &ToolExecutionRecord,
@@ -109,31 +117,37 @@ impl ToolEffectReceipt {
     }
 
     pub fn receipt_core_hash(self) -> u64 {
-        let mut h = 0x7a7d_efc7_0019_04a1u64;
-        h = mix(h, self.capability as u64);
-        h = mix(h, self.registry_policy_hash);
-        h = mix(h, self.request_hash);
-        h = mix(h, self.effect_hash);
-        h = mix(h, self.effect.contract_hash());
-        h = mix(h, self.event_seq);
-        h = mix(h, self.event_hash);
-        h = mix(h, self.artifact_id);
-        h = mix(h, self.artifact_receipt_hash);
-        h = mix(h, self.artifact_path_hash);
-        h = mix(h, self.artifact_content_hash);
-        h = mix(h, self.artifact_bytes);
-        h = mix(h, self.sandbox_root_hash);
-        h.max(1)
+        fold_tooling_effect_receipt_hash(
+            0x7a7d_efc7_0019_04a1u64,
+            &[
+                self.capability as u64,
+                self.registry_policy_hash,
+                self.request_hash,
+                self.effect_hash,
+                self.effect.contract_hash(),
+                self.event_seq,
+                self.event_hash,
+                self.artifact_id,
+                self.artifact_receipt_hash,
+                self.artifact_path_hash,
+                self.artifact_content_hash,
+                self.artifact_bytes,
+                self.sandbox_root_hash,
+            ],
+        )
     }
 
     pub fn verifier_context_hash(self) -> u64 {
-        let mut h = 0x3a15_b204_c097_994du64;
-        h = mix(h, ProofSubjectKind::ArtifactEffect as u64);
-        h = mix(h, self.registry_policy_hash);
-        h = mix(h, self.request_hash);
-        h = mix(h, self.effect.contract_hash());
-        h = mix(h, self.artifact_receipt_hash);
-        h.max(1)
+        fold_tooling_effect_receipt_hash(
+            0x3a15_b204_c097_994du64,
+            &[
+                ProofSubjectKind::ArtifactEffect as u64,
+                self.registry_policy_hash,
+                self.request_hash,
+                self.effect.contract_hash(),
+                self.artifact_receipt_hash,
+            ],
+        )
     }
 
     pub fn provider_proof_hash(self, proof_event_seq: u64) -> Option<u64> {
@@ -475,24 +489,30 @@ impl ProcessEffectReceipt {
     }
 
     pub fn receipt_core_hash(self) -> u64 {
-        let mut h = 0x61c0_7e28_fef2_9e5du64;
-        h = mix(h, self.capability as u64);
-        h = mix(h, self.registry_policy_hash);
-        h = mix(h, self.request_hash);
-        h = mix(h, self.effect_hash);
-        h = mix(h, self.effect.contract_hash());
-        h = mix(h, self.event_seq);
-        h = mix(h, self.event_hash);
-        h.max(1)
+        fold_tooling_effect_receipt_hash(
+            0x61c0_7e28_fef2_9e5du64,
+            &[
+                self.capability as u64,
+                self.registry_policy_hash,
+                self.request_hash,
+                self.effect_hash,
+                self.effect.contract_hash(),
+                self.event_seq,
+                self.event_hash,
+            ],
+        )
     }
 
     pub fn verifier_context_hash(self) -> u64 {
-        let mut h = 0x0700_35ee_fcf3_88d9u64;
-        h = mix(h, ProofSubjectKind::ProcessEffect as u64);
-        h = mix(h, self.registry_policy_hash);
-        h = mix(h, self.request_hash);
-        h = mix(h, self.effect.contract_hash());
-        h.max(1)
+        fold_tooling_effect_receipt_hash(
+            0x0700_35ee_fcf3_88d9u64,
+            &[
+                ProofSubjectKind::ProcessEffect as u64,
+                self.registry_policy_hash,
+                self.request_hash,
+                self.effect.contract_hash(),
+            ],
+        )
     }
 
     pub fn provider_proof_hash(self, proof_event_seq: u64) -> Option<u64> {
