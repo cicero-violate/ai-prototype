@@ -66,6 +66,8 @@ Current date: 2026-05-14.
 - Active Priorities item 39 is complete: graph-derived structural evidence refresh passed after router `cdp_get(...)` split/test work, `SCORE_REPORT.md` now reports 18 crates with `G = 7.99 / 10`, Architecture `8.9`, Structure `4.9`, Simplicity `7.1`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.4`, and `score.md` rationale was updated without changing project-level numeric scores. Active Priorities are exhausted; a planning turn must select the next executable non-`root_validate` graph-backed item.
 - Implementation step 2 found no unchecked Active Priorities item after item 39; no implementation, validation refresh, documentation, cleanup, or blocker-handling checklist item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task.
 - Implementation step 3 found no unchecked Active Priorities item after item 39; no implementation, validation refresh, documentation, cleanup, or blocker-handling checklist item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task.
+- Implementation step 4 found no unchecked Active Priorities item after item 39; no implementation, validation refresh, documentation, cleanup, or blocker-handling checklist item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task.
+- Planning turn selected Active Priorities items 40 through 42 from graph operation `001e821dc83e940a`: split `LoopDriver::run_cycle(...)` only by extracting private cycle-preparation mechanics in `src/agent/loop_driver.rs`, add focused schedule-regression coverage, then refresh graph-derived structural evidence.
 - `src/domain/business.rs` contains `BusinessOpportunity`, `WorkflowAutomationCandidate`, `CustomerFeedbackSignal`, `monetization_score(...)`, compile-smoke test `business_module_records_and_score_helper_compile`, deterministic repeatability test `business_monetization_score_is_deterministic`, and bounded-score test `business_monetization_score_is_bounded`, with broader business validation passing 3 tests after correcting the bounded test scalar assertion.
 - `src/domain/identity.rs` currently contains `DomainHash`, `DomainHashInput<'a>`, `canonical_json_bytes(record)`, `domain_hash_json(record)`, `domain_hash_parts(parts)`, `stable_domain_id(parts)`, and six passing targeted identity tests through `domain_hash_changes_when_schema_version_changes`.
 - `src/domain/scoring.rs` currently contains validated `BoundedScore` helpers, score-input breakdown helpers, conservative `verdict_for_scores(...)`, and passing `verdict_ignore_thresholds`, `verdict_watch_thresholds`, `verdict_research_thresholds`, `verdict_act_business_thresholds`, `verdict_act_finance_research_thresholds`, `verdict_simulate_trading_thresholds`, and `verdict_block_thresholds`; explicit verdict threshold tests are complete for the current scoring scope.
@@ -73,6 +75,22 @@ Current date: 2026-05-14.
 - Domain fixture JSON files exist under `tests/fixtures/domain/` for global signal, business workflow opportunity, finance hypothesis research, trading simulation sandbox, and trading live blocked cases; `tests/test_domain_fixture_contract.py` now includes explicit risk-result and required-field assertions. Item 51 graph analyzer now exists and passes against `state/rustc/ai/graph.json`, reporting 752 compiled P5 domain-node matches. Item 52 malformed-input self-check also passes. Remaining work includes item 50 full-suite Rust validation and later graph evidence refresh/score review items gated on full-suite output.
 
 ## Validation Ledger
+
+### 2026-05-14 — planning turn selected loop-driver cycle-preparation split
+
+- Scope: `plan.md`, `status.md`, `score.md`, `SCORE_REPORT.md`, `../state/rustc/auto-refactor/*.graph-editor-plan.json`, and `src/agent/loop_driver.rs`.
+- Command/check: read operational planning/status/score files; inspected graph-editor plan metadata for the local `ai` crate; checked `git status --short`; inspected `LoopDriver::run_cycle(...)`, `build_turn_prompt_context(...)`, and existing loop-driver tests; preserved the pre-existing status-only implementation-step-4 blocker entry; ran `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test planning_contract -- --test-threads=1`.
+- Result: passed.
+- Evidence: Active Priorities items 13 through 39 were all complete, with no unchecked item before this planning turn. The selected non-`root_validate` graph-backed candidate is operation `001e821dc83e940a` for `agent::loop_driver::LoopDriver::run_cycle`, constrained to private cycle-preparation extraction plus one focused regression test and one graph-evidence refresh item. Planning-contract validation passed with 2 tests and 0 failures.
+- Next action: implement Active Priorities item 40 in `src/agent/loop_driver.rs`.
+
+### 2026-05-14 — implementation step 4 blocked by exhausted Active Priorities
+
+- Scope: `plan.md`, `status.md`, and `score.md` review; `status.md` blocker evidence update only.
+- Command/check: parsed the `## Active Priorities` block in `plan.md`, read current `status.md` and `score.md`, and checked `git status --short --untracked-files=all`.
+- Result: blocked.
+- Evidence: Active Priorities contains 27 numbered checklist items and all are marked `[x]`; the last items are 37, 38, and 39, all complete. No line under the Active Priorities block contains `[ ]`, so no implementation, validation refresh, documentation, cleanup, or blocker-handling item is selectable for implementation step 4. Working tree was clean before this status-only blocker update.
+- Next action: run a planning turn to select the next executable non-`root_validate` graph-backed item from current graph evidence.
 
 ### 2026-05-14 — implementation step 3 blocked by exhausted Active Priorities
 
