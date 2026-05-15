@@ -42,6 +42,8 @@ Current date: 2026-05-15.
 
 ## Current Progress
 
+- Planning turn on 2026-05-15 completed Python-assisted reconnaissance after Active Priorities item 91. Active Priorities items 92 through 94 are now planned for `src/agent/loop_driver.rs` and graph-derived evidence refresh. The first executable item is item 92.
+
 - Implementation step 5 found no unchecked Active Priorities item after item 91; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 - Implementation step 4 found no unchecked Active Priorities item after item 91; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 - Active Priorities item 91 is complete: graph-derived structural evidence refresh passed after items 89 and 90. `SCORE_REPORT.md` reports `G = 7.93 / 10`, Architecture `8.9`, Structure `4.9`, Simplicity `6.9`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2`; the `ai` crate row is Nodes `5630`, Edges `35768`, Fns `2286`, Architecture `9.4`, Structure `6.1`, Simplicity `7.1`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2`. `score.md` rationale was updated to name item 91 and the current `root_validate` Architecture `3.3`; project-level numeric scores remain unchanged because this is evidence refresh, not a capability score change. Active Priorities are exhausted.
@@ -171,6 +173,13 @@ Current date: 2026-05-15.
 - Implementation step 4 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 - Implementation step 5 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 ## Validation Ledger
+
+### 2026-05-15 — planning selected loop-driver agent label helper work
+
+- Scope: `plan.md`, `status.md`, and selected graph-backed candidate `src/agent/loop_driver.rs::{agent_identity, agent_tag}`; Active Priorities items 92 through 94.
+- Command/check: Python-assisted read of `plan.md`, `status.md`, `score.md`, and `SCORE_REPORT.md`; exact `## Active Priorities` checklist parsing; inspection of `../state/rustc/auto-refactor/*.graph-editor-plan.json`; detailed inspection of selected `../state/rustc/auto-refactor/workspace__ai_sandbox__canon-mini-agent__prototype__state__rustc__ai__graph.graph-editor-plan.json`; source/test surface inspection for `src/agent/loop_driver.rs`; and `git status --short`.
+- Evidence: Active Priorities were exhausted after item 91 with 0 unchecked items before this update. Current `SCORE_REPORT.md` reports aggregate `G = 7.93 / 10`, Architecture `8.9`, Structure `4.9`, Simplicity `6.9`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2`; the selected `ai` graph-editor plan has schema version 1, graph schema version 16, and 1,572 operations. Operation `59df2500a9eb2620` covers `agent::loop_driver::{agent_identity, agent_tag}` and is selected as the next safe non-`root_validate` consolidation candidate. `root_validate` remains intentionally non-selectable per user instruction. `score.md` was reviewed and left unchanged because no new score-history-worthy capability evidence was produced by planning alone.
+- Next action: Execute Active Priorities item 92 in `src/agent/loop_driver.rs` only.
 
 ### 2026-05-15 — item 91 graph-derived score refresh after transport hash work
 
