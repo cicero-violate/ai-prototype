@@ -42,6 +42,7 @@ Current date: 2026-05-15.
 
 ## Current Progress
 
+- Implementation step 5 found no unchecked Active Priorities item after item 82; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 - Implementation step 4 found no unchecked Active Priorities item after item 82; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 - Active Priorities item 82 is complete: graph-derived structural evidence refresh passed after items 80 and 81. `SCORE_REPORT.md` reports `G = 7.92 / 10`, Architecture `8.9`, Structure `4.9`, Simplicity `6.9`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2`; the `ai` crate row is Nodes `5626`, Edges `35765`, Fns `2282`, Architecture `9.4`, Structure `6.1`, Simplicity `7.1`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2`. `score.md` rationale was updated to match refreshed evidence; project-level numeric scores remain unchanged because this is evidence refresh, not a capability score change. Active Priorities are exhausted.
 - Active Priorities item 81 is complete: `ollama_proof_event_hash_helpers_preserve_distinct_domains` now provides focused local-module coverage for valid Ollama proof-event construction, non-zero distinct provider proof and verifier-context hashes, receipt/proof binding, canonical proof projection, proof-only tamper rejection, and verifier-context tamper separation. Targeted and broader Rust validation passed. The next executable item is item 82, the graph-derived evidence refresh and score-rationale review.
@@ -154,6 +155,22 @@ Current date: 2026-05-15.
 - Implementation step 4 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 - Implementation step 5 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 ## Validation Ledger
+
+### 2026-05-15 — implementation step 5 planning-contract validation
+
+- Scope: `status.md` status-only exhausted Active Priorities record.
+- Command/check: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test planning_contract -- --test-threads=1`.
+- Result: passed.
+- Evidence: planning-contract validation passed 2 tests with 0 failures. Cargo emitted the recurring global-cache warning (`database or disk is full`), but validation passed.
+- Next action: Commit the status-only exhausted-priorities record.
+
+### 2026-05-15 — implementation step 5 exhausted Active Priorities check
+
+- Scope: `plan.md`, `status.md`, and `score.md`.
+- Command/check: Python-assisted read of `plan.md`, `status.md`, and `score.md`, including exact `## Active Priorities` checklist parsing and whole-file checklist fallback.
+- Result: informational.
+- Evidence: exact Active Priorities section has 61 checklist entries and 0 unchecked items; whole-file checklist scan has 67 entries and 0 unchecked items. Last completed items are 80 through 82 for the Ollama proof-event helper, focused regression, and graph-derived evidence refresh. `git status --short` was clean before this status-only record.
+- Next action: Run planning-contract validation and commit this exhausted-priorities status record.
 
 ### 2026-05-15 — implementation step 4 planning-contract validation
 
