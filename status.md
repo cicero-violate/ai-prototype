@@ -103,8 +103,17 @@ Current date: 2026-05-14.
 - Implementation step 5 found no unchecked Active Priorities item after item 54; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 - Active Priorities items 55 through 57 are now planned for `src/agent/cycle.rs` and graph-derived evidence refresh. The first executable item is item 55, which must route `compute_evidence_contract_hash(...)`, `compute_submit_evidence_command_hash(...)`, and `compute_envelope_hash(...)` through one private domain-hash vector helper while preserving distinct hash domains, exact field order, known hash vectors, JSON wire format, real kernel hash equality, runtime behavior, and receipt behavior. `root_validate` remains explicitly non-selectable.
 - Active Priorities item 55 is complete: `compute_evidence_contract_hash(...)`, `compute_submit_evidence_command_hash(...)`, and `compute_envelope_hash(...)` now share one private `compute_hash_domain_vector(...)` helper while preserving each wrapper name and signature, `HashDomain` selection, exact field vector order, JSON wire format, kernel hash equality, runtime behavior, and receipt behavior. The next executable item is item 56, the focused regression test for the shared domain-hash vector helper.
+- Active Priorities item 56 is complete: `submit_evidence_hash_domain_wrappers_preserve_distinct_vectors` now covers the shared domain-hash vector helper by preserving invariant and plan evidence known contract/command/envelope hash vectors, domain non-zero and pairwise distinction for a shared scalar, and field-order sensitivity through explicit alternate `compute_domain_contract_hash(...)` calls. The next executable item is item 57, the graph-derived evidence refresh and score-rationale review.
 
 ## Validation Ledger
+
+### 2026-05-14 — Active Priorities item 56 agent cycle hash-domain regression test
+
+- Scope: `src/agent/cycle.rs`, `plan.md`, `status.md`, and `score.md` review.
+- Command/check: targeted `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test submit_evidence_hash_domain_wrappers_preserve_distinct_vectors -- --test-threads=1`; broader `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
+- Result: passed.
+- Evidence: targeted validation passed 1 named test, 0 failed. Broader validation passed with 321 library/bin tests, 3 `root_validate` binary tests, 13 API server contract tests, 23 API transport contract tests, 3 canonical TLog contract tests, 4 domain contract tests, 10 graph mutation CLI contract tests, 9 MCP receipt contract tests, 2 planning contract tests, 5 score contract tests, 2 supervisor binary contract tests, 2 worker binary contract tests, and all example test targets green. `score.md` was reviewed and left unchanged because item 56 adds focused regression evidence without changing project-level score values or rationale.
+- Next action: execute Active Priorities item 57 graph-derived evidence refresh.
 
 ### 2026-05-14 — Active Priorities item 55 agent cycle hash-domain helper
 
