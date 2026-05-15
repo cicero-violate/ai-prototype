@@ -17864,3 +17864,37 @@ pub fn command_env_pair() -> (OsString, OsString) {
         OsString::from(cargo_from_env()),
     )
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn validation_harness_capacity_trend_builder_preserves_smoke_boundaries() {
+        let trend = policy_orchestration_capacity_trend_smoke_receipt();
+        assert_eq!(
+            trend.record_type,
+            POLICY_ORCHESTRATION_CAPACITY_TREND_SMOKE_STEP
+        );
+        assert_eq!(trend.trend_status, "pass");
+        assert_eq!(trend.verdict, "pass");
+        assert!(trend.hit_rate_delta_bps >= 0);
+        assert!(trend.avoided_llm_call_delta_per_full_batch >= 0);
+
+        let regression = policy_orchestration_capacity_regression_smoke_receipt();
+        assert_eq!(
+            regression.record_type,
+            POLICY_ORCHESTRATION_CAPACITY_REGRESSION_SMOKE_STEP
+        );
+        assert_eq!(regression.trend_status, "regressed");
+        assert_eq!(regression.verdict, "fail");
+        assert!(regression.hit_rate_delta_bps < 0);
+        assert!(regression.avoided_llm_call_delta_per_full_batch < 0);
+
+        assert_eq!(trend.batch_capacity_limit, regression.batch_capacity_limit);
+        assert_eq!(trend.baseline_capacity_status, "pass");
+        assert_eq!(trend.current_capacity_status, "pass");
+        assert_eq!(regression.baseline_capacity_status, "pass");
+        assert_eq!(regression.current_capacity_status, "pass");
+    }
+}

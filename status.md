@@ -42,6 +42,8 @@ Current date: 2026-05-15.
 
 ## Current Progress
 
+- Active Priorities item 156 is complete: `src/validation_harness.rs` now includes focused in-module regression coverage in `validation_harness_capacity_trend_builder_preserves_smoke_boundaries`. The test uses existing public smoke receipt functions and in-memory assertions; proves the trend receipt keeps the trend smoke record type, pass trend status, pass verdict, non-negative hit-rate delta, and non-negative avoided-LLM-call delta; proves the regression receipt keeps the regression smoke record type, regressed trend status, fail verdict, negative hit-rate delta, and negative avoided-LLM-call delta; and proves both receipts share the same batch capacity limit and expected pass capacity statuses. Targeted named-test validation passed. Broader `cargo test --all-targets` passed with 352 library tests, 3 `root_validate` binary tests, and all integration, binary, and example suites green. Cargo emitted the known non-fatal last-use/cache warning reporting `database or disk is full`. The next executable item is item 157 in `src/validation_harness.rs`. `score.md` remains unchanged because this is focused regression coverage, not a project-level score change.
+
 - Active Priorities item 155 is complete: `src/validation_harness.rs` now routes `policy_orchestration_capacity_trend_smoke_receipt(...)` and `policy_orchestration_capacity_regression_smoke_receipt(...)` through private `policy_orchestration_capacity_trend_smoke_receipt_from_hit_counts(...)` while preserving public function names, trend/regression record types, pass/regression semantics, and capacity receipt construction through `policy_orchestration_capacity_receipt_from_reuse(...)`. Targeted `cargo check --lib` passed. Broader `cargo test --all-targets` passed with 351 library tests, 3 `root_validate` binary tests, and all integration, binary, and example suites green. Cargo emitted the known non-fatal last-use/cache warning reporting `database or disk is full`. The next executable item is item 156, focused regression coverage for the shared capacity-trend smoke receipt builder. `score.md` remains unchanged because this is a narrow structure refactor with validation evidence, not a project-level score change.
 
 - Active Priorities item 154 is complete: graph-derived structural evidence refresh passed after items 152 and 153. `scripts/recapture_rustc_graphs.sh --check` reported `graph artifact check: pass` for `../state/rustc`, and score report regeneration from `../state/rustc` reported aggregate `G = 7.94 / 10`, Architecture `8.9`, Structure `4.9`, Simplicity `6.9`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2` across 18 crates. `SCORE_REPORT.md` already matched the regenerated report, so no report diff was produced. `score.md` remains unchanged because this is structural evidence refresh rather than score-history-worthy capability evidence. The next executable item is item 155 in `src/validation_harness.rs`.
@@ -411,6 +413,22 @@ Current date: 2026-05-15.
 - Implementation step 4 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 - Implementation step 5 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 ## Validation Ledger
+
+### 2026-05-15 — Active Priorities item 156 validation_harness capacity trend regression test
+
+- Scope: `src/validation_harness.rs`, `plan.md`, and `status.md`.
+- Command/check: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test validation_harness_capacity_trend_builder_preserves_smoke_boundaries -- --test-threads=1`.
+- Result: passed.
+- Evidence: 1 named test passed, 0 failed, with `validation_harness::tests::validation_harness_capacity_trend_builder_preserves_smoke_boundaries` covering trend and regression smoke receipt boundaries. Cargo emitted the known non-fatal last-use/cache warning reporting `database or disk is full`.
+- Next action: Execute item 157 in `src/validation_harness.rs`.
+
+### 2026-05-15 — Active Priorities item 156 broader validation
+
+- Scope: full Rust workspace after item 156 validation_harness regression coverage.
+- Command/check: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
+- Result: passed.
+- Evidence: 352 library tests passed, 3 `root_validate` binary tests passed, and all integration, binary, and example test suites passed with 0 failures. Cargo emitted the known non-fatal last-use/cache warning reporting `database or disk is full`.
+- Next action: Execute item 157 in `src/validation_harness.rs`.
 
 ### 2026-05-15 — Active Priorities item 155 validation_harness capacity trend helper
 
