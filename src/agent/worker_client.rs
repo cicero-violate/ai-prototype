@@ -156,4 +156,33 @@ mod tests {
         assert_ne!(default_client.port, custom_client.port);
         assert_ne!(default_client.timeout, custom_client.timeout);
     }
+
+    #[test]
+    fn worker_client_constructor_helper_preserves_timeout_boundaries() {
+        let default_client = WorkerClient::new(8123);
+        let default_helper_client = WorkerClient::from_timeout_ms(8123, DEFAULT_TIMEOUT_MS);
+        assert_eq!(default_client.port, 8123);
+        assert_eq!(
+            default_client.timeout,
+            Duration::from_millis(DEFAULT_TIMEOUT_MS)
+        );
+        assert_eq!(default_client.port, default_helper_client.port);
+        assert_eq!(default_client.timeout, default_helper_client.timeout);
+
+        let custom_client = WorkerClient::new_with_timeout(8124, 123);
+        let custom_helper_client = WorkerClient::from_timeout_ms(8124, 123);
+        assert_eq!(custom_client.port, 8124);
+        assert_eq!(custom_client.timeout, Duration::from_millis(123));
+        assert_eq!(custom_client.port, custom_helper_client.port);
+        assert_eq!(custom_client.timeout, custom_helper_client.timeout);
+
+        let zero_timeout_client = WorkerClient::new_with_timeout(8125, 0);
+        assert_eq!(zero_timeout_client.port, 8125);
+        assert_eq!(zero_timeout_client.timeout, Duration::from_millis(0));
+
+        assert_ne!(default_client.port, custom_client.port);
+        assert_ne!(default_client.timeout, custom_client.timeout);
+        assert_ne!(custom_client.port, zero_timeout_client.port);
+        assert_ne!(custom_client.timeout, zero_timeout_client.timeout);
+    }
 }

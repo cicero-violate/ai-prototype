@@ -42,6 +42,8 @@ Current date: 2026-05-15.
 
 ## Current Progress
 
+- Active Priorities item 108 is complete: `src/agent/worker_client.rs` now has focused in-module regression coverage in `worker_client_constructor_helper_preserves_timeout_boundaries`, proving `WorkerClient::new(...)` preserves the default timeout and port, `WorkerClient::new_with_timeout(...)` preserves custom timeout and port, zero-millisecond custom timeout remains `Duration::from_millis(0)`, and public constructors match the private `from_timeout_ms(...)` helper boundary. Targeted named-test validation passed. Broader `cargo test --all-targets` passed with 336 library tests plus integration/binary/example suites green. Cargo emitted the known non-fatal last-use cache warning reporting `database or disk is full`. The next executable item is item 109, graph-derived structural evidence refresh and score-rationale review. `score.md` remains unchanged because this is focused regression coverage for an existing helper boundary, not a project-level score change.
+
 - Active Priorities item 107 is complete: `src/agent/worker_client.rs` now routes `WorkerClient::new(...)` and `WorkerClient::new_with_timeout(...)` through shared private constructor boundary `from_timeout(...)` via `from_timeout_ms(...)`, preserving `DEFAULT_TIMEOUT_MS`, custom timeout conversion through `Duration::from_millis(...)`, port storage, `from_env()` default-constructor behavior, and existing worker HTTP/TCP request behavior. Targeted `cargo check --lib` passed. Broader `cargo test --all-targets` passed with 335 library tests plus integration/binary/example suites green, including existing worker-client constructor coverage. Cargo emitted the known non-fatal last-use cache warning reporting `database or disk is full`. The next executable item is item 108, focused worker-client timeout-boundary regression coverage. `score.md` remains unchanged because this is a narrow structure refactor with validation evidence, not a project-level score change.
 
 - Planning turn on 2026-05-15 completed Python-assisted reconnaissance after Active Priorities item 106. Active Priorities items 107 through 109 are now planned for `src/agent/worker_client.rs` worker-client constructor helper extraction, focused timeout-boundary regression coverage, and graph-derived evidence refresh. The first executable item is item 107. `root_validate` remains intentionally non-selectable per user direction. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
@@ -239,6 +241,14 @@ Current date: 2026-05-15.
 - Implementation step 4 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 - Implementation step 5 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 ## Validation Ledger
+
+### 2026-05-15 — Active Priorities item 108 worker-client constructor-helper test
+
+- Scope: `src/agent/worker_client.rs` test module, `plan.md`, and `status.md`.
+- Command/check: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test worker_client_constructor_helper_preserves_timeout_boundaries -- --test-threads=1`; `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
+- Result: passed.
+- Evidence: Targeted validation ran `agent::worker_client::tests::worker_client_constructor_helper_preserves_timeout_boundaries` and passed 1 test with 0 failures; broader validation passed with 336 library tests, 3 `root_validate` binary tests, 13 API server contract tests, 23 API transport contract tests, 3 canonical TLog contract tests, 4 domain contract tests, 10 graph mutation CLI contract tests, 9 MCP receipt contract tests, 2 planning contract tests, 5 score contract tests, 2 supervisor binary contract tests, 2 worker binary contract tests, and example/binary suites green. Cargo emitted the known non-fatal last-use cache warning reporting `database or disk is full`.
+- Next action: Execute Active Priorities item 109 graph-derived structural evidence refresh.
 
 ### 2026-05-15 — Active Priorities item 107 worker-client constructor helper
 
