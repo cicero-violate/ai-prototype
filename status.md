@@ -5242,3 +5242,16 @@ Implementation step 2 evidence on 2026-05-14 for Active Priorities item 50:
 - Targeted validation passed: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test ollama_ndjson_encoders_preserve_record_layouts -- --test-threads=1` ran the named test successfully.
 - Broader validation passed: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets` passed with 319 library tests, 3 `root_validate` binary tests, and all integration/example test targets passing.
 - Marked item 50 complete in `plan.md`. `score.md` was reviewed and left unchanged because this is focused regression coverage for an existing NDJSON encoder boundary, not a score-history-worthy project-level capability change.
+
+
+Implementation step 3 evidence on 2026-05-14 for Active Priorities item 51:
+
+- Selected first unchecked Active Priorities item 51: `SCORE_REPORT.md` graph-derived structural evidence refresh after items 49 and 50.
+- Read `plan.md`, `status.md`, `score.md`, and current `SCORE_REPORT.md` before running validation.
+- Ran the targeted evidence-refresh command: `bash scripts/recapture_rustc_graphs.sh --check && cargo run --manifest-path ../score/Cargo.toml --quiet -- --artifact-root ../state/rustc --report SCORE_REPORT.md --date "$(date +%Y-%m-%d)"`.
+- Targeted validation passed. Graph artifact check passed for the configured `../state/rustc` root with required artifacts, the scorer processed 18 crates with 0 skipped, and regenerated evidence remained `G = 7.99 / 10`.
+- Refreshed aggregate axes remain Architecture `8.9`, Structure `4.9`, Simplicity `7.1`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.4`.
+- Affected rows after items 49 and 50 remained unchanged in the checked-in report: local `ai` library crate row is 5,610 nodes, 34,384 edges, 2,270 functions, Architecture `9.2`, Structure `6.0`, Simplicity `7.6`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.6`; `root_validate` remains 163 nodes, 1,990 edges, 161 functions, Architecture `3.2`, Structure `1.5`, Simplicity `6.1`, Maintainability `10.0`, Determinism `10.0`, and Coherency `7.3`.
+- Broader validation passed: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets` passed with 319 library tests, 3 `root_validate` binary tests, and all integration/example test targets passing.
+- `SCORE_REPORT.md` and `score.md` had no diff after refresh because regenerated structural evidence matched the current checked-in report and score rationale.
+- Marked item 51 complete in `plan.md`. `score.md` was reviewed and left unchanged because this evidence refresh confirms the current structural snapshot and does not justify project-level numeric score changes.
