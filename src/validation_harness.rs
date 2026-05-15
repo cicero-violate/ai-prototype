@@ -18031,6 +18031,175 @@ mod tests {
     }
 
     #[test]
+    fn validation_harness_evaluator_and_candidate_builders_preserve_smoke_and_regression_boundaries(
+    ) {
+        let smoke_request = policy_reuse_evidence_batch_run_request_smoke_receipt();
+        let smoke_admission = policy_reuse_evidence_batch_evaluation_admission_smoke_receipt();
+        let smoke_evaluator = policy_reuse_evidence_external_evaluator_result_smoke_receipt();
+        let smoke_candidate = policy_reuse_evidence_learning_candidate_smoke_receipt();
+
+        assert!(smoke_evaluator.is_valid());
+        assert!(smoke_evaluator.passed());
+        assert_eq!(
+            smoke_evaluator.record_type,
+            POLICY_REUSE_EVIDENCE_EXTERNAL_EVALUATOR_RESULT_SMOKE_STEP
+        );
+        assert_eq!(
+            smoke_evaluator.source_batch_run_request_hash,
+            smoke_request.receipt_hash
+        );
+        assert_eq!(
+            smoke_evaluator.source_batch_evaluation_admission_hash,
+            smoke_admission.receipt_hash
+        );
+        assert!(smoke_evaluator.batch_request_ready);
+        assert!(smoke_evaluator.batch_evaluation_admitted);
+        assert!(smoke_evaluator.external_evaluator_independent);
+        assert!(!smoke_evaluator.llm_self_approved);
+        assert_eq!(smoke_evaluator.evaluator_status, "passed");
+        assert_eq!(smoke_evaluator.evaluator_failure_reason, "none");
+        assert_ne!(smoke_evaluator.evaluator_hash, 0);
+        assert_ne!(smoke_evaluator.receipt_hash, 0);
+        assert_eq!(
+            smoke_evaluator.evaluator_hash,
+            policy_reuse_evidence_external_evaluator_result_hash(&smoke_evaluator)
+        );
+        assert_eq!(
+            smoke_evaluator.receipt_hash,
+            policy_reuse_evidence_external_evaluator_result_receipt_hash(&smoke_evaluator)
+        );
+
+        assert!(smoke_candidate.is_valid());
+        assert!(smoke_candidate.passed());
+        assert_eq!(
+            smoke_candidate.record_type,
+            POLICY_REUSE_EVIDENCE_LEARNING_CANDIDATE_SMOKE_STEP
+        );
+        assert_eq!(
+            smoke_candidate.source_external_evaluator_result_hash,
+            smoke_evaluator.receipt_hash
+        );
+        assert_eq!(
+            smoke_candidate.source_batch_run_request_hash,
+            smoke_request.receipt_hash
+        );
+        assert!(smoke_candidate.evaluator_result_passed);
+        assert!(smoke_candidate.batch_request_ready);
+        assert!(!smoke_candidate.policy_promotion_performed);
+        assert!(!smoke_candidate.retrieval_write_performed);
+        assert_eq!(smoke_candidate.candidate_status, "candidate");
+        assert_eq!(smoke_candidate.not_candidate_reason, "none");
+        assert_ne!(smoke_candidate.candidate_hash, 0);
+        assert_ne!(smoke_candidate.receipt_hash, 0);
+        assert_eq!(
+            smoke_candidate.candidate_hash,
+            policy_reuse_evidence_learning_candidate_hash(&smoke_candidate)
+        );
+        assert_eq!(
+            smoke_candidate.receipt_hash,
+            policy_reuse_evidence_learning_candidate_receipt_hash(&smoke_candidate)
+        );
+
+        let regression_request = policy_reuse_evidence_batch_run_request_regression_smoke_receipt();
+        let regression_admission =
+            policy_reuse_evidence_batch_evaluation_admission_regression_smoke_receipt();
+        let regression_evaluator =
+            policy_reuse_evidence_external_evaluator_result_regression_smoke_receipt();
+        let regression_candidate =
+            policy_reuse_evidence_learning_candidate_regression_smoke_receipt();
+
+        assert!(regression_evaluator.is_valid());
+        assert!(!regression_evaluator.passed());
+        assert_eq!(
+            regression_evaluator.record_type,
+            POLICY_REUSE_EVIDENCE_EXTERNAL_EVALUATOR_RESULT_REGRESSION_SMOKE_STEP
+        );
+        assert_eq!(
+            regression_evaluator.source_batch_run_request_hash,
+            regression_request.receipt_hash
+        );
+        assert_eq!(
+            regression_evaluator.source_batch_evaluation_admission_hash,
+            regression_admission.receipt_hash
+        );
+        assert!(!regression_evaluator.batch_request_ready);
+        assert!(!regression_evaluator.batch_evaluation_admitted);
+        assert!(regression_evaluator.external_evaluator_independent);
+        assert!(!regression_evaluator.llm_self_approved);
+        assert_eq!(regression_evaluator.evaluator_status, "failed");
+        assert_eq!(
+            regression_evaluator.evaluator_failure_reason,
+            "external_evaluator_failed"
+        );
+        assert_ne!(regression_evaluator.evaluator_hash, 0);
+        assert_ne!(regression_evaluator.receipt_hash, 0);
+        assert_eq!(
+            regression_evaluator.evaluator_hash,
+            policy_reuse_evidence_external_evaluator_result_hash(&regression_evaluator)
+        );
+        assert_eq!(
+            regression_evaluator.receipt_hash,
+            policy_reuse_evidence_external_evaluator_result_receipt_hash(&regression_evaluator)
+        );
+
+        assert!(regression_candidate.is_valid());
+        assert!(!regression_candidate.passed());
+        assert_eq!(
+            regression_candidate.record_type,
+            POLICY_REUSE_EVIDENCE_LEARNING_CANDIDATE_REGRESSION_SMOKE_STEP
+        );
+        assert_eq!(
+            regression_candidate.source_external_evaluator_result_hash,
+            regression_evaluator.receipt_hash
+        );
+        assert_eq!(
+            regression_candidate.source_batch_run_request_hash,
+            regression_request.receipt_hash
+        );
+        assert!(!regression_candidate.evaluator_result_passed);
+        assert!(!regression_candidate.batch_request_ready);
+        assert!(!regression_candidate.policy_promotion_performed);
+        assert!(!regression_candidate.retrieval_write_performed);
+        assert_eq!(regression_candidate.candidate_status, "not_candidate");
+        assert_eq!(
+            regression_candidate.not_candidate_reason,
+            "evaluator_not_passed"
+        );
+        assert_ne!(regression_candidate.candidate_hash, 0);
+        assert_ne!(regression_candidate.receipt_hash, 0);
+        assert_eq!(
+            regression_candidate.candidate_hash,
+            policy_reuse_evidence_learning_candidate_hash(&regression_candidate)
+        );
+        assert_eq!(
+            regression_candidate.receipt_hash,
+            policy_reuse_evidence_learning_candidate_receipt_hash(&regression_candidate)
+        );
+
+        assert_ne!(
+            smoke_evaluator.evaluator_hash,
+            regression_evaluator.evaluator_hash
+        );
+        assert_ne!(
+            smoke_evaluator.receipt_hash,
+            regression_evaluator.receipt_hash
+        );
+        assert_ne!(
+            smoke_candidate.candidate_hash,
+            regression_candidate.candidate_hash
+        );
+        assert_ne!(
+            smoke_candidate.receipt_hash,
+            regression_candidate.receipt_hash
+        );
+        assert_ne!(smoke_evaluator.receipt_hash, smoke_candidate.receipt_hash);
+        assert_ne!(
+            regression_evaluator.receipt_hash,
+            regression_candidate.receipt_hash
+        );
+    }
+
+    #[test]
     fn validation_harness_batch_evidence_hash_helper_preserves_readiness_plan_admission_and_request_boundaries(
     ) {
         let readiness = policy_reuse_evidence_batch_readiness_smoke_receipt();
