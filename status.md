@@ -42,6 +42,8 @@ Current date: 2026-05-15.
 
 ## Current Progress
 
+- Planning turn on 2026-05-15 selected the next ordered non-`root_validate` graph-backed work after item 157 exhausted the previous queue. The next executable item is Active Priorities item 158 in `src/validation_harness.rs`, adding focused regression coverage for the shared policy reuse cost-catalog smoke receipt builder; item 159 refreshes graph-derived evidence; item 160 then targets graph operation `73022b99d7f6436b` in `src/validation_harness.rs` by consolidating `policy_reuse_scaling_projection_hash(...)` and `policy_reuse_distillation_readiness_hash(...)` through one private ordered receipt-field hash helper; item 161 adds focused projection/readiness hash-boundary coverage; item 162 refreshes graph-derived evidence. Reconnaissance inspected `plan.md`, `status.md`, `score.md`, `SCORE_REPORT.md`, the selected `ai` graph-editor plan with Python, candidate source ranges in `src/validation_harness.rs`, and existing Ollama loader/verification candidates. `root_validate` remains intentionally non-selected. `score.md` remains unchanged because this planning turn produced no implementation, graph refresh, or score-changing capability evidence.
+
 - Implementation step 5 found no unchecked Active Priorities item after item 157; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `plan.md`, `status.md`, and `score.md` were read; `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 
 - Active Priorities item 157 is complete: `src/validation_harness.rs` now routes `policy_reuse_cost_catalog_smoke_receipt(...)` and `policy_reuse_cost_catalog_incomplete_smoke_receipt(...)` through private `policy_reuse_cost_catalog_smoke_receipt_from_counts(...)` while preserving the complete tuple `(6, 4, 4, 6, true, true, "none")`, the incomplete tuple `(6, 4, 3, 6, true, false, "required_regression_modes")`, source hash gathering through `policy_reuse_cost_catalog_source_hashes(...)`, smoke/incomplete record types, and canonical catalog/receipt hashes. Targeted `cargo check --lib` passed. Broader `cargo test --all-targets` passed with 352 library tests, 3 `root_validate` binary tests, and all integration, binary, and example suites green. Cargo emitted the known non-fatal last-use/cache warning reporting `database or disk is full`. `score.md` remains unchanged because this is a narrow structure refactor with validation evidence, not a project-level score change.
@@ -417,6 +419,14 @@ Current date: 2026-05-15.
 - Implementation step 4 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 - Implementation step 5 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 ## Validation Ledger
+
+### 2026-05-15 — planning turn for Active Priorities items 158 through 162
+
+- Scope: `plan.md`, `status.md`, `score.md`, `SCORE_REPORT.md`, `../state/rustc/auto-refactor/workspace__ai_sandbox__canon-mini-agent__prototype__state__rustc__ai__graph.graph-editor-plan.json`, and `src/validation_harness.rs` planning reconnaissance.
+- Command/check: read current planning/status/score files; inspected graph-editor plan with Python; inspected candidate source ranges in `src/validation_harness.rs`; reviewed current `SCORE_REPORT.md` rows and prior validation evidence.
+- Result: informational.
+- Evidence: Active Priorities had no unchecked item after item 157; current `SCORE_REPORT.md` remains `G = 7.94 / 10`, Architecture `8.9`, Structure `4.9`, Simplicity `6.9`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2`; `root_validate` remains excluded by explicit direction; selected non-`root_validate` `validation_harness` work with graph operation `73022b99d7f6436b` after closing missing regression coverage for item 157.
+- Next action: implement Active Priorities item 158 in `src/validation_harness.rs`.
 
 ### 2026-05-15 — implementation step 5 Active Priorities queue exhausted
 
