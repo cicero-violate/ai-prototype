@@ -282,16 +282,19 @@ pub(crate) fn retry_budget_decision_receiptable(
 }
 
 fn prompt_hash(context: &ContextRecord, policy_version: u64, policy_hash: u64) -> u64 {
-    let mut h = 0x106689d45497fdb5u64;
-    h = mix(h, context.objective_id);
-    h = mix(h, context.observation_hash);
-    h = mix(h, context.memory_aggregate_hash);
-    h = mix(h, context.context_hash);
-    h = mix(h, context.prior_count as u64);
-    h = mix(h, policy_version);
-    h = mix(h, policy_hash);
-    h = mix(h, LLM_JUDGMENT_SCHEMA_VERSION);
-    h.max(1)
+    fold_ordered_llm_hash(
+        0x106689d45497fdb5u64,
+        &[
+            context.objective_id,
+            context.observation_hash,
+            context.memory_aggregate_hash,
+            context.context_hash,
+            context.prior_count as u64,
+            policy_version,
+            policy_hash,
+            LLM_JUDGMENT_SCHEMA_VERSION,
+        ],
+    )
 }
 
 fn response_hash(
@@ -300,14 +303,17 @@ fn response_hash(
     prompt_hash: u64,
     policy_hash: u64,
 ) -> u64 {
-    let mut h = 0x6c62272e07bb0142u64;
-    h = mix(h, model_id);
-    h = mix(h, prompt_hash);
-    h = mix(h, policy_hash);
-    h = mix(h, context.context_hash);
-    h = mix(h, context.memory_aggregate_hash);
-    h = mix(h, LLM_JUDGMENT_SCHEMA_HASH);
-    h.max(1)
+    fold_ordered_llm_hash(
+        0x6c62272e07bb0142u64,
+        &[
+            model_id,
+            prompt_hash,
+            policy_hash,
+            context.context_hash,
+            context.memory_aggregate_hash,
+            LLM_JUDGMENT_SCHEMA_HASH,
+        ],
+    )
 }
 
 fn rationale_hash(
@@ -316,27 +322,37 @@ fn rationale_hash(
     policy_version: u64,
     policy_hash: u64,
 ) -> u64 {
-    let mut h = 0x80a3dc05d5f2d4f7u64;
-    h = mix(h, context.objective_id);
-    h = mix(h, context.context_hash);
-    h = mix(h, response_hash);
-    h = mix(h, policy_version);
-    h = mix(h, policy_hash);
-    h.max(1)
+    fold_ordered_llm_hash(
+        0x80a3dc05d5f2d4f7u64,
+        &[
+            context.objective_id,
+            context.context_hash,
+            response_hash,
+            policy_version,
+            policy_hash,
+        ],
+    )
 }
 
 fn llm_payload_hash(record: &LlmRecord) -> u64 {
-    let mut h = 0xd6e8_feb8_6659_fd93u64;
-    h = mix(h, record.prompt.context_hash);
-    h = mix(h, record.prompt.policy_version);
-    h = mix(h, record.prompt.policy_hash);
-    h = mix(h, record.prompt.prompt_hash);
-    h = mix(h, record.response.model_id);
-    h = mix(h, record.response.response_hash);
-    h = mix(h, record.response.token_count as u64);
-    h = mix(h, record.judgment.decision_id);
-    h = mix(h, record.judgment.rationale_hash);
-    h.max(1)
+    fold_ordered_llm_hash(
+        0xd6e8_feb8_6659_fd93u64,
+        &[
+            record.prompt.context_hash,
+            record.prompt.policy_version,
+            record.prompt.policy_hash,
+            record.prompt.prompt_hash,
+            record.response.model_id,
+            record.response.response_hash,
+            record.response.token_count as u64,
+            record.judgment.decision_id,
+            record.judgment.rationale_hash,
+        ],
+    )
+}
+
+fn fold_ordered_llm_hash(seed: u64, fields: &[u64]) -> u64 {
+    fields.iter().copied().fold(seed, mix).max(1)
 }
 
 fn token_count(context: &ContextRecord) -> u32 {

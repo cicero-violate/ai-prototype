@@ -6491,3 +6491,17 @@ Planning-turn update on 2026-05-15 for next non-root LLM record hash-folding wor
 - Inspected `src/capability/llm/record.rs` around `prompt_hash(...)`, `response_hash(...)`, `rationale_hash(...)`, `llm_payload_hash(...)`, retry-budget helpers, and `token_count(...)`; inspected `src/lib.rs` LLM record assertions for a focused regression surface.
 - Updated `plan.md` with three executable items: item 110 private ordered hash-folding helper extraction in `src/capability/llm/record.rs`, item 111 focused LLM record hash-domain regression coverage in `src/lib.rs`, and item 112 graph-derived evidence refresh.
 - `score.md` was reviewed and left unchanged because this planning turn produced no implementation, validation refresh, graph refresh, or score-history-worthy capability evidence.
+
+
+Implementation step 1 evidence on 2026-05-15 for Active Priorities item 110:
+
+- Selected first unchecked Active Priorities item 110: `src/capability/llm/record.rs` private ordered hash-folding helper extraction for `prompt_hash(...)`, `response_hash(...)`, `rationale_hash(...)`, and `llm_payload_hash(...)`.
+- Read `plan.md`, `status.md`, and `score.md` before editing.
+- Changed only the item-scoped source file `src/capability/llm/record.rs` plus planning/status evidence files.
+- Added private helper `fold_ordered_llm_hash(seed, fields)` and routed all four LLM record hash wrappers through it.
+- Preserved each semantic hash function name, seed, field order, and `h.max(1)` non-zero behavior; preserved `LlmRecord::submission(...)` payload binding through `llm_payload_hash(self)`.
+- Did not change `LlmRecord`, `LlmPromptRecord`, `LlmResponseRecord`, `LlmStructuredAdapter`, retry-budget helpers, `token_count(...)`, public APIs, call sites outside this file, tests, runtime behavior, or `root_validate`.
+- Targeted validation passed: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo check --lib` completed successfully.
+- Broader validation passed: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets` passed with 336 library tests, 3 `root_validate` binary tests, and all integration/example test targets passing.
+- Cargo emitted a non-blocking cache last-use warning, `database or disk is full`, during validation; no Rust validation failure occurred.
+- Marked item 110 complete in `plan.md`. `score.md` was reviewed and left unchanged because this is a narrow structure refactor with validation evidence, not a score-history-worthy project-level capability change.
