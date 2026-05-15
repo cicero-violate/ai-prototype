@@ -83,8 +83,17 @@ Current date: 2026-05-14.
 - Active Priorities item 45 is complete: graph-derived structural evidence refresh passed after Ollama effect-receipt hash helper and regression-test work. `SCORE_REPORT.md` still reports `G = 7.99 / 10`, Architecture `8.9`, Structure `4.9`, Simplicity `7.1`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.4`; `ai` remains `Nodes = 5610`, `Edges = 34384`, `Fns = 2270`, Structure `6.0`, and Simplicity `7.6`. `score.md` remains unchanged because refreshed graph-derived evidence matched the existing rationale and does not justify project-level score changes. Active Priorities are exhausted; a planning turn must select the next executable non-`root_validate` graph-backed item.
 - Implementation step 4 found no unchecked Active Priorities item after item 45; no implementation, validation refresh, documentation, cleanup, or blocker-handling checklist item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task.
 - Implementation step 5 found no unchecked Active Priorities item after item 45; no implementation, validation refresh, documentation, cleanup, or blocker-handling checklist item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task.
+- Active Priorities items 46 through 48 are now planned for `src/capability/llm/openai.rs`, `src/lib.rs`, and graph-derived evidence refresh. The first executable item is item 46, which must route `OpenAiLlmEffectReceipt::{canonical_authority_hash, canonical_request_hash}` through one private ordered hash-fold helper while preserving distinct authority/request hash domains, `is_valid()` gating, canonical receipt bindings, replay/NDJSON behavior, and network behavior. `root_validate` remains explicitly non-selectable.
 
 ## Validation Ledger
+
+### 2026-05-14 — planning update for OpenAI effect-receipt hash helper work
+
+- Scope: `plan.md`, `status.md`, selected graph plan `../state/rustc/auto-refactor/workspace__ai_sandbox__canon-mini-agent__prototype__state__rustc__ai__graph.graph-editor-plan.json`, `src/capability/llm/openai.rs`, and `src/lib.rs`.
+- Command/check: manual reconnaissance by reading `plan.md`, `status.md`, `score.md`, `SCORE_REPORT.md`, current `../state/rustc/auto-refactor/*.graph-editor-plan.json`, selected graph operation `ef272f0c65098854`, candidate OpenAI receipt functions, analogous Ollama effect-receipt test patterns, and `git status --short`.
+- Result: informational.
+- Evidence: Active Priorities items 13 through 45 were already complete; `SCORE_REPORT.md` remained `G = 7.99 / 10` with Structure `4.9`; selected graph plan remained schema version 1 / graph schema version 16 with 1,582 operations; `root_validate` remained intentionally non-selectable by user direction; item 46 is now the first unchecked executable task.
+- Next action: execute Active Priorities item 46 in `src/capability/llm/openai.rs` and validate with `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo check --lib`.
 
 ### 2026-05-14 — implementation step 5 Active Priorities exhausted after item 45
 
