@@ -5203,3 +5203,17 @@ Implementation step 2 evidence on 2026-05-14 for Active Priorities item 38:
 - Targeted validation passed: TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test cdp_get_helpers_preserve_http_request_and_response_parsing -- --test-threads=1 ran the named test successfully.
 - Broader validation passed: TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets passed with 315 library tests, 3 root_validate binary tests, and all integration/example test targets passing.
 - Marked item 38 complete in plan.md. score.md was reviewed and left unchanged because this is focused regression coverage for an existing router helper boundary, not a score-history-worthy project-level capability change.
+
+Planning-turn update on 2026-05-14 for next non-root Ollama NDJSON encoder work:
+
+- Required reconnaissance completed from `/workspace/ai_sandbox/canon-mini-agent/prototype/ai` using the connector shell with `cwd=.`.
+- Read `plan.md`; Active Priorities items 46 through 48 are complete, so there was no remaining unchecked executable item before this planning turn.
+- Read `status.md`; latest local status history confirms the previous router helper work reached item 38, while current `plan.md` shows the later OpenAI effect-receipt evidence-refresh cycle through item 48 as complete.
+- Read `score.md` and `SCORE_REPORT.md`; project-level scores remain unchanged, while graph-derived evidence reports aggregate `G = 7.99 / 10`, Architecture `8.9`, Structure `4.9`, Simplicity `7.1`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.4`.
+- Inspected `../state/rustc/auto-refactor/*.graph-editor-plan.json`; the selected local `ai` graph-editor plan remains schema version 1, graph schema version 16, and contains 1,582 operations.
+- User direction is explicit: do not continue `root_validate` work. `root_validate` remains intentionally non-selectable despite its weak graph row.
+- Inspected graph operation `7cf3b1c32959e16d`, covering `capability::llm::ollama::{encode_ollama_judgment_proof_event_ndjson, encode_ollama_llm_effect_receipt_ndjson}`. Selected it because it is non-root, graph-backed, file-local, deterministic, and targets the low Structure axis through private helper consolidation.
+- Inspected `src/capability/llm/ollama.rs` around `append_ollama_llm_effect_receipt_ndjson(...)`, `encode_ollama_llm_effect_receipt_ndjson(...)`, `append_ollama_judgment_proof_event_ndjson(...)`, `encode_ollama_judgment_proof_event_ndjson(...)`, decoder helpers, parser helpers, and the existing local test module. The selected safe subset is private numeric-field NDJSON array formatting delegation only.
+- Rejected `root_validate`; rejected `src/agent/loop_driver.rs` because prior notes indicate unrelated uncommitted edits; rejected loader, decoder, receipt-finalization, HTTP/client, and OpenAI surfaces for this planning slice.
+- Updated `plan.md` with three executable items: item 49 Ollama NDJSON encoder helper extraction in `src/capability/llm/ollama.rs`, item 50 focused encoder layout regression coverage, and item 51 graph-derived evidence refresh.
+- `score.md` was reviewed and left unchanged because this planning turn produced no implementation, validation refresh, graph refresh, or score-history-worthy capability evidence.
