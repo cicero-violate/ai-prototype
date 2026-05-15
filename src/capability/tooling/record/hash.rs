@@ -265,3 +265,65 @@ pub(crate) fn tool_effect_kind_from_u64(value: u64) -> Result<ToolEffectKind, To
         _ => Err(ToolSandboxError::InvalidToolReceiptRecord),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn packet() -> Packet {
+        Packet {
+            objective_id: 42,
+            active_task_id: 7,
+            ready_tasks: 3,
+            revision: 11,
+            ..Packet::empty()
+        }
+    }
+
+    #[test]
+    fn tool_hash_wrappers_preserve_distinct_domains_and_vectors() {
+        let packet = packet();
+        let request = ToolRequest::from_packet(packet);
+
+        let command_hash = tool_command_hash(packet);
+        let input_hash = tool_input_hash(packet);
+        let output_hash = tool_output_hash(request);
+
+        assert_ne!(command_hash, 0);
+        assert_ne!(input_hash, 0);
+        assert_ne!(output_hash, 0);
+        assert_ne!(command_hash, input_hash);
+        assert_ne!(command_hash, output_hash);
+        assert_ne!(input_hash, output_hash);
+
+        assert_eq!(request.command_hash, command_hash);
+        assert_eq!(request.input_hash, input_hash);
+        assert!(request.matches_packet(packet));
+
+        let ready_tasks_variant = Packet {
+            ready_tasks: packet.ready_tasks + 1,
+            ..packet
+        };
+        assert_eq!(tool_command_hash(ready_tasks_variant), command_hash);
+        assert_ne!(tool_input_hash(ready_tasks_variant), input_hash);
+
+        let revision_variant = Packet {
+            revision: packet.revision + 1,
+            ..packet
+        };
+        assert_eq!(tool_command_hash(revision_variant), command_hash);
+        assert_ne!(tool_input_hash(revision_variant), input_hash);
+
+        let command_hash_variant = ToolRequest {
+            command_hash: command_hash.wrapping_add(1),
+            ..request
+        };
+        assert_ne!(tool_output_hash(command_hash_variant), output_hash);
+
+        let input_hash_variant = ToolRequest {
+            input_hash: input_hash.wrapping_add(1),
+            ..request
+        };
+        assert_ne!(tool_output_hash(input_hash_variant), output_hash);
+    }
+}
