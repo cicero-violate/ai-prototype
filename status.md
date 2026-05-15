@@ -42,6 +42,12 @@ Current date: 2026-05-15.
 
 ## Current Progress
 
+- Planning turn on 2026-05-15 completed Python-assisted reconnaissance after Active Priorities item 97. Active Priorities items 98 through 100 are now planned for `src/api/transport.rs` API transport hash-fold helper extraction, focused hash-boundary regression coverage, and graph-derived evidence refresh. The first executable item is item 98. `root_validate` remains intentionally non-selectable per user direction. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
+
+- Implementation step 5 found no unchecked Active Priorities item after item 97; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
+
+- Implementation step 4 found no unchecked Active Priorities item after item 97; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
+
 - Active Priorities item 97 is complete: graph-derived structural evidence refresh passed after items 95 and 96. `SCORE_REPORT.md` reports unchanged aggregate `G = 7.93 / 10`, Architecture `8.9`, Structure `4.9`, Simplicity `6.9`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2`; the refreshed `ai` crate row is Nodes `5632`, Edges `35759`, Fns `2288`, Architecture `9.4`, Structure `6.1`, Simplicity `7.1`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2`. The `root_validate` row remains intentionally non-selected and now reports Architecture `3.2`, Structure `1.5`, Simplicity `6.1`, Maintainability `10.0`, Determinism `10.0`, and Coherency `7.3`. `score.md` rationale was refreshed for item 97 evidence, but project-level numeric scores remain unchanged because this is structural evidence refresh rather than score-history-worthy capability evidence. Active Priorities are exhausted.
 
 - Active Priorities item 96 is complete: `openai_ndjson_encoders_preserve_record_layouts` now constructs a deterministic valid OpenAI LLM effect receipt, finalizes a valid OpenAI judgment proof event, asserts the receipt encoder 25-field layout, asserts the proof-event encoder 23-field layout, verifies schema/version and record-type slots, checks selected sentinel positions and boolean casts, and round-trips both records through their decoders. Targeted named-test validation and broader `cargo test --all-targets` passed. Cargo emitted non-fatal last-use cache warnings reporting `database or disk is full`, but compilation and tests completed successfully. The next executable item is item 97, graph-derived structural evidence refresh and score-rationale review. `score.md` remains unchanged because this is focused regression coverage for an existing encoder boundary, not a project-level score change.
@@ -191,6 +197,30 @@ Current date: 2026-05-15.
 - Implementation step 4 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 - Implementation step 5 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 ## Validation Ledger
+
+### 2026-05-15 — planning turn selected API transport hash helper work
+
+- Scope: `plan.md`, `status.md`, `score.md`, `SCORE_REPORT.md`, selected graph-editor plan, and candidate source surfaces.
+- Command/check: `python` reads of planning/status/score/report files; `ls -la /workspace/ai_sandbox/canon-mini-agent/prototype/state/rustc/auto-refactor`; Python parse of `../state/rustc/auto-refactor/workspace__ai_sandbox__canon-mini-agent__prototype__state__rustc__ai__graph.graph-editor-plan.json`; targeted source inspections with `rg` and Python for `src/agent/cycle.rs`, `src/agent/prompt.rs`, `src/agent/objective.rs`, `src/agent/worker_client.rs`, `src/capability/eval/record.rs`, and `src/api/transport.rs`; `git status --short`.
+- Result: informational.
+- Evidence: Active Priorities items 95, 96, and 97 were already complete with no unchecked item available. The selected graph plan is schema version 1, graph schema version 16, crate `ai`, and operation count 1,570. The top `agent::cycle`, `agent::prompt`, `agent::objective`, and `agent::worker_client` entries were rejected as stale/no-op because current source already exposes helper boundaries. `src/api/transport.rs` still has separate FNV-style fold bodies in `transport_frame_hash(...)` and `api_transport_receipt_hash(...)`, matching a current graph-backed merge candidate and providing a safe next non-`root_validate` implementation target.
+- Next action: Execute Active Priorities item 98 in `src/api/transport.rs`.
+
+### 2026-05-15 — implementation step 5 no unchecked Active Priorities item
+
+- Scope: `plan.md`, `status.md`, and `score.md` review.
+- Command/check: Manual checklist inspection of `## Active Priorities` after reading `plan.md`, `status.md`, and `score.md`; `git status --short`.
+- Result: blocked.
+- Evidence: Active Priorities items 95, 96, and 97 are all marked complete; no `[ ]` item remains under `## Active Priorities`; the only working-tree change before this entry was the uncommitted status-only blocker entry from implementation step 4. No item-specific validation command exists to run because no executable checklist item is currently selectable.
+- Next action: Planning turn should select the next non-`root_validate` graph-backed task.
+
+### 2026-05-15 — implementation step 4 no unchecked Active Priorities item
+
+- Scope: `plan.md`, `status.md`, and `score.md` review.
+- Command/check: Manual checklist inspection of `## Active Priorities` after reading `plan.md`, `status.md`, and `score.md`; `git status --short`.
+- Result: blocked.
+- Evidence: Active Priorities items 95, 96, and 97 are all marked complete; no `[ ]` item remains under `## Active Priorities`; working tree was clean before this status-only blocker entry. No item-specific validation command exists to run because no executable checklist item is currently selectable.
+- Next action: Planning turn should select the next non-`root_validate` graph-backed task.
 
 ### 2026-05-15 — Active Priorities item 97 graph-derived structural evidence refresh
 
