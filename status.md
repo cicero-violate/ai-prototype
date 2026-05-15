@@ -42,6 +42,8 @@ Current date: 2026-05-15.
 
 ## Current Progress
 
+- Planning turn on 2026-05-15 selected the next non-`root_validate` graph-backed work queue after confirming items 146 through 148 were complete and no unchecked Active Priorities item remained. The next executable item is Active Priorities item 149 in `src/capability/llm/openai.rs`, consolidating OpenAI LLM effect canonical authority/request hashes and judgment proof/verifier-context hashes through one private ordered `u64` fold helper while preserving distinct domains; item 150 adds focused in-module regression coverage; item 151 refreshes graph-derived evidence. Reconnaissance inspected `plan.md`, `status.md`, `score.md`, `SCORE_REPORT.md`, `../state/rustc/auto-refactor/*.graph-editor-plan.json`, the selected `ai` graph-editor plan, and candidate OpenAI LLM source/tests. `root_validate` remains intentionally non-selected. Planning/doc validation `cargo test --test planning_contract -- --test-threads=1` passed with 2 tests and 0 failures; Cargo emitted the known non-fatal last-use/cache warning reporting `database or disk is full`. `score.md` remains unchanged because this planning turn produced no implementation, graph refresh, or score-changing capability evidence.
+
 - Implementation step 5 on 2026-05-15 found no unchecked Active Priorities item after item 148; items 146 through 148 remain complete and the current queue is exhausted. No implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. Planning/doc validation `cargo test --test planning_contract -- --test-threads=1` passed with 2 tests and 0 failures. Cargo emitted the known non-fatal last-use/cache warning reporting `database or disk is full`. `score.md` remains unchanged because no implementation or score-changing evidence was produced in this step.
 
 - Implementation step 4 on 2026-05-15 found no unchecked Active Priorities item after item 148; items 146 through 148 remain complete and the current queue is exhausted. No implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. Planning/doc validation `cargo test --test planning_contract -- --test-threads=1` passed with 2 tests and 0 failures. Cargo emitted the known non-fatal last-use/cache warning reporting `database or disk is full`. `score.md` remains unchanged because no implementation or score-changing evidence was produced in this step.
@@ -387,6 +389,22 @@ Current date: 2026-05-15.
 - Implementation step 4 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 - Implementation step 5 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 ## Validation Ledger
+
+### 2026-05-15 — planning contract validation for OpenAI LLM queue
+
+- Scope: `plan.md` and `status.md` planning update for Active Priorities items 149 through 151.
+- Command/check: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test planning_contract -- --test-threads=1`.
+- Result: passed.
+- Evidence: 2 tests passed, 0 failed. Cargo emitted the known non-fatal last-use/cache warning reporting `database or disk is full`.
+- Next action: execute Active Priorities item 149.
+
+### 2026-05-15 — planning reconnaissance for OpenAI LLM hash-fold queue
+
+- Scope: `plan.md`, `status.md`, `score.md`, `SCORE_REPORT.md`, `../state/rustc/auto-refactor/workspace__ai_sandbox__canon-mini-agent__prototype__state__rustc__ai__graph.graph-editor-plan.json`, and `src/capability/llm/openai.rs`.
+- Command/check: connector-backed shell/Python inspection of current planning files, score report, selected graph-editor plan, candidate source/test surfaces, and `git status --short`.
+- Result: informational.
+- Evidence: Active Priorities were complete through item 148 with no unchecked executable item; selected `ai` graph-editor plan exists with schema version 1, graph schema version 16, and 1,552 operations; current aggregate `SCORE_REPORT.md` remains `G = 7.94 / 10` with Structure `4.9` as the lowest aggregate axis; selected non-`root_validate` operations `e9030dda9e8b24ae` and `ef272f0c65098854` in `src/capability/llm/openai.rs`; working tree was clean before planning edits.
+- Next action: execute Active Priorities item 149.
 
 ### 2026-05-15 — implementation step 5 no unchecked Active Priorities item
 
