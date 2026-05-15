@@ -66,6 +66,8 @@ Current date: 2026-05-15.
 
 ## Current Progress
 
+- Planning turn on 2026-05-15 selected the next executable non-`root_validate` graph-backed work after confirming the Active Priorities queue had no unchecked item. The new queue is items 172 through 174: first refactor `src/validation_harness.rs` selected evidence-bundle/learning hash functions behind one private ordered receipt-field helper, then add focused regression coverage for the helper boundary, then refresh graph-derived structural evidence. Reconnaissance inspected `plan.md`, `status.md`, `score.md`, `SCORE_REPORT.md`, the current `ai` graph-editor plan, selected `src/validation_harness.rs` hash functions, existing validation-harness tests, and the working tree. `score.md` remains unchanged because this planning turn produced no implementation, graph refresh, or score-changing capability evidence.
+
 
 - Implementation step 5 on 2026-05-15 found no unchecked Active Priorities item after item 154; the current queue remains exhausted. No implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `plan.md`, `status.md`, and `score.md` were read; the working tree was clean before this status update; `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 
@@ -499,6 +501,14 @@ Current date: 2026-05-15.
 - Implementation step 4 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 - Implementation step 5 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 ## Validation Ledger
+
+### 2026-05-15 — planning selected validation-harness evidence-bundle hash helper work
+
+- Scope: `plan.md`, `status.md`, `score.md`, `SCORE_REPORT.md`, `src/validation_harness.rs`, and `../state/rustc/auto-refactor/workspace__ai_sandbox__canon-mini-agent__prototype__state__rustc__ai__graph.graph-editor-plan.json`.
+- Command/check: Python inspection of current planning/status/score files, current graph-derived score report, the selected graph-editor plan, and `src/validation_harness.rs` candidate functions/tests.
+- Result: informational.
+- Evidence: current `SCORE_REPORT.md` reports aggregate `G = 7.94 / 10` with Structure `5.0` as the lowest aggregate axis; the selected graph-editor plan reports 1,271 operations, including 1,064 `validation_harness` operations; existing validation-harness tests already cover the previously completed batch-evidence helper, so the next queue targets the evidence-bundle/learning hash cluster instead of stale candidates.
+- Next action: implement Active Priorities item 172 in `src/validation_harness.rs`.
 
 
 ### 2026-05-15 — implementation step 5 planning-contract validation
