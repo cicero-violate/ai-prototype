@@ -42,6 +42,8 @@ Current date: 2026-05-15.
 
 ## Current Progress
 
+- Planning turn on 2026-05-15 selected the next non-`root_validate` graph-backed work queue after confirming items 140 through 142 were complete and no unchecked Active Priorities item remained. The next executable item is Active Priorities item 143 in `src/capability/policy/store.rs`, consolidating `PolicyProofReceipt::receipt_core_hash(...)` and `PolicyProofReceipt::verifier_context_hash(...)` through one private ordered policy proof hash-fold helper while preserving distinct receipt-core and verifier-context domains; item 144 adds focused regression coverage; item 145 refreshes graph-derived evidence. Reconnaissance inspected `plan.md`, `status.md`, `score.md`, `SCORE_REPORT.md`, the selected `ai` graph-editor plan, and candidate policy store source/tests. `root_validate` remains intentionally non-selected. `score.md` remains unchanged because this planning turn produced no implementation, validation refresh, graph refresh, or score-changing capability evidence. Planning/doc validation `cargo test --test planning_contract -- --test-threads=1` passed with 2 tests and 0 failures; Cargo emitted the known non-fatal last-use/cache warning reporting `database or disk is full`.
+
 - Implementation step 5 on 2026-05-15 found no unchecked Active Priorities item after item 142; items 140 through 142 remain complete and the current queue is exhausted. No implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. Planning/doc validation `cargo test --test planning_contract -- --test-threads=1` passed with 2 tests and 0 failures. Cargo emitted the known non-fatal last-use/cache warning reporting `database or disk is full`. `score.md` remains unchanged because no implementation or score-changing evidence was produced in this step.
 
 - Implementation step 4 on 2026-05-15 found no unchecked Active Priorities item after item 142; items 140 through 142 remain complete and the current queue is exhausted. No implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. Planning/doc validation `cargo test --test planning_contract -- --test-threads=1` passed with 2 tests and 0 failures. Cargo emitted the known non-fatal last-use/cache warning reporting `database or disk is full`. `score.md` remains unchanged because no implementation or score-changing evidence was produced in this step.
@@ -363,6 +365,22 @@ Current date: 2026-05-15.
 - Implementation step 4 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 - Implementation step 5 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 ## Validation Ledger
+
+### 2026-05-15 — planning contract validation after policy proof receipt planning
+
+- Scope: `plan.md` and `status.md` planning-only changes for Active Priorities items 143 through 145.
+- Command/check: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test planning_contract -- --test-threads=1`.
+- Result: passed.
+- Evidence: 2 tests passed, 0 failed. Cargo emitted the known non-fatal last-use/cache warning reporting `database or disk is full`.
+- Next action: execute Active Priorities item 143 in `src/capability/policy/store.rs`.
+
+### 2026-05-15 — planning turn selected policy proof receipt hash helper work
+
+- Scope: `plan.md`, `status.md`, `score.md`, `SCORE_REPORT.md`, `../state/rustc/auto-refactor/workspace__ai_sandbox__canon-mini-agent__prototype__state__rustc__ai__graph.graph-editor-plan.json`, and `src/capability/policy/store.rs`.
+- Command/check: Python-assisted reconnaissance of the selected graph-editor plan, current score artifacts, candidate source/tests, and working tree through the project connector.
+- Result: informational.
+- Evidence: Active Priorities items 140 through 142 were already complete; the selected `ai` graph-editor plan is schema version 1, graph schema version 16, and contains 1,556 planned operations; current `SCORE_REPORT.md` remains aggregate `G = 7.94 / 10` with Structure `4.9`; graph operation `0ea01117d001b688` covers `capability::policy::store::PolicyProofReceipt::{receipt_core_hash, verifier_context_hash}`; `root_validate` was explicitly excluded per user direction.
+- Next action: execute Active Priorities item 143 in `src/capability/policy/store.rs`.
 
 ### 2026-05-15 — implementation step 5 exhausted Active Priorities check after item 142
 
