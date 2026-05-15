@@ -1428,6 +1428,161 @@ mod tests {
     }
 
     #[test]
+    fn policy_judgment_hash_helpers_preserve_decision_rationale_boundaries() {
+        let context = context();
+        let policy = promoted_policy();
+        let (_, receipt) = policy.feedback_lookup_with_receipt();
+
+        let record =
+            PolicyJudgmentRecord::from_context_policy_lookup_receipt(&context, &policy, &receipt);
+        let direct_decision_id = policy_decision_id(
+            &context,
+            policy.latest_version(),
+            policy.fingerprint(),
+            policy.feedback_hash(),
+            receipt.receipt_hash,
+        );
+        let direct_rationale_hash = policy_rationale_hash(
+            &context,
+            direct_decision_id,
+            policy.feedback_hash(),
+            receipt.receipt_hash,
+        );
+
+        assert!(record.is_valid());
+        assert_ne!(record.decision_id, 0);
+        assert_ne!(record.rationale_hash, 0);
+        assert_ne!(record.decision_id, record.rationale_hash);
+        assert_eq!(record.decision_id, direct_decision_id);
+        assert_eq!(record.rationale_hash, direct_rationale_hash);
+        assert_eq!(record.record_hash, policy_judgment_record_hash(&record));
+
+        let mut invalid_context = context.clone();
+        invalid_context.context_hash ^= 1;
+        assert!(!invalid_context.is_valid());
+        assert_eq!(
+            policy_decision_id(
+                &invalid_context,
+                policy.latest_version(),
+                policy.fingerprint(),
+                policy.feedback_hash(),
+                receipt.receipt_hash,
+            ),
+            0
+        );
+        assert_eq!(
+            policy_rationale_hash(
+                &invalid_context,
+                direct_decision_id,
+                policy.feedback_hash(),
+                receipt.receipt_hash,
+            ),
+            0
+        );
+        assert_eq!(
+            policy_decision_id(
+                &context,
+                0,
+                policy.fingerprint(),
+                policy.feedback_hash(),
+                receipt.receipt_hash,
+            ),
+            0
+        );
+        assert_eq!(
+            policy_decision_id(
+                &context,
+                policy.latest_version(),
+                0,
+                policy.feedback_hash(),
+                receipt.receipt_hash,
+            ),
+            0
+        );
+        assert_eq!(
+            policy_decision_id(
+                &context,
+                policy.latest_version(),
+                policy.fingerprint(),
+                0,
+                receipt.receipt_hash,
+            ),
+            0
+        );
+        assert_eq!(
+            policy_decision_id(
+                &context,
+                policy.latest_version(),
+                policy.fingerprint(),
+                policy.feedback_hash(),
+                0,
+            ),
+            0
+        );
+        assert_eq!(
+            policy_rationale_hash(&context, 0, policy.feedback_hash(), receipt.receipt_hash),
+            0
+        );
+        assert_eq!(
+            policy_rationale_hash(&context, direct_decision_id, 0, receipt.receipt_hash),
+            0
+        );
+        assert_eq!(
+            policy_rationale_hash(&context, direct_decision_id, policy.feedback_hash(), 0),
+            0
+        );
+
+        let policy_hash_changed_decision_id = policy_decision_id(
+            &context,
+            policy.latest_version(),
+            policy.fingerprint() ^ 1,
+            policy.feedback_hash(),
+            receipt.receipt_hash,
+        );
+        assert_ne!(policy_hash_changed_decision_id, 0);
+        assert_ne!(policy_hash_changed_decision_id, direct_decision_id);
+        assert_eq!(
+            policy_rationale_hash(
+                &context,
+                direct_decision_id,
+                policy.feedback_hash(),
+                receipt.receipt_hash,
+            ),
+            direct_rationale_hash
+        );
+        assert_ne!(
+            policy_rationale_hash(
+                &context,
+                policy_hash_changed_decision_id,
+                policy.feedback_hash(),
+                receipt.receipt_hash,
+            ),
+            direct_rationale_hash
+        );
+
+        let rationale_only_feedback_hash = policy.feedback_hash() ^ 1;
+        let rationale_only_lookup_hash = receipt.receipt_hash ^ 1;
+        assert_ne!(
+            policy_rationale_hash(
+                &context,
+                direct_decision_id,
+                rationale_only_feedback_hash,
+                receipt.receipt_hash,
+            ),
+            direct_rationale_hash
+        );
+        assert_ne!(
+            policy_rationale_hash(
+                &context,
+                direct_decision_id,
+                policy.feedback_hash(),
+                rationale_only_lookup_hash,
+            ),
+            direct_rationale_hash
+        );
+    }
+
+    #[test]
     fn policy_reuse_receipt_counts_policy_hits_as_avoided_llm_calls() {
         let context = context();
         let policy = promoted_policy();
