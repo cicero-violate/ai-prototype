@@ -2047,6 +2047,66 @@ mod tests {
     }
 
     #[test]
+    fn ollama_proof_event_hash_helpers_preserve_distinct_domains() {
+        let base_receipt = valid_test_receipt();
+        let (receipt, proof_event) =
+            OllamaJudgmentProofEvent::finalize_receipt(base_receipt, true, true, true, true)
+                .unwrap();
+
+        assert!(receipt.is_valid());
+        assert!(receipt.has_proof_binding());
+        assert!(proof_event.is_valid());
+        assert_eq!(proof_event.proof_hash, receipt.proof_hash);
+        assert_eq!(proof_event.receipt_hash, receipt.receipt_hash);
+        assert_eq!(proof_event.receipt_event_seq, receipt.event_seq);
+        assert_eq!(proof_event.proof_event_seq, receipt.proof_event_seq);
+
+        let provider_proof_hash = proof_event.expected_proof_hash();
+        let verifier_context_hash = proof_event.verifier_context_hash();
+        assert_ne!(provider_proof_hash, 0);
+        assert_ne!(verifier_context_hash, 0);
+        assert_eq!(provider_proof_hash, proof_event.proof_hash);
+        assert_ne!(verifier_context_hash, provider_proof_hash);
+
+        let (canonical_receipt, effect_proof) =
+            proof_event.to_canonical_effect_proof(receipt).unwrap();
+        assert_eq!(effect_proof.verifier_context_hash, verifier_context_hash);
+        assert_eq!(effect_proof.provider_proof_hash, provider_proof_hash);
+        assert_eq!(
+            effect_proof.receipt.proof_hash,
+            canonical_receipt.proof_hash
+        );
+        assert_ne!(effect_proof.receipt.proof_hash, 0);
+        assert!(effect_proof.is_valid());
+
+        let mut proof_only_tamper = proof_event;
+        proof_only_tamper.proof_line_hash ^= 1;
+        assert_ne!(proof_only_tamper.expected_proof_hash(), provider_proof_hash);
+        assert_eq!(
+            proof_only_tamper.verifier_context_hash(),
+            verifier_context_hash
+        );
+        assert_eq!(proof_only_tamper.proof_hash, provider_proof_hash);
+        assert!(!proof_only_tamper.is_valid());
+        assert!(proof_only_tamper
+            .to_canonical_effect_proof(receipt)
+            .is_none());
+
+        let mut verifier_context_tamper = proof_event;
+        verifier_context_tamper.model_id ^= 1;
+        assert_eq!(verifier_context_tamper.proof_hash, provider_proof_hash);
+        assert_ne!(
+            verifier_context_tamper.verifier_context_hash(),
+            verifier_context_hash
+        );
+        assert_ne!(
+            verifier_context_tamper.expected_proof_hash(),
+            provider_proof_hash
+        );
+        assert!(!verifier_context_tamper.is_valid());
+    }
+
+    #[test]
     fn ollama_message_constructors_preserve_role_and_content_boundaries() {
         let system = OllamaMessage::system("system boundary content");
         let user = OllamaMessage::user("user boundary content");

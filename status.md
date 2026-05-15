@@ -42,6 +42,7 @@ Current date: 2026-05-15.
 
 ## Current Progress
 
+- Active Priorities item 81 is complete: `ollama_proof_event_hash_helpers_preserve_distinct_domains` now provides focused local-module coverage for valid Ollama proof-event construction, non-zero distinct provider proof and verifier-context hashes, receipt/proof binding, canonical proof projection, proof-only tamper rejection, and verifier-context tamper separation. Targeted and broader Rust validation passed. The next executable item is item 82, the graph-derived evidence refresh and score-rationale review.
 - Active Priorities item 80 is complete: `OllamaJudgmentProofEvent::{expected_proof_hash, verifier_context_hash}` now route through the shared private `fold_ordered_ollama_proof_event_hash(...)` helper while preserving distinct proof and verifier-context seed constants, field order, boolean casts, non-zero fold behavior, receipt/proof binding, and Ollama proof-event semantics. Targeted `cargo check --lib` and broader `cargo test --all-targets` passed. The next executable item is item 81, the focused Ollama proof-event hash regression test.
 - Planning turn on 2026-05-15 completed Python-assisted reconnaissance after Active Priorities item 79. Active Priorities items 80 through 82 are now planned for `src/capability/llm/ollama.rs` and graph-derived evidence refresh. The first executable item is item 80, which must route `OllamaJudgmentProofEvent::{expected_proof_hash, verifier_context_hash}` through one private ordered hash-fold helper while preserving distinct Ollama proof-event hash domains. `root_validate` remains explicitly non-selectable.
 - Implementation step 5 found no unchecked Active Priorities item after item 79; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
@@ -151,6 +152,22 @@ Current date: 2026-05-15.
 - Implementation step 4 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 - Implementation step 5 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 ## Validation Ledger
+
+### 2026-05-15 — Active Priorities item 81 targeted and broader validation
+
+- Scope: `src/capability/llm/ollama.rs`, `plan.md`, and `status.md`.
+- Command/check: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test ollama_proof_event_hash_helpers_preserve_distinct_domains -- --test-threads=1`; `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
+- Result: passed.
+- Evidence: Targeted validation first exposed and then fixed an overly strict canonical proof-hash assertion in the new local test; rerun passed with 2 matching tests and 0 failures. Broader validation passed with 327 library tests, 3 `root_validate` binary tests, 13 API server contract tests, 23 API transport contract tests, 3 canonical TLog contract tests, 4 domain contract tests, 10 graph mutation CLI contract tests, 9 MCP receipt contract tests, 2 planning contract tests, 5 score contract tests, 2 supervisor binary contract tests, 2 worker binary contract tests, and all zero-test binary/example targets passing. Cargo emitted the recurring global-cache last-use warning (`database or disk is full`), but validation results passed.
+- Next action: Execute Active Priorities item 82, the graph-derived structural evidence refresh.
+
+### 2026-05-15 — Active Priorities item 81 implementation
+
+- Scope: `src/capability/llm/ollama.rs` test module.
+- Command/check: Source inspection and item-scoped test patch.
+- Result: passed.
+- Evidence: Added local test `ollama_proof_event_hash_helpers_preserve_distinct_domains` using existing `valid_test_receipt()` and `OllamaJudgmentProofEvent::finalize_receipt(...)`; the test covers valid receipt/proof construction, receipt proof binding, non-zero distinct provider proof and verifier-context hashes, canonical proof projection carrying the verifier-context and provider proof hashes, proof-only tamper invalidation, and verifier-context tamper hash separation while preserving the bound proof hash.
+- Next action: Run and record targeted and broader validation.
 
 ### 2026-05-15 — Active Priorities item 80 targeted and broader validation
 
