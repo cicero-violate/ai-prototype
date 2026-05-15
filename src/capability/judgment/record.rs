@@ -1008,19 +1008,22 @@ fn policy_reuse_trend_receipt_hash(receipt: &PolicyReuseTrendReceipt) -> u64 {
     if trend_code == 0 || verdict_code == 0 {
         return 0;
     }
-    let mut h = 0x504f_4c52_5452_4e44u64;
-    h = mix(h, receipt.schema_version);
-    h = mix(h, receipt.baseline_receipt_hash);
-    h = mix(h, receipt.current_receipt_hash);
-    h = mix(h, receipt.baseline_retained_record_count as u64);
-    h = mix(h, receipt.current_retained_record_count as u64);
-    h = mix(h, receipt.baseline_hit_rate_bps);
-    h = mix(h, receipt.current_hit_rate_bps);
-    h = mix(h, receipt.hit_rate_delta_bps as u64);
-    h = mix(h, receipt.avoided_llm_call_delta as u64);
-    h = mix(h, trend_code);
-    h = mix(h, verdict_code);
-    h.max(1)
+    fold_ordered_policy_reuse_receipt_hash(
+        0x504f_4c52_5452_4e44u64,
+        &[
+            receipt.schema_version,
+            receipt.baseline_receipt_hash,
+            receipt.current_receipt_hash,
+            receipt.baseline_retained_record_count as u64,
+            receipt.current_retained_record_count as u64,
+            receipt.baseline_hit_rate_bps,
+            receipt.current_hit_rate_bps,
+            receipt.hit_rate_delta_bps as u64,
+            receipt.avoided_llm_call_delta as u64,
+            trend_code,
+            verdict_code,
+        ],
+    )
 }
 
 fn policy_reuse_receipt_hash(receipt: &PolicyReuseReceipt) -> u64 {
@@ -1035,16 +1038,19 @@ fn policy_reuse_receipt_hash(receipt: &PolicyReuseReceipt) -> u64 {
     if verdict_code == 0 {
         return 0;
     }
-    let mut h = 0x504f_4c52_4350_5448u64;
-    h = mix(h, receipt.schema_version);
-    h = mix(h, receipt.retained_record_count as u64);
-    h = mix(h, receipt.policy_hit_count as u64);
-    h = mix(h, receipt.policy_miss_count as u64);
-    h = mix(h, receipt.avoided_llm_call_count as u64);
-    h = mix(h, receipt.hit_rate_bps);
-    h = mix(h, receipt.record_set_hash);
-    h = mix(h, verdict_code);
-    h.max(1)
+    fold_ordered_policy_reuse_receipt_hash(
+        0x504f_4c52_4350_5448u64,
+        &[
+            receipt.schema_version,
+            receipt.retained_record_count as u64,
+            receipt.policy_hit_count as u64,
+            receipt.policy_miss_count as u64,
+            receipt.avoided_llm_call_count as u64,
+            receipt.hit_rate_bps,
+            receipt.record_set_hash,
+            verdict_code,
+        ],
+    )
 }
 
 fn policy_reuse_empty_source_hash() -> u64 {

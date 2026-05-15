@@ -42,6 +42,8 @@ Current date: 2026-05-15.
 
 ## Current Progress
 
+- Active Priorities item 116 is complete: `src/capability/judgment/record.rs` now routes `policy_reuse_receipt_hash(...)` and `policy_reuse_trend_receipt_hash(...)` through existing private `fold_ordered_policy_reuse_receipt_hash(...)`, preserving distinct current-policy and trend seeds, validity guards, folded fields, field order, and non-zero helper behavior. Targeted `cargo check --lib` passed. Broader `cargo test --all-targets` passed with 338 library tests plus integration/binary/example suites green. Cargo emitted the known non-fatal last-use cache warning reporting `database or disk is full`. The next executable item is item 117, focused policy-reuse current/trend receipt hash helper regression coverage. `score.md` remains unchanged because this is a narrow structure refactor with validation evidence, not a project-level score change.
+
 - Planning turn on 2026-05-15 completed Python-assisted reconnaissance after Active Priorities item 115. Active Priorities items 116 through 118 are now planned for `src/capability/judgment/record.rs` policy-reuse current/trend receipt hash folding through the existing helper, focused receipt-boundary regression coverage, and graph-derived evidence refresh. The first executable item is item 116. `root_validate` remains intentionally non-selectable per user direction. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 
 - Implementation step 5 found no unchecked Active Priorities item after item 115; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. Planning/doc validation `cargo test --test planning_contract -- --test-threads=1` passed with 2 tests and 0 failures. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
@@ -261,6 +263,14 @@ Current date: 2026-05-15.
 - Implementation step 4 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 - Implementation step 5 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 ## Validation Ledger
+
+### 2026-05-15 — item 116 policy-reuse current/trend receipt hash helper
+
+- Scope: `src/capability/judgment/record.rs` and Active Priorities item 116.
+- Command/check: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo check --lib`; `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
+- Result: passed.
+- Evidence: targeted library check passed; broader all-targets validation passed with 338 library tests plus integration, binary, and example test suites green. Cargo emitted the known non-fatal last-use cache warning reporting `database or disk is full`.
+- Next action: Execute item 117, focused regression coverage for the shared policy-reuse current/trend receipt hash helper boundary.
 
 ### 2026-05-15 — planning contract validation after items 116-118 update
 
