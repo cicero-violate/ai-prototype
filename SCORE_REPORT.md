@@ -5,9 +5,9 @@ Generated: 2026-05-15  |  Schema version: 16  |  Crates: 18
 ## Aggregate Scores
 
 ```text
-Architecture         = 8.9
+Architecture         = 8.8
 Structure            = 5.0
-Simplicity           = 6.9
+Simplicity           = 7.0
 Maintainability      = 10.0
 Determinism          = 10.0
 Coherency            = 8.2
@@ -20,7 +20,7 @@ G (geometric mean)   = 7.94 / 10
 | Crate                      | Nodes | Edges | Fns  | Arch | Struct | Simple | Maint | Determ | Coher |
 | :------------------------- | ----: | ----: | ---: | ---: | -----: | -----: | ----: | -----: | ----: |
 | agent                      |     6 |   208 |    6 |  5.0 |    8.8 |    0.8 |  10.0 |   10.0 |   7.7 |
-| ai                         |  5678 | 35039 | 2314 |  9.2 |    6.2 |    7.2 |  10.0 |   10.0 |   8.2 |
+| ai                         |  5679 | 34460 | 2315 |  9.2 |    6.2 |    7.3 |  10.0 |   10.0 |   8.2 |
 | ai                         |     1 |    18 |    1 |  5.0 |    4.5 |    4.5 |  10.0 |   10.0 |   7.0 |
 | browser_router             |   656 |  5986 |  316 |  9.0 |    4.6 |    4.5 |  10.0 |   10.0 |   8.5 |
 | browser_router             |     2 |    74 |    2 |  5.0 |    6.1 |    0.7 |  10.0 |   10.0 |   7.0 |
