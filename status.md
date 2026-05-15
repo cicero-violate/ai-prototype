@@ -42,6 +42,8 @@ Current date: 2026-05-15.
 
 ## Current Progress
 
+- Planning turn on 2026-05-15 completed Python-assisted reconnaissance after Active Priorities item 121. Active Priorities items 122 through 124 are now planned for `src/capability/llm/ollama.rs` Ollama NDJSON loader helper consolidation, focused checked/unchecked loader-boundary regression coverage, and graph-derived structural evidence refresh. The first executable item is item 122. Selection is backed by `../state/rustc/auto-refactor/workspace__ai_sandbox__canon-mini-agent__prototype__state__rustc__ai__graph.graph-editor-plan.json` operations `92041997174a63c4` and `dcaace3e381dfe27`, covering `capability::llm::ollama::{load_ollama_judgment_proof_events_ndjson, load_ollama_llm_effect_receipts_ndjson, load_ollama_llm_effect_receipts_ndjson_unchecked}`. `root_validate` remains intentionally non-selectable per user direction. `score.md` remains unchanged because planning alone produced no implementation, graph refresh, or score-changing evidence.
+
 - Implementation step 5 on 2026-05-15 found no unchecked Active Priorities item after item 121; items 119 through 121 remain complete and the current queue is exhausted. No implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. Planning/doc validation `cargo test --test planning_contract -- --test-threads=1` passed with 2 tests and 0 failures. Cargo emitted the known non-fatal last-use cache warning reporting `database or disk is full`. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 
 - Implementation step 4 on 2026-05-15 found no unchecked Active Priorities item after item 121; items 119 through 121 are complete and the current queue is exhausted. No implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. Planning/doc validation `cargo test --test planning_contract -- --test-threads=1` passed with 2 tests and 0 failures. Cargo emitted the known non-fatal last-use cache warning reporting `database or disk is full`. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
@@ -279,6 +281,14 @@ Current date: 2026-05-15.
 - Implementation step 4 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 - Implementation step 5 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 ## Validation Ledger
+
+### 2026-05-15 — planning update for Ollama NDJSON loader graph-backed work
+
+- Scope: `plan.md` and `status.md` planning update for Active Priorities items 122 through 124.
+- Command/check: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test planning_contract -- --test-threads=1`.
+- Result: passed.
+- Evidence: planning contract validation passed with 2 tests and 0 failures. Cargo emitted the known non-fatal last-use cache warning reporting `database or disk is full`.
+- Next action: execute Active Priorities item 122 in `src/capability/llm/ollama.rs`.
 
 ### 2026-05-15 — item 118 graph-derived structural evidence refresh
 
