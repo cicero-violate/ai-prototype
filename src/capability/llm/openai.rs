@@ -2184,6 +2184,114 @@ mod tests {
         assert_eq!(repeated, response);
     }
 
+    fn valid_test_openai_receipt() -> OpenAiLlmEffectReceipt {
+        let config = OpenAiConfig::default();
+        let provider_hash = hash_text(OPENAI_COMPAT_PROVIDER);
+        let base_url_hash = config.base_url_id();
+        let model_id = config.model_id();
+        let request_hash = hash_text("openai ndjson encoder request");
+        let retry_policy = OpenAiRetryBudgetPolicy::from_config(&config);
+        let retry_decision = retry_policy
+            .first_attempt(provider_hash, base_url_hash, model_id, request_hash)
+            .expect("first attempt should be receiptable");
+
+        let mut receipt = OpenAiLlmEffectReceipt {
+            provider_hash,
+            base_url_hash,
+            model_id,
+            request_hash,
+            timeout_ms: retry_decision.timeout_ms,
+            retry_count: retry_decision.retry_count,
+            max_retries: retry_decision.max_retries,
+            attempt_budget: retry_decision.attempt_budget,
+            request_identity_hash: retry_decision.request_identity_hash,
+            retry_budget_hash: retry_decision.retry_budget_hash,
+            budget_exhausted: retry_decision.budget_exhausted,
+            duplicate_request: retry_decision.duplicate_request,
+            response_hash: hash_text("openai ndjson encoder response"),
+            raw_response_hash: hash_text("{\"id\":\"openai-ndjson-layout\"}"),
+            prompt_hash: hash_text("openai ndjson encoder prompt"),
+            token_count: 17,
+            payload_hash: hash_text("openai ndjson encoder payload"),
+            command_hash: hash_text("openai ndjson encoder command"),
+            event_seq: 41,
+            event_hash: hash_text("openai ndjson encoder event"),
+            proof_event_seq: 0,
+            proof_hash: 0,
+            receipt_hash: 0,
+        };
+        receipt.receipt_hash = receipt.expected_receipt_hash();
+        assert!(receipt.is_valid());
+        receipt
+    }
+
+    #[test]
+    fn openai_ndjson_encoders_preserve_record_layouts() {
+        let receipt = valid_test_openai_receipt();
+        let (finalized_receipt, proof_event) = OpenAiJudgmentProofEvent::finalize_receipt_at_seq(
+            receipt,
+            receipt.event_seq + 1,
+            true,
+            true,
+            true,
+            true,
+        )
+        .expect("valid receipt should finalize into proof event");
+
+        let receipt_line = encode_openai_llm_effect_receipt_ndjson(finalized_receipt);
+        let receipt_fields = parse_u64_fields(&receipt_line).expect("receipt fields should parse");
+        assert_eq!(receipt_fields.len(), 25);
+        assert_eq!(receipt_fields[0], OPENAI_LLM_EFFECT_RECEIPT_SCHEMA_VERSION);
+        assert_eq!(receipt_fields[1], OPENAI_LLM_EFFECT_RECEIPT_RECORD);
+        assert_eq!(receipt_fields[2], finalized_receipt.provider_hash);
+        assert_eq!(receipt_fields[6], finalized_receipt.timeout_ms);
+        assert_eq!(receipt_fields[7], finalized_receipt.retry_count as u64);
+        assert_eq!(receipt_fields[8], finalized_receipt.max_retries as u64);
+        assert_eq!(receipt_fields[9], finalized_receipt.attempt_budget as u64);
+        assert_eq!(
+            receipt_fields[12],
+            finalized_receipt.budget_exhausted as u64
+        );
+        assert_eq!(
+            receipt_fields[13],
+            finalized_receipt.duplicate_request as u64
+        );
+        assert_eq!(receipt_fields[17], finalized_receipt.token_count as u64);
+        assert_eq!(receipt_fields[22], finalized_receipt.proof_event_seq);
+        assert_eq!(receipt_fields[23], finalized_receipt.proof_hash);
+        assert_eq!(receipt_fields[24], finalized_receipt.receipt_hash);
+        assert_eq!(
+            decode_openai_llm_effect_receipt_ndjson(&receipt_line).expect("receipt should decode"),
+            finalized_receipt
+        );
+
+        let proof_line = encode_openai_judgment_proof_event_ndjson(proof_event);
+        let proof_fields = parse_u64_fields(&proof_line).expect("proof fields should parse");
+        assert_eq!(proof_fields.len(), 23);
+        assert_eq!(proof_fields[0], OPENAI_JUDGMENT_PROOF_SCHEMA_VERSION);
+        assert_eq!(proof_fields[1], OPENAI_JUDGMENT_PROOF_RECORD);
+        assert_eq!(proof_fields[2], proof_event.proof_line_hash);
+        assert_eq!(proof_fields[3], proof_event.receipt_core_hash);
+        assert_eq!(proof_fields[4], proof_event.receipt_hash);
+        assert_eq!(proof_fields[5], proof_event.receipt_event_seq);
+        assert_eq!(proof_fields[6], proof_event.proof_event_seq);
+        assert_eq!(proof_fields[11], proof_event.retry_count as u64);
+        assert_eq!(proof_fields[12], proof_event.max_retries as u64);
+        assert_eq!(proof_fields[13], proof_event.attempt_budget as u64);
+        assert_eq!(proof_fields[16], proof_event.budget_exhausted as u64);
+        assert_eq!(proof_fields[17], proof_event.duplicate_request as u64);
+        assert_eq!(proof_fields[18], proof_event.receipt_verified as u64);
+        assert_eq!(proof_fields[19], proof_event.tamper_rejected as u64);
+        assert_eq!(proof_fields[20], proof_event.endpoint_verified as u64);
+        assert_eq!(proof_fields[21], proof_event.phase_plan as u64);
+        assert_eq!(proof_fields[22], proof_event.proof_hash);
+        assert_eq!(
+            decode_openai_judgment_proof_event_ndjson(&proof_line)
+                .expect("proof event should decode"),
+            proof_event
+        );
+    }
+
     #[test]
     fn openai_function_tool_constructors_preserve_description_boundary() {
         let parameters_json = r#"{"type":"object","properties":{"query":{"type":"string"}}}"#;

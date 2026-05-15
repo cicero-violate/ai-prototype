@@ -42,6 +42,8 @@ Current date: 2026-05-15.
 
 ## Current Progress
 
+- Active Priorities item 96 is complete: `openai_ndjson_encoders_preserve_record_layouts` now constructs a deterministic valid OpenAI LLM effect receipt, finalizes a valid OpenAI judgment proof event, asserts the receipt encoder 25-field layout, asserts the proof-event encoder 23-field layout, verifies schema/version and record-type slots, checks selected sentinel positions and boolean casts, and round-trips both records through their decoders. Targeted named-test validation and broader `cargo test --all-targets` passed. Cargo emitted non-fatal last-use cache warnings reporting `database or disk is full`, but compilation and tests completed successfully. The next executable item is item 97, graph-derived structural evidence refresh and score-rationale review. `score.md` remains unchanged because this is focused regression coverage for an existing encoder boundary, not a project-level score change.
+
 - Active Priorities item 95 is complete: `src/capability/llm/openai.rs` now routes `encode_openai_llm_effect_receipt_ndjson(...)` and `encode_openai_judgment_proof_event_ndjson(...)` through shared private `encode_openai_u64_fields_ndjson(...)` while preserving the distinct receipt and proof-event field arrays, schema-version fields, record-type fields, field order, numeric casts, and bracketed comma-separated output. Targeted `cargo check --lib` and broader `cargo test --all-targets` passed. Cargo emitted non-fatal last-use cache warnings reporting `database or disk is full`, but compilation and tests completed successfully. The next executable item is item 96, the focused OpenAI NDJSON encoder-layout regression test. `score.md` remains unchanged because this is a narrow structure refactor with validation evidence, not a project-level score change.
 
 - Planning turn on 2026-05-15 completed Python-assisted reconnaissance after Active Priorities item 94. Active Priorities items 95 through 97 are now planned for `src/capability/llm/openai.rs` OpenAI NDJSON encoder helper extraction, focused encoder-layout regression coverage, and graph-derived evidence refresh. The first executable item is item 95. `root_validate` remains intentionally non-selectable per user direction.
@@ -187,6 +189,14 @@ Current date: 2026-05-15.
 - Implementation step 4 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 - Implementation step 5 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 ## Validation Ledger
+
+### 2026-05-15 — Active Priorities item 96 OpenAI NDJSON encoder layout regression
+
+- Scope: `src/capability/llm/openai.rs` test module, `plan.md`, `status.md`, and `score.md` review.
+- Command/check: `cargo fmt -- src/capability/llm/openai.rs`; `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test openai_ndjson_encoders_preserve_record_layouts -- --test-threads=1`; `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
+- Result: passed.
+- Evidence: Added `valid_test_openai_receipt()` and `openai_ndjson_encoders_preserve_record_layouts` inside the OpenAI test module only. The named test passed with 1 test run and 331 filtered out. Broader all-target validation passed with 332 library tests, 3 `root_validate` binary tests, and all integration/example test targets passing. Cargo emitted non-fatal last-use cache warnings reporting `database or disk is full`, but compilation and tests completed successfully. `score.md` was reviewed and left unchanged.
+- Next action: Execute Active Priorities item 97, graph-derived structural evidence refresh.
 
 ### 2026-05-15 — Active Priorities item 95 OpenAI NDJSON encoder helper extraction
 
