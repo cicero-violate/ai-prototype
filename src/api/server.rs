@@ -601,6 +601,116 @@ mod tests {
     }
 
     #[test]
+    fn mcp_call_decoders_preserve_request_receipt_boundaries() {
+        let request = McpCallRequest::new(
+            CapabilityRegistry::canonical(),
+            "http://127.0.0.1:38469/mcp_worker",
+            "shell",
+            r#"{"cwd":".","command":"true"}"#,
+            1000,
+            4096,
+        );
+        let request_payload = serde_json::json!({
+            "registry_policy_hash": request.registry_policy_hash,
+            "worker_url_hash": request.worker_url_hash,
+            "tool_name_hash": request.tool_name_hash,
+            "args_hash": request.args_hash,
+            "timeout_ms": request.timeout_ms,
+            "max_output_bytes": request.max_output_bytes,
+        });
+
+        let decoded_request = decode_mcp_call_request(request_payload.clone())
+            .expect("valid MCP call request should decode");
+        assert_eq!(decoded_request.capability, CapabilityId::Tooling);
+        assert_eq!(
+            decoded_request.registry_policy_hash,
+            request.registry_policy_hash
+        );
+        assert_eq!(decoded_request.worker_url_hash, request.worker_url_hash);
+        assert_eq!(decoded_request.tool_name_hash, request.tool_name_hash);
+        assert_eq!(decoded_request.args_hash, request.args_hash);
+        assert_eq!(decoded_request.timeout_ms, request.timeout_ms);
+        assert_eq!(decoded_request.max_output_bytes, request.max_output_bytes);
+        assert!(decoded_request.is_admissible());
+
+        let receipt = McpCallReceipt::from_response(
+            &request,
+            br#"{"jsonrpc":"2.0","id":1,"result":{"content":[{"type":"text","text":"ok"}]}}"#,
+            0,
+            false,
+        );
+        let receipt_payload = serde_json::json!({
+            "request_hash": receipt.request_hash,
+            "registry_policy_hash": receipt.registry_policy_hash,
+            "worker_url_hash": receipt.worker_url_hash,
+            "tool_name_hash": receipt.tool_name_hash,
+            "args_hash": receipt.args_hash,
+            "timeout_ms": receipt.timeout_ms,
+            "max_output_bytes": receipt.max_output_bytes,
+            "effect_kind": receipt.effect.kind as u64,
+            "effect_digest": receipt.effect.digest,
+            "effect_metadata": receipt.effect.metadata,
+            "response_hash": receipt.response_hash,
+            "response_bytes": receipt.response_bytes,
+            "exit_status": receipt.exit_status,
+            "timed_out": receipt.timed_out,
+            "receipt_hash": receipt.receipt_hash,
+        });
+
+        let decoded_receipt = decode_mcp_call_receipt(receipt_payload.clone())
+            .expect("valid MCP call receipt should decode");
+        assert_eq!(decoded_receipt.request_hash, receipt.request_hash);
+        assert_eq!(
+            decoded_receipt.registry_policy_hash,
+            receipt.registry_policy_hash
+        );
+        assert_eq!(decoded_receipt.worker_url_hash, receipt.worker_url_hash);
+        assert_eq!(decoded_receipt.tool_name_hash, receipt.tool_name_hash);
+        assert_eq!(decoded_receipt.args_hash, receipt.args_hash);
+        assert_eq!(decoded_receipt.timeout_ms, receipt.timeout_ms);
+        assert_eq!(decoded_receipt.max_output_bytes, receipt.max_output_bytes);
+        assert_eq!(decoded_receipt.effect.kind, ToolEffectKind::Process);
+        assert_eq!(decoded_receipt.effect.digest, receipt.effect.digest);
+        assert_eq!(decoded_receipt.effect.metadata, receipt.effect.metadata);
+        assert_eq!(decoded_receipt.response_hash, receipt.response_hash);
+        assert_eq!(decoded_receipt.response_bytes, receipt.response_bytes);
+        assert_eq!(decoded_receipt.exit_status, receipt.exit_status);
+        assert_eq!(decoded_receipt.timed_out, receipt.timed_out);
+        assert_eq!(decoded_receipt.receipt_hash, receipt.receipt_hash);
+        assert!(decoded_receipt.is_contract_valid());
+
+        assert_eq!(
+            decode_mcp_call_request(serde_json::json!({"registry_policy_hash": "bad"})),
+            Err(ServerError::InvalidPayload)
+        );
+        assert_eq!(
+            decode_mcp_call_receipt(serde_json::json!({"request_hash": "bad"})),
+            Err(ServerError::InvalidPayload)
+        );
+
+        let mut request_policy_mismatch = request_payload;
+        request_policy_mismatch["registry_policy_hash"] = serde_json::json!(u64::MAX);
+        assert_eq!(
+            decode_mcp_call_request(request_policy_mismatch),
+            Err(ServerError::InvalidCommand)
+        );
+
+        let mut receipt_policy_mismatch = receipt_payload.clone();
+        receipt_policy_mismatch["registry_policy_hash"] = serde_json::json!(u64::MAX);
+        assert_eq!(
+            decode_mcp_call_receipt(receipt_policy_mismatch),
+            Err(ServerError::InvalidCommand)
+        );
+
+        let mut invalid_effect_kind = receipt_payload;
+        invalid_effect_kind["effect_kind"] = serde_json::json!(99_u64);
+        assert_eq!(
+            decode_mcp_call_receipt(invalid_effect_kind),
+            Err(ServerError::InvalidPayload)
+        );
+    }
+
+    #[test]
     fn invalid_replay_transport_error_maps_to_conflict_status() {
         let (status, Json(body)) =
             error_response(ServerError::Transport(CanonError::InvalidReplay));
