@@ -175,18 +175,14 @@ impl MemoryIndex {
 }
 
 fn aggregate_memory_hash(query_hash: u64, matches: &[MemoryFact]) -> u64 {
-    let mut h = 0x510e527fade682d1u64 ^ query_hash;
-    for fact in matches {
-        h = mix(h, fact.key);
-        h = mix(h, fact.value_hash);
-        h = mix(h, fact.weight as u64);
-        h = mix(h, fact.source_seq);
-    }
-    h.max(1)
+    fold_memory_facts_hash(0x510e527fade682d1u64 ^ query_hash, matches)
 }
 
 fn aggregate_index_hash(facts: &[MemoryFact]) -> u64 {
-    let mut h = 0x4d45_4d49_4e44_4558u64;
+    fold_memory_facts_hash(0x4d45_4d49_4e44_4558u64, facts)
+}
+
+fn fold_memory_facts_hash(mut h: u64, facts: &[MemoryFact]) -> u64 {
     for fact in facts {
         h = mix(h, fact.key);
         h = mix(h, fact.value_hash);
