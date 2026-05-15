@@ -42,6 +42,8 @@ Current date: 2026-05-15.
 
 ## Current Progress
 
+- Implementation step 5 found no unchecked Active Priorities item after item 94; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
+
 - Implementation step 4 found no unchecked Active Priorities item after item 94; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 
 - Active Priorities item 94 is complete: graph-derived structural evidence refresh passed after items 92 and 93. `SCORE_REPORT.md` reports `G = 7.93 / 10`, Architecture `8.9`, Structure `4.9`, Simplicity `6.9`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2`; the `ai` crate row is Nodes `5631`, Edges `35766`, Fns `2287`, Architecture `9.4`, Structure `6.1`, Simplicity `7.1`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2`. `score.md` rationale was updated to name item 94 and the refreshed `ai` row counts; project-level numeric scores remain unchanged because this is evidence refresh, not a capability score change. Active Priorities are exhausted.
@@ -181,6 +183,13 @@ Current date: 2026-05-15.
 - Implementation step 4 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 - Implementation step 5 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 ## Validation Ledger
+
+### 2026-05-15 — implementation step 5 exhausted Active Priorities check after item 94
+
+- Scope: `status.md` status-only exhausted-check record.
+- Command/check: Python-assisted read of `plan.md`, `status.md`, and `score.md`, including exact `## Active Priorities` checklist parsing; `git status --short`.
+- Evidence: Active Priorities contains 67 checked items and 0 unchecked `[ ]` items. Items 92 through 94 remain complete and no first unchecked implementation item exists. There is no selectable implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation task until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` was reviewed and left unchanged because this exhausted-check produced no implementation or score-changing evidence. The working tree was clean before this status-only update.
+- Next action: A planning turn must select the next executable non-`root_validate` graph-backed task.
 
 ### 2026-05-15 — implementation step 4 exhausted Active Priorities check after item 94
 
