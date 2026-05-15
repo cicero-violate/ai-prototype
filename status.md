@@ -42,6 +42,8 @@ Current date: 2026-05-15.
 
 ## Current Progress
 
+- Implementation step 4 on 2026-05-15 found no unchecked Active Priorities item after item 124; items 122 through 124 remain complete and the current queue is exhausted. No implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. Planning/doc validation `cargo test --test planning_contract -- --test-threads=1` passed with 2 tests and 0 failures. Cargo emitted the known non-fatal last-use cache warning reporting `database or disk is full`. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
+
 - Active Priorities item 124 is complete: graph-derived structural evidence refresh passed after items 122 and 123. `SCORE_REPORT.md` reports unchanged aggregate `G = 7.93 / 10`, Architecture `8.9`, Structure `4.9`, Simplicity `6.9`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2`. The refreshed `ai` crate row is Nodes `5649`, Edges `35703`, Fns `2296`, Architecture `9.4`, Structure `6.1`, Simplicity `7.1`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2`; relative to the item-121 snapshot this is `+10` nodes, `+22` edges, and `+1` function after the Ollama NDJSON loader dispatch enum and focused loader-boundary regression. `root_validate` remains intentionally non-selected and still reports Structure `1.5`. Targeted graph-refresh validation passed. Broader `cargo test --all-targets` passed with 341 library tests, 3 `root_validate` binary tests, and all integration/binary/example suites green. Cargo emitted the known non-fatal last-use cache warning reporting `database or disk is full`. `score.md` rationale was refreshed for item 124 evidence, but project-level numeric scores remain unchanged because this is structural evidence refresh rather than score-history-worthy capability evidence. Active Priorities are exhausted.
 
 - Active Priorities item 123 is complete: `src/capability/llm/ollama.rs` now includes focused in-module regression coverage in `ollama_ndjson_loader_helper_preserves_checked_unchecked_boundaries`, proving the shared loader helper preserves checked receipt loading, unchecked receipt loading, proof-event loading, nonmatching-record ignore behavior, blank-line skipping, and missing-file empty-vector behavior. The test also proves the unchecked loader can read a same-tag receipt record that the checked loader rejects as `InvalidReceipt`, preserving the checked versus unchecked decoder boundary. Targeted named-test validation passed. Broader `cargo test --all-targets` passed with 341 library tests, 3 `root_validate` binary tests, and all integration/binary/example suites green. Cargo emitted the known non-fatal last-use cache warning reporting `database or disk is full`. The next executable item is item 124, graph-derived structural evidence refresh. `score.md` remains unchanged because this is focused regression coverage for an existing loader boundary, not a project-level score change.
@@ -287,6 +289,14 @@ Current date: 2026-05-15.
 - Implementation step 4 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 - Implementation step 5 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 ## Validation Ledger
+
+### 2026-05-15 — implementation step 4 exhausted Active Priorities queue
+
+- Scope: `plan.md`, `status.md`, and `score.md` review; `status.md` evidence update only.
+- Command/check: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test planning_contract -- --test-threads=1`.
+- Result: passed.
+- Evidence: no unchecked `N. [ ]` item remains under `## Active Priorities`; planning-contract validation passed with 2 tests and 0 failures. Cargo emitted the known non-fatal last-use cache warning reporting `database or disk is full`.
+- Next action: run a planning turn to select the next ordered non-`root_validate` graph-backed work item.
 
 ### 2026-05-15 — Active Priorities item 124 graph-derived structural evidence refresh
 
