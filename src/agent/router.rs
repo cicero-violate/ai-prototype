@@ -755,6 +755,66 @@ mod tests {
     }
 
     #[test]
+    fn cdp_get_helpers_preserve_http_request_and_response_parsing() {
+        let listener = TcpListener::bind(("127.0.0.1", 0))
+            .expect("loopback listener binds for cdp get helper test");
+        let port = listener
+            .local_addr()
+            .expect("loopback listener exposes local address")
+            .port();
+        let (tx, rx) = mpsc::channel();
+
+        let server = thread::spawn(move || {
+            let (mut stream, _) = listener
+                .accept()
+                .expect("loopback listener accepts cdp get connection");
+            stream
+                .set_read_timeout(Some(Duration::from_secs(2)))
+                .expect("loopback server read timeout is configured");
+
+            let mut request = String::new();
+            let mut buffer = [0_u8; 1024];
+            loop {
+                let read = stream
+                    .read(&mut buffer)
+                    .expect("loopback server reads cdp get request bytes");
+                if read == 0 {
+                    break;
+                }
+                request.push_str(
+                    std::str::from_utf8(&buffer[..read]).expect("cdp get request bytes are utf8"),
+                );
+                if request.contains("\r\n\r\n") {
+                    break;
+                }
+            }
+            tx.send(request)
+                .expect("loopback server reports cdp get request");
+            stream
+                .write_all(b"HTTP/1.1 201 Created\r\nContent-Length: 16\r\nConnection: close\r\n\r\n{\"targets\":[]}")
+                .expect("loopback server writes cdp get response");
+        });
+
+        let (status, body) = cdp_get("127.0.0.1", port, "/json/list", 1_000)
+            .expect("cdp_get reads deterministic loopback response");
+
+        let observed = rx
+            .recv_timeout(Duration::from_secs(2))
+            .expect("loopback server reports observed cdp get request");
+        let mut lines = observed.lines();
+        assert_eq!(lines.next(), Some("GET /json/list HTTP/1.1"));
+        let headers: Vec<&str> = lines.collect();
+        assert!(headers.contains(&format!("Host: 127.0.0.1:{port}").as_str()));
+        assert!(headers.contains(&"Accept: application/json"));
+        assert!(headers.contains(&"Connection: close"));
+        assert_eq!(status, 201);
+        assert_eq!(body, "{\"targets\":[]}");
+        server
+            .join()
+            .expect("loopback cdp get server thread finishes without panic");
+    }
+
+    #[test]
     fn target_url_changed_only_for_distinct_urls() {
         assert!(!target_url_changed(
             "https://chatgpt.com/c/current",

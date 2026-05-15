@@ -119,11 +119,17 @@ impl LoopDriver {
                 eprintln!("[{tag}] cycle {cycle_num} failed: {e}");
             }
 
-            match router.close_current_tab() {
-                Ok(outcome) => {
-                    eprintln!("[{tag}] tab close  outcome={outcome:?}  cycle={cycle_num}")
-                }
-                Err(e) => eprintln!("[{tag}] tab close failed: {e}  cycle={cycle_num}"),
+            if let Some(url) = router.target_url().map(str::to_string) {
+                let tag2 = tag.clone();
+                thread::spawn(move || {
+                    eprintln!("[{tag2}] tab close starting  cycle={cycle_num}  target={url}");
+                    match crate::agent::router::close_tab_for_url_with_timeout(&url, 8_000) {
+                        Ok(outcome) => {
+                            eprintln!("[{tag2}] tab close  outcome={outcome:?}  cycle={cycle_num}")
+                        }
+                        Err(e) => eprintln!("[{tag2}] tab close failed: {e}  cycle={cycle_num}"),
+                    }
+                });
             }
 
             // Spawned agents run one cycle for their specific task then exit.
@@ -1399,7 +1405,9 @@ mod tests {
                 let mut request = Vec::new();
                 let mut buffer = [0u8; 1024];
                 loop {
-                    let read = stream.read(&mut buffer).expect("request should be readable");
+                    let read = stream
+                        .read(&mut buffer)
+                        .expect("request should be readable");
                     if read == 0 {
                         break;
                     }
@@ -1430,9 +1438,7 @@ mod tests {
                     .expect("captured request body should be json");
                 bodies.push(body);
                 stream
-                    .write_all(
-                        b"HTTP/1.1 200 OK\r\nContent-Length: 0\r\nConnection: close\r\n\r\n",
-                    )
+                    .write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 0\r\nConnection: close\r\n\r\n")
                     .expect("response should be writable");
             }
             bodies
