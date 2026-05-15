@@ -42,6 +42,8 @@ Current date: 2026-05-15.
 
 ## Current Progress
 
+- Planning turn on 2026-05-15 selected the next executable non-`root_validate` graph-backed work after confirming Active Priorities items 166 through 168 are complete and the prior queue was exhausted. The new queue is items 169 through 171: first refactor `src/validation_harness.rs` learning-data admission smoke/regression constructors behind a private source-selector helper, then add focused regression coverage for the smoke/regression boundary, then refresh graph-derived structural evidence. `score.md` remains unchanged because this turn produced planning evidence only, not implementation or score-changing validation evidence.
+
 - Implementation step 5 on 2026-05-15 found no unchecked Active Priorities item after item 168; items 166 through 168 remain complete and the current queue is exhausted. No implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `plan.md`, `status.md`, and `score.md` were read; the working tree was clean before this status update; `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 
 - Implementation step 4 on 2026-05-15 found no unchecked Active Priorities item after item 168; items 166 through 168 remain complete and the current queue is exhausted. No implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `plan.md`, `status.md`, and `score.md` were read; the working tree was clean before this status update; `score.md` remains unchanged because no implementation or score-changing evidence was produced.
@@ -451,6 +453,14 @@ Current date: 2026-05-15.
 - Implementation step 4 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 - Implementation step 5 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 ## Validation Ledger
+
+### 2026-05-15 — planning reconnaissance for Active Priorities items 169-171
+
+- Scope: `plan.md`, `status.md`, `score.md`, `SCORE_REPORT.md`, `../state/rustc/auto-refactor/*.graph-editor-plan.json`, and `src/validation_harness.rs`.
+- Command/check: Python-assisted inspection of the operative Active Priorities checklist, current score files, graph-editor plans, selected `ai` graph plan candidates, candidate `src/validation_harness.rs` source regions, and `git status --short`.
+- Result: informational.
+- Evidence: Active Priorities items 166 through 168 are complete; the previous checklist had no unchecked executable item; `SCORE_REPORT.md` reports graph-derived `G = 7.94 / 10` with Structure `5.0`; the selected `ai` graph plan contains 1,271 merge operations; `validation_harness` remains the dominant non-`root_validate` candidate cluster; selected the narrower learning-data admission smoke/regression constructor source-selection candidate before broader hash-family merges; working tree was clean before planning edits.
+- Next action: Execute item 169 in `src/validation_harness.rs` and validate with `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo check --lib`.
 
 ### 2026-05-15 — implementation step 5 no selectable Active Priorities item
 
