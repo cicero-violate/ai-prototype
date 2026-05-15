@@ -124,7 +124,26 @@ Current date: 2026-05-14.
 - Active Priorities item 64 is complete: `recovery_route_for_action(...)` and `recovery_route_for_failure(...)` now share private helper `recovery_route_matching(...)`, preserving exact action matching, failure-list membership matching, unknown-input `None` behavior, route-table mappings, recovery phase behavior, runtime behavior, and JSON/receipt behavior. The next executable item is item 65, the focused regression test for those lookup boundaries.
 - Active Priorities item 65 is complete: `recovery_route_lookup_helper_preserves_action_failure_boundaries` now covers direct action lookup, failure-list lookup, `recovery_action_for_failure(...)`, `recovery_action_spec(...)`, representative recovery mappings, and unknown-input `None` behavior for the shared recovery-route helper. The next executable item is item 66, the graph-derived structural evidence refresh and score-rationale review.
 
+- Active Priorities item 66 is complete: graph-derived structural evidence refresh passed after items 64 and 65. `SCORE_REPORT.md` regenerated from `../state/rustc` with unchanged aggregate `G = 7.99 / 10`, Architecture `8.9`, Structure `4.9`, Simplicity `7.1`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.4`; local `ai` row remains 5,610 nodes, 34,384 edges, 2,270 functions, Structure `6.0`, and Simplicity `7.6`. `score.md` remains unchanged because refreshed evidence matched the existing rationale and does not justify project-level numeric score changes. Active Priorities are exhausted; a planning turn must select the next executable non-`root_validate` graph-backed item.
 ## Validation Ledger
+
+### 2026-05-14 — item 66 commit hook blocked by pre-existing rustfmt drift outside item scope
+
+- Scope: staged `plan.md` and `status.md` changes for Active Priorities item 66; unrelated Rust formatting drift in `src/api/server.rs` and `src/capability/mod.rs` remains outside this checklist item scope.
+- Command/check: `git add plan.md status.md && git commit -m "Refresh recovery route graph evidence"`.
+- Result: blocked.
+- Evidence: pre-commit `cargo fmt --check` reported formatting diffs only in `src/api/server.rs` and `src/capability/mod.rs`; scoped `git diff --check -- plan.md status.md SCORE_REPORT.md score.md` passed before the commit attempt, targeted graph refresh passed, and broader `cargo test --all-targets` passed.
+- Next action: Commit the scoped item 66 changes without modifying unrelated Rust files; leave the repository-wide rustfmt drift for a separate cleanup item.
+
+
+### 2026-05-14 — implementation step 3 Active Priorities item 66
+
+- Scope: `SCORE_REPORT.md`, `score.md`, `plan.md`, and `status.md`.
+- Command/check: `bash scripts/recapture_rustc_graphs.sh --check && cargo run --manifest-path ../score/Cargo.toml --quiet -- --artifact-root ../state/rustc --report SCORE_REPORT.md --date "$(date +%Y-%m-%d)"`; `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
+- Result: passed.
+- Evidence: graph artifact check passed for the configured `../state/rustc` root with required artifacts; scorer processed 18 crates with 0 skipped and regenerated aggregate `G = 7.99 / 10`, Architecture `8.9`, Structure `4.9`, Simplicity `7.1`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.4`. Regenerated `SCORE_REPORT.md` had no diff; `score.md` had no diff because refreshed graph evidence matched the current score rationale. Broader validation passed with 324 library tests, 3 `root_validate` binary tests, 13 API server contract tests, 23 API transport contract tests, 3 canonical TLog contract tests, 4 domain contract tests, 10 graph mutation CLI contract tests, 9 MCP receipt contract tests, 2 planning contract tests, 5 score contract tests, 2 supervisor binary contract tests, 2 worker binary contract tests, and all example/bin zero-test targets passing.
+- Next action: Start a planning turn to select the next executable non-`root_validate` graph-backed task.
+
 
 ### 2026-05-14 — item 65 commit hook blocked by pre-existing rustfmt drift outside item scope
 
