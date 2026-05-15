@@ -42,6 +42,8 @@ Current date: 2026-05-15.
 
 ## Current Progress
 
+- Active Priorities item 92 is complete: `src/agent/loop_driver.rs` now routes `agent_identity(...)` and `agent_tag(...)` through shared private `agent_label(...)` while preserving the single-agent prompt identity string, multi-agent prompt identity string, single-agent log tag, and multi-agent log tag. Targeted `cargo check --lib` and broader `cargo test --all-targets` passed. Cargo emitted non-fatal last-use cache warnings reporting `database or disk is full`, but compilation and tests completed successfully. The next executable item is item 93, the focused loop-driver agent-label regression test.
+
 - Planning turn on 2026-05-15 completed Python-assisted reconnaissance after Active Priorities item 91. Active Priorities items 92 through 94 are now planned for `src/agent/loop_driver.rs` and graph-derived evidence refresh. The first executable item is item 92.
 
 - Implementation step 5 found no unchecked Active Priorities item after item 91; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
@@ -173,6 +175,13 @@ Current date: 2026-05-15.
 - Implementation step 4 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 - Implementation step 5 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 ## Validation Ledger
+
+### 2026-05-15 — item 92 loop-driver agent label helper extraction
+
+- Scope: `src/agent/loop_driver.rs`, `plan.md`, and `status.md`, Active Priorities item 92.
+- Command/check: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo check --lib`; `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
+- Evidence: `agent_identity(...)` and `agent_tag(...)` now delegate through one private `agent_label(...)` helper. The wrapper outputs remain unchanged for single-agent mode (`You are the agent for this project.`, `agent`) and multi-agent mode (`You are **Agent {agent_id}** (one of {agent_count} parallel agents).`, `agent-{agent_id}`). Targeted validation passed. Broader all-targets validation passed with 330 library tests, 3 `root_validate` binary tests, 13 API server contract tests, 23 API transport contract tests, 3 canonical TLog contract tests, 4 domain contract tests, 10 graph-mutation CLI tests, 9 MCP receipt contract tests, 2 planning contract tests, 5 score contract tests, 2 supervisor binary contract tests, and 2 worker binary contract tests. Cargo emitted non-fatal last-use cache warnings reporting `database or disk is full`; no validation failure resulted. `score.md` was left unchanged because this implementation item does not produce score-changing capability evidence by itself.
+- Next action: Execute Active Priorities item 93 in the `src/agent/loop_driver.rs` test module only.
 
 ### 2026-05-15 — planning selected loop-driver agent label helper work
 

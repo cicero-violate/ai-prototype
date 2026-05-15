@@ -1004,20 +1004,34 @@ fn execute_prompt(turn_num: u32, agent_id: u32, agent_count: u32) -> String {
     )
 }
 
-fn agent_identity(agent_id: u32, agent_count: u32) -> String {
+fn agent_label(
+    agent_id: u32,
+    agent_count: u32,
+    single_agent: &'static str,
+    multi_agent: impl FnOnce(u32, u32) -> String,
+) -> String {
     if agent_count > 1 {
-        format!("You are **Agent {agent_id}** (one of {agent_count} parallel agents).")
+        multi_agent(agent_id, agent_count)
     } else {
-        "You are the agent for this project.".to_string()
+        single_agent.to_string()
     }
 }
 
+fn agent_identity(agent_id: u32, agent_count: u32) -> String {
+    agent_label(
+        agent_id,
+        agent_count,
+        "You are the agent for this project.",
+        |agent_id, agent_count| {
+            format!("You are **Agent {agent_id}** (one of {agent_count} parallel agents).")
+        },
+    )
+}
+
 fn agent_tag(agent_id: u32, agent_count: u32) -> String {
-    if agent_count > 1 {
+    agent_label(agent_id, agent_count, "agent", |agent_id, _| {
         format!("agent-{agent_id}")
-    } else {
-        "agent".to_string()
-    }
+    })
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
