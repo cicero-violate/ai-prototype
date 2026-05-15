@@ -18214,6 +18214,99 @@ mod tests {
     }
 
     #[test]
+    fn validation_harness_learning_data_admission_builder_preserves_smoke_and_regression_boundaries(
+    ) {
+        let smoke_candidate = policy_reuse_evidence_learning_candidate_smoke_receipt();
+        let smoke_evaluator = policy_reuse_evidence_external_evaluator_result_smoke_receipt();
+        let smoke_admission = policy_reuse_evidence_learning_data_admission_smoke_receipt();
+
+        assert!(smoke_admission.is_valid());
+        assert!(smoke_admission.passed());
+        assert!(smoke_admission.learning_data_admitted);
+        assert_eq!(
+            smoke_admission.record_type,
+            POLICY_REUSE_EVIDENCE_LEARNING_DATA_ADMISSION_SMOKE_STEP
+        );
+        assert_eq!(
+            smoke_admission.source_learning_candidate_hash,
+            smoke_candidate.receipt_hash
+        );
+        assert_eq!(
+            smoke_admission.source_external_evaluator_result_hash,
+            smoke_evaluator.receipt_hash
+        );
+        assert!(smoke_admission.learning_candidate_ready);
+        assert!(smoke_admission.evaluator_result_passed);
+        assert!(!smoke_admission.policy_promotion_performed);
+        assert!(!smoke_admission.retrieval_write_performed);
+        assert!(!smoke_admission.student_training_performed);
+        assert_eq!(smoke_admission.admission_status, "admitted");
+        assert_eq!(smoke_admission.not_admitted_reason, "none");
+        assert_ne!(smoke_admission.admission_hash, 0);
+        assert_ne!(smoke_admission.receipt_hash, 0);
+        assert_eq!(
+            smoke_admission.admission_hash,
+            policy_reuse_evidence_learning_data_admission_hash(&smoke_admission)
+        );
+        assert_eq!(
+            smoke_admission.receipt_hash,
+            policy_reuse_evidence_learning_data_admission_receipt_hash(&smoke_admission)
+        );
+
+        let regression_candidate =
+            policy_reuse_evidence_learning_candidate_regression_smoke_receipt();
+        let regression_evaluator =
+            policy_reuse_evidence_external_evaluator_result_regression_smoke_receipt();
+        let regression_admission =
+            policy_reuse_evidence_learning_data_admission_regression_smoke_receipt();
+
+        assert!(regression_admission.is_valid());
+        assert!(!regression_admission.passed());
+        assert!(!regression_admission.learning_data_admitted);
+        assert_eq!(
+            regression_admission.record_type,
+            POLICY_REUSE_EVIDENCE_LEARNING_DATA_ADMISSION_REGRESSION_SMOKE_STEP
+        );
+        assert_eq!(
+            regression_admission.source_learning_candidate_hash,
+            regression_candidate.receipt_hash
+        );
+        assert_eq!(
+            regression_admission.source_external_evaluator_result_hash,
+            regression_evaluator.receipt_hash
+        );
+        assert!(!regression_admission.learning_candidate_ready);
+        assert!(!regression_admission.evaluator_result_passed);
+        assert!(!regression_admission.policy_promotion_performed);
+        assert!(!regression_admission.retrieval_write_performed);
+        assert!(!regression_admission.student_training_performed);
+        assert_eq!(regression_admission.admission_status, "not_admitted");
+        assert_eq!(
+            regression_admission.not_admitted_reason,
+            "candidate_not_ready"
+        );
+        assert_ne!(regression_admission.admission_hash, 0);
+        assert_ne!(regression_admission.receipt_hash, 0);
+        assert_eq!(
+            regression_admission.admission_hash,
+            policy_reuse_evidence_learning_data_admission_hash(&regression_admission)
+        );
+        assert_eq!(
+            regression_admission.receipt_hash,
+            policy_reuse_evidence_learning_data_admission_receipt_hash(&regression_admission)
+        );
+
+        assert_ne!(
+            smoke_admission.admission_hash,
+            regression_admission.admission_hash
+        );
+        assert_ne!(
+            smoke_admission.receipt_hash,
+            regression_admission.receipt_hash
+        );
+    }
+
+    #[test]
     fn validation_harness_batch_evidence_hash_helper_preserves_readiness_plan_admission_and_request_boundaries(
     ) {
         let readiness = policy_reuse_evidence_batch_readiness_smoke_receipt();
