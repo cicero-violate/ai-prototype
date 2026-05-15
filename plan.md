@@ -488,7 +488,7 @@ Current graph-derived aggregate evidence remains `G = 7.99 / 10`, Architecture `
    - Done when: the named test still proves the emitted request line and headers, observed status, body extraction, and server-thread completion; it also directly covers the new request/transport or response-parse helper boundary where practical. The test must not contact external network services, mutate environment variables, spawn subprocesses, or write files.
    - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test cdp_get_helpers_preserve_http_request_and_response_parsing -- --test-threads=1`.
 
-76. [ ] `SCORE_REPORT.md`: after items 74 and 75 land, refresh graph-derived structural evidence and review whether `score.md` rationale changes without raising project-level scores absent capability evidence.
+76. [x] `SCORE_REPORT.md`: after items 74 and 75 land, refresh graph-derived structural evidence and review whether `score.md` rationale changes without raising project-level scores absent capability evidence.
    - Scope: `SCORE_REPORT.md`, `score.md`, `plan.md`, and `status.md` only.
    - Done when: `scripts/recapture_rustc_graphs.sh --check` validates the configured graph root, `SCORE_REPORT.md` is regenerated from `../state/rustc`, `status.md` records aggregate and affected crate rows including `ai` and any changed function counts, and `score.md` changes only if refreshed evidence differs from the current rationale.
    - Validation: `bash scripts/recapture_rustc_graphs.sh --check && cargo run --manifest-path ../score/Cargo.toml --quiet -- --artifact-root ../state/rustc --report SCORE_REPORT.md --date "$(date +%Y-%m-%d)"`.

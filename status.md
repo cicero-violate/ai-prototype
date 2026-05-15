@@ -42,6 +42,7 @@ Current date: 2026-05-15.
 
 ## Current Progress
 
+- Active Priorities item 76 is complete: graph-derived structural evidence refresh passed after items 74 and 75. `SCORE_REPORT.md` reports `G = 7.93 / 10`, Architecture `9.0`, Structure `4.9`, Simplicity `6.9`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2`; the `ai` crate row is Nodes `5622`, Edges `35759`, Fns `2281`, Architecture `9.5`, Structure `6.1`, Simplicity `7.1`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2`. `score.md` rationale was updated to match refreshed evidence, but project-level numeric scores remain unchanged.
 - Active Priorities item 75 is complete: `cdp_get_helpers_preserve_http_request_and_response_parsing` now directly covers the CDP request builder, extracted `cdp_get_request_transport_response(...)` boundary, raw response shape, `parse_cdp_get_response(...)`, observed loopback request bytes, status/body extraction, and server-thread completion. Targeted loopback validation and broader all-target Rust validation passed. The next executable item is item 76, the graph-derived structural evidence refresh.
 - Active Priorities item 74 is complete: `src/agent/router.rs::cdp_get(...)` now delegates socket/request/response collection through private `cdp_get_request_transport_response(...)` while preserving the original signature, address resolution, timeout configuration, request bytes, response read behavior, final `parse_cdp_get_response(...)` delegation, and `OpenAiError` mapping. Targeted loopback validation and broader all-target Rust validation passed. The next executable item is item 75, the focused router regression-test extension.
 - Planning turn on 2026-05-15 completed reconnaissance after Active Priorities item 72 and selected the next executable non-`root_validate` graph-backed task. Active Priorities item 73 cleared the commit-hook rustfmt blocker in `src/api/server.rs` and `src/capability/mod.rs`; items 74 through 76 are now planned for `src/agent/router.rs` and graph-derived evidence refresh. The first incomplete executable item is item 74, which must split `cdp_get(...)` into private request/transport and response-parse phase helpers while preserving local loopback behavior. `root_validate` remains explicitly non-selectable.
@@ -139,6 +140,14 @@ Current date: 2026-05-15.
 - Implementation step 4 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 - Implementation step 5 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 ## Validation Ledger
+
+### 2026-05-15 — item 76 graph-derived structural evidence refresh
+
+- Scope: `SCORE_REPORT.md`, `score.md`, `plan.md`, and `status.md`; Active Priorities item 76.
+- Command/check: `bash scripts/recapture_rustc_graphs.sh --check && cargo run --manifest-path ../score/Cargo.toml --quiet -- --artifact-root ../state/rustc --report SCORE_REPORT.md --date "$(date +%Y-%m-%d)"`.
+- Result: passed.
+- Evidence: graph artifact check passed for `../state/rustc`; scorer regenerated `SCORE_REPORT.md` for 2026-05-15 with 18 crates and `0` skipped. Aggregate is `G = 7.93 / 10`, Architecture `9.0`, Structure `4.9`, Simplicity `6.9`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2`. The `ai` crate row is Nodes `5622`, Edges `35759`, Fns `2281`, Architecture `9.5`, Structure `6.1`, Simplicity `7.1`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2`. `score.md` rationale was updated to match refreshed graph evidence; project-level numeric scores remain unchanged because this is evidence refresh, not a new capability score change.
+- Next action: planning is required before further implementation, because Active Priorities items 74 through 76 are complete.
 
 ### 2026-05-15 — item 75 router cdp_get helper boundary regression
 
