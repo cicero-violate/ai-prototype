@@ -121,7 +121,26 @@ Current date: 2026-05-14.
 - Implementation step 5 found no unchecked Active Priorities item after item 63; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 
 - Active Priorities items 64 through 66 are now planned for `src/agent/cycle.rs` and graph-derived evidence refresh. The first executable item is item 64, which must route `recovery_route_for_action(...)` and `recovery_route_for_failure(...)` through one private recovery-route lookup helper while preserving action lookup, failure lookup, unknown-input, `RecoveryActionSpec`, recovery phase, route-table, and runtime behavior. `root_validate` remains explicitly non-selectable.
+- Active Priorities item 64 is complete: `recovery_route_for_action(...)` and `recovery_route_for_failure(...)` now share private helper `recovery_route_matching(...)`, preserving exact action matching, failure-list membership matching, unknown-input `None` behavior, route-table mappings, recovery phase behavior, runtime behavior, and JSON/receipt behavior. The next executable item is item 65, the focused regression test for those lookup boundaries.
 ## Validation Ledger
+
+### 2026-05-14 — item 64 commit hook blocked by pre-existing rustfmt drift outside item scope
+
+- Scope: staged `src/agent/cycle.rs`, `plan.md`, and `status.md` changes for Active Priorities item 64; unrelated Rust formatting drift in `src/api/server.rs` and `src/capability/mod.rs` remains outside this checklist item scope.
+- Command/check: `git add src/agent/cycle.rs plan.md status.md && git commit -m "Refactor recovery route lookup"`.
+- Result: blocked.
+- Evidence: pre-commit `cargo fmt --check` reported formatting diffs only in `src/api/server.rs` and `src/capability/mod.rs`; scoped `rustfmt --check src/agent/cycle.rs` and `git diff --check -- src/agent/cycle.rs plan.md status.md` passed before the commit attempt.
+- Next action: Commit the scoped item 64 changes without modifying unrelated Rust files; leave the repository-wide rustfmt drift for a separate cleanup item.
+
+
+### 2026-05-14 — implementation step 1 Active Priorities item 64
+
+- Scope: `src/agent/cycle.rs`, `plan.md`, and `status.md`.
+- Command/check: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo check --lib`; `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
+- Result: passed.
+- Evidence: `cargo check --lib` completed successfully; `cargo test --all-targets` passed with 323 library tests, 3 `root_validate` binary tests, 13 API server contract tests, 23 API transport contract tests, 3 canonical TLog contract tests, 4 domain contract tests, 10 graph mutation CLI contract tests, 9 MCP receipt contract tests, 2 planning contract tests, 5 score contract tests, 2 supervisor binary contract tests, 2 worker binary contract tests, and all example/bin zero-test targets passing. Production change was limited to `src/agent/cycle.rs`: added `recovery_route_matching(...)` and routed `recovery_route_for_action(...)` plus `recovery_route_for_failure(...)` through it.
+- Next action: Execute Active Priorities item 65, `recovery_route_lookup_helper_preserves_action_failure_boundaries`.
+
 
 ### 2026-05-14 — commit hook blocked by pre-existing rustfmt drift outside planning scope
 

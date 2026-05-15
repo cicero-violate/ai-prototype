@@ -616,14 +616,18 @@ const RECOVERY_ROUTES: &[RecoveryRoute] = &[
     },
 ];
 
+fn recovery_route_matching(
+    predicate: impl Fn(&RecoveryRoute) -> bool,
+) -> Option<&'static RecoveryRoute> {
+    RECOVERY_ROUTES.iter().find(|route| predicate(route))
+}
+
 fn recovery_route_for_action(action: &str) -> Option<&'static RecoveryRoute> {
-    RECOVERY_ROUTES.iter().find(|route| route.action == action)
+    recovery_route_matching(|route| route.action == action)
 }
 
 fn recovery_route_for_failure(failure: &str) -> Option<&'static RecoveryRoute> {
-    RECOVERY_ROUTES
-        .iter()
-        .find(|route| route.failures.contains(&failure))
+    recovery_route_matching(|route| route.failures.contains(&failure))
 }
 
 fn recovery_action_for_failure(failure: &str) -> Option<&'static str> {
