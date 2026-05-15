@@ -67,6 +67,9 @@ Current date: 2026-05-15.
 ## Current Progress
 
 
+- Active Priorities item 153 is complete: `src/capability/verification/record.rs` now includes test `artifact_semantic_profile_hash_helper_preserves_receipt_and_lineage_boundaries` in the existing test module. The test uses in-memory `ArtifactSemanticProfile`, `VerificationRequest`, `VerificationRecord`, and `VerificationReceipt` values; proves receipt, lineage, semantic profile, request contract, verification payload, and audit hashes are non-zero; proves receipt and lineage hashes remain distinct; proves objective id, active task id, parent artifact id, artifact id, artifact bytes, and revision changes affect both receipt and lineage helper outputs; proves receipt-hash-only changes leave expected receipt hash unchanged while changing lineage and downstream verification evidence; and proves records/receipts store exact helper outputs. Targeted validation passed. Broader `cargo test --all-targets` passed with 359 library tests, 3 `root_validate` binary tests, 13 API server contract tests, 23 API transport contract tests, and all other integration, binary, and example targets green. Cargo emitted the known non-fatal global-cache warnings reporting `database or disk is full`. `score.md` remains unchanged because this is focused regression evidence, not a project-level score change. The next executable item is item 154, graph-derived structural evidence refresh.
+
+
 - Active Priorities item 152 is complete: `src/capability/verification/record.rs` now routes `ArtifactSemanticProfile::expected_receipt_hash(...)` and `ArtifactSemanticProfile::expected_lineage_hash(...)` through private `semantic_profile_artifact_hash(...)` with typed `SemanticProfileArtifactHashKind` dispatch. The change preserves the receipt seed `0x243f6a8885a308d3`, lineage seed `0x9e3779b97f4a7c15`, ordered objective/task/artifact/bytes/revision folding, lineage-only receipt-hash folding, verification receipt validity, lineage validity, request contract hashes, semantic verification receipts, submissions, public APIs, and `root_validate` boundaries. Targeted `cargo check --lib` passed. Broader `cargo test --all-targets` passed with 358 library tests, 3 `root_validate` binary tests, 13 API server contract tests, 23 API transport contract tests, and all other integration, binary, and example targets green. Cargo emitted the known non-fatal global-cache warnings reporting `database or disk is full`. `score.md` remains unchanged because this is a narrow structure refactor with validation evidence, not a project-level score change. The next executable item is item 153, focused regression coverage for the semantic-profile hash helper boundary.
 
 
@@ -487,6 +490,15 @@ Current date: 2026-05-15.
 - Implementation step 4 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 - Implementation step 5 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 ## Validation Ledger
+
+
+### 2026-05-15 — Active Priorities item 153 targeted and broad validation
+
+- Scope: `src/capability/verification/record.rs`, `plan.md`, and `status.md`.
+- Command/check: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test artifact_semantic_profile_hash_helper_preserves_receipt_and_lineage_boundaries -- --test-threads=1`; `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
+- Result: passed.
+- Evidence: targeted regression test passed with 1 test passed, 0 failed; broader all-target validation passed with 359 library tests, 3 `root_validate` binary tests, 13 API server contract tests, 23 API transport contract tests, 3 canonical TLog contract tests, 4 domain contract tests, 10 graph mutation CLI contract tests, 9 MCP receipt contract tests, 2 planning contract tests, 5 score contract tests, 2 supervisor binary contract tests, 2 worker binary contract tests, and all example test targets green. Cargo emitted recurring non-fatal global-cache warnings reporting `database or disk is full`.
+- Next action: execute Active Priorities item 154, graph-derived structural evidence refresh.
 
 
 ### 2026-05-15 — Active Priorities item 152 targeted and broad validation

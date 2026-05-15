@@ -720,4 +720,90 @@ mod tests {
         assert_ne!(receipt.defect_mask, DEFECT_NONE);
         assert!(!receipt.submission().passed);
     }
+
+    #[test]
+    fn artifact_semantic_profile_hash_helper_preserves_receipt_and_lineage_boundaries() {
+        let packet = valid_packet();
+        let profile = ArtifactSemanticProfile::from_packet(packet);
+        let receipt_hash = profile.expected_receipt_hash();
+        let lineage_hash = profile.expected_lineage_hash();
+        let semantic_hash = profile.semantic_hash();
+        let request = VerificationRequest::from_profile(profile);
+        let request_hash = request.contract_hash();
+        let record = VerificationRecord::from_profile(profile);
+        let payload_hash = verification_payload_hash(&record);
+        let receipt = VerificationReceipt::from_record(&record);
+        let audit_hash = receipt.expected_audit_hash();
+
+        assert_ne!(receipt_hash, 0);
+        assert_ne!(lineage_hash, 0);
+        assert_ne!(semantic_hash, 0);
+        assert_ne!(request_hash, 0);
+        assert_ne!(payload_hash, 0);
+        assert_ne!(audit_hash, 0);
+        assert_ne!(receipt_hash, lineage_hash);
+
+        for changed in [
+            ArtifactSemanticProfile {
+                objective_id: profile.objective_id + 1,
+                ..profile
+            },
+            ArtifactSemanticProfile {
+                active_task_id: profile.active_task_id + 1,
+                ..profile
+            },
+            ArtifactSemanticProfile {
+                parent_artifact_id: profile.parent_artifact_id + 1,
+                ..profile
+            },
+            ArtifactSemanticProfile {
+                artifact_id: profile.artifact_id + 1,
+                ..profile
+            },
+            ArtifactSemanticProfile {
+                artifact_bytes: profile.artifact_bytes + 1,
+                ..profile
+            },
+            ArtifactSemanticProfile {
+                revision: profile.revision + 1,
+                ..profile
+            },
+        ] {
+            assert_ne!(changed.expected_receipt_hash(), receipt_hash);
+            assert_ne!(changed.expected_lineage_hash(), lineage_hash);
+        }
+
+        let receipt_only_changed = ArtifactSemanticProfile {
+            receipt_hash: profile.receipt_hash ^ 1,
+            ..profile
+        };
+        assert_eq!(receipt_only_changed.expected_receipt_hash(), receipt_hash);
+        assert_ne!(receipt_only_changed.expected_lineage_hash(), lineage_hash);
+        assert_ne!(receipt_only_changed.semantic_hash(), semantic_hash);
+        assert_ne!(
+            VerificationRequest::from_profile(receipt_only_changed).contract_hash(),
+            request_hash
+        );
+        assert_ne!(
+            verification_hash(receipt_only_changed),
+            verification_hash(profile)
+        );
+
+        let changed_record = VerificationRecord::from_profile(receipt_only_changed);
+        let changed_receipt = VerificationReceipt::from_record(&changed_record);
+        assert_eq!(changed_record.expected_receipt_hash, receipt_hash);
+        assert_eq!(
+            changed_record.expected_lineage_hash,
+            receipt_only_changed.expected_lineage_hash()
+        );
+        assert_ne!(verification_payload_hash(&changed_record), payload_hash);
+        assert_ne!(changed_receipt.audit_hash, audit_hash);
+
+        assert_eq!(record.expected_receipt_hash, receipt_hash);
+        assert_eq!(record.expected_lineage_hash, lineage_hash);
+        assert_eq!(receipt.expected_receipt_hash, receipt_hash);
+        assert_eq!(receipt.expected_lineage_hash, lineage_hash);
+        assert_eq!(receipt.payload_hash, payload_hash);
+        assert_eq!(receipt.audit_hash, audit_hash);
+    }
 }
