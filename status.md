@@ -42,6 +42,7 @@ Current date: 2026-05-15.
 
 ## Current Progress
 
+- Active Priorities item 79 is complete: graph-derived structural evidence refresh passed after items 77 and 78. `SCORE_REPORT.md` now reports `G = 7.92 / 10`, Architecture `9.0`, Structure `4.9`, Simplicity `6.9`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2`; the `ai` crate row is Nodes `5625`, Edges `35762`, Fns `2281`, Architecture `9.4`, Structure `6.1`, Simplicity `7.1`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2`. `score.md` rationale was updated to match refreshed evidence; project-level numeric scores remain unchanged because this is evidence refresh, not a new capability score change. Active Priorities are exhausted.
 - Active Priorities item 78 is complete: `u64_route_lookup_helpers_preserve_gate_and_evidence_boundaries` now proves representative gate ids, representative evidence values, cross-domain gate/evidence rejection, unknown-input `None` behavior, and representative `effect_for_gate_evidence(...)` behavior for the shared typed route-table lookup helper. Targeted and broader Rust validation passed. The next executable item is item 79, the graph-derived evidence refresh and score-rationale review.
 - Active Priorities item 77 is complete: `src/agent/cycle.rs` now routes `gate_id_u64(...)` and `evidence_u64_value(...)` through the shared typed `lookup_u64_route(...)` helper using `U64RouteTable`, preserving distinct gate and evidence route tables, unknown-input `None` behavior, submit-evidence packet/envelope behavior, and runtime receipt semantics. Targeted `cargo check --lib` and broader `cargo test --all-targets` passed. The next executable item is item 78, the focused route-boundary regression test.
 - Planning turn on 2026-05-15 completed Python-assisted reconnaissance against the selected `ai` graph-editor plan after Active Priorities item 76. Active Priorities items 77 through 79 are now planned for `src/agent/cycle.rs` and graph-derived evidence refresh. The first executable item is item 77, which must route `gate_id_u64(...)` and `evidence_u64_value(...)` through one private typed route-table lookup helper while preserving distinct gate and evidence domains. `root_validate` remains explicitly non-selectable.
@@ -146,6 +147,14 @@ Current date: 2026-05-15.
 - Implementation step 4 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 - Implementation step 5 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 ## Validation Ledger
+
+### 2026-05-15 — item 79 graph-derived structural evidence refresh
+
+- Scope: `SCORE_REPORT.md`, `score.md`, `plan.md`, and `status.md`; Active Priorities item 79.
+- Command/check: `bash scripts/recapture_rustc_graphs.sh --check && cargo run --manifest-path ../score/Cargo.toml --quiet -- --artifact-root ../state/rustc --report SCORE_REPORT.md --date "$(date +%Y-%m-%d)"`.
+- Result: passed.
+- Evidence: graph artifact check passed for `../state/rustc`; scorer regenerated `SCORE_REPORT.md` for 2026-05-15 with 18 crates and `0` skipped. Aggregate is `G = 7.92 / 10`, Architecture `9.0`, Structure `4.9`, Simplicity `6.9`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2`. The `ai` crate row is Nodes `5625`, Edges `35762`, Fns `2281`, Architecture `9.4`, Structure `6.1`, Simplicity `7.1`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2`; `root_validate` remains non-selectable and is unchanged at Structure `1.5`. `score.md` rationale was updated to match refreshed graph evidence; project-level numeric scores remain unchanged because this is evidence refresh, not a new capability score change. The command emitted a non-fatal global cache warning: `database or disk is full`; validation still passed.
+- Next action: run a planning turn to select the next executable non-`root_validate` graph-backed task.
 
 ### 2026-05-15 — item 78 agent cycle u64 route lookup boundary regression
 
