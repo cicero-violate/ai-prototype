@@ -1548,6 +1548,43 @@ mod tests {
     }
 
     #[test]
+    fn agent_label_helpers_preserve_identity_and_tag_boundaries() {
+        let single_identity = "You are the agent for this project.";
+        let agent_one_identity = "You are **Agent 1** (one of 3 parallel agents).";
+        let agent_two_identity = "You are **Agent 2** (one of 3 parallel agents).";
+
+        assert_eq!(agent_identity(0, 1), single_identity);
+        assert_eq!(agent_identity(1, 3), agent_one_identity);
+        assert_eq!(agent_identity(2, 3), agent_two_identity);
+        assert_eq!(agent_tag(0, 1), "agent");
+        assert_eq!(agent_tag(1, 3), "agent-1");
+        assert_eq!(agent_tag(2, 3), "agent-2");
+
+        let working_dir = Path::new("/workspace/project");
+        let planning = planning_prompt(
+            "Preserve agent label boundaries.",
+            1,
+            3,
+            working_dir,
+            None,
+            None,
+            None,
+            None,
+            None,
+        );
+        let execute = execute_prompt(2, 2, 3);
+
+        assert!(planning.starts_with(agent_one_identity));
+        assert!(planning.contains("planning turn for this agent loop"));
+        assert!(execute.starts_with(agent_two_identity));
+        assert!(execute.contains("executing implementation step 2"));
+        assert!(!planning.contains("agent-1"));
+        assert!(!execute.contains("agent-2"));
+        assert_ne!(agent_identity(1, 3), agent_tag(1, 3));
+        assert_ne!(agent_identity(0, 1), agent_tag(0, 1));
+    }
+
+    #[test]
     fn project_prompts_do_not_claim_to_be_worker_certification() {
         let goal = "Ship the next deterministic runtime slice.";
         let working_dir = Path::new("/workspace/project");
