@@ -125,7 +125,26 @@ Current date: 2026-05-14.
 - Active Priorities item 65 is complete: `recovery_route_lookup_helper_preserves_action_failure_boundaries` now covers direct action lookup, failure-list lookup, `recovery_action_for_failure(...)`, `recovery_action_spec(...)`, representative recovery mappings, and unknown-input `None` behavior for the shared recovery-route helper. The next executable item is item 66, the graph-derived structural evidence refresh and score-rationale review.
 
 - Active Priorities item 66 is complete: graph-derived structural evidence refresh passed after items 64 and 65. `SCORE_REPORT.md` regenerated from `../state/rustc` with unchanged aggregate `G = 7.99 / 10`, Architecture `8.9`, Structure `4.9`, Simplicity `7.1`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.4`; local `ai` row remains 5,610 nodes, 34,384 edges, 2,270 functions, Structure `6.0`, and Simplicity `7.6`. `score.md` remains unchanged because refreshed evidence matched the existing rationale and does not justify project-level numeric score changes. Active Priorities are exhausted; a planning turn must select the next executable non-`root_validate` graph-backed item.
+- Implementation step 4 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 ## Validation Ledger
+
+### 2026-05-14 — step 4 status-only commit hook blocked by pre-existing rustfmt drift
+
+- Scope: staged `status.md` change recording Active Priorities exhaustion after item 66; unrelated Rust formatting drift in `src/api/server.rs` and `src/capability/mod.rs` remains outside this checklist state-recording step.
+- Command/check: `git add status.md && git commit -m "Record exhausted active priorities"`.
+- Result: blocked.
+- Evidence: pre-commit `cargo fmt --check` reported formatting diffs only in `src/api/server.rs` and `src/capability/mod.rs`; `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test planning_contract -- --test-threads=1` passed, and scoped `git diff --check -- status.md` passed before the commit attempt.
+- Next action: Commit the scoped status-only step-4 record without modifying unrelated Rust files; run a planning turn next.
+
+
+### 2026-05-14 — implementation step 4 Active Priorities exhausted after item 66
+
+- Scope: `plan.md`, `status.md`, and `score.md` review.
+- Command/check: `python - <<'PY' ... PY` summary of Active Priorities, current status, score rationale, and working tree state.
+- Result: blocked.
+- Evidence: `plan.md` Active Priorities contains 54 checklist items and all are marked complete through item 66; first unchecked item is `NONE`. `score.md` was reviewed and remains unchanged because no implementation, validation refresh, or score-changing evidence was produced in this step.
+- Next action: Run a planning turn to select the next executable non-`root_validate` graph-backed task.
+
 
 ### 2026-05-14 — item 66 commit hook blocked by pre-existing rustfmt drift outside item scope
 
