@@ -9752,18 +9752,7 @@ pub fn policy_reuse_evidence_external_evaluator_result_smoke_receipt(
     static RECEIPT: std::sync::OnceLock<PolicyReuseEvidenceExternalEvaluatorResultReceipt> =
         std::sync::OnceLock::new();
     RECEIPT
-        .get_or_init(|| {
-            let request = policy_reuse_evidence_batch_run_request_smoke_receipt();
-            let admission = policy_reuse_evidence_batch_evaluation_admission_smoke_receipt();
-            policy_reuse_evidence_external_evaluator_result_from_sources(
-                POLICY_REUSE_EVIDENCE_EXTERNAL_EVALUATOR_RESULT_SMOKE_STEP,
-                &request,
-                &admission,
-                true,
-                false,
-                "none",
-            )
-        })
+        .get_or_init(|| policy_reuse_evidence_external_evaluator_result_smoke_or_regression(false))
         .clone()
 }
 
@@ -9772,20 +9761,41 @@ pub fn policy_reuse_evidence_external_evaluator_result_regression_smoke_receipt(
     static RECEIPT: std::sync::OnceLock<PolicyReuseEvidenceExternalEvaluatorResultReceipt> =
         std::sync::OnceLock::new();
     RECEIPT
-        .get_or_init(|| {
-            let request = policy_reuse_evidence_batch_run_request_regression_smoke_receipt();
-            let admission =
-                policy_reuse_evidence_batch_evaluation_admission_regression_smoke_receipt();
-            policy_reuse_evidence_external_evaluator_result_from_sources(
-                POLICY_REUSE_EVIDENCE_EXTERNAL_EVALUATOR_RESULT_REGRESSION_SMOKE_STEP,
-                &request,
-                &admission,
-                true,
-                false,
-                "external_evaluator_failed",
-            )
-        })
+        .get_or_init(|| policy_reuse_evidence_external_evaluator_result_smoke_or_regression(true))
         .clone()
+}
+
+fn policy_reuse_evidence_external_evaluator_result_smoke_or_regression(
+    regression: bool,
+) -> PolicyReuseEvidenceExternalEvaluatorResultReceipt {
+    let request = if regression {
+        policy_reuse_evidence_batch_run_request_regression_smoke_receipt()
+    } else {
+        policy_reuse_evidence_batch_run_request_smoke_receipt()
+    };
+    let admission = if regression {
+        policy_reuse_evidence_batch_evaluation_admission_regression_smoke_receipt()
+    } else {
+        policy_reuse_evidence_batch_evaluation_admission_smoke_receipt()
+    };
+    let record_type = if regression {
+        POLICY_REUSE_EVIDENCE_EXTERNAL_EVALUATOR_RESULT_REGRESSION_SMOKE_STEP
+    } else {
+        POLICY_REUSE_EVIDENCE_EXTERNAL_EVALUATOR_RESULT_SMOKE_STEP
+    };
+    let evaluator_failure_reason = if regression {
+        "external_evaluator_failed"
+    } else {
+        "none"
+    };
+    policy_reuse_evidence_external_evaluator_result_from_sources(
+        record_type,
+        &request,
+        &admission,
+        true,
+        false,
+        evaluator_failure_reason,
+    )
 }
 
 fn policy_reuse_evidence_external_evaluator_result_from_sources(
@@ -9847,18 +9857,7 @@ pub fn policy_reuse_evidence_learning_candidate_smoke_receipt(
     static RECEIPT: std::sync::OnceLock<PolicyReuseEvidenceLearningCandidateReceipt> =
         std::sync::OnceLock::new();
     RECEIPT
-        .get_or_init(|| {
-            let evaluator = policy_reuse_evidence_external_evaluator_result_smoke_receipt();
-            let request = policy_reuse_evidence_batch_run_request_smoke_receipt();
-            policy_reuse_evidence_learning_candidate_from_sources(
-                POLICY_REUSE_EVIDENCE_LEARNING_CANDIDATE_SMOKE_STEP,
-                &evaluator,
-                &request,
-                false,
-                false,
-                "none",
-            )
-        })
+        .get_or_init(|| policy_reuse_evidence_learning_candidate_smoke_or_regression(false))
         .clone()
 }
 
@@ -9867,20 +9866,41 @@ pub fn policy_reuse_evidence_learning_candidate_regression_smoke_receipt(
     static RECEIPT: std::sync::OnceLock<PolicyReuseEvidenceLearningCandidateReceipt> =
         std::sync::OnceLock::new();
     RECEIPT
-        .get_or_init(|| {
-            let evaluator =
-                policy_reuse_evidence_external_evaluator_result_regression_smoke_receipt();
-            let request = policy_reuse_evidence_batch_run_request_regression_smoke_receipt();
-            policy_reuse_evidence_learning_candidate_from_sources(
-                POLICY_REUSE_EVIDENCE_LEARNING_CANDIDATE_REGRESSION_SMOKE_STEP,
-                &evaluator,
-                &request,
-                false,
-                false,
-                "evaluator_not_passed",
-            )
-        })
+        .get_or_init(|| policy_reuse_evidence_learning_candidate_smoke_or_regression(true))
         .clone()
+}
+
+fn policy_reuse_evidence_learning_candidate_smoke_or_regression(
+    regression: bool,
+) -> PolicyReuseEvidenceLearningCandidateReceipt {
+    let evaluator = if regression {
+        policy_reuse_evidence_external_evaluator_result_regression_smoke_receipt()
+    } else {
+        policy_reuse_evidence_external_evaluator_result_smoke_receipt()
+    };
+    let request = if regression {
+        policy_reuse_evidence_batch_run_request_regression_smoke_receipt()
+    } else {
+        policy_reuse_evidence_batch_run_request_smoke_receipt()
+    };
+    let record_type = if regression {
+        POLICY_REUSE_EVIDENCE_LEARNING_CANDIDATE_REGRESSION_SMOKE_STEP
+    } else {
+        POLICY_REUSE_EVIDENCE_LEARNING_CANDIDATE_SMOKE_STEP
+    };
+    let not_candidate_reason = if regression {
+        "evaluator_not_passed"
+    } else {
+        "none"
+    };
+    policy_reuse_evidence_learning_candidate_from_sources(
+        record_type,
+        &evaluator,
+        &request,
+        false,
+        false,
+        not_candidate_reason,
+    )
 }
 
 fn policy_reuse_evidence_learning_candidate_from_sources(
