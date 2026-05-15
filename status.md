@@ -42,6 +42,8 @@ Current date: 2026-05-15.
 
 ## Current Progress
 
+- Active Priorities item 154 is complete: graph-derived structural evidence refresh passed after items 152 and 153. `scripts/recapture_rustc_graphs.sh --check` reported `graph artifact check: pass` for `../state/rustc`, and score report regeneration from `../state/rustc` reported aggregate `G = 7.94 / 10`, Architecture `8.9`, Structure `4.9`, Simplicity `6.9`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2` across 18 crates. `SCORE_REPORT.md` already matched the regenerated report, so no report diff was produced. `score.md` remains unchanged because this is structural evidence refresh rather than score-history-worthy capability evidence. The next executable item is item 155 in `src/validation_harness.rs`.
+
 - Planning turn on 2026-05-15 inspected the first incomplete Active Priorities item and found item 154 (`SCORE_REPORT.md` graph-derived structural evidence refresh) remains next. After item 154, the next non-`root_validate` graph-backed implementation queue is item 155 in `src/validation_harness.rs`, consolidating `policy_orchestration_capacity_trend_smoke_receipt(...)` and `policy_orchestration_capacity_regression_smoke_receipt(...)` through one private capacity-trend smoke receipt builder while preserving pass/regression semantics; item 156 adds focused capacity-trend smoke boundary coverage; item 157 consolidates complete/incomplete policy reuse cost-catalog smoke receipt builders. Reconnaissance inspected `plan.md`, `status.md`, `score.md`, `SCORE_REPORT.md`, `../state/rustc/auto-refactor/*.graph-editor-plan.json`, the selected `ai` graph-editor plan with Python, and candidate `src/validation_harness.rs` source ranges. `root_validate` remains intentionally non-selected. `score.md` remains unchanged because this planning turn produced no implementation, graph refresh, or score-changing capability evidence.
 
 - Active Priorities item 153 is complete: `src/capability/llm/openai.rs` now includes focused in-module regression coverage in `openai_ndjson_loader_dispatch_preserves_record_boundaries`. The test uses existing in-memory `valid_test_openai_receipt()`, `OpenAiJudgmentProofEvent::finalize_receipt_at_seq(...)`, and encoder helpers; writes deterministic local temp-file NDJSON fixtures with a finalized effect receipt, finalized proof event, blank lines, and an ignored non-OpenAI record; proves checked receipt loading, checked proof-event loading, unchecked receipt loading, missing-file empty-vector behavior, and malformed matching receipt-record rejection. The exact named validation command was blocked by the tool transport filter before shell execution, so the OpenAI module subset was run instead and explicitly executed the named test. Broader `cargo test --all-targets` passed with 351 library tests, 3 `root_validate` binary tests, and all integration/binary/example suites green. Cargo emitted the known non-fatal last-use/cache warning reporting `database or disk is full`. The next executable item is item 154, graph-derived structural evidence refresh. `score.md` remains unchanged because this is focused regression coverage for an existing loader boundary, not a project-level score change.
@@ -407,6 +409,22 @@ Current date: 2026-05-15.
 - Implementation step 4 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 - Implementation step 5 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 ## Validation Ledger
+
+### 2026-05-15 — Active Priorities item 154 graph-derived evidence refresh
+
+- Scope: `SCORE_REPORT.md`, `score.md`, `plan.md`, and `status.md`.
+- Command/check: `bash scripts/recapture_rustc_graphs.sh --check && cargo run --manifest-path ../score/Cargo.toml --quiet -- --artifact-root ../state/rustc --report SCORE_REPORT.md --date "$(date +%Y-%m-%d)"`.
+- Result: passed.
+- Evidence: `graph artifact check: pass root=/workspace/ai_sandbox/canon-mini-agent/prototype/chatgpt-mcp-connector-v2/../state/rustc required=2`; regenerated score report reported `G = 7.94 / 10` across 18 crates with Architecture `8.9`, Structure `4.9`, Simplicity `6.9`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2`; no `SCORE_REPORT.md` diff was produced because the checked-in report already matched regenerated evidence. Cargo emitted the known non-fatal last-use/cache warning reporting `database or disk is full`.
+- Next action: Execute item 155 in `src/validation_harness.rs`.
+
+### 2026-05-15 — Active Priorities item 154 broader validation
+
+- Scope: full Rust workspace after item 154 evidence refresh and planning/status update.
+- Command/check: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
+- Result: passed.
+- Evidence: 351 library tests passed, 3 `root_validate` binary tests passed, and all integration, binary, and example test suites passed with 0 failures. Cargo emitted the known non-fatal last-use/cache warning reporting `database or disk is full`.
+- Next action: Execute item 155 in `src/validation_harness.rs`.
 
 ### 2026-05-15 — planning-contract validation for validation_harness queue
 
