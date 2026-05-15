@@ -1680,6 +1680,90 @@ mod tests {
     }
 
     #[test]
+    fn policy_reuse_receipt_hash_helper_preserves_current_and_trend_boundaries() {
+        let context = context();
+        let policy = promoted_policy();
+        let hit = PolicyJudgmentRecord::from_context_policy(&context, &policy);
+        let miss = PolicyJudgmentRecord::from_context_policy(&context, &PolicyStore::default());
+        let baseline = PolicyReuseReceipt::from_policy_judgments(&[hit.clone(), miss]);
+        let current = PolicyReuseReceipt::from_policy_judgments(&[hit.clone(), hit]);
+        let trend = PolicyReuseTrendReceipt::compare(&baseline, &current);
+
+        assert!(current.is_valid());
+        assert!(current.passed());
+        assert!(trend.is_valid());
+        assert!(trend.passed());
+        assert_ne!(current.receipt_hash, 0);
+        assert_ne!(trend.receipt_hash, 0);
+        assert_ne!(current.receipt_hash, trend.receipt_hash);
+        assert_eq!(current.receipt_hash, policy_reuse_receipt_hash(&current));
+        assert_eq!(trend.receipt_hash, policy_reuse_trend_receipt_hash(&trend));
+
+        let mut current_record_set_tampered = current.clone();
+        current_record_set_tampered.record_set_hash ^= 1;
+        assert_ne!(
+            policy_reuse_receipt_hash(&current_record_set_tampered),
+            current.receipt_hash
+        );
+        assert!(!current_record_set_tampered.is_valid());
+
+        let mut current_hit_rate_tampered = current.clone();
+        current_hit_rate_tampered.hit_rate_bps -= 1;
+        assert_ne!(
+            policy_reuse_receipt_hash(&current_hit_rate_tampered),
+            current.receipt_hash
+        );
+        assert!(!current_hit_rate_tampered.is_valid());
+
+        let mut current_verdict_tampered = current.clone();
+        current_verdict_tampered.verdict = "unsupported";
+        assert_eq!(policy_reuse_receipt_hash(&current_verdict_tampered), 0);
+        assert!(!current_verdict_tampered.is_valid());
+
+        let mut trend_baseline_tampered = trend.clone();
+        trend_baseline_tampered.baseline_receipt_hash ^= 1;
+        assert_ne!(
+            policy_reuse_trend_receipt_hash(&trend_baseline_tampered),
+            trend.receipt_hash
+        );
+        assert!(!trend_baseline_tampered.is_valid());
+
+        let mut trend_current_tampered = trend.clone();
+        trend_current_tampered.current_receipt_hash ^= 1;
+        assert_ne!(
+            policy_reuse_trend_receipt_hash(&trend_current_tampered),
+            trend.receipt_hash
+        );
+        assert!(!trend_current_tampered.is_valid());
+
+        let mut trend_delta_tampered = trend.clone();
+        trend_delta_tampered.hit_rate_delta_bps -= 1;
+        assert_ne!(
+            policy_reuse_trend_receipt_hash(&trend_delta_tampered),
+            trend.receipt_hash
+        );
+        assert!(!trend_delta_tampered.is_valid());
+
+        let mut trend_avoided_call_tampered = trend.clone();
+        trend_avoided_call_tampered.avoided_llm_call_delta -= 1;
+        assert_ne!(
+            policy_reuse_trend_receipt_hash(&trend_avoided_call_tampered),
+            trend.receipt_hash
+        );
+        assert!(!trend_avoided_call_tampered.is_valid());
+
+        let mut trend_status_tampered = trend.clone();
+        trend_status_tampered.trend_status = "unsupported";
+        assert_eq!(policy_reuse_trend_receipt_hash(&trend_status_tampered), 0);
+        assert!(!trend_status_tampered.is_valid());
+
+        let mut trend_verdict_tampered = trend.clone();
+        trend_verdict_tampered.verdict = "unsupported";
+        assert_eq!(policy_reuse_trend_receipt_hash(&trend_verdict_tampered), 0);
+        assert!(!trend_verdict_tampered.is_valid());
+    }
+
+    #[test]
     fn policy_reuse_ledger_summary_accepts_empty_zero_baseline() {
         let summary = PolicyReuseLedgerSummaryReceipt::empty();
 
