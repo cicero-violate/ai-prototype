@@ -2122,4 +2122,158 @@ mod tests {
         receipt.actual_llm_calls = receipt.baseline_llm_calls;
         assert!(!receipt.is_valid());
     }
+
+    #[test]
+    fn policy_reuse_content_hash_helpers_preserve_catalog_and_savings_boundaries() {
+        let context = context();
+        let policy = promoted_policy();
+        let hit = PolicyJudgmentRecord::from_context_policy(&context, &policy);
+        let miss = PolicyJudgmentRecord::from_context_policy(&context, &PolicyStore::default());
+        let reuse = PolicyReuseReceipt::from_policy_judgments(&[hit.clone(), hit, miss]);
+        let scale = PolicyReuseScaleTraceReceipt::from_reuse_validation_counts(&reuse, 3, 3, 0);
+        let performance = PolicyReusePerformanceCostTrendReceipt::from_scale_and_cost_sources(
+            &scale, 148, 19, "pass", "pass", 0x707, 0x808,
+        );
+        let catalog = PolicyReuseCostCatalogReceipt::from_source_hashes(
+            6,
+            4,
+            4,
+            6,
+            true,
+            true,
+            "none",
+            reuse.receipt_hash,
+            scale.receipt_hash,
+            performance.receipt_hash,
+            0x909,
+            0xa0a,
+            0xb0b,
+        );
+        let savings = PolicyReuseEvaluatorSavingsReceipt::from_sources(
+            &catalog,
+            &performance,
+            &reuse,
+            100,
+            "none",
+        );
+
+        let catalog_hash = policy_reuse_cost_catalog_content_hash(&catalog);
+        let savings_hash = policy_reuse_evaluator_savings_content_hash(&savings);
+
+        assert!(catalog.is_valid());
+        assert!(savings.is_valid());
+        assert_ne!(catalog_hash, 0);
+        assert_ne!(savings_hash, 0);
+        assert_ne!(catalog_hash, savings_hash);
+        assert_eq!(catalog.catalog_hash, catalog_hash);
+        assert_eq!(
+            catalog.receipt_hash,
+            policy_reuse_cost_catalog_receipt_hash(&catalog)
+        );
+        assert_eq!(savings.savings_hash, savings_hash);
+        assert_eq!(
+            savings.receipt_hash,
+            policy_reuse_evaluator_savings_receipt_hash(&savings)
+        );
+
+        let mut catalog_source_tampered = catalog.clone();
+        catalog_source_tampered.source_runtime_performance_hash ^= 1;
+        assert_ne!(
+            catalog_hash,
+            policy_reuse_cost_catalog_content_hash(&catalog_source_tampered)
+        );
+        assert_eq!(
+            policy_reuse_cost_catalog_receipt_hash(&catalog_source_tampered),
+            0
+        );
+        assert!(!catalog_source_tampered.is_valid());
+
+        let mut catalog_modes_tampered = catalog.clone();
+        catalog_modes_tampered.missing_required_modes = "unsupported";
+        assert_eq!(
+            policy_reuse_cost_catalog_content_hash(&catalog_modes_tampered),
+            0
+        );
+        assert!(!catalog_modes_tampered.is_valid());
+
+        let mut catalog_completion_tampered = catalog.clone();
+        catalog_completion_tampered.summary_complete = false;
+        assert_ne!(
+            catalog_hash,
+            policy_reuse_cost_catalog_content_hash(&catalog_completion_tampered)
+        );
+        assert_eq!(
+            policy_reuse_cost_catalog_receipt_hash(&catalog_completion_tampered),
+            0
+        );
+        assert!(!catalog_completion_tampered.is_valid());
+
+        let mut catalog_embedded_hash_tampered = catalog.clone();
+        catalog_embedded_hash_tampered.catalog_hash ^= 1;
+        assert_eq!(
+            policy_reuse_cost_catalog_content_hash(&catalog_embedded_hash_tampered),
+            catalog_hash
+        );
+        assert_eq!(
+            policy_reuse_cost_catalog_receipt_hash(&catalog_embedded_hash_tampered),
+            0
+        );
+        assert!(!catalog_embedded_hash_tampered.is_valid());
+
+        let mut savings_source_tampered = savings.clone();
+        savings_source_tampered.source_catalog_hash ^= 1;
+        assert_ne!(
+            savings_hash,
+            policy_reuse_evaluator_savings_content_hash(&savings_source_tampered)
+        );
+        assert_eq!(
+            policy_reuse_evaluator_savings_receipt_hash(&savings_source_tampered),
+            0
+        );
+        assert!(!savings_source_tampered.is_valid());
+
+        let mut savings_reason_tampered = savings.clone();
+        savings_reason_tampered.regression_reason = "unsupported";
+        assert_eq!(
+            policy_reuse_evaluator_savings_content_hash(&savings_reason_tampered),
+            0
+        );
+        assert!(!savings_reason_tampered.is_valid());
+
+        let mut savings_validation_tampered = savings.clone();
+        savings_validation_tampered.validation_passed = false;
+        assert_ne!(
+            savings_hash,
+            policy_reuse_evaluator_savings_content_hash(&savings_validation_tampered)
+        );
+        assert_eq!(
+            policy_reuse_evaluator_savings_receipt_hash(&savings_validation_tampered),
+            0
+        );
+        assert!(!savings_validation_tampered.is_valid());
+
+        let mut savings_metric_tampered = savings.clone();
+        savings_metric_tampered.estimated_reasoning_cost_units_avoided += 1;
+        assert_ne!(
+            savings_hash,
+            policy_reuse_evaluator_savings_content_hash(&savings_metric_tampered)
+        );
+        assert_eq!(
+            policy_reuse_evaluator_savings_receipt_hash(&savings_metric_tampered),
+            0
+        );
+        assert!(!savings_metric_tampered.is_valid());
+
+        let mut savings_embedded_hash_tampered = savings.clone();
+        savings_embedded_hash_tampered.savings_hash ^= 1;
+        assert_eq!(
+            policy_reuse_evaluator_savings_content_hash(&savings_embedded_hash_tampered),
+            savings_hash
+        );
+        assert_eq!(
+            policy_reuse_evaluator_savings_receipt_hash(&savings_embedded_hash_tampered),
+            0
+        );
+        assert!(!savings_embedded_hash_tampered.is_valid());
+    }
 }
