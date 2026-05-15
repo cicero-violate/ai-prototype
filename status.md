@@ -42,6 +42,8 @@ Current date: 2026-05-15.
 
 ## Current Progress
 
+- Active Priorities item 94 is complete: graph-derived structural evidence refresh passed after items 92 and 93. `SCORE_REPORT.md` reports `G = 7.93 / 10`, Architecture `8.9`, Structure `4.9`, Simplicity `6.9`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2`; the `ai` crate row is Nodes `5631`, Edges `35766`, Fns `2287`, Architecture `9.4`, Structure `6.1`, Simplicity `7.1`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2`. `score.md` rationale was updated to name item 94 and the refreshed `ai` row counts; project-level numeric scores remain unchanged because this is evidence refresh, not a capability score change. Active Priorities are exhausted.
+
 - Active Priorities item 93 is complete: `agent_label_helpers_preserve_identity_and_tag_boundaries` now covers single-agent and multi-agent prompt identity strings, single-agent and multi-agent log tags, planning-prompt identity inclusion, execution-prompt identity inclusion, and separation between prompt identity strings and log tag strings. Targeted and broader Rust validation passed. Cargo emitted non-fatal last-use cache warnings reporting `database or disk is full`, but compilation and tests completed successfully. The next executable item is item 94, the graph-derived evidence refresh and score-rationale review.
 
 - Active Priorities item 92 is complete: `src/agent/loop_driver.rs` now routes `agent_identity(...)` and `agent_tag(...)` through shared private `agent_label(...)` while preserving the single-agent prompt identity string, multi-agent prompt identity string, single-agent log tag, and multi-agent log tag. Targeted `cargo check --lib` and broader `cargo test --all-targets` passed. Cargo emitted non-fatal last-use cache warnings reporting `database or disk is full`, but compilation and tests completed successfully. The next executable item is item 93, the focused loop-driver agent-label regression test.
@@ -177,6 +179,13 @@ Current date: 2026-05-15.
 - Implementation step 4 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 - Implementation step 5 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 ## Validation Ledger
+
+### 2026-05-15 — item 94 graph-derived score refresh after loop-driver label work
+
+- Scope: `SCORE_REPORT.md`, `score.md`, `plan.md`, and `status.md`, Active Priorities item 94.
+- Command/check: `bash scripts/recapture_rustc_graphs.sh --check && cargo run --manifest-path ../score/Cargo.toml --quiet -- --artifact-root ../state/rustc --report SCORE_REPORT.md --date "$(date +%Y-%m-%d)"`.
+- Evidence: graph artifact check passed for root `/workspace/ai_sandbox/canon-mini-agent/prototype/state/rustc` with required count 2. Refreshed `SCORE_REPORT.md` reports 18 crates, 0 skipped, aggregate `G = 7.93 / 10`, Architecture `8.9`, Structure `4.9`, Simplicity `6.9`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2`. The `ai` crate row is Nodes `5631`, Edges `35766`, Fns `2287`, Architecture `9.4`, Structure `6.1`, Simplicity `7.1`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2`. `score.md` rationale was updated to reference item 94 and the refreshed `ai` row counts, but project-level numeric scores remain unchanged because this item produced graph evidence refresh rather than score-history-worthy capability evidence. The scorer emitted a non-fatal last-use cache warning reporting `database or disk is full`; graph check and report generation passed.
+- Next action: Active Priorities are exhausted; a planning turn must select the next ordered non-`root_validate` graph-backed task before further implementation.
 
 ### 2026-05-15 — item 93 loop-driver agent label regression test
 
