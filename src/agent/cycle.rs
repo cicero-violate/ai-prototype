@@ -826,7 +826,7 @@ fn compute_evidence_contract_hash(
     effect_u64: u64,
     payload_hash: u64,
 ) -> u64 {
-    compute_domain_contract_hash(
+    compute_hash_domain_vector(
         HashDomain::EvidenceContract,
         &[
             gate_u64,
@@ -839,14 +839,18 @@ fn compute_evidence_contract_hash(
 }
 
 fn compute_submit_evidence_command_hash(sub_contract_hash: u64) -> u64 {
-    compute_domain_contract_hash(HashDomain::SubmitEvidenceCommand, &[sub_contract_hash])
+    compute_hash_domain_vector(HashDomain::SubmitEvidenceCommand, &[sub_contract_hash])
 }
 
 fn compute_envelope_hash(command_id: u64, cmd_contract_hash: u64) -> u64 {
-    compute_domain_contract_hash(
+    compute_hash_domain_vector(
         HashDomain::CommandEnvelope,
         &[command_id, cmd_contract_hash],
     )
+}
+
+fn compute_hash_domain_vector(domain: HashDomain, fields: &[u64]) -> u64 {
+    compute_domain_contract_hash(domain, fields)
 }
 
 #[derive(Clone, Copy)]
