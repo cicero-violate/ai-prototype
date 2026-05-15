@@ -1,3 +1,27 @@
+Implementation step 2 evidence on 2026-05-15 for Active Priorities item 171:
+
+- Selected first unchecked Active Priorities item 171: `SCORE_REPORT.md` graph-derived structural evidence refresh after items 169 and 170.
+- Read `plan.md`, `status.md`, and `score.md` before running validation; also inspected current `SCORE_REPORT.md` and the working tree.
+- Targeted validation passed: `bash scripts/recapture_rustc_graphs.sh --check && cargo run --manifest-path ../score/Cargo.toml --quiet -- --artifact-root ../state/rustc --report SCORE_REPORT.md --date "$(date +%Y-%m-%d)"`.
+- Graph artifact check passed for configured `../state/rustc`, the scorer processed 18 crates with 0 skipped, and regenerated evidence reports `G = 7.94 / 10`.
+- Refreshed aggregate axes are Architecture `8.9`, Structure `5.0`, Simplicity `6.9`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2`.
+- Affected rows after items 169 and 170: local `ai` library crate row is 5,668 nodes, 35,027 edges, 2,313 functions, Architecture `9.3`, Structure `6.1`, Simplicity `7.2`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2`; the secondary `ai` row remains 1 node, 18 edges, 1 function, Architecture `5.0`, Structure `4.5`, Simplicity `4.5`, Maintainability `10.0`, Determinism `10.0`, and Coherency `7.0`; `root_validate` remains 163 nodes, 1,990 edges, 161 functions, Architecture `3.3`, Structure `1.5`, Simplicity `6.1`, Maintainability `10.0`, Determinism `10.0`, and Coherency `7.3`.
+- Required broader validation passed: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets` passed with 358 library tests, 3 `root_validate` binary tests, and all integration/example test targets passing.
+- Cargo emitted recurring non-blocking global-cache warnings, `database or disk is full`, during validation; no Rust validation failure occurred.
+- Updated `score.md` rationale only to replace stale local `ai` and `root_validate` graph-derived row values and to include item 171 as refreshed graph evidence. Project-level numeric scores and score history remain unchanged because this was evidence refresh, not a score-history-worthy capability change.
+- Marked item 171 complete in `plan.md`.
+
+Implementation blocker on 2026-05-15 for Active Priorities item 171:
+
+- Selected first unchecked Active Priorities item 171: `SCORE_REPORT.md` graph-derived structural evidence refresh after items 169 and 170.
+- Read `plan.md`, `status.md`, `score.md`, and current `SCORE_REPORT.md` before attempting the refresh.
+- Confirmed the working tree was clean before validation.
+- Attempted targeted validation/refresh command: `bash scripts/recapture_rustc_graphs.sh --check && cargo run --manifest-path ../score/Cargo.toml --quiet -- --artifact-root ../state/rustc --report SCORE_REPORT.md --date "$(date +%Y-%m-%d)"`.
+- First attempt failed before project command output with connector error `mcp_network_error: Connection failed` against `https://cheese-server.duckdns.org/mcp`.
+- Retried the same required command; one retry was blocked by the tool safety layer before execution, and another retry again failed before project command output with connector error `mcp_network_error: Connection failed`.
+- No source files were edited. `SCORE_REPORT.md` was not refreshed, `score.md` was reviewed and left unchanged, and item 171 remains unchecked because the required validation evidence could not be produced.
+- Blocker classification: infrastructure/tooling connectivity failure, not a Rust validation failure.
+
 # Status File Instructions
 
 Use this file as the evidence ledger for project progress, validation results, blockers, and durable evidence.
