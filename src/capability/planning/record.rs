@@ -408,6 +408,66 @@ mod tests {
     }
 
     #[test]
+    fn planning_hash_fold_helper_preserves_objective_lineage_and_payload_boundaries() {
+        let record = PlanRecord::from_packet(packet(4, 1));
+        let receipt = PlanReceipt::from_record(&record);
+        let objective_hash = objective_hash(packet(4, 1));
+        let lineage_hash_value = record.lineage_hash;
+        let payload_hash = plan_payload_hash(&record);
+        let receipt_hash = receipt.expected_receipt_hash();
+
+        assert_eq!(record.objective_hash, objective_hash);
+        assert_eq!(record.submission().payload_hash, payload_hash);
+        assert_eq!(receipt.payload_hash, payload_hash);
+        assert_eq!(receipt.receipt_hash, receipt_hash);
+
+        assert_ne!(objective_hash, 0);
+        assert_ne!(lineage_hash_value, 0);
+        assert_ne!(payload_hash, 0);
+        assert_ne!(receipt_hash, 0);
+        assert_ne!(objective_hash, lineage_hash_value);
+        assert_ne!(objective_hash, payload_hash);
+        assert_ne!(objective_hash, receipt_hash);
+        assert_ne!(lineage_hash_value, payload_hash);
+        assert_ne!(lineage_hash_value, receipt_hash);
+        assert_ne!(payload_hash, receipt_hash);
+
+        let required_changed = PlanRecord::from_packet(packet(5, 1));
+        assert_ne!(objective_hash, required_changed.objective_hash);
+        assert_ne!(payload_hash, plan_payload_hash(&required_changed));
+
+        let mut revision_packet = packet(4, 1);
+        revision_packet.revision += 1;
+        let revision_changed = PlanRecord::from_packet(revision_packet);
+        assert_ne!(objective_hash, revision_changed.objective_hash);
+        assert_ne!(payload_hash, plan_payload_hash(&revision_changed));
+
+        let completed_changed = PlanRecord::from_packet(packet(4, 2));
+        assert_eq!(objective_hash, completed_changed.objective_hash);
+        assert_ne!(lineage_hash_value, completed_changed.lineage_hash);
+        assert_ne!(payload_hash, plan_payload_hash(&completed_changed));
+
+        let mut ready_task_id_changed = record.clone();
+        ready_task_id_changed.task_id = record.tasks[2].task_id;
+        assert_eq!(objective_hash, ready_task_id_changed.objective_hash);
+        assert_ne!(payload_hash, plan_payload_hash(&ready_task_id_changed));
+
+        let mut readiness_changed = record.clone();
+        readiness_changed.tasks[0].ready = true;
+        readiness_changed.ready_tasks = 2;
+        readiness_changed.ready_set_hash = ready_set_hash(&readiness_changed.tasks);
+        readiness_changed.lineage_hash = lineage_hash(
+            readiness_changed.objective_hash,
+            readiness_changed.dependency_hash,
+            readiness_changed.ready_set_hash,
+            readiness_changed.plan_revision,
+            readiness_changed.completed_tasks,
+        );
+        assert_eq!(objective_hash, readiness_changed.objective_hash);
+        assert_ne!(payload_hash, plan_payload_hash(&readiness_changed));
+    }
+
+    #[test]
     fn plan_receipt_rejects_tampered_lineage() {
         let record = PlanRecord::from_packet(packet(3, 0));
         let mut receipt = record.receipt();
