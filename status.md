@@ -42,6 +42,8 @@ Current date: 2026-05-15.
 
 ## Current Progress
 
+- Active Priorities item 95 is complete: `src/capability/llm/openai.rs` now routes `encode_openai_llm_effect_receipt_ndjson(...)` and `encode_openai_judgment_proof_event_ndjson(...)` through shared private `encode_openai_u64_fields_ndjson(...)` while preserving the distinct receipt and proof-event field arrays, schema-version fields, record-type fields, field order, numeric casts, and bracketed comma-separated output. Targeted `cargo check --lib` and broader `cargo test --all-targets` passed. Cargo emitted non-fatal last-use cache warnings reporting `database or disk is full`, but compilation and tests completed successfully. The next executable item is item 96, the focused OpenAI NDJSON encoder-layout regression test. `score.md` remains unchanged because this is a narrow structure refactor with validation evidence, not a project-level score change.
+
 - Planning turn on 2026-05-15 completed Python-assisted reconnaissance after Active Priorities item 94. Active Priorities items 95 through 97 are now planned for `src/capability/llm/openai.rs` OpenAI NDJSON encoder helper extraction, focused encoder-layout regression coverage, and graph-derived evidence refresh. The first executable item is item 95. `root_validate` remains intentionally non-selectable per user direction.
 
 - Implementation step 5 found no unchecked Active Priorities item after item 94; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
@@ -185,6 +187,14 @@ Current date: 2026-05-15.
 - Implementation step 4 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 - Implementation step 5 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 ## Validation Ledger
+
+### 2026-05-15 — Active Priorities item 95 OpenAI NDJSON encoder helper extraction
+
+- Scope: `src/capability/llm/openai.rs`, `plan.md`, `status.md`, and `score.md` review.
+- Command/check: `cargo fmt --check && TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo check --lib`; `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
+- Result: passed.
+- Evidence: `encode_openai_llm_effect_receipt_ndjson(...)` and `encode_openai_judgment_proof_event_ndjson(...)` now delegate their shared numeric array formatting to private `encode_openai_u64_fields_ndjson(...)`; the receipt encoder keeps its 25-field array and the proof-event encoder keeps its 23-field array. Targeted validation completed successfully. Broader all-target validation passed with 331 library tests, 3 `root_validate` binary tests, and all integration/example test targets passing. Cargo emitted non-fatal last-use cache warnings reporting `database or disk is full`, but compilation and tests completed successfully. `score.md` was reviewed and left unchanged.
+- Next action: Execute Active Priorities item 96, `openai_ndjson_encoders_preserve_record_layouts`.
 
 ### 2026-05-15 — planning reconnaissance for non-root OpenAI NDJSON encoder work
 

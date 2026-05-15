@@ -1715,14 +1715,7 @@ pub fn encode_openai_llm_effect_receipt_ndjson(receipt: OpenAiLlmEffectReceipt) 
         receipt.proof_hash,
         receipt.receipt_hash,
     ];
-    format!(
-        "[{}]",
-        fields
-            .iter()
-            .map(u64::to_string)
-            .collect::<Vec<_>>()
-            .join(",")
-    )
+    encode_openai_u64_fields_ndjson(&fields)
 }
 
 pub fn encode_openai_judgment_proof_event_ndjson(event: OpenAiJudgmentProofEvent) -> String {
@@ -1751,6 +1744,10 @@ pub fn encode_openai_judgment_proof_event_ndjson(event: OpenAiJudgmentProofEvent
         event.phase_plan as u64,
         event.proof_hash,
     ];
+    encode_openai_u64_fields_ndjson(&fields)
+}
+
+fn encode_openai_u64_fields_ndjson(fields: &[u64]) -> String {
     format!(
         "[{}]",
         fields
