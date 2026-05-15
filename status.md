@@ -66,6 +66,8 @@ Current date: 2026-05-15.
 
 ## Current Progress
 
+- Active Priorities item 172 is complete: `src/validation_harness.rs` now routes `policy_reuse_evidence_bundle_hash(...)`, `policy_reuse_evidence_compact_validation_hash(...)`, `policy_reuse_evidence_external_evaluator_result_hash(...)`, `policy_reuse_evidence_learning_admission_hash(...)`, `policy_reuse_evidence_learning_candidate_hash(...)`, and `policy_reuse_evidence_learning_data_admission_hash(...)` through private helper `policy_reuse_ordered_evidence_receipt_hash(...)`. The refactor preserves each selected receipt hash seed, zero-guard/status/reason validation, schema then record-type folding order, numeric field order, `nonzero_receipt_hash(...)` behavior, receipt-hash wrappers, smoke/regression constructors, public APIs, and `root_validate` boundaries. Targeted `cargo check --lib` passed after `cargo fmt`; broader `cargo test --all-targets` passed with 359 library tests, 3 `root_validate` binary tests, 13 API server contract tests, 23 API transport contract tests, and all other integration, binary, and example targets green. Cargo emitted the known non-fatal global-cache warnings reporting `database or disk is full`. `score.md` remains unchanged because this is a narrow structure refactor with validation evidence, not a project-level score change. The next executable item is item 173, focused regression coverage for the evidence-bundle hash helper boundary.
+
 - Planning turn on 2026-05-15 selected the next executable non-`root_validate` graph-backed work after confirming the Active Priorities queue had no unchecked item. The new queue is items 172 through 174: first refactor `src/validation_harness.rs` selected evidence-bundle/learning hash functions behind one private ordered receipt-field helper, then add focused regression coverage for the helper boundary, then refresh graph-derived structural evidence. Reconnaissance inspected `plan.md`, `status.md`, `score.md`, `SCORE_REPORT.md`, the current `ai` graph-editor plan, selected `src/validation_harness.rs` hash functions, existing validation-harness tests, and the working tree. `score.md` remains unchanged because this planning turn produced no implementation, graph refresh, or score-changing capability evidence.
 
 
@@ -501,6 +503,14 @@ Current date: 2026-05-15.
 - Implementation step 4 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 - Implementation step 5 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 ## Validation Ledger
+
+### 2026-05-15 — Active Priorities item 172 validation-harness evidence receipt hash helper
+
+- Scope: `src/validation_harness.rs`, `plan.md`, and `status.md`.
+- Command/check: `cargo fmt && TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo check --lib`; `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
+- Result: passed.
+- Evidence: targeted `cargo check --lib` passed; broader `cargo test --all-targets` passed with 359 library tests, 3 `root_validate` binary tests, 13 API server contract tests, 23 API transport contract tests, 10 graph mutation CLI contract tests, 9 MCP receipt contract tests, 5 score contract tests, 2 supervisor binary contract tests, 2 worker binary contract tests, and all example targets green. Cargo emitted recurring non-fatal global-cache warnings: `database or disk is full`.
+- Next action: implement Active Priorities item 173 focused regression coverage in `src/validation_harness.rs`.
 
 ### 2026-05-15 — planning selected validation-harness evidence-bundle hash helper work
 

@@ -14078,21 +14078,24 @@ fn policy_reuse_evidence_learning_admission_hash(
     if summary_status_code == 0 || admission_status_code == 0 || not_admissible_reason_code == 0 {
         return 0;
     }
-    let mut h = 0x504f_4c52_4c41_4448u64;
-    h = mix_receipt_str_hash(h, receipt.schema);
-    h = mix_receipt_str_hash(h, receipt.record_type);
-    h = mix_receipt_hash(h, receipt.admission_version);
-    h = mix_receipt_hash(h, receipt.source_rollout_readiness_hash);
-    h = mix_receipt_hash(h, receipt.source_validation_budget_hash);
-    h = mix_receipt_hash(h, receipt.source_summary_hash);
-    h = mix_receipt_hash(h, u64::from(receipt.rollout_ready));
-    h = mix_receipt_hash(h, u64::from(receipt.validation_budget_passed));
-    h = mix_receipt_hash(h, summary_status_code);
-    h = mix_receipt_hash(h, u64::from(receipt.external_evidence_required));
-    h = mix_receipt_hash(h, u64::from(receipt.learning_data_admissible));
-    h = mix_receipt_hash(h, admission_status_code);
-    h = mix_receipt_hash(h, not_admissible_reason_code);
-    nonzero_receipt_hash(h)
+    policy_reuse_ordered_evidence_receipt_hash(
+        0x504f_4c52_4c41_4448u64,
+        receipt.schema,
+        receipt.record_type,
+        &[
+            receipt.admission_version,
+            receipt.source_rollout_readiness_hash,
+            receipt.source_validation_budget_hash,
+            receipt.source_summary_hash,
+            u64::from(receipt.rollout_ready),
+            u64::from(receipt.validation_budget_passed),
+            summary_status_code,
+            u64::from(receipt.external_evidence_required),
+            u64::from(receipt.learning_data_admissible),
+            admission_status_code,
+            not_admissible_reason_code,
+        ],
+    )
 }
 
 fn policy_reuse_evidence_learning_admission_receipt_hash(
@@ -14189,25 +14192,28 @@ fn policy_reuse_evidence_compact_validation_hash(
     if compact_status_code == 0 || failure_reason_code == 0 {
         return 0;
     }
-    let mut h = 0x504f_4c52_4356_4448u64;
-    h = mix_receipt_str_hash(h, receipt.schema);
-    h = mix_receipt_str_hash(h, receipt.record_type);
-    h = mix_receipt_hash(h, receipt.compact_validation_version);
-    h = mix_receipt_hash(h, receipt.source_retrieval_readiness_hash);
-    h = mix_receipt_hash(h, receipt.source_learning_admission_hash);
-    h = mix_receipt_hash(h, receipt.source_validation_budget_hash);
-    h = mix_receipt_hash(h, u64::from(receipt.retrieval_ready));
-    h = mix_receipt_hash(h, u64::from(receipt.learning_data_admissible));
-    h = mix_receipt_hash(h, u64::from(receipt.validation_budget_passed));
-    h = mix_receipt_hash(h, receipt.targeted_command_count as u64);
-    h = mix_receipt_hash(h, receipt.targeted_test_count as u64);
-    h = mix_receipt_hash(h, receipt.max_targeted_test_count as u64);
-    h = mix_receipt_hash(h, receipt.full_harness_test_count as u64);
-    h = mix_receipt_hash(h, receipt.avoided_full_harness_tests as u64);
-    h = mix_receipt_hash(h, u64::from(receipt.compact_validation_passed));
-    h = mix_receipt_hash(h, compact_status_code);
-    h = mix_receipt_hash(h, failure_reason_code);
-    nonzero_receipt_hash(h)
+    policy_reuse_ordered_evidence_receipt_hash(
+        0x504f_4c52_4356_4448u64,
+        receipt.schema,
+        receipt.record_type,
+        &[
+            receipt.compact_validation_version,
+            receipt.source_retrieval_readiness_hash,
+            receipt.source_learning_admission_hash,
+            receipt.source_validation_budget_hash,
+            u64::from(receipt.retrieval_ready),
+            u64::from(receipt.learning_data_admissible),
+            u64::from(receipt.validation_budget_passed),
+            receipt.targeted_command_count as u64,
+            receipt.targeted_test_count as u64,
+            receipt.max_targeted_test_count as u64,
+            receipt.full_harness_test_count as u64,
+            receipt.avoided_full_harness_tests as u64,
+            u64::from(receipt.compact_validation_passed),
+            compact_status_code,
+            failure_reason_code,
+        ],
+    )
 }
 
 fn policy_reuse_evidence_compact_validation_receipt_hash(
@@ -14489,23 +14495,26 @@ fn policy_reuse_evidence_external_evaluator_result_hash(
     if evaluator_status_code == 0 || evaluator_failure_reason_code == 0 {
         return 0;
     }
-    let mut h = 0x504f_4c52_4552_4848u64;
-    h = mix_receipt_str_hash(h, receipt.schema);
-    h = mix_receipt_str_hash(h, receipt.record_type);
-    h = mix_receipt_hash(h, receipt.evaluator_result_version);
-    h = mix_receipt_hash(h, receipt.source_batch_run_request_hash);
-    h = mix_receipt_hash(h, receipt.source_batch_evaluation_admission_hash);
-    h = mix_receipt_hash(h, u64::from(receipt.batch_request_ready));
-    h = mix_receipt_hash(h, u64::from(receipt.batch_evaluation_admitted));
-    h = mix_receipt_hash(h, u64::from(receipt.external_evaluator_independent));
-    h = mix_receipt_hash(h, u64::from(receipt.llm_self_approved));
-    h = mix_receipt_hash(h, receipt.evaluated_batch_capacity as u64);
-    h = mix_receipt_hash(h, receipt.evaluated_policy_reuse_cases as u64);
-    h = mix_receipt_hash(h, receipt.evaluated_llm_fallback_cases as u64);
-    h = mix_receipt_hash(h, u64::from(receipt.evaluator_result_passed));
-    h = mix_receipt_hash(h, evaluator_status_code);
-    h = mix_receipt_hash(h, evaluator_failure_reason_code);
-    nonzero_receipt_hash(h)
+    policy_reuse_ordered_evidence_receipt_hash(
+        0x504f_4c52_4552_4848u64,
+        receipt.schema,
+        receipt.record_type,
+        &[
+            receipt.evaluator_result_version,
+            receipt.source_batch_run_request_hash,
+            receipt.source_batch_evaluation_admission_hash,
+            u64::from(receipt.batch_request_ready),
+            u64::from(receipt.batch_evaluation_admitted),
+            u64::from(receipt.external_evaluator_independent),
+            u64::from(receipt.llm_self_approved),
+            receipt.evaluated_batch_capacity as u64,
+            receipt.evaluated_policy_reuse_cases as u64,
+            receipt.evaluated_llm_fallback_cases as u64,
+            u64::from(receipt.evaluator_result_passed),
+            evaluator_status_code,
+            evaluator_failure_reason_code,
+        ],
+    )
 }
 
 fn policy_reuse_evidence_external_evaluator_result_receipt_hash(
@@ -14544,23 +14553,26 @@ fn policy_reuse_evidence_learning_candidate_hash(
     if candidate_status_code == 0 || not_candidate_reason_code == 0 {
         return 0;
     }
-    let mut h = 0x504f_4c52_4c43_4848u64;
-    h = mix_receipt_str_hash(h, receipt.schema);
-    h = mix_receipt_str_hash(h, receipt.record_type);
-    h = mix_receipt_hash(h, receipt.learning_candidate_version);
-    h = mix_receipt_hash(h, receipt.source_external_evaluator_result_hash);
-    h = mix_receipt_hash(h, receipt.source_batch_run_request_hash);
-    h = mix_receipt_hash(h, u64::from(receipt.evaluator_result_passed));
-    h = mix_receipt_hash(h, u64::from(receipt.batch_request_ready));
-    h = mix_receipt_hash(h, u64::from(receipt.policy_promotion_performed));
-    h = mix_receipt_hash(h, u64::from(receipt.retrieval_write_performed));
-    h = mix_receipt_hash(h, receipt.candidate_batch_capacity as u64);
-    h = mix_receipt_hash(h, receipt.candidate_policy_reuse_cases as u64);
-    h = mix_receipt_hash(h, receipt.candidate_llm_fallback_cases as u64);
-    h = mix_receipt_hash(h, u64::from(receipt.learning_candidate_ready));
-    h = mix_receipt_hash(h, candidate_status_code);
-    h = mix_receipt_hash(h, not_candidate_reason_code);
-    nonzero_receipt_hash(h)
+    policy_reuse_ordered_evidence_receipt_hash(
+        0x504f_4c52_4c43_4848u64,
+        receipt.schema,
+        receipt.record_type,
+        &[
+            receipt.learning_candidate_version,
+            receipt.source_external_evaluator_result_hash,
+            receipt.source_batch_run_request_hash,
+            u64::from(receipt.evaluator_result_passed),
+            u64::from(receipt.batch_request_ready),
+            u64::from(receipt.policy_promotion_performed),
+            u64::from(receipt.retrieval_write_performed),
+            receipt.candidate_batch_capacity as u64,
+            receipt.candidate_policy_reuse_cases as u64,
+            receipt.candidate_llm_fallback_cases as u64,
+            u64::from(receipt.learning_candidate_ready),
+            candidate_status_code,
+            not_candidate_reason_code,
+        ],
+    )
 }
 
 fn policy_reuse_evidence_learning_candidate_receipt_hash(
@@ -14600,24 +14612,27 @@ fn policy_reuse_evidence_learning_data_admission_hash(
     if admission_status_code == 0 || not_admitted_reason_code == 0 {
         return 0;
     }
-    let mut h = 0x504f_4c52_4c44_4148u64;
-    h = mix_receipt_str_hash(h, receipt.schema);
-    h = mix_receipt_str_hash(h, receipt.record_type);
-    h = mix_receipt_hash(h, receipt.data_admission_version);
-    h = mix_receipt_hash(h, receipt.source_learning_candidate_hash);
-    h = mix_receipt_hash(h, receipt.source_external_evaluator_result_hash);
-    h = mix_receipt_hash(h, u64::from(receipt.learning_candidate_ready));
-    h = mix_receipt_hash(h, u64::from(receipt.evaluator_result_passed));
-    h = mix_receipt_hash(h, u64::from(receipt.policy_promotion_performed));
-    h = mix_receipt_hash(h, u64::from(receipt.retrieval_write_performed));
-    h = mix_receipt_hash(h, u64::from(receipt.student_training_performed));
-    h = mix_receipt_hash(h, receipt.admitted_batch_capacity as u64);
-    h = mix_receipt_hash(h, receipt.admitted_policy_reuse_cases as u64);
-    h = mix_receipt_hash(h, receipt.admitted_llm_fallback_cases as u64);
-    h = mix_receipt_hash(h, u64::from(receipt.learning_data_admitted));
-    h = mix_receipt_hash(h, admission_status_code);
-    h = mix_receipt_hash(h, not_admitted_reason_code);
-    nonzero_receipt_hash(h)
+    policy_reuse_ordered_evidence_receipt_hash(
+        0x504f_4c52_4c44_4148u64,
+        receipt.schema,
+        receipt.record_type,
+        &[
+            receipt.data_admission_version,
+            receipt.source_learning_candidate_hash,
+            receipt.source_external_evaluator_result_hash,
+            u64::from(receipt.learning_candidate_ready),
+            u64::from(receipt.evaluator_result_passed),
+            u64::from(receipt.policy_promotion_performed),
+            u64::from(receipt.retrieval_write_performed),
+            u64::from(receipt.student_training_performed),
+            receipt.admitted_batch_capacity as u64,
+            receipt.admitted_policy_reuse_cases as u64,
+            receipt.admitted_llm_fallback_cases as u64,
+            u64::from(receipt.learning_data_admitted),
+            admission_status_code,
+            not_admitted_reason_code,
+        ],
+    )
 }
 
 fn policy_reuse_evidence_learning_data_admission_receipt_hash(
@@ -17293,24 +17308,27 @@ fn policy_reuse_evidence_bundle_hash(receipt: &PolicyReuseEvidenceBundleReceipt)
     if regression_reason_code == 0 {
         return 0;
     }
-    let mut h = 0x504f_4c52_4542_5548u64;
-    h = mix_receipt_str_hash(h, receipt.schema);
-    h = mix_receipt_str_hash(h, receipt.record_type);
-    h = mix_receipt_hash(h, receipt.bundle_version);
-    h = mix_receipt_hash(h, receipt.source_surface_index_hash);
-    h = mix_receipt_hash(h, receipt.source_policy_reuse_hash);
-    h = mix_receipt_hash(h, receipt.source_cost_catalog_hash);
-    h = mix_receipt_hash(h, receipt.source_evaluator_savings_hash);
-    h = mix_receipt_hash(h, receipt.source_scaling_projection_hash);
-    h = mix_receipt_hash(h, receipt.source_distillation_readiness_hash);
-    h = mix_receipt_hash(h, receipt.bundled_evidence_family_count as u64);
-    h = mix_receipt_hash(h, receipt.bundled_root_mode_count as u64);
-    h = mix_receipt_hash(h, receipt.bundled_dependency_group_count as u64);
-    h = mix_receipt_hash(h, u64::from(receipt.surface_index_complete));
-    h = mix_receipt_hash(h, u64::from(receipt.source_hashes_complete));
-    h = mix_receipt_hash(h, u64::from(receipt.bundle_complete));
-    h = mix_receipt_hash(h, regression_reason_code);
-    nonzero_receipt_hash(h)
+    policy_reuse_ordered_evidence_receipt_hash(
+        0x504f_4c52_4542_5548u64,
+        receipt.schema,
+        receipt.record_type,
+        &[
+            receipt.bundle_version,
+            receipt.source_surface_index_hash,
+            receipt.source_policy_reuse_hash,
+            receipt.source_cost_catalog_hash,
+            receipt.source_evaluator_savings_hash,
+            receipt.source_scaling_projection_hash,
+            receipt.source_distillation_readiness_hash,
+            receipt.bundled_evidence_family_count as u64,
+            receipt.bundled_root_mode_count as u64,
+            receipt.bundled_dependency_group_count as u64,
+            u64::from(receipt.surface_index_complete),
+            u64::from(receipt.source_hashes_complete),
+            u64::from(receipt.bundle_complete),
+            regression_reason_code,
+        ],
+    )
 }
 
 fn policy_reuse_evidence_bundle_receipt_hash(receipt: &PolicyReuseEvidenceBundleReceipt) -> u64 {
@@ -17484,6 +17502,15 @@ fn policy_reuse_ordered_receipt_field_hash(
         h = mix_receipt_hash(h, *field);
     }
     nonzero_receipt_hash(h)
+}
+
+fn policy_reuse_ordered_evidence_receipt_hash(
+    seed: u64,
+    schema: &str,
+    record_type: &str,
+    numeric_fields: &[u64],
+) -> u64 {
+    policy_reuse_ordered_receipt_field_hash(seed, &[schema, record_type], numeric_fields)
 }
 
 fn policy_reuse_distillation_readiness_receipt_hash(
