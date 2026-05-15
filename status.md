@@ -96,7 +96,17 @@ Current date: 2026-05-14.
 
 - Active Priorities item 53 is complete: `canonical_effect_named_constructors_preserve_kind_and_validation_boundaries` now proves `CanonicalEffect::{artifact, process, semantic_verification, policy, observation}` preserve exact `CanonicalEffectKind`, digest, metadata, non-zero contract hash, expected `ProofSubjectKind` mapping, and zero digest/metadata rejection. The next executable item is item 54, the graph-derived evidence refresh and score-rationale review.
 
+- Active Priorities item 54 is complete: graph-derived structural evidence refresh passed after the `CanonicalEffect` named-kind helper and regression-test work. `SCORE_REPORT.md` still reports `G = 7.99 / 10`, Architecture `8.9`, Structure `4.9`, Simplicity `7.1`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.4`; the `ai` crate row remains `Nodes = 5610`, `Edges = 34384`, `Fns = 2270`, Structure `6.0`, and Simplicity `7.6`. `score.md` remains unchanged because refreshed graph-derived evidence matched the existing rationale and does not justify project-level score changes. Active Priorities are exhausted; a planning turn must select the next executable non-`root_validate` graph-backed item.
+
 ## Validation Ledger
+
+### 2026-05-14 — Active Priorities item 54 graph-derived evidence refresh after CanonicalEffect constructor work
+
+- Scope: `SCORE_REPORT.md`, `score.md`, `plan.md`, and `status.md`.
+- Command/check: targeted `bash scripts/recapture_rustc_graphs.sh --check && cargo run --manifest-path ../score/Cargo.toml --quiet -- --artifact-root ../state/rustc --report SCORE_REPORT.md --date "$(date +%Y-%m-%d)"`; broader `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
+- Result: passed.
+- Evidence: graph artifact check passed for configured root `/workspace/ai_sandbox/canon-mini-agent/prototype/state/rustc` with required artifacts. Score regeneration processed 18 crates with 0 skipped and reported unchanged aggregate `G = 7.99 / 10`, Architecture `8.9`, Structure `4.9`, Simplicity `7.1`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.4`. The `ai` crate row remains `Nodes = 5610`, `Edges = 34384`, `Fns = 2270`, Architecture `9.2`, Structure `6.0`, Simplicity `7.6`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.6`; `root_validate` remains non-selectable by user direction despite Structure `1.5`. Broader all-target validation passed with 320 library/bin tests, 3 `root_validate` binary tests, 13 API server contract tests, 23 API transport contract tests, 3 canonical TLog contract tests, 4 domain contract tests, 10 graph mutation CLI contract tests, 9 MCP receipt contract tests, 2 planning contract tests, 5 score contract tests, 2 supervisor binary contract tests, 2 worker binary contract tests, and all example test targets green. `score.md` was reviewed and left unchanged because refreshed graph-derived evidence matched the existing score rationale and does not justify changing project-level numeric scores.
+- Next action: run a planning turn to select the next executable non-`root_validate` graph-backed item.
 
 ### 2026-05-14 — Active Priorities item 53 CanonicalEffect named constructor regression test
 
