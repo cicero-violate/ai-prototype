@@ -90,7 +90,25 @@ Current date: 2026-05-14.
 - Implementation step 4 found no unchecked Active Priorities item after item 48; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task.
 - Implementation step 5 found no unchecked Active Priorities item after item 48; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task.
 
+- Active Priorities items 52 through 54 are now planned for `src/capability/verification/proof.rs`, `src/lib.rs`, and graph-derived evidence refresh. The first executable item is item 52, which must route `CanonicalEffect::{artifact, process, semantic_verification, policy, observation}` through one private named-kind constructor helper while preserving distinct `CanonicalEffectKind` values, zero-value rejection through the existing validation path, `CanonicalEffect::llm(...)`, receipt/proof behavior, tooling/LLM/policy call sites, and all runtime side-effect boundaries. `root_validate` remains explicitly non-selectable.
+
 ## Validation Ledger
+
+### 2026-05-14 — planning-contract validation for CanonicalEffect planning update
+
+- Scope: `plan.md` and `status.md` planning-only changes for Active Priorities items 52 through 54.
+- Command/check: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test planning_contract -- --test-threads=1`.
+- Result: passed.
+- Evidence: 2 planning-contract tests passed with 0 failures: `planning_record_blocks_when_all_tasks_complete` and `planning_record_decomposes_objective_with_lineage`.
+- Next action: execute Active Priorities item 52 in `src/capability/verification/proof.rs`.
+
+### 2026-05-14 — planning update for CanonicalEffect wrapper constructor consolidation
+
+- Scope: `plan.md`, `status.md`, selected graph plan `../state/rustc/auto-refactor/workspace__ai_sandbox__canon-mini-agent__prototype__state__rustc__ai__graph.graph-editor-plan.json`, `src/capability/verification/proof.rs`, and `src/lib.rs`.
+- Command/check: manual reconnaissance by reading `plan.md`, `status.md`, `score.md`, `SCORE_REPORT.md`, current `../state/rustc/auto-refactor/*.graph-editor-plan.json`, selected graph operations for `capability::verification::proof::CanonicalEffect::{artifact, process, semantic_verification, policy, observation}`, existing source wrappers in `src/capability/verification/proof.rs`, existing `CanonicalEffect` call sites, and `git status --short`.
+- Result: informational.
+- Evidence: Active Priorities items 13 through 51 were already complete; `SCORE_REPORT.md` remained `G = 7.99 / 10` with Structure `4.9`; selected `ai` graph plan remained schema version 1 / graph schema version 16 with 1,582 operations; `root_validate` remained intentionally non-selectable by user direction; item 52 is now the first unchecked executable task.
+- Next action: execute Active Priorities item 52 in `src/capability/verification/proof.rs` and validate with `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo check --lib`.
 
 ### 2026-05-14 — implementation step 5 Active Priorities exhausted after item 48
 
