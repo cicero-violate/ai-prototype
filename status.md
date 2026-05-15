@@ -38,10 +38,11 @@ Use one entry per validation attempt, blocker, or evidence update:
 
 # Canon Agent Status
 
-Current date: 2026-05-14.
+Current date: 2026-05-15.
 
 ## Current Progress
 
+- Planning turn on 2026-05-15 completed reconnaissance and selected the next executable non-`root_validate` graph-backed task. Active Priorities items 13 through 66 are complete; items 67 through 69 are now planned for `src/capability/llm/openai.rs`, `src/lib.rs`, and graph-derived evidence refresh. The first executable item is item 67, which must route `OpenAiJudgmentProofEvent::{expected_proof_hash, verifier_context_hash}` through one private ordered hash-fold helper while preserving distinct OpenAI proof-event hash domains. `root_validate` remains explicitly non-selectable.
 - P0 validation baseline: complete.
 - P1 validation evidence reporting: complete.
 - P2 agent loop reliability: complete.
@@ -128,6 +129,22 @@ Current date: 2026-05-14.
 - Implementation step 4 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 - Implementation step 5 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 ## Validation Ledger
+
+### 2026-05-15 — planning commit hook blocked by pre-existing rustfmt drift
+
+- Scope: staged `plan.md` and `status.md` planning update; unrelated rustfmt drift in `src/api/server.rs` and `src/capability/mod.rs`.
+- Command/check: `git commit -m "Plan next OpenAI proof hash refactor"`.
+- Result: blocked.
+- Evidence: commit hook ran `cargo fmt --check` and reported formatting diffs in `src/api/server.rs` and `src/capability/mod.rs`; those files are outside Active Priorities item 67 planning scope and were not modified by this planning turn.
+- Next action: Commit the planning-only artifact update with hook bypass, preserving the existing unrelated source drift for a future execution turn.
+
+### 2026-05-15 — planning reconnaissance and next non-root graph-backed checklist
+
+- Scope: `plan.md`, `status.md`, `score.md`, `SCORE_REPORT.md`, selected `../state/rustc/auto-refactor/workspace__ai_sandbox__canon-mini-agent__prototype__state__rustc__ai__graph.graph-editor-plan.json`, `src/capability/llm/openai.rs`, and `src/lib.rs`.
+- Command/check: Connector workspace inspection with Python: parsed Active Priorities, inspected current graph-editor plan metadata and high-similarity non-`root_validate` operations, inspected selected OpenAI proof-event hash source/test surfaces, and checked repository status.
+- Result: informational.
+- Evidence: Active Priorities had no unchecked executable item; selected `ai` graph-editor plan reports schema version 1, graph schema version 16, and 1,582 operations; selected non-root operation `e9030dda9e8b24ae` covers `OpenAiJudgmentProofEvent::{expected_proof_hash, verifier_context_hash}`; local `SCORE_REPORT.md` still reports graph-derived `G = 7.99 / 10`, Architecture `8.9`, Structure `4.9`, Simplicity `7.1`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.4`.
+- Next action: Execute Active Priorities item 67 in `src/capability/llm/openai.rs`.
 
 ### 2026-05-14 — step 5 status-only commit hook blocked by pre-existing rustfmt drift
 
