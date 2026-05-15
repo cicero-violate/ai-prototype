@@ -42,6 +42,8 @@ Current date: 2026-05-15.
 
 ## Current Progress
 
+- Implementation step 2 found no unchecked Active Priorities item after item 106; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
+
 - Active Priorities item 106 is complete: graph-derived structural evidence refresh passed after items 104 and 105. `SCORE_REPORT.md` reports unchanged aggregate `G = 7.93 / 10`, Structure `4.9`, Simplicity `6.9`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2`, with Architecture now reported as `9.0`; the refreshed `ai` crate row is Nodes `5635`, Edges `35757`, Fns `2291`, Architecture `9.4`, Structure `6.1`, Simplicity `7.1`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2`. The `ai` row differs from the item-103 evidence by `+1` node, `+0` edges, and `+1` function after the API transport ledger lookup helper and regression coverage. The `root_validate` row remains intentionally non-selected and reports Architecture `3.2`, Structure `1.5`, Simplicity `6.1`, Maintainability `10.0`, Determinism `10.0`, and Coherency `7.3`. `score.md` rationale was refreshed for item 106 evidence, but project-level numeric scores remain unchanged because this is structural evidence refresh rather than score-history-worthy capability evidence. Active Priorities are exhausted.
 
 - Active Priorities item 105 is complete: `src/api/transport.rs` now has focused in-module regression coverage in `api_transport_ledger_lookup_helper_preserves_frame_and_request_boundaries`, proving `receipt_for(frame)` requires request id, payload hash, command id, and command hash through `ApiTransportFrame::matches_receipt(...)`; proving `receipt_for_request_id(...)` and `contains_request_id(...)` remain request-id-only; and proving `has_conflicting_request(...)` is true for same request id with different payload hash and false for different request id. Targeted named-test validation passed. Broader `cargo test --all-targets` passed with 335 library tests plus integration/binary/example suites green, including `tests/api_transport_contract.rs` with 23 tests. Cargo emitted the known non-fatal last-use cache warning reporting `database or disk is full`. The next executable item is item 106, graph-derived structural evidence refresh and score-rationale review. `score.md` remains unchanged because this is focused regression coverage for an existing helper boundary, not a project-level score change.
@@ -227,6 +229,14 @@ Current date: 2026-05-15.
 - Implementation step 4 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 - Implementation step 5 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 ## Validation Ledger
+
+### 2026-05-15 — implementation step 2 no unchecked Active Priorities item
+
+- Scope: `plan.md`, `status.md`, and `score.md` review.
+- Command/check: exact `## Active Priorities` checklist scan after reading `plan.md`, `status.md`, and `score.md`; `git status --short`.
+- Result: blocked.
+- Evidence: Active Priorities items 104, 105, and 106 are all marked complete; no `[ ]` item remains under the exact project `## Active Priorities` section; working tree was clean before this status-only blocker entry. No item-specific validation command exists to run because no executable checklist item is currently selectable.
+- Next action: planning turn should select the next non-`root_validate` graph-backed task.
 
 ### 2026-05-15 — Active Priorities item 106 graph-derived structural evidence refresh
 
