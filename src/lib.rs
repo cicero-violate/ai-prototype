@@ -1100,6 +1100,53 @@ mod tests {
     }
 
     #[test]
+    fn llm_record_hash_fold_helper_preserves_hash_domains() {
+        let packet = Packet::empty();
+        let mut memory = MemoryIndex::default();
+        assert!(memory.insert(MemoryFact::new(packet.objective_id, 0xfeed, 7, 1)));
+        let lookup = memory.lookup(packet.objective_id, 8);
+        let context = ContextRecord::from_packet_memory(packet, 0xabc, &lookup);
+        let policy = PolicyStore::default();
+
+        let first = LlmStructuredAdapter::record_from_external_response(
+            &context,
+            &policy,
+            11,
+            0x1111_2222_3333_4444,
+            17,
+        );
+        let second = LlmStructuredAdapter::record_from_external_response(
+            &context,
+            &policy,
+            11,
+            0x5555_6666_7777_8888,
+            17,
+        );
+
+        let first_prompt = first.prompt.prompt_hash;
+        let first_response = first.response.response_hash;
+        let first_rationale = first.judgment.rationale_hash;
+        let first_payload = first.submission().payload_hash;
+
+        assert_ne!(first_prompt, 0);
+        assert_ne!(first_response, 0);
+        assert_ne!(first_rationale, 0);
+        assert_ne!(first_payload, 0);
+        assert_ne!(first_prompt, first_response);
+        assert_ne!(first_prompt, first_rationale);
+        assert_ne!(first_prompt, first_payload);
+        assert_ne!(first_response, first_rationale);
+        assert_ne!(first_response, first_payload);
+        assert_ne!(first_rationale, first_payload);
+
+        assert_eq!(first_prompt, second.prompt.prompt_hash);
+        assert_ne!(first_response, second.response.response_hash);
+        assert_ne!(first_rationale, second.judgment.rationale_hash);
+        assert_ne!(first_payload, second.submission().payload_hash);
+        assert_eq!(first_payload, first.submission().payload_hash);
+    }
+
+    #[test]
     fn ollama_config_rejects_non_local_base_url() {
         let cfg = OllamaConfig {
             base_url: "http://192.168.1.2:11434/v1".to_string(),
