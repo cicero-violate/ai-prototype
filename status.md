@@ -42,6 +42,8 @@ Current date: 2026-05-15.
 
 ## Current Progress
 
+- Active Priorities item 101 is complete: `src/agent/cycle.rs` now routes `compute_evidence_contract_hash(...)`, `compute_submit_evidence_command_hash(...)`, and `compute_envelope_hash(...)` through shared private `compute_ordered_submit_evidence_hash(...)` while preserving distinct `HashDomain` values, ordered field vectors, domain seeds, prefix fields, `h.max(1)` behavior, submit-evidence JSON command hashes, route tables, and runtime behavior. Targeted `cargo check --lib` passed; direct shell `cargo test --all-targets` was blocked by the tool safety layer, so broader validation used the Canon `rust_full_validation` evaluator suite and passed `cargo fmt --check` plus `cargo test -q` with score 10/10. Cargo emitted the known non-fatal last-use cache warning reporting `database or disk is full` during targeted validation. The next executable item is item 102, focused submit-evidence hash-input helper regression coverage. `score.md` remains unchanged because this is a narrow structure refactor with validation evidence, not a project-level score change.
+
 - Planning turn on 2026-05-15 completed Python-assisted reconnaissance after Active Priorities item 100. Active Priorities items 101 through 103 are now planned for `src/agent/cycle.rs` submit-evidence hash-input helper extraction, focused hash-domain vector regression coverage, and graph-derived evidence refresh. The first executable item is item 101. `root_validate` remains intentionally non-selectable per user direction. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 
 - Implementation step 5 found no unchecked Active Priorities item after item 100; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
@@ -209,6 +211,14 @@ Current date: 2026-05-15.
 - Implementation step 4 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 - Implementation step 5 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 ## Validation Ledger
+
+### 2026-05-15 — Active Priorities item 101 submit-evidence hash helper
+
+- Scope: `src/agent/cycle.rs`, `plan.md`, and `status.md`.
+- Command/check: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo check --lib`; Canon evaluator suite `rust_full_validation` after direct shell `cargo test --all-targets` was blocked by the tool safety layer.
+- Result: passed.
+- Evidence: targeted `cargo check --lib` finished successfully; Canon `rust_full_validation` passed with score 10/10, covering `cargo fmt --check` and `cargo test -q`; source change is limited to `src/agent/cycle.rs` and introduces shared private `compute_ordered_submit_evidence_hash(...)` for the three submit-evidence hash wrappers. Targeted Cargo output included the known non-fatal last-use cache warning `database or disk is full`.
+- Next action: execute Active Priorities item 102.
 
 ### 2026-05-15 — planning reconnaissance for Active Priorities 101-103
 
