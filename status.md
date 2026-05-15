@@ -42,6 +42,7 @@ Current date: 2026-05-15.
 
 ## Current Progress
 
+- Active Priorities item 75 is complete: `cdp_get_helpers_preserve_http_request_and_response_parsing` now directly covers the CDP request builder, extracted `cdp_get_request_transport_response(...)` boundary, raw response shape, `parse_cdp_get_response(...)`, observed loopback request bytes, status/body extraction, and server-thread completion. Targeted loopback validation and broader all-target Rust validation passed. The next executable item is item 76, the graph-derived structural evidence refresh.
 - Active Priorities item 74 is complete: `src/agent/router.rs::cdp_get(...)` now delegates socket/request/response collection through private `cdp_get_request_transport_response(...)` while preserving the original signature, address resolution, timeout configuration, request bytes, response read behavior, final `parse_cdp_get_response(...)` delegation, and `OpenAiError` mapping. Targeted loopback validation and broader all-target Rust validation passed. The next executable item is item 75, the focused router regression-test extension.
 - Planning turn on 2026-05-15 completed reconnaissance after Active Priorities item 72 and selected the next executable non-`root_validate` graph-backed task. Active Priorities item 73 cleared the commit-hook rustfmt blocker in `src/api/server.rs` and `src/capability/mod.rs`; items 74 through 76 are now planned for `src/agent/router.rs` and graph-derived evidence refresh. The first incomplete executable item is item 74, which must split `cdp_get(...)` into private request/transport and response-parse phase helpers while preserving local loopback behavior. `root_validate` remains explicitly non-selectable.
 - Active Priorities item 72 is complete: graph-derived structural evidence refresh passed after items 70 and 71, `SCORE_REPORT.md` was regenerated for 2026-05-15, and scores remained unchanged at `G = 7.99 / 10`, Architecture `8.9`, Structure `4.9`, Simplicity `7.1`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.4`. The `ai` crate row remains Nodes `5610`, Edges `34384`, Fns `2270`, Architecture `9.2`, Structure `6.0`, Simplicity `7.6`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.6`. `score.md` remains unchanged because refreshed evidence matches the existing rationale.
@@ -138,6 +139,14 @@ Current date: 2026-05-15.
 - Implementation step 4 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 - Implementation step 5 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 ## Validation Ledger
+
+### 2026-05-15 — item 75 router cdp_get helper boundary regression
+
+- Scope: `src/agent/router.rs`; Active Priorities item 75.
+- Command/check: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test cdp_get_helpers_preserve_http_request_and_response_parsing -- --test-threads=1`; `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
+- Result: passed.
+- Evidence: targeted command passed the named loopback test with `1` passed and `0` failed; broader `cargo test --all-targets` passed with `325` library tests, `3` root-validate binary tests, `13` API server contract tests, `23` API transport contract tests, `3` canonical TLog contract tests, `4` domain contract tests, `10` graph mutation CLI contract tests, `9` MCP receipt contract tests, `2` planning contract tests, `5` score contract tests, `2` supervisor binary contract tests, `2` worker binary contract tests, and no failures across remaining zero-test targets. The test now directly asserts `build_cdp_get_request(...)`, the extracted transport helper, raw HTTP response shape, `parse_cdp_get_response(...)`, exact observed request bytes, parsed status/body, and server-thread completion.
+- Next action: Execute Active Priorities item 76, the graph-derived structural evidence refresh.
 
 ### 2026-05-15 — item 74 router cdp_get phase split
 

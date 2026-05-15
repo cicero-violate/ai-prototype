@@ -773,6 +773,14 @@ mod tests {
             .expect("loopback listener exposes local address")
             .port();
         let (tx, rx) = mpsc::channel();
+        let expected_request = build_cdp_get_request("127.0.0.1", port, "/json/list");
+
+        assert_eq!(
+            expected_request,
+            format!(
+                "GET /json/list HTTP/1.1\r\nHost: 127.0.0.1:{port}\r\nAccept: application/json\r\nConnection: close\r\n\r\n"
+            )
+        );
 
         let server = thread::spawn(move || {
             let (mut stream, _) = listener
@@ -805,18 +813,23 @@ mod tests {
                 .expect("loopback server writes cdp get response");
         });
 
-        let (status, body) = cdp_get("127.0.0.1", port, "/json/list", 1_000)
-            .expect("cdp_get reads deterministic loopback response");
+        let raw_response =
+            cdp_get_request_transport_response("127.0.0.1", port, "/json/list", 1_000)
+                .expect("cdp_get transport helper reads deterministic loopback response");
+        let (status, body) = parse_cdp_get_response(&raw_response)
+            .expect("cdp_get response parser reads deterministic loopback response");
 
         let observed = rx
             .recv_timeout(Duration::from_secs(2))
             .expect("loopback server reports observed cdp get request");
+        assert_eq!(observed, expected_request);
         let mut lines = observed.lines();
         assert_eq!(lines.next(), Some("GET /json/list HTTP/1.1"));
         let headers: Vec<&str> = lines.collect();
         assert!(headers.contains(&format!("Host: 127.0.0.1:{port}").as_str()));
         assert!(headers.contains(&"Accept: application/json"));
         assert!(headers.contains(&"Connection: close"));
+        assert!(raw_response.starts_with("HTTP/1.1 201 Created\r\n"));
         assert_eq!(status, 201);
         assert_eq!(body, "{\"targets\":[]}");
         server
