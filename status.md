@@ -5230,3 +5230,15 @@ Implementation step 1 evidence on 2026-05-14 for Active Priorities item 49:
 - Targeted validation passed: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo check --lib` completed successfully.
 - Broader validation passed: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets` passed with 318 library tests, 3 `root_validate` binary tests, and all integration/example test targets passing.
 - Marked item 49 complete in `plan.md`. `score.md` was reviewed and left unchanged because this is a narrow structure refactor with validation evidence, not a score-history-worthy project-level capability change.
+
+
+Implementation step 2 evidence on 2026-05-14 for Active Priorities item 50:
+
+- Selected first unchecked Active Priorities item 50: `src/capability/llm/ollama.rs` test `ollama_ndjson_encoders_preserve_record_layouts`.
+- Read `plan.md`, `status.md`, and `score.md` before editing.
+- Changed only the item-scoped test module in `src/capability/llm/ollama.rs` plus planning/status evidence files.
+- Added helper `valid_test_receipt()` to construct a deterministic valid `OllamaLlmEffectReceipt` without network I/O, filesystem I/O, environment mutation, or process spawning.
+- Added `ollama_ndjson_encoders_preserve_record_layouts`, covering the receipt encoder 25-field layout and proof-event encoder 23-field layout, including schema versions, record types, selected sentinel field positions, boolean casts, and decoder round trips back to the original records.
+- Targeted validation passed: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test ollama_ndjson_encoders_preserve_record_layouts -- --test-threads=1` ran the named test successfully.
+- Broader validation passed: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets` passed with 319 library tests, 3 `root_validate` binary tests, and all integration/example test targets passing.
+- Marked item 50 complete in `plan.md`. `score.md` was reviewed and left unchanged because this is focused regression coverage for an existing NDJSON encoder boundary, not a score-history-worthy project-level capability change.

@@ -1954,7 +1954,93 @@ fn retry_budget_binding_is_valid(
 
 #[cfg(test)]
 mod tests {
-    use super::{OllamaConfig, OllamaMessage};
+    use super::*;
+
+    fn valid_test_receipt() -> OllamaLlmEffectReceipt {
+        let policy = OllamaRetryBudgetPolicy::new(120_000, 2, 3).unwrap();
+        let provider_hash = ollama_provider_hash();
+        let base_url_hash = hash_text("http://127.0.0.1:11434/v1");
+        let model_id = hash_text("qwen2.5-coder:7b");
+        let request_hash = hash_text("item-50-ollama-ndjson-request");
+        let request_identity_hash =
+            policy.request_identity_hash(provider_hash, base_url_hash, model_id, request_hash);
+        let mut receipt = OllamaLlmEffectReceipt {
+            provider_hash,
+            base_url_hash,
+            model_id,
+            request_hash,
+            timeout_ms: policy.timeout_ms,
+            retry_count: 0,
+            max_retries: policy.max_retries,
+            attempt_budget: policy.attempt_budget,
+            request_identity_hash,
+            retry_budget_hash: policy.policy_hash(),
+            budget_exhausted: false,
+            duplicate_request: false,
+            response_hash: hash_text("item-50-response"),
+            raw_response_hash: hash_text("item-50-raw-response"),
+            prompt_hash: hash_text("item-50-prompt"),
+            token_count: 17,
+            payload_hash: hash_text("item-50-payload"),
+            command_hash: hash_text("item-50-command"),
+            event_seq: 41,
+            event_hash: hash_text("item-50-event"),
+            proof_event_seq: 0,
+            proof_hash: 0,
+            receipt_hash: 0,
+        };
+        receipt.receipt_hash = receipt.expected_receipt_hash();
+        assert!(receipt.is_valid());
+        receipt
+    }
+
+    #[test]
+    fn ollama_ndjson_encoders_preserve_record_layouts() {
+        let base_receipt = valid_test_receipt();
+        let (receipt, proof_event) =
+            OllamaJudgmentProofEvent::finalize_receipt(base_receipt, true, true, true, true)
+                .unwrap();
+
+        let receipt_line = encode_ollama_llm_effect_receipt_ndjson(receipt);
+        let receipt_fields = parse_u64_fields(&receipt_line).unwrap();
+        assert_eq!(receipt_fields.len(), 25);
+        assert_eq!(receipt_fields[0], OLLAMA_LLM_EFFECT_RECEIPT_SCHEMA_VERSION);
+        assert_eq!(receipt_fields[1], OLLAMA_LLM_EFFECT_RECEIPT_RECORD);
+        assert_eq!(receipt_fields[2], receipt.provider_hash);
+        assert_eq!(receipt_fields[6], receipt.timeout_ms);
+        assert_eq!(receipt_fields[7], receipt.retry_count as u64);
+        assert_eq!(receipt_fields[12], receipt.budget_exhausted as u64);
+        assert_eq!(receipt_fields[13], receipt.duplicate_request as u64);
+        assert_eq!(receipt_fields[20], receipt.event_seq);
+        assert_eq!(receipt_fields[22], receipt.proof_event_seq);
+        assert_eq!(receipt_fields[23], receipt.proof_hash);
+        assert_eq!(receipt_fields[24], receipt.receipt_hash);
+        assert_eq!(
+            decode_ollama_llm_effect_receipt_ndjson(&receipt_line).unwrap(),
+            receipt
+        );
+
+        let proof_line = encode_ollama_judgment_proof_event_ndjson(proof_event);
+        let proof_fields = parse_u64_fields(&proof_line).unwrap();
+        assert_eq!(proof_fields.len(), 23);
+        assert_eq!(proof_fields[0], OLLAMA_JUDGMENT_PROOF_SCHEMA_VERSION);
+        assert_eq!(proof_fields[1], OLLAMA_JUDGMENT_PROOF_RECORD);
+        assert_eq!(proof_fields[2], proof_event.proof_line_hash);
+        assert_eq!(proof_fields[4], proof_event.receipt_hash);
+        assert_eq!(proof_fields[5], proof_event.receipt_event_seq);
+        assert_eq!(proof_fields[6], proof_event.proof_event_seq);
+        assert_eq!(proof_fields[16], proof_event.budget_exhausted as u64);
+        assert_eq!(proof_fields[17], proof_event.duplicate_request as u64);
+        assert_eq!(proof_fields[18], proof_event.receipt_verified as u64);
+        assert_eq!(proof_fields[19], proof_event.tamper_rejected as u64);
+        assert_eq!(proof_fields[20], proof_event.endpoint_verified as u64);
+        assert_eq!(proof_fields[21], proof_event.phase_plan as u64);
+        assert_eq!(proof_fields[22], proof_event.proof_hash);
+        assert_eq!(
+            decode_ollama_judgment_proof_event_ndjson(&proof_line).unwrap(),
+            proof_event
+        );
+    }
 
     #[test]
     fn ollama_message_constructors_preserve_role_and_content_boundaries() {
