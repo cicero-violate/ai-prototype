@@ -9963,16 +9963,9 @@ pub fn policy_reuse_evidence_learning_data_admission_smoke_receipt(
         std::sync::OnceLock::new();
     RECEIPT
         .get_or_init(|| {
-            let candidate = policy_reuse_evidence_learning_candidate_smoke_receipt();
-            let evaluator = policy_reuse_evidence_external_evaluator_result_smoke_receipt();
-            policy_reuse_evidence_learning_data_admission_from_sources(
+            policy_reuse_evidence_learning_data_admission_smoke_or_regression(
                 POLICY_REUSE_EVIDENCE_LEARNING_DATA_ADMISSION_SMOKE_STEP,
-                &candidate,
-                &evaluator,
                 false,
-                false,
-                false,
-                "none",
             )
         })
         .clone()
@@ -9984,20 +9977,41 @@ pub fn policy_reuse_evidence_learning_data_admission_regression_smoke_receipt(
         std::sync::OnceLock::new();
     RECEIPT
         .get_or_init(|| {
-            let candidate = policy_reuse_evidence_learning_candidate_regression_smoke_receipt();
-            let evaluator =
-                policy_reuse_evidence_external_evaluator_result_regression_smoke_receipt();
-            policy_reuse_evidence_learning_data_admission_from_sources(
+            policy_reuse_evidence_learning_data_admission_smoke_or_regression(
                 POLICY_REUSE_EVIDENCE_LEARNING_DATA_ADMISSION_REGRESSION_SMOKE_STEP,
-                &candidate,
-                &evaluator,
-                false,
-                false,
-                false,
-                "candidate_not_ready",
+                true,
             )
         })
         .clone()
+}
+
+fn policy_reuse_evidence_learning_data_admission_smoke_or_regression(
+    record_type: &'static str,
+    regression: bool,
+) -> PolicyReuseEvidenceLearningDataAdmissionReceipt {
+    let (candidate, evaluator, not_admitted_reason) = if regression {
+        (
+            policy_reuse_evidence_learning_candidate_regression_smoke_receipt(),
+            policy_reuse_evidence_external_evaluator_result_regression_smoke_receipt(),
+            "candidate_not_ready",
+        )
+    } else {
+        (
+            policy_reuse_evidence_learning_candidate_smoke_receipt(),
+            policy_reuse_evidence_external_evaluator_result_smoke_receipt(),
+            "none",
+        )
+    };
+
+    policy_reuse_evidence_learning_data_admission_from_sources(
+        record_type,
+        &candidate,
+        &evaluator,
+        false,
+        false,
+        false,
+        not_admitted_reason,
+    )
 }
 
 fn policy_reuse_evidence_learning_data_admission_from_sources(

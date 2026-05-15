@@ -42,6 +42,8 @@ Current date: 2026-05-15.
 
 ## Current Progress
 
+- Active Priorities item 169 is complete: `src/validation_harness.rs` now routes `policy_reuse_evidence_learning_data_admission_smoke_receipt(...)` and `policy_reuse_evidence_learning_data_admission_regression_smoke_receipt(...)` through private `policy_reuse_evidence_learning_data_admission_smoke_or_regression(...)`. The change preserves public constructor names and signatures, `OnceLock` caching, cloned return behavior, smoke versus regression source receipt selection, side-effect flags, not-admitted reasons, `policy_reuse_evidence_learning_data_admission_from_sources(...)`, finalization, hash functions, receipt structs, root-validate mode functions, public APIs, and `root_validate` boundaries. Targeted `cargo check --lib` passed. Broader `cargo test --all-targets` passed with 357 library tests, 3 `root_validate` binary tests, and all integration, binary, and example suites green. Cargo emitted the known non-fatal cache warning reporting `database or disk is full`. `score.md` remains unchanged because this is a narrow structural refactor, not a project-level score change. The next executable item is item 170, focused regression coverage for the new helper boundary.
+
 - Planning turn on 2026-05-15 selected the next executable non-`root_validate` graph-backed work after confirming Active Priorities items 166 through 168 are complete and the prior queue was exhausted. The new queue is items 169 through 171: first refactor `src/validation_harness.rs` learning-data admission smoke/regression constructors behind a private source-selector helper, then add focused regression coverage for the smoke/regression boundary, then refresh graph-derived structural evidence. `score.md` remains unchanged because this turn produced planning evidence only, not implementation or score-changing validation evidence.
 
 - Implementation step 5 on 2026-05-15 found no unchecked Active Priorities item after item 168; items 166 through 168 remain complete and the current queue is exhausted. No implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `plan.md`, `status.md`, and `score.md` were read; the working tree was clean before this status update; `score.md` remains unchanged because no implementation or score-changing evidence was produced.
@@ -453,6 +455,14 @@ Current date: 2026-05-15.
 - Implementation step 4 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 - Implementation step 5 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 ## Validation Ledger
+
+### 2026-05-15 — Active Priorities item 169 targeted and broad validation
+
+- Scope: `src/validation_harness.rs`, `plan.md`, and `status.md`.
+- Command/check: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo check --lib`; `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
+- Result: passed.
+- Evidence: `cargo check --lib` completed successfully. `cargo test --all-targets` passed with 357 library tests, 3 `root_validate` binary tests, 13 API server contract tests, 23 API transport contract tests, 3 canonical TLog contract tests, 4 domain contract tests, 10 graph mutation CLI contract tests, 9 MCP receipt contract tests, 2 planning contract tests, 5 score contract tests, 2 supervisor binary contract tests, 2 worker binary contract tests, and all example test targets green. Cargo emitted the known non-fatal cache warning reporting `database or disk is full`.
+- Next action: Execute item 170, `validation_harness_learning_data_admission_builder_preserves_smoke_and_regression_boundaries`.
 
 ### 2026-05-15 — planning reconnaissance for Active Priorities items 169-171
 
