@@ -910,6 +910,24 @@ Trading is not the first production business path.
 - Prefer focused contract tests and deterministic fixtures over long live-service validation.
 - Commit docs/planning changes separately from implementation changes when committing.
 
+
+Current planning turn selected graph operation `3531e5dc63009037`, covering `agent::cycle::{evidence_u64_value, gate_id_u64}`, as the next safe non-`root_validate` consolidation area. The safe subset is private typed route-table lookup delegation only: keep both wrapper names and signatures, preserve the distinct `GATE_ID_ROUTES` and `EVIDENCE_U64_ROUTES` tables, preserve unknown-input `None` behavior, preserve submit-evidence hash vectors, command-envelope JSON, receipt/evidence routing, runtime behavior, and all recovery-route logic. Do not touch `root_validate`, `src/agent/loop_driver.rs`, `compute_evidence_contract_hash(...)`, `compute_submit_evidence_command_hash(...)`, `compute_envelope_hash(...)`, or the already-reconciled recovery route helper.
+
+77. [ ] `src/agent/cycle.rs`: route `gate_id_u64(...)` and `evidence_u64_value(...)` through one private typed route-table lookup helper while preserving distinct gate and evidence domains.
+   - Scope: `src/agent/cycle.rs` only; allowed functions are `gate_id_u64(...)`, `evidence_u64_value(...)`, `lookup_u64_route(...)`, `U64Route`, and at most one new private helper or enum adjacent to those definitions. Do not change `GATE_ID_ROUTES`, `EVIDENCE_U64_ROUTES`, `EFFECT_ROUTES`, `effect_for_gate_evidence(...)`, submit-evidence hash functions, `compute_structural_payload_hash(...)`, recovery-route functions, runtime command submission, receipt construction, or tests in this item.
+   - Done when: `gate_id_u64(gate)` still looks up only `GATE_ID_ROUTES`; `evidence_u64_value(evidence)` still looks up only `EVIDENCE_U64_ROUTES`; unknown names still return `None`; both wrappers delegate through the same private typed helper boundary; and no submit-evidence packet, envelope, receipt, or runtime behavior changes.
+   - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo check --lib`.
+
+78. [ ] `src/agent/cycle.rs` test `u64_route_lookup_helpers_preserve_gate_and_evidence_boundaries`: add focused regression coverage for the shared typed route-table lookup helper.
+   - Scope: `src/agent/cycle.rs` test module only; use existing private test access to `gate_id_u64(...)`, `evidence_u64_value(...)`, `effect_for_gate_evidence(...)`, and existing submit-evidence hash helper patterns. Do not change production code in this item.
+   - Done when: the named test asserts representative gate names map to their existing numeric ids, representative evidence names map to their existing numeric values, gate names are not accepted by `evidence_u64_value(...)`, evidence names are not accepted by `gate_id_u64(...)`, unknown values return `None` for both wrappers, and a representative `effect_for_gate_evidence(...)` route remains unchanged. The test must not perform network I/O, filesystem I/O outside normal cargo test execution, environment mutation, or process spawning.
+   - Validation: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test u64_route_lookup_helpers_preserve_gate_and_evidence_boundaries -- --test-threads=1`.
+
+79. [ ] `SCORE_REPORT.md`: after items 77 and 78 land, refresh graph-derived structural evidence and review whether `score.md` rationale changes without raising project-level scores absent capability evidence.
+   - Scope: `SCORE_REPORT.md`, `score.md`, `plan.md`, and `status.md` only.
+   - Done when: `scripts/recapture_rustc_graphs.sh --check` validates the configured graph root, `SCORE_REPORT.md` is regenerated from `../state/rustc`, `status.md` records aggregate and affected crate rows, and `score.md` changes only if refreshed evidence differs from the current rationale.
+   - Validation: `bash scripts/recapture_rustc_graphs.sh --check && cargo run --manifest-path ../score/Cargo.toml --quiet -- --artifact-root ../state/rustc --report SCORE_REPORT.md --date "$(date +%Y-%m-%d)"`.
+
 ## Suggested Validation
 
 For planning/doc-only changes:

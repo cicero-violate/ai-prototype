@@ -42,6 +42,8 @@ Current date: 2026-05-15.
 
 ## Current Progress
 
+- Planning turn on 2026-05-15 completed Python-assisted reconnaissance against the selected `ai` graph-editor plan after Active Priorities item 76. Active Priorities items 77 through 79 are now planned for `src/agent/cycle.rs` and graph-derived evidence refresh. The first executable item is item 77, which must route `gate_id_u64(...)` and `evidence_u64_value(...)` through one private typed route-table lookup helper while preserving distinct gate and evidence domains. `root_validate` remains explicitly non-selectable.
+
 - Implementation step 5 found no unchecked Active Priorities item after item 76; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 - Implementation step 4 found no unchecked Active Priorities item after item 76; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 - Active Priorities item 76 is complete: graph-derived structural evidence refresh passed after items 74 and 75. `SCORE_REPORT.md` reports `G = 7.93 / 10`, Architecture `9.0`, Structure `4.9`, Simplicity `6.9`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2`; the `ai` crate row is Nodes `5622`, Edges `35759`, Fns `2281`, Architecture `9.5`, Structure `6.1`, Simplicity `7.1`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2`. `score.md` rationale was updated to match refreshed evidence, but project-level numeric scores remain unchanged.
@@ -142,6 +144,24 @@ Current date: 2026-05-15.
 - Implementation step 4 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 - Implementation step 5 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 ## Validation Ledger
+
+### 2026-05-15 — planning contract validation for agent cycle u64 route lookup plan
+
+- Scope: `plan.md` and `status.md`; Active Priorities items 77 through 79.
+- Command/check: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test planning_contract -- --test-threads=1`.
+- Result: passed.
+- Evidence: planning contract integration test passed `2` tests with `0` failures: `planning_record_blocks_when_all_tasks_complete` and `planning_record_decomposes_objective_with_lineage`.
+- Next action: Commit the planning update, then execute Active Priorities item 77.
+
+
+### 2026-05-15 — planning selected agent cycle u64 route lookup helper
+
+- Scope: `plan.md`, `status.md`, and selected graph-backed candidate `src/agent/cycle.rs::{gate_id_u64, evidence_u64_value}`; Active Priorities items 77 through 79.
+- Command/check: read `plan.md`, `status.md`, `score.md`, and `SCORE_REPORT.md`; used Python to inspect `../state/rustc/auto-refactor/workspace__ai_sandbox__canon-mini-agent__prototype__state__rustc__ai__graph.graph-editor-plan.json`; inspected `src/agent/cycle.rs`; checked current structural scores and prior completed checklist state.
+- Result: informational.
+- Evidence: no unchecked Active Priorities item existed before this planning update; the selected `ai` graph-editor plan is schema version 1, graph schema version 16, and currently contains 1,571 planned operations; graph operation `3531e5dc63009037` identifies `agent::cycle::{evidence_u64_value, gate_id_u64}` as a safe non-`root_validate` consolidation candidate. Current graph evidence remains `G = 7.93 / 10`, Architecture `9.0`, Structure `4.9`, Simplicity `6.9`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2`; `score.md` remains unchanged because this turn produced planning evidence only.
+- Next action: Execute Active Priorities item 77 in `src/agent/cycle.rs`.
+
 
 ### 2026-05-15 — implementation step 5 checklist exhausted
 
