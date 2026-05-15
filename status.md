@@ -42,6 +42,7 @@ Current date: 2026-05-15.
 
 ## Current Progress
 
+- Active Priorities item 80 is complete: `OllamaJudgmentProofEvent::{expected_proof_hash, verifier_context_hash}` now route through the shared private `fold_ordered_ollama_proof_event_hash(...)` helper while preserving distinct proof and verifier-context seed constants, field order, boolean casts, non-zero fold behavior, receipt/proof binding, and Ollama proof-event semantics. Targeted `cargo check --lib` and broader `cargo test --all-targets` passed. The next executable item is item 81, the focused Ollama proof-event hash regression test.
 - Planning turn on 2026-05-15 completed Python-assisted reconnaissance after Active Priorities item 79. Active Priorities items 80 through 82 are now planned for `src/capability/llm/ollama.rs` and graph-derived evidence refresh. The first executable item is item 80, which must route `OllamaJudgmentProofEvent::{expected_proof_hash, verifier_context_hash}` through one private ordered hash-fold helper while preserving distinct Ollama proof-event hash domains. `root_validate` remains explicitly non-selectable.
 - Implementation step 5 found no unchecked Active Priorities item after item 79; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 - Implementation step 4 found no unchecked Active Priorities item after item 79; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
@@ -150,6 +151,22 @@ Current date: 2026-05-15.
 - Implementation step 4 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 - Implementation step 5 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 ## Validation Ledger
+
+### 2026-05-15 — Active Priorities item 80 targeted and broader validation
+
+- Scope: `src/capability/llm/ollama.rs`, `plan.md`, and `status.md`.
+- Command/check: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo check --lib`; `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
+- Result: passed.
+- Evidence: `cargo check --lib` finished successfully; `cargo test --all-targets` passed with 326 library tests, 3 `root_validate` binary tests, 13 API server contract tests, 23 API transport contract tests, 3 canonical TLog contract tests, 4 domain contract tests, 10 graph mutation CLI contract tests, 9 MCP receipt contract tests, 2 planning contract tests, 5 score contract tests, 2 supervisor binary contract tests, 2 worker binary contract tests, and all zero-test binary/example targets passing. Cargo emitted the recurring global-cache last-use warning (`database or disk is full`), but validation results passed.
+- Next action: Execute Active Priorities item 81 in `src/capability/llm/ollama.rs`.
+
+### 2026-05-15 — Active Priorities item 80 implementation
+
+- Scope: `src/capability/llm/ollama.rs::OllamaJudgmentProofEvent::{expected_proof_hash, verifier_context_hash}`.
+- Command/check: Source inspection and item-scoped patch.
+- Result: passed.
+- Evidence: Added private `fold_ordered_ollama_proof_event_hash(seed, fields)` adjacent to the existing fold primitive and routed both proof-event public hash methods through it. The proof hash keeps seed `0x4f4c_4c41_4d41_5652u64`; the verifier-context hash keeps seed `0x4f4c_4c41_4d41_4354u64`; existing field order, boolean casts, and non-zero fold behavior remain unchanged.
+- Next action: Run and record targeted and broader validation.
 
 ### 2026-05-15 — planning contract validation after item 80-82 planning
 

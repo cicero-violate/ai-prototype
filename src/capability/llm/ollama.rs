@@ -936,7 +936,7 @@ impl OllamaJudgmentProofEvent {
     }
 
     pub fn expected_proof_hash(self) -> u64 {
-        Self::fold_ordered_ollama_hash(
+        Self::fold_ordered_ollama_proof_event_hash(
             0x4f4c_4c41_4d41_5652u64,
             &[
                 self.proof_line_hash,
@@ -960,6 +960,10 @@ impl OllamaJudgmentProofEvent {
                 self.phase_plan as u64,
             ],
         )
+    }
+
+    fn fold_ordered_ollama_proof_event_hash(seed: u64, fields: &[u64]) -> u64 {
+        Self::fold_ordered_ollama_hash(seed, fields)
     }
 
     fn fold_ordered_ollama_hash(seed: u64, fields: &[u64]) -> u64 {
@@ -987,7 +991,7 @@ impl OllamaJudgmentProofEvent {
     }
 
     pub fn verifier_context_hash(self) -> u64 {
-        Self::fold_ordered_ollama_hash(
+        Self::fold_ordered_ollama_proof_event_hash(
             0x4f4c_4c41_4d41_4354u64,
             &[
                 self.base_url_hash,
