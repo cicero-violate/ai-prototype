@@ -1198,25 +1198,28 @@ fn policy_reuse_cost_catalog_content_hash(receipt: &PolicyReuseCostCatalogReceip
     if record_type_code == 0 || missing_required_modes_code == 0 {
         return 0;
     }
-    let mut h = 0x504f_4c52_4341_5441u64;
-    h = mix(h, receipt.schema_version);
-    h = mix(h, record_type_code);
-    h = mix(h, receipt.catalog_version);
-    h = mix(h, receipt.evidence_family_count as u64);
-    h = mix(h, receipt.healthy_mode_count as u64);
-    h = mix(h, receipt.regression_mode_count as u64);
-    h = mix(h, receipt.retained_fixture_count as u64);
-    h = mix(h, u64::from(receipt.required_healthy_modes_present));
-    h = mix(h, u64::from(receipt.required_regression_modes_present));
-    h = mix(h, u64::from(receipt.summary_complete));
-    h = mix(h, missing_required_modes_code);
-    h = mix(h, receipt.source_policy_reuse_hash);
-    h = mix(h, receipt.source_scale_trace_hash);
-    h = mix(h, receipt.source_performance_cost_trend_hash);
-    h = mix(h, receipt.source_validation_health_hash);
-    h = mix(h, receipt.source_validation_duration_hash);
-    h = mix(h, receipt.source_runtime_performance_hash);
-    h.max(1)
+    fold_ordered_policy_reuse_content_hash(
+        0x504f_4c52_4341_5441u64,
+        &[
+            receipt.schema_version,
+            record_type_code,
+            receipt.catalog_version,
+            receipt.evidence_family_count as u64,
+            receipt.healthy_mode_count as u64,
+            receipt.regression_mode_count as u64,
+            receipt.retained_fixture_count as u64,
+            u64::from(receipt.required_healthy_modes_present),
+            u64::from(receipt.required_regression_modes_present),
+            u64::from(receipt.summary_complete),
+            missing_required_modes_code,
+            receipt.source_policy_reuse_hash,
+            receipt.source_scale_trace_hash,
+            receipt.source_performance_cost_trend_hash,
+            receipt.source_validation_health_hash,
+            receipt.source_validation_duration_hash,
+            receipt.source_runtime_performance_hash,
+        ],
+    )
 }
 
 fn policy_reuse_cost_catalog_receipt_hash(receipt: &PolicyReuseCostCatalogReceipt) -> u64 {
@@ -1254,23 +1257,33 @@ fn policy_reuse_evaluator_savings_content_hash(
     if record_type_code == 0 || regression_reason_code == 0 {
         return 0;
     }
-    let mut h = 0x504f_4c52_4556_5341u64;
-    h = mix(h, receipt.schema_version);
-    h = mix(h, record_type_code);
-    h = mix(h, receipt.savings_version);
-    h = mix(h, receipt.source_catalog_hash);
-    h = mix(h, receipt.source_performance_cost_trend_hash);
-    h = mix(h, receipt.source_policy_reuse_hash);
-    h = mix(h, receipt.sample_runs as u64);
-    h = mix(h, receipt.policy_hits as u64);
-    h = mix(h, receipt.llm_calls_avoided as u64);
-    h = mix(h, receipt.estimated_reasoning_cost_units_avoided);
-    h = mix(h, receipt.baseline_llm_calls as u64);
-    h = mix(h, receipt.actual_llm_calls as u64);
-    h = mix(h, receipt.llm_call_reduction_ratio_bps);
-    h = mix(h, u64::from(receipt.validation_passed));
-    h = mix(h, regression_reason_code);
-    h.max(1)
+    fold_ordered_policy_reuse_content_hash(
+        0x504f_4c52_4556_5341u64,
+        &[
+            receipt.schema_version,
+            record_type_code,
+            receipt.savings_version,
+            receipt.source_catalog_hash,
+            receipt.source_performance_cost_trend_hash,
+            receipt.source_policy_reuse_hash,
+            receipt.sample_runs as u64,
+            receipt.policy_hits as u64,
+            receipt.llm_calls_avoided as u64,
+            receipt.estimated_reasoning_cost_units_avoided,
+            receipt.baseline_llm_calls as u64,
+            receipt.actual_llm_calls as u64,
+            receipt.llm_call_reduction_ratio_bps,
+            u64::from(receipt.validation_passed),
+            regression_reason_code,
+        ],
+    )
+}
+
+fn fold_ordered_policy_reuse_content_hash(seed: u64, fields: &[u64]) -> u64 {
+    fields
+        .iter()
+        .fold(seed, |hash, field| mix(hash, *field))
+        .max(1)
 }
 
 fn policy_reuse_evaluator_savings_receipt_hash(

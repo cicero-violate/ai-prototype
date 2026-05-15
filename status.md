@@ -42,6 +42,8 @@ Current date: 2026-05-15.
 
 ## Current Progress
 
+- Active Priorities item 113 is complete: `src/capability/judgment/record.rs` now routes `policy_reuse_cost_catalog_content_hash(...)` and `policy_reuse_evaluator_savings_content_hash(...)` through shared private `fold_ordered_policy_reuse_content_hash(...)`, preserving distinct catalog and evaluator-savings seeds, validation guards, code mappings, ordered field vectors, and non-zero `max(1)` behavior. Targeted `cargo check --lib` passed. Broader `cargo test --all-targets` passed with 337 library tests plus integration/binary/example suites green. Cargo emitted the known non-fatal last-use cache warning reporting `database or disk is full`. The next executable item is item 114, focused policy-reuse content hash helper regression coverage. `score.md` remains unchanged because this is a narrow structure refactor with validation evidence, not a project-level score change.
+
 - Planning turn on 2026-05-15 completed Python-assisted reconnaissance after Active Priorities item 112. Active Priorities items 113 through 115 are now planned for `src/capability/judgment/record.rs` policy-reuse catalog/evaluator-savings content hash helper extraction, focused content-hash boundary regression coverage, and graph-derived evidence refresh. The first executable item is item 113. `root_validate` remains intentionally non-selectable per user direction. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 
 - Implementation step 5 found no unchecked Active Priorities item after item 109; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. Planning/doc validation `cargo test --test planning_contract -- --test-threads=1` passed with 2 tests and 0 failures. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
@@ -249,6 +251,14 @@ Current date: 2026-05-15.
 - Implementation step 4 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 - Implementation step 5 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 ## Validation Ledger
+
+### 2026-05-15 — item 113 policy reuse content hash helper
+
+- Scope: `src/capability/judgment/record.rs` and Active Priorities item 113.
+- Command/check: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo check --lib`; `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --all-targets`.
+- Result: passed.
+- Evidence: `cargo check --lib` completed successfully; `cargo test --all-targets` passed with 337 library tests plus integration/binary/example suites green. The implementation added private `fold_ordered_policy_reuse_content_hash(...)` and routed the catalog/evaluator-savings content hash functions through it without changing public APIs or receipt wrappers. Cargo emitted the known non-fatal last-use cache warning reporting `database or disk is full`.
+- Next action: Execute item 114, `policy_reuse_content_hash_helpers_preserve_catalog_and_savings_boundaries`.
 
 ### 2026-05-15 — planning reconnaissance and planning-contract validation for items 113-115
 
