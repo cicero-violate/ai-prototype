@@ -42,6 +42,8 @@ Current date: 2026-05-15.
 
 ## Current Progress
 
+- Planning turn on 2026-05-15 selected the next ordered non-`root_validate` graph-backed work after item 162 exhausted the previous queue. The next executable item is Active Priorities item 163 in `src/validation_harness.rs`, consolidating `policy_reuse_evidence_batch_readiness_hash(...)`, `policy_reuse_evidence_batch_execution_plan_hash(...)`, `policy_reuse_evidence_batch_evaluation_admission_hash(...)`, and `policy_reuse_evidence_batch_run_request_hash(...)` through one private ordered batch-evidence hash helper; item 164 adds focused readiness/plan/admission/request boundary coverage; item 165 refreshes graph-derived evidence. Reconnaissance inspected `plan.md`, `status.md`, `score.md`, `SCORE_REPORT.md`, the selected `ai` graph-editor plan with Python, current candidate source ranges in `src/validation_harness.rs`, and the working tree. `root_validate` remains intentionally non-selected. `score.md` remains unchanged because this planning turn produced no implementation, graph refresh, or score-changing capability evidence.
+
 - Implementation step 5 on 2026-05-15 found no unchecked Active Priorities item after item 162; items 160 through 162 remain complete and the current queue is exhausted. No implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `plan.md`, `status.md`, and `score.md` were read; the working tree was clean before this status update; `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 
 - Active Priorities item 162 is complete: graph-derived structural evidence refresh passed after items 160 and 161. `scripts/recapture_rustc_graphs.sh --check` reported `graph artifact check: pass` for `../state/rustc`, and score report regeneration from `../state/rustc` reports aggregate `G = 7.94 / 10`, Architecture `8.9`, Structure `4.9`, Simplicity `6.9`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.2` across 18 crates. `SCORE_REPORT.md` already matched the regenerated report, including `ai` crate Nodes `5663`, Edges `35419`, Fns `2308`, Architecture `9.3`, Structure `6.1`, Simplicity `7.2`, and `root_validate` Architecture `3.3`, Structure `1.5`. Broader `cargo test --all-targets` passed with 354 library tests, 3 `root_validate` binary tests, and all integration, binary, and example suites green. `score.md` rationale was refreshed for item 162 evidence, but project-level numeric scores remain unchanged because this is structural evidence refresh rather than score-history-worthy capability evidence. Active Priorities are exhausted.
@@ -433,6 +435,22 @@ Current date: 2026-05-15.
 - Implementation step 4 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 - Implementation step 5 found no unchecked Active Priorities item after item 66; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 ## Validation Ledger
+
+### 2026-05-15 — Active Priorities items 163-165 planning artifact validation
+
+- Scope: `plan.md` and `status.md` after adding the next non-`root_validate` graph-backed queue.
+- Command/check: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test planning_contract -- --test-threads=1`.
+- Result: passed.
+- Evidence: 2 planning contract tests passed, 0 failed. Cargo emitted the known non-fatal cache warning reporting `database or disk is full`.
+- Next action: commit the planning artifact update.
+
+### 2026-05-15 — planning reconnaissance for Active Priorities items 163-165
+
+- Scope: `plan.md`, `status.md`, `score.md`, `SCORE_REPORT.md`, `../state/rustc/auto-refactor/workspace__ai_sandbox__canon-mini-agent__prototype__state__rustc__ai__graph.graph-editor-plan.json`, and `src/validation_harness.rs`.
+- Command/check: Python and local source inspection through the project connector; selected the largest safe non-`root_validate` graph-backed cluster and inspected the batch-evidence hash functions plus existing smoke/regression constructors.
+- Result: informational.
+- Evidence: current graph-derived aggregate remains `G = 7.94 / 10`; `validation_harness` is the largest non-`root_validate` cluster in the selected `ai` graph-editor plan with 1,247 matching operations; current queue now contains items 163 through 165; `score.md` was reviewed and left unchanged.
+- Next action: execute Active Priorities item 163 in `src/validation_harness.rs`.
 
 ### 2026-05-15 — Implementation step 5 exhausted Active Priorities queue
 
