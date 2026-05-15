@@ -107,8 +107,25 @@ Current date: 2026-05-14.
 - Active Priorities item 57 is complete: graph-derived structural evidence refresh passed after the agent-cycle hash-domain helper/test work. `SCORE_REPORT.md` still reports `G = 7.99 / 10`, Architecture `8.9`, Structure `4.9`, Simplicity `7.1`, Maintainability `10.0`, Determinism `10.0`, and Coherency `8.4`; the `ai` crate row remains `Nodes = 5610`, `Edges = 34384`, `Fns = 2270`, Structure `6.0`, and Simplicity `7.6`. `score.md` remains unchanged because refreshed graph-derived evidence matched the existing rationale and does not justify project-level numeric score changes. Active Priorities are exhausted; a planning turn must select the next executable non-`root_validate` graph-backed item.
 - Implementation step 4 found no unchecked Active Priorities item after item 57; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
 - Implementation step 5 found no unchecked Active Priorities item after item 57; no implementation, validation refresh, documentation, cleanup, blocker-handling, or delegation item is selectable until a planning turn writes the next ordered non-`root_validate` graph-backed task. `score.md` remains unchanged because no implementation or score-changing evidence was produced.
+- Active Priorities items 58 through 60 are now planned for `src/capability/tooling/record/hash.rs` and graph-derived evidence refresh. The first executable item is item 58, which must route `tool_command_hash(...)`, `tool_input_hash(...)`, and `tool_output_hash(...)` through one private ordered hash-vector helper while preserving distinct domain seeds, field vectors, non-zero behavior, `ToolRequest` bindings, artifact/tool/process receipt semantics, replay, NDJSON, filesystem, and process behavior. `root_validate` remains explicitly non-selectable.
 
 ## Validation Ledger
+
+### 2026-05-14 — planning-contract validation for tooling hash planning update
+
+- Scope: `plan.md` and `status.md` planning-only changes for Active Priorities items 58 through 60.
+- Command/check: `TMPDIR="$PWD/target/test-tmp" RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER="" cargo test --test planning_contract -- --test-threads=1`.
+- Result: passed.
+- Evidence: 2 planning-contract tests passed with 0 failures: `planning_record_blocks_when_all_tasks_complete` and `planning_record_decomposes_objective_with_lineage`.
+- Next action: commit the planning-only update and execute Active Priorities item 58.
+
+### 2026-05-14 — planning selected tooling record hash wrapper work
+
+- Scope: `plan.md`, `status.md`, `score.md`, `SCORE_REPORT.md`, selected graph plan `../state/rustc/auto-refactor/workspace__ai_sandbox__canon-mini-agent__prototype__state__rustc__ai__graph.graph-editor-plan.json`, and `src/capability/tooling/record/hash.rs`.
+- Command/check: manual and Python reconnaissance of the current Active Priorities section, current `status.md` ledger, current `score.md` rationale, current `SCORE_REPORT.md`, selected graph-editor plan operations, `src/capability/tooling/record/hash.rs`, and existing call sites/tests by `rg`.
+- Result: informational.
+- Evidence: Active Priorities items 55 through 57 were complete and implementation steps 4 and 5 were blocked by checklist exhaustion. The selected `ai` graph-editor plan reports schema version 1, graph schema version 16, and 1,582 operations. Non-`root_validate` graph operations `1ac97f37b87d03c1`, `a01a6d0fe4befba7`, and `58e8cc4a0d31fa0e` identify duplicated ordered hash mechanics across `capability::tooling::record::hash::{tool_command_hash, tool_input_hash, tool_output_hash}`. `src/capability/tooling/record/hash.rs` contains three localized wrappers with distinct seeds and short field vectors, making private helper delegation and focused regression coverage safe to execute.
+- Next action: execute Active Priorities item 58 in `src/capability/tooling/record/hash.rs`.
 
 ### 2026-05-14 — implementation step 5 Active Priorities exhausted after item 57
 
