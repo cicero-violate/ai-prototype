@@ -2,6 +2,8 @@
 //!
 //! Nothing below `api` depends on this module.
 
+pub mod mcp;
+pub mod oauth;
 pub mod protocol;
 pub mod routes;
 pub mod server;

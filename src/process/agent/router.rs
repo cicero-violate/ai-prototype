@@ -12,7 +12,6 @@ use std::time::{Duration, Instant};
 
 use serde_json::Value;
 
-use crate::agent::sse::{decode_chunked_body, parse_sse_body, ChunkLogger};
 use crate::capability::llm::openai::{
     OpenAiBrowserOptions, OpenAiChatRequest, OpenAiChatResponse, OpenAiClient, OpenAiConfig,
     OpenAiError,
@@ -20,6 +19,7 @@ use crate::capability::llm::openai::{
 use crate::capability::llm::transport::{
     chat_completions_path, parse_local_http_endpoint, LocalEndpointError,
 };
+use crate::process::agent::sse::{decode_chunked_body, parse_sse_body, ChunkLogger};
 
 const DEFAULT_TRANSIENT_ROUTER_ATTEMPTS: u32 = 8;
 const DEFAULT_TRANSIENT_ROUTER_BACKOFF_MS: u64 = 500;
@@ -569,7 +569,7 @@ fn send_streaming_request(
     body: &str,
     logger: &mut ChunkLogger,
     stream_deadline_ms: u64,
-) -> Result<crate::agent::sse::SseResult, OpenAiError> {
+) -> Result<crate::process::agent::sse::SseResult, OpenAiError> {
     let endpoint = parse_local_http_endpoint(&config.base_url).map_err(|e| match e {
         LocalEndpointError::InvalidUrl => OpenAiError::InvalidUrl,
         LocalEndpointError::NonLocalHost => OpenAiError::InvalidConfig("base url must be local"),
@@ -680,7 +680,7 @@ fn open_streaming_http_stream(
 fn finalize_streaming_response(
     full_response: &[u8],
     logger: &mut ChunkLogger,
-) -> Result<crate::agent::sse::SseResult, OpenAiError> {
+) -> Result<crate::process::agent::sse::SseResult, OpenAiError> {
     let full_response = String::from_utf8_lossy(full_response);
 
     let (head, raw_body) = full_response

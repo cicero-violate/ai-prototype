@@ -31,8 +31,8 @@ pub use self::introspection::{
     LEGACY_WORKER_TLOG_FILE_NAME,
 };
 pub use self::verify::{
-    legal_transition, replay_report_from, replay_report_ndjson, replay_tlog_ndjson, verify_tlog,
-    verify_tlog_from, ReplayReport,
+    command_causality_report_from, legal_transition, replay_report_from, replay_report_ndjson,
+    replay_tlog_ndjson, verify_tlog, verify_tlog_from, CommandCausalityReport, ReplayReport,
 };
 pub use crate::error::CanonError;
 

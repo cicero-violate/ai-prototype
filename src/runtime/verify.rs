@@ -252,6 +252,17 @@ pub struct ReplayReport {
     pub final_hash: u64,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct CommandCausalityReport {
+    pub event_count: usize,
+    pub command_event_count: usize,
+    pub authorization_event_count: usize,
+    pub receipt_event_count: usize,
+    pub first_authorization_seq: Option<u64>,
+    pub last_receipt_seq: Option<u64>,
+    pub final_hash: u64,
+}
+
 pub fn replay_report_ndjson(
     initial: State,
     path: impl AsRef<Path>,
@@ -273,6 +284,63 @@ pub fn replay_report_from(
         last_seq: tlog.last().map(|event| event.seq),
         final_hash: tlog.last().map(|event| event.self_hash).unwrap_or(0),
     })
+}
+
+pub fn command_causality_report_from(
+    initial: State,
+    tlog: &[ControlEvent],
+) -> Result<CommandCausalityReport, CanonError> {
+    verify_tlog_from(initial, tlog)?;
+
+    let mut command_event_count = 0usize;
+    let mut authorization_event_count = 0usize;
+    let mut receipt_event_count = 0usize;
+    let mut first_authorization_seq = None;
+    let mut last_receipt_seq = None;
+
+    for event in tlog {
+        if event.api_command_id == 0 && event.api_command_hash == 0 {
+            continue;
+        }
+
+        command_event_count += 1;
+
+        if is_authorization_projection_event(event) {
+            authorization_event_count += 1;
+            first_authorization_seq.get_or_insert(event.seq);
+        }
+
+        if is_receipt_projection_event(event) {
+            receipt_event_count += 1;
+            last_receipt_seq = Some(event.seq);
+        }
+    }
+
+    Ok(CommandCausalityReport {
+        event_count: tlog.len(),
+        command_event_count,
+        authorization_event_count,
+        receipt_event_count,
+        first_authorization_seq,
+        last_receipt_seq,
+        final_hash: tlog.last().map(|event| event.self_hash).unwrap_or(0),
+    })
+}
+
+fn is_authorization_projection_event(event: &ControlEvent) -> bool {
+    event.cause == Cause::EvidenceSubmitted
+        && event.affected_gate == Some(GateId::Plan)
+        && event.evidence == Evidence::TaskReady
+        && event.api_command_id != 0
+        && event.api_command_hash != 0
+}
+
+fn is_receipt_projection_event(event: &ControlEvent) -> bool {
+    event.cause == Cause::EvidenceSubmitted
+        && event.affected_gate == Some(GateId::Execution)
+        && event.evidence == Evidence::ExecutionReceipt
+        && event.api_command_id != 0
+        && event.api_command_hash != 0
 }
 
 pub fn replay_tlog_ndjson(initial: State, path: impl AsRef<Path>) -> Result<State, CanonError> {

@@ -12273,31 +12273,32 @@ fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admissio
         } else {
             "result_use_summary_manifest_approval_not_admitted"
         };
-    let mut receipt = PolicyReuseEvidenceRetrievalResultUseSummaryManifestApprovalAdmissionReceipt {
-        schema: "canon_policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_v1",
-        record_type,
-        retrieval_result_use_summary_manifest_approval_admission_version: 1,
-        source_retrieval_result_use_summary_manifest_approval_hash: approval.receipt_hash,
-        source_retrieval_result_use_summary_manifest_readiness_hash: readiness.receipt_hash,
-        source_retrieval_result_use_summary_manifest_admission_hash: admission.receipt_hash,
-        retrieval_result_use_summary_manifest_approved,
-        retrieval_result_use_summary_manifest_ready_for_use,
-        retrieval_result_use_summary_manifest_admitted,
-        retrieval_read_performed,
-        retrieval_write_performed,
-        retrieval_query_executed,
-        runtime_result_approval_performed,
-        policy_promotion_performed,
-        student_training_performed,
-        external_result_evidence_present,
-        summary_manifest_approval_admission_policy_reuse_examples,
-        summary_manifest_approval_admission_llm_fallback_examples,
-        retrieval_result_use_summary_manifest_approval_admitted,
-        result_use_summary_manifest_approval_admission_status,
-        not_admitted_reason,
-        result_use_summary_manifest_approval_admission_hash: 0,
-        receipt_hash: 0,
-    };
+    let mut receipt =
+        PolicyReuseEvidenceRetrievalResultUseSummaryManifestApprovalAdmissionReceipt {
+            schema: "canon_policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_v1",
+            record_type,
+            retrieval_result_use_summary_manifest_approval_admission_version: 1,
+            source_retrieval_result_use_summary_manifest_approval_hash: approval.receipt_hash,
+            source_retrieval_result_use_summary_manifest_readiness_hash: readiness.receipt_hash,
+            source_retrieval_result_use_summary_manifest_admission_hash: admission.receipt_hash,
+            retrieval_result_use_summary_manifest_approved,
+            retrieval_result_use_summary_manifest_ready_for_use,
+            retrieval_result_use_summary_manifest_admitted,
+            retrieval_read_performed,
+            retrieval_write_performed,
+            retrieval_query_executed,
+            runtime_result_approval_performed,
+            policy_promotion_performed,
+            student_training_performed,
+            external_result_evidence_present,
+            summary_manifest_approval_admission_policy_reuse_examples,
+            summary_manifest_approval_admission_llm_fallback_examples,
+            retrieval_result_use_summary_manifest_approval_admitted,
+            result_use_summary_manifest_approval_admission_status,
+            not_admitted_reason,
+            result_use_summary_manifest_approval_admission_hash: 0,
+            receipt_hash: 0,
+        };
     finalize_policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission(
         &mut receipt,
     );
@@ -12402,37 +12403,39 @@ fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admissio
         } else {
             "result_use_summary_manifest_approval_admission_not_consumed"
         };
-    let mut receipt = PolicyReuseEvidenceRetrievalResultUseSummaryManifestApprovalAdmissionConsumptionReceipt {
-        schema: "canon_policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_consumption_v1",
-        record_type,
-        retrieval_result_use_summary_manifest_approval_admission_consumption_version: 1,
-        source_retrieval_result_use_summary_manifest_approval_admission_hash: approval_admission.receipt_hash,
-        source_retrieval_result_use_summary_manifest_approval_hash: approval_admission
-            .source_retrieval_result_use_summary_manifest_approval_hash,
-        source_retrieval_result_use_summary_manifest_readiness_hash: approval_admission
-            .source_retrieval_result_use_summary_manifest_readiness_hash,
-        source_retrieval_result_use_summary_manifest_admission_hash: approval_admission
-            .source_retrieval_result_use_summary_manifest_admission_hash,
-        retrieval_result_use_summary_manifest_approval_admitted,
-        retrieval_result_use_summary_manifest_approved,
-        retrieval_result_use_summary_manifest_ready_for_use,
-        retrieval_result_use_summary_manifest_admitted,
-        retrieval_read_performed,
-        retrieval_write_performed,
-        retrieval_query_executed,
-        runtime_result_approval_performed,
-        policy_promotion_performed,
-        batch_execution_performed,
-        student_training_performed,
-        external_result_evidence_present,
-        summary_manifest_approval_admission_consumption_policy_reuse_examples,
-        summary_manifest_approval_admission_consumption_llm_fallback_examples,
-        retrieval_result_use_summary_manifest_approval_admission_consumed,
-        result_use_summary_manifest_approval_admission_consumption_status,
-        not_consumed_reason,
-        result_use_summary_manifest_approval_admission_consumption_hash: 0,
-        receipt_hash: 0,
-    };
+    let mut receipt =
+        PolicyReuseEvidenceRetrievalResultUseSummaryManifestApprovalAdmissionConsumptionReceipt {
+            schema: "canon_policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_consumption_v1",
+            record_type,
+            retrieval_result_use_summary_manifest_approval_admission_consumption_version: 1,
+            source_retrieval_result_use_summary_manifest_approval_admission_hash:
+                approval_admission.receipt_hash,
+            source_retrieval_result_use_summary_manifest_approval_hash: approval_admission
+                .source_retrieval_result_use_summary_manifest_approval_hash,
+            source_retrieval_result_use_summary_manifest_readiness_hash: approval_admission
+                .source_retrieval_result_use_summary_manifest_readiness_hash,
+            source_retrieval_result_use_summary_manifest_admission_hash: approval_admission
+                .source_retrieval_result_use_summary_manifest_admission_hash,
+            retrieval_result_use_summary_manifest_approval_admitted,
+            retrieval_result_use_summary_manifest_approved,
+            retrieval_result_use_summary_manifest_ready_for_use,
+            retrieval_result_use_summary_manifest_admitted,
+            retrieval_read_performed,
+            retrieval_write_performed,
+            retrieval_query_executed,
+            runtime_result_approval_performed,
+            policy_promotion_performed,
+            batch_execution_performed,
+            student_training_performed,
+            external_result_evidence_present,
+            summary_manifest_approval_admission_consumption_policy_reuse_examples,
+            summary_manifest_approval_admission_consumption_llm_fallback_examples,
+            retrieval_result_use_summary_manifest_approval_admission_consumed,
+            result_use_summary_manifest_approval_admission_consumption_status,
+            not_consumed_reason,
+            result_use_summary_manifest_approval_admission_consumption_hash: 0,
+            receipt_hash: 0,
+        };
     finalize_policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_consumption(
         &mut receipt,
     );
@@ -17740,7 +17743,7 @@ fn python_contract_step() -> StepReceipt {
     let root = match repo_root_from_current_dir() {
         Ok(root) => root,
         Err(_) => {
-            return ValidationStep::skipped(PYTHON_CONTRACT_STEP, "repository root unavailable")
+            return ValidationStep::skipped(PYTHON_CONTRACT_STEP, "repository root unavailable");
         }
     };
     let required = [

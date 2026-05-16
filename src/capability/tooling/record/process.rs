@@ -168,6 +168,16 @@ impl LiveSandboxProcessExecutor {
         self
     }
 
+    pub fn process_request(
+        &self,
+        command: &str,
+        args: &[&str],
+        cwd_relative: &str,
+    ) -> Result<SandboxProcessRequest, ToolSandboxError> {
+        let plan = self.process_plan(command, args, cwd_relative)?;
+        Ok(plan.request)
+    }
+
     pub fn execute_process(
         &self,
         command: &str,
@@ -203,7 +213,7 @@ impl LiveSandboxProcessExecutor {
         self.validate_args(args)?;
         self.validate_locked_env()?;
         let cwd = self.validated_cwd(&root, cwd_relative)?;
-        let request = self.process_request(command, args, &cwd);
+        let request = self.build_process_request(command, args, &cwd);
         let io = self.process_io_paths(&root, &request)?;
         Ok(SandboxProcessPlan {
             request,
@@ -341,7 +351,12 @@ impl LiveSandboxProcessExecutor {
         }
     }
 
-    fn process_request(&self, command: &str, args: &[&str], cwd: &Path) -> SandboxProcessRequest {
+    fn build_process_request(
+        &self,
+        command: &str,
+        args: &[&str],
+        cwd: &Path,
+    ) -> SandboxProcessRequest {
         SandboxProcessRequest {
             capability: CapabilityId::Tooling,
             registry_policy_hash: self.registry.policy_hash(),

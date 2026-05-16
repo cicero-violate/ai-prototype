@@ -20,7 +20,8 @@ use crate::capability::observation::{
     ObservationCursor, ObservationIngressBatch, ObservationRecord,
 };
 use crate::capability::tooling::{
-    Effect, McpCallReceipt, McpCallRequest, SandboxProcessReceipt, ToolEffectKind,
+    Effect, McpCallReceipt, McpCallRequest, SandboxProcessReceipt, SandboxProcessRequest,
+    ToolEffectKind,
 };
 use crate::capability::{CapabilityId, CapabilityRegistry, EvidenceSubmission, PacketEffect};
 use crate::error::CanonError;
@@ -126,6 +127,17 @@ pub struct McpCallReceiptDto {
     pub exit_status: u64,
     pub timed_out: bool,
     pub receipt_hash: u64,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+pub struct SandboxProcessRequestDto {
+    pub registry_policy_hash: u64,
+    pub command_hash: u64,
+    pub argv_hash: u64,
+    pub cwd_hash: u64,
+    pub env_hash: u64,
+    pub timeout_ms: u64,
+    pub max_output_bytes: u64,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
@@ -270,6 +282,10 @@ fn decode_command(dto: &CommandEnvelopeDto) -> Result<Command, ServerError> {
             let request = decode_mcp_call_request(dto.payload.clone())?;
             Ok(Command::AuthorizeMcpCall(request))
         }
+        "AuthorizeProcessCall" => {
+            let request = decode_sandbox_process_request(dto.payload.clone())?;
+            Ok(Command::AuthorizeProcessCall(request))
+        }
         "SubmitMcpCallReceipt" => {
             let receipt = decode_mcp_call_receipt(dto.payload.clone())?;
             Ok(Command::SubmitMcpCallReceipt(receipt))
@@ -354,6 +370,29 @@ fn validate_mcp_registry_policy(registry_policy_hash: u64) -> Result<(), ServerE
         return Err(ServerError::InvalidCommand);
     }
     Ok(())
+}
+
+fn decode_sandbox_process_request(
+    payload: serde_json::Value,
+) -> Result<SandboxProcessRequest, ServerError> {
+    let dto: SandboxProcessRequestDto =
+        serde_json::from_value(payload).map_err(|_| ServerError::InvalidPayload)?;
+    let request = SandboxProcessRequest {
+        capability: CapabilityId::Tooling,
+        registry_policy_hash: dto.registry_policy_hash,
+        command_hash: dto.command_hash,
+        argv_hash: dto.argv_hash,
+        cwd_hash: dto.cwd_hash,
+        env_hash: dto.env_hash,
+        timeout_ms: dto.timeout_ms,
+        max_output_bytes: dto.max_output_bytes,
+    };
+    if request.registry_policy_hash != CapabilityRegistry::canonical().policy_hash()
+        || !request.is_admissible()
+    {
+        return Err(ServerError::InvalidCommand);
+    }
+    Ok(request)
 }
 
 fn decode_sandbox_process_receipt(

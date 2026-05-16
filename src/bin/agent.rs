@@ -10,7 +10,7 @@
 //!   SUPERVISOR_PORT, AI_WORKER_PORT, CANON_OPENAI_BASE_URL, AI_AGENT_DOMAIN,
 //!   AI_AGENT_METRIC, AI_AGENT_MAX_STEPS
 
-use ai::agent::{
+use ai::process::agent::{
     AgentCycle, AgentLoopConfig, AgentObjective, LoopDriver, RouterClient, WorkerClient,
 };
 use std::io::{Read, Write};

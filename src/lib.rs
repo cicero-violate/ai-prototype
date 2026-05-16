@@ -5,7 +5,6 @@
 //! turns evidence into control events; codec only serializes/deserializes; API is
 //! the outer surface.
 
-pub mod agent;
 pub mod api;
 pub mod capability;
 pub mod codec;
@@ -13,15 +12,33 @@ pub mod domain;
 pub mod error;
 pub mod graph_mutation;
 pub mod kernel;
+pub mod process;
 pub mod recovery;
 pub mod runtime;
 pub mod score;
 pub mod timing;
 pub mod validation_harness;
 
+pub use crate::api::mcp::{
+    ai_mcp_tools_list, dispatch_ai_mcp_plan, kernel_command_payload, kernel_command_payload_tag,
+    mcp_err, mcp_ok, result_with_warning, tool_error, AiMcpDispatchPlan,
+};
+pub use crate::api::oauth::{
+    auth_error_response as oauth_auth_error_response, html_escape as oauth_html_escape,
+    metadata_value as oauth_metadata_value,
+    protected_resource_metadata_value as oauth_protected_resource_metadata_value, AuthorizeForm,
+    AuthorizeQuery, OAuthStore, RegisterBody, TokenForm,
+};
 pub use crate::api::protocol::{
     mcp_authorization_submission, Command, CommandEnvelope, ControlEventResponse,
     API_COMMAND_BATCH_LIMIT, API_PROTOCOL_SCHEMA_VERSION,
+};
+pub use crate::api::routes::{
+    ai_mcp_delete, ai_mcp_get_sse, ai_mcp_post, ai_oauth_authorize_get, ai_oauth_authorize_post,
+    ai_oauth_metadata, ai_oauth_protected_resource_metadata, ai_oauth_register, ai_oauth_token,
+    ai_workspace_get, ai_workspace_update, build_supervisor_router, command_gateway,
+    health as supervisor_health, reload as supervisor_reload, require_ai_mcp_auth,
+    spawn_agent_handler,
 };
 pub use crate::api::server::{
     build_router, CommandEnvelopeDto, CommandResponseDto, ErrorDto, EvidenceSubmissionDto,
@@ -171,15 +188,23 @@ pub use crate::kernel::{
     Gate, GateId, GateSet, GateStatus, Packet, Phase, RecoveryAction, RuntimeConfig, SemanticDelta,
     State, TLog, EXECUTION_GATE_ORDER, GATE_ORDER, PHASES,
 };
+pub use crate::process::supervisor::run as supervisor_run;
+pub use crate::process::supervisor::SupervisorConfig;
+pub use crate::process::supervisor::WorkspaceConfig;
+pub use crate::process::supervisor::{
+    ActiveWorkerDto, ErrorDto as SupervisorErrorDto, HealthDto, NativeMcpSession, NativeMcpState,
+    ReloadDto, SpawnDto, SpawnRequest, SupervisorState, WorkerProcess,
+};
 pub use crate::runtime::{
     append_canonical_line, append_score_report_update_ndjson, append_validation_result_ndjson,
-    canonical_tlog_path_from_dir, default_canonical_tlog_path, durable_replay_report,
-    introspect_canonical_tlog, legal_transition, replay_report_from, replay_report_ndjson,
-    replay_tlog_ndjson, resume_durable_runtime, run_until_done, run_until_done_durable,
-    run_until_done_durable_with_ledger, semantic_diff, tick, tick_durable, tick_durable_checked,
-    touch_all_surfaces, verify_tlog, verify_tlog_from, CanonError, CanonicalIntrospectionReport,
-    CommandLedger, CommandReceipt, DurableRuntimeState, ReplayReport, WorkerStateReport,
-    CANONICAL_TLOG_RELATIVE_PATH, LEGACY_WORKER_TLOG_FILE_NAME,
+    canonical_tlog_path_from_dir, command_causality_report_from, default_canonical_tlog_path,
+    durable_replay_report, introspect_canonical_tlog, legal_transition, replay_report_from,
+    replay_report_ndjson, replay_tlog_ndjson, resume_durable_runtime, run_until_done,
+    run_until_done_durable, run_until_done_durable_with_ledger, semantic_diff, tick, tick_durable,
+    tick_durable_checked, touch_all_surfaces, verify_tlog, verify_tlog_from, CanonError,
+    CanonicalIntrospectionReport, CommandCausalityReport, CommandLedger, CommandReceipt,
+    DurableRuntimeState, ReplayReport, WorkerStateReport, CANONICAL_TLOG_RELATIVE_PATH,
+    LEGACY_WORKER_TLOG_FILE_NAME,
 };
 
 #[cfg(test)]
@@ -3838,6 +3863,25 @@ mod tests {
         state.gates.plan = Gate::pass(Evidence::TaskReady);
 
         let mut tlog = Vec::new();
+        let request = crate::capability::tooling::SandboxProcessRequest {
+            capability: CapabilityId::Tooling,
+            registry_policy_hash: receipt.registry_policy_hash,
+            command_hash: receipt.command_hash,
+            argv_hash: receipt.argv_hash,
+            cwd_hash: receipt.cwd_hash,
+            env_hash: receipt.env_hash,
+            timeout_ms: receipt.timeout_ms,
+            max_output_bytes: receipt.max_output_bytes,
+        };
+        let authorization =
+            CommandEnvelope::new(0x9e11_0001, Command::AuthorizeProcessCall(request));
+        crate::api::routes::handle_envelope(
+            &mut state,
+            &mut tlog,
+            RuntimeConfig::default(),
+            authorization,
+        )
+        .unwrap();
         crate::api::routes::handle_command(
             &mut state,
             &mut tlog,
@@ -3897,6 +3941,206 @@ mod tests {
         verify_tlog(&tlog).unwrap();
 
         let _ = std::fs::remove_dir_all(&sandbox_root);
+    }
+
+    #[test]
+    fn api_rejects_unauthorized_process_receipt_without_mutation() {
+        let sandbox_root = std::env::temp_dir().join(format!(
+            "canon-unauthorized-process-receipt-{}-{}",
+            std::process::id(),
+            0xa011_u64
+        ));
+        let _ = std::fs::remove_dir_all(&sandbox_root);
+
+        let executor = LiveSandboxProcessExecutor::new(&sandbox_root)
+            .with_allowed_command("/usr/bin/printf")
+            .with_locked_env("CANON_SANDBOX", "1")
+            .with_timeout_ms(1000)
+            .with_max_output_bytes(4096);
+        let receipt = executor
+            .execute_process("/usr/bin/printf", &["unauthorized-process-receipt"], "")
+            .unwrap();
+
+        let mut state = State {
+            phase: Phase::Execute,
+            ..State::default()
+        };
+        state.packet.bind_ready_task();
+        state.gates.invariant = Gate::pass(Evidence::InvariantProof);
+        state.gates.analysis = Gate::pass(Evidence::AnalysisReport);
+        state.gates.judgment = Gate::pass(Evidence::JudgmentRecord);
+        state.gates.plan = Gate::pass(Evidence::TaskReady);
+
+        let before = state;
+        let mut tlog = Vec::new();
+        let result = crate::api::routes::handle_command(
+            &mut state,
+            &mut tlog,
+            RuntimeConfig::default(),
+            Command::SubmitProcessReceipt(receipt),
+        );
+
+        assert_eq!(result, Err(CanonError::InvalidReplay));
+        assert_eq!(state, before);
+        assert!(tlog.is_empty());
+
+        let _ = std::fs::remove_dir_all(&sandbox_root);
+    }
+
+    #[test]
+    fn api_rejects_mismatched_process_authorization_without_mutation() {
+        let sandbox_root = std::env::temp_dir().join(format!(
+            "canon-mismatched-process-auth-{}-{}",
+            std::process::id(),
+            0xa012_u64
+        ));
+        let _ = std::fs::remove_dir_all(&sandbox_root);
+
+        let executor = LiveSandboxProcessExecutor::new(&sandbox_root)
+            .with_allowed_command("/usr/bin/printf")
+            .with_locked_env("CANON_SANDBOX", "1")
+            .with_timeout_ms(1000)
+            .with_max_output_bytes(4096);
+        let receipt = executor
+            .execute_process("/usr/bin/printf", &["actual-process-receipt"], "")
+            .unwrap();
+        let mismatched_receipt = executor
+            .execute_process("/usr/bin/printf", &["authorized-different-process"], "")
+            .unwrap();
+        let mismatched_request = crate::capability::tooling::SandboxProcessRequest {
+            capability: CapabilityId::Tooling,
+            registry_policy_hash: mismatched_receipt.registry_policy_hash,
+            command_hash: mismatched_receipt.command_hash,
+            argv_hash: mismatched_receipt.argv_hash,
+            cwd_hash: mismatched_receipt.cwd_hash,
+            env_hash: mismatched_receipt.env_hash,
+            timeout_ms: mismatched_receipt.timeout_ms,
+            max_output_bytes: mismatched_receipt.max_output_bytes,
+        };
+
+        let mut state = State {
+            phase: Phase::Execute,
+            ..State::default()
+        };
+        state.packet.bind_ready_task();
+        state.gates.invariant = Gate::pass(Evidence::InvariantProof);
+        state.gates.analysis = Gate::pass(Evidence::AnalysisReport);
+        state.gates.judgment = Gate::pass(Evidence::JudgmentRecord);
+        state.gates.plan = Gate::pass(Evidence::TaskReady);
+
+        let mut tlog = Vec::new();
+        crate::api::routes::handle_envelope(
+            &mut state,
+            &mut tlog,
+            RuntimeConfig::default(),
+            CommandEnvelope::new(
+                0xa012_0001,
+                Command::AuthorizeProcessCall(mismatched_request),
+            ),
+        )
+        .unwrap();
+
+        let before = state;
+        let before_tlog = tlog.clone();
+        let result = crate::api::routes::handle_command(
+            &mut state,
+            &mut tlog,
+            RuntimeConfig::default(),
+            Command::SubmitProcessReceipt(receipt),
+        );
+
+        assert_eq!(result, Err(CanonError::InvalidReplay));
+        assert_eq!(state, before);
+        assert_eq!(tlog, before_tlog);
+
+        let _ = std::fs::remove_dir_all(&sandbox_root);
+    }
+
+    #[test]
+    fn api_rejects_mcp_receipt_without_prior_authorization() {
+        let request = McpCallRequest {
+            capability: CapabilityId::Tooling,
+            registry_policy_hash: CapabilityRegistry::canonical().policy_hash(),
+            worker_url_hash: 0xa013_0001,
+            tool_name_hash: 0xa013_0002,
+            args_hash: 0xa013_0003,
+            timeout_ms: 1000,
+            max_output_bytes: 4096,
+        };
+        let receipt = McpCallReceipt::from_response(&request, b"mcp-output", 0, false);
+
+        let mut state = State {
+            phase: Phase::Execute,
+            ..State::default()
+        };
+        state.packet.bind_ready_task();
+        state.gates.invariant = Gate::pass(Evidence::InvariantProof);
+        state.gates.analysis = Gate::pass(Evidence::AnalysisReport);
+        state.gates.judgment = Gate::pass(Evidence::JudgmentRecord);
+        state.gates.plan = Gate::pass(Evidence::TaskReady);
+
+        let before = state;
+        let mut tlog = Vec::new();
+        let result = crate::api::routes::handle_command(
+            &mut state,
+            &mut tlog,
+            RuntimeConfig::default(),
+            Command::SubmitMcpCallReceipt(receipt),
+        );
+
+        assert_eq!(result, Err(CanonError::InvalidReplay));
+        assert_eq!(state, before);
+        assert!(tlog.is_empty());
+    }
+
+    #[test]
+    fn api_rejects_mcp_receipt_with_different_prior_authorization() {
+        let actual_request = McpCallRequest {
+            capability: CapabilityId::Tooling,
+            registry_policy_hash: CapabilityRegistry::canonical().policy_hash(),
+            worker_url_hash: 0xa014_0001,
+            tool_name_hash: 0xa014_0002,
+            args_hash: 0xa014_0003,
+            timeout_ms: 1000,
+            max_output_bytes: 4096,
+        };
+        let authorized_request = McpCallRequest {
+            args_hash: 0xa014_ffff,
+            ..actual_request
+        };
+        let receipt = McpCallReceipt::from_response(&actual_request, b"mcp-output", 0, false);
+
+        let mut state = State {
+            phase: Phase::Execute,
+            ..State::default()
+        };
+        state.packet.bind_ready_task();
+        state.gates.invariant = Gate::pass(Evidence::InvariantProof);
+        state.gates.analysis = Gate::pass(Evidence::AnalysisReport);
+        state.gates.judgment = Gate::pass(Evidence::JudgmentRecord);
+        state.gates.plan = Gate::pass(Evidence::TaskReady);
+
+        let mut tlog = Vec::new();
+        crate::api::routes::handle_envelope(
+            &mut state,
+            &mut tlog,
+            RuntimeConfig::default(),
+            CommandEnvelope::new(0xa014_0004, Command::AuthorizeMcpCall(authorized_request)),
+        )
+        .unwrap();
+
+        let before = state;
+        let before_tlog = tlog.clone();
+        let result = crate::api::routes::handle_command(
+            &mut state,
+            &mut tlog,
+            RuntimeConfig::default(),
+            Command::SubmitMcpCallReceipt(receipt),
+        );
+
+        assert_eq!(result, Err(CanonError::InvalidReplay));
+        assert_eq!(state, before);
+        assert_eq!(tlog, before_tlog);
     }
 
     #[test]
@@ -4869,6 +5113,56 @@ mod tests {
         assert_eq!(report.first_seq, Some(1));
         assert_eq!(report.last_seq, Some(tlog.len() as u64));
         assert_eq!(report.final_hash, tlog.last().unwrap().self_hash);
+    }
+
+    #[test]
+    fn command_causality_report_projects_authorization_and_receipt_events() {
+        let mut state = State {
+            phase: Phase::Execute,
+            ..State::default()
+        };
+        state.packet.bind_ready_task();
+        state.gates.invariant = Gate::pass(Evidence::InvariantProof);
+        state.gates.analysis = Gate::pass(Evidence::AnalysisReport);
+        state.gates.judgment = Gate::pass(Evidence::JudgmentRecord);
+        state.gates.plan = Gate::pass(Evidence::TaskReady);
+        let initial = state;
+
+        let request = McpCallRequest {
+            capability: CapabilityId::Tooling,
+            registry_policy_hash: CapabilityRegistry::canonical().policy_hash(),
+            worker_url_hash: 0xc015_0001,
+            tool_name_hash: 0xc015_0002,
+            args_hash: 0xc015_0003,
+            timeout_ms: 1000,
+            max_output_bytes: 4096,
+        };
+        let receipt = McpCallReceipt::from_response(&request, b"projection-output", 0, false);
+
+        let mut tlog = Vec::new();
+        crate::api::routes::handle_envelope(
+            &mut state,
+            &mut tlog,
+            RuntimeConfig::default(),
+            CommandEnvelope::new(0xc015_0004, Command::AuthorizeMcpCall(request)),
+        )
+        .unwrap();
+        crate::api::routes::handle_envelope(
+            &mut state,
+            &mut tlog,
+            RuntimeConfig::default(),
+            CommandEnvelope::new(0xc015_0005, Command::SubmitMcpCallReceipt(receipt)),
+        )
+        .unwrap();
+
+        let report = command_causality_report_from(initial, &tlog).unwrap();
+        assert_eq!(report.event_count, tlog.len());
+        assert_eq!(report.authorization_event_count, 1);
+        assert_eq!(report.receipt_event_count, 1);
+        assert_eq!(report.first_authorization_seq, Some(1));
+        assert_eq!(report.last_receipt_seq, Some(2));
+        assert_eq!(report.final_hash, tlog.last().unwrap().self_hash);
+        assert!(report.command_event_count >= 2);
     }
 
     #[test]
