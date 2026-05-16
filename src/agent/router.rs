@@ -72,17 +72,21 @@ impl RouterClient {
 
     /// Best-effort close of the currently pinned browser tab.
     ///
-    /// This uses Chrome's local DevTools HTTP API when the returned target URL
-    /// is itself a `/devtools/page/<id>` URL, or when `CANON_BROWSER_CDP_URL`,
-    /// `CDP_URL`, or `CDP_PORT` explicitly names the debugging endpoint that
-    /// can resolve the tab by URL.
+    /// This uses browser-router's public tab API (`GET /tabs` and
+    /// `DELETE /tabs/{target_id}`) on the configured OpenAI-compatible router
+    /// base URL.
     pub fn close_current_tab(&mut self) -> Result<RouterTabCloseOutcome, OpenAiError> {
         let Some(target_url) = self.target_url.clone() else {
             return Ok(RouterTabCloseOutcome::NoTarget);
         };
 
+        let router_base_url = self.inner.config().base_url.clone();
         let outcome = retry_transient_router_io(|| {
-            close_browser_tab_for_url(&target_url, self.inner.config().timeout_ms)
+            close_browser_tab_for_url(
+                &target_url,
+                &router_base_url,
+                self.inner.config().timeout_ms,
+            )
         })?;
         if matches!(outcome, RouterTabCloseOutcome::Closed) {
             self.target_url = None;
@@ -290,46 +294,47 @@ pub fn close_tab_for_url_with_timeout(
     target_url: &str,
     timeout_ms: u64,
 ) -> Result<RouterTabCloseOutcome, OpenAiError> {
-    close_browser_tab_for_url(target_url, timeout_ms)
+    let config = OpenAiConfig::from_env()?;
+    close_browser_tab_for_url(target_url, &config.base_url, timeout_ms)
 }
 
 fn close_browser_tab_for_url(
     target_url: &str,
+    router_base_url: &str,
     timeout_ms: u64,
 ) -> Result<RouterTabCloseOutcome, OpenAiError> {
-    if let Some((host, port, target_id)) = devtools_page_target(target_url) {
-        return close_cdp_target(&host, port, &target_id, timeout_ms);
+    let endpoint = parse_local_http_endpoint(router_base_url).map_err(|e| match e {
+        LocalEndpointError::InvalidUrl => OpenAiError::InvalidUrl,
+        LocalEndpointError::NonLocalHost => {
+            OpenAiError::InvalidConfig("browser-router url must be local")
+        }
+    })?;
+    if let Some((_, _, target_id)) = devtools_page_target(target_url) {
+        return close_browser_router_tab(
+            &endpoint.host,
+            endpoint.port,
+            &endpoint.path_prefix,
+            &target_id,
+            timeout_ms,
+        );
     }
 
-    let Some(cdp_url) = cdp_endpoint_from_env() else {
-        return Ok(RouterTabCloseOutcome::NoCdpEndpoint);
-    };
-    let endpoint = parse_local_http_endpoint(&cdp_url).map_err(|e| match e {
-        LocalEndpointError::InvalidUrl => OpenAiError::InvalidUrl,
-        LocalEndpointError::NonLocalHost => OpenAiError::InvalidConfig("cdp url must be local"),
-    })?;
-    let (status, body) = cdp_get(&endpoint.host, endpoint.port, "/json/list", timeout_ms)?;
+    let tabs_path = browser_router_path(&endpoint.path_prefix, "/tabs");
+    let (status, body) = router_get(&endpoint.host, endpoint.port, &tabs_path, timeout_ms)?;
     if status != 200 {
         return Ok(RouterTabCloseOutcome::CloseHttpStatus(status));
     }
 
-    let Some(target_id) = cdp_target_id_for_url(&body, target_url) else {
+    let Some(target_id) = browser_router_target_id_for_url(&body, target_url) else {
         return Ok(RouterTabCloseOutcome::NoMatchingTarget);
     };
-    close_cdp_target(&endpoint.host, endpoint.port, &target_id, timeout_ms)
-}
-
-fn cdp_endpoint_from_env() -> Option<String> {
-    env::var("CANON_BROWSER_CDP_URL")
-        .ok()
-        .filter(|v| !v.trim().is_empty())
-        .or_else(|| env::var("CDP_URL").ok().filter(|v| !v.trim().is_empty()))
-        .or_else(|| {
-            env::var("CDP_PORT")
-                .ok()
-                .filter(|v| !v.trim().is_empty())
-                .map(|port| format!("http://127.0.0.1:{port}"))
-        })
+    close_browser_router_tab(
+        &endpoint.host,
+        endpoint.port,
+        &endpoint.path_prefix,
+        &target_id,
+        timeout_ms,
+    )
 }
 
 fn devtools_page_target(target_url: &str) -> Option<(String, u16, String)> {
@@ -344,9 +349,9 @@ fn devtools_page_target(target_url: &str) -> Option<(String, u16, String)> {
     Some((endpoint.host, endpoint.port, target_id.to_string()))
 }
 
-fn cdp_target_id_for_url(list_body: &str, target_url: &str) -> Option<String> {
-    let value: Value = serde_json::from_str(list_body).ok()?;
-    let entries = value.as_array()?;
+fn browser_router_target_id_for_url(tabs_body: &str, target_url: &str) -> Option<String> {
+    let value: Value = serde_json::from_str(tabs_body).ok()?;
+    let entries = value.get("targets")?.as_array()?;
     entries.iter().find_map(|entry| {
         let obj = entry.as_object()?;
         let id = obj.get("id")?.as_str()?;
@@ -354,26 +359,19 @@ fn cdp_target_id_for_url(list_body: &str, target_url: &str) -> Option<String> {
             .get("url")
             .and_then(Value::as_str)
             .is_some_and(|url| url == target_url);
-        let websocket_matches = obj
-            .get("webSocketDebuggerUrl")
-            .and_then(Value::as_str)
-            .is_some_and(|url| url == target_url);
-        let frontend_matches = obj
-            .get("devtoolsFrontendUrl")
-            .and_then(Value::as_str)
-            .is_some_and(|url| url == target_url);
-        (url_matches || websocket_matches || frontend_matches).then(|| id.to_string())
+        url_matches.then(|| id.to_string())
     })
 }
 
-fn close_cdp_target(
+fn close_browser_router_tab(
     host: &str,
     port: u16,
+    path_prefix: &str,
     target_id: &str,
     timeout_ms: u64,
 ) -> Result<RouterTabCloseOutcome, OpenAiError> {
-    let path = format!("/json/close/{target_id}");
-    let (status, _) = cdp_get(host, port, &path, timeout_ms)?;
+    let path = browser_router_path(path_prefix, &format!("/tabs/{target_id}"));
+    let (status, _) = router_delete(host, port, &path, timeout_ms)?;
     if status == 200 {
         Ok(RouterTabCloseOutcome::Closed)
     } else {
@@ -381,17 +379,39 @@ fn close_cdp_target(
     }
 }
 
-fn cdp_get(
+fn browser_router_path(path_prefix: &str, path: &str) -> String {
+    let prefix = path_prefix.trim_end_matches('/');
+    let router_prefix = prefix.strip_suffix("/v1").unwrap_or(prefix);
+    let path = path.trim_start_matches('/');
+    if router_prefix.is_empty() {
+        format!("/{path}")
+    } else {
+        format!("{router_prefix}/{path}")
+    }
+}
+
+fn router_get(
     host: &str,
     port: u16,
     path: &str,
     timeout_ms: u64,
 ) -> Result<(u16, String), OpenAiError> {
-    let response = cdp_get_request_transport_response(host, port, path, timeout_ms)?;
-    parse_cdp_get_response(&response)
+    let response = router_request_transport_response("GET", host, port, path, timeout_ms)?;
+    parse_router_response(&response)
 }
 
-fn cdp_get_request_transport_response(
+fn router_delete(
+    host: &str,
+    port: u16,
+    path: &str,
+    timeout_ms: u64,
+) -> Result<(u16, String), OpenAiError> {
+    let response = router_request_transport_response("DELETE", host, port, path, timeout_ms)?;
+    parse_router_response(&response)
+}
+
+fn router_request_transport_response(
+    method: &str,
     host: &str,
     port: u16,
     path: &str,
@@ -417,7 +437,7 @@ fn cdp_get_request_transport_response(
         .set_write_timeout(Some(timeout))
         .map_err(OpenAiError::Io)?;
 
-    let request = build_cdp_get_request(host, port, path);
+    let request = build_router_request(method, host, port, path);
     stream
         .write_all(request.as_bytes())
         .map_err(OpenAiError::Io)?;
@@ -430,13 +450,13 @@ fn cdp_get_request_transport_response(
     Ok(response)
 }
 
-fn build_cdp_get_request(host: &str, port: u16, path: &str) -> String {
+fn build_router_request(method: &str, host: &str, port: u16, path: &str) -> String {
     format!(
-        "GET {path} HTTP/1.1\r\nHost: {host}:{port}\r\nAccept: application/json\r\nConnection: close\r\n\r\n"
+        "{method} {path} HTTP/1.1\r\nHost: {host}:{port}\r\nAccept: application/json\r\nConnection: close\r\n\r\n"
     )
 }
 
-fn parse_cdp_get_response(response: &str) -> Result<(u16, String), OpenAiError> {
+fn parse_router_response(response: &str) -> Result<(u16, String), OpenAiError> {
     let (head, body) = response
         .split_once("\r\n\r\n")
         .ok_or(OpenAiError::InvalidResponse)?;
@@ -752,40 +772,45 @@ mod tests {
     }
 
     #[test]
-    fn cdp_target_id_matches_target_url_from_json_list() {
-        let body = r#"[
-          {"id":"old","url":"https://example.invalid/old"},
-          {"id":"target-1","url":"https://chatgpt.com/c/current"}
-        ]"#;
+    fn browser_router_target_id_matches_target_url_from_tabs_response() {
+        let body = r#"{
+          "targets": [
+            {"id":"old","url":"https://example.invalid/old"},
+            {"id":"target-1","url":"https://chatgpt.com/c/current"}
+          ]
+        }"#;
         assert_eq!(
-            cdp_target_id_for_url(body, "https://chatgpt.com/c/current"),
+            browser_router_target_id_for_url(body, "https://chatgpt.com/c/current"),
             Some("target-1".to_string())
         );
-        assert_eq!(cdp_target_id_for_url(body, "https://missing.invalid"), None);
+        assert_eq!(
+            browser_router_target_id_for_url(body, "https://missing.invalid"),
+            None
+        );
     }
 
     #[test]
-    fn cdp_get_helpers_preserve_http_request_and_response_parsing() {
+    fn browser_router_helpers_preserve_http_request_and_response_parsing() {
         let listener = TcpListener::bind(("127.0.0.1", 0))
-            .expect("loopback listener binds for cdp get helper test");
+            .expect("loopback listener binds for browser-router helper test");
         let port = listener
             .local_addr()
             .expect("loopback listener exposes local address")
             .port();
         let (tx, rx) = mpsc::channel();
-        let expected_request = build_cdp_get_request("127.0.0.1", port, "/json/list");
+        let expected_request = build_router_request("GET", "127.0.0.1", port, "/tabs");
 
         assert_eq!(
             expected_request,
             format!(
-                "GET /json/list HTTP/1.1\r\nHost: 127.0.0.1:{port}\r\nAccept: application/json\r\nConnection: close\r\n\r\n"
+                "GET /tabs HTTP/1.1\r\nHost: 127.0.0.1:{port}\r\nAccept: application/json\r\nConnection: close\r\n\r\n"
             )
         );
 
         let server = thread::spawn(move || {
             let (mut stream, _) = listener
                 .accept()
-                .expect("loopback listener accepts cdp get connection");
+                .expect("loopback listener accepts browser-router connection");
             stream
                 .set_read_timeout(Some(Duration::from_secs(2)))
                 .expect("loopback server read timeout is configured");
@@ -795,36 +820,37 @@ mod tests {
             loop {
                 let read = stream
                     .read(&mut buffer)
-                    .expect("loopback server reads cdp get request bytes");
+                    .expect("loopback server reads browser-router request bytes");
                 if read == 0 {
                     break;
                 }
                 request.push_str(
-                    std::str::from_utf8(&buffer[..read]).expect("cdp get request bytes are utf8"),
+                    std::str::from_utf8(&buffer[..read])
+                        .expect("browser-router request bytes are utf8"),
                 );
                 if request.contains("\r\n\r\n") {
                     break;
                 }
             }
             tx.send(request)
-                .expect("loopback server reports cdp get request");
+                .expect("loopback server reports browser-router request");
             stream
                 .write_all(b"HTTP/1.1 201 Created\r\nContent-Length: 16\r\nConnection: close\r\n\r\n{\"targets\":[]}")
-                .expect("loopback server writes cdp get response");
+                .expect("loopback server writes browser-router response");
         });
 
         let raw_response =
-            cdp_get_request_transport_response("127.0.0.1", port, "/json/list", 1_000)
-                .expect("cdp_get transport helper reads deterministic loopback response");
-        let (status, body) = parse_cdp_get_response(&raw_response)
-            .expect("cdp_get response parser reads deterministic loopback response");
+            router_request_transport_response("GET", "127.0.0.1", port, "/tabs", 1_000)
+                .expect("browser-router transport helper reads deterministic loopback response");
+        let (status, body) = parse_router_response(&raw_response)
+            .expect("browser-router response parser reads deterministic loopback response");
 
         let observed = rx
             .recv_timeout(Duration::from_secs(2))
-            .expect("loopback server reports observed cdp get request");
+            .expect("loopback server reports observed browser-router request");
         assert_eq!(observed, expected_request);
         let mut lines = observed.lines();
-        assert_eq!(lines.next(), Some("GET /json/list HTTP/1.1"));
+        assert_eq!(lines.next(), Some("GET /tabs HTTP/1.1"));
         let headers: Vec<&str> = lines.collect();
         assert!(headers.contains(&format!("Host: 127.0.0.1:{port}").as_str()));
         assert!(headers.contains(&"Accept: application/json"));
@@ -834,7 +860,79 @@ mod tests {
         assert_eq!(body, "{\"targets\":[]}");
         server
             .join()
-            .expect("loopback cdp get server thread finishes without panic");
+            .expect("loopback browser-router server thread finishes without panic");
+    }
+
+    #[test]
+    fn close_tab_uses_browser_router_tabs_api() {
+        let listener = TcpListener::bind(("127.0.0.1", 0))
+            .expect("loopback listener binds for browser-router close test");
+        let port = listener
+            .local_addr()
+            .expect("loopback listener exposes local address")
+            .port();
+        let (tx, rx) = mpsc::channel();
+
+        let server = thread::spawn(move || {
+            for response_body in [
+                r#"{"targets":[{"id":"target-1","url":"https://chatgpt.com/c/current"}]}"#,
+                r#"{"ok":true,"object":"tab.closed","id":"target-1","message":"Target is closing"}"#,
+            ] {
+                let (mut stream, _) = listener
+                    .accept()
+                    .expect("loopback listener accepts browser-router request");
+                stream
+                    .set_read_timeout(Some(Duration::from_secs(2)))
+                    .expect("loopback server read timeout is configured");
+
+                let mut request = String::new();
+                let mut buffer = [0_u8; 1024];
+                loop {
+                    let read = stream
+                        .read(&mut buffer)
+                        .expect("loopback server reads browser-router request bytes");
+                    if read == 0 {
+                        break;
+                    }
+                    request.push_str(
+                        std::str::from_utf8(&buffer[..read])
+                            .expect("browser-router request bytes are utf8"),
+                    );
+                    if request.contains("\r\n\r\n") {
+                        break;
+                    }
+                }
+                tx.send(request)
+                    .expect("loopback server reports browser-router request");
+                let response = format!(
+                    "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{response_body}",
+                    response_body.len()
+                );
+                stream
+                    .write_all(response.as_bytes())
+                    .expect("loopback server writes browser-router response");
+            }
+        });
+
+        let outcome = close_browser_tab_for_url(
+            "https://chatgpt.com/c/current",
+            &format!("http://127.0.0.1:{port}/v1"),
+            1_000,
+        )
+        .expect("browser-router tab close request succeeds");
+        assert_eq!(outcome, RouterTabCloseOutcome::Closed);
+
+        let list_request = rx
+            .recv_timeout(Duration::from_secs(2))
+            .expect("loopback server reports list request");
+        let close_request = rx
+            .recv_timeout(Duration::from_secs(2))
+            .expect("loopback server reports close request");
+        assert!(list_request.starts_with("GET /tabs HTTP/1.1\r\n"));
+        assert!(close_request.starts_with("DELETE /tabs/target-1 HTTP/1.1\r\n"));
+        server
+            .join()
+            .expect("loopback browser-router server thread finishes without panic");
     }
 
     #[test]

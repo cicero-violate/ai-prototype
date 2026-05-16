@@ -65,6 +65,11 @@ Without it, each turn may open a new tab, losing context.
 `OpenAiChatResponse::target_url` carries this value. The agent loop must thread
 it between turns.
 
+When the agent intentionally cleans up a tab, it uses browser-router's public tab
+API on the configured `CANON_OPENAI_BASE_URL`: `GET /tabs` to resolve the target
+ID from `target_url`, then `DELETE /tabs/{target_id}` to close it. The agent
+must not call Chromium's `/json/close` endpoint directly.
+
 ## Relationship To Future Rust Agent
 
 The Rust agent treats the router-server as an LLM transport. It does not treat it
