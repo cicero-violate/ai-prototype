@@ -60,6 +60,8 @@ pub struct GraphApplyOpsRequest {
     pub worktree_out: String,
     pub graph_out: Option<String>,
     pub receipt_out: Option<String>,
+    pub patch_out: Option<String>,
+    pub apply_patch_out: Option<String>,
     pub validate_command: Option<String>,
     pub recapture_command: Option<String>,
     pub artifact_root: Option<String>,
@@ -78,6 +80,8 @@ impl GraphApplyOpsRequest {
             worktree_out,
             graph_out: optional_string(args, "graph_out")?,
             receipt_out: optional_string(args, "receipt_out")?,
+            patch_out: optional_string(args, "patch_out")?,
+            apply_patch_out: optional_string(args, "apply_patch_out")?,
             validate_command: optional_string(args, "validate_command")?,
             recapture_command: optional_string(args, "recapture_command")?,
             artifact_root: optional_string(args, "graph_artifact_root")?
@@ -152,6 +156,8 @@ pub struct GraphAutoRefactorCfgRequest {
     pub worktree_out: String,
     pub graph_out: Option<String>,
     pub receipt_out: Option<String>,
+    pub patch_out: Option<String>,
+    pub apply_patch_out: Option<String>,
     pub validate_command: Option<String>,
     pub recapture_command: Option<String>,
     pub new_graph_path: Option<String>,
@@ -178,9 +184,13 @@ impl GraphAutoRefactorCfgRequest {
             worktree_out,
             graph_out: optional_string(args, "graph_out")?,
             receipt_out: optional_string(args, "receipt_out")?,
+            patch_out: optional_string(args, "patch_out")?,
+            apply_patch_out: optional_string(args, "apply_patch_out")?,
             validate_command: optional_string(args, "validate_command")?,
             recapture_command: optional_string(args, "recapture_command")?,
-            artifact_root: optional_string(args, "artifact_root")?,
+            artifact_root: optional_string(args, "graph_artifact_root")?
+                .or(optional_string(args, "artifact_root")?)
+                .or_else(|| Some("state/rustc".to_string())),
             new_graph_path: optional_string(args, "new_graph")?
                 .or(optional_string(args, "new_graph_path")?),
             replacement: optional_string(args, "replacement")?,
@@ -263,6 +273,8 @@ fn auto_refactor_cfg_tool_inner(args: &Value, workspace: &WorkspaceView) -> Resu
         "worktree_out": request.worktree_out,
         "graph_out": request.graph_out,
         "receipt_out": request.receipt_out,
+        "patch_out": request.patch_out,
+        "apply_patch_out": request.apply_patch_out,
         "validate_command": request.validate_command,
         "recapture_command": request.recapture_command,
         "artifact_root": request.artifact_root,
@@ -509,6 +521,7 @@ fn apply_ops_tool_inner(args: &Value, workspace: &WorkspaceView) -> Result<Value
         let mut render_json = merged_graph_files_json(&artifact_root)?;
         overlay_graph_files(&mut render_json, &graph_json)?;
         render_graph_files_json(&render_json, &worktree_out)?;
+        complete_missing_workspace_members(&workspace.root, &worktree_out)?;
     } else {
         render_graph_files_json(&graph_json, &worktree_out)?;
     }
@@ -521,6 +534,16 @@ fn apply_ops_tool_inner(args: &Value, workspace: &WorkspaceView) -> Result<Value
         )?;
     }
 
+    if let Some(path) = request.patch_out.as_deref() {
+        let out = resolve_workspace_file(workspace, path)?;
+        write_string(&out, &plan.diff)?;
+    }
+    let apply_patch_text = apply_patch_text_from_unified_diff(&plan.diff)?;
+    if let Some(path) = request.apply_patch_out.as_deref() {
+        let out = resolve_workspace_file(workspace, path)?;
+        write_string(&out, &apply_patch_text)?;
+    }
+
     let patch_receipt = encode_graph_patch_receipt_ndjson(&plan.receipt);
     let ops_receipt_text = encode_graph_mutation_opset_receipt_ndjson(&ops_receipt);
     let receipt_payload = json!({
@@ -529,7 +552,10 @@ fn apply_ops_tool_inner(args: &Value, workspace: &WorkspaceView) -> Result<Value
         "ops": workspace_relative_display(workspace, &ops_path),
         "worktreeOut": workspace_relative_display(workspace, &worktree_out),
         "graphOut": request.graph_out,
+        "patchOut": request.patch_out,
+        "applyPatchOut": request.apply_patch_out,
         "artifactRoot": request.artifact_root,
+        "applyPatch": apply_patch_text,
         "patchReceipt": patch_receipt,
         "opsReceipt": ops_receipt_text,
     });
@@ -560,8 +586,14 @@ fn apply_ops_tool_inner(args: &Value, workspace: &WorkspaceView) -> Result<Value
         "worktreeOut": workspace_relative_display(workspace, &worktree_out),
         "graphOut": request.graph_out,
         "receiptOut": request.receipt_out,
+        "patchOut": request.patch_out,
+        "applyPatchOut": request.apply_patch_out,
         "artifactRoot": request.artifact_root,
         "changedFiles": changed_files(&ops),
+        "validationStatus": validation
+            .as_ref()
+            .and_then(|value| value.get("status"))
+            .and_then(Value::as_i64),
         "patchHash": plan.receipt.patch_hash,
         "validation": validation,
         "recapture": recapture,
@@ -778,6 +810,88 @@ fn render_graph_files_json(graph_json: &Value, output_root: &Path) -> Result<(),
     Ok(())
 }
 
+fn complete_missing_workspace_members(
+    workspace_root: &Path,
+    output_root: &Path,
+) -> Result<(), String> {
+    let rendered_manifest = output_root.join("Cargo.toml");
+    if !rendered_manifest.exists() {
+        return Ok(());
+    }
+    let manifest = fs::read_to_string(&rendered_manifest)
+        .map_err(|error| format!("failed to read {}: {error}", rendered_manifest.display()))?;
+    for member in workspace_members_from_manifest(&manifest) {
+        validate_relative_render_path(&member)?;
+        let rendered_member_manifest = output_root.join(&member).join("Cargo.toml");
+        if rendered_member_manifest.exists() {
+            continue;
+        }
+        let source_member = workspace_root.join(&member);
+        if !source_member.join("Cargo.toml").exists() {
+            continue;
+        }
+        copy_workspace_member_tree(&source_member, &output_root.join(&member))?;
+    }
+    Ok(())
+}
+
+fn workspace_members_from_manifest(manifest: &str) -> Vec<String> {
+    let Some(members_start) = manifest.find("members") else {
+        return Vec::new();
+    };
+    let tail = &manifest[members_start..];
+    let Some(open) = tail.find('[') else {
+        return Vec::new();
+    };
+    let Some(close) = tail[open + 1..].find(']') else {
+        return Vec::new();
+    };
+    let body = &tail[open + 1..open + 1 + close];
+    body.split(',')
+        .filter_map(|part| {
+            let trimmed = part.trim().trim_matches('"').trim_matches('\'');
+            (!trimmed.is_empty()).then(|| trimmed.to_string())
+        })
+        .collect()
+}
+
+fn copy_workspace_member_tree(source: &Path, dest: &Path) -> Result<(), String> {
+    fs::create_dir_all(dest)
+        .map_err(|error| format!("failed to create {}: {error}", dest.display()))?;
+    for entry in fs::read_dir(source)
+        .map_err(|error| format!("failed to read {}: {error}", source.display()))?
+    {
+        let entry =
+            entry.map_err(|error| format!("failed to read workspace member entry: {error}"))?;
+        let name = entry.file_name();
+        let name = name.to_string_lossy();
+        if name == ".git" || name == "target" {
+            continue;
+        }
+        let source_path = entry.path();
+        let dest_path = dest.join(name.as_ref());
+        let file_type = entry
+            .file_type()
+            .map_err(|error| format!("failed to inspect {}: {error}", source_path.display()))?;
+        if file_type.is_dir() {
+            copy_workspace_member_tree(&source_path, &dest_path)?;
+        } else if file_type.is_file() {
+            if let Some(parent) = dest_path.parent() {
+                fs::create_dir_all(parent)
+                    .map_err(|error| format!("failed to create {}: {error}", parent.display()))?;
+            }
+            fs::copy(&source_path, &dest_path).map_err(|error| {
+                format!(
+                    "failed to copy {} to {}: {error}",
+                    source_path.display(),
+                    dest_path.display()
+                )
+            })?;
+        }
+    }
+    Ok(())
+}
+
 fn run_shell_command(command: &str, cwd: &Path) -> Result<Value, String> {
     let output = Command::new("sh")
         .arg("-c")
@@ -895,6 +1009,36 @@ fn validate_relative_render_path(path: &str) -> Result<(), String> {
         }
     }
     Ok(())
+}
+
+fn apply_patch_text_from_unified_diff(diff: &str) -> Result<String, String> {
+    let mut out = String::from("*** Begin Patch\n");
+    let mut current_file: Option<String> = None;
+    let mut saw_hunk = false;
+    for line in diff.lines() {
+        if let Some(path) = line.strip_prefix("--- a/") {
+            current_file = Some(path.split('\t').next().unwrap_or(path).to_string());
+            continue;
+        }
+        if let Some(path) = line.strip_prefix("+++ b/") {
+            let path = path.split('\t').next().unwrap_or(path);
+            let selected = current_file.take().unwrap_or_else(|| path.to_string());
+            out.push_str("*** Update File: ");
+            out.push_str(&selected);
+            out.push('\n');
+            continue;
+        }
+        if line.starts_with("@@") || saw_hunk {
+            saw_hunk = true;
+            out.push_str(line);
+            out.push('\n');
+        }
+    }
+    if !saw_hunk {
+        return Err("generated patch has no hunks".to_string());
+    }
+    out.push_str("*** End Patch\n");
+    Ok(out)
 }
 
 fn sha256_text(text: &str) -> String {
@@ -1120,6 +1264,8 @@ mod tests {
             "ops": "ops.ndjson",
             "worktree_out": "tmp/worktree",
             "graph_out": "tmp/graph.json",
+            "patch_out": "tmp/patch.diff",
+            "apply_patch_out": "tmp/apply.patch",
             "validate_command": "cargo check",
             "artifact_root": "state/rustc"
         }))
@@ -1128,6 +1274,8 @@ mod tests {
         assert_eq!(request.ops_path, "ops.ndjson");
         assert_eq!(request.worktree_out, "tmp/worktree");
         assert_eq!(request.graph_out.as_deref(), Some("tmp/graph.json"));
+        assert_eq!(request.patch_out.as_deref(), Some("tmp/patch.diff"));
+        assert_eq!(request.apply_patch_out.as_deref(), Some("tmp/apply.patch"));
         assert_eq!(request.validate_command.as_deref(), Some("cargo check"));
         assert_eq!(request.artifact_root.as_deref(), Some("state/rustc"));
     }
@@ -1137,6 +1285,24 @@ mod tests {
         assert!(validate_relative_render_path("../x.rs").is_err());
         assert!(validate_relative_render_path("/tmp/x.rs").is_err());
         assert!(validate_relative_render_path("ai/src/lib.rs").is_ok());
+    }
+
+    #[test]
+    fn apply_patch_text_from_unified_diff_wraps_update_file_hunks() {
+        let diff = "--- a/ai/src/lib.rs\n+++ b/ai/src/lib.rs\n@@ -1 +1 @@\n-old\n+new\n";
+        let patch = apply_patch_text_from_unified_diff(diff).expect("apply patch text");
+        assert!(patch.starts_with("*** Begin Patch\n"));
+        assert!(patch.contains("*** Update File: ai/src/lib.rs\n"));
+        assert!(patch.contains("@@ -1 +1 @@\n-old\n+new\n"));
+        assert!(patch.ends_with("*** End Patch\n"));
+    }
+
+    #[test]
+    fn workspace_members_from_manifest_parses_workspace_members() {
+        let members = workspace_members_from_manifest(
+            "[workspace]\nmembers = [\"ai\", \"browser-router\", \"score\"]\n",
+        );
+        assert_eq!(members, vec!["ai", "browser-router", "score"]);
     }
 
     #[test]
