@@ -3,12 +3,61 @@
 use axum::body::Bytes;
 use axum::extract::State as AxumState;
 use axum::http::StatusCode;
-use axum::response::IntoResponse;
+use axum::response::{Html, IntoResponse};
 use axum::Json;
+use std::process::{Command as StdCommand, Stdio};
+use std::time::Duration;
 
-use crate::process::supervisor::{HealthDto, ReloadDto, SpawnDto, SpawnRequest};
+use crate::process::supervisor::{HealthDto, ReloadDto, RestartDto, SpawnDto, SpawnRequest};
 
 use crate::process::supervisor::{ErrorDto, SupervisorState};
+
+const SUPERVISOR_RESTART_DELAY_MS: u64 = 700;
+const SUPERVISOR_EXIT_DELAY_MS: u64 = 150;
+
+pub async fn control_page(
+    AxumState(state): AxumState<SupervisorState>,
+) -> Result<Html<String>, (StatusCode, Json<ErrorDto>)> {
+    let health = {
+        let mut guard = state.inner.lock().await;
+        guard.health().await.map_err(error_response)?
+    };
+    let html = format!(
+        r#"<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Canon AI Supervisor Control</title>
+<style>
+body{{font-family:system-ui,sans-serif;max-width:720px;margin:64px auto;padding:0 24px;color:#111}}
+.card{{border:1px solid #e5e7eb;border-radius:10px;padding:24px;margin-top:20px}}
+button{{padding:10px 18px;font-size:15px;border:0;border-radius:6px;cursor:pointer;margin-right:10px}}
+.reload{{background:#1d4ed8;color:#fff}}
+.restart{{background:#991b1b;color:#fff}}
+code{{background:#f3f4f6;padding:2px 5px;border-radius:4px}}
+</style>
+</head>
+<body>
+<h1>Canon AI Supervisor</h1>
+<div class="card">
+<p>Status: <strong>ok</strong></p>
+<p>Worker generation: <code>{generation}</code></p>
+<p>Worker port: <code>{worker_port}</code></p>
+<form method="post" action="/reload" style="display:inline">
+  <button class="reload" type="submit">Reload worker</button>
+</form>
+<form method="post" action="/restart" style="display:inline" onsubmit="return confirm('Restart the supervisor process? This briefly disconnects the control API.');">
+  <button class="restart" type="submit">Restart supervisor</button>
+</form>
+</div>
+<p><small><code>/reload</code> replaces the worker. <code>/restart</code> starts a replacement supervisor process and exits this one.</small></p>
+</body>
+</html>"#,
+        generation = health.generation,
+        worker_port = health.worker_port,
+    );
+    Ok(Html(html))
+}
 
 pub async fn health(
     AxumState(state): AxumState<SupervisorState>,
@@ -22,6 +71,26 @@ pub async fn reload(
 ) -> Result<Json<ReloadDto>, (StatusCode, Json<ErrorDto>)> {
     let mut guard = state.inner.lock().await;
     guard.reload_inner().await.map(Json).map_err(error_response)
+}
+
+pub async fn restart(
+    AxumState(state): AxumState<SupervisorState>,
+) -> Result<Json<RestartDto>, (StatusCode, Json<ErrorDto>)> {
+    let replacement =
+        schedule_supervisor_replacement(SUPERVISOR_RESTART_DELAY_MS).map_err(error_response)?;
+    let pid = std::process::id();
+    tokio::spawn(async move {
+        tokio::time::sleep(Duration::from_millis(SUPERVISOR_EXIT_DELAY_MS)).await;
+        let mut guard = state.inner.lock().await;
+        guard.shutdown().await;
+        std::process::exit(0);
+    });
+    Ok(Json(RestartDto {
+        ok: true,
+        pid,
+        replacement,
+        delay_ms: SUPERVISOR_RESTART_DELAY_MS,
+    }))
 }
 
 pub async fn spawn_agent_handler(
@@ -123,6 +192,36 @@ fn command_log_fields(body: &[u8]) -> (String, String, String) {
             }
         });
     (command_id, payload_tag, source)
+}
+
+fn schedule_supervisor_replacement(delay_ms: u64) -> Result<String, String> {
+    let exe = std::env::current_exe().map_err(|error| format!("current_exe failed: {error}"))?;
+    #[cfg(unix)]
+    {
+        let delay_seconds = format!("{}", delay_ms as f64 / 1000.0);
+        let script = "sleep \"$1\"; shift; exec \"$@\"";
+        StdCommand::new("sh")
+            .arg("-c")
+            .arg(script)
+            .arg("supervisor-restart")
+            .arg(delay_seconds)
+            .arg(&exe)
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::inherit())
+            .spawn()
+            .map_err(|error| format!("spawn delayed supervisor restart failed: {error}"))?;
+    }
+    #[cfg(not(unix))]
+    {
+        StdCommand::new(&exe)
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::inherit())
+            .spawn()
+            .map_err(|error| format!("spawn supervisor restart failed: {error}"))?;
+    }
+    Ok(exe.display().to_string())
 }
 
 fn error_response(error: String) -> (StatusCode, Json<ErrorDto>) {

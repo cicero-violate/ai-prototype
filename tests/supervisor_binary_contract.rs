@@ -59,6 +59,7 @@ fn supervisor_help_does_not_require_environment() {
     let stdout = String::from_utf8_lossy(&output.stdout);
     assert!(stdout.contains("usage: supervisor"));
     assert!(stdout.contains("/reload"));
+    assert!(stdout.contains("/restart"));
     assert!(stdout.contains("/health"));
 }
 
@@ -89,6 +90,17 @@ fn supervisor_spawns_worker_and_reloads_generation() {
             .status()
             .is_success()
     );
+
+    let control_url = format!("http://127.0.0.1:{supervisor_port}/control");
+    let control_html = reqwest::blocking::get(&control_url)
+        .expect("control page response")
+        .text()
+        .expect("control page body");
+    assert!(control_html.contains("Restart supervisor"));
+    assert!(control_html.contains("action=\"/restart\""));
+    assert!(control_html.contains("Reload worker"));
+    assert!(control_html.contains("action=\"/reload\""));
+    assert!(control_html.contains(&format!("<code>{first_port}</code>")));
 
     let first_state_url = format!("http://127.0.0.1:{first_port}/v1/state");
     let initial_state = wait_for_json(&first_state_url);

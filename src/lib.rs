@@ -193,7 +193,7 @@ pub use crate::process::supervisor::SupervisorConfig;
 pub use crate::process::supervisor::WorkspaceConfig;
 pub use crate::process::supervisor::{
     ActiveWorkerDto, ErrorDto as SupervisorErrorDto, HealthDto, NativeMcpSession, NativeMcpState,
-    ReloadDto, SpawnDto, SpawnRequest, SupervisorState, WorkerProcess,
+    ReloadDto, RestartDto, SpawnDto, SpawnRequest, SupervisorState, WorkerProcess,
 };
 pub use crate::runtime::{
     append_canonical_line, append_score_report_update_ndjson, append_validation_result_ndjson,

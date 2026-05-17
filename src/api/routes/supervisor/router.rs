@@ -3,7 +3,7 @@
 use axum::routing::{get, post};
 use axum::Router;
 
-use super::control::{command_gateway, health, reload, spawn_agent_handler};
+use super::control::{command_gateway, control_page, health, reload, restart, spawn_agent_handler};
 use super::mcp::{ai_mcp_delete, ai_mcp_get_sse, ai_mcp_post};
 use super::oauth::{
     ai_oauth_authorize_get, ai_oauth_authorize_post, ai_oauth_metadata,
@@ -14,8 +14,11 @@ use crate::process::supervisor::SupervisorState;
 
 pub fn build_supervisor_router(state: SupervisorState) -> Router {
     Router::new()
+        .route("/", get(control_page))
+        .route("/control", get(control_page))
         .route("/health", get(health))
         .route("/reload", post(reload))
+        .route("/restart", post(restart))
         .route("/spawn", post(spawn_agent_handler))
         .route("/v1/command", post(command_gateway))
         .route(

@@ -186,7 +186,9 @@ Message kinds: `DomainSignal`, `GraphEditRequest`, `EvalRequest`, `PolicyCandida
 
 ```
 GET  :9100/health   — {"ok":true,"generation":N,"worker_port":XXXXX}
+GET  :9100/control  — supervisor control page with reload/restart buttons
 POST :9100/reload   — hot-reload the worker (fresh TLog state)
+POST :9100/restart  — restart the supervisor process to load a freshly built binary
 POST :9100/spawn    — {"domain":"...","metric":"...","max_steps":20}
 ```
 

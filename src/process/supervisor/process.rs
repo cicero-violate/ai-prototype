@@ -229,6 +229,14 @@ pub struct ReloadDto {
 }
 
 #[derive(Clone, Debug, Serialize, PartialEq, Eq)]
+pub struct RestartDto {
+    pub ok: bool,
+    pub pid: u32,
+    pub replacement: String,
+    pub delay_ms: u64,
+}
+
+#[derive(Clone, Debug, Serialize, PartialEq, Eq)]
 pub struct ActiveWorkerDto {
     pub generation: u64,
     pub worker_port: u16,
