@@ -39,7 +39,7 @@ pub fn auth_error_response(base_url: &str, error: &str) -> Response {
         .header(axum::http::header::CONTENT_TYPE, "application/json")
         .header(
             axum::http::header::WWW_AUTHENTICATE,
-            format!(r#"Bearer resource_metadata=\"{metadata_url}\", error=\"{error}\""#),
+            format!(r#"Bearer resource_metadata="{metadata_url}", error="{error}""#),
         )
         .body(json!({ "error": error }).to_string().into())
         .unwrap_or_else(|_| {
@@ -53,4 +53,28 @@ pub fn html_escape(input: &str) -> String {
         .replace('"', "&quot;")
         .replace('<', "&lt;")
         .replace('>', "&gt;")
+}
+
+#[cfg(test)]
+mod tests {
+    use axum::http::header::WWW_AUTHENTICATE;
+
+    use super::*;
+
+    #[test]
+    fn auth_error_response_uses_parseable_bearer_challenge() {
+        let response = auth_error_response("https://example.test/ai", "unauthorized");
+        let challenge = response
+            .headers()
+            .get(WWW_AUTHENTICATE)
+            .expect("www-authenticate header should be present")
+            .to_str()
+            .expect("www-authenticate header should be ascii");
+
+        assert_eq!(
+            challenge,
+            r#"Bearer resource_metadata="https://example.test/ai/.well-known/oauth-protected-resource/mcp", error="unauthorized""#
+        );
+        assert!(!challenge.contains("\\\""));
+    }
 }
