@@ -160,7 +160,7 @@ pub(super) fn planning_prompt(
         "{agent_line}\n\
          You are doing the planning turn for this agent loop.\n\n\
          ## WORKING DIRECTORY\n`{dir}`\n\
-         All shell commands must run relative to this directory unless the task explicitly requires otherwise.\n\n\
+         Workspace command actions must run relative to this directory unless the task explicitly requires otherwise.\n\n\
          {focus_block}\
          ## GOAL\n{goal}\n\n\
          {score_block}\
@@ -356,7 +356,7 @@ pub(super) fn spawned_prompt(domain: &str, metric: &str, step: u32, working_dir:
              ## PROTOCOL\n\
              1. Assess the current state against the success criterion before doing anything else.\n\
              2. Take the minimal actions needed to meet the criterion.\n\
-             3. Use `apply_patch` for all file edits.\n\
+             3. Use `call_action` with action `workspace:apply_patch` for all file edits.\n\
              4. Every tool call must include a non-empty `intent` field explaining why.\n\
              5. Do not modify `plan.md`, `status.md`, `score.md`, or other planning files.\n\
              6. When the criterion is met: commit all changes, then stop.\n\

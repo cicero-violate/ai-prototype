@@ -10,6 +10,7 @@ pub mod canon_send_agent_message;
 pub mod canon_spawn_agent;
 pub mod common;
 pub mod dispatch;
+pub mod landmarks;
 pub mod shell;
 
 pub use apply_patch::APPLY_PATCH_TOOL;

@@ -82,3 +82,61 @@ pub fn dispatch_ai_mcp_plan(
         },
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn tools_list_dispatch_exposes_gateway_landmark_surface_only() {
+        let plan = dispatch_ai_mcp_plan("tools/list", json!(1), Value::Null, None);
+        let response = match plan {
+            AiMcpDispatchPlan::Immediate { response } => response,
+            other => panic!("expected immediate tools/list response, got {other:?}"),
+        };
+        let names: Vec<&str> = response["result"]["tools"]
+            .as_array()
+            .expect("tools list")
+            .iter()
+            .map(|tool| tool["name"].as_str().expect("tool name"))
+            .collect();
+
+        assert_eq!(
+            names,
+            vec![
+                "get_manifest",
+                "get_landmarks",
+                "inspect_landmark",
+                "call_action",
+                "execute_sequence",
+            ]
+        );
+        assert!(!names.contains(&"shell"));
+        assert!(!names.contains(&"apply_patch"));
+    }
+
+    #[test]
+    fn tools_call_dispatch_preserves_gateway_call_arguments() {
+        let plan = dispatch_ai_mcp_plan(
+            "tools/call",
+            json!(1),
+            json!({
+                "name": "call_action",
+                "arguments": {
+                    "action": "workspace:shell",
+                    "parameters": { "command": "pwd" }
+                }
+            }),
+            None,
+        );
+
+        match plan {
+            AiMcpDispatchPlan::ToolCall { name, args } => {
+                assert_eq!(name, "call_action");
+                assert_eq!(args["action"], "workspace:shell");
+                assert_eq!(args["parameters"]["command"], "pwd");
+            }
+            other => panic!("expected gateway tool call dispatch, got {other:?}"),
+        }
+    }
+}

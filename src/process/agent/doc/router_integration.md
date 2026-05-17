@@ -19,7 +19,7 @@ These are completely separate. Conflating them is wrong.
 
 ```
 Rust agent
-  → LiveMcpCallExecutor.execute_call("shell", args)
+  → LiveMcpCallExecutor.execute_call("call_action", { action: "workspace:shell", parameters: args })
   → POST http://127.0.0.1:<port>/mcp_worker  (JSON-RPC tools/call)
   → McpCallReceipt { response_hash, exit_status, receipt_hash }
   → EvidenceSubmission → kernel → TLog
