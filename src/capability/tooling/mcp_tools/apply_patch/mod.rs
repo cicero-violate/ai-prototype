@@ -10,7 +10,7 @@ use serde_json::{json, Value};
 use uuid::Uuid;
 
 use super::common::{tmp_dir, tool_error};
-use super::WorkspaceView;
+use crate::runtime::WorkspaceView;
 use fs_copy::{copy_dir_recursive, TempDirGuard};
 use parser::{collect_apply_patch_changed_files, validate_workspace_relative_path};
 use runner::{format_apply_patch_failure, run_apply_patch_binary};

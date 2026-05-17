@@ -1,6 +1,7 @@
-//! Capability-owned workspace view for stateful MCP tools.
+//! Runtime-owned workspace boundary view.
 //!
-//! This keeps file/process tools independent from supervisor-owned runtime config.
+//! Tool adapters receive this view, but capability code does not own workspace
+//! authority or boundary policy.
 
 use std::path::{Component, Path, PathBuf};
 

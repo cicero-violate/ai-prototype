@@ -6,7 +6,9 @@ use crate::capability::tooling::{
 };
 use crate::capability::{CapabilityRegistry, EvidenceSubmission};
 use crate::kernel::{ControlEvent, Evidence, GateId, TLog};
-pub use crate::runtime::{CommandLedger, CommandReceipt};
+pub use crate::runtime::{
+    CommandLedger, CommandReceipt, MailboxMessageReceipt, MailboxMessageRequest,
+};
 
 pub const API_PROTOCOL_SCHEMA_VERSION: u64 = 6;
 pub const API_COMMAND_BATCH_LIMIT: usize = 16;
@@ -18,8 +20,10 @@ pub enum Command {
     SubmitObservationIngress(ObservationIngressBatch),
     AuthorizeMcpCall(McpCallRequest),
     AuthorizeProcessCall(SandboxProcessRequest),
+    AuthorizeMailboxMessage(MailboxMessageRequest),
     SubmitMcpCallReceipt(McpCallReceipt),
     SubmitProcessReceipt(SandboxProcessReceipt),
+    SubmitMailboxMessageReceipt(MailboxMessageReceipt),
     SubmitProcessReceiptBatch(Vec<SandboxProcessReceipt>),
 }
 
@@ -46,11 +50,19 @@ impl Command {
                 request.is_admissible()
                     && request.registry_policy_hash == CapabilityRegistry::canonical().policy_hash()
             }
+            Self::AuthorizeMailboxMessage(request) => {
+                request.is_admissible()
+                    && request.registry_policy_hash == CapabilityRegistry::canonical().policy_hash()
+            }
             Self::SubmitMcpCallReceipt(receipt) => {
                 receipt.is_contract_valid()
                     && receipt.registry_policy_hash == CapabilityRegistry::canonical().policy_hash()
             }
             Self::SubmitProcessReceipt(receipt) => {
+                receipt.is_contract_valid()
+                    && receipt.registry_policy_hash == CapabilityRegistry::canonical().policy_hash()
+            }
+            Self::SubmitMailboxMessageReceipt(receipt) => {
                 receipt.is_contract_valid()
                     && receipt.registry_policy_hash == CapabilityRegistry::canonical().policy_hash()
             }
@@ -74,8 +86,10 @@ impl Command {
             Self::SubmitObservationIngress(batch) => batch.records.len(),
             Self::AuthorizeMcpCall(_) => 1,
             Self::AuthorizeProcessCall(_) => 1,
+            Self::AuthorizeMailboxMessage(_) => 1,
             Self::SubmitMcpCallReceipt(_) => 1,
             Self::SubmitProcessReceipt(_) => 1,
+            Self::SubmitMailboxMessageReceipt(_) => 1,
             Self::SubmitProcessReceiptBatch(receipts) => receipts.len(),
         }
     }
@@ -126,6 +140,15 @@ impl Command {
                 h ^= process_authorization_submission(*request).contract_hash();
                 h.wrapping_mul(0x100000001b3).max(1)
             }
+            Self::AuthorizeMailboxMessage(request) => {
+                let mut h = 0x4d42_5841_5554_4801u64;
+                h ^= self.submission_count() as u64;
+                h = h.wrapping_mul(0x100000001b3);
+                h ^= request.contract_hash();
+                h = h.wrapping_mul(0x100000001b3);
+                h ^= mailbox_authorization_submission(*request).contract_hash();
+                h.wrapping_mul(0x100000001b3).max(1)
+            }
             Self::SubmitMcpCallReceipt(receipt) => {
                 let mut h = 0x4d43_5052_4350_5401u64;
                 h ^= self.submission_count() as u64;
@@ -142,6 +165,15 @@ impl Command {
                 h ^= receipt.contract_hash();
                 h = h.wrapping_mul(0x100000001b3);
                 h ^= receipt.effect.contract_hash();
+                h.wrapping_mul(0x100000001b3).max(1)
+            }
+            Self::SubmitMailboxMessageReceipt(receipt) => {
+                let mut h = 0x4d42_5852_4350_5401u64;
+                h ^= self.submission_count() as u64;
+                h = h.wrapping_mul(0x100000001b3);
+                h ^= receipt.contract_hash();
+                h = h.wrapping_mul(0x100000001b3);
+                h ^= receipt.submission().contract_hash();
                 h.wrapping_mul(0x100000001b3).max(1)
             }
             Self::SubmitProcessReceiptBatch(receipts) => {
@@ -176,6 +208,10 @@ pub fn process_authorization_submission(request: SandboxProcessRequest) -> Evide
         false,
         request.contract_hash(),
     )
+}
+
+pub fn mailbox_authorization_submission(request: MailboxMessageRequest) -> EvidenceSubmission {
+    request.submission()
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

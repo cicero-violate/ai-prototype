@@ -1,17 +1,18 @@
-//! MCP dispatch, receipt recording, and stateful tool execution.
+//! MCP dispatch, receipt recording, and MCP tool execution.
 
 use chrono::{DateTime, Utc};
 use serde_json::{json, Value};
 
-use super::{apply_patch, canon_read_mailbox, canon_send_agent_message, shell, WorkspaceView};
+use super::{apply_patch, canon_read_mailbox, canon_send_agent_message, shell};
 use crate::api::mcp::{
     dispatch_ai_mcp_plan, mcp_ok, result_with_warning, tool_error, AiMcpDispatchPlan,
 };
 use crate::api::protocol::Command as KernelCommand;
+use crate::runtime::WorkspaceView;
 use crate::{CapabilityRegistry, McpCallReceipt, McpCallRequest};
 
 #[allow(async_fn_in_trait)]
-pub trait StatefulMcpHost {
+pub trait McpToolHost {
     fn workspace(&self) -> WorkspaceView;
 
     async fn active_generation(&self) -> u64;
@@ -23,7 +24,7 @@ pub trait StatefulMcpHost {
     async fn run_host_tool(&self, name: &str, args: &Value) -> Option<Value>;
 }
 
-pub async fn dispatch_ai_mcp<H: StatefulMcpHost>(
+pub async fn dispatch_ai_mcp<H: McpToolHost>(
     method: &str,
     id: Value,
     params: Value,
@@ -47,11 +48,7 @@ pub async fn dispatch_ai_mcp<H: StatefulMcpHost>(
     }
 }
 
-async fn execute_recorded_ai_mcp_tool<H: StatefulMcpHost>(
-    name: &str,
-    args: Value,
-    host: &H,
-) -> Value {
+async fn execute_recorded_ai_mcp_tool<H: McpToolHost>(name: &str, args: Value, host: &H) -> Value {
     if name == "shell" {
         return run_recorded_ai_mcp_shell(&args, host).await;
     }
@@ -108,7 +105,7 @@ async fn execute_recorded_ai_mcp_tool<H: StatefulMcpHost>(
     result
 }
 
-async fn call_ai_mcp_tool<H: StatefulMcpHost>(name: &str, args: &Value, host: &H) -> Value {
+async fn call_ai_mcp_tool<H: McpToolHost>(name: &str, args: &Value, host: &H) -> Value {
     match name {
         "echo" => json!({
             "content": [{ "type": "text", "text": args.get("text").and_then(Value::as_str).unwrap_or("") }],
@@ -130,10 +127,7 @@ async fn call_ai_mcp_tool<H: StatefulMcpHost>(name: &str, args: &Value, host: &H
             .run_host_tool(name, args)
             .await
             .unwrap_or_else(|| tool_error(format!("Unknown host tool: {name}"))),
-        "canon_send_agent_message" => {
-            let root = host.workspace().root;
-            canon_send_agent_message::run(args, &root)
-        }
+        "canon_send_agent_message" => run_authorized_mailbox_send(args, host).await,
         "canon_read_mailbox" => {
             let root = host.workspace().root;
             canon_read_mailbox::run(args, &root)
@@ -142,7 +136,39 @@ async fn call_ai_mcp_tool<H: StatefulMcpHost>(name: &str, args: &Value, host: &H
     }
 }
 
-async fn run_recorded_ai_mcp_shell<H: StatefulMcpHost>(args: &Value, host: &H) -> Value {
+async fn run_authorized_mailbox_send<H: McpToolHost>(args: &Value, host: &H) -> Value {
+    let parsed = match canon_send_agent_message::parse_args(args) {
+        Ok(parsed) => parsed,
+        Err(error) => return tool_error(error),
+    };
+    if let Err(error) = host
+        .submit_kernel_command(KernelCommand::AuthorizeMailboxMessage(parsed.request))
+        .await
+    {
+        return tool_error(format!(
+            "mailbox message denied before append by ai worker: {error}"
+        ));
+    }
+
+    let root = host.workspace().root;
+    match canon_send_agent_message::append_authorized(&parsed, &root) {
+        Ok((receipt, result)) => {
+            if let Err(error) = host
+                .submit_kernel_command(KernelCommand::SubmitMailboxMessageReceipt(receipt))
+                .await
+            {
+                return result_with_warning(
+                    result,
+                    format!("mailbox receipt recording failed in ai worker: {error}"),
+                );
+            }
+            result
+        }
+        Err(error) => tool_error(error),
+    }
+}
+
+async fn run_recorded_ai_mcp_shell<H: McpToolHost>(args: &Value, host: &H) -> Value {
     let workspace = host.workspace();
     let request = match shell::recorded_process_request(args, &workspace) {
         Ok(request) => request,

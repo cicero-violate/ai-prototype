@@ -11,7 +11,7 @@ use serde_json::Value;
 use super::process::WorkerProcess;
 use crate::api::oauth::OAuthStore;
 use crate::api::protocol::Command as KernelCommand;
-use crate::capability::tooling::stateful_mcp::{SpawnAgentToolRequest, StatefulMcpHost};
+use crate::capability::tooling::mcp_tools::{McpToolHost, SpawnAgentToolRequest};
 use crate::process::supervisor::SupervisorConfig;
 use crate::process::supervisor::WorkspaceConfig;
 
@@ -30,7 +30,7 @@ impl SupervisorState {
     }
 }
 
-impl StatefulMcpHost for SupervisorState {
+impl McpToolHost for SupervisorState {
     fn workspace(&self) -> WorkspaceConfig {
         self.mcp.workspace.lock().unwrap().clone()
     }

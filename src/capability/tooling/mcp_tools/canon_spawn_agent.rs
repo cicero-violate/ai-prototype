@@ -1,7 +1,7 @@
 //! `canon_spawn_agent` MCP tool argument contract.
 //!
 //! The capability layer owns the MCP tool schema and argument parsing. The
-//! supervisor host performs actual worker spawning through `StatefulMcpHost`.
+//! supervisor host performs actual worker spawning through `McpToolHost`.
 
 use serde_json::Value;
 

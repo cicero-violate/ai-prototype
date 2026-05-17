@@ -26,7 +26,7 @@ use crate::capability::tooling::{
 use crate::capability::{CapabilityId, CapabilityRegistry, EvidenceSubmission, PacketEffect};
 use crate::error::CanonError;
 use crate::kernel::{Evidence, GateId, RuntimeConfig, State};
-use crate::runtime::CanonicalWriter;
+use crate::runtime::{CanonicalWriter, MailboxMessageReceipt, MailboxMessageRequest};
 
 #[derive(Clone)]
 pub struct WorkerAppState {
@@ -163,6 +163,29 @@ pub struct SandboxProcessReceiptDto {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+pub struct MailboxMessageRequestDto {
+    pub registry_policy_hash: u64,
+    pub sender_hash: u64,
+    pub target_hash: u64,
+    pub kind_hash: u64,
+    pub payload_hash: u64,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+pub struct MailboxMessageReceiptDto {
+    pub request_hash: u64,
+    pub registry_policy_hash: u64,
+    pub sender_hash: u64,
+    pub target_hash: u64,
+    pub kind_hash: u64,
+    pub payload_hash: u64,
+    pub message_id_hash: u64,
+    pub sent_at_hash: u64,
+    pub record_hash: u64,
+    pub receipt_hash: u64,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ErrorDto {
     pub ok: bool,
     pub error: String,
@@ -286,6 +309,10 @@ fn decode_command(dto: &CommandEnvelopeDto) -> Result<Command, ServerError> {
             let request = decode_sandbox_process_request(dto.payload.clone())?;
             Ok(Command::AuthorizeProcessCall(request))
         }
+        "AuthorizeMailboxMessage" => {
+            let request = decode_mailbox_message_request(dto.payload.clone())?;
+            Ok(Command::AuthorizeMailboxMessage(request))
+        }
         "SubmitMcpCallReceipt" => {
             let receipt = decode_mcp_call_receipt(dto.payload.clone())?;
             Ok(Command::SubmitMcpCallReceipt(receipt))
@@ -293,6 +320,10 @@ fn decode_command(dto: &CommandEnvelopeDto) -> Result<Command, ServerError> {
         "SubmitProcessReceipt" => {
             let receipt = decode_sandbox_process_receipt(dto.payload.clone())?;
             Ok(Command::SubmitProcessReceipt(receipt))
+        }
+        "SubmitMailboxMessageReceipt" => {
+            let receipt = decode_mailbox_message_receipt(dto.payload.clone())?;
+            Ok(Command::SubmitMailboxMessageReceipt(receipt))
         }
         "SubmitProcessReceiptBatch" => {
             let payloads: Vec<SandboxProcessReceiptDto> =
@@ -324,6 +355,52 @@ fn decode_mcp_call_request(payload: serde_json::Value) -> Result<McpCallRequest,
         return Err(ServerError::InvalidCommand);
     }
     Ok(request)
+}
+
+fn decode_mailbox_message_request(
+    payload: serde_json::Value,
+) -> Result<MailboxMessageRequest, ServerError> {
+    let dto: MailboxMessageRequestDto =
+        serde_json::from_value(payload).map_err(|_| ServerError::InvalidPayload)?;
+    let request = MailboxMessageRequest {
+        capability: CapabilityId::Tooling,
+        registry_policy_hash: dto.registry_policy_hash,
+        sender_hash: dto.sender_hash,
+        target_hash: dto.target_hash,
+        kind_hash: dto.kind_hash,
+        payload_hash: dto.payload_hash,
+    };
+    if request.registry_policy_hash != CapabilityRegistry::canonical().policy_hash()
+        || !request.is_admissible()
+    {
+        return Err(ServerError::InvalidCommand);
+    }
+    Ok(request)
+}
+
+fn decode_mailbox_message_receipt(
+    payload: serde_json::Value,
+) -> Result<MailboxMessageReceipt, ServerError> {
+    let dto: MailboxMessageReceiptDto =
+        serde_json::from_value(payload).map_err(|_| ServerError::InvalidPayload)?;
+    let receipt = MailboxMessageReceipt {
+        request_hash: dto.request_hash,
+        registry_policy_hash: dto.registry_policy_hash,
+        sender_hash: dto.sender_hash,
+        target_hash: dto.target_hash,
+        kind_hash: dto.kind_hash,
+        payload_hash: dto.payload_hash,
+        message_id_hash: dto.message_id_hash,
+        sent_at_hash: dto.sent_at_hash,
+        record_hash: dto.record_hash,
+        receipt_hash: dto.receipt_hash,
+    };
+    if receipt.registry_policy_hash != CapabilityRegistry::canonical().policy_hash()
+        || !receipt.is_contract_valid()
+    {
+        return Err(ServerError::InvalidCommand);
+    }
+    Ok(receipt)
 }
 
 fn decode_mcp_call_receipt(payload: serde_json::Value) -> Result<McpCallReceipt, ServerError> {

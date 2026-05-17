@@ -8,7 +8,6 @@ mod capability;
 mod config;
 mod event;
 mod gate;
-mod hash;
 mod packet;
 mod phase;
 mod recovery;
@@ -20,7 +19,11 @@ pub use self::event::{Cause, ControlEvent, Decision, EventKind, SemanticDelta, T
 pub use self::gate::{
     Evidence, Gate, GateId, GateSet, GateStatus, EXECUTION_GATE_ORDER, GATE_ORDER,
 };
-pub(crate) use self::hash::mix;
+pub(crate) fn mix(mut h: u64, x: u64) -> u64 {
+    h ^= x;
+    h = h.wrapping_mul(0x100000001b3);
+    h
+}
 pub use self::packet::Packet;
 pub use self::phase::{Phase, PHASES};
 pub use self::recovery::{FailureClass, RecoveryAction};

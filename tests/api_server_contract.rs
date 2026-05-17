@@ -1,8 +1,8 @@
 use ai::{
     build_router, resume_durable_runtime, tick, ApiTransportLedger, ApiTransportSession, Command,
     CommandEnvelope, CommandLedger, EvidenceSubmission, EvidenceSubmissionDto, McpCallReceipt,
-    McpCallRequest, RuntimeConfig, SandboxProcessReceipt, State, StateDto, TLog, ToolEffectKind,
-    WorkerAppState,
+    McpCallRequest, RuntimeConfig, SandboxProcessReceipt, SandboxProcessRequest, State, StateDto,
+    TLog, ToolEffectKind, WorkerAppState,
 };
 use axum::body::{to_bytes, Body};
 use axum::http::{Request, StatusCode};
@@ -148,6 +148,38 @@ fn mcp_receipt_body(command_id: u64, receipt: &McpCallReceipt) -> serde_json::Va
     })
 }
 
+fn process_request_payload(request: &SandboxProcessRequest) -> serde_json::Value {
+    serde_json::json!({
+        "registry_policy_hash": request.registry_policy_hash,
+        "command_hash": request.command_hash,
+        "argv_hash": request.argv_hash,
+        "cwd_hash": request.cwd_hash,
+        "env_hash": request.env_hash,
+        "timeout_ms": request.timeout_ms,
+        "max_output_bytes": request.max_output_bytes,
+    })
+}
+
+fn process_authorize_body(command_id: u64, receipt: &SandboxProcessReceipt) -> serde_json::Value {
+    let request = SandboxProcessRequest {
+        capability: ai::CapabilityId::Tooling,
+        registry_policy_hash: receipt.registry_policy_hash,
+        command_hash: receipt.command_hash,
+        argv_hash: receipt.argv_hash,
+        cwd_hash: receipt.cwd_hash,
+        env_hash: receipt.env_hash,
+        timeout_ms: receipt.timeout_ms,
+        max_output_bytes: receipt.max_output_bytes,
+    };
+    let envelope = CommandEnvelope::new(command_id, Command::AuthorizeProcessCall(request));
+    serde_json::json!({
+        "command_id": envelope.command_id,
+        "command_hash": envelope.command_hash,
+        "payload_tag": "AuthorizeProcessCall",
+        "payload": process_request_payload(&request),
+    })
+}
+
 fn process_receipt_payload(receipt: &SandboxProcessReceipt) -> serde_json::Value {
     serde_json::json!({
         "request_hash": receipt.request_hash,
@@ -211,6 +243,22 @@ async fn worker_accepts_process_receipt_command_over_http() {
         .execute_process("true", &[], ".")
         .expect("true process receipt should be produced");
 
+    let authorize_response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/v1/command")
+                .header("Content-Type", "application/json")
+                .body(Body::from(process_authorize_body(59, &receipt).to_string()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    let authorize_response: ai::CommandResponseDto = ok_response_json(authorize_response).await;
+    assert!(authorize_response.ok);
+    assert_eq!(authorize_response.disposition, "accepted");
+
     let response = app
         .oneshot(
             Request::builder()
@@ -226,7 +274,7 @@ async fn worker_accepts_process_receipt_command_over_http() {
 
     assert!(response.ok);
     assert_eq!(response.disposition, "accepted");
-    assert_eq!(state.snapshot().unwrap().tlog_len, 2);
+    assert_eq!(state.snapshot().unwrap().tlog_len, 3);
     let _ = std::fs::remove_file(path);
 }
 

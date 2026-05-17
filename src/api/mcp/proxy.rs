@@ -4,13 +4,16 @@ use serde_json::{json, Value};
 
 use crate::api::protocol::{Command as KernelCommand, CommandEnvelope};
 use crate::capability::tooling::{SandboxProcessReceipt, SandboxProcessRequest};
+use crate::runtime::{MailboxMessageReceipt, MailboxMessageRequest};
 
 pub fn kernel_command_payload_tag(command: &KernelCommand) -> &'static str {
     match command {
         KernelCommand::AuthorizeMcpCall(_) => "AuthorizeMcpCall",
         KernelCommand::AuthorizeProcessCall(_) => "AuthorizeProcessCall",
+        KernelCommand::AuthorizeMailboxMessage(_) => "AuthorizeMailboxMessage",
         KernelCommand::SubmitMcpCallReceipt(_) => "SubmitMcpCallReceipt",
         KernelCommand::SubmitProcessReceipt(_) => "SubmitProcessReceipt",
+        KernelCommand::SubmitMailboxMessageReceipt(_) => "SubmitMailboxMessageReceipt",
         _ => "Unsupported",
     }
 }
@@ -27,6 +30,9 @@ pub fn kernel_command_payload(command: &KernelCommand) -> Result<Value, String> 
         })),
         KernelCommand::AuthorizeProcessCall(request) => {
             Ok(sandbox_process_request_payload(request))
+        }
+        KernelCommand::AuthorizeMailboxMessage(request) => {
+            Ok(mailbox_message_request_payload(request))
         }
         KernelCommand::SubmitMcpCallReceipt(receipt) => Ok(json!({
             "request_hash": receipt.request_hash,
@@ -47,6 +53,9 @@ pub fn kernel_command_payload(command: &KernelCommand) -> Result<Value, String> 
         })),
         KernelCommand::SubmitProcessReceipt(receipt) => {
             Ok(sandbox_process_receipt_payload(receipt))
+        }
+        KernelCommand::SubmitMailboxMessageReceipt(receipt) => {
+            Ok(mailbox_message_receipt_payload(receipt))
         }
         _ => Err("unsupported ai mcp kernel command".to_string()),
     }
@@ -121,6 +130,31 @@ fn sandbox_process_receipt_payload(receipt: &SandboxProcessReceipt) -> Value {
         "stderr_bytes": receipt.stderr_bytes,
         "exit_status": receipt.exit_status,
         "timed_out": receipt.timed_out,
+        "receipt_hash": receipt.receipt_hash
+    })
+}
+
+fn mailbox_message_request_payload(request: &MailboxMessageRequest) -> Value {
+    json!({
+        "registry_policy_hash": request.registry_policy_hash,
+        "sender_hash": request.sender_hash,
+        "target_hash": request.target_hash,
+        "kind_hash": request.kind_hash,
+        "payload_hash": request.payload_hash
+    })
+}
+
+fn mailbox_message_receipt_payload(receipt: &MailboxMessageReceipt) -> Value {
+    json!({
+        "request_hash": receipt.request_hash,
+        "registry_policy_hash": receipt.registry_policy_hash,
+        "sender_hash": receipt.sender_hash,
+        "target_hash": receipt.target_hash,
+        "kind_hash": receipt.kind_hash,
+        "payload_hash": receipt.payload_hash,
+        "message_id_hash": receipt.message_id_hash,
+        "sent_at_hash": receipt.sent_at_hash,
+        "record_hash": receipt.record_hash,
         "receipt_hash": receipt.receipt_hash
     })
 }

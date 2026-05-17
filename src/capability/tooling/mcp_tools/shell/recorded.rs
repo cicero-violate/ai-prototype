@@ -11,7 +11,7 @@ use crate::capability::tooling::{
 use crate::capability::CapabilityRegistry;
 
 use super::super::common::{native_process_output_paths, tmp_dir};
-use super::super::WorkspaceView;
+use crate::runtime::WorkspaceView;
 
 pub fn recorded_process_request(
     args: &Value,

@@ -12,10 +12,12 @@ pub(crate) mod command_ledger;
 pub(crate) mod diff;
 pub mod durable;
 pub mod introspection;
+pub mod mailbox;
 pub(crate) mod recovery_policy;
 pub(crate) mod reducer;
 pub(crate) mod transition_table;
 pub mod verify;
+pub mod workspace;
 pub(crate) mod writer;
 
 pub use self::command_ledger::{CommandLedger, CommandReceipt};
@@ -30,10 +32,15 @@ pub use self::introspection::{
     CanonicalIntrospectionReport, WorkerStateReport, CANONICAL_TLOG_RELATIVE_PATH,
     LEGACY_WORKER_TLOG_FILE_NAME,
 };
+pub use self::mailbox::{
+    append_mailbox_message, mailbox_path, read_mailbox_projection, validate_agent_id,
+    MailboxMessageReceipt, MailboxMessageRecord, MailboxMessageRequest, MailboxReadProjection,
+};
 pub use self::verify::{
     command_causality_report_from, legal_transition, replay_report_from, replay_report_ndjson,
     replay_tlog_ndjson, verify_tlog, verify_tlog_from, CommandCausalityReport, ReplayReport,
 };
+pub use self::workspace::WorkspaceView;
 pub use crate::error::CanonError;
 
 use self::recovery_policy::{evidence_for_gate, recovery_policy_coverage_count};

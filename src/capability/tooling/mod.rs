@@ -3,9 +3,13 @@
 //! Tooling executes real work outside the kernel and submits deterministic
 //! effect receipts into the runtime.
 
+pub mod mcp_tools;
 pub mod record;
-pub mod stateful_mcp;
 
+pub use self::mcp_tools::{
+    APPLY_PATCH_TOOL, CANON_READ_MAILBOX_TOOL, CANON_SEND_AGENT_MESSAGE_TOOL,
+    CANON_SPAWN_AGENT_TOOL, SHELL_TOOL,
+};
 pub use self::record::{
     append_mcp_call_receipt_ndjson, append_process_effect_receipt_ndjson,
     append_sandbox_process_receipt_ndjson, append_tool_effect_receipt_ndjson,
@@ -24,8 +28,4 @@ pub use self::record::{
     PROCESS_EFFECT_RECEIPT_RECORD, PROCESS_EFFECT_RECEIPT_SCHEMA_VERSION,
     SANDBOX_PROCESS_RECEIPT_RECORD, SANDBOX_PROCESS_RECEIPT_SCHEMA_VERSION,
     TOOL_EFFECT_RECEIPT_RECORD, TOOL_EFFECT_RECEIPT_SCHEMA_VERSION,
-};
-pub use self::stateful_mcp::{
-    APPLY_PATCH_TOOL, CANON_READ_MAILBOX_TOOL, CANON_SEND_AGENT_MESSAGE_TOOL,
-    CANON_SPAWN_AGENT_TOOL, SHELL_TOOL,
 };

@@ -7,7 +7,7 @@ use serde_json::{json, Value};
 use tokio::process::Command;
 
 use super::super::common::tool_error;
-use super::super::WorkspaceView;
+use crate::runtime::WorkspaceView;
 
 pub async fn run_unrecorded(args: &Value, workspace: &WorkspaceView) -> Value {
     let command = args

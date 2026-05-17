@@ -11,7 +11,7 @@ use serde_json::Value;
 use crate::api::mcp::mcp_err;
 
 use super::oauth::require_ai_mcp_auth;
-use crate::capability::tooling::stateful_mcp::dispatch::dispatch_ai_mcp;
+use crate::capability::tooling::mcp_tools::dispatch::dispatch_ai_mcp;
 use crate::process::supervisor::SupervisorState;
 
 pub async fn ai_mcp_post(

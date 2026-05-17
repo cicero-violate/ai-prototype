@@ -1,15 +1,19 @@
 //! Deterministic command handlers.
 
 use crate::api::protocol::{
-    mcp_authorization_submission, process_authorization_submission, Command, CommandEnvelope,
-    CommandLedger, ControlEventResponse,
+    mailbox_authorization_submission, mcp_authorization_submission,
+    process_authorization_submission, Command, CommandEnvelope, CommandLedger,
+    ControlEventResponse,
 };
 use crate::capability::tooling::{
     McpCallReceipt, McpCallRequest, SandboxProcessReceipt, SandboxProcessRequest,
 };
 use crate::capability::{CapabilityId, CapabilityRegistry, EvidenceSubmission};
 use crate::kernel::{Cause, Decision, EventKind, Phase, RuntimeConfig, State, TLog};
-use crate::runtime::{tick, tick_with_api_command, CanonError, CanonicalWriter, Outcome};
+use crate::runtime::{
+    tick, tick_with_api_command, CanonError, CanonicalWriter, MailboxMessageReceipt,
+    MailboxMessageRequest, Outcome,
+};
 
 pub fn handle_command(
     state: &mut State,
@@ -96,6 +100,15 @@ fn handle_command_with_receipt(
                 receipt,
             )?;
         }
+        Command::AuthorizeMailboxMessage(request) => {
+            append_submission_event(
+                &mut candidate_state,
+                &mut candidate_tlog,
+                cfg,
+                mailbox_authorization_submission(request),
+                receipt,
+            )?;
+        }
         Command::SubmitMcpCallReceipt(receipt_record) => {
             ensure_mcp_receipt_authorized(&candidate_tlog, &receipt_record)?;
             append_submission_event(
@@ -109,6 +122,17 @@ fn handle_command_with_receipt(
         }
         Command::SubmitProcessReceipt(receipt_record) => {
             ensure_process_receipt_authorized(&candidate_tlog, &receipt_record)?;
+            append_submission_event(
+                &mut candidate_state,
+                &mut candidate_tlog,
+                cfg,
+                receipt_record.submission(),
+                receipt,
+            )?;
+            tick_for_command_response(&mut candidate_state, &mut candidate_tlog, cfg, receipt)?;
+        }
+        Command::SubmitMailboxMessageReceipt(receipt_record) => {
+            ensure_mailbox_message_receipt_authorized(&candidate_tlog, &receipt_record)?;
             append_submission_event(
                 &mut candidate_state,
                 &mut candidate_tlog,
@@ -246,6 +270,24 @@ fn ensure_process_receipt_authorized(
         return Err(CanonError::InvalidApiCommand);
     }
     ensure_prior_authorization(tlog, Command::AuthorizeProcessCall(request))
+}
+
+fn ensure_mailbox_message_receipt_authorized(
+    tlog: &TLog,
+    receipt: &MailboxMessageReceipt,
+) -> Result<(), CanonError> {
+    let request = MailboxMessageRequest {
+        capability: CapabilityId::Tooling,
+        registry_policy_hash: receipt.registry_policy_hash,
+        sender_hash: receipt.sender_hash,
+        target_hash: receipt.target_hash,
+        kind_hash: receipt.kind_hash,
+        payload_hash: receipt.payload_hash,
+    };
+    if !receipt.is_valid_for(&request) {
+        return Err(CanonError::InvalidApiCommand);
+    }
+    ensure_prior_authorization(tlog, Command::AuthorizeMailboxMessage(request))
 }
 
 fn ensure_prior_authorization(tlog: &TLog, authorization: Command) -> Result<(), CanonError> {
