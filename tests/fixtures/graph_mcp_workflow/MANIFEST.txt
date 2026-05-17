@@ -1,0 +1,22 @@
+# Graph MCP Action Workflow Fixture
+
+files:
+  ops.ndjson
+  old-graph.ndjson
+  new-graph.ndjson
+  source/src/lib.rs
+  expected-patch.diff
+
+actions:
+  graph:verify_ops ops.ndjson
+  graph:plan_patch old-graph.ndjson source ops.ndjson patch.diff patch-receipt.ndjson
+  graph:verify_landing old-graph.ndjson new-graph.ndjson ops.ndjson mutation-receipt.ndjson
+  graph:verify_receipts patch-receipt.ndjson mutation-receipt.ndjson
+
+
+integrity:
+  ops.ndjson sha256 550f07baac8b60bd66f63d89c3f602da77c58437bceef8a9ce0a9e9a61d2ccb1
+  old-graph.ndjson sha256 0b588d276bb30a01100fcc9deaa4bc8c420fe76d047afd5682108b8ff9f6bdbb
+  new-graph.ndjson sha256 142639ef8ebc7530ad951c9d9b092d7aa2a730e409f04a988520a07cd0be5047
+  source/src/lib.rs sha256 f334ea00880bc9f3f958220d14eefc216769a299b1db33e7dd8f699feb933b2c
+  expected-patch.diff sha256 f96d292a3e31b39b16354c6a0d3f42b25dc9ac6a40186a89c5c81fe7e7a703cc

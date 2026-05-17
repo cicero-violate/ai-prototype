@@ -3,11 +3,13 @@
 //! Tooling executes real work outside the kernel and submits deterministic
 //! effect receipts into the runtime.
 
+pub mod graph_editor;
 pub mod mcp_tools;
 pub mod record;
 
 pub use self::mcp_tools::{
-    APPLY_PATCH_TOOL, CANON_READ_MAILBOX_TOOL, CANON_SEND_AGENT_MESSAGE_TOOL,
+    APPLY_PATCH_TOOL, CANON_GRAPH_APPLY_OPS_TOOL, CANON_GRAPH_PLAN_CFG_TOOL,
+    CANON_GRAPH_PLAN_PATCH_TOOL, CANON_READ_MAILBOX_TOOL, CANON_SEND_AGENT_MESSAGE_TOOL,
     CANON_SPAWN_AGENT_TOOL, SHELL_TOOL,
 };
 pub use self::record::{

@@ -3,7 +3,9 @@
 use chrono::{DateTime, Utc};
 use serde_json::{json, Map, Value};
 
-use super::{apply_patch, canon_read_mailbox, canon_send_agent_message, landmarks, shell};
+use super::{
+    apply_patch, canon_graph_editor, canon_read_mailbox, canon_send_agent_message, landmarks, shell,
+};
 use crate::api::mcp::{
     dispatch_ai_mcp_plan, mcp_ok, result_with_warning, tool_error, AiMcpDispatchPlan,
 };
@@ -56,6 +58,7 @@ async fn execute_recorded_ai_mcp_tool<H: McpToolHost>(name: &str, args: Value, h
 }
 
 async fn execute_recorded_gateway_tool<H: McpToolHost>(name: &str, args: Value, host: &H) -> Value {
+    eprintln!("[canon-ai-mcp] gateway tool start name={name}");
     let args_json = serde_json::to_string(&args).unwrap_or_else(|_| "null".to_string());
     let timeout_ms = args
         .get("timeout_ms")
@@ -85,6 +88,14 @@ async fn execute_recorded_gateway_tool<H: McpToolHost>(name: &str, args: Value, 
     }
 
     let result = call_gateway_tool(name, &args, host).await;
+    eprintln!(
+        "[canon-ai-mcp] gateway tool finish name={} is_error={}",
+        name,
+        result
+            .get("isError")
+            .and_then(Value::as_bool)
+            .unwrap_or(false)
+    );
     let response_bytes = serde_json::to_vec(&result).unwrap_or_default();
     let response_json =
         String::from_utf8(response_bytes.clone()).unwrap_or_else(|_| "null".to_string());
@@ -132,6 +143,7 @@ async fn execute_recorded_native_ai_mcp_tool<H: McpToolHost>(
     args: Value,
     host: &H,
 ) -> Value {
+    eprintln!("[canon-ai-mcp] native tool start name={name}");
     let args_json = serde_json::to_string(&args).unwrap_or_else(|_| "null".to_string());
     let timeout_ms = args
         .get("timeout_ms")
@@ -165,6 +177,14 @@ async fn execute_recorded_native_ai_mcp_tool<H: McpToolHost>(
     } else {
         call_ai_mcp_tool(name, &args, host).await
     };
+    eprintln!(
+        "[canon-ai-mcp] native tool finish name={} is_error={}",
+        name,
+        result
+            .get("isError")
+            .and_then(Value::as_bool)
+            .unwrap_or(false)
+    );
     let response_bytes = serde_json::to_vec(&result).unwrap_or_default();
     let response_json =
         String::from_utf8(response_bytes.clone()).unwrap_or_else(|_| "null".to_string());
@@ -227,6 +247,7 @@ async fn run_gateway_call_action<H: McpToolHost>(args: &Value, host: &H) -> Valu
 }
 
 async fn run_gateway_action<H: McpToolHost>(action_id: &str, parameters: Value, host: &H) -> Value {
+    eprintln!("[canon-ai-mcp] landmark action dispatch action={action_id}");
     let Some(action) = landmarks::resolve_action_id(action_id) else {
         return landmarks::error_result(format!(
             "Unknown action '{action_id}'. Use get_landmarks then inspect_landmark before calling actions."
@@ -302,11 +323,41 @@ async fn call_ai_mcp_tool<H: McpToolHost>(name: &str, args: &Value, host: &H) ->
             let workspace = host.workspace();
             apply_patch::run(args, &workspace).await
         }
+        "canon_graph_plan_patch" => {
+            let workspace = host.workspace();
+            canon_graph_editor::run_plan_patch(args, &workspace)
+        }
+        "canon_graph_plan_cfg" => {
+            let workspace = host.workspace();
+            canon_graph_editor::run_plan_cfg(args, &workspace)
+        }
+        "canon_graph_apply_ops" => {
+            let workspace = host.workspace();
+            canon_graph_editor::run_apply_ops(args, &workspace)
+        }
+        "canon_graph_verify_cfg_delta" => {
+            let workspace = host.workspace();
+            canon_graph_editor::run_verify_cfg_delta(args, &workspace)
+        }
+        "canon_graph_auto_refactor_cfg" => {
+            let workspace = host.workspace();
+            canon_graph_editor::run_auto_refactor_cfg(args, &workspace)
+        }
         "shell" => {
             let workspace = host.workspace();
             shell::run_unrecorded(args, &workspace).await
         }
-        "canon_spawn_agent" => host
+        "canon_spawn_agent"
+        | "canon_runtime_state"
+        | "canon_supervisor_health"
+        | "canon_supervisor_reload_worker"
+        | "canon_supervisor_restart"
+        | "canon_workspace_get"
+        | "canon_workspace_set"
+        | "canon_browser_list_tabs"
+        | "canon_browser_close_tab"
+        | "canon_browser_upload"
+        | "canon_browser_group_chat" => host
             .run_host_tool(name, args)
             .await
             .unwrap_or_else(|| tool_error(format!("Unknown host tool: {name}"))),

@@ -1,4 +1,4 @@
-G|11|1
+G|17|1
 N|crate::a|fn|0|src/lib.rs|1|1|0|10
 N|crate::b|fn|1|src/lib.rs|2|1|10|20
 E|call|crate::a|crate::b

@@ -33,8 +33,8 @@ fn nonzero_receipt_hash(hash: u64) -> u64 {
 }
 
 pub const PLANNING_CONTRACT_STEP: &str = "planning_contract_tests";
-pub const GRAPH_MUTATION_CLI_CONTRACT_STEP: &str = "graph_mutation_cli_contract_tests";
-pub const GRAPH_MUTATION_CLI_CONTRACT_EXPECTED_TESTS: usize = 10;
+pub const GRAPH_MCP_ACTIONS_CONTRACT_STEP: &str = "graph_mcp_actions_contract_tests";
+pub const GRAPH_MCP_ACTIONS_CONTRACT_EXPECTED_TESTS: usize = 9;
 pub const EXPECTED_VALIDATION_FIXTURE_COUNT: usize = 10;
 pub const EXPECTED_RETAINED_RECEIPT_FIXTURE_COUNT: usize = 8;
 pub const EXPECTED_COMMAND_FIXTURE_COUNT: usize = 1;
@@ -7170,17 +7170,17 @@ pub fn root_validation_steps() -> Vec<ValidationStep> {
             ],
         ),
         cargo_step_with_expected_tests(
-            GRAPH_MUTATION_CLI_CONTRACT_STEP,
+            GRAPH_MCP_ACTIONS_CONTRACT_STEP,
             vec![
                 LOCKFILE_COMPAT_FLAG,
                 "test",
                 "--test",
-                "graph_mutation_cli_contract",
+                "graph_mcp_actions_contract",
                 "--locked",
                 "--",
                 "--nocapture",
             ],
-            GRAPH_MUTATION_CLI_CONTRACT_EXPECTED_TESTS,
+            GRAPH_MCP_ACTIONS_CONTRACT_EXPECTED_TESTS,
         ),
     ]
 }

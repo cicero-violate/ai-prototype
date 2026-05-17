@@ -6,7 +6,7 @@ use std::sync::{Arc, Mutex as StdMutex};
 
 use chrono::{DateTime, Utc};
 use serde::Serialize;
-use serde_json::Value;
+use serde_json::{json, Value};
 
 use super::process::WorkerProcess;
 use crate::api::oauth::OAuthStore;
@@ -14,6 +14,7 @@ use crate::api::protocol::Command as KernelCommand;
 use crate::capability::tooling::mcp_tools::{McpToolHost, SpawnAgentToolRequest};
 use crate::process::supervisor::SupervisorConfig;
 use crate::process::supervisor::WorkspaceConfig;
+use std::time::Duration;
 
 #[derive(Clone)]
 pub struct SupervisorState {
@@ -65,29 +66,260 @@ impl McpToolHost for SupervisorState {
     }
 
     async fn run_host_tool(&self, name: &str, args: &Value) -> Option<Value> {
-        match name {
-            "canon_spawn_agent" => {
-                let request = match SpawnAgentToolRequest::parse(args) {
-                    Ok(request) => request,
-                    Err(error) => return Some(crate::api::mcp::tool_error(error)),
-                };
-                let mut guard = self.inner.lock().await;
-                Some(
-                    match guard.spawn_agent(&request.domain, &request.metric, request.max_steps) {
-                        Ok(dto) => {
-                            let text = serde_json::to_string_pretty(&dto).unwrap_or_default();
-                            serde_json::json!({
-                                "content": [{ "type": "text", "text": text }],
-                                "isError": false
-                            })
-                        }
-                        Err(error) => crate::api::mcp::tool_error(error),
-                    },
-                )
+        eprintln!("[canon-ai-supervisor] host tool start name={name}");
+        let result = match name {
+            "canon_spawn_agent" => Some(self.run_spawn_agent(args).await),
+            "canon_runtime_state" => Some(self.run_runtime_state().await),
+            "canon_supervisor_health" => Some(self.run_supervisor_health().await),
+            "canon_supervisor_reload_worker" => Some(self.run_supervisor_reload_worker().await),
+            "canon_supervisor_restart" => Some(self.run_supervisor_restart().await),
+            "canon_workspace_get" => Some(self.run_workspace_get()),
+            "canon_workspace_set" => Some(self.run_workspace_set(args)),
+            "canon_browser_list_tabs" => Some(self.run_browser_get("/tabs").await),
+            "canon_browser_close_tab" => Some(self.run_browser_close_tab(args).await),
+            "canon_browser_upload" => {
+                Some(self.run_browser_post("/actions/upload", args.clone()).await)
             }
+            "canon_browser_group_chat" => Some(
+                self.run_browser_post("/actions/group-chat", args.clone())
+                    .await,
+            ),
             _ => None,
+        };
+        eprintln!(
+            "[canon-ai-supervisor] host tool finish name={} handled={} is_error={}",
+            name,
+            result.is_some(),
+            result
+                .as_ref()
+                .and_then(|value| value.get("isError"))
+                .and_then(Value::as_bool)
+                .unwrap_or(false)
+        );
+        result
+    }
+}
+
+impl SupervisorState {
+    async fn run_spawn_agent(&self, args: &Value) -> Value {
+        eprintln!("[canon-ai-supervisor] agents:spawn requested");
+        let request = match SpawnAgentToolRequest::parse(args) {
+            Ok(request) => request,
+            Err(error) => return crate::api::mcp::tool_error(error),
+        };
+        let mut guard = self.inner.lock().await;
+        match guard.spawn_agent(&request.domain, &request.metric, request.max_steps) {
+            Ok(dto) => json_text_result(dto),
+            Err(error) => crate::api::mcp::tool_error(error),
         }
     }
+
+    async fn run_runtime_state(&self) -> Value {
+        eprintln!("[canon-ai-supervisor] runtime:state requested");
+        let worker_port = {
+            let mut guard = self.inner.lock().await;
+            guard.reap_retired().await;
+            match guard.active_worker_port() {
+                Ok(port) => port,
+                Err(error) => return crate::api::mcp::tool_error(error),
+            }
+        };
+        local_json_get(&format!("http://127.0.0.1:{worker_port}/v1/state")).await
+    }
+
+    async fn run_supervisor_health(&self) -> Value {
+        eprintln!("[canon-ai-supervisor] supervisor:health requested");
+        let mut guard = self.inner.lock().await;
+        match guard.health().await {
+            Ok(dto) => json_text_result(dto),
+            Err(error) => crate::api::mcp::tool_error(error),
+        }
+    }
+
+    async fn run_supervisor_reload_worker(&self) -> Value {
+        eprintln!("[canon-ai-supervisor] supervisor:reload_worker requested");
+        let mut guard = self.inner.lock().await;
+        match guard.reload_inner().await {
+            Ok(dto) => json_text_result(dto),
+            Err(error) => crate::api::mcp::tool_error(error),
+        }
+    }
+
+    async fn run_supervisor_restart(&self) -> Value {
+        eprintln!("[canon-ai-supervisor] supervisor:restart requested");
+        let replacement =
+            match crate::api::routes::supervisor::control::schedule_supervisor_replacement(
+                crate::api::routes::supervisor::control::SUPERVISOR_RESTART_DELAY_MS,
+            ) {
+                Ok(replacement) => replacement,
+                Err(error) => return crate::api::mcp::tool_error(error),
+            };
+        let pid = std::process::id();
+        let state = self.clone();
+        tokio::spawn(async move {
+            tokio::time::sleep(Duration::from_millis(
+                crate::api::routes::supervisor::control::SUPERVISOR_EXIT_DELAY_MS,
+            ))
+            .await;
+            let mut guard = state.inner.lock().await;
+            guard.shutdown().await;
+            std::process::exit(0);
+        });
+        json_text_result(json!({
+            "ok": true,
+            "pid": pid,
+            "replacement": replacement,
+            "delay_ms": crate::api::routes::supervisor::control::SUPERVISOR_RESTART_DELAY_MS
+        }))
+    }
+
+    fn run_workspace_get(&self) -> Value {
+        eprintln!("[canon-ai-supervisor] workspace:get requested");
+        let workspace = self.mcp.workspace.lock().unwrap().clone();
+        json_text_result(json!({
+            "ok": true,
+            "workspaceRoot": workspace.root.display().to_string(),
+            "allowedWorkspaceRoot": workspace.allowed_boundary.display().to_string()
+        }))
+    }
+
+    fn run_workspace_set(&self, args: &Value) -> Value {
+        eprintln!("[canon-ai-supervisor] workspace:set requested");
+        let Some(root) = args
+            .get("root")
+            .and_then(Value::as_str)
+            .filter(|value| !value.is_empty())
+        else {
+            return crate::api::mcp::tool_error(
+                "workspace:set requires non-empty 'root'".to_string(),
+            );
+        };
+        let allowed = self.mcp.workspace.lock().unwrap().allowed_boundary.clone();
+        let next = match WorkspaceConfig::new(root.into(), allowed) {
+            Ok(next) => next,
+            Err(error) => return crate::api::mcp::tool_error(error),
+        };
+        *self.mcp.workspace.lock().unwrap() = next;
+        self.run_workspace_get()
+    }
+
+    async fn run_browser_get(&self, path: &str) -> Value {
+        eprintln!("[canon-ai-supervisor] browser GET requested path={path}");
+        local_json_get(&format!("{}{}", self.browser_router_base_url(), path)).await
+    }
+
+    async fn run_browser_close_tab(&self, args: &Value) -> Value {
+        eprintln!("[canon-ai-supervisor] browser:close_tab requested");
+        let Some(target_id) = args
+            .get("target_id")
+            .and_then(Value::as_str)
+            .filter(|value| !value.is_empty())
+        else {
+            return crate::api::mcp::tool_error(
+                "browser:close_tab requires non-empty 'target_id'".to_string(),
+            );
+        };
+        local_json_delete(&format!(
+            "{}/tabs/{}",
+            self.browser_router_base_url(),
+            url_path_segment(target_id)
+        ))
+        .await
+    }
+
+    async fn run_browser_post(&self, path: &str, body: Value) -> Value {
+        eprintln!("[canon-ai-supervisor] browser POST requested path={path}");
+        local_json_post(&format!("{}{}", self.browser_router_base_url(), path), body).await
+    }
+
+    fn browser_router_base_url(&self) -> String {
+        self.mcp
+            .router_url
+            .strip_suffix("/v1")
+            .unwrap_or(&self.mcp.router_url)
+            .trim_end_matches('/')
+            .to_string()
+    }
+}
+
+fn json_text_result(value: impl Serialize) -> Value {
+    let text = serde_json::to_string_pretty(&value).unwrap_or_else(|_| "null".to_string());
+    json!({
+        "content": [{ "type": "text", "text": text }],
+        "isError": false
+    })
+}
+
+async fn local_json_get(url: &str) -> Value {
+    eprintln!("[canon-ai-supervisor] outbound GET {url}");
+    let client = match local_http_client() {
+        Ok(client) => client,
+        Err(error) => return crate::api::mcp::tool_error(error),
+    };
+    match client.get(url).send().await {
+        Ok(response) => response_to_tool_result(response).await,
+        Err(error) => crate::api::mcp::tool_error(format!("GET {url} failed: {error}")),
+    }
+}
+
+async fn local_json_delete(url: &str) -> Value {
+    eprintln!("[canon-ai-supervisor] outbound DELETE {url}");
+    let client = match local_http_client() {
+        Ok(client) => client,
+        Err(error) => return crate::api::mcp::tool_error(error),
+    };
+    match client.delete(url).send().await {
+        Ok(response) => response_to_tool_result(response).await,
+        Err(error) => crate::api::mcp::tool_error(format!("DELETE {url} failed: {error}")),
+    }
+}
+
+async fn local_json_post(url: &str, body: Value) -> Value {
+    eprintln!("[canon-ai-supervisor] outbound POST {url}");
+    let client = match local_http_client() {
+        Ok(client) => client,
+        Err(error) => return crate::api::mcp::tool_error(error),
+    };
+    match client.post(url).json(&body).send().await {
+        Ok(response) => response_to_tool_result(response).await,
+        Err(error) => crate::api::mcp::tool_error(format!("POST {url} failed: {error}")),
+    }
+}
+
+async fn response_to_tool_result(response: reqwest::Response) -> Value {
+    let status = response.status();
+    let text = match response.text().await {
+        Ok(text) => text,
+        Err(error) => {
+            return crate::api::mcp::tool_error(format!("response body read failed: {error}"))
+        }
+    };
+    if !status.is_success() {
+        return crate::api::mcp::tool_error(format!("HTTP {}: {}", status.as_u16(), text));
+    }
+    json!({
+        "content": [{ "type": "text", "text": text }],
+        "isError": false
+    })
+}
+
+fn local_http_client() -> Result<reqwest::Client, String> {
+    reqwest::Client::builder()
+        .timeout(Duration::from_secs(30))
+        .build()
+        .map_err(|error| format!("HTTP client build failed: {error}"))
+}
+
+fn url_path_segment(value: &str) -> String {
+    value
+        .bytes()
+        .flat_map(|byte| match byte {
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
+                vec![byte as char]
+            }
+            other => format!("%{other:02X}").chars().collect(),
+        })
+        .collect()
 }
 
 #[derive(Clone, Debug, Serialize, PartialEq, Eq)]
@@ -101,6 +333,7 @@ pub struct NativeMcpState {
     pub oauth: StdMutex<OAuthStore>,
     pub workspace: StdMutex<WorkspaceConfig>,
     pub base_url: String,
+    pub router_url: String,
     next_command_id: AtomicU64,
 }
 
@@ -123,6 +356,7 @@ impl NativeMcpState {
                 cfg.mcp_allowed_workspace_root.clone(),
             )?),
             base_url: cfg.mcp_base_url.trim_end_matches('/').to_string(),
+            router_url: cfg.router_url.trim_end_matches('/').to_string(),
             next_command_id: AtomicU64::new(initial_native_mcp_command_id()),
         })
     }

@@ -11,7 +11,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 
 pub const GRAPH_MUTATION_SCHEMA_VERSION: u64 = 1;
-pub const GRAPH_JSON_SCHEMA_VERSION: u64 = 11;
+pub const GRAPH_JSON_SCHEMA_VERSION: u64 = 17;
 pub const GRAPH_MUTATION_RECEIPT_RECORD: u64 = 0xa7a0_0001;
 pub const GRAPH_MUTATION_VERIFY_RECORD: u64 = 0xa7a0_0002;
 pub const GRAPH_MUTATION_LEDGER_RECORD: u64 = 0xa7a0_0003;
@@ -209,6 +209,68 @@ pub enum GraphMutationOp {
         lo: usize,
         hi: usize,
     },
+    ReplaceSpan {
+        path: String,
+        file: String,
+        lo: usize,
+        hi: usize,
+        replacement: String,
+    },
+    InvertBranch {
+        path: String,
+        file: String,
+        lo: usize,
+        hi: usize,
+        replacement: String,
+    },
+    GuardClauseInsert {
+        path: String,
+        file: String,
+        lo: usize,
+        hi: usize,
+        guard: String,
+    },
+    ExtractBlock {
+        path: String,
+        file: String,
+        lo: usize,
+        hi: usize,
+        replacement: String,
+    },
+    InlineBlock {
+        path: String,
+        file: String,
+        lo: usize,
+        hi: usize,
+        replacement: String,
+    },
+    SplitLoop {
+        path: String,
+        file: String,
+        lo: usize,
+        hi: usize,
+        replacement: String,
+    },
+    ConvertIfToMatch {
+        path: String,
+        file: String,
+        lo: usize,
+        hi: usize,
+        replacement: String,
+    },
+    MoveStatement {
+        path: String,
+        file: String,
+        lo: usize,
+        hi: usize,
+        replacement: String,
+    },
+    DeleteDeadBranch {
+        path: String,
+        file: String,
+        lo: usize,
+        hi: usize,
+    },
 }
 
 impl GraphMutationOp {
@@ -217,7 +279,16 @@ impl GraphMutationOp {
             Self::RemoveNode { file, .. }
             | Self::RetypeIntent { file, .. }
             | Self::AddAttribute { file, .. }
-            | Self::RemoveEdge { file, .. } => file,
+            | Self::RemoveEdge { file, .. }
+            | Self::ReplaceSpan { file, .. }
+            | Self::InvertBranch { file, .. }
+            | Self::GuardClauseInsert { file, .. }
+            | Self::ExtractBlock { file, .. }
+            | Self::InlineBlock { file, .. }
+            | Self::SplitLoop { file, .. }
+            | Self::ConvertIfToMatch { file, .. }
+            | Self::MoveStatement { file, .. }
+            | Self::DeleteDeadBranch { file, .. } => file,
         }
     }
 
@@ -226,7 +297,16 @@ impl GraphMutationOp {
             Self::RemoveNode { lo, .. }
             | Self::RetypeIntent { lo, .. }
             | Self::AddAttribute { lo, .. }
-            | Self::RemoveEdge { lo, .. } => *lo,
+            | Self::RemoveEdge { lo, .. }
+            | Self::ReplaceSpan { lo, .. }
+            | Self::InvertBranch { lo, .. }
+            | Self::GuardClauseInsert { lo, .. }
+            | Self::ExtractBlock { lo, .. }
+            | Self::InlineBlock { lo, .. }
+            | Self::SplitLoop { lo, .. }
+            | Self::ConvertIfToMatch { lo, .. }
+            | Self::MoveStatement { lo, .. }
+            | Self::DeleteDeadBranch { lo, .. } => *lo,
         }
     }
 
@@ -235,7 +315,55 @@ impl GraphMutationOp {
             Self::RemoveNode { hi, .. }
             | Self::RetypeIntent { hi, .. }
             | Self::AddAttribute { hi, .. }
-            | Self::RemoveEdge { hi, .. } => *hi,
+            | Self::RemoveEdge { hi, .. }
+            | Self::ReplaceSpan { hi, .. }
+            | Self::InvertBranch { hi, .. }
+            | Self::GuardClauseInsert { hi, .. }
+            | Self::ExtractBlock { hi, .. }
+            | Self::InlineBlock { hi, .. }
+            | Self::SplitLoop { hi, .. }
+            | Self::ConvertIfToMatch { hi, .. }
+            | Self::MoveStatement { hi, .. }
+            | Self::DeleteDeadBranch { hi, .. } => *hi,
+        }
+    }
+
+    pub fn path(&self) -> &str {
+        match self {
+            Self::RemoveNode { path, .. }
+            | Self::RetypeIntent { path, .. }
+            | Self::AddAttribute { path, .. }
+            | Self::ReplaceSpan { path, .. }
+            | Self::InvertBranch { path, .. }
+            | Self::GuardClauseInsert { path, .. }
+            | Self::ExtractBlock { path, .. }
+            | Self::InlineBlock { path, .. }
+            | Self::SplitLoop { path, .. }
+            | Self::ConvertIfToMatch { path, .. }
+            | Self::MoveStatement { path, .. }
+            | Self::DeleteDeadBranch { path, .. } => path,
+            Self::RemoveEdge { from, .. } => from,
+        }
+    }
+
+    pub fn replacement_text<'a>(&'a self, old: &'a str) -> Option<String> {
+        match self {
+            Self::RemoveNode { .. } | Self::RemoveEdge { .. } | Self::DeleteDeadBranch { .. } => {
+                Some(String::new())
+            }
+            Self::RetypeIntent { new_label, .. } => Some(format!(
+                "#[canon_intent = \"{}\"]\n{old}",
+                escape_attr(new_label)
+            )),
+            Self::AddAttribute { attr, .. } => Some(format!("{}\n{old}", attr.trim())),
+            Self::ReplaceSpan { replacement, .. }
+            | Self::InvertBranch { replacement, .. }
+            | Self::ExtractBlock { replacement, .. }
+            | Self::InlineBlock { replacement, .. }
+            | Self::SplitLoop { replacement, .. }
+            | Self::ConvertIfToMatch { replacement, .. }
+            | Self::MoveStatement { replacement, .. } => Some(replacement.clone()),
+            Self::GuardClauseInsert { guard, .. } => Some(format!("{}\n{old}", guard.trim())),
         }
     }
 
@@ -290,6 +418,80 @@ impl GraphMutationOp {
                 h = mix(h, *lo as u64);
                 h = mix(h, *hi as u64);
             }
+            Self::ReplaceSpan {
+                path,
+                file,
+                lo,
+                hi,
+                replacement,
+            }
+            | Self::InvertBranch {
+                path,
+                file,
+                lo,
+                hi,
+                replacement,
+            }
+            | Self::ExtractBlock {
+                path,
+                file,
+                lo,
+                hi,
+                replacement,
+            }
+            | Self::InlineBlock {
+                path,
+                file,
+                lo,
+                hi,
+                replacement,
+            }
+            | Self::SplitLoop {
+                path,
+                file,
+                lo,
+                hi,
+                replacement,
+            }
+            | Self::ConvertIfToMatch {
+                path,
+                file,
+                lo,
+                hi,
+                replacement,
+            }
+            | Self::MoveStatement {
+                path,
+                file,
+                lo,
+                hi,
+                replacement,
+            } => {
+                h = mix_text(h, path);
+                h = mix_text(h, file);
+                h = mix(h, *lo as u64);
+                h = mix(h, *hi as u64);
+                h = mix_text(h, replacement);
+            }
+            Self::GuardClauseInsert {
+                path,
+                file,
+                lo,
+                hi,
+                guard,
+            } => {
+                h = mix_text(h, path);
+                h = mix_text(h, file);
+                h = mix(h, *lo as u64);
+                h = mix(h, *hi as u64);
+                h = mix_text(h, guard);
+            }
+            Self::DeleteDeadBranch { path, file, lo, hi } => {
+                h = mix_text(h, path);
+                h = mix_text(h, file);
+                h = mix(h, *lo as u64);
+                h = mix(h, *hi as u64);
+            }
         }
         h.max(1)
     }
@@ -300,6 +502,15 @@ impl GraphMutationOp {
             Self::RetypeIntent { .. } => 2,
             Self::AddAttribute { .. } => 3,
             Self::RemoveEdge { .. } => 4,
+            Self::ReplaceSpan { .. } => 5,
+            Self::InvertBranch { .. } => 6,
+            Self::GuardClauseInsert { .. } => 7,
+            Self::ExtractBlock { .. } => 8,
+            Self::InlineBlock { .. } => 9,
+            Self::SplitLoop { .. } => 10,
+            Self::ConvertIfToMatch { .. } => 11,
+            Self::MoveStatement { .. } => 12,
+            Self::DeleteDeadBranch { .. } => 13,
         }
     }
 }
@@ -603,7 +814,16 @@ pub fn verify_graph_mutation_landing(
                     missing_landing_count += 1;
                 }
             }
-            GraphMutationOp::AddAttribute { path, .. } => {
+            GraphMutationOp::AddAttribute { path, .. }
+            | GraphMutationOp::ReplaceSpan { path, .. }
+            | GraphMutationOp::InvertBranch { path, .. }
+            | GraphMutationOp::GuardClauseInsert { path, .. }
+            | GraphMutationOp::ExtractBlock { path, .. }
+            | GraphMutationOp::InlineBlock { path, .. }
+            | GraphMutationOp::SplitLoop { path, .. }
+            | GraphMutationOp::ConvertIfToMatch { path, .. }
+            | GraphMutationOp::MoveStatement { path, .. }
+            | GraphMutationOp::DeleteDeadBranch { path, .. } => {
                 let landed = old_graph.nodes.get(path) != new_graph.nodes.get(path)
                     || old_graph.contract_hash() != new_graph.contract_hash();
                 if landed {
@@ -990,6 +1210,80 @@ pub fn encode_graph_mutation_op_row_ndjson(row: &GraphMutationOpRow) -> String {
             fields.push(lo.to_string());
             fields.push(hi.to_string());
         }
+        GraphMutationOp::ReplaceSpan {
+            path,
+            file,
+            lo,
+            hi,
+            replacement,
+        }
+        | GraphMutationOp::InvertBranch {
+            path,
+            file,
+            lo,
+            hi,
+            replacement,
+        }
+        | GraphMutationOp::ExtractBlock {
+            path,
+            file,
+            lo,
+            hi,
+            replacement,
+        }
+        | GraphMutationOp::InlineBlock {
+            path,
+            file,
+            lo,
+            hi,
+            replacement,
+        }
+        | GraphMutationOp::SplitLoop {
+            path,
+            file,
+            lo,
+            hi,
+            replacement,
+        }
+        | GraphMutationOp::ConvertIfToMatch {
+            path,
+            file,
+            lo,
+            hi,
+            replacement,
+        }
+        | GraphMutationOp::MoveStatement {
+            path,
+            file,
+            lo,
+            hi,
+            replacement,
+        } => {
+            fields.push(escape_field(path));
+            fields.push(escape_field(file));
+            fields.push(lo.to_string());
+            fields.push(hi.to_string());
+            fields.push(escape_field(replacement));
+        }
+        GraphMutationOp::GuardClauseInsert {
+            path,
+            file,
+            lo,
+            hi,
+            guard,
+        } => {
+            fields.push(escape_field(path));
+            fields.push(escape_field(file));
+            fields.push(lo.to_string());
+            fields.push(hi.to_string());
+            fields.push(escape_field(guard));
+        }
+        GraphMutationOp::DeleteDeadBranch { path, file, lo, hi } => {
+            fields.push(escape_field(path));
+            fields.push(escape_field(file));
+            fields.push(lo.to_string());
+            fields.push(hi.to_string());
+        }
     }
     format!("{}\n", fields.join("|"))
 }
@@ -1033,6 +1327,68 @@ pub fn decode_graph_mutation_op_row_ndjson(line: &str) -> Option<GraphMutationOp
             file: unescape_field(&fields[9])?,
             lo: fields[10].parse::<usize>().ok()?,
             hi: fields[11].parse::<usize>().ok()?,
+        },
+        5 if fields.len() == 11 => GraphMutationOp::ReplaceSpan {
+            path: unescape_field(&fields[6])?,
+            file: unescape_field(&fields[7])?,
+            lo: fields[8].parse::<usize>().ok()?,
+            hi: fields[9].parse::<usize>().ok()?,
+            replacement: unescape_field(&fields[10])?,
+        },
+        6 if fields.len() == 11 => GraphMutationOp::InvertBranch {
+            path: unescape_field(&fields[6])?,
+            file: unescape_field(&fields[7])?,
+            lo: fields[8].parse::<usize>().ok()?,
+            hi: fields[9].parse::<usize>().ok()?,
+            replacement: unescape_field(&fields[10])?,
+        },
+        7 if fields.len() == 11 => GraphMutationOp::GuardClauseInsert {
+            path: unescape_field(&fields[6])?,
+            file: unescape_field(&fields[7])?,
+            lo: fields[8].parse::<usize>().ok()?,
+            hi: fields[9].parse::<usize>().ok()?,
+            guard: unescape_field(&fields[10])?,
+        },
+        8 if fields.len() == 11 => GraphMutationOp::ExtractBlock {
+            path: unescape_field(&fields[6])?,
+            file: unescape_field(&fields[7])?,
+            lo: fields[8].parse::<usize>().ok()?,
+            hi: fields[9].parse::<usize>().ok()?,
+            replacement: unescape_field(&fields[10])?,
+        },
+        9 if fields.len() == 11 => GraphMutationOp::InlineBlock {
+            path: unescape_field(&fields[6])?,
+            file: unescape_field(&fields[7])?,
+            lo: fields[8].parse::<usize>().ok()?,
+            hi: fields[9].parse::<usize>().ok()?,
+            replacement: unescape_field(&fields[10])?,
+        },
+        10 if fields.len() == 11 => GraphMutationOp::SplitLoop {
+            path: unescape_field(&fields[6])?,
+            file: unescape_field(&fields[7])?,
+            lo: fields[8].parse::<usize>().ok()?,
+            hi: fields[9].parse::<usize>().ok()?,
+            replacement: unescape_field(&fields[10])?,
+        },
+        11 if fields.len() == 11 => GraphMutationOp::ConvertIfToMatch {
+            path: unescape_field(&fields[6])?,
+            file: unescape_field(&fields[7])?,
+            lo: fields[8].parse::<usize>().ok()?,
+            hi: fields[9].parse::<usize>().ok()?,
+            replacement: unescape_field(&fields[10])?,
+        },
+        12 if fields.len() == 11 => GraphMutationOp::MoveStatement {
+            path: unescape_field(&fields[6])?,
+            file: unescape_field(&fields[7])?,
+            lo: fields[8].parse::<usize>().ok()?,
+            hi: fields[9].parse::<usize>().ok()?,
+            replacement: unescape_field(&fields[10])?,
+        },
+        13 if fields.len() == 10 => GraphMutationOp::DeleteDeadBranch {
+            path: unescape_field(&fields[6])?,
+            file: unescape_field(&fields[7])?,
+            lo: fields[8].parse::<usize>().ok()?,
+            hi: fields[9].parse::<usize>().ok()?,
         },
         _ => return None,
     };
@@ -1372,7 +1728,32 @@ fn validate_op_against_graph(
         }
         | GraphMutationOp::AddAttribute {
             path, file, lo, hi, ..
-        } => {
+        }
+        | GraphMutationOp::ReplaceSpan {
+            path, file, lo, hi, ..
+        }
+        | GraphMutationOp::InvertBranch {
+            path, file, lo, hi, ..
+        }
+        | GraphMutationOp::GuardClauseInsert {
+            path, file, lo, hi, ..
+        }
+        | GraphMutationOp::ExtractBlock {
+            path, file, lo, hi, ..
+        }
+        | GraphMutationOp::InlineBlock {
+            path, file, lo, hi, ..
+        }
+        | GraphMutationOp::SplitLoop {
+            path, file, lo, hi, ..
+        }
+        | GraphMutationOp::ConvertIfToMatch {
+            path, file, lo, hi, ..
+        }
+        | GraphMutationOp::MoveStatement {
+            path, file, lo, hi, ..
+        }
+        | GraphMutationOp::DeleteDeadBranch { path, file, lo, hi } => {
             let node = graph
                 .nodes
                 .get(path)
@@ -1424,15 +1805,9 @@ fn validate_no_overlaps(ops: &[GraphMutationOp]) -> Result<(), GraphPatchError> 
 
 fn hunk_for_op(content: &str, op: &GraphMutationOp) -> Result<String, GraphPatchError> {
     let old = &content[op.lo()..op.hi()];
-    let new = match op {
-        GraphMutationOp::RemoveNode { .. } | GraphMutationOp::RemoveEdge { .. } => String::new(),
-        GraphMutationOp::RetypeIntent { new_label, .. } => {
-            format!("#[canon_intent = \"{}\"]\n{old}", escape_attr(new_label))
-        }
-        GraphMutationOp::AddAttribute { attr, .. } => {
-            format!("{}\n{old}", attr.trim())
-        }
-    };
+    let new = op
+        .replacement_text(old)
+        .ok_or_else(|| GraphPatchError::InvalidSourceSpan(op.file().to_string()))?;
 
     let old_line = line_number_at(content, op.lo());
     let old_count = line_count_for_hunk(old).max(1);

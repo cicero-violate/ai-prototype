@@ -89,6 +89,142 @@ const ACTIONS: &[LandmarkAction] = &[
         destructive: false,
         idempotent: true,
     },
+    LandmarkAction {
+        id: "runtime:state",
+        native_tool: "canon_runtime_state",
+        landmark: "runtime",
+        description: "Read the active AI worker state snapshot.",
+        read_only: true,
+        destructive: false,
+        idempotent: true,
+    },
+    LandmarkAction {
+        id: "supervisor:health",
+        native_tool: "canon_supervisor_health",
+        landmark: "supervisor",
+        description: "Read the AI supervisor health and active worker generation.",
+        read_only: true,
+        destructive: false,
+        idempotent: true,
+    },
+    LandmarkAction {
+        id: "supervisor:reload_worker",
+        native_tool: "canon_supervisor_reload_worker",
+        landmark: "supervisor",
+        description: "Reload the active AI worker process.",
+        read_only: false,
+        destructive: true,
+        idempotent: false,
+    },
+    LandmarkAction {
+        id: "supervisor:restart",
+        native_tool: "canon_supervisor_restart",
+        landmark: "supervisor",
+        description: "Request supervisor process restart through the control API semantics.",
+        read_only: false,
+        destructive: true,
+        idempotent: false,
+    },
+    LandmarkAction {
+        id: "workspace:get",
+        native_tool: "canon_workspace_get",
+        landmark: "workspace",
+        description: "Read the configured MCP workspace root and allowed boundary.",
+        read_only: true,
+        destructive: false,
+        idempotent: true,
+    },
+    LandmarkAction {
+        id: "workspace:set",
+        native_tool: "canon_workspace_set",
+        landmark: "workspace",
+        description: "Set the configured MCP workspace root within the allowed boundary.",
+        read_only: false,
+        destructive: false,
+        idempotent: false,
+    },
+    LandmarkAction {
+        id: "browser:list_tabs",
+        native_tool: "canon_browser_list_tabs",
+        landmark: "browser",
+        description: "List browser-router CDP page tabs.",
+        read_only: true,
+        destructive: false,
+        idempotent: true,
+    },
+    LandmarkAction {
+        id: "browser:close_tab",
+        native_tool: "canon_browser_close_tab",
+        landmark: "browser",
+        description: "Close one browser-router tab by target id.",
+        read_only: false,
+        destructive: true,
+        idempotent: false,
+    },
+    LandmarkAction {
+        id: "browser:upload",
+        native_tool: "canon_browser_upload",
+        landmark: "browser",
+        description: "Run browser-router project file upload action.",
+        read_only: false,
+        destructive: false,
+        idempotent: false,
+    },
+    LandmarkAction {
+        id: "browser:group_chat",
+        native_tool: "canon_browser_group_chat",
+        landmark: "browser",
+        description: "Run browser-router group-chat creation action.",
+        read_only: false,
+        destructive: false,
+        idempotent: false,
+    },
+    LandmarkAction {
+        id: "graph:plan_patch",
+        native_tool: "canon_graph_plan_patch",
+        landmark: "graph",
+        description:
+            "Plan a deterministic source patch and graph patch receipt from graph mutation ops.",
+        read_only: true,
+        destructive: false,
+        idempotent: true,
+    },
+    LandmarkAction {
+        id: "graph:apply_ops",
+        native_tool: "canon_graph_apply_ops",
+        landmark: "graph",
+        description: "Apply graph mutation ops to graph.files, render a worktree, optionally validate, and optionally recapture.",
+        read_only: false,
+        destructive: false,
+        idempotent: false,
+    },
+    LandmarkAction {
+        id: "graph:plan_cfg",
+        native_tool: "canon_graph_plan_cfg",
+        landmark: "graph",
+        description: "Plan CFG-oriented graph mutation ops from a function node, strategy, and replacement text.",
+        read_only: true,
+        destructive: false,
+        idempotent: true,
+    },
+    LandmarkAction {
+        id: "graph:verify_cfg_delta",
+        native_tool: "canon_graph_verify_cfg_delta",
+        landmark: "graph",
+        description: "Verify expected CFG metric deltas between an old and new graph.",
+        read_only: true,
+        destructive: false,
+        idempotent: true,
+    },
+    LandmarkAction {
+        id: "graph:auto_refactor_cfg",
+        native_tool: "canon_graph_auto_refactor_cfg",
+        landmark: "graph",
+        description: "Plan CFG ops, apply them to graph.files, render a worktree, optionally validate, optionally recapture, and optionally verify CFG delta.",
+        read_only: false,
+        destructive: false,
+        idempotent: false,
+    },
 ];
 
 pub fn is_gateway_tool(name: &str) -> bool {
@@ -204,6 +340,10 @@ pub fn landmarks_result() -> Value {
 - **workspace**: File and process operations inside the configured workspace.
 - **utility**: Safe utility actions.
 - **agents**: Supervisor and mailbox actions for multi-agent operation.
+- **runtime**: AI worker runtime state actions.
+- **supervisor**: AI supervisor lifecycle actions.
+- **browser**: Browser-router tab and action operations.
+- **graph**: Graph-backed source mutation planning operations.
 
 Protocol:
 1. Use `get_landmarks` to choose an area.
@@ -245,6 +385,21 @@ pub fn resolve_action_id(action_id: &str) -> Option<LandmarkAction> {
         "canon_spawn_agent" => "agents:spawn",
         "canon_send_agent_message" => "agents:send_message",
         "canon_read_mailbox" => "agents:read_mailbox",
+        "canon_runtime_state" => "runtime:state",
+        "canon_supervisor_health" => "supervisor:health",
+        "canon_supervisor_reload_worker" => "supervisor:reload_worker",
+        "canon_supervisor_restart" => "supervisor:restart",
+        "canon_workspace_get" => "workspace:get",
+        "canon_workspace_set" => "workspace:set",
+        "canon_browser_list_tabs" => "browser:list_tabs",
+        "canon_browser_close_tab" => "browser:close_tab",
+        "canon_browser_upload" => "browser:upload",
+        "canon_browser_group_chat" => "browser:group_chat",
+        "canon_graph_plan_patch" => "graph:plan_patch",
+        "canon_graph_plan_cfg" => "graph:plan_cfg",
+        "canon_graph_apply_ops" => "graph:apply_ops",
+        "canon_graph_verify_cfg_delta" => "graph:verify_cfg_delta",
+        "canon_graph_auto_refactor_cfg" => "graph:auto_refactor_cfg",
         value => value,
     };
     ACTIONS
@@ -278,7 +433,7 @@ Rules:
 
 fn inspect_one(id: &str) -> Value {
     match id {
-        "workspace" | "utility" | "agents" => {
+        "workspace" | "utility" | "agents" | "runtime" | "supervisor" | "browser" | "graph" => {
             let actions: Vec<Value> = ACTIONS
                 .iter()
                 .copied()
@@ -297,7 +452,7 @@ fn inspect_one(id: &str) -> Value {
             None => json!({
                 "status": "error",
                 "message": format!("Unknown landmark or action: {action_id}"),
-                "known_landmarks": ["workspace", "utility", "agents"]
+                "known_landmarks": ["workspace", "utility", "agents", "runtime", "supervisor", "browser", "graph"]
             }),
         },
     }
@@ -406,6 +561,143 @@ fn native_input_schema(native_tool: &str) -> Value {
                 "intent": { "type": "string" }
             },
             "required": ["agent_id"]
+        }),
+        "canon_runtime_state"
+        | "canon_supervisor_health"
+        | "canon_supervisor_reload_worker"
+        | "canon_supervisor_restart"
+        | "canon_workspace_get"
+        | "canon_browser_list_tabs" => json!({
+            "type": "object",
+            "properties": { "intent": { "type": "string" } }
+        }),
+        "canon_workspace_set" => json!({
+            "type": "object",
+            "properties": {
+                "root": { "type": "string", "description": "Workspace root path inside the allowed boundary." },
+                "intent": { "type": "string" }
+            },
+            "required": ["root"]
+        }),
+        "canon_browser_close_tab" => json!({
+            "type": "object",
+            "properties": {
+                "target_id": { "type": "string", "description": "Browser-router target id." },
+                "intent": { "type": "string" }
+            },
+            "required": ["target_id"]
+        }),
+        "canon_browser_upload" => json!({
+            "type": "object",
+            "properties": {
+                "project_id": {},
+                "target_url": {},
+                "match": {},
+                "build_tar": { "type": "boolean" },
+                "file": { "type": "string" },
+                "tar_script": { "type": "string" },
+                "tar_output": { "type": "string" },
+                "target_wait_timeout_sec": {},
+                "confirm_timeout_sec": {},
+                "confirm_settle_sec": {},
+                "intent": { "type": "string" }
+            }
+        }),
+        "canon_browser_group_chat" => json!({
+            "type": "object",
+            "properties": {
+                "target_url": { "type": "string" },
+                "message": { "type": "string" },
+                "prompt": { "type": "string" },
+                "intent": { "type": "string" }
+            }
+        }),
+        "canon_graph_plan_patch" => json!({
+            "type": "object",
+            "properties": {
+                "graph_contract": { "type": "string", "description": "Workspace-relative graph snapshot contract NDJSON path." },
+                "graph_contract_path": { "type": "string", "description": "Alias for graph_contract." },
+                "ops": { "type": "string", "description": "Workspace-relative graph mutation ops NDJSON path." },
+                "ops_path": { "type": "string", "description": "Alias for ops." },
+                "source_root": { "type": "string", "default": ".", "description": "Workspace-relative source root used to read files referenced by ops." },
+                "patch_out": { "type": "string", "description": "Optional workspace-relative file to write the generated patch." },
+                "receipt_out": { "type": "string", "description": "Optional workspace-relative file to write the patch receipt NDJSON." },
+                "intent": { "type": "string" }
+            }
+        }),
+        "canon_graph_plan_cfg" => json!({
+            "type": "object",
+            "properties": {
+                "graph": { "type": "string", "description": "Workspace-relative schema-17 graph.json containing metrics.cfg." },
+                "graph_path": { "type": "string", "description": "Alias for graph." },
+                "node": { "type": "string", "description": "Graph node path for the function to transform." },
+                "path": { "type": "string", "description": "Alias for node." },
+                "strategy": { "type": "string", "enum": ["ReplaceSpan", "InvertBranch", "GuardClauseInsert", "ExtractBlock", "InlineBlock", "SplitLoop", "ConvertIfToMatch", "MoveStatement", "DeleteDeadBranch"] },
+                "replacement": { "type": "string", "description": "Replacement source text for exact span rewrite strategies." },
+                "guard": { "type": "string", "description": "Guard source text for GuardClauseInsert." },
+                "lo": { "type": "integer", "description": "Optional source span start override." },
+                "hi": { "type": "integer", "description": "Optional source span end override." },
+                "ops_out": { "type": "string", "description": "Optional workspace-relative file to write planned ops NDJSON." },
+                "intent": { "type": "string" }
+            },
+            "required": ["node", "strategy"]
+        }),
+        "canon_graph_apply_ops" => json!({
+            "type": "object",
+            "properties": {
+                "graph": { "type": "string", "description": "Workspace-relative schema-17 graph.json containing files." },
+                "graph_path": { "type": "string", "description": "Alias for graph." },
+                "ops": { "type": "string", "description": "Workspace-relative graph mutation ops NDJSON path." },
+                "ops_path": { "type": "string", "description": "Alias for ops." },
+                "worktree_out": { "type": "string", "description": "Workspace-relative output directory for rendered mutated source tree." },
+                "graph_out": { "type": "string", "description": "Optional workspace-relative file for mutated graph.json." },
+                "receipt_out": { "type": "string", "description": "Optional workspace-relative file for pipeline receipt JSON." },
+                "validate_command": { "type": "string", "description": "Optional shell command run inside worktree_out." },
+                "recapture_command": { "type": "string", "description": "Optional shell command run inside worktree_out after validation." },
+                "graph_artifact_root": { "type": "string", "description": "Optional artifact root containing graph.json files to merge into rendered worktree." },
+                "artifact_root": { "type": "string", "description": "Alias for graph_artifact_root." },
+                "intent": { "type": "string" }
+            },
+            "required": ["ops", "worktree_out"]
+        }),
+        "canon_graph_verify_cfg_delta" => json!({
+            "type": "object",
+            "properties": {
+                "old_graph": { "type": "string", "description": "Workspace-relative old schema-17 graph.json path." },
+                "old_graph_path": { "type": "string", "description": "Alias for old_graph." },
+                "new_graph": { "type": "string", "description": "Workspace-relative new schema-17 graph.json path." },
+                "new_graph_path": { "type": "string", "description": "Alias for new_graph." },
+                "node": { "type": "string", "description": "Function graph node path to compare." },
+                "path": { "type": "string", "description": "Alias for node." },
+                "max_complexity_increase": { "type": "integer", "description": "Optional maximum allowed cyclomatic complexity delta." },
+                "require_changed": { "type": "boolean", "description": "Require CFG summary to change." },
+                "intent": { "type": "string" }
+            },
+            "required": ["old_graph", "new_graph", "node"]
+        }),
+        "canon_graph_auto_refactor_cfg" => json!({
+            "type": "object",
+            "properties": {
+                "graph": { "type": "string", "description": "Workspace-relative schema-17 graph.json containing files and metrics.cfg." },
+                "graph_path": { "type": "string", "description": "Alias for graph." },
+                "node": { "type": "string", "description": "Function graph node path to transform." },
+                "path": { "type": "string", "description": "Alias for node." },
+                "strategy": { "type": "string", "enum": ["ReplaceSpan", "InvertBranch", "GuardClauseInsert", "ExtractBlock", "InlineBlock", "SplitLoop", "ConvertIfToMatch", "MoveStatement", "DeleteDeadBranch"] },
+                "replacement": { "type": "string" },
+                "guard": { "type": "string" },
+                "lo": { "type": "integer" },
+                "hi": { "type": "integer" },
+                "ops_out": { "type": "string", "description": "Workspace-relative planned ops NDJSON output path." },
+                "worktree_out": { "type": "string", "description": "Workspace-relative rendered worktree output directory." },
+                "graph_out": { "type": "string", "description": "Optional mutated graph.json output path." },
+                "receipt_out": { "type": "string", "description": "Optional pipeline receipt path." },
+                "validate_command": { "type": "string" },
+                "recapture_command": { "type": "string" },
+                "new_graph": { "type": "string", "description": "Optional recaptured graph path for CFG delta verification." },
+                "new_graph_path": { "type": "string", "description": "Alias for new_graph." },
+                "intent": { "type": "string" }
+            },
+            "required": ["graph", "node", "strategy", "ops_out", "worktree_out"]
         }),
         _ => json!({ "type": "object", "properties": {} }),
     }
@@ -599,6 +891,10 @@ mod tests {
         assert!(landmarks.contains("workspace"));
         assert!(landmarks.contains("utility"));
         assert!(landmarks.contains("agents"));
+        assert!(landmarks.contains("runtime"));
+        assert!(landmarks.contains("supervisor"));
+        assert!(landmarks.contains("browser"));
+        assert!(landmarks.contains("graph"));
     }
 
     #[test]

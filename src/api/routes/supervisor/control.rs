@@ -12,8 +12,8 @@ use crate::process::supervisor::{HealthDto, ReloadDto, RestartDto, SpawnDto, Spa
 
 use crate::process::supervisor::{ErrorDto, SupervisorState};
 
-const SUPERVISOR_RESTART_DELAY_MS: u64 = 700;
-const SUPERVISOR_EXIT_DELAY_MS: u64 = 150;
+pub(crate) const SUPERVISOR_RESTART_DELAY_MS: u64 = 700;
+pub(crate) const SUPERVISOR_EXIT_DELAY_MS: u64 = 150;
 
 pub async fn control_page(
     AxumState(state): AxumState<SupervisorState>,
@@ -194,8 +194,8 @@ fn command_log_fields(body: &[u8]) -> (String, String, String) {
     (command_id, payload_tag, source)
 }
 
-fn schedule_supervisor_replacement(delay_ms: u64) -> Result<String, String> {
-    let exe = std::env::current_exe().map_err(|error| format!("current_exe failed: {error}"))?;
+pub(crate) fn schedule_supervisor_replacement(delay_ms: u64) -> Result<String, String> {
+    let command = supervisor_replacement_command()?;
     #[cfg(unix)]
     {
         let delay_seconds = format!("{}", delay_ms as f64 / 1000.0);
@@ -205,7 +205,7 @@ fn schedule_supervisor_replacement(delay_ms: u64) -> Result<String, String> {
             .arg(script)
             .arg("supervisor-restart")
             .arg(delay_seconds)
-            .arg(&exe)
+            .arg(&command.program)
             .stdin(Stdio::null())
             .stdout(Stdio::null())
             .stderr(Stdio::inherit())
@@ -214,14 +214,71 @@ fn schedule_supervisor_replacement(delay_ms: u64) -> Result<String, String> {
     }
     #[cfg(not(unix))]
     {
-        StdCommand::new(&exe)
+        StdCommand::new(&command.program)
             .stdin(Stdio::null())
             .stdout(Stdio::null())
             .stderr(Stdio::inherit())
             .spawn()
             .map_err(|error| format!("spawn supervisor restart failed: {error}"))?;
     }
-    Ok(exe.display().to_string())
+    Ok(command.display())
+}
+
+struct SupervisorRestartCommand {
+    program: std::path::PathBuf,
+}
+
+impl SupervisorRestartCommand {
+    fn display(&self) -> String {
+        self.program.display().to_string()
+    }
+}
+
+fn supervisor_replacement_command() -> Result<SupervisorRestartCommand, String> {
+    if let Ok(path) = std::env::var("AI_SUPERVISOR_RESTART_BIN") {
+        let path = std::path::PathBuf::from(path);
+        if path.exists() {
+            return Ok(SupervisorRestartCommand { program: path });
+        }
+        return Err(format!(
+            "AI_SUPERVISOR_RESTART_BIN points to missing path: {}",
+            path.display()
+        ));
+    }
+
+    let project_dir = std::env::var("PROJECT_DIR")
+        .map(std::path::PathBuf::from)
+        .unwrap_or_else(|_| std::env::current_dir().unwrap_or_default());
+    let launcher = project_dir.join("ai").join("run_supervisor.sh");
+    if launcher.exists() {
+        return Ok(SupervisorRestartCommand { program: launcher });
+    }
+
+    let release_supervisor = project_dir
+        .join("target")
+        .join("release")
+        .join(if cfg!(windows) {
+            "supervisor.exe"
+        } else {
+            "supervisor"
+        });
+    if release_supervisor.exists() {
+        return Ok(SupervisorRestartCommand {
+            program: release_supervisor,
+        });
+    }
+
+    let exe = std::env::current_exe().map_err(|error| format!("current_exe failed: {error}"))?;
+    if exe.exists() {
+        return Ok(SupervisorRestartCommand { program: exe });
+    }
+
+    Err(format!(
+        "no restart command found; tried {}, {}, and current_exe {}",
+        launcher.display(),
+        release_supervisor.display(),
+        exe.display()
+    ))
 }
 
 fn error_response(error: String) -> (StatusCode, Json<ErrorDto>) {

@@ -13,7 +13,7 @@ import unittest
 from importlib.machinery import SourceFileLoader
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 OBSERVE = ROOT / "scripts" / "observe_validation.sh"
 CARGO_CONFIG = ROOT / ".cargo" / "config.toml"
 GRAPH_FIXTURE_VALIDATOR = ROOT / "scripts" / "validate_graph_workflow_fixture.py"
@@ -42,7 +42,8 @@ class ObserveValidationContractTest(unittest.TestCase):
 
     def test_default_cargo_config_has_no_absolute_wrapper(self) -> None:
         self.assertIsNone(re.search(r'^\s*rustc-wrapper\s*=', self.config, re.MULTILINE))
-        self.assertIn("CANON_RUSTC_WRAPPER=/path/to/canon-rustc-v3", self.config)
+        self.assertIn("CANON_RUSTC_V3_ARTIFACT_DIR", self.config)
+        self.assertIn('value = "state/rustc"', self.config)
 
     def test_wrapper_graph_capture_is_explicit_and_optional(self) -> None:
         self.assertIn('os.environ.get("CANON_RUSTC_WRAPPER", "")', self.script)
@@ -1001,8 +1002,8 @@ class ObserveValidationContractTest(unittest.TestCase):
             "GraphPatchReceipt",
             "verify_graph_mutation_landing",
             "verify_graph_receipt_ledger_files_ndjson",
-            "graph_mutation_cli_contract",
-            "graph_mutation_cli_workflow",
+            "graph_mcp_actions_contract",
+            "graph_mcp_workflow",
             "def inspect_graph_workflow_fixture()",
             "from validate_graph_workflow_fixture import graph_fixture_report",
             "def graph_workflow_fixture_fields(",
@@ -1024,7 +1025,7 @@ class ObserveValidationContractTest(unittest.TestCase):
             "graph_workflow_fixture_receipt_ledger_flow_valid",
             "missing_graph_workflow_fixture_receipt_snapshot",
             "fixture_receipt_snapshot_present",
-            "graph_mutation_cli_workflow",
+            "graph_mcp_workflow",
         ):
             self.assertIn(token, self.script + self.graph_fixture_validator)
 
