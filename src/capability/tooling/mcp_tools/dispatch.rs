@@ -8,7 +8,7 @@ use crate::api::mcp::{
     dispatch_ai_mcp_plan, mcp_ok, result_with_warning, tool_error, AiMcpDispatchPlan,
 };
 use crate::api::protocol::Command as KernelCommand;
-use crate::runtime::WorkspaceView;
+use crate::runtime::{append_mcp_transcript, WorkspaceView};
 use crate::{CapabilityRegistry, McpCallReceipt, McpCallRequest};
 
 #[allow(async_fn_in_trait)]
@@ -49,10 +49,6 @@ pub async fn dispatch_ai_mcp<H: McpToolHost>(
 }
 
 async fn execute_recorded_ai_mcp_tool<H: McpToolHost>(name: &str, args: Value, host: &H) -> Value {
-    if name == "shell" {
-        return run_recorded_ai_mcp_shell(&args, host).await;
-    }
-
     let args_json = serde_json::to_string(&args).unwrap_or_else(|_| "null".to_string());
     let timeout_ms = args
         .get("timeout_ms")
@@ -81,8 +77,14 @@ async fn execute_recorded_ai_mcp_tool<H: McpToolHost>(name: &str, args: Value, h
         ));
     }
 
-    let result = call_ai_mcp_tool(name, &args, host).await;
+    let result = if name == "shell" {
+        run_recorded_ai_mcp_shell(&args, host).await
+    } else {
+        call_ai_mcp_tool(name, &args, host).await
+    };
     let response_bytes = serde_json::to_vec(&result).unwrap_or_default();
+    let response_json =
+        String::from_utf8(response_bytes.clone()).unwrap_or_else(|_| "null".to_string());
     let exit_status = if result
         .get("isError")
         .and_then(Value::as_bool)
@@ -93,6 +95,20 @@ async fn execute_recorded_ai_mcp_tool<H: McpToolHost>(name: &str, args: Value, h
         0
     };
     let receipt = McpCallReceipt::from_response(&request, &response_bytes, exit_status, false);
+    let workspace = host.workspace();
+    let transcript_warning = match append_mcp_transcript(
+        &workspace.root,
+        name,
+        &args_json,
+        &response_json,
+        &request,
+        &receipt,
+    ) {
+        Ok(_) => None,
+        Err(error) => Some(format!(
+            "MCP transcript recording failed in runtime: {error}"
+        )),
+    };
     if let Err(error) = host
         .submit_kernel_command(KernelCommand::SubmitMcpCallReceipt(receipt))
         .await
@@ -102,7 +118,10 @@ async fn execute_recorded_ai_mcp_tool<H: McpToolHost>(name: &str, args: Value, h
             format!("MCP receipt recording failed in ai supervisor: {error}"),
         );
     }
-    result
+    match transcript_warning {
+        Some(warning) => result_with_warning(result, warning),
+        None => result,
+    }
 }
 
 async fn call_ai_mcp_tool<H: McpToolHost>(name: &str, args: &Value, host: &H) -> Value {

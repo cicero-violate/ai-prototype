@@ -13,6 +13,7 @@ pub(crate) mod diff;
 pub mod durable;
 pub mod introspection;
 pub mod mailbox;
+pub mod mcp_transcript;
 pub(crate) mod recovery_policy;
 pub(crate) mod reducer;
 pub(crate) mod transition_table;
@@ -35,6 +36,9 @@ pub use self::introspection::{
 pub use self::mailbox::{
     append_mailbox_message, mailbox_path, read_mailbox_projection, validate_agent_id,
     MailboxMessageReceipt, MailboxMessageRecord, MailboxMessageRequest, MailboxReadProjection,
+};
+pub use self::mcp_transcript::{
+    append_mcp_transcript, mcp_transcript_path, replay_mcp_transcripts, McpTranscriptRecord,
 };
 pub use self::verify::{
     command_causality_report_from, legal_transition, replay_report_from, replay_report_ndjson,

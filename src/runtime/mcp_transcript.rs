@@ -1,0 +1,261 @@
+//! Runtime-owned MCP transcript log.
+//!
+//! The kernel TLog stores authorization and receipt evidence. This module stores
+//! raw MCP request/result JSON outside the kernel as a hash-linked runtime log.
+
+use std::fs::{self, OpenOptions};
+use std::io::{BufRead, BufReader, Write};
+use std::path::{Path, PathBuf};
+
+use chrono::Utc;
+use serde::{Deserialize, Serialize};
+use uuid::Uuid;
+
+use crate::capability::tooling::{McpCallReceipt, McpCallRequest};
+use crate::kernel::mix;
+
+pub const MCP_TRANSCRIPT_SCHEMA_VERSION: u64 = 1;
+pub const MCP_TRANSCRIPT_RECORD_CALL_RESULT: u64 = 1;
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct McpTranscriptRecord {
+    pub schema_version: u64,
+    pub record_kind: u64,
+    pub id: String,
+    pub tool_name: String,
+    pub request_json: String,
+    pub response_json: String,
+    pub request_hash: u64,
+    pub receipt_hash: u64,
+    pub response_hash: u64,
+    pub response_bytes: u64,
+    pub exit_status: u64,
+    pub timed_out: bool,
+    pub created_at: String,
+    pub prev_hash: u64,
+    pub self_hash: u64,
+}
+
+impl McpTranscriptRecord {
+    pub fn expected_self_hash(&self) -> u64 {
+        let mut h = 0x4d43_5054_5241_4e01u64;
+        h = mix(h, self.schema_version);
+        h = mix(h, self.record_kind);
+        h = mix(h, string_hash(&self.id));
+        h = mix(h, string_hash(&self.tool_name));
+        h = mix(h, string_hash(&self.request_json));
+        h = mix(h, string_hash(&self.response_json));
+        h = mix(h, self.request_hash);
+        h = mix(h, self.receipt_hash);
+        h = mix(h, self.response_hash);
+        h = mix(h, self.response_bytes);
+        h = mix(h, self.exit_status);
+        h = mix(h, self.timed_out as u64);
+        h = mix(h, string_hash(&self.created_at));
+        h = mix(h, self.prev_hash);
+        h.max(1)
+    }
+
+    pub fn is_contract_valid(&self) -> bool {
+        self.schema_version == MCP_TRANSCRIPT_SCHEMA_VERSION
+            && self.record_kind == MCP_TRANSCRIPT_RECORD_CALL_RESULT
+            && !self.id.is_empty()
+            && !self.tool_name.is_empty()
+            && !self.request_json.is_empty()
+            && !self.response_json.is_empty()
+            && self.request_hash != 0
+            && self.receipt_hash != 0
+            && self.response_hash != 0
+            && self.response_bytes as usize == self.response_json.as_bytes().len()
+            && !self.created_at.is_empty()
+            && self.self_hash == self.expected_self_hash()
+    }
+}
+
+pub fn append_mcp_transcript(
+    workspace_root: &Path,
+    tool_name: &str,
+    request_json: &str,
+    response_json: &str,
+    request: &McpCallRequest,
+    receipt: &McpCallReceipt,
+) -> Result<McpTranscriptRecord, String> {
+    if tool_name.trim().is_empty() {
+        return Err("tool_name is required".to_string());
+    }
+    if request_json.trim().is_empty() {
+        return Err("request_json is required".to_string());
+    }
+    if response_json.trim().is_empty() {
+        return Err("response_json is required".to_string());
+    }
+    if !receipt.is_valid_for(request) {
+        return Err("MCP receipt does not match request".to_string());
+    }
+
+    let path = mcp_transcript_path(workspace_root);
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent).map_err(|error| format!("create transcript dir: {error}"))?;
+    }
+
+    let mut record = McpTranscriptRecord {
+        schema_version: MCP_TRANSCRIPT_SCHEMA_VERSION,
+        record_kind: MCP_TRANSCRIPT_RECORD_CALL_RESULT,
+        id: Uuid::new_v4().to_string(),
+        tool_name: tool_name.to_string(),
+        request_json: request_json.to_string(),
+        response_json: response_json.to_string(),
+        request_hash: request.contract_hash(),
+        receipt_hash: receipt.receipt_hash,
+        response_hash: receipt.response_hash,
+        response_bytes: receipt.response_bytes,
+        exit_status: receipt.exit_status,
+        timed_out: receipt.timed_out,
+        created_at: Utc::now().to_rfc3339(),
+        prev_hash: mcp_transcript_last_hash(workspace_root)?,
+        self_hash: 0,
+    };
+    record.self_hash = record.expected_self_hash();
+    if !record.is_contract_valid() {
+        return Err("invalid MCP transcript record".to_string());
+    }
+
+    let line = serde_json::to_string(&record)
+        .map_err(|error| format!("serialize MCP transcript: {error}"))?;
+    let mut file = OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&path)
+        .map_err(|error| format!("open MCP transcript {}: {error}", path.display()))?;
+    writeln!(file, "{line}").map_err(|error| format!("write MCP transcript: {error}"))?;
+    file.sync_all()
+        .map_err(|error| format!("sync MCP transcript: {error}"))?;
+    Ok(record)
+}
+
+pub fn replay_mcp_transcripts(workspace_root: &Path) -> Result<Vec<McpTranscriptRecord>, String> {
+    let path = mcp_transcript_path(workspace_root);
+    if !path.exists() {
+        return Ok(Vec::new());
+    }
+
+    let file = fs::File::open(&path).map_err(|error| format!("open MCP transcript: {error}"))?;
+    let reader = BufReader::new(file);
+    let mut records = Vec::new();
+    let mut prev_hash = 0_u64;
+
+    for (idx, line) in reader.lines().enumerate() {
+        let line = line.map_err(|error| format!("read MCP transcript line {idx}: {error}"))?;
+        if line.trim().is_empty() {
+            continue;
+        }
+        let record: McpTranscriptRecord = serde_json::from_str(&line)
+            .map_err(|error| format!("decode MCP transcript line {idx}: {error}"))?;
+        if record.prev_hash != prev_hash || !record.is_contract_valid() {
+            return Err(format!("invalid MCP transcript hash chain at line {idx}"));
+        }
+        prev_hash = record.self_hash;
+        records.push(record);
+    }
+
+    Ok(records)
+}
+
+pub fn mcp_transcript_path(workspace_root: &Path) -> PathBuf {
+    workspace_root
+        .join("agent_state")
+        .join("mcp")
+        .join("mcp-transcript.tlog.ndjson")
+}
+
+fn mcp_transcript_last_hash(workspace_root: &Path) -> Result<u64, String> {
+    Ok(replay_mcp_transcripts(workspace_root)?
+        .last()
+        .map(|record| record.self_hash)
+        .unwrap_or(0))
+}
+
+fn string_hash(value: &str) -> u64 {
+    let mut h = 0x4d43_5054_4841_5301u64;
+    h = mix(h, value.as_bytes().len() as u64);
+    for byte in value.as_bytes() {
+        h = mix(h, *byte as u64);
+    }
+    h.max(1)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::capability::CapabilityRegistry;
+
+    fn unique_workspace() -> PathBuf {
+        std::env::temp_dir().join(format!("canon-mcp-transcript-test-{}", Uuid::new_v4()))
+    }
+
+    #[test]
+    fn mcp_transcript_appends_and_replays_hash_chain() {
+        let workspace = unique_workspace();
+        let request = McpCallRequest::new(
+            CapabilityRegistry::canonical(),
+            "ai-native:/ai/mcp",
+            "echo",
+            r#"{"text":"hello"}"#,
+            1000,
+            65_536,
+        );
+        let response = r#"{"content":[{"type":"text","text":"hello"}],"isError":false}"#;
+        let receipt = McpCallReceipt::from_response(&request, response.as_bytes(), 0, false);
+
+        let record = append_mcp_transcript(
+            &workspace,
+            "echo",
+            r#"{"text":"hello"}"#,
+            response,
+            &request,
+            &receipt,
+        )
+        .expect("append transcript");
+        assert!(record.is_contract_valid());
+
+        let records = replay_mcp_transcripts(&workspace).expect("replay transcript");
+        assert_eq!(records.len(), 1);
+        assert_eq!(records[0].receipt_hash, receipt.receipt_hash);
+        assert_eq!(records[0].response_json, response);
+
+        let _ = fs::remove_dir_all(workspace);
+    }
+
+    #[test]
+    fn mcp_transcript_rejects_tampered_hash_chain() {
+        let workspace = unique_workspace();
+        let request = McpCallRequest::new(
+            CapabilityRegistry::canonical(),
+            "ai-native:/ai/mcp",
+            "echo",
+            r#"{"text":"hello"}"#,
+            1000,
+            65_536,
+        );
+        let response = r#"{"content":[{"type":"text","text":"hello"}],"isError":false}"#;
+        let receipt = McpCallReceipt::from_response(&request, response.as_bytes(), 0, false);
+        append_mcp_transcript(
+            &workspace,
+            "echo",
+            r#"{"text":"hello"}"#,
+            response,
+            &request,
+            &receipt,
+        )
+        .expect("append transcript");
+
+        let path = mcp_transcript_path(&workspace);
+        let tampered = fs::read_to_string(&path)
+            .expect("read transcript")
+            .replace("hello", "tampered");
+        fs::write(&path, tampered).expect("write transcript");
+
+        assert!(replay_mcp_transcripts(&workspace).is_err());
+        let _ = fs::remove_dir_all(workspace);
+    }
+}
