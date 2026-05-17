@@ -1288,119 +1288,212 @@ pub fn encode_graph_mutation_op_row_ndjson(row: &GraphMutationOpRow) -> String {
     format!("{}\n", fields.join("|"))
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct GraphMutationOpRowHeader {
+    schema_version: u64,
+    record_type: u64,
+    op_index: u64,
+    op_hash: u64,
+    row_hash: u64,
+    kind: u64,
+}
+
 pub fn decode_graph_mutation_op_row_ndjson(line: &str) -> Option<GraphMutationOpRow> {
     let fields = split_escaped_fields(line.trim())?;
+    let header = decode_graph_mutation_op_row_header(&fields)?;
+    let op = decode_graph_mutation_op_fields(&fields, header.kind)?;
+    let row = GraphMutationOpRow {
+        schema_version: header.schema_version,
+        record_type: header.record_type,
+        op_index: header.op_index,
+        op,
+        op_hash: header.op_hash,
+        row_hash: header.row_hash,
+    };
+    row.is_self_consistent().then_some(row)
+}
+
+fn decode_graph_mutation_op_row_header(fields: &[String]) -> Option<GraphMutationOpRowHeader> {
     if fields.len() < 10 {
         return None;
     }
-    let schema_version = fields[0].parse::<u64>().ok()?;
-    let record_type = fields[1].parse::<u64>().ok()?;
-    let op_index = fields[2].parse::<u64>().ok()?;
-    let op_hash = fields[3].parse::<u64>().ok()?;
-    let row_hash = fields[4].parse::<u64>().ok()?;
-    let kind = fields[5].parse::<u64>().ok()?;
-    let op = match kind {
-        1 if fields.len() == 10 => GraphMutationOp::RemoveNode {
-            path: unescape_field(&fields[6])?,
-            file: unescape_field(&fields[7])?,
-            lo: fields[8].parse::<usize>().ok()?,
-            hi: fields[9].parse::<usize>().ok()?,
-        },
-        2 if fields.len() == 11 => GraphMutationOp::RetypeIntent {
-            path: unescape_field(&fields[6])?,
-            file: unescape_field(&fields[7])?,
-            lo: fields[8].parse::<usize>().ok()?,
-            hi: fields[9].parse::<usize>().ok()?,
-            new_label: unescape_field(&fields[10])?,
-        },
-        3 if fields.len() == 11 => GraphMutationOp::AddAttribute {
-            path: unescape_field(&fields[6])?,
-            file: unescape_field(&fields[7])?,
-            lo: fields[8].parse::<usize>().ok()?,
-            hi: fields[9].parse::<usize>().ok()?,
-            attr: unescape_field(&fields[10])?,
-        },
-        4 if fields.len() == 12 => GraphMutationOp::RemoveEdge {
-            relation: unescape_field(&fields[6])?,
-            from: unescape_field(&fields[7])?,
-            to: unescape_field(&fields[8])?,
-            file: unescape_field(&fields[9])?,
-            lo: fields[10].parse::<usize>().ok()?,
-            hi: fields[11].parse::<usize>().ok()?,
-        },
-        5 if fields.len() == 11 => GraphMutationOp::ReplaceSpan {
-            path: unescape_field(&fields[6])?,
-            file: unescape_field(&fields[7])?,
-            lo: fields[8].parse::<usize>().ok()?,
-            hi: fields[9].parse::<usize>().ok()?,
-            replacement: unescape_field(&fields[10])?,
-        },
-        6 if fields.len() == 11 => GraphMutationOp::InvertBranch {
-            path: unescape_field(&fields[6])?,
-            file: unescape_field(&fields[7])?,
-            lo: fields[8].parse::<usize>().ok()?,
-            hi: fields[9].parse::<usize>().ok()?,
-            replacement: unescape_field(&fields[10])?,
-        },
-        7 if fields.len() == 11 => GraphMutationOp::GuardClauseInsert {
-            path: unescape_field(&fields[6])?,
-            file: unescape_field(&fields[7])?,
-            lo: fields[8].parse::<usize>().ok()?,
-            hi: fields[9].parse::<usize>().ok()?,
-            guard: unescape_field(&fields[10])?,
-        },
-        8 if fields.len() == 11 => GraphMutationOp::ExtractBlock {
-            path: unescape_field(&fields[6])?,
-            file: unescape_field(&fields[7])?,
-            lo: fields[8].parse::<usize>().ok()?,
-            hi: fields[9].parse::<usize>().ok()?,
-            replacement: unescape_field(&fields[10])?,
-        },
-        9 if fields.len() == 11 => GraphMutationOp::InlineBlock {
-            path: unescape_field(&fields[6])?,
-            file: unescape_field(&fields[7])?,
-            lo: fields[8].parse::<usize>().ok()?,
-            hi: fields[9].parse::<usize>().ok()?,
-            replacement: unescape_field(&fields[10])?,
-        },
-        10 if fields.len() == 11 => GraphMutationOp::SplitLoop {
-            path: unescape_field(&fields[6])?,
-            file: unescape_field(&fields[7])?,
-            lo: fields[8].parse::<usize>().ok()?,
-            hi: fields[9].parse::<usize>().ok()?,
-            replacement: unescape_field(&fields[10])?,
-        },
-        11 if fields.len() == 11 => GraphMutationOp::ConvertIfToMatch {
-            path: unescape_field(&fields[6])?,
-            file: unescape_field(&fields[7])?,
-            lo: fields[8].parse::<usize>().ok()?,
-            hi: fields[9].parse::<usize>().ok()?,
-            replacement: unescape_field(&fields[10])?,
-        },
-        12 if fields.len() == 11 => GraphMutationOp::MoveStatement {
-            path: unescape_field(&fields[6])?,
-            file: unescape_field(&fields[7])?,
-            lo: fields[8].parse::<usize>().ok()?,
-            hi: fields[9].parse::<usize>().ok()?,
-            replacement: unescape_field(&fields[10])?,
-        },
-        13 if fields.len() == 10 => GraphMutationOp::DeleteDeadBranch {
-            path: unescape_field(&fields[6])?,
-            file: unescape_field(&fields[7])?,
-            lo: fields[8].parse::<usize>().ok()?,
-            hi: fields[9].parse::<usize>().ok()?,
-        },
-        _ => return None,
-    };
-    let row = GraphMutationOpRow {
-        schema_version,
-        record_type,
-        op_index,
-        op,
-        op_hash,
-        row_hash,
-    };
-    row.is_self_consistent().then_some(row)
+    Some(GraphMutationOpRowHeader {
+        schema_version: parse_u64_field(fields, 0)?,
+        record_type: parse_u64_field(fields, 1)?,
+        op_index: parse_u64_field(fields, 2)?,
+        op_hash: parse_u64_field(fields, 3)?,
+        row_hash: parse_u64_field(fields, 4)?,
+        kind: parse_u64_field(fields, 5)?,
+    })
+}
+
+fn decode_graph_mutation_op_fields(fields: &[String], kind: u64) -> Option<GraphMutationOp> {
+    match kind {
+        1 => decode_remove_node_op(fields),
+        2 => decode_retype_intent_op(fields),
+        3 => decode_add_attribute_op(fields),
+        4 => decode_remove_edge_op(fields),
+        5 => decode_replacement_span_op(fields, |path, file, lo, hi, replacement| {
+            GraphMutationOp::ReplaceSpan {
+                path,
+                file,
+                lo,
+                hi,
+                replacement,
+            }
+        }),
+        6 => decode_replacement_span_op(fields, |path, file, lo, hi, replacement| {
+            GraphMutationOp::InvertBranch {
+                path,
+                file,
+                lo,
+                hi,
+                replacement,
+            }
+        }),
+        7 => decode_guard_clause_insert_op(fields),
+        8 => decode_replacement_span_op(fields, |path, file, lo, hi, replacement| {
+            GraphMutationOp::ExtractBlock {
+                path,
+                file,
+                lo,
+                hi,
+                replacement,
+            }
+        }),
+        9 => decode_replacement_span_op(fields, |path, file, lo, hi, replacement| {
+            GraphMutationOp::InlineBlock {
+                path,
+                file,
+                lo,
+                hi,
+                replacement,
+            }
+        }),
+        10 => decode_replacement_span_op(fields, |path, file, lo, hi, replacement| {
+            GraphMutationOp::SplitLoop {
+                path,
+                file,
+                lo,
+                hi,
+                replacement,
+            }
+        }),
+        11 => decode_replacement_span_op(fields, |path, file, lo, hi, replacement| {
+            GraphMutationOp::ConvertIfToMatch {
+                path,
+                file,
+                lo,
+                hi,
+                replacement,
+            }
+        }),
+        12 => decode_replacement_span_op(fields, |path, file, lo, hi, replacement| {
+            GraphMutationOp::MoveStatement {
+                path,
+                file,
+                lo,
+                hi,
+                replacement,
+            }
+        }),
+        13 => decode_delete_dead_branch_op(fields),
+        _ => None,
+    }
+}
+
+fn decode_remove_node_op(fields: &[String]) -> Option<GraphMutationOp> {
+    expect_field_count(fields, 10)?;
+    let (path, file, lo, hi) = decode_source_span_fields(fields)?;
+    Some(GraphMutationOp::RemoveNode { path, file, lo, hi })
+}
+
+fn decode_retype_intent_op(fields: &[String]) -> Option<GraphMutationOp> {
+    expect_field_count(fields, 11)?;
+    let (path, file, lo, hi) = decode_source_span_fields(fields)?;
+    Some(GraphMutationOp::RetypeIntent {
+        path,
+        file,
+        lo,
+        hi,
+        new_label: decode_text_field(fields, 10)?,
+    })
+}
+
+fn decode_add_attribute_op(fields: &[String]) -> Option<GraphMutationOp> {
+    expect_field_count(fields, 11)?;
+    let (path, file, lo, hi) = decode_source_span_fields(fields)?;
+    Some(GraphMutationOp::AddAttribute {
+        path,
+        file,
+        lo,
+        hi,
+        attr: decode_text_field(fields, 10)?,
+    })
+}
+
+fn decode_remove_edge_op(fields: &[String]) -> Option<GraphMutationOp> {
+    expect_field_count(fields, 12)?;
+    Some(GraphMutationOp::RemoveEdge {
+        relation: decode_text_field(fields, 6)?,
+        from: decode_text_field(fields, 7)?,
+        to: decode_text_field(fields, 8)?,
+        file: decode_text_field(fields, 9)?,
+        lo: parse_usize_field(fields, 10)?,
+        hi: parse_usize_field(fields, 11)?,
+    })
+}
+
+fn decode_replacement_span_op(
+    fields: &[String],
+    build: impl FnOnce(String, String, usize, usize, String) -> GraphMutationOp,
+) -> Option<GraphMutationOp> {
+    expect_field_count(fields, 11)?;
+    let (path, file, lo, hi) = decode_source_span_fields(fields)?;
+    Some(build(path, file, lo, hi, decode_text_field(fields, 10)?))
+}
+
+fn decode_guard_clause_insert_op(fields: &[String]) -> Option<GraphMutationOp> {
+    expect_field_count(fields, 11)?;
+    let (path, file, lo, hi) = decode_source_span_fields(fields)?;
+    Some(GraphMutationOp::GuardClauseInsert {
+        path,
+        file,
+        lo,
+        hi,
+        guard: decode_text_field(fields, 10)?,
+    })
+}
+
+fn decode_delete_dead_branch_op(fields: &[String]) -> Option<GraphMutationOp> {
+    expect_field_count(fields, 10)?;
+    let (path, file, lo, hi) = decode_source_span_fields(fields)?;
+    Some(GraphMutationOp::DeleteDeadBranch { path, file, lo, hi })
+}
+
+fn decode_source_span_fields(fields: &[String]) -> Option<(String, String, usize, usize)> {
+    Some((
+        decode_text_field(fields, 6)?,
+        decode_text_field(fields, 7)?,
+        parse_usize_field(fields, 8)?,
+        parse_usize_field(fields, 9)?,
+    ))
+}
+
+fn expect_field_count(fields: &[String], expected: usize) -> Option<()> {
+    (fields.len() == expected).then_some(())
+}
+
+fn parse_u64_field(fields: &[String], index: usize) -> Option<u64> {
+    fields.get(index)?.parse::<u64>().ok()
+}
+
+fn parse_usize_field(fields: &[String], index: usize) -> Option<usize> {
+    fields.get(index)?.parse::<usize>().ok()
+}
+
+fn decode_text_field(fields: &[String], index: usize) -> Option<String> {
+    unescape_field(fields.get(index)?.as_str())
 }
 
 pub fn encode_graph_mutation_ops_ndjson(ops: &[GraphMutationOp]) -> String {
