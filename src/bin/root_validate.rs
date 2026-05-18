@@ -902,6 +902,10 @@ fn retained_fixture_text_mode(
     Ok(CompactModeOutcome::text(fixture, passed))
 }
 
+fn all_false(values: &[bool]) -> bool {
+    values.iter().all(|value| !value)
+}
+
 fn validation_duration_planning_fixture_mode() -> Result<CompactModeOutcome, String> {
     retained_fixture_text_mode(
         validation_harness::VALIDATION_DURATION_PLANNING_RECEIPTS_FIXTURE,
@@ -2393,33 +2397,36 @@ fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admissio
 ) -> Result<CompactModeOutcome, String> {
     let receipt = validation_harness::
         policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_consumption_learning_storage_write_commit_intent_regression_smoke_receipt();
+    let blocked_steps = [
+        receipt.retrieval_example_storage_write_admitted,
+        receipt.retrieval_example_storage_write_approved,
+        receipt.retrieval_example_storage_write_preflight_ready,
+        receipt.retrieval_example_storage_commit_intent_ready,
+        receipt.retrieval_example_storage_admitted,
+        receipt.retrieval_example_materialization_plan_ready,
+        receipt.retrieval_example_learning_admitted,
+        receipt.retrieval_example_learning_eligible,
+        receipt.retrieval_result_use_summary_manifest_approval_admission_consumed,
+        receipt.retrieval_result_use_summary_manifest_approval_admitted,
+        receipt.retrieval_result_use_summary_manifest_approved,
+        receipt.retrieval_result_use_summary_manifest_ready_for_use,
+        receipt.retrieval_result_use_summary_manifest_admitted,
+        receipt.retrieval_read_performed,
+        receipt.retrieval_write_performed,
+        receipt.retrieval_query_executed,
+        receipt.runtime_result_approval_performed,
+        receipt.policy_promotion_performed,
+        receipt.batch_execution_performed,
+        receipt.student_training_performed,
+        receipt.retrieval_example_storage_write_commit_intent_ready,
+        receipt.passed(),
+    ];
     let passed = receipt.is_valid()
-        && !receipt.retrieval_example_storage_write_admitted
-        && !receipt.retrieval_example_storage_write_approved
-        && !receipt.retrieval_example_storage_write_preflight_ready
-        && !receipt.retrieval_example_storage_commit_intent_ready
-        && !receipt.retrieval_example_storage_admitted
-        && !receipt.retrieval_example_materialization_plan_ready
-        && !receipt.retrieval_example_learning_admitted
-        && !receipt.retrieval_example_learning_eligible
-        && !receipt.retrieval_result_use_summary_manifest_approval_admission_consumed
-        && !receipt.retrieval_result_use_summary_manifest_approval_admitted
-        && !receipt.retrieval_result_use_summary_manifest_approved
-        && !receipt.retrieval_result_use_summary_manifest_ready_for_use
-        && !receipt.retrieval_result_use_summary_manifest_admitted
-        && !receipt.retrieval_read_performed
-        && !receipt.retrieval_write_performed
-        && !receipt.retrieval_query_executed
-        && !receipt.runtime_result_approval_performed
-        && !receipt.policy_promotion_performed
-        && !receipt.batch_execution_performed
-        && !receipt.student_training_performed
+        && all_false(&blocked_steps)
         && receipt.external_result_evidence_present
-        && !receipt.retrieval_example_storage_write_commit_intent_ready
         && receipt.retrieval_example_storage_write_commit_intent_status
             == "retrieval_example_storage_write_commit_intent_not_ready"
-        && receipt.not_ready_reason == "retrieval_example_storage_write_not_admitted"
-        && !receipt.passed();
+        && receipt.not_ready_reason == "retrieval_example_storage_write_not_admitted";
     Ok(CompactModeOutcome::controlled_json(
         receipt.to_json(),
         passed,
