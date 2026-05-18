@@ -906,6 +906,15 @@ fn all_false(values: &[bool]) -> bool {
     values.iter().all(|value| !value)
 }
 
+fn storage_write_commit_intent_regression_gate_passed(
+    receipt: &validation_harness::PolicyReuseEvidenceRetrievalResultUseSummaryManifestApprovalAdmissionConsumptionLearningStorageWriteCommitIntentReceipt,
+) -> bool {
+    receipt.external_result_evidence_present
+        && receipt.retrieval_example_storage_write_commit_intent_status
+            == "retrieval_example_storage_write_commit_intent_not_ready"
+        && receipt.not_ready_reason == "retrieval_example_storage_write_not_admitted"
+}
+
 fn validation_duration_planning_fixture_mode() -> Result<CompactModeOutcome, String> {
     retained_fixture_text_mode(
         validation_harness::VALIDATION_DURATION_PLANNING_RECEIPTS_FIXTURE,
@@ -2423,10 +2432,7 @@ fn policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admissio
     ];
     let passed = receipt.is_valid()
         && all_false(&blocked_steps)
-        && receipt.external_result_evidence_present
-        && receipt.retrieval_example_storage_write_commit_intent_status
-            == "retrieval_example_storage_write_commit_intent_not_ready"
-        && receipt.not_ready_reason == "retrieval_example_storage_write_not_admitted";
+        && storage_write_commit_intent_regression_gate_passed(&receipt);
     Ok(CompactModeOutcome::controlled_json(
         receipt.to_json(),
         passed,
