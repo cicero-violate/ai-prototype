@@ -78,22 +78,12 @@ fn tlog_path_from_dir(dir: &Path) -> PathBuf {
 }
 
 fn load_session(tlog_path: &Path) -> Result<ApiTransportSession, String> {
-    if let Some(parent) = tlog_path.parent() {
-        if !parent.as_os_str().is_empty() {
-            std::fs::create_dir_all(parent)
-                .map_err(|err| format!("create tlog dir failed: {err}"))?;
-        }
-    }
+    ensure_tlog_dir(tlog_path)?;
 
     let cfg = RuntimeConfig::default();
     let mut runtime = resume_durable_runtime(State::default(), tlog_path)
         .map_err(|err| format!("resume durable runtime failed: {err}"))?;
-    if runtime.tlog.is_empty() {
-        tick_durable(&mut runtime.state, &mut runtime.tlog, tlog_path, cfg)
-            .map_err(|err| format!("initialize durable runtime failed: {err}"))?;
-        runtime.command_ledger = ai::CommandLedger::reconstruct_from_tlog(&runtime.tlog)
-            .map_err(|err| format!("reconstruct command ledger failed: {err}"))?;
-    }
+    initialize_empty_runtime(&mut runtime, tlog_path, cfg)?;
 
     ApiTransportSession::from_parts(
         runtime.state,
@@ -103,6 +93,31 @@ fn load_session(tlog_path: &Path) -> Result<ApiTransportSession, String> {
         ApiTransportLedger::default(),
     )
     .map_err(|err| format!("transport session verification failed: {err}"))
+}
+
+fn ensure_tlog_dir(tlog_path: &Path) -> Result<(), String> {
+    let Some(parent) = tlog_path.parent() else {
+        return Ok(());
+    };
+    if parent.as_os_str().is_empty() {
+        return Ok(());
+    }
+    std::fs::create_dir_all(parent).map_err(|err| format!("create tlog dir failed: {err}"))
+}
+
+fn initialize_empty_runtime(
+    runtime: &mut ai::DurableRuntimeState,
+    tlog_path: &Path,
+    cfg: RuntimeConfig,
+) -> Result<(), String> {
+    if !runtime.tlog.is_empty() {
+        return Ok(());
+    }
+    tick_durable(&mut runtime.state, &mut runtime.tlog, tlog_path, cfg)
+        .map_err(|err| format!("initialize durable runtime failed: {err}"))?;
+    runtime.command_ledger = ai::CommandLedger::reconstruct_from_tlog(&runtime.tlog)
+        .map_err(|err| format!("reconstruct command ledger failed: {err}"))?;
+    Ok(())
 }
 
 async fn shutdown_signal() {
