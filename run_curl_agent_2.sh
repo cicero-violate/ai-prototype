@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Usage: ./run_curl_agent.sh "<domain>" "<metric>" [max_steps]
-DOMAIN="${1:-use python here /workspace/ai_sandbox/canon-mini-agent/prototype/state/rustc/canon_rustc_v3/graph.json; reduce cyclomatic complexity on canon-rustc-v3 project please}"
+DOMAIN="${1:-review here /workspace/ai_sandbox/canon-mini-agent/prototype/state/rustc/*/graph.json; reduce cyclomatic complexity on 1 of the random items there but with high cyclomatic complexity}"
 METRIC="${2:-cargo build -- no errors}"
 MAX_STEPS="${10:-2}"
 

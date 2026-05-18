@@ -32,6 +32,7 @@ pub mod trading;
 pub use bridge::{bridge_target_for_verdict, default_plan_kind};
 pub use business::{
     monetization_score, BusinessOpportunity, CustomerFeedbackSignal, WorkflowAutomationCandidate,
+    WorkflowId,
 };
 pub use contracts::{
     DomainBridgeTarget, DomainEval, DomainHorizon, DomainId, DomainJudgment, DomainLiveEffectLevel,

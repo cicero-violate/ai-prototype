@@ -7,10 +7,12 @@
 
 use super::scoring::BoundedScore;
 
+pub type WorkflowId = String;
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct BusinessOpportunity {
     pub opportunity_id: String,
-    pub workflow_id: String,
+    pub workflow_id: WorkflowId,
     pub market_need: BoundedScore,
     pub willingness_to_pay: BoundedScore,
     pub implementation_fit: BoundedScore,
@@ -43,7 +45,7 @@ impl BusinessOpportunity {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct WorkflowAutomationCandidate {
     pub candidate_id: String,
-    pub workflow_id: String,
+    pub workflow_id: WorkflowId,
     pub manual_cost: BoundedScore,
     pub repeatability: BoundedScore,
     pub auditability: BoundedScore,
@@ -76,7 +78,7 @@ impl WorkflowAutomationCandidate {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CustomerFeedbackSignal {
     pub feedback_id: String,
-    pub workflow_id: String,
+    pub workflow_id: WorkflowId,
     pub urgency: BoundedScore,
     pub frequency: BoundedScore,
     pub evidence_quality: BoundedScore,
