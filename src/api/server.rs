@@ -279,64 +279,111 @@ pub async fn post_command(
 }
 
 fn decode_command(dto: &CommandEnvelopeDto) -> Result<Command, ServerError> {
-    match dto.payload_tag.as_str() {
-        "SubmitEvidence" => {
-            let submission = decode_submission(dto.payload.clone())?;
-            // InvariantProof requires typed Observation path — reject raw submissions.
-            if submission.gate == GateId::Invariant {
-                return Err(ServerError::InvalidCommand);
-            }
-            Ok(Command::SubmitEvidence(submission))
-        }
-        "SubmitObservationIngress" => {
-            let batch = decode_observation_ingress(dto.payload.clone())?;
-            Ok(Command::SubmitObservationIngress(batch))
-        }
-        "SubmitEvidenceBatch" => {
-            let payloads: Vec<EvidenceSubmissionDto> = serde_json::from_value(dto.payload.clone())
-                .map_err(|_| ServerError::InvalidPayload)?;
-            let submissions = payloads
-                .into_iter()
-                .map(submission_from_dto)
-                .collect::<Result<Vec<_>, _>>()?;
-            Ok(Command::SubmitEvidenceBatch(submissions))
-        }
-        "AuthorizeMcpCall" => {
-            let request = decode_mcp_call_request(dto.payload.clone())?;
-            Ok(Command::AuthorizeMcpCall(request))
-        }
-        "AuthorizeProcessCall" => {
-            let request = decode_sandbox_process_request(dto.payload.clone())?;
-            Ok(Command::AuthorizeProcessCall(request))
-        }
-        "AuthorizeMailboxMessage" => {
-            let request = decode_mailbox_message_request(dto.payload.clone())?;
-            Ok(Command::AuthorizeMailboxMessage(request))
-        }
-        "SubmitMcpCallReceipt" => {
-            let receipt = decode_mcp_call_receipt(dto.payload.clone())?;
-            Ok(Command::SubmitMcpCallReceipt(receipt))
-        }
-        "SubmitProcessReceipt" => {
-            let receipt = decode_sandbox_process_receipt(dto.payload.clone())?;
-            Ok(Command::SubmitProcessReceipt(receipt))
-        }
-        "SubmitMailboxMessageReceipt" => {
-            let receipt = decode_mailbox_message_receipt(dto.payload.clone())?;
-            Ok(Command::SubmitMailboxMessageReceipt(receipt))
-        }
-        "SubmitProcessReceiptBatch" => {
-            let payloads: Vec<SandboxProcessReceiptDto> =
-                serde_json::from_value(dto.payload.clone())
-                    .map_err(|_| ServerError::InvalidPayload)?;
-            let receipts = payloads
-                .into_iter()
-                .map(sandbox_process_receipt_from_dto)
-                .collect::<Result<Vec<_>, _>>()?;
-            Ok(Command::SubmitProcessReceiptBatch(receipts))
-        }
-        _ => Err(ServerError::UnsupportedPayloadTag),
+    let decoder = command_decoder(dto.payload_tag.as_str())?;
+    decoder(dto.payload.clone())
+}
+
+type CommandDecoder = fn(serde_json::Value) -> Result<Command, ServerError>;
+
+fn command_decoder(payload_tag: &str) -> Result<CommandDecoder, ServerError> {
+    Ok(match payload_tag {
+        "SubmitEvidence" => decode_submit_evidence_command,
+        "SubmitObservationIngress" => decode_submit_observation_ingress_command,
+        "SubmitEvidenceBatch" => decode_submit_evidence_batch_command,
+        "AuthorizeMcpCall" => decode_authorize_mcp_call_command,
+        "AuthorizeProcessCall" => decode_authorize_process_call_command,
+        "AuthorizeMailboxMessage" => decode_authorize_mailbox_message_command,
+        "SubmitMcpCallReceipt" => decode_submit_mcp_call_receipt_command,
+        "SubmitProcessReceipt" => decode_submit_process_receipt_command,
+        "SubmitMailboxMessageReceipt" => decode_submit_mailbox_message_receipt_command,
+        "SubmitProcessReceiptBatch" => decode_submit_process_receipt_batch_command,
+        _ => return Err(ServerError::UnsupportedPayloadTag),
+    })
+}
+
+fn decode_submit_evidence_command(payload: serde_json::Value) -> Result<Command, ServerError> {
+    let submission = decode_submission(payload)?;
+    // InvariantProof requires typed Observation path — reject raw submissions.
+    if submission.gate == GateId::Invariant {
+        return Err(ServerError::InvalidCommand);
     }
+    Ok(Command::SubmitEvidence(submission))
+}
+
+fn decode_submit_observation_ingress_command(
+    payload: serde_json::Value,
+) -> Result<Command, ServerError> {
+    Ok(Command::SubmitObservationIngress(
+        decode_observation_ingress(payload)?,
+    ))
+}
+
+fn decode_submit_evidence_batch_command(
+    payload: serde_json::Value,
+) -> Result<Command, ServerError> {
+    let payloads: Vec<EvidenceSubmissionDto> =
+        serde_json::from_value(payload).map_err(|_| ServerError::InvalidPayload)?;
+    let submissions = payloads
+        .into_iter()
+        .map(submission_from_dto)
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(Command::SubmitEvidenceBatch(submissions))
+}
+
+fn decode_authorize_mcp_call_command(payload: serde_json::Value) -> Result<Command, ServerError> {
+    Ok(Command::AuthorizeMcpCall(decode_mcp_call_request(payload)?))
+}
+
+fn decode_authorize_process_call_command(
+    payload: serde_json::Value,
+) -> Result<Command, ServerError> {
+    Ok(Command::AuthorizeProcessCall(
+        decode_sandbox_process_request(payload)?,
+    ))
+}
+
+fn decode_authorize_mailbox_message_command(
+    payload: serde_json::Value,
+) -> Result<Command, ServerError> {
+    Ok(Command::AuthorizeMailboxMessage(
+        decode_mailbox_message_request(payload)?,
+    ))
+}
+
+fn decode_submit_mcp_call_receipt_command(
+    payload: serde_json::Value,
+) -> Result<Command, ServerError> {
+    Ok(Command::SubmitMcpCallReceipt(decode_mcp_call_receipt(
+        payload,
+    )?))
+}
+
+fn decode_submit_process_receipt_command(
+    payload: serde_json::Value,
+) -> Result<Command, ServerError> {
+    Ok(Command::SubmitProcessReceipt(
+        decode_sandbox_process_receipt(payload)?,
+    ))
+}
+
+fn decode_submit_mailbox_message_receipt_command(
+    payload: serde_json::Value,
+) -> Result<Command, ServerError> {
+    Ok(Command::SubmitMailboxMessageReceipt(
+        decode_mailbox_message_receipt(payload)?,
+    ))
+}
+
+fn decode_submit_process_receipt_batch_command(
+    payload: serde_json::Value,
+) -> Result<Command, ServerError> {
+    let payloads: Vec<SandboxProcessReceiptDto> =
+        serde_json::from_value(payload).map_err(|_| ServerError::InvalidPayload)?;
+    let receipts = payloads
+        .into_iter()
+        .map(sandbox_process_receipt_from_dto)
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(Command::SubmitProcessReceiptBatch(receipts))
 }
 
 fn decode_mcp_call_request(payload: serde_json::Value) -> Result<McpCallRequest, ServerError> {
