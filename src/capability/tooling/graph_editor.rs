@@ -62,6 +62,7 @@ pub struct GraphApplyOpsRequest {
     pub receipt_out: Option<String>,
     pub patch_out: Option<String>,
     pub apply_patch_out: Option<String>,
+    pub apply_to_source: bool,
     pub validate_command: Option<String>,
     pub recapture_command: Option<String>,
     pub artifact_root: Option<String>,
@@ -82,6 +83,7 @@ impl GraphApplyOpsRequest {
             receipt_out: optional_string(args, "receipt_out")?,
             patch_out: optional_string(args, "patch_out")?,
             apply_patch_out: optional_string(args, "apply_patch_out")?,
+            apply_to_source: optional_bool(args, "apply_to_source")?.unwrap_or(false),
             validate_command: optional_string(args, "validate_command")?,
             recapture_command: optional_string(args, "recapture_command")?,
             artifact_root: optional_string(args, "graph_artifact_root")?
@@ -158,6 +160,7 @@ pub struct GraphAutoRefactorCfgRequest {
     pub receipt_out: Option<String>,
     pub patch_out: Option<String>,
     pub apply_patch_out: Option<String>,
+    pub apply_to_source: bool,
     pub validate_command: Option<String>,
     pub recapture_command: Option<String>,
     pub new_graph_path: Option<String>,
@@ -186,6 +189,7 @@ impl GraphAutoRefactorCfgRequest {
             receipt_out: optional_string(args, "receipt_out")?,
             patch_out: optional_string(args, "patch_out")?,
             apply_patch_out: optional_string(args, "apply_patch_out")?,
+            apply_to_source: optional_bool(args, "apply_to_source")?.unwrap_or(false),
             validate_command: optional_string(args, "validate_command")?,
             recapture_command: optional_string(args, "recapture_command")?,
             artifact_root: optional_string(args, "graph_artifact_root")?
@@ -275,6 +279,7 @@ fn auto_refactor_cfg_tool_inner(args: &Value, workspace: &WorkspaceView) -> Resu
         "receipt_out": request.receipt_out,
         "patch_out": request.patch_out,
         "apply_patch_out": request.apply_patch_out,
+        "apply_to_source": request.apply_to_source,
         "validate_command": request.validate_command,
         "recapture_command": request.recapture_command,
         "artifact_root": request.artifact_root,
@@ -516,68 +521,35 @@ fn apply_ops_tool_inner(args: &Value, workspace: &WorkspaceView) -> Result<Value
         .map_err(|error| format!("failed to generate graph patch: {error}"))?;
 
     apply_ops_to_graph_files(&mut graph_json, &ops)?;
-    if let Some(artifact_root) = request.artifact_root.as_deref() {
-        let artifact_root = resolve_workspace_file(workspace, artifact_root)?;
-        let mut render_json = merged_graph_files_json(&artifact_root)?;
-        overlay_graph_files(&mut render_json, &graph_json)?;
-        render_graph_files_json(&render_json, &worktree_out)?;
-        complete_missing_workspace_members(&workspace.root, &worktree_out)?;
-    } else {
-        render_graph_files_json(&graph_json, &worktree_out)?;
-    }
+    render_apply_ops_worktree(workspace, &request, &graph_json, &worktree_out)?;
 
-    if let Some(path) = request.graph_out.as_deref() {
-        let out = resolve_workspace_file(workspace, path)?;
-        write_string(
-            &out,
-            &serde_json::to_string_pretty(&graph_json).unwrap_or_else(|_| graph_json.to_string()),
-        )?;
-    }
-
-    if let Some(path) = request.patch_out.as_deref() {
-        let out = resolve_workspace_file(workspace, path)?;
-        write_string(&out, &plan.diff)?;
-    }
     let apply_patch_text = apply_patch_text_from_unified_diff(&plan.diff)?;
-    if let Some(path) = request.apply_patch_out.as_deref() {
-        let out = resolve_workspace_file(workspace, path)?;
-        write_string(&out, &apply_patch_text)?;
-    }
+    write_apply_ops_outputs(
+        workspace,
+        &request,
+        &graph_json,
+        &plan.diff,
+        &apply_patch_text,
+    )?;
+    let source_apply = apply_diff_to_source_if_requested(workspace, &request, &plan.diff)?;
 
-    let patch_receipt = encode_graph_patch_receipt_ndjson(&plan.receipt);
-    let ops_receipt_text = encode_graph_mutation_opset_receipt_ndjson(&ops_receipt);
-    let receipt_payload = json!({
-        "ok": true,
-        "graph": workspace_relative_display(workspace, &graph_path),
-        "ops": workspace_relative_display(workspace, &ops_path),
-        "worktreeOut": workspace_relative_display(workspace, &worktree_out),
-        "graphOut": request.graph_out,
-        "patchOut": request.patch_out,
-        "applyPatchOut": request.apply_patch_out,
-        "artifactRoot": request.artifact_root,
-        "applyPatch": apply_patch_text,
-        "patchReceipt": patch_receipt,
-        "opsReceipt": ops_receipt_text,
-    });
-    if let Some(path) = request.receipt_out.as_deref() {
-        let out = resolve_workspace_file(workspace, path)?;
-        write_string(
-            &out,
-            &serde_json::to_string_pretty(&receipt_payload)
-                .unwrap_or_else(|_| receipt_payload.to_string()),
-        )?;
-    }
+    let receipt_payload = apply_ops_receipt_payload(
+        workspace,
+        &request,
+        &graph_path,
+        &ops_path,
+        &worktree_out,
+        &apply_patch_text,
+        source_apply.as_ref(),
+        &plan,
+        &ops_receipt,
+    );
+    write_optional_json(workspace, request.receipt_out.as_deref(), &receipt_payload)?;
 
-    let validation = if let Some(command) = request.validate_command.as_deref() {
-        Some(run_shell_command(command, &worktree_out)?)
-    } else {
-        None
-    };
-    let recapture = if let Some(command) = request.recapture_command.as_deref() {
-        Some(run_shell_command(command, &worktree_out)?)
-    } else {
-        None
-    };
+    let validation =
+        run_optional_worktree_command(request.validate_command.as_deref(), &worktree_out)?;
+    let recapture =
+        run_optional_worktree_command(request.recapture_command.as_deref(), &worktree_out)?;
 
     let payload = json!({
         "ok": true,
@@ -595,6 +567,7 @@ fn apply_ops_tool_inner(args: &Value, workspace: &WorkspaceView) -> Result<Value
             .and_then(|value| value.get("status"))
             .and_then(Value::as_i64),
         "patchHash": plan.receipt.patch_hash,
+        "sourceApply": source_apply,
         "validation": validation,
         "recapture": recapture,
     });
@@ -602,6 +575,151 @@ fn apply_ops_tool_inner(args: &Value, workspace: &WorkspaceView) -> Result<Value
         "content": [{ "type": "text", "text": payload.to_string() }],
         "isError": false
     }))
+}
+
+fn render_apply_ops_worktree(
+    workspace: &WorkspaceView,
+    request: &GraphApplyOpsRequest,
+    graph_json: &Value,
+    worktree_out: &Path,
+) -> Result<(), String> {
+    let Some(artifact_root) = request.artifact_root.as_deref() else {
+        return render_graph_files_json(graph_json, worktree_out);
+    };
+
+    let artifact_root = resolve_workspace_file(workspace, artifact_root)?;
+    let mut render_json = merged_graph_files_json(&artifact_root)?;
+    overlay_graph_files(&mut render_json, graph_json)?;
+    render_graph_files_json(&render_json, worktree_out)?;
+    complete_missing_workspace_members(&workspace.root, worktree_out)
+}
+
+fn write_apply_ops_outputs(
+    workspace: &WorkspaceView,
+    request: &GraphApplyOpsRequest,
+    graph_json: &Value,
+    patch_diff: &str,
+    apply_patch_text: &str,
+) -> Result<(), String> {
+    if let Some(path) = request.graph_out.as_deref() {
+        let out = resolve_workspace_file(workspace, path)?;
+        write_string(
+            &out,
+            &serde_json::to_string_pretty(graph_json).unwrap_or_else(|_| graph_json.to_string()),
+        )?;
+    }
+
+    if let Some(path) = request.patch_out.as_deref() {
+        let out = resolve_workspace_file(workspace, path)?;
+        write_string(&out, patch_diff)?;
+    }
+
+    if let Some(path) = request.apply_patch_out.as_deref() {
+        let out = resolve_workspace_file(workspace, path)?;
+        write_string(&out, apply_patch_text)?;
+    }
+
+    Ok(())
+}
+
+fn apply_diff_to_source_if_requested(
+    workspace: &WorkspaceView,
+    request: &GraphApplyOpsRequest,
+    patch_diff: &str,
+) -> Result<Option<Value>, String> {
+    if !request.apply_to_source {
+        return Ok(None);
+    }
+    apply_unified_diff_to_workspace(workspace, patch_diff).map(Some)
+}
+
+fn apply_unified_diff_to_workspace(
+    workspace: &WorkspaceView,
+    patch_diff: &str,
+) -> Result<Value, String> {
+    let output = Command::new("git")
+        .arg("apply")
+        .arg("--index")
+        .arg("--whitespace=nowarn")
+        .current_dir(&workspace.root)
+        .env("GIT_CONFIG_NOSYSTEM", "1")
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .spawn()
+        .and_then(|mut child| {
+            if let Some(mut stdin) = child.stdin.take() {
+                use std::io::Write;
+                stdin.write_all(patch_diff.as_bytes())?;
+            }
+            child.wait_with_output()
+        })
+        .map_err(|error| format!("failed to run git apply: {error}"))?;
+    let stdout = String::from_utf8_lossy(&output.stdout).to_string();
+    let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+    let status = output.status.code().unwrap_or(-1);
+    if !output.status.success() {
+        return Err(format!("git apply failed with status {status}: {stderr}"));
+    }
+    Ok(json!({
+        "command": "git apply --index --whitespace=nowarn",
+        "status": status,
+        "success": true,
+        "stdout": stdout,
+        "stderr": stderr,
+    }))
+}
+
+fn apply_ops_receipt_payload(
+    workspace: &WorkspaceView,
+    request: &GraphApplyOpsRequest,
+    graph_path: &Path,
+    ops_path: &Path,
+    worktree_out: &Path,
+    apply_patch_text: &str,
+    source_apply: Option<&Value>,
+    plan: &crate::graph_mutation::GraphPatchPlan,
+    ops_receipt: &crate::graph_mutation::GraphMutationOpSetReceipt,
+) -> Value {
+    json!({
+        "ok": true,
+        "graph": workspace_relative_display(workspace, graph_path),
+        "ops": workspace_relative_display(workspace, ops_path),
+        "worktreeOut": workspace_relative_display(workspace, worktree_out),
+        "graphOut": request.graph_out,
+        "patchOut": request.patch_out,
+        "applyPatchOut": request.apply_patch_out,
+        "artifactRoot": request.artifact_root,
+        "applyToSource": request.apply_to_source,
+        "sourceApply": source_apply,
+        "applyPatch": apply_patch_text,
+        "patchReceipt": encode_graph_patch_receipt_ndjson(&plan.receipt),
+        "opsReceipt": encode_graph_mutation_opset_receipt_ndjson(ops_receipt),
+    })
+}
+
+fn write_optional_json(
+    workspace: &WorkspaceView,
+    path: Option<&str>,
+    payload: &Value,
+) -> Result<(), String> {
+    let Some(path) = path else {
+        return Ok(());
+    };
+    let out = resolve_workspace_file(workspace, path)?;
+    write_string(
+        &out,
+        &serde_json::to_string_pretty(payload).unwrap_or_else(|_| payload.to_string()),
+    )
+}
+
+fn run_optional_worktree_command(
+    command: Option<&str>,
+    worktree_out: &Path,
+) -> Result<Option<Value>, String> {
+    command
+        .map(|command| run_shell_command(command, worktree_out))
+        .transpose()
 }
 
 fn graph_snapshot_contract_from_graph_json(
@@ -1266,6 +1384,7 @@ mod tests {
             "graph_out": "tmp/graph.json",
             "patch_out": "tmp/patch.diff",
             "apply_patch_out": "tmp/apply.patch",
+            "apply_to_source": true,
             "validate_command": "cargo check",
             "artifact_root": "state/rustc"
         }))
@@ -1276,6 +1395,7 @@ mod tests {
         assert_eq!(request.graph_out.as_deref(), Some("tmp/graph.json"));
         assert_eq!(request.patch_out.as_deref(), Some("tmp/patch.diff"));
         assert_eq!(request.apply_patch_out.as_deref(), Some("tmp/apply.patch"));
+        assert!(request.apply_to_source);
         assert_eq!(request.validate_command.as_deref(), Some("cargo check"));
         assert_eq!(request.artifact_root.as_deref(), Some("state/rustc"));
     }
@@ -1350,10 +1470,12 @@ mod tests {
             "strategy": "ReplaceSpan",
             "replacement": "fn f() {}",
             "ops_out": "tmp/cfg.ops.ndjson",
-            "worktree_out": "tmp/worktree"
+            "worktree_out": "tmp/worktree",
+            "apply_to_source": true
         }))
         .expect("valid auto refactor request");
         assert_eq!(request.ops_out, "tmp/cfg.ops.ndjson");
         assert_eq!(request.worktree_out, "tmp/worktree");
+        assert!(request.apply_to_source);
     }
 }

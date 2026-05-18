@@ -228,48 +228,93 @@ fn push_event(out: &mut Vec<u64>, event: ControlEvent) {
 
 fn pop_event(cursor: &mut Cursor<'_>) -> Result<ControlEvent, CanonError> {
     let seq = cursor.take()?;
-    let from = phase_from_u64(cursor.take()?)?;
-    let to = phase_from_u64(cursor.take()?)?;
-    let kind = event_kind_from_u64(cursor.take()?)?;
-    let cause = cause_from_u64(cursor.take()?)?;
-    let delta = semantic_delta_from_u64(cursor.take()?)?;
-    let evidence = evidence_from_u64(cursor.take()?)?;
-    let decision = decision_from_u64(cursor.take()?)?;
-    let failure = opt_failure_from_u64(cursor.take()?)?;
-    let recovery_action = opt_recovery_from_u64(cursor.take()?)?;
-    let affected_gate = opt_gate_from_u64(cursor.take()?)?;
-    let runtime_config = RuntimeConfig {
-        max_steps: cursor.take()?,
-        max_recovery_attempts: u8_from_u64(cursor.take()?)?,
-    };
+    let phases = pop_event_phases(cursor)?;
+    let semantics = pop_event_semantics(cursor)?;
+    let runtime_config = pop_runtime_config(cursor)?;
     let state_before = pop_state(cursor)?;
     let state_after = pop_state(cursor)?;
     let capability_registry_projection = pop_registry_projection(cursor)?;
-    let api_command_id = cursor.take()?;
-    let api_command_hash = cursor.take()?;
-    let prev_hash = cursor.take()?;
-    let self_hash = cursor.take()?;
+    let command_hashes = pop_event_command_hashes(cursor)?;
 
     Ok(ControlEvent {
         seq,
-        from,
-        to,
-        kind,
-        cause,
-        delta,
-        evidence,
-        decision,
-        failure,
-        recovery_action,
-        affected_gate,
+        from: phases.from,
+        to: phases.to,
+        kind: semantics.kind,
+        cause: semantics.cause,
+        delta: semantics.delta,
+        evidence: semantics.evidence,
+        decision: semantics.decision,
+        failure: semantics.failure,
+        recovery_action: semantics.recovery_action,
+        affected_gate: semantics.affected_gate,
         runtime_config,
         state_before,
         state_after,
         capability_registry_projection,
-        api_command_id,
-        api_command_hash,
-        prev_hash,
-        self_hash,
+        api_command_id: command_hashes.api_command_id,
+        api_command_hash: command_hashes.api_command_hash,
+        prev_hash: command_hashes.prev_hash,
+        self_hash: command_hashes.self_hash,
+    })
+}
+
+struct EventPhases {
+    from: Phase,
+    to: Phase,
+}
+
+fn pop_event_phases(cursor: &mut Cursor<'_>) -> Result<EventPhases, CanonError> {
+    Ok(EventPhases {
+        from: phase_from_u64(cursor.take()?)?,
+        to: phase_from_u64(cursor.take()?)?,
+    })
+}
+
+struct EventSemantics {
+    kind: EventKind,
+    cause: Cause,
+    delta: SemanticDelta,
+    evidence: Evidence,
+    decision: Decision,
+    failure: Option<FailureClass>,
+    recovery_action: Option<RecoveryAction>,
+    affected_gate: Option<GateId>,
+}
+
+fn pop_event_semantics(cursor: &mut Cursor<'_>) -> Result<EventSemantics, CanonError> {
+    Ok(EventSemantics {
+        kind: event_kind_from_u64(cursor.take()?)?,
+        cause: cause_from_u64(cursor.take()?)?,
+        delta: semantic_delta_from_u64(cursor.take()?)?,
+        evidence: evidence_from_u64(cursor.take()?)?,
+        decision: decision_from_u64(cursor.take()?)?,
+        failure: opt_failure_from_u64(cursor.take()?)?,
+        recovery_action: opt_recovery_from_u64(cursor.take()?)?,
+        affected_gate: opt_gate_from_u64(cursor.take()?)?,
+    })
+}
+
+fn pop_runtime_config(cursor: &mut Cursor<'_>) -> Result<RuntimeConfig, CanonError> {
+    Ok(RuntimeConfig {
+        max_steps: cursor.take()?,
+        max_recovery_attempts: u8_from_u64(cursor.take()?)?,
+    })
+}
+
+struct EventCommandHashes {
+    api_command_id: u64,
+    api_command_hash: u64,
+    prev_hash: u64,
+    self_hash: u64,
+}
+
+fn pop_event_command_hashes(cursor: &mut Cursor<'_>) -> Result<EventCommandHashes, CanonError> {
+    Ok(EventCommandHashes {
+        api_command_id: cursor.take()?,
+        api_command_hash: cursor.take()?,
+        prev_hash: cursor.take()?,
+        self_hash: cursor.take()?,
     })
 }
 

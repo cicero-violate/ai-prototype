@@ -496,7 +496,20 @@ fn annotations(action: LandmarkAction) -> Value {
 }
 
 fn native_input_schema(native_tool: &str) -> Value {
-    match native_tool {
+    if let Some(schema) = core_native_input_schema(native_tool) {
+        return schema;
+    }
+    if let Some(schema) = browser_native_input_schema(native_tool) {
+        return schema;
+    }
+    if let Some(schema) = graph_native_input_schema(native_tool) {
+        return schema;
+    }
+    json!({ "type": "object", "properties": {} })
+}
+
+fn core_native_input_schema(native_tool: &str) -> Option<Value> {
+    let schema = match native_tool {
         "apply_patch" => json!({
             "type": "object",
             "properties": {
@@ -522,16 +535,15 @@ fn native_input_schema(native_tool: &str) -> Value {
         }),
         "echo" => json!({
             "type": "object",
-            "properties": {
-                "text": { "type": "string" },
-                "intent": { "type": "string" }
-            },
+            "properties": { "text": { "type": "string" }, "intent": { "type": "string" } },
             "required": ["text"]
         }),
-        "get_current_time" => json!({
-            "type": "object",
-            "properties": { "intent": { "type": "string" } }
-        }),
+        "get_current_time"
+        | "canon_runtime_state"
+        | "canon_supervisor_health"
+        | "canon_supervisor_reload_worker"
+        | "canon_supervisor_restart"
+        | "canon_workspace_get" => intent_only_input_schema(),
         "canon_spawn_agent" => json!({
             "type": "object",
             "properties": {
@@ -562,15 +574,6 @@ fn native_input_schema(native_tool: &str) -> Value {
             },
             "required": ["agent_id"]
         }),
-        "canon_runtime_state"
-        | "canon_supervisor_health"
-        | "canon_supervisor_reload_worker"
-        | "canon_supervisor_restart"
-        | "canon_workspace_get"
-        | "canon_browser_list_tabs" => json!({
-            "type": "object",
-            "properties": { "intent": { "type": "string" } }
-        }),
         "canon_workspace_set" => json!({
             "type": "object",
             "properties": {
@@ -579,6 +582,18 @@ fn native_input_schema(native_tool: &str) -> Value {
             },
             "required": ["root"]
         }),
+        _ => return None,
+    };
+    Some(schema)
+}
+
+fn intent_only_input_schema() -> Value {
+    json!({ "type": "object", "properties": { "intent": { "type": "string" } } })
+}
+
+fn browser_native_input_schema(native_tool: &str) -> Option<Value> {
+    let schema = match native_tool {
+        "canon_browser_list_tabs" => intent_only_input_schema(),
         "canon_browser_close_tab" => json!({
             "type": "object",
             "properties": {
@@ -612,6 +627,13 @@ fn native_input_schema(native_tool: &str) -> Value {
                 "intent": { "type": "string" }
             }
         }),
+        _ => return None,
+    };
+    Some(schema)
+}
+
+fn graph_native_input_schema(native_tool: &str) -> Option<Value> {
+    let schema = match native_tool {
         "canon_graph_plan_patch" => json!({
             "type": "object",
             "properties": {
@@ -632,7 +654,7 @@ fn native_input_schema(native_tool: &str) -> Value {
                 "graph_path": { "type": "string", "description": "Alias for graph." },
                 "node": { "type": "string", "description": "Graph node path for the function to transform." },
                 "path": { "type": "string", "description": "Alias for node." },
-                "strategy": { "type": "string", "enum": ["ReplaceSpan", "InvertBranch", "GuardClauseInsert", "ExtractBlock", "InlineBlock", "SplitLoop", "ConvertIfToMatch", "MoveStatement", "DeleteDeadBranch"] },
+                "strategy": graph_cfg_strategy_schema(),
                 "replacement": { "type": "string", "description": "Replacement source text for exact span rewrite strategies." },
                 "guard": { "type": "string", "description": "Guard source text for GuardClauseInsert." },
                 "lo": { "type": "integer", "description": "Optional source span start override." },
@@ -652,6 +674,9 @@ fn native_input_schema(native_tool: &str) -> Value {
                 "worktree_out": { "type": "string", "description": "Workspace-relative output directory for rendered mutated source tree." },
                 "graph_out": { "type": "string", "description": "Optional workspace-relative file for mutated graph.json." },
                 "receipt_out": { "type": "string", "description": "Optional workspace-relative file for pipeline receipt JSON." },
+                "patch_out": { "type": "string", "description": "Optional workspace-relative unified diff output path." },
+                "apply_patch_out": { "type": "string", "description": "Optional workspace-relative apply_patch-format patch output path." },
+                "apply_to_source": { "type": "boolean", "description": "Apply the generated diff to the live workspace with git apply --index." },
                 "validate_command": { "type": "string", "description": "Optional shell command run inside worktree_out." },
                 "recapture_command": { "type": "string", "description": "Optional shell command run inside worktree_out after validation." },
                 "graph_artifact_root": { "type": "string", "description": "Optional artifact root containing graph.json files to merge into rendered worktree." },
@@ -682,7 +707,7 @@ fn native_input_schema(native_tool: &str) -> Value {
                 "graph_path": { "type": "string", "description": "Alias for graph." },
                 "node": { "type": "string", "description": "Function graph node path to transform." },
                 "path": { "type": "string", "description": "Alias for node." },
-                "strategy": { "type": "string", "enum": ["ReplaceSpan", "InvertBranch", "GuardClauseInsert", "ExtractBlock", "InlineBlock", "SplitLoop", "ConvertIfToMatch", "MoveStatement", "DeleteDeadBranch"] },
+                "strategy": graph_cfg_strategy_schema(),
                 "replacement": { "type": "string" },
                 "guard": { "type": "string" },
                 "lo": { "type": "integer" },
@@ -693,6 +718,7 @@ fn native_input_schema(native_tool: &str) -> Value {
                 "receipt_out": { "type": "string", "description": "Optional pipeline receipt path." },
                 "patch_out": { "type": "string", "description": "Optional workspace-relative unified diff output path." },
                 "apply_patch_out": { "type": "string", "description": "Optional workspace-relative apply_patch-format patch output path." },
+                "apply_to_source": { "type": "boolean", "description": "Apply the generated diff to the live workspace with git apply --index." },
                 "artifact_root": { "type": "string", "description": "Optional graph artifact root for merged render; defaults to state/rustc." },
                 "graph_artifact_root": { "type": "string", "description": "Alias for artifact_root." },
                 "validate_command": { "type": "string" },
@@ -703,8 +729,16 @@ fn native_input_schema(native_tool: &str) -> Value {
             },
             "required": ["graph", "node", "strategy", "ops_out", "worktree_out"]
         }),
-        _ => json!({ "type": "object", "properties": {} }),
-    }
+        _ => return None,
+    };
+    Some(schema)
+}
+
+fn graph_cfg_strategy_schema() -> Value {
+    json!({
+        "type": "string",
+        "enum": ["ReplaceSpan", "InvertBranch", "GuardClauseInsert", "ExtractBlock", "InlineBlock", "SplitLoop", "ConvertIfToMatch", "MoveStatement", "DeleteDeadBranch"]
+    })
 }
 
 pub fn parameters_from_call_action(args: &Value) -> Result<(&str, Value), String> {

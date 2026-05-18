@@ -1055,49 +1055,80 @@ pub fn encode_graph_snapshot_contract_ndjson(graph: &GraphSnapshotContract) -> S
 
 pub fn decode_graph_snapshot_contract_ndjson(input: &str) -> Option<GraphSnapshotContract> {
     let mut graph = None;
-    for line in input.lines() {
-        if line.trim().is_empty() {
-            continue;
-        }
-        let fields = split_escaped_fields(line.trim())?;
-        match fields.first().map(String::as_str)? {
-            "G" if fields.len() == 3 && graph.is_none() => {
-                graph = Some(GraphSnapshotContract::new(
-                    fields[1].parse::<u64>().ok()?,
-                    fields[2].parse::<u64>().ok()?,
-                ));
-            }
-            "N" if fields.len() == 9 => {
-                let graph = graph.as_mut()?;
-                graph.insert_node(GraphNodeContract::new(
-                    unescape_field(&fields[1])?,
-                    unescape_field(&fields[2])?,
-                    unescape_field(&fields[3])?,
-                    GraphSourceSpan::new(
-                        unescape_field(&fields[4])?,
-                        fields[5].parse::<u64>().ok()?,
-                        fields[6].parse::<u64>().ok()?,
-                        fields[7].parse::<usize>().ok()?,
-                        fields[8].parse::<usize>().ok()?,
-                    ),
-                ));
-            }
-            "E" if fields.len() == 4 => {
-                let graph = graph.as_mut()?;
-                graph.insert_edge(GraphEdgeContract::new(
-                    unescape_field(&fields[1])?,
-                    unescape_field(&fields[2])?,
-                    unescape_field(&fields[3])?,
-                ));
-            }
-            "I" if fields.len() == 3 => {
-                let graph = graph.as_mut()?;
-                graph.set_intent(unescape_field(&fields[1])?, unescape_field(&fields[2])?);
-            }
-            _ => return None,
-        }
+    for line in input.lines().map(str::trim).filter(|line| !line.is_empty()) {
+        decode_graph_snapshot_contract_row(line, &mut graph)?;
     }
     graph
+}
+
+fn decode_graph_snapshot_contract_row(
+    line: &str,
+    graph: &mut Option<GraphSnapshotContract>,
+) -> Option<()> {
+    let fields = split_escaped_fields(line)?;
+    match fields.first().map(String::as_str)? {
+        "G" => decode_graph_snapshot_header(&fields, graph),
+        "N" => decode_graph_snapshot_node(&fields, graph.as_mut()?),
+        "E" => decode_graph_snapshot_edge(&fields, graph.as_mut()?),
+        "I" => decode_graph_snapshot_intent(&fields, graph.as_mut()?),
+        _ => None,
+    }
+}
+
+fn decode_graph_snapshot_header(
+    fields: &[String],
+    graph: &mut Option<GraphSnapshotContract>,
+) -> Option<()> {
+    if fields.len() != 3 || graph.is_some() {
+        return None;
+    }
+    *graph = Some(GraphSnapshotContract::new(
+        fields[1].parse::<u64>().ok()?,
+        fields[2].parse::<u64>().ok()?,
+    ));
+    Some(())
+}
+
+fn decode_graph_snapshot_node(fields: &[String], graph: &mut GraphSnapshotContract) -> Option<()> {
+    if fields.len() != 9 {
+        return None;
+    }
+    graph.insert_node(GraphNodeContract::new(
+        unescape_field(&fields[1])?,
+        unescape_field(&fields[2])?,
+        unescape_field(&fields[3])?,
+        GraphSourceSpan::new(
+            unescape_field(&fields[4])?,
+            fields[5].parse::<u64>().ok()?,
+            fields[6].parse::<u64>().ok()?,
+            fields[7].parse::<usize>().ok()?,
+            fields[8].parse::<usize>().ok()?,
+        ),
+    ));
+    Some(())
+}
+
+fn decode_graph_snapshot_edge(fields: &[String], graph: &mut GraphSnapshotContract) -> Option<()> {
+    if fields.len() != 4 {
+        return None;
+    }
+    graph.insert_edge(GraphEdgeContract::new(
+        unescape_field(&fields[1])?,
+        unescape_field(&fields[2])?,
+        unescape_field(&fields[3])?,
+    ));
+    Some(())
+}
+
+fn decode_graph_snapshot_intent(
+    fields: &[String],
+    graph: &mut GraphSnapshotContract,
+) -> Option<()> {
+    if fields.len() != 3 {
+        return None;
+    }
+    graph.set_intent(unescape_field(&fields[1])?, unescape_field(&fields[2])?);
+    Some(())
 }
 
 pub fn load_graph_snapshot_contract_ndjson(

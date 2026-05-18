@@ -37,127 +37,13 @@ fn handle_command_with_receipt(
 
     let mut candidate_state = *state;
     let mut candidate_tlog = tlog.clone();
-
-    match command {
-        Command::SubmitEvidence(submission) => {
-            append_submission_event(
-                &mut candidate_state,
-                &mut candidate_tlog,
-                cfg,
-                submission,
-                receipt,
-            )?;
-            tick_for_command_response(&mut candidate_state, &mut candidate_tlog, cfg, receipt)?;
-        }
-        Command::SubmitEvidenceBatch(submissions) => {
-            let submission_count = submissions.len();
-            for (idx, submission) in submissions.into_iter().enumerate() {
-                append_submission_event(
-                    &mut candidate_state,
-                    &mut candidate_tlog,
-                    cfg,
-                    submission,
-                    receipt,
-                )?;
-                let response_receipt = if idx + 1 == submission_count {
-                    receipt
-                } else {
-                    None
-                };
-                tick_for_command_response(
-                    &mut candidate_state,
-                    &mut candidate_tlog,
-                    cfg,
-                    response_receipt,
-                )?;
-            }
-        }
-        Command::SubmitObservationIngress(batch) => {
-            append_submission_event(
-                &mut candidate_state,
-                &mut candidate_tlog,
-                cfg,
-                batch.submission(),
-                receipt,
-            )?;
-            tick_for_command_response(&mut candidate_state, &mut candidate_tlog, cfg, receipt)?;
-        }
-        Command::AuthorizeMcpCall(request) => {
-            append_submission_event(
-                &mut candidate_state,
-                &mut candidate_tlog,
-                cfg,
-                mcp_authorization_submission(request),
-                receipt,
-            )?;
-        }
-        Command::AuthorizeProcessCall(request) => {
-            append_submission_event(
-                &mut candidate_state,
-                &mut candidate_tlog,
-                cfg,
-                process_authorization_submission(request),
-                receipt,
-            )?;
-        }
-        Command::AuthorizeMailboxMessage(request) => {
-            append_submission_event(
-                &mut candidate_state,
-                &mut candidate_tlog,
-                cfg,
-                mailbox_authorization_submission(request),
-                receipt,
-            )?;
-        }
-        Command::SubmitMcpCallReceipt(receipt_record) => {
-            ensure_mcp_receipt_authorized(&candidate_tlog, &receipt_record)?;
-            append_submission_event(
-                &mut candidate_state,
-                &mut candidate_tlog,
-                cfg,
-                receipt_record.submission(),
-                receipt,
-            )?;
-            tick_for_command_response(&mut candidate_state, &mut candidate_tlog, cfg, receipt)?;
-        }
-        Command::SubmitProcessReceipt(receipt_record) => {
-            ensure_process_receipt_authorized(&candidate_tlog, &receipt_record)?;
-            append_submission_event(
-                &mut candidate_state,
-                &mut candidate_tlog,
-                cfg,
-                receipt_record.submission(),
-                receipt,
-            )?;
-            tick_for_command_response(&mut candidate_state, &mut candidate_tlog, cfg, receipt)?;
-        }
-        Command::SubmitMailboxMessageReceipt(receipt_record) => {
-            ensure_mailbox_message_receipt_authorized(&candidate_tlog, &receipt_record)?;
-            append_submission_event(
-                &mut candidate_state,
-                &mut candidate_tlog,
-                cfg,
-                receipt_record.submission(),
-                receipt,
-            )?;
-            tick_for_command_response(&mut candidate_state, &mut candidate_tlog, cfg, receipt)?;
-        }
-        Command::SubmitProcessReceiptBatch(receipts) => {
-            for receipt_record in &receipts {
-                ensure_process_receipt_authorized(&candidate_tlog, receipt_record)?;
-            }
-            for receipt_record in receipts {
-                append_submission_event(
-                    &mut candidate_state,
-                    &mut candidate_tlog,
-                    cfg,
-                    receipt_record.submission(),
-                    receipt,
-                )?;
-            }
-            tick_for_command_response(&mut candidate_state, &mut candidate_tlog, cfg, receipt)?;
-        }
-    }
+    apply_command(
+        &mut candidate_state,
+        &mut candidate_tlog,
+        cfg,
+        command,
+        receipt,
+    )?;
 
     let response = ControlEventResponse {
         event: *candidate_tlog.last().ok_or(CanonError::InvalidReplay)?,
@@ -165,6 +51,139 @@ fn handle_command_with_receipt(
     *state = candidate_state;
     *tlog = candidate_tlog;
     Ok(response)
+}
+
+fn apply_command(
+    state: &mut State,
+    tlog: &mut TLog,
+    cfg: RuntimeConfig,
+    command: Command,
+    receipt: Option<(u64, u64)>,
+) -> Result<(), CanonError> {
+    match command {
+        Command::SubmitEvidence(submission) => {
+            apply_submission_command(state, tlog, cfg, submission, receipt)
+        }
+        Command::SubmitEvidenceBatch(submissions) => {
+            apply_submission_batch_command(state, tlog, cfg, submissions, receipt)
+        }
+        Command::SubmitObservationIngress(batch) => {
+            apply_submission_command(state, tlog, cfg, batch.submission(), receipt)
+        }
+        Command::AuthorizeMcpCall(request) => append_submission_event(
+            state,
+            tlog,
+            cfg,
+            mcp_authorization_submission(request),
+            receipt,
+        ),
+        Command::AuthorizeProcessCall(request) => append_submission_event(
+            state,
+            tlog,
+            cfg,
+            process_authorization_submission(request),
+            receipt,
+        ),
+        Command::AuthorizeMailboxMessage(request) => append_submission_event(
+            state,
+            tlog,
+            cfg,
+            mailbox_authorization_submission(request),
+            receipt,
+        ),
+        Command::SubmitMcpCallReceipt(receipt_record) => {
+            apply_mcp_receipt_command(state, tlog, cfg, receipt_record, receipt)
+        }
+        Command::SubmitProcessReceipt(receipt_record) => {
+            apply_process_receipt_command(state, tlog, cfg, receipt_record, receipt)
+        }
+        Command::SubmitMailboxMessageReceipt(receipt_record) => {
+            apply_mailbox_message_receipt_command(state, tlog, cfg, receipt_record, receipt)
+        }
+        Command::SubmitProcessReceiptBatch(receipts) => {
+            apply_process_receipt_batch_command(state, tlog, cfg, receipts, receipt)
+        }
+    }
+}
+
+fn apply_submission_command(
+    state: &mut State,
+    tlog: &mut TLog,
+    cfg: RuntimeConfig,
+    submission: EvidenceSubmission,
+    receipt: Option<(u64, u64)>,
+) -> Result<(), CanonError> {
+    append_submission_event(state, tlog, cfg, submission, receipt)?;
+    tick_for_command_response(state, tlog, cfg, receipt)
+}
+
+fn apply_submission_batch_command(
+    state: &mut State,
+    tlog: &mut TLog,
+    cfg: RuntimeConfig,
+    submissions: Vec<EvidenceSubmission>,
+    receipt: Option<(u64, u64)>,
+) -> Result<(), CanonError> {
+    let submission_count = submissions.len();
+    for (idx, submission) in submissions.into_iter().enumerate() {
+        append_submission_event(state, tlog, cfg, submission, receipt)?;
+        let response_receipt = if idx + 1 == submission_count {
+            receipt
+        } else {
+            None
+        };
+        tick_for_command_response(state, tlog, cfg, response_receipt)?;
+    }
+    Ok(())
+}
+
+fn apply_mcp_receipt_command(
+    state: &mut State,
+    tlog: &mut TLog,
+    cfg: RuntimeConfig,
+    receipt_record: McpCallReceipt,
+    receipt: Option<(u64, u64)>,
+) -> Result<(), CanonError> {
+    ensure_mcp_receipt_authorized(tlog, &receipt_record)?;
+    apply_submission_command(state, tlog, cfg, receipt_record.submission(), receipt)
+}
+
+fn apply_process_receipt_command(
+    state: &mut State,
+    tlog: &mut TLog,
+    cfg: RuntimeConfig,
+    receipt_record: SandboxProcessReceipt,
+    receipt: Option<(u64, u64)>,
+) -> Result<(), CanonError> {
+    ensure_process_receipt_authorized(tlog, &receipt_record)?;
+    apply_submission_command(state, tlog, cfg, receipt_record.submission(), receipt)
+}
+
+fn apply_mailbox_message_receipt_command(
+    state: &mut State,
+    tlog: &mut TLog,
+    cfg: RuntimeConfig,
+    receipt_record: MailboxMessageReceipt,
+    receipt: Option<(u64, u64)>,
+) -> Result<(), CanonError> {
+    ensure_mailbox_message_receipt_authorized(tlog, &receipt_record)?;
+    apply_submission_command(state, tlog, cfg, receipt_record.submission(), receipt)
+}
+
+fn apply_process_receipt_batch_command(
+    state: &mut State,
+    tlog: &mut TLog,
+    cfg: RuntimeConfig,
+    receipts: Vec<SandboxProcessReceipt>,
+    receipt: Option<(u64, u64)>,
+) -> Result<(), CanonError> {
+    for receipt_record in &receipts {
+        ensure_process_receipt_authorized(tlog, receipt_record)?;
+    }
+    for receipt_record in receipts {
+        append_submission_event(state, tlog, cfg, receipt_record.submission(), receipt)?;
+    }
+    tick_for_command_response(state, tlog, cfg, receipt)
 }
 
 fn tick_for_command_response(
