@@ -1,4 +1,4 @@
-//! Graph-as-source-of-truth mutation contract.
+//! Graph-as-canonical-source mutation contract.
 //!
 //! The canon-rustc-v3 wrapper emits `graph.json` nodes with source byte spans.
 //! This module defines the root project contract used by external mutation
