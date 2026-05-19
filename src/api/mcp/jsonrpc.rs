@@ -2,12 +2,16 @@
 
 use serde_json::{json, Value};
 
+fn mcp_response(id: Value, key: &'static str, payload: Value) -> Value {
+    json!({"jsonrpc": "2.0", "id": id, key: payload})
+}
+
 pub fn mcp_ok(id: Value, result: Value) -> Value {
-    json!({"jsonrpc": "2.0", "id": id, "result": result})
+    mcp_response(id, "result", result)
 }
 
 pub fn mcp_err(id: Value, code: i64, message: &str) -> Value {
-    json!({"jsonrpc": "2.0", "id": id, "error": { "code": code, "message": message }})
+    mcp_response(id, "error", json!({ "code": code, "message": message }))
 }
 
 pub fn tool_error(message: String) -> Value {
