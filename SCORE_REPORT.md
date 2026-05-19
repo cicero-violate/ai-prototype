@@ -1,6 +1,6 @@
 # Code Quality Score Report
 
-Generated: 2026-05-18  |  Schema version: 17  |  Crates: 5
+Generated: 2026-05-19  |  Min schema version: 16  |  Crates: 5
 
 ## Aggregate Scores
 
@@ -19,10 +19,10 @@ G (geometric mean)   = 8.14 / 10
 
 | Crate          | Nodes | Edges | Fns  | Arch | Struct | Simple | Maint | Determ | Coher |
 | :------------- | ----: | ----: | ---: | ---: | -----: | -----: | ----: | -----: | ----: |
-| ai             |  6499 | 43268 | 2758 |  9.5 |    6.2 |    6.7 |  10.0 |   10.0 |   8.2 |
-| browser_router |   640 |  6731 |  318 |  8.0 |    5.1 |    4.0 |  10.0 |   10.0 |   8.5 |
+| ai             |  6467 | 43186 | 2740 |  9.5 |    6.2 |    6.6 |  10.0 |   10.0 |   8.2 |
+| browser_router |   640 |  6727 |  318 |  8.0 |    5.1 |    4.0 |  10.0 |   10.0 |   8.5 |
 | browser_router |     2 |    74 |    2 |  5.0 |    6.1 |    0.7 |  10.0 |   10.0 |   7.0 |
-| canon_rustc_v3 |   694 |  3708 |  336 |  8.3 |    3.6 |    8.5 |  10.0 |   10.0 |   8.0 |
+| canon_rustc_v3 |   693 |  3703 |  335 |  8.3 |    3.5 |    8.4 |  10.0 |   10.0 |   8.1 |
 | canon_rustc_v3 |     2 |    69 |    2 |  5.0 |    6.1 |    0.9 |  10.0 |   10.0 |   8.1 |
 
 ## Axis Definitions

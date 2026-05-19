@@ -343,7 +343,7 @@ impl DomainContext {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct DomainRiskEnvelope {
     pub schema_version: &'static str,
     pub envelope_id: String,
