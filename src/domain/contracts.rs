@@ -3,7 +3,7 @@
 //! These records are descriptor-only. They do not mutate runtime state, append
 //! TLog events, or bypass capability verification.
 
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 
 pub const DOMAIN_SCHEMA_VERSION: &str = "canon_domain_v1";
 
@@ -106,7 +106,7 @@ pub enum DomainRiskClass {
     Blocked,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
 pub enum DomainPlanKind {
     ResearchPlan,
     BusinessWorkflowPlan,
@@ -116,6 +116,37 @@ pub enum DomainPlanKind {
     TradingSimulationPlan,
     TradingSimulation,
     LearningPromotionPlan,
+}
+
+impl<'de> Deserialize<'de> for DomainPlanKind {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        match String::deserialize(deserializer)?.as_str() {
+            "ResearchPlan" => Ok(Self::ResearchPlan),
+            "BusinessWorkflowPlan" => Ok(Self::BusinessWorkflowPlan),
+            "FinanceAnalysisPlan" => Ok(Self::FinanceAnalysisPlan),
+            "FinanceResearch" => Ok(Self::FinanceResearch),
+            "AllocationHypothesisPlan" => Ok(Self::AllocationHypothesisPlan),
+            "TradingSimulationPlan" => Ok(Self::TradingSimulationPlan),
+            "TradingSimulation" => Ok(Self::TradingSimulation),
+            "LearningPromotionPlan" => Ok(Self::LearningPromotionPlan),
+            other => Err(serde::de::Error::unknown_variant(
+                other,
+                &[
+                    "ResearchPlan",
+                    "BusinessWorkflowPlan",
+                    "FinanceAnalysisPlan",
+                    "FinanceResearch",
+                    "AllocationHypothesisPlan",
+                    "TradingSimulationPlan",
+                    "TradingSimulation",
+                    "LearningPromotionPlan",
+                ],
+            )),
+        }
+    }
 }
 
 pub type PlanKind = DomainPlanKind;
