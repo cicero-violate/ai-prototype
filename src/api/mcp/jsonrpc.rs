@@ -2,16 +2,32 @@
 
 use serde_json::{json, Value};
 
-fn mcp_response(id: Value, key: &'static str, payload: Value) -> Value {
-    json!({"jsonrpc": "2.0", "id": id, key: payload})
+enum McpResponsePayload {
+    Result(Value),
+    Error { code: i64, message: String },
+}
+
+fn mcp_response(id: Value, payload: McpResponsePayload) -> Value {
+    match payload {
+        McpResponsePayload::Result(result) => json!({"jsonrpc": "2.0", "id": id, "result": result}),
+        McpResponsePayload::Error { code, message } => {
+            json!({"jsonrpc": "2.0", "id": id, "error": { "code": code, "message": message }})
+        }
+    }
 }
 
 pub fn mcp_ok(id: Value, result: Value) -> Value {
-    mcp_response(id, "result", result)
+    mcp_response(id, McpResponsePayload::Result(result))
 }
 
 pub fn mcp_err(id: Value, code: i64, message: &str) -> Value {
-    mcp_response(id, "error", json!({ "code": code, "message": message }))
+    mcp_response(
+        id,
+        McpResponsePayload::Error {
+            code,
+            message: message.to_owned(),
+        },
+    )
 }
 
 pub fn tool_error(message: String) -> Value {
