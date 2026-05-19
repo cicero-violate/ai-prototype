@@ -8,7 +8,7 @@ use std::io::{BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
 
 use chrono::Utc;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use uuid::Uuid;
 
 use crate::capability::tooling::{McpCallReceipt, McpCallRequest};
@@ -17,7 +17,7 @@ use crate::kernel::mix;
 pub const MCP_TRANSCRIPT_SCHEMA_VERSION: u64 = 1;
 pub const MCP_TRANSCRIPT_RECORD_CALL_RESULT: u64 = 1;
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct McpTranscriptRecord {
     pub schema_version: u64,
     pub record_kind: u64,
@@ -149,7 +149,7 @@ pub fn replay_mcp_transcripts(workspace_root: &Path) -> Result<Vec<McpTranscript
         if line.trim().is_empty() {
             continue;
         }
-        let record: McpTranscriptRecord = serde_json::from_str(&line)
+        let record = decode_mcp_transcript_record(&line)
             .map_err(|error| format!("decode MCP transcript line {idx}: {error}"))?;
         if record.prev_hash != prev_hash || !record.is_contract_valid() {
             return Err(format!("invalid MCP transcript hash chain at line {idx}"));
@@ -159,6 +159,49 @@ pub fn replay_mcp_transcripts(workspace_root: &Path) -> Result<Vec<McpTranscript
     }
 
     Ok(records)
+}
+
+fn decode_mcp_transcript_record(line: &str) -> Result<McpTranscriptRecord, String> {
+    let value: serde_json::Value = serde_json::from_str(line).map_err(|error| error.to_string())?;
+    let field = |name: &str| {
+        value
+            .get(name)
+            .ok_or_else(|| format!("missing field `{name}`"))
+    };
+    let string = |name: &str| {
+        field(name)?
+            .as_str()
+            .map(str::to_owned)
+            .ok_or_else(|| format!("field `{name}` must be a string"))
+    };
+    let u64_field = |name: &str| {
+        field(name)?
+            .as_u64()
+            .ok_or_else(|| format!("field `{name}` must be an unsigned integer"))
+    };
+    let bool_field = |name: &str| {
+        field(name)?
+            .as_bool()
+            .ok_or_else(|| format!("field `{name}` must be a boolean"))
+    };
+
+    Ok(McpTranscriptRecord {
+        schema_version: u64_field("schema_version")?,
+        record_kind: u64_field("record_kind")?,
+        id: string("id")?,
+        tool_name: string("tool_name")?,
+        request_json: string("request_json")?,
+        response_json: string("response_json")?,
+        request_hash: u64_field("request_hash")?,
+        receipt_hash: u64_field("receipt_hash")?,
+        response_hash: u64_field("response_hash")?,
+        response_bytes: u64_field("response_bytes")?,
+        exit_status: u64_field("exit_status")?,
+        timed_out: bool_field("timed_out")?,
+        created_at: string("created_at")?,
+        prev_hash: u64_field("prev_hash")?,
+        self_hash: u64_field("self_hash")?,
+    })
 }
 
 pub fn mcp_transcript_path(workspace_root: &Path) -> PathBuf {
