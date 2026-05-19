@@ -2,7 +2,7 @@
 
 use serde_json::{json, Value};
 
-fn mcp_response(id: Value, field: &str, payload: Value) -> Value {
+fn mcp_response(id: Value, field: &'static str, payload: Value) -> Value {
     json!({"jsonrpc": "2.0", "id": id, field: payload})
 }
 
