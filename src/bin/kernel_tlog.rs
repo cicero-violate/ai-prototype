@@ -84,7 +84,13 @@ fn load_session(tlog_path: &Path) -> Result<ApiTransportSession, String> {
     let mut runtime = resume_durable_runtime(State::default(), tlog_path)
         .map_err(|err| format!("resume durable runtime failed: {err}"))?;
     initialize_empty_runtime(&mut runtime, tlog_path, cfg)?;
+    session_from_runtime(runtime, cfg)
+}
 
+fn session_from_runtime(
+    runtime: ai::DurableRuntimeState,
+    cfg: RuntimeConfig,
+) -> Result<ApiTransportSession, String> {
     ApiTransportSession::from_parts(
         runtime.state,
         runtime.tlog,
