@@ -27,10 +27,7 @@ impl CompactModeOutcome {
     }
 
     fn text(text: String, passed: bool) -> Self {
-        Self {
-            stdout: text,
-            exit_code: if passed { 0 } else { 1 },
-        }
+        Self::pass_json(text, passed)
     }
 }
 
