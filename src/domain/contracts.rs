@@ -7,6 +7,10 @@ use serde::{Deserialize, Serialize};
 
 pub const DOMAIN_SCHEMA_VERSION: &str = "canon_domain_v1";
 
+fn domain_schema_version() -> &'static str {
+    DOMAIN_SCHEMA_VERSION
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum DomainSchemaVersion {
     V1,
@@ -403,6 +407,7 @@ impl DomainJudgment {
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DomainPlan {
+    #[serde(skip_deserializing, default = "domain_schema_version")]
     pub schema_version: &'static str,
     pub plan_id: String,
     pub domain_id: DomainId,
