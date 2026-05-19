@@ -110,7 +110,7 @@ pub struct McpCallRequestDto {
     pub max_output_bytes: u64,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Serialize, PartialEq, Eq)]
 pub struct McpCallReceiptDto {
     pub request_hash: u64,
     pub registry_policy_hash: u64,
@@ -127,6 +127,52 @@ pub struct McpCallReceiptDto {
     pub exit_status: u64,
     pub timed_out: bool,
     pub receipt_hash: u64,
+}
+
+impl<'de> Deserialize<'de> for McpCallReceiptDto {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let value = serde_json::Value::deserialize(deserializer)?;
+        Ok(Self {
+            request_hash: dto_u64(&value, "request_hash")?,
+            registry_policy_hash: dto_u64(&value, "registry_policy_hash")?,
+            worker_url_hash: dto_u64(&value, "worker_url_hash")?,
+            tool_name_hash: dto_u64(&value, "tool_name_hash")?,
+            args_hash: dto_u64(&value, "args_hash")?,
+            timeout_ms: dto_u64(&value, "timeout_ms")?,
+            max_output_bytes: dto_u64(&value, "max_output_bytes")?,
+            effect_kind: dto_u64(&value, "effect_kind")?,
+            effect_digest: dto_u64(&value, "effect_digest")?,
+            effect_metadata: dto_u64(&value, "effect_metadata")?,
+            response_hash: dto_u64(&value, "response_hash")?,
+            response_bytes: dto_u64(&value, "response_bytes")?,
+            exit_status: dto_u64(&value, "exit_status")?,
+            timed_out: dto_bool(&value, "timed_out")?,
+            receipt_hash: dto_u64(&value, "receipt_hash")?,
+        })
+    }
+}
+
+fn dto_u64<E>(value: &serde_json::Value, field: &'static str) -> Result<u64, E>
+where
+    E: serde::de::Error,
+{
+    value
+        .get(field)
+        .and_then(serde_json::Value::as_u64)
+        .ok_or_else(|| E::missing_field(field))
+}
+
+fn dto_bool<E>(value: &serde_json::Value, field: &'static str) -> Result<bool, E>
+where
+    E: serde::de::Error,
+{
+    value
+        .get(field)
+        .and_then(serde_json::Value::as_bool)
+        .ok_or_else(|| E::missing_field(field))
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
