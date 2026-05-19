@@ -76,14 +76,9 @@ fn run_single_cycle() {
 }
 
 fn resolve_single_cycle_worker() -> Result<WorkerClient, String> {
-    let fallback_worker_port = std::env::var("AI_WORKER_PORT")
-        .ok()
-        .and_then(|v| v.parse::<u16>().ok());
+    let fallback_worker_port = env_port("AI_WORKER_PORT");
 
-    if let Some(supervisor_port) = std::env::var("SUPERVISOR_PORT")
-        .ok()
-        .and_then(|v| v.parse::<u16>().ok())
-    {
+    if let Some(supervisor_port) = env_port("SUPERVISOR_PORT") {
         match supervisor_reload_worker_port(supervisor_port, fallback_worker_port) {
             Ok(worker_port) => {
                 eprintln!(
@@ -103,6 +98,10 @@ fn resolve_single_cycle_worker() -> Result<WorkerClient, String> {
         "AI_WORKER_PORT not set and SUPERVISOR_PORT did not resolve an active worker".to_string()
     })?;
     Ok(WorkerClient::new(worker_port))
+}
+
+fn env_port(name: &str) -> Option<u16> {
+    std::env::var(name).ok()?.parse::<u16>().ok()
 }
 
 fn supervisor_reload_worker_port(
