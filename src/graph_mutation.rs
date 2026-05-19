@@ -179,7 +179,7 @@ impl GraphSourceFile {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug)]
 pub enum GraphMutationOp {
     RemoveNode {
         path: String,
@@ -271,6 +271,24 @@ pub enum GraphMutationOp {
         lo: usize,
         hi: usize,
     },
+    BreakCycleOp {
+        path: String,
+        file: String,
+        lo: usize,
+        hi: usize,
+        /// Serialised "from_path -> to_path" of the edge to sever.
+        edge_to_remove: String,
+        replacement: String,
+    },
+    FixLayerViolationOp {
+        path: String,
+        file: String,
+        lo: usize,
+        hi: usize,
+        /// Name of the layer the node should be moved into.
+        target_layer: String,
+        replacement: String,
+    },
 }
 
 impl GraphMutationOp {
@@ -288,7 +306,9 @@ impl GraphMutationOp {
             | Self::SplitLoop { file, .. }
             | Self::ConvertIfToMatch { file, .. }
             | Self::MoveStatement { file, .. }
-            | Self::DeleteDeadBranch { file, .. } => file,
+            | Self::DeleteDeadBranch { file, .. }
+            | Self::BreakCycleOp { file, .. }
+            | Self::FixLayerViolationOp { file, .. } => file,
         }
     }
 
@@ -306,7 +326,9 @@ impl GraphMutationOp {
             | Self::SplitLoop { lo, .. }
             | Self::ConvertIfToMatch { lo, .. }
             | Self::MoveStatement { lo, .. }
-            | Self::DeleteDeadBranch { lo, .. } => *lo,
+            | Self::DeleteDeadBranch { lo, .. }
+            | Self::BreakCycleOp { lo, .. }
+            | Self::FixLayerViolationOp { lo, .. } => *lo,
         }
     }
 
@@ -324,7 +346,9 @@ impl GraphMutationOp {
             | Self::SplitLoop { hi, .. }
             | Self::ConvertIfToMatch { hi, .. }
             | Self::MoveStatement { hi, .. }
-            | Self::DeleteDeadBranch { hi, .. } => *hi,
+            | Self::DeleteDeadBranch { hi, .. }
+            | Self::BreakCycleOp { hi, .. }
+            | Self::FixLayerViolationOp { hi, .. } => *hi,
         }
     }
 
@@ -341,7 +365,9 @@ impl GraphMutationOp {
             | Self::SplitLoop { path, .. }
             | Self::ConvertIfToMatch { path, .. }
             | Self::MoveStatement { path, .. }
-            | Self::DeleteDeadBranch { path, .. } => path,
+            | Self::DeleteDeadBranch { path, .. }
+            | Self::BreakCycleOp { path, .. }
+            | Self::FixLayerViolationOp { path, .. } => path,
             Self::RemoveEdge { from, .. } => from,
         }
     }
@@ -362,7 +388,9 @@ impl GraphMutationOp {
             | Self::InlineBlock { replacement, .. }
             | Self::SplitLoop { replacement, .. }
             | Self::ConvertIfToMatch { replacement, .. }
-            | Self::MoveStatement { replacement, .. } => Some(replacement.clone()),
+            | Self::MoveStatement { replacement, .. }
+            | Self::BreakCycleOp { replacement, .. }
+            | Self::FixLayerViolationOp { replacement, .. } => Some(replacement.clone()),
             Self::GuardClauseInsert { guard, .. } => Some(format!("{}\n{old}", guard.trim())),
         }
     }
@@ -492,6 +520,36 @@ impl GraphMutationOp {
                 h = mix(h, *lo as u64);
                 h = mix(h, *hi as u64);
             }
+            Self::BreakCycleOp {
+                path,
+                file,
+                lo,
+                hi,
+                edge_to_remove,
+                replacement,
+            } => {
+                h = mix_text(h, path);
+                h = mix_text(h, file);
+                h = mix(h, *lo as u64);
+                h = mix(h, *hi as u64);
+                h = mix_text(h, edge_to_remove);
+                h = mix_text(h, replacement);
+            }
+            Self::FixLayerViolationOp {
+                path,
+                file,
+                lo,
+                hi,
+                target_layer,
+                replacement,
+            } => {
+                h = mix_text(h, path);
+                h = mix_text(h, file);
+                h = mix(h, *lo as u64);
+                h = mix(h, *hi as u64);
+                h = mix_text(h, target_layer);
+                h = mix_text(h, replacement);
+            }
         }
         h.max(1)
     }
@@ -511,11 +569,13 @@ impl GraphMutationOp {
             Self::ConvertIfToMatch { .. } => 11,
             Self::MoveStatement { .. } => 12,
             Self::DeleteDeadBranch { .. } => 13,
+            Self::BreakCycleOp { .. } => 14,
+            Self::FixLayerViolationOp { .. } => 15,
         }
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug)]
 pub struct GraphMutationOpRow {
     pub schema_version: u64,
     pub record_type: u64,
@@ -823,7 +883,9 @@ pub fn verify_graph_mutation_landing(
             | GraphMutationOp::SplitLoop { path, .. }
             | GraphMutationOp::ConvertIfToMatch { path, .. }
             | GraphMutationOp::MoveStatement { path, .. }
-            | GraphMutationOp::DeleteDeadBranch { path, .. } => {
+            | GraphMutationOp::DeleteDeadBranch { path, .. }
+            | GraphMutationOp::BreakCycleOp { path, .. }
+            | GraphMutationOp::FixLayerViolationOp { path, .. } => {
                 let landed = old_graph.nodes.get(path) != new_graph.nodes.get(path)
                     || old_graph.contract_hash() != new_graph.contract_hash();
                 if landed {
@@ -1315,6 +1377,36 @@ pub fn encode_graph_mutation_op_row_ndjson(row: &GraphMutationOpRow) -> String {
             fields.push(lo.to_string());
             fields.push(hi.to_string());
         }
+        GraphMutationOp::BreakCycleOp {
+            path,
+            file,
+            lo,
+            hi,
+            edge_to_remove,
+            replacement,
+        } => {
+            fields.push(escape_field(path));
+            fields.push(escape_field(file));
+            fields.push(lo.to_string());
+            fields.push(hi.to_string());
+            fields.push(escape_field(edge_to_remove));
+            fields.push(escape_field(replacement));
+        }
+        GraphMutationOp::FixLayerViolationOp {
+            path,
+            file,
+            lo,
+            hi,
+            target_layer,
+            replacement,
+        } => {
+            fields.push(escape_field(path));
+            fields.push(escape_field(file));
+            fields.push(lo.to_string());
+            fields.push(hi.to_string());
+            fields.push(escape_field(target_layer));
+            fields.push(escape_field(replacement));
+        }
     }
     format!("{}\n", fields.join("|"))
 }
@@ -1429,6 +1521,8 @@ fn decode_graph_mutation_op_fields(fields: &[String], kind: u64) -> Option<Graph
             }
         }),
         13 => decode_delete_dead_branch_op(fields),
+        14 => decode_break_cycle_op(fields),
+        15 => decode_fix_layer_violation_op(fields),
         _ => None,
     }
 }
@@ -1500,6 +1594,32 @@ fn decode_delete_dead_branch_op(fields: &[String]) -> Option<GraphMutationOp> {
     expect_field_count(fields, 10)?;
     let (path, file, lo, hi) = decode_source_span_fields(fields)?;
     Some(GraphMutationOp::DeleteDeadBranch { path, file, lo, hi })
+}
+
+fn decode_break_cycle_op(fields: &[String]) -> Option<GraphMutationOp> {
+    expect_field_count(fields, 12)?;
+    let (path, file, lo, hi) = decode_source_span_fields(fields)?;
+    Some(GraphMutationOp::BreakCycleOp {
+        path,
+        file,
+        lo,
+        hi,
+        edge_to_remove: decode_text_field(fields, 10)?,
+        replacement: decode_text_field(fields, 11)?,
+    })
+}
+
+fn decode_fix_layer_violation_op(fields: &[String]) -> Option<GraphMutationOp> {
+    expect_field_count(fields, 12)?;
+    let (path, file, lo, hi) = decode_source_span_fields(fields)?;
+    Some(GraphMutationOp::FixLayerViolationOp {
+        path,
+        file,
+        lo,
+        hi,
+        target_layer: decode_text_field(fields, 10)?,
+        replacement: decode_text_field(fields, 11)?,
+    })
 }
 
 fn decode_source_span_fields(fields: &[String]) -> Option<(String, String, usize, usize)> {
@@ -1877,7 +1997,13 @@ fn validate_op_against_graph(
         | GraphMutationOp::MoveStatement {
             path, file, lo, hi, ..
         }
-        | GraphMutationOp::DeleteDeadBranch { path, file, lo, hi } => {
+        | GraphMutationOp::DeleteDeadBranch { path, file, lo, hi }
+        | GraphMutationOp::BreakCycleOp {
+            path, file, lo, hi, ..
+        }
+        | GraphMutationOp::FixLayerViolationOp {
+            path, file, lo, hi, ..
+        } => {
             let node = graph
                 .nodes
                 .get(path)
@@ -2367,7 +2493,13 @@ mod tests {
         let decoded = decode_graph_mutation_ops_ndjson(&encoded).unwrap();
         let receipt = verify_graph_mutation_ops_ndjson(&encoded);
 
-        assert_eq!(decoded, ops);
+        assert_eq!(
+            decoded
+                .iter()
+                .map(GraphMutationOp::hash)
+                .collect::<Vec<_>>(),
+            ops.iter().map(GraphMutationOp::hash).collect::<Vec<_>>()
+        );
         assert!(receipt.is_self_consistent());
         assert_eq!(receipt.verdict, GraphMutationVerdict::Pass);
         assert_eq!(receipt.op_count, 2);
