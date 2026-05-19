@@ -13,6 +13,7 @@ use serde::{Deserialize, Serialize};
 use tokio::process::{Child, Command};
 
 use crate::process::agent::{AgentLoopConfig, LoopDriver};
+use crate::runtime::workspace::workspace_state_dir;
 
 pub struct WorkerProcess {
     active: Option<WorkerInstance>,
@@ -154,13 +155,16 @@ impl WorkerProcess {
         let project_dir = self.project_dir.clone();
         let mcp_connector_url = self.mcp_connector_url.clone();
         let execute_turns = max_steps.min(100).max(1) as u32;
+        let sse_chunks_dir = workspace_state_dir(&project_dir)
+            .join("agent_state")
+            .join("sse-chunks");
         let config = AgentLoopConfig {
             execute_turns,
             turn_retry_limit: 2,
             loop_sleep_ms: 5000,
             agent_count: 1,
             working_dir: project_dir.clone(),
-            sse_chunks_dir: project_dir.join("agent_state").join("sse-chunks"),
+            sse_chunks_dir,
             project_dir,
             mcp_connector_url,
             router_turn_max_ms: 600_000,

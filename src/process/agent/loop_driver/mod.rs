@@ -518,7 +518,7 @@ mod tests {
 
     #[test]
     fn run_cycle_preparation_preserves_project_and_spawned_turn_schedules() {
-        let tmp_root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../.tmp");
+        let tmp_root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../state/tmp");
         fs::create_dir_all(&tmp_root).expect("canonical temp root should be created");
         let project_root = tmp_root.join(format!("run-cycle-prep-project-{}", timestamp_ms()));
         let spawned_root = tmp_root.join(format!("run-cycle-prep-spawned-{}", timestamp_ms()));
@@ -718,7 +718,7 @@ mod tests {
 
     #[test]
     fn finalize_run_cycle_attempt_result_writes_completed_receipt_and_outcome() {
-        let tmp_root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../.tmp");
+        let tmp_root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../state/tmp");
         fs::create_dir_all(&tmp_root).expect("canonical temp root should be created");
         let receipt_dir =
             tmp_root.join(format!("canon-agent-turn-receipt-test-{}", timestamp_ms()));
@@ -782,7 +782,7 @@ mod tests {
 
     #[test]
     fn cycle_start_observation_ingress_preserves_top_level_and_spawned_sources() {
-        let tmp_root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../.tmp");
+        let tmp_root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../state/tmp");
         fs::create_dir_all(&tmp_root).expect("canonical temp root should be created");
         let working_dir = tmp_root.join(format!("cycle-start-observation-test-{}", timestamp_ms()));
         let _ = fs::remove_dir_all(&working_dir);

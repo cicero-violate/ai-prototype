@@ -40,18 +40,13 @@ CDP proxy that routes LLM calls to ChatGPT on `:8081`.
 ### Terminal 3 — Supervisor
 
 ```sh
-./run_supervisor.sh
+cargo run
 ```
 
-Or explicitly:
+From the workspace root:
 
 ```sh
-SUPERVISOR_PORT=9100 \
-PROJECT_DIR=/workspace/ai_sandbox/canon-mini-agent/prototype/ai \
-CANON_OPENAI_BASE_URL=http://127.0.0.1:8081/v1 \
-MCP_CONNECTOR_URL=http://127.0.0.1:4000 \
-AI_TLOG_DIR=state/tlog \
-./target/release/supervisor
+cargo run -p ai
 ```
 
 The supervisor starts the TLog worker on a random port and prints it to stderr. Check it:
@@ -226,6 +221,9 @@ PROJECT_DIR              passed to spawned agent threads
 CANON_OPENAI_BASE_URL    passed to spawned agent threads via process env
 MCP_CONNECTOR_URL        passed to spawned agent threads
 ```
+
+Default runtime values live in `.cargo/config.toml`; prefer changing them there
+instead of adding launcher scripts.
 
 ### Worker (standalone)
 

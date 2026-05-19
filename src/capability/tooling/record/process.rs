@@ -737,4 +737,30 @@ mod tests {
         assert_eq!(combined.max_output_bytes, 8192);
         assert_eq!(combined.registry, CapabilityRegistry::canonical());
     }
+
+    #[test]
+    fn live_sandbox_process_executor_writes_outputs_under_workspace_state() {
+        let root = std::env::temp_dir().join(format!(
+            "canon-process-state-path-test-{}",
+            std::process::id()
+        ));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&root).expect("fixture root should be created");
+
+        let receipt = LiveSandboxProcessExecutor::new(root.clone())
+            .with_allowed_command("/usr/bin/printf")
+            .execute_process("/usr/bin/printf", &["state-path"], "")
+            .expect("process should execute");
+
+        let process_dir = root.join("state").join("process");
+        assert!(process_dir
+            .join(format!("{:016x}.stdout", receipt.request_hash))
+            .exists());
+        assert!(process_dir
+            .join(format!("{:016x}.stderr", receipt.request_hash))
+            .exists());
+        assert!(!root.join("process").exists());
+
+        let _ = fs::remove_dir_all(root);
+    }
 }

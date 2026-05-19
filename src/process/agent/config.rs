@@ -1,6 +1,8 @@
 use std::env;
 use std::path::PathBuf;
 
+use crate::runtime::workspace::workspace_state_dir;
+
 /// Runtime config for the agent loop, sourced from environment variables.
 /// Mirrors chatgpt-agent-loop/config.mjs, extended with certification fields.
 #[derive(Clone, Debug)]
@@ -54,7 +56,11 @@ impl AgentLoopConfig {
         let working_dir = project_dir.clone();
         let sse_chunks_dir = env::var("SSE_CHUNKS_DIR")
             .map(PathBuf::from)
-            .unwrap_or_else(|_| project_dir.join("agent_state").join("sse-chunks"));
+            .unwrap_or_else(|_| {
+                workspace_state_dir(&project_dir)
+                    .join("agent_state")
+                    .join("sse-chunks")
+            });
         let worker_port = env::var("AI_WORKER_PORT")
             .ok()
             .and_then(|v| v.parse::<u16>().ok());

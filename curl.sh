@@ -84,7 +84,7 @@ policy_version() {
 # ── 1. supervisor health ───────────────────────────────────────────────────────
 
 health=$(curl -sf "${SUPERVISOR_URL}/health" 2>/dev/null) \
-    || die "supervisor not responding at ${SUPERVISOR_URL} — run run_supervisor.sh first"
+    || die "supervisor not responding at ${SUPERVISOR_URL} — run cargo run from ai/ first"
 
 worker_port=$(echo "$health" | jq -r '.worker_port')
 generation=$(echo "$health" | jq -r '.generation')

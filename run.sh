@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Run the agent in loop mode against the running supervisor + MCP connector.
-# The supervisor must already be running (see run_supervisor.sh).
+# The supervisor must already be running (`cargo run` from ai/).
 #
 # Usage: ./run.sh
 # Override any variable inline: SUPERVISOR_PORT=9100 ./run.sh
@@ -29,7 +29,7 @@ SUPERVISOR_PORT="${SUPERVISOR_PORT:-9100}"
 # fallback for a 204 reload response; do not trust a stale inherited value over
 # supervisor's active worker.
 reload=$(curl -sf -X POST "http://127.0.0.1:${SUPERVISOR_PORT}/reload" 2>/dev/null) || {
-    echo "error: supervisor not reachable on port ${SUPERVISOR_PORT} — run run_supervisor.sh first" >&2
+    echo "error: supervisor not reachable on port ${SUPERVISOR_PORT} — run cargo run from ai/ first" >&2
     exit 1
 }
 

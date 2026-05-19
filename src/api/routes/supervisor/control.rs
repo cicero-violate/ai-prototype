@@ -246,14 +246,14 @@ fn supervisor_replacement_command() -> Result<SupervisorRestartCommand, String> 
         ));
     }
 
+    let exe = std::env::current_exe().map_err(|error| format!("current_exe failed: {error}"))?;
+    if exe.exists() {
+        return Ok(SupervisorRestartCommand { program: exe });
+    }
+
     let project_dir = std::env::var("PROJECT_DIR")
         .map(std::path::PathBuf::from)
         .unwrap_or_else(|_| std::env::current_dir().unwrap_or_default());
-    let launcher = project_dir.join("ai").join("run_supervisor.sh");
-    if launcher.exists() {
-        return Ok(SupervisorRestartCommand { program: launcher });
-    }
-
     let release_supervisor = project_dir
         .join("target")
         .join("release")
@@ -268,16 +268,10 @@ fn supervisor_replacement_command() -> Result<SupervisorRestartCommand, String> 
         });
     }
 
-    let exe = std::env::current_exe().map_err(|error| format!("current_exe failed: {error}"))?;
-    if exe.exists() {
-        return Ok(SupervisorRestartCommand { program: exe });
-    }
-
     Err(format!(
-        "no restart command found; tried {}, {}, and current_exe {}",
-        launcher.display(),
+        "no restart command found; tried current_exe {} and {}",
+        exe.display(),
         release_supervisor.display(),
-        exe.display()
     ))
 }
 
