@@ -149,11 +149,7 @@ fn supervisor_reload_http_exchange(supervisor_port: u16) -> Result<String, Strin
 }
 
 fn parse_reload_worker_port(response: &str) -> Result<u16, String> {
-    let body = response
-        .split_once("\r\n\r\n")
-        .map(|(_, body)| body)
-        .or_else(|| response.split_once("\n\n").map(|(_, body)| body))
-        .ok_or_else(|| "supervisor /reload response missing body".to_string())?;
+    let body = reload_response_body(response)?;
     let json: serde_json::Value =
         serde_json::from_str(body).map_err(|e| format!("supervisor /reload JSON: {e}"))?;
     let port = json
@@ -162,4 +158,12 @@ fn parse_reload_worker_port(response: &str) -> Result<u16, String> {
         .and_then(serde_json::Value::as_u64)
         .ok_or_else(|| "supervisor /reload response missing active.worker_port".to_string())?;
     u16::try_from(port).map_err(|_| format!("supervisor /reload worker_port out of range: {port}"))
+}
+
+fn reload_response_body(response: &str) -> Result<&str, String> {
+    response
+        .split_once("\r\n\r\n")
+        .map(|(_, body)| body)
+        .or_else(|| response.split_once("\n\n").map(|(_, body)| body))
+        .ok_or_else(|| "supervisor /reload response missing body".to_string())
 }
