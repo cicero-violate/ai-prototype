@@ -186,7 +186,7 @@ pub struct SandboxProcessRequestDto {
     pub max_output_bytes: u64,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Serialize, PartialEq, Eq)]
 pub struct SandboxProcessReceiptDto {
     pub request_hash: u64,
     pub registry_policy_hash: u64,
@@ -206,6 +206,35 @@ pub struct SandboxProcessReceiptDto {
     pub exit_status: u64,
     pub timed_out: bool,
     pub receipt_hash: u64,
+}
+
+impl<'de> Deserialize<'de> for SandboxProcessReceiptDto {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let value = serde_json::Value::deserialize(deserializer)?;
+        Ok(Self {
+            request_hash: dto_u64(&value, "request_hash")?,
+            registry_policy_hash: dto_u64(&value, "registry_policy_hash")?,
+            command_hash: dto_u64(&value, "command_hash")?,
+            argv_hash: dto_u64(&value, "argv_hash")?,
+            cwd_hash: dto_u64(&value, "cwd_hash")?,
+            env_hash: dto_u64(&value, "env_hash")?,
+            timeout_ms: dto_u64(&value, "timeout_ms")?,
+            max_output_bytes: dto_u64(&value, "max_output_bytes")?,
+            effect_kind: dto_u64(&value, "effect_kind")?,
+            effect_digest: dto_u64(&value, "effect_digest")?,
+            effect_metadata: dto_u64(&value, "effect_metadata")?,
+            stdout_hash: dto_u64(&value, "stdout_hash")?,
+            stderr_hash: dto_u64(&value, "stderr_hash")?,
+            stdout_bytes: dto_u64(&value, "stdout_bytes")?,
+            stderr_bytes: dto_u64(&value, "stderr_bytes")?,
+            exit_status: dto_u64(&value, "exit_status")?,
+            timed_out: dto_bool(&value, "timed_out")?,
+            receipt_hash: dto_u64(&value, "receipt_hash")?,
+        })
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
