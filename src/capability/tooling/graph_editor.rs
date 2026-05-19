@@ -192,17 +192,24 @@ impl GraphAutoRefactorCfgRequest {
             apply_to_source: optional_bool(args, "apply_to_source")?.unwrap_or(false),
             validate_command: optional_string(args, "validate_command")?,
             recapture_command: optional_string(args, "recapture_command")?,
-            artifact_root: optional_string(args, "graph_artifact_root")?
-                .or(optional_string(args, "artifact_root")?)
-                .or_else(|| Some("state/rustc".to_string())),
-            new_graph_path: optional_string(args, "new_graph")?
-                .or(optional_string(args, "new_graph_path")?),
+            artifact_root: optional_graph_artifact_root(args)?,
+            new_graph_path: optional_new_graph_path(args)?,
             replacement: optional_string(args, "replacement")?,
             guard: optional_string(args, "guard")?,
             lo: optional_usize(args, "lo")?,
             hi: optional_usize(args, "hi")?,
         })
     }
+}
+
+fn optional_graph_artifact_root(args: &Value) -> Result<Option<String>, String> {
+    Ok(optional_string(args, "graph_artifact_root")?
+        .or(optional_string(args, "artifact_root")?)
+        .or_else(|| Some("state/rustc".to_string())))
+}
+
+fn optional_new_graph_path(args: &Value) -> Result<Option<String>, String> {
+    Ok(optional_string(args, "new_graph")?.or(optional_string(args, "new_graph_path")?))
 }
 
 pub fn verify_cfg_delta_tool(args: &Value, workspace: &WorkspaceView) -> Value {
