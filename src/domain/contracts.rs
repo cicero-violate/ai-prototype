@@ -390,7 +390,7 @@ impl DomainRiskEnvelope {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct DomainJudgment {
     pub schema_version: &'static str,
     pub judgment_id: String,
@@ -404,6 +404,48 @@ pub struct DomainJudgment {
     pub expected_value_score: u16,
     pub verdict: DomainVerdict,
     pub rationale_hash: String,
+}
+
+impl<'de> Deserialize<'de> for DomainJudgment {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let mut value = serde_json::Value::deserialize(deserializer)?;
+        let object = value
+            .as_object_mut()
+            .ok_or_else(|| serde::de::Error::custom("expected DomainJudgment object"))?;
+
+        fn take_field<T, E>(
+            object: &mut serde_json::Map<String, serde_json::Value>,
+            field: &'static str,
+        ) -> Result<T, E>
+        where
+            T: serde::de::DeserializeOwned,
+            E: serde::de::Error,
+        {
+            let value = object
+                .remove(field)
+                .ok_or_else(|| E::missing_field(field))?;
+
+            serde_json::from_value(value).map_err(E::custom)
+        }
+
+        Self::new(
+            take_field::<String, D::Error>(object, "judgment_id")?,
+            take_field::<DomainId, D::Error>(object, "domain_id")?,
+            take_field::<u16, D::Error>(object, "opportunity_score")?,
+            take_field::<u16, D::Error>(object, "risk_score")?,
+            take_field::<u16, D::Error>(object, "confidence_score")?,
+            take_field::<u16, D::Error>(object, "uncertainty_score")?,
+            take_field::<u16, D::Error>(object, "actionability_score")?,
+            take_field::<u16, D::Error>(object, "policy_fit_score")?,
+            take_field::<u16, D::Error>(object, "expected_value_score")?,
+            take_field::<DomainVerdict, D::Error>(object, "verdict")?,
+            take_field::<String, D::Error>(object, "rationale_hash")?,
+        )
+        .map_err(serde::de::Error::custom)
+    }
 }
 
 impl DomainJudgment {
