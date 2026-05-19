@@ -112,32 +112,36 @@ pub(crate) fn recovery_action_for(class: FailureClass) -> RecoveryAction {
 }
 
 pub(crate) fn failure_for_gate(id: GateId, status: GateStatus) -> Option<FailureClass> {
-    match (id, status) {
-        (GateId::Invariant, GateStatus::Unknown) => Some(FailureClass::InvariantUnknown),
-        (GateId::Invariant, GateStatus::Fail) => Some(FailureClass::InvariantBlocked),
+    match status {
+        GateStatus::Pass => None,
+        GateStatus::Unknown => Some(unknown_failure_for_gate(id)),
+        GateStatus::Fail => Some(failed_failure_for_gate(id)),
+    }
+}
 
-        (GateId::Analysis, GateStatus::Unknown) => Some(FailureClass::AnalysisMissing),
-        (GateId::Analysis, GateStatus::Fail) => Some(FailureClass::AnalysisFailed),
+fn unknown_failure_for_gate(id: GateId) -> FailureClass {
+    match id {
+        GateId::Invariant => FailureClass::InvariantUnknown,
+        GateId::Analysis => FailureClass::AnalysisMissing,
+        GateId::Judgment => FailureClass::JudgmentMissing,
+        GateId::Plan => FailureClass::PlanMissing,
+        GateId::Execution => FailureClass::ExecutionMissing,
+        GateId::Verification => FailureClass::VerificationUnknown,
+        GateId::Eval => FailureClass::EvalMissing,
+        GateId::Learning => FailureClass::LearningMissing,
+    }
+}
 
-        (GateId::Judgment, GateStatus::Unknown) => Some(FailureClass::JudgmentMissing),
-        (GateId::Judgment, GateStatus::Fail) => Some(FailureClass::JudgmentFailed),
-
-        (GateId::Plan, GateStatus::Unknown) => Some(FailureClass::PlanMissing),
-        (GateId::Plan, GateStatus::Fail) => Some(FailureClass::PlanFailed),
-
-        (GateId::Execution, GateStatus::Unknown) => Some(FailureClass::ExecutionMissing),
-        (GateId::Execution, GateStatus::Fail) => Some(FailureClass::ExecutionFailed),
-
-        (GateId::Verification, GateStatus::Unknown) => Some(FailureClass::VerificationUnknown),
-        (GateId::Verification, GateStatus::Fail) => Some(FailureClass::VerificationFailed),
-
-        (GateId::Eval, GateStatus::Unknown) => Some(FailureClass::EvalMissing),
-        (GateId::Eval, GateStatus::Fail) => Some(FailureClass::EvalFailed),
-
-        (GateId::Learning, GateStatus::Unknown) => Some(FailureClass::LearningMissing),
-        (GateId::Learning, GateStatus::Fail) => Some(FailureClass::LearningFailed),
-
-        (_, GateStatus::Pass) => None,
+fn failed_failure_for_gate(id: GateId) -> FailureClass {
+    match id {
+        GateId::Invariant => FailureClass::InvariantBlocked,
+        GateId::Analysis => FailureClass::AnalysisFailed,
+        GateId::Judgment => FailureClass::JudgmentFailed,
+        GateId::Plan => FailureClass::PlanFailed,
+        GateId::Execution => FailureClass::ExecutionFailed,
+        GateId::Verification => FailureClass::VerificationFailed,
+        GateId::Eval => FailureClass::EvalFailed,
+        GateId::Learning => FailureClass::LearningFailed,
     }
 }
 
