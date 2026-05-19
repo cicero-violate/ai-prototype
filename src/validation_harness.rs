@@ -5832,23 +5832,7 @@ impl PolicyReuseEvidenceRetrievalResultUseSummaryManifestApprovalAdmissionConsum
                     | "no_policy_reuse_examples"
             )
             && self.retrieval_example_materialization_plan_ready
-                == (self.retrieval_example_learning_admitted
-                    && self.retrieval_example_learning_eligible
-                    && self.retrieval_result_use_summary_manifest_approval_admission_consumed
-                    && self.retrieval_result_use_summary_manifest_approval_admitted
-                    && self.retrieval_result_use_summary_manifest_approved
-                    && self.retrieval_result_use_summary_manifest_ready_for_use
-                    && self.retrieval_result_use_summary_manifest_admitted
-                    && self.external_result_evidence_present
-                    && !self.retrieval_read_performed
-                    && !self.retrieval_write_performed
-                    && !self.retrieval_query_executed
-                    && !self.runtime_result_approval_performed
-                    && !self.policy_promotion_performed
-                    && !self.batch_execution_performed
-                    && !self.student_training_performed
-                    && self.materialization_plan_policy_reuse_examples > 0
-                    && self.not_ready_reason == "none")
+                == self.materialization_plan_inputs_ready()
             && (self.retrieval_example_materialization_plan_status
                 == "retrieval_example_materialization_plan_ready")
                 == self.retrieval_example_materialization_plan_ready
@@ -5858,6 +5842,26 @@ impl PolicyReuseEvidenceRetrievalResultUseSummaryManifestApprovalAdmissionConsum
                 == policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_consumption_learning_materialization_plan_hash(self)
             && self.receipt_hash
                 == policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_consumption_learning_materialization_plan_receipt_hash(self)
+    }
+
+    fn materialization_plan_inputs_ready(&self) -> bool {
+        self.retrieval_example_learning_admitted
+            && self.retrieval_example_learning_eligible
+            && self.retrieval_result_use_summary_manifest_approval_admission_consumed
+            && self.retrieval_result_use_summary_manifest_approval_admitted
+            && self.retrieval_result_use_summary_manifest_approved
+            && self.retrieval_result_use_summary_manifest_ready_for_use
+            && self.retrieval_result_use_summary_manifest_admitted
+            && self.external_result_evidence_present
+            && !self.retrieval_read_performed
+            && !self.retrieval_write_performed
+            && !self.retrieval_query_executed
+            && !self.runtime_result_approval_performed
+            && !self.policy_promotion_performed
+            && !self.batch_execution_performed
+            && !self.student_training_performed
+            && self.materialization_plan_policy_reuse_examples > 0
+            && self.not_ready_reason == "none"
     }
 
     pub fn to_json(&self) -> String {
