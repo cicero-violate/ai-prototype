@@ -292,7 +292,7 @@ impl DomainSignal {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct DomainContext {
     pub schema_version: &'static str,
     pub context_id: String,
