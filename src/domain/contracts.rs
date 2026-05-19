@@ -599,7 +599,7 @@ impl DomainPlan {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct DomainEval {
     pub schema_version: &'static str,
     pub eval_id: String,
