@@ -651,7 +651,7 @@ impl DomainEval {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct DomainPromotionCandidate {
     pub schema_version: &'static str,
     pub candidate_id: String,
