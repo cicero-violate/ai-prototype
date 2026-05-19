@@ -11,7 +11,7 @@ use uuid::Uuid;
 
 use super::common::{tmp_dir, tool_error};
 use crate::runtime::WorkspaceView;
-use fs_copy::{copy_dir_recursive, TempDirGuard};
+use fs_copy::{copy_dir_recursive_excluding, TempDirGuard};
 use parser::{collect_apply_patch_changed_files, validate_workspace_relative_path};
 use runner::{format_apply_patch_failure, run_apply_patch_binary};
 
@@ -64,8 +64,9 @@ async fn run_inner(args: &Value, workspace: &WorkspaceView) -> Result<Value, Str
     let (run_dir, _guard) = if do_apply {
         (work_dir.clone(), None)
     } else {
-        let temp = tmp_dir()?.join(format!("apply-patch-{}", Uuid::new_v4()));
-        copy_dir_recursive(&work_dir, &temp)?;
+        let temp_root = tmp_dir()?;
+        let temp = temp_root.join(format!("apply-patch-{}", Uuid::new_v4()));
+        copy_dir_recursive_excluding(&work_dir, &temp, &[temp_root])?;
         (temp.clone(), Some(TempDirGuard(temp)))
     };
 

@@ -31,7 +31,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROTOTYPE_DIR="${PROTOTYPE_DIR:-$(cd "$SCRIPT_DIR/.." && pwd)}"
 SUPERVISOR_URL="http://127.0.0.1:${SUPERVISOR_PORT}"
 
-EVIDENCE_FILE="${PROTOTYPE_DIR}/agent_state/tool_evidence.ndjson"
+EVIDENCE_FILE="${PROTOTYPE_DIR}/state/agent_state/tool_evidence.ndjson"
 POLICY_FILE="${PROTOTYPE_DIR}/state/policy.ndjson"
 SCORE_FILE="${PROTOTYPE_DIR}/SCORE_REPORT.md"
 

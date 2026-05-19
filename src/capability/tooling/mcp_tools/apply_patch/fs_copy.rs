@@ -3,7 +3,11 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-pub(super) fn copy_dir_recursive(src: &Path, dst: &Path) -> Result<(), String> {
+pub(super) fn copy_dir_recursive_excluding(
+    src: &Path,
+    dst: &Path,
+    excluded_roots: &[PathBuf],
+) -> Result<(), String> {
     fs::create_dir_all(dst)
         .map_err(|error| format!("create temp cwd {}: {error}", dst.display()))?;
     for entry in
@@ -11,12 +15,18 @@ pub(super) fn copy_dir_recursive(src: &Path, dst: &Path) -> Result<(), String> {
     {
         let entry = entry.map_err(|error| format!("read cwd entry: {error}"))?;
         let source_path = entry.path();
+        if excluded_roots
+            .iter()
+            .any(|excluded| source_path.starts_with(excluded))
+        {
+            continue;
+        }
         let dest_path = dst.join(entry.file_name());
         let file_type = entry
             .file_type()
             .map_err(|error| format!("read file type {}: {error}", source_path.display()))?;
         if file_type.is_dir() {
-            copy_dir_recursive(&source_path, &dest_path)?;
+            copy_dir_recursive_excluding(&source_path, &dest_path, excluded_roots)?;
         } else if file_type.is_file() {
             fs::copy(&source_path, &dest_path).map_err(|error| {
                 format!(
@@ -46,5 +56,40 @@ pub(super) struct TempDirGuard(pub(super) PathBuf);
 impl Drop for TempDirGuard {
     fn drop(&mut self) {
         let _ = fs::remove_dir_all(&self.0);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    fn unique_test_dir(name: &str) -> PathBuf {
+        let nanos = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("clock before unix epoch")
+            .as_nanos();
+        std::env::temp_dir().join(format!("canon-ai-mcp-copy-test-{name}-{nanos}"))
+    }
+
+    #[test]
+    fn copy_dir_recursive_excluding_skips_temp_root_inside_source() {
+        let root = unique_test_dir("exclude-temp-root");
+        let src = root.join("workspace");
+        let temp_root = src.join("state/tmp/canon-ai-mcp");
+        let old_candidate = temp_root.join("apply-patch-old");
+        let dst = temp_root.join("apply-patch-new");
+
+        fs::create_dir_all(&old_candidate).expect("create old candidate");
+        fs::write(src.join("Cargo.toml"), "[workspace]\n").expect("write source file");
+        fs::write(old_candidate.join("copied-too-many-times"), "old").expect("write temp file");
+
+        copy_dir_recursive_excluding(&src, &dst, std::slice::from_ref(&temp_root))
+            .expect("copy workspace excluding temp root");
+
+        assert!(dst.join("Cargo.toml").exists());
+        assert!(!dst.join("state/tmp/canon-ai-mcp").exists());
+
+        let _ = fs::remove_dir_all(root);
     }
 }

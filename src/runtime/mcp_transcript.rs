@@ -13,6 +13,7 @@ use uuid::Uuid;
 
 use crate::capability::tooling::{McpCallReceipt, McpCallRequest};
 use crate::kernel::mix;
+use crate::runtime::workspace::workspace_state_dir;
 
 pub const MCP_TRANSCRIPT_SCHEMA_VERSION: u64 = 1;
 pub const MCP_TRANSCRIPT_RECORD_CALL_RESULT: u64 = 1;
@@ -205,7 +206,7 @@ fn decode_mcp_transcript_record(line: &str) -> Result<McpTranscriptRecord, Strin
 }
 
 pub fn mcp_transcript_path(workspace_root: &Path) -> PathBuf {
-    workspace_root
+    workspace_state_dir(workspace_root)
         .join("agent_state")
         .join("mcp")
         .join("mcp-transcript.tlog.ndjson")

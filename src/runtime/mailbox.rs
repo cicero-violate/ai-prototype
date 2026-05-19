@@ -15,6 +15,7 @@ use uuid::Uuid;
 
 use crate::capability::{CapabilityId, CapabilityRegistry, EvidenceSubmission};
 use crate::kernel::{mix, Evidence, GateId};
+use crate::runtime::workspace::workspace_state_dir;
 
 pub const MAILBOX_TLOG_SCHEMA_VERSION: u64 = 1;
 pub const MAILBOX_TLOG_RECORD_MESSAGE: u64 = 1;
@@ -325,7 +326,7 @@ pub fn mailbox_path(workspace_root: &Path, agent_id: &str) -> Result<PathBuf, St
 }
 
 pub fn mailbox_tlog_path(workspace_root: &Path) -> Result<PathBuf, String> {
-    Ok(workspace_root
+    Ok(workspace_state_dir(workspace_root)
         .join("agent_state")
         .join("mailbox")
         .join("mailbox.tlog.ndjson"))

@@ -147,7 +147,7 @@ Spawn receipt:
 Agents communicate via an append-only NDJSON mailbox at:
 
 ```
-$PROJECT_DIR/agent_state/mailbox/{agent_id}.ndjson
+$PROTOTYPE_DIR/state/<project>/agent_state/mailbox/mailbox.tlog.ndjson
 ```
 
 ### Send a message
@@ -205,7 +205,7 @@ TURN_RETRY_LIMIT         retries per incomplete turn (default 2)
 LOOP_SLEEP_MS            sleep between cycles in ms (default 5000)
 AGENT_COUNT              parallel agent threads with 5s staggered starts (default 1)
 MCP_CONNECTOR_URL        default http://127.0.0.1:4000
-SSE_CHUNKS_DIR           default $PROJECT_DIR/agent_state/sse-chunks
+SSE_CHUNKS_DIR           default $PROTOTYPE_DIR/state/agent_state/sse-chunks
 ROUTER_TURN_MAX_MS       max ms waiting for LLM (default 600000)
 ROUTER_FIRST_CAPTURE_MS  ms until first capture (default 60000)
 ROUTER_IDLE_MS           idle threshold before capture completes (default 2500)

@@ -49,7 +49,7 @@ export AI_WORKER_PORT="${AI_WORKER_PORT:-$SUPERVISOR_PORT}"
 
 # Router / agent env.
 export CANON_OPENAI_BASE_URL="${CANON_OPENAI_BASE_URL:-http://127.0.0.1:8082/v1}"
-export SSE_CHUNKS_DIR="${SSE_CHUNKS_DIR:-$PROJECT_DIR/agent_state/sse-chunks}"
+export SSE_CHUNKS_DIR="${SSE_CHUNKS_DIR:-$PROTOTYPE_DIR/state/agent_state/sse-chunks}"
 export ROUTER_TURN_MAX_MS="${ROUTER_TURN_MAX_MS:-600000}"
 export ROUTER_FIRST_CAPTURE_MS="${ROUTER_FIRST_CAPTURE_MS:-60000}"
 export ROUTER_IDLE_MS="${ROUTER_IDLE_MS:-2500}"
@@ -99,7 +99,7 @@ EOF
 }
 
 cd "$PROTOTYPE_DIR"
-mkdir -p "$PROTOTYPE_DIR/state/rustc" "$SSE_CHUNKS_DIR"
+mkdir -p "$PROTOTYPE_DIR/state/rustc" "$PROTOTYPE_DIR/state/tmp" "$SSE_CHUNKS_DIR"
 
 print_effective_env
 

@@ -70,6 +70,7 @@ fn timestamp_ms() -> u128 {
 
 pub struct SseResult {
     pub content: String,
+    pub target_id: Option<String>,
     pub target_url: Option<String>,
     pub message_stream_complete: bool,
     pub done: bool,
@@ -117,6 +118,7 @@ impl SseResult {
 /// Handles both `chat.completion.chunk` and `x-turn` frame types.
 pub fn parse_sse_body(body: &str, logger: &mut ChunkLogger) -> SseResult {
     let mut content = String::new();
+    let mut target_id: Option<String> = None;
     let mut target_url: Option<String> = None;
     let mut message_stream_complete = false;
     let mut done = false;
@@ -131,6 +133,7 @@ pub fn parse_sse_body(body: &str, logger: &mut ChunkLogger) -> SseResult {
                     process_sse_frame(
                         rest,
                         &mut content,
+                        &mut target_id,
                         &mut target_url,
                         &mut message_stream_complete,
                         &mut done,
@@ -148,6 +151,7 @@ pub fn parse_sse_body(body: &str, logger: &mut ChunkLogger) -> SseResult {
         process_sse_frame(
             raw,
             &mut content,
+            &mut target_id,
             &mut target_url,
             &mut message_stream_complete,
             &mut done,
@@ -158,6 +162,7 @@ pub fn parse_sse_body(body: &str, logger: &mut ChunkLogger) -> SseResult {
 
     SseResult {
         content,
+        target_id,
         target_url,
         message_stream_complete,
         done,
@@ -168,6 +173,7 @@ pub fn parse_sse_body(body: &str, logger: &mut ChunkLogger) -> SseResult {
 fn process_sse_frame(
     raw: &str,
     content: &mut String,
+    target_id: &mut Option<String>,
     target_url: &mut Option<String>,
     message_stream_complete: &mut bool,
     done: &mut bool,
@@ -202,6 +208,9 @@ fn process_sse_frame(
         }
         logger.write_entry("sse_frame", "\"parsed_type\":\"chunk\"");
     } else if data.contains("\"x-turn\"") {
+        if let Some(id) = extract_sse_string(&data, "target_id") {
+            *target_id = Some(id);
+        }
         // browser.target_url
         if let Some(url) = extract_sse_string(&data, "target_url") {
             *target_url = Some(url);
@@ -306,7 +315,7 @@ mod tests {
     use super::*;
 
     fn parse_fixture(body: &str) -> SseResult {
-        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../.tmp");
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../state/tmp");
         fs::create_dir_all(&root).unwrap();
         let dir = root.join(format!("canon-sse-fixture-{}", std::process::id()));
         let mut logger = ChunkLogger::new(&dir, "fixture", 0, "turn").unwrap();
@@ -322,9 +331,26 @@ mod tests {
              data: [DONE]\n\n",
         );
         assert_eq!(result.content, "ok");
+        assert_eq!(
+            result.target_url.as_deref(),
+            Some("http://127.0.0.1/thread")
+        );
         assert!(result.is_complete());
         assert_eq!(result.completion_reason(), "ok");
         assert!(!result.retry_is_safe(false));
+    }
+
+    #[test]
+    fn x_turn_preserves_target_id_for_close_path() {
+        let result = parse_fixture(
+            "data: {\"object\":\"x-turn\",\"message_stream_complete\":true,\"target_url\":\"https://chatgpt.com/c/current\",\"browser\":{\"target_id\":\"target-1\",\"target_url\":\"https://chatgpt.com/c/current\"}}\n\n\
+             data: [DONE]\n\n",
+        );
+        assert_eq!(result.target_id.as_deref(), Some("target-1"));
+        assert_eq!(
+            result.target_url.as_deref(),
+            Some("https://chatgpt.com/c/current")
+        );
     }
 
     #[test]

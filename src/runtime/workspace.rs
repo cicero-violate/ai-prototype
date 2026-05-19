@@ -47,6 +47,21 @@ impl WorkspaceView {
     }
 }
 
+pub fn workspace_state_dir(workspace_root: &Path) -> PathBuf {
+    let root = normalize_path(workspace_root);
+    if let (Some(parent), Some(name)) = (root.parent(), root.file_name()) {
+        let shared_state = parent.join("state");
+        if shared_state.is_dir()
+            || parent.join("ai").is_dir()
+            || parent.join("browser-router").is_dir()
+            || parent.join("canon-rustc-v3").is_dir()
+        {
+            return shared_state.join(name);
+        }
+    }
+    root.join("state")
+}
+
 fn canonical_existing_dir(path: &Path) -> Result<PathBuf, String> {
     let canonical = path
         .canonicalize()
@@ -69,4 +84,25 @@ fn normalize_path(path: &Path) -> PathBuf {
         }
     }
     out
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn workspace_state_dir_uses_shared_prototype_state_for_members() {
+        let root =
+            std::env::temp_dir().join(format!("canon-workspace-state-test-{}", std::process::id()));
+        let member = root.join("canon-rustc-v3");
+        std::fs::create_dir_all(&member).expect("create member");
+        std::fs::create_dir_all(root.join("state")).expect("create state");
+
+        assert_eq!(
+            workspace_state_dir(&member),
+            root.join("state").join("canon-rustc-v3")
+        );
+
+        let _ = std::fs::remove_dir_all(root);
+    }
 }

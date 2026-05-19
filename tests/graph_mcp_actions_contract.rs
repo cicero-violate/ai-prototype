@@ -10,7 +10,7 @@ fn temp_dir(name: &str) -> PathBuf {
         .duration_since(UNIX_EPOCH)
         .expect("system clock before unix epoch")
         .as_nanos();
-    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../.tmp");
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../state/tmp");
     fs::create_dir_all(&root).expect("create canonical temp root");
     let dir = root.join(format!(
         "canon-graph-mcp-{name}-{}-{nanos}",

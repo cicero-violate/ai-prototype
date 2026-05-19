@@ -9,6 +9,7 @@ use crate::capability::{
     CapabilityId, CapabilityRegistry, EvidenceProducer, EvidenceSubmission, PacketEffect,
 };
 use crate::kernel::{mix, Evidence, GateId};
+use crate::runtime::workspace::workspace_state_dir;
 
 use super::hash::{
     argv_hash, bounded_file_bytes, bytes_hash, ensure_process_token, ensure_relative_process_path,
@@ -399,9 +400,14 @@ impl LiveSandboxProcessExecutor {
         root: &Path,
         request: &SandboxProcessRequest,
     ) -> Result<ProcessIoPaths, ToolSandboxError> {
-        let dir = root.join("process");
+        let state_dir = workspace_state_dir(root);
+        fs::create_dir_all(&state_dir).map_err(|_| ToolSandboxError::SandboxIo)?;
+        let state_dir = state_dir
+            .canonicalize()
+            .map_err(|_| ToolSandboxError::SandboxIo)?;
+        let dir = state_dir.join("process");
         fs::create_dir_all(&dir).map_err(|_| ToolSandboxError::SandboxIo)?;
-        ensure_under(root, &dir.join("probe"))?;
+        ensure_under(&state_dir, &dir.join("probe"))?;
         Ok(ProcessIoPaths {
             stdout: dir.join(format!("{:016x}.stdout", request.contract_hash())),
             stderr: dir.join(format!("{:016x}.stderr", request.contract_hash())),

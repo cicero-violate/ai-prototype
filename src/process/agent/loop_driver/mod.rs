@@ -29,6 +29,14 @@ use receipt::{
     RunCycleAttemptOutcome,
 };
 
+fn maybe_wait_for_tab_close(is_spawned: bool, close_handle: Option<thread::JoinHandle<()>>) {
+    if is_spawned {
+        if let Some(handle) = close_handle {
+            let _ = handle.join();
+        }
+    }
+}
+
 #[cfg(test)]
 use common::timestamp_ms;
 #[cfg(test)]
@@ -152,9 +160,24 @@ impl LoopDriver {
                 eprintln!("[{tag}] cycle {cycle_num} failed: {e}");
             }
 
-            if let Some(url) = router.target_url().map(str::to_string) {
+            let close_handle = if let Some(target_id) = router.target_id().map(str::to_string) {
                 let tag2 = tag.clone();
-                thread::spawn(move || {
+                Some(thread::spawn(move || {
+                    eprintln!(
+                        "[{tag2}] tab close starting  cycle={cycle_num}  target_id={target_id}"
+                    );
+                    match crate::process::agent::router::close_tab_for_target_id_with_timeout(
+                        &target_id, 8_000,
+                    ) {
+                        Ok(outcome) => {
+                            eprintln!("[{tag2}] tab close  outcome={outcome:?}  cycle={cycle_num}")
+                        }
+                        Err(e) => eprintln!("[{tag2}] tab close failed: {e}  cycle={cycle_num}"),
+                    }
+                }))
+            } else if let Some(url) = router.target_url().map(str::to_string) {
+                let tag2 = tag.clone();
+                Some(thread::spawn(move || {
                     eprintln!("[{tag2}] tab close starting  cycle={cycle_num}  target={url}");
                     match crate::process::agent::router::close_tab_for_url_with_timeout(&url, 8_000)
                     {
@@ -163,11 +186,14 @@ impl LoopDriver {
                         }
                         Err(e) => eprintln!("[{tag2}] tab close failed: {e}  cycle={cycle_num}"),
                     }
-                });
-            }
+                }))
+            } else {
+                None
+            };
 
             // Spawned agents run one cycle for their specific task then exit.
             if is_spawned {
+                maybe_wait_for_tab_close(is_spawned, close_handle);
                 eprintln!("[{tag}] spawned agent task complete — exiting");
                 break;
             }
@@ -378,7 +404,9 @@ mod tests {
     use std::io::{Read, Write};
     use std::net::TcpListener;
     use std::path::Path;
+    use std::sync::mpsc;
     use std::thread;
+    use std::time::Duration;
 
     fn minimal_loop_config(root: &Path) -> AgentLoopConfig {
         AgentLoopConfig {
@@ -458,6 +486,20 @@ mod tests {
             bodies
         });
         (url, handle)
+    }
+
+    #[test]
+    fn spawned_agent_waits_for_tab_close_before_exit() {
+        let (tx, rx) = mpsc::channel();
+        let close_handle = thread::spawn(move || {
+            thread::sleep(Duration::from_millis(25));
+            tx.send(()).expect("test receiver should stay open");
+        });
+
+        maybe_wait_for_tab_close(true, Some(close_handle));
+
+        rx.try_recv()
+            .expect("spawned cleanup must wait until close worker finishes");
     }
 
     #[test]

@@ -101,37 +101,58 @@ pub async fn submit_mcp_kernel_command(
 }
 
 fn sandbox_process_request_payload(request: &SandboxProcessRequest) -> Value {
-    json!({
-        "registry_policy_hash": request.registry_policy_hash,
-        "command_hash": request.command_hash,
-        "argv_hash": request.argv_hash,
-        "cwd_hash": request.cwd_hash,
-        "env_hash": request.env_hash,
-        "timeout_ms": request.timeout_ms,
-        "max_output_bytes": request.max_output_bytes
-    })
+    sandbox_process_base_payload(
+        &request.registry_policy_hash,
+        &request.command_hash,
+        &request.argv_hash,
+        &request.cwd_hash,
+        &request.env_hash,
+        request.timeout_ms,
+        request.max_output_bytes,
+    )
 }
 
 fn sandbox_process_receipt_payload(receipt: &SandboxProcessReceipt) -> Value {
+    let mut payload = sandbox_process_base_payload(
+        &receipt.registry_policy_hash,
+        &receipt.command_hash,
+        &receipt.argv_hash,
+        &receipt.cwd_hash,
+        &receipt.env_hash,
+        receipt.timeout_ms,
+        receipt.max_output_bytes,
+    );
+    payload["request_hash"] = json!(receipt.request_hash);
+    payload["effect_kind"] = json!(receipt.effect.kind as u64);
+    payload["effect_digest"] = json!(receipt.effect.digest);
+    payload["effect_metadata"] = json!(receipt.effect.metadata);
+    payload["stdout_hash"] = json!(receipt.stdout_hash);
+    payload["stderr_hash"] = json!(receipt.stderr_hash);
+    payload["stdout_bytes"] = json!(receipt.stdout_bytes);
+    payload["stderr_bytes"] = json!(receipt.stderr_bytes);
+    payload["exit_status"] = json!(receipt.exit_status);
+    payload["timed_out"] = json!(receipt.timed_out);
+    payload["receipt_hash"] = json!(receipt.receipt_hash);
+    payload
+}
+
+fn sandbox_process_base_payload(
+    registry_policy_hash: impl Serialize,
+    command_hash: impl Serialize,
+    argv_hash: impl Serialize,
+    cwd_hash: impl Serialize,
+    env_hash: impl Serialize,
+    timeout_ms: impl Serialize,
+    max_output_bytes: impl Serialize,
+) -> Value {
     json!({
-        "request_hash": receipt.request_hash,
-        "registry_policy_hash": receipt.registry_policy_hash,
-        "command_hash": receipt.command_hash,
-        "argv_hash": receipt.argv_hash,
-        "cwd_hash": receipt.cwd_hash,
-        "env_hash": receipt.env_hash,
-        "timeout_ms": receipt.timeout_ms,
-        "max_output_bytes": receipt.max_output_bytes,
-        "effect_kind": receipt.effect.kind as u64,
-        "effect_digest": receipt.effect.digest,
-        "effect_metadata": receipt.effect.metadata,
-        "stdout_hash": receipt.stdout_hash,
-        "stderr_hash": receipt.stderr_hash,
-        "stdout_bytes": receipt.stdout_bytes,
-        "stderr_bytes": receipt.stderr_bytes,
-        "exit_status": receipt.exit_status,
-        "timed_out": receipt.timed_out,
-        "receipt_hash": receipt.receipt_hash
+        "registry_policy_hash": registry_policy_hash,
+        "command_hash": command_hash,
+        "argv_hash": argv_hash,
+        "cwd_hash": cwd_hash,
+        "env_hash": env_hash,
+        "timeout_ms": timeout_ms,
+        "max_output_bytes": max_output_bytes
     })
 }
 

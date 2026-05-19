@@ -7,6 +7,7 @@ use std::path::{Path, PathBuf};
 use serde_json::{json, Value};
 
 use crate::capability::tooling::SandboxProcessReceipt;
+use crate::runtime::workspace::workspace_state_dir;
 
 pub fn tool_error(message: String) -> Value {
     json!({ "content": [{ "type": "text", "text": format!("Error: {message}") }], "isError": true })
@@ -23,7 +24,7 @@ pub fn native_process_output_paths(
     root: &Path,
     receipt: &SandboxProcessReceipt,
 ) -> (PathBuf, PathBuf) {
-    let dir = root.join("process");
+    let dir = workspace_state_dir(root).join("process");
     (
         dir.join(format!("{:016x}.stdout", receipt.request_hash)),
         dir.join(format!("{:016x}.stderr", receipt.request_hash)),

@@ -27,6 +27,8 @@ const DEFAULT_TRANSIENT_ROUTER_MAX_BACKOFF_MS: u64 = 4_000;
 
 pub struct RouterClient {
     inner: OpenAiClient,
+    /// The browser-router/CDP target id returned by the last turn.
+    target_id: Option<String>,
     /// The ChatGPT tab URL returned by the last turn. None means no session yet.
     target_url: Option<String>,
 }
@@ -50,6 +52,7 @@ impl RouterClient {
     pub fn new(config: OpenAiConfig) -> Result<Self, OpenAiError> {
         Ok(Self {
             inner: OpenAiClient::new(config)?,
+            target_id: None,
             target_url: None,
         })
     }
@@ -57,6 +60,7 @@ impl RouterClient {
     pub fn from_env() -> Result<Self, OpenAiError> {
         Ok(Self {
             inner: OpenAiClient::from_env()?,
+            target_id: None,
             target_url: None,
         })
     }
@@ -65,9 +69,14 @@ impl RouterClient {
         self.target_url.as_deref()
     }
 
+    pub fn target_id(&self) -> Option<&str> {
+        self.target_id.as_deref()
+    }
+
     /// Drop the current tab URL; the next turn will open a new chat.
     pub fn reset_session(&mut self) {
         self.target_url = None;
+        self.target_id = None;
     }
 
     /// Best-effort close of the currently pinned browser tab.
@@ -76,25 +85,34 @@ impl RouterClient {
     /// `DELETE /tabs/{target_id}`) on the configured OpenAI-compatible router
     /// base URL.
     pub fn close_current_tab(&mut self) -> Result<RouterTabCloseOutcome, OpenAiError> {
-        let Some(target_url) = self.target_url.clone() else {
+        if self.target_id.is_none() && self.target_url.is_none() {
             return Ok(RouterTabCloseOutcome::NoTarget);
-        };
+        }
 
         let router_base_url = self.inner.config().base_url.clone();
-        let outcome = retry_transient_router_io(|| {
-            close_browser_tab_for_url(
-                &target_url,
-                &router_base_url,
-                self.inner.config().timeout_ms,
-            )
-        })?;
+        let timeout_ms = self.inner.config().timeout_ms;
+        let outcome = if let Some(target_id) = self.target_id.as_deref() {
+            retry_transient_router_io(|| {
+                close_browser_tab_for_target_id(target_id, &router_base_url, timeout_ms)
+            })?
+        } else if let Some(target_url) = self.target_url.as_deref() {
+            retry_transient_router_io(|| {
+                close_browser_tab_for_url(&target_url, &router_base_url, timeout_ms)
+            })?
+        } else {
+            RouterTabCloseOutcome::NoTarget
+        };
         if matches!(outcome, RouterTabCloseOutcome::Closed) {
             self.target_url = None;
+            self.target_id = None;
         }
         Ok(outcome)
     }
 
-    fn adopt_target_url(&mut self, next_url: Option<String>) {
+    fn adopt_target(&mut self, next_id: Option<String>, next_url: Option<String>) {
+        if let Some(next_id) = next_id {
+            self.target_id = Some(next_id);
+        }
         let Some(next_url) = next_url else {
             return;
         };
@@ -121,7 +139,7 @@ impl RouterClient {
         let request = request.with_browser(browser);
         let response = retry_transient_router_io(|| self.inner.chat_with_request(&request))?;
         let target_url = response.target_url.clone();
-        self.adopt_target_url(target_url.clone());
+        self.adopt_target(None, target_url.clone());
         Ok(RouterTurnResult {
             response,
             target_url,
@@ -181,7 +199,7 @@ impl RouterClient {
             sse.completion_reason(),
             sse.target_url.is_some()
         );
-        self.adopt_target_url(sse.target_url.clone());
+        self.adopt_target(sse.target_id.clone(), sse.target_url.clone());
         eprintln!("agent: router target adopted");
 
         let complete = sse.is_complete();
@@ -296,6 +314,34 @@ pub fn close_tab_for_url_with_timeout(
 ) -> Result<RouterTabCloseOutcome, OpenAiError> {
     let config = OpenAiConfig::from_env()?;
     close_browser_tab_for_url(target_url, &config.base_url, timeout_ms)
+}
+
+pub fn close_tab_for_target_id_with_timeout(
+    target_id: &str,
+    timeout_ms: u64,
+) -> Result<RouterTabCloseOutcome, OpenAiError> {
+    let config = OpenAiConfig::from_env()?;
+    close_browser_tab_for_target_id(target_id, &config.base_url, timeout_ms)
+}
+
+fn close_browser_tab_for_target_id(
+    target_id: &str,
+    router_base_url: &str,
+    timeout_ms: u64,
+) -> Result<RouterTabCloseOutcome, OpenAiError> {
+    let endpoint = parse_local_http_endpoint(router_base_url).map_err(|e| match e {
+        LocalEndpointError::InvalidUrl => OpenAiError::InvalidUrl,
+        LocalEndpointError::NonLocalHost => {
+            OpenAiError::InvalidConfig("browser-router url must be local")
+        }
+    })?;
+    close_browser_router_tab(
+        &endpoint.host,
+        endpoint.port,
+        &endpoint.path_prefix,
+        target_id,
+        timeout_ms,
+    )
 }
 
 fn close_browser_tab_for_url(
