@@ -1,32 +1,29 @@
 # Code Quality Score Report
 
-Generated: 2026-05-18  |  Schema version: 16  |  Crates: 8
+Generated: 2026-05-18  |  Schema version: 17  |  Crates: 5
 
 ## Aggregate Scores
 
 ```text
-Architecture         = 8.6
-Structure            = 3.7
-Simplicity           = 7.8
+Architecture         = 9.3
+Structure            = 5.8
+Simplicity           = 6.6
 Maintainability      = 10.0
 Determinism          = 10.0
-Coherency            = 8.8
+Coherency            = 8.2
 
-G (geometric mean)   = 7.76 / 10
+G (geometric mean)   = 8.14 / 10
 ```
 
 ## Per-Crate Breakdown
 
-| Crate                      | Nodes | Edges | Fns  | Arch | Struct | Simple | Maint | Determ | Coher |
-| :------------------------- | ----: | ----: | ---: | ---: | -----: | -----: | ----: | -----: | ----: |
-| chatgpt_mcp_connector      |  3747 | 20318 | 1716 |  8.7 |    3.6 |    8.0 |  10.0 |   10.0 |   8.8 |
-| loop_trace                 |     1 |    36 |    1 |  5.0 |    4.5 |    0.8 |  10.0 |   10.0 |   7.0 |
-| ollama_judgment            |     4 |   239 |    4 |  5.0 |    7.7 |    0.1 |  10.0 |   10.0 |   8.6 |
-| ollama_loop_trace          |     2 |    70 |    2 |  5.0 |    6.1 |    0.8 |  10.0 |   10.0 |   7.0 |
-| ollama_tool_loop_trace     |    12 |   238 |    9 |  5.0 |    9.2 |    2.0 |  10.0 |   10.0 |   8.1 |
-| ollama_tool_mcp_loop_trace |    17 |   311 |   11 |  5.0 |    9.3 |    1.7 |  10.0 |   10.0 |   8.1 |
-| openai_tool_loop_trace     |    15 |   308 |   12 |  5.0 |    8.9 |    2.2 |  10.0 |   10.0 |   7.8 |
-| score                      |    90 |   685 |   54 |  8.3 |    4.4 |    6.5 |  10.0 |   10.0 |   8.2 |
+| Crate          | Nodes | Edges | Fns  | Arch | Struct | Simple | Maint | Determ | Coher |
+| :------------- | ----: | ----: | ---: | ---: | -----: | -----: | ----: | -----: | ----: |
+| ai             |  6499 | 43268 | 2758 |  9.5 |    6.2 |    6.7 |  10.0 |   10.0 |   8.2 |
+| browser_router |   640 |  6731 |  318 |  8.0 |    5.1 |    4.0 |  10.0 |   10.0 |   8.5 |
+| browser_router |     2 |    74 |    2 |  5.0 |    6.1 |    0.7 |  10.0 |   10.0 |   7.0 |
+| canon_rustc_v3 |   694 |  3708 |  336 |  8.3 |    3.6 |    8.5 |  10.0 |   10.0 |   8.0 |
+| canon_rustc_v3 |     2 |    69 |    2 |  5.0 |    6.1 |    0.9 |  10.0 |   10.0 |   8.1 |
 
 ## Axis Definitions
 

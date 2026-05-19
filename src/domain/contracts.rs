@@ -233,7 +233,7 @@ fn require_plan_live_effect(
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct DomainSignal {
     pub schema_version: &'static str,
     pub signal_id: String,
