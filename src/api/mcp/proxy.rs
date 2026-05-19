@@ -1,5 +1,6 @@
 //! MCP worker command proxying and receipt payload serialization.
 
+use serde::Serialize;
 use serde_json::{json, Value};
 
 use crate::api::protocol::{Command as KernelCommand, CommandEnvelope};
@@ -135,26 +136,43 @@ fn sandbox_process_receipt_payload(receipt: &SandboxProcessReceipt) -> Value {
 }
 
 fn mailbox_message_request_payload(request: &MailboxMessageRequest) -> Value {
-    json!({
-        "registry_policy_hash": request.registry_policy_hash,
-        "sender_hash": request.sender_hash,
-        "target_hash": request.target_hash,
-        "kind_hash": request.kind_hash,
-        "payload_hash": request.payload_hash
-    })
+    mailbox_message_base_payload(
+        &request.registry_policy_hash,
+        &request.sender_hash,
+        &request.target_hash,
+        &request.kind_hash,
+        &request.payload_hash,
+    )
 }
 
 fn mailbox_message_receipt_payload(receipt: &MailboxMessageReceipt) -> Value {
+    let mut payload = mailbox_message_base_payload(
+        &receipt.registry_policy_hash,
+        &receipt.sender_hash,
+        &receipt.target_hash,
+        &receipt.kind_hash,
+        &receipt.payload_hash,
+    );
+    payload["request_hash"] = json!(receipt.request_hash);
+    payload["message_id_hash"] = json!(receipt.message_id_hash);
+    payload["sent_at_hash"] = json!(receipt.sent_at_hash);
+    payload["record_hash"] = json!(receipt.record_hash);
+    payload["receipt_hash"] = json!(receipt.receipt_hash);
+    payload
+}
+
+fn mailbox_message_base_payload(
+    registry_policy_hash: impl Serialize,
+    sender_hash: impl Serialize,
+    target_hash: impl Serialize,
+    kind_hash: impl Serialize,
+    payload_hash: impl Serialize,
+) -> Value {
     json!({
-        "request_hash": receipt.request_hash,
-        "registry_policy_hash": receipt.registry_policy_hash,
-        "sender_hash": receipt.sender_hash,
-        "target_hash": receipt.target_hash,
-        "kind_hash": receipt.kind_hash,
-        "payload_hash": receipt.payload_hash,
-        "message_id_hash": receipt.message_id_hash,
-        "sent_at_hash": receipt.sent_at_hash,
-        "record_hash": receipt.record_hash,
-        "receipt_hash": receipt.receipt_hash
+        "registry_policy_hash": registry_policy_hash,
+        "sender_hash": sender_hash,
+        "target_hash": target_hash,
+        "kind_hash": kind_hash,
+        "payload_hash": payload_hash
     })
 }
