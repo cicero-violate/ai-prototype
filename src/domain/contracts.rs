@@ -7,6 +7,7 @@ use serde::{Deserialize, Deserializer, Serialize};
 
 pub const DOMAIN_SCHEMA_VERSION: &str = "canon_domain_v1";
 
+#[allow(dead_code)]
 fn domain_schema_version() -> &'static str {
     DOMAIN_SCHEMA_VERSION
 }
@@ -167,6 +168,12 @@ pub enum DomainContractError {
     EmptyField(&'static str),
     ScoreOutOfRange { field: &'static str, value: u16 },
     UnsafeLiveEffect { field: &'static str },
+}
+
+impl std::fmt::Display for DomainContractError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self)
+    }
 }
 
 fn require_non_empty(field: &'static str, value: &str) -> Result<(), DomainContractError> {
@@ -436,7 +443,7 @@ impl DomainJudgment {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct DomainPlan {
     #[serde(skip_deserializing, default = "domain_schema_version")]
     pub schema_version: &'static str,
@@ -451,6 +458,48 @@ pub struct DomainPlan {
     pub success_metric_hash: String,
     pub rollback_or_invalidation_hash: String,
     pub requested_live_effect_level: LiveEffectLevel,
+}
+
+impl<'de> Deserialize<'de> for DomainPlan {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let mut value = serde_json::Value::deserialize(deserializer)?;
+        let object = value
+            .as_object_mut()
+            .ok_or_else(|| serde::de::Error::custom("expected DomainPlan object"))?;
+
+        fn take_field<T, E>(
+            object: &mut serde_json::Map<String, serde_json::Value>,
+            field: &'static str,
+        ) -> Result<T, E>
+        where
+            T: serde::de::DeserializeOwned,
+            E: serde::de::Error,
+        {
+            let value = object
+                .remove(field)
+                .ok_or_else(|| E::missing_field(field))?;
+
+            serde_json::from_value(value).map_err(E::custom)
+        }
+
+        Self::new(
+            take_field::<String, D::Error>(object, "plan_id")?,
+            take_field::<DomainId, D::Error>(object, "domain_id")?,
+            take_field::<String, D::Error>(object, "judgment_hash")?,
+            take_field::<PlanKind, D::Error>(object, "plan_kind")?,
+            take_field::<DomainBridgeTarget, D::Error>(object, "bridge_target")?,
+            take_field::<String, D::Error>(object, "required_capability_set_hash")?,
+            take_field::<String, D::Error>(object, "expected_receipt_set_hash")?,
+            take_field::<String, D::Error>(object, "risk_envelope_hash")?,
+            take_field::<String, D::Error>(object, "success_metric_hash")?,
+            take_field::<String, D::Error>(object, "rollback_or_invalidation_hash")?,
+            take_field::<LiveEffectLevel, D::Error>(object, "requested_live_effect_level")?,
+        )
+        .map_err(serde::de::Error::custom)
+    }
 }
 
 impl DomainPlan {
