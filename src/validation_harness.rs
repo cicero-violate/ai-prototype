@@ -5946,15 +5946,71 @@ impl PolicyReuseEvidenceRetrievalResultUseSummaryManifestApprovalAdmissionConsum
                 == "retrieval_example_storage_admitted"
     }
 
+    fn record_type_is_valid(&self) -> bool {
+        matches!(
+            self.record_type,
+            "policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_consumption_learning_storage_admission"
+                | POLICY_REUSE_EVIDENCE_RETRIEVAL_RESULT_USE_SUMMARY_MANIFEST_APPROVAL_ADMISSION_CONSUMPTION_LEARNING_STORAGE_ADMISSION_SMOKE_STEP
+                | POLICY_REUSE_EVIDENCE_RETRIEVAL_RESULT_USE_SUMMARY_MANIFEST_APPROVAL_ADMISSION_CONSUMPTION_LEARNING_STORAGE_ADMISSION_REGRESSION_SMOKE_STEP
+        )
+    }
+
+    fn status_is_valid(&self) -> bool {
+        matches!(
+            self.retrieval_example_storage_admission_status,
+            "retrieval_example_storage_admitted" | "retrieval_example_storage_not_admitted"
+        )
+    }
+
+    fn not_admitted_reason_is_valid(&self) -> bool {
+        matches!(
+            self.not_admitted_reason,
+            "none"
+                | "retrieval_example_materialization_plan_not_ready"
+                | "retrieval_example_learning_not_admitted"
+                | "retrieval_example_learning_not_eligible"
+                | "approval_admission_consumption_not_consumed"
+                | "summary_manifest_approval_admission_not_admitted"
+                | "summary_manifest_not_approved"
+                | "summary_manifest_not_ready_for_use"
+                | "summary_manifest_not_admitted"
+                | "missing_external_result_evidence"
+                | "retrieval_read_attempted"
+                | "retrieval_write_attempted"
+                | "retrieval_query_executed"
+                | "runtime_result_approval_attempted"
+                | "policy_promotion_attempted"
+                | "batch_execution_attempted"
+                | "student_training_attempted"
+                | "no_policy_reuse_examples"
+        )
+    }
+
+    fn expected_storage_admitted(&self) -> bool {
+        self.retrieval_example_materialization_plan_ready
+            && self.retrieval_example_learning_admitted
+            && self.retrieval_example_learning_eligible
+            && self.retrieval_result_use_summary_manifest_approval_admission_consumed
+            && self.retrieval_result_use_summary_manifest_approval_admitted
+            && self.retrieval_result_use_summary_manifest_approved
+            && self.retrieval_result_use_summary_manifest_ready_for_use
+            && self.retrieval_result_use_summary_manifest_admitted
+            && self.external_result_evidence_present
+            && !self.retrieval_read_performed
+            && !self.retrieval_write_performed
+            && !self.retrieval_query_executed
+            && !self.runtime_result_approval_performed
+            && !self.policy_promotion_performed
+            && !self.batch_execution_performed
+            && !self.student_training_performed
+            && self.storage_admission_policy_reuse_examples > 0
+            && self.not_admitted_reason == "none"
+    }
+
     pub fn is_valid(&self) -> bool {
         self.schema
             == "canon_policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_consumption_learning_storage_admission_v1"
-            && matches!(
-                self.record_type,
-                "policy_reuse_evidence_retrieval_result_use_summary_manifest_approval_admission_consumption_learning_storage_admission"
-                    | POLICY_REUSE_EVIDENCE_RETRIEVAL_RESULT_USE_SUMMARY_MANIFEST_APPROVAL_ADMISSION_CONSUMPTION_LEARNING_STORAGE_ADMISSION_SMOKE_STEP
-                    | POLICY_REUSE_EVIDENCE_RETRIEVAL_RESULT_USE_SUMMARY_MANIFEST_APPROVAL_ADMISSION_CONSUMPTION_LEARNING_STORAGE_ADMISSION_REGRESSION_SMOKE_STEP
-            )
+            && self.record_type_is_valid()
             && self.retrieval_example_learning_storage_admission_version == 1
             && self.source_retrieval_example_materialization_plan_hash != 0
             && self.source_retrieval_example_learning_admission_hash != 0
@@ -5972,50 +6028,9 @@ impl PolicyReuseEvidenceRetrievalResultUseSummaryManifestApprovalAdmissionConsum
             && !self.batch_execution_performed
             && !self.student_training_performed
             && self.storage_admission_policy_reuse_examples > 0
-            && matches!(
-                self.retrieval_example_storage_admission_status,
-                "retrieval_example_storage_admitted" | "retrieval_example_storage_not_admitted"
-            )
-            && matches!(
-                self.not_admitted_reason,
-                "none"
-                    | "retrieval_example_materialization_plan_not_ready"
-                    | "retrieval_example_learning_not_admitted"
-                    | "retrieval_example_learning_not_eligible"
-                    | "approval_admission_consumption_not_consumed"
-                    | "summary_manifest_approval_admission_not_admitted"
-                    | "summary_manifest_not_approved"
-                    | "summary_manifest_not_ready_for_use"
-                    | "summary_manifest_not_admitted"
-                    | "missing_external_result_evidence"
-                    | "retrieval_read_attempted"
-                    | "retrieval_write_attempted"
-                    | "retrieval_query_executed"
-                    | "runtime_result_approval_attempted"
-                    | "policy_promotion_attempted"
-                    | "batch_execution_attempted"
-                    | "student_training_attempted"
-                    | "no_policy_reuse_examples"
-            )
-            && self.retrieval_example_storage_admitted
-                == (self.retrieval_example_materialization_plan_ready
-                    && self.retrieval_example_learning_admitted
-                    && self.retrieval_example_learning_eligible
-                    && self.retrieval_result_use_summary_manifest_approval_admission_consumed
-                    && self.retrieval_result_use_summary_manifest_approval_admitted
-                    && self.retrieval_result_use_summary_manifest_approved
-                    && self.retrieval_result_use_summary_manifest_ready_for_use
-                    && self.retrieval_result_use_summary_manifest_admitted
-                    && self.external_result_evidence_present
-                    && !self.retrieval_read_performed
-                    && !self.retrieval_write_performed
-                    && !self.retrieval_query_executed
-                    && !self.runtime_result_approval_performed
-                    && !self.policy_promotion_performed
-                    && !self.batch_execution_performed
-                    && !self.student_training_performed
-                    && self.storage_admission_policy_reuse_examples > 0
-                    && self.not_admitted_reason == "none")
+            && self.status_is_valid()
+            && self.not_admitted_reason_is_valid()
+            && self.retrieval_example_storage_admitted == self.expected_storage_admitted()
             && (self.retrieval_example_storage_admission_status
                 == "retrieval_example_storage_admitted")
                 == self.retrieval_example_storage_admitted
