@@ -474,13 +474,7 @@ fn decode_submit_agent_cycle_event_command(
         .get("kind")
         .and_then(serde_json::Value::as_u64)
         .ok_or(ServerError::InvalidPayload)?;
-    let kind = match kind_u64 {
-        1 => AgentCycleEventKind::CycleStart,
-        2 => AgentCycleEventKind::TurnComplete,
-        3 => AgentCycleEventKind::TurnFailed,
-        4 => AgentCycleEventKind::CycleEnd,
-        _ => return Err(ServerError::InvalidPayload),
-    };
+    let kind = AgentCycleEventKind::from_route_u64(kind_u64).ok_or(ServerError::InvalidPayload)?;
     let agent_hash = payload
         .get("agent_hash")
         .and_then(serde_json::Value::as_u64)
@@ -504,9 +498,7 @@ fn decode_submit_agent_cycle_event_command(
     Ok(Command::SubmitAgentCycleEvent(event))
 }
 
-fn decode_submit_wave_dispatch_command(
-    payload: serde_json::Value,
-) -> Result<Command, ServerError> {
+fn decode_submit_wave_dispatch_command(payload: serde_json::Value) -> Result<Command, ServerError> {
     let wave_id = payload
         .get("wave_id")
         .and_then(serde_json::Value::as_u64)
@@ -1116,6 +1108,48 @@ mod tests {
         invalid_effect_kind["effect_kind"] = serde_json::json!(99_u64);
         assert_eq!(
             decode_mcp_call_receipt(invalid_effect_kind),
+            Err(ServerError::InvalidPayload)
+        );
+    }
+
+    #[test]
+    fn agent_cycle_event_decoder_preserves_typed_route_contract() {
+        let route_cases = [
+            (AgentCycleEventKind::CycleStart, 1_u64),
+            (AgentCycleEventKind::TurnComplete, 2_u64),
+            (AgentCycleEventKind::TurnFailed, 3_u64),
+            (AgentCycleEventKind::CycleEnd, 4_u64),
+        ];
+        for (kind, route_value) in route_cases {
+            assert_eq!(kind.as_u64(), route_value);
+            assert_eq!(AgentCycleEventKind::from_route_u64(route_value), Some(kind));
+
+            let decoded = decode_submit_agent_cycle_event_command(serde_json::json!({
+                "kind": route_value,
+                "agent_hash": 0xa6e0_7001_u64,
+                "cycle": 1_u64,
+                "label_hash": 0x1abe_1001_u64,
+                "content_hash": 0xc0de_1001_u64,
+            }))
+            .expect("valid typed route value should decode");
+
+            match decoded {
+                Command::SubmitAgentCycleEvent(event) => {
+                    assert_eq!(event.kind, kind);
+                    assert_eq!(event.kind.as_u64(), route_value);
+                    assert!(event.is_contract_valid());
+                }
+                other => panic!("unexpected command decoded from agent cycle payload: {other:?}"),
+            }
+        }
+
+        assert_eq!(AgentCycleEventKind::from_route_u64(99), None);
+        assert_eq!(
+            decode_submit_agent_cycle_event_command(serde_json::json!({
+                "kind": 99_u64,
+                "agent_hash": 0xa6e0_7001_u64,
+                "cycle": 1_u64,
+            })),
             Err(ServerError::InvalidPayload)
         );
     }

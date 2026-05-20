@@ -25,6 +25,16 @@ impl AgentCycleEventKind {
     pub fn as_u64(self) -> u64 {
         self as u64
     }
+
+    pub fn from_route_u64(value: u64) -> Option<Self> {
+        match value {
+            1 => Some(Self::CycleStart),
+            2 => Some(Self::TurnComplete),
+            3 => Some(Self::TurnFailed),
+            4 => Some(Self::CycleEnd),
+            _ => None,
+        }
+    }
 }
 
 /// A single scheduling journal entry, structured for kernel TLog submission.
