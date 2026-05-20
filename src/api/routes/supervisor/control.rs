@@ -8,7 +8,11 @@ use axum::Json;
 use std::process::{Command as StdCommand, Stdio};
 use std::time::Duration;
 
-use crate::process::supervisor::{HealthDto, ReloadDto, RestartDto, SpawnDto, SpawnRequest};
+use crate::capability::tooling::mcp_tools::canon_plan::{load_plan, ready_nodes};
+use crate::process::supervisor::{
+    HealthDto, ReloadDto, RestartDto, SpawnDto, SpawnRequest, StartLoopDto, StartLoopRequest,
+    TaskNextDto,
+};
 
 use crate::process::supervisor::{ErrorDto, SupervisorState};
 
@@ -91,6 +95,15 @@ pub async fn restart(
         replacement,
         delay_ms: SUPERVISOR_RESTART_DELAY_MS,
     }))
+}
+
+pub async fn start_agent_loop_handler(
+    AxumState(state): AxumState<SupervisorState>,
+    body: Option<Json<StartLoopRequest>>,
+) -> Result<Json<StartLoopDto>, (StatusCode, Json<ErrorDto>)> {
+    let req = body.map(|b| b.0).unwrap_or_default();
+    let mut guard = state.inner.lock().await;
+    guard.start_main_loop(req).map(Json).map_err(error_response)
 }
 
 pub async fn spawn_agent_handler(
@@ -192,6 +205,42 @@ fn command_log_fields(body: &[u8]) -> (String, String, String) {
             }
         });
     (command_id, payload_tag, source)
+}
+
+/// Return the first ready plan node for a worker to pull.
+///
+/// Reads the plan DAG from the project state directory and returns the first
+/// Pending node whose dependencies are all Done.  Returns 204 when no tasks
+/// are ready.  This is the pull endpoint for the Temporal-like pull model;
+/// in the current push architecture it is informational.
+pub async fn get_task_next(
+    AxumState(state): AxumState<SupervisorState>,
+) -> Result<Json<TaskNextDto>, (StatusCode, Json<ErrorDto>)> {
+    let project_dir = {
+        let guard = state.inner.lock().await;
+        guard.project_dir().to_path_buf()
+    };
+
+    let plan = load_plan(&project_dir);
+    let ready = ready_nodes(&plan);
+
+    let Some(node) = ready.first() else {
+        return Err((
+            StatusCode::NO_CONTENT,
+            Json(ErrorDto {
+                ok: false,
+                error: "no ready tasks".to_string(),
+            }),
+        ));
+    };
+
+    Ok(Json(TaskNextDto {
+        ok: true,
+        node_id: node.id.clone(),
+        title: node.title.clone(),
+        description: node.description.clone(),
+        ready_count: ready.len(),
+    }))
 }
 
 pub(crate) fn schedule_supervisor_replacement(delay_ms: u64) -> Result<String, String> {

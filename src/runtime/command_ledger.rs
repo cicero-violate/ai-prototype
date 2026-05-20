@@ -4,7 +4,7 @@
 //! surface. API envelopes adapt into `(command_id, command_hash)` pairs at the
 //! boundary; runtime never imports API protocol types.
 
-use crate::error::CanonError;
+use crate::kernel::CanonError;
 use crate::kernel::{ControlEvent, TLog};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

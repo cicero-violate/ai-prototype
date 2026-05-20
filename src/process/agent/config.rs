@@ -1,7 +1,13 @@
 use std::env;
 use std::path::PathBuf;
 
+use crate::process::endpoints::{
+    mcp_connector_url_from_env, supervisor_port_from_env, DEFAULT_SUPERVISOR_PORT,
+};
 use crate::runtime::workspace::workspace_state_dir;
+
+pub const DEFAULT_MINI_AGENT_COUNT: u32 = 3;
+pub const MAX_MINI_AGENT_COUNT: u32 = 5;
 
 /// Runtime config for the agent loop, sourced from environment variables.
 /// Mirrors chatgpt-agent-loop/config.mjs, extended with certification fields.
@@ -12,6 +18,7 @@ pub struct AgentLoopConfig {
     pub turn_retry_limit: u32,
     pub loop_sleep_ms: u64,
     pub agent_count: u32,
+    pub mini_agent_count: u32,
     pub project_dir: PathBuf,
     pub working_dir: PathBuf,
     pub sse_chunks_dir: PathBuf,
@@ -33,6 +40,9 @@ pub struct AgentLoopConfig {
     pub domain: Option<String>,
     /// Success criterion matching `domain` (injected into the planning prompt).
     pub metric: Option<String>,
+    /// Plan node this spawned agent owns. DAG-scheduled children use this to
+    /// append evidence to their node without editing shared planning files.
+    pub plan_node_id: Option<String>,
 }
 
 impl AgentLoopConfig {
@@ -64,27 +74,29 @@ impl AgentLoopConfig {
         let worker_port = env::var("AI_WORKER_PORT")
             .ok()
             .and_then(|v| v.parse::<u16>().ok());
-        let supervisor_port = env::var("SUPERVISOR_PORT")
-            .ok()
-            .and_then(|v| v.parse::<u16>().ok());
+        let supervisor_port = supervisor_port_from_env().unwrap_or(DEFAULT_SUPERVISOR_PORT);
         Self {
-            execute_turns: env_parsed::<u32>("EXECUTE_TURNS", 5),
+            execute_turns: env_parsed::<u32>("EXECUTE_TURNS", 2),
             turn_retry_limit: env_parsed::<u32>("TURN_RETRY_LIMIT", 2),
             loop_sleep_ms: env_parsed::<u64>("LOOP_SLEEP_MS", 5000),
             agent_count: env_parsed::<u32>("AGENT_COUNT", 1),
+            mini_agent_count: env_parsed::<u32>("CANON_MINI_AGENT_COUNT", DEFAULT_MINI_AGENT_COUNT)
+                .clamp(1, MAX_MINI_AGENT_COUNT),
             project_dir,
             working_dir,
             sse_chunks_dir,
-            mcp_connector_url: env::var("MCP_CONNECTOR_URL")
-                .unwrap_or_else(|_| "http://127.0.0.1:4000".into()),
+            mcp_connector_url: mcp_connector_url_from_env(supervisor_port),
             router_turn_max_ms: env_parsed::<u64>("ROUTER_TURN_MAX_MS", 600_000),
             router_first_capture_ms: env_parsed::<u64>("ROUTER_FIRST_CAPTURE_MS", 60_000),
             router_idle_ms: env_parsed::<u64>("ROUTER_IDLE_MS", 2_500),
             worker_port,
-            supervisor_port,
+            supervisor_port: Some(supervisor_port),
             cert_max_steps: env_parsed::<u64>("AI_CERT_MAX_STEPS", 30),
             domain: env::var("AI_AGENT_DOMAIN").ok().filter(|s| !s.is_empty()),
             metric: env::var("AI_AGENT_METRIC").ok().filter(|s| !s.is_empty()),
+            plan_node_id: env::var("AI_AGENT_PLAN_NODE_ID")
+                .ok()
+                .filter(|s| !s.is_empty()),
         }
     }
 }
@@ -166,7 +178,7 @@ mod tests {
         env::set_var("LOOP_SLEEP_MS", "not-a-u64");
 
         let defaults = AgentLoopConfig::from_env();
-        assert_eq!(defaults.execute_turns, 5);
+        assert_eq!(defaults.execute_turns, 2);
         assert_eq!(defaults.loop_sleep_ms, 5000);
 
         restore_env(&snapshot);

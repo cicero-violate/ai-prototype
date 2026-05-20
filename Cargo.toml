@@ -13,10 +13,6 @@ name = "ai"
 path = "src/main.rs"
 
 [[bin]]
-name = "agent"
-path = "src/bin/agent.rs"
-
-[[bin]]
 name = "kernel_tlog"
 path = "src/bin/kernel_tlog.rs"
 
@@ -36,3 +32,4 @@ sha2 = "0.10"
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "time", "signal", "io-util", "process"] }
 tower = { version = "0.5", features = ["util"] }
 uuid = { version = "1", features = ["v4"] }
+validation = { path = "../validation" }

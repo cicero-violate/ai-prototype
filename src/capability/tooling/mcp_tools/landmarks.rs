@@ -4,131 +4,220 @@
 //! flat tool surface with a small gateway surface:
 //! `get_manifest`, `get_landmarks`, `inspect_landmark`, `call_action`, and
 //! `execute_sequence`.
+//!
+//! # Compiler enforcement
+//!
+//! - `NativeTool`: adding a variant requires a match arm in `native_input_schema`.
+//!   The compiler rejects a missing arm — you cannot add a tool without a schema.
+//!
+//! - `Landmark`: adding a variant requires match arms in `as_str`, `description`,
+//!   and `from_str`, plus an entry in `ALL`. The compiler enforces the three match
+//!   arms; the `landmark_topology_covers_all_variants` test enforces `ALL`.
 
 use serde_json::{json, Map, Value};
+
+// ── Enums ─────────────────────────────────────────────────────────────────────
+
+/// Every native MCP tool that can be reached through the gateway.
+/// Adding a variant here forces a match arm in `native_input_schema` — the
+/// compiler will reject the build until a schema is provided.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum NativeTool {
+    ApplyPatch,
+    Shell,
+    Echo,
+    GetCurrentTime,
+    CanonSpawnAgent,
+    CanonSendAgentMessage,
+    CanonReadMailbox,
+    CanonRuntimeState,
+    CanonSupervisorHealth,
+    CanonSupervisorReloadWorker,
+    CanonSupervisorRestart,
+    CanonWorkspaceGet,
+    CanonWorkspaceSet,
+    CanonBrowserListTabs,
+    CanonBrowserCloseTab,
+    CanonBrowserUpload,
+    CanonBrowserGroupChat,
+    CanonGraphPlanPatch,
+    CanonGraphPlanCfg,
+    CanonGraphApplyOps,
+    CanonGraphVerifyCfgDelta,
+    CanonGraphAutoRefactorCfg,
+    CanonGraphAnalysis,
+    CanonScore,
+    CanonPlanRead,
+    CanonPlanUpdate,
+}
+
+impl NativeTool {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::ApplyPatch => "apply_patch",
+            Self::Shell => "shell",
+            Self::Echo => "echo",
+            Self::GetCurrentTime => "get_current_time",
+            Self::CanonSpawnAgent => "canon_spawn_agent",
+            Self::CanonSendAgentMessage => "canon_send_agent_message",
+            Self::CanonReadMailbox => "canon_read_mailbox",
+            Self::CanonRuntimeState => "canon_runtime_state",
+            Self::CanonSupervisorHealth => "canon_supervisor_health",
+            Self::CanonSupervisorReloadWorker => "canon_supervisor_reload_worker",
+            Self::CanonSupervisorRestart => "canon_supervisor_restart",
+            Self::CanonWorkspaceGet => "canon_workspace_get",
+            Self::CanonWorkspaceSet => "canon_workspace_set",
+            Self::CanonBrowserListTabs => "canon_browser_list_tabs",
+            Self::CanonBrowserCloseTab => "canon_browser_close_tab",
+            Self::CanonBrowserUpload => "canon_browser_upload",
+            Self::CanonBrowserGroupChat => "canon_browser_group_chat",
+            Self::CanonGraphPlanPatch => "canon_graph_plan_patch",
+            Self::CanonGraphPlanCfg => "canon_graph_plan_cfg",
+            Self::CanonGraphApplyOps => "canon_graph_apply_ops",
+            Self::CanonGraphVerifyCfgDelta => "canon_graph_verify_cfg_delta",
+            Self::CanonGraphAutoRefactorCfg => "canon_graph_auto_refactor_cfg",
+            Self::CanonGraphAnalysis => "canon_graph_analysis",
+            Self::CanonScore => "canon_score",
+            Self::CanonPlanRead => "canon_plan_read",
+            Self::CanonPlanUpdate => "canon_plan_update",
+        }
+    }
+}
+
+/// Every landmark group exposed via the discovery surface.
+/// Adding a variant requires match arms in `as_str`, `description`, and
+/// `from_str` (compiler-enforced), plus an entry in `ALL`
+/// (test-enforced by `landmark_topology_covers_all_variants`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Landmark {
+    Project,
+    Workspace,
+    Utility,
+    Agents,
+    Runtime,
+    Supervisor,
+    Browser,
+    Graph,
+}
+
+impl Landmark {
+    pub const ALL: &'static [Self] = &[
+        Self::Project,
+        Self::Workspace,
+        Self::Utility,
+        Self::Agents,
+        Self::Runtime,
+        Self::Supervisor,
+        Self::Browser,
+        Self::Graph,
+    ];
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Project => "project",
+            Self::Workspace => "workspace",
+            Self::Utility => "utility",
+            Self::Agents => "agents",
+            Self::Runtime => "runtime",
+            Self::Supervisor => "supervisor",
+            Self::Browser => "browser",
+            Self::Graph => "graph",
+        }
+    }
+
+    pub fn description(self) -> &'static str {
+        match self {
+            Self::Project => "Plan DAG and structural quality score for the current project.",
+            Self::Workspace => "File and process operations inside the configured workspace.",
+            Self::Utility => "Safe utility actions.",
+            Self::Agents => "Supervisor and mailbox actions for multi-agent operation.",
+            Self::Runtime => "AI worker runtime state actions.",
+            Self::Supervisor => "AI supervisor lifecycle actions.",
+            Self::Browser => "Browser-router tab and action operations.",
+            Self::Graph => "Graph-backed source mutation planning operations.",
+        }
+    }
+
+    fn from_str(s: &str) -> Option<Self> {
+        match s {
+            "project" => Some(Self::Project),
+            "workspace" => Some(Self::Workspace),
+            "utility" => Some(Self::Utility),
+            "agents" => Some(Self::Agents),
+            "runtime" => Some(Self::Runtime),
+            "supervisor" => Some(Self::Supervisor),
+            "browser" => Some(Self::Browser),
+            "graph" => Some(Self::Graph),
+            _ => None,
+        }
+    }
+}
+
+// ── LandmarkAction ────────────────────────────────────────────────────────────
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct LandmarkAction {
     pub id: &'static str,
-    pub native_tool: &'static str,
-    pub landmark: &'static str,
+    pub native_tool: NativeTool,
+    pub landmark: Landmark,
     pub description: &'static str,
     pub read_only: bool,
     pub destructive: bool,
     pub idempotent: bool,
 }
 
-pub const GATEWAY_GET_MANIFEST: &str = "get_manifest";
-pub const GATEWAY_GET_LANDMARKS: &str = "get_landmarks";
-pub const GATEWAY_INSPECT_LANDMARK: &str = "inspect_landmark";
-pub const GATEWAY_CALL_ACTION: &str = "call_action";
-pub const GATEWAY_EXECUTE_SEQUENCE: &str = "execute_sequence";
+// ── Action registry ───────────────────────────────────────────────────────────
 
 const ACTIONS: &[LandmarkAction] = &[
     LandmarkAction {
+        id: "project:score",
+        native_tool: NativeTool::CanonScore,
+        landmark: Landmark::Project,
+        description: "Run the structural quality scorer over captured compiler fact graphs and update SCORE_REPORT.md. Returns axis scores (Architecture, Structure, Simplicity, Maintainability, Determinism, Coherency) and geometric mean G.",
+        read_only: false,
+        destructive: false,
+        idempotent: true,
+    },
+    LandmarkAction {
+        id: "project:plan_read",
+        native_tool: NativeTool::CanonPlanRead,
+        landmark: Landmark::Project,
+        description: "Read the current plan DAG. Returns all nodes, edges, version, and ready node IDs calculated from the kernel PlanState projection, using state/plan.json as the explicit fallback import source before a kernel projection is available.",
+        read_only: true,
+        destructive: false,
+        idempotent: true,
+    },
+    LandmarkAction {
+        id: "project:plan_update",
+        native_tool: NativeTool::CanonPlanUpdate,
+        landmark: Landmark::Project,
+        description: "Update the plan DAG in state/plan.json. op=replace (full plan), op=set_status {node_id, status}, op=set_assignee {node_id, assignee}, op=upsert_node {node}, op=append_evidence {node_id, evidence:{path,kind,summary}}, op=add_edge {edge}, op=remove_node {node_id}.",
+        read_only: false,
+        destructive: false,
+        idempotent: false,
+    },
+    LandmarkAction {
         id: "workspace:apply_patch",
-        native_tool: "apply_patch",
-        landmark: "workspace",
-        description:
-            "Apply or check an apply_patch-format patch under the configured workspace root.",
+        native_tool: NativeTool::ApplyPatch,
+        landmark: Landmark::Workspace,
+        description: "Apply or check an apply_patch-format patch under the configured workspace root.",
         read_only: false,
         destructive: false,
         idempotent: false,
     },
     LandmarkAction {
         id: "workspace:shell",
-        native_tool: "shell",
-        landmark: "workspace",
+        native_tool: NativeTool::Shell,
+        landmark: Landmark::Workspace,
         description: "Run a bounded shell command under the configured workspace root.",
         read_only: false,
         destructive: true,
         idempotent: false,
     },
     LandmarkAction {
-        id: "utility:echo",
-        native_tool: "echo",
-        landmark: "utility",
-        description: "Echo back the provided text.",
-        read_only: true,
-        destructive: false,
-        idempotent: true,
-    },
-    LandmarkAction {
-        id: "utility:get_current_time",
-        native_tool: "get_current_time",
-        landmark: "utility",
-        description: "Return the current UTC date and time in ISO 8601 format.",
-        read_only: true,
-        destructive: false,
-        idempotent: true,
-    },
-    LandmarkAction {
-        id: "agents:spawn",
-        native_tool: "canon_spawn_agent",
-        landmark: "agents",
-        description: "Spawn a child agent through the AI supervisor.",
-        read_only: false,
-        destructive: false,
-        idempotent: false,
-    },
-    LandmarkAction {
-        id: "agents:send_message",
-        native_tool: "canon_send_agent_message",
-        landmark: "agents",
-        description: "Write a typed message to a named agent mailbox.",
-        read_only: false,
-        destructive: false,
-        idempotent: false,
-    },
-    LandmarkAction {
-        id: "agents:read_mailbox",
-        native_tool: "canon_read_mailbox",
-        landmark: "agents",
-        description: "Read messages from an agent mailbox since a cursor.",
-        read_only: true,
-        destructive: false,
-        idempotent: true,
-    },
-    LandmarkAction {
-        id: "runtime:state",
-        native_tool: "canon_runtime_state",
-        landmark: "runtime",
-        description: "Read the active AI worker state snapshot.",
-        read_only: true,
-        destructive: false,
-        idempotent: true,
-    },
-    LandmarkAction {
-        id: "supervisor:health",
-        native_tool: "canon_supervisor_health",
-        landmark: "supervisor",
-        description: "Read the AI supervisor health and active worker generation.",
-        read_only: true,
-        destructive: false,
-        idempotent: true,
-    },
-    LandmarkAction {
-        id: "supervisor:reload_worker",
-        native_tool: "canon_supervisor_reload_worker",
-        landmark: "supervisor",
-        description: "Reload the active AI worker process.",
-        read_only: false,
-        destructive: true,
-        idempotent: false,
-    },
-    LandmarkAction {
-        id: "supervisor:restart",
-        native_tool: "canon_supervisor_restart",
-        landmark: "supervisor",
-        description: "Request supervisor process restart through the control API semantics.",
-        read_only: false,
-        destructive: true,
-        idempotent: false,
-    },
-    LandmarkAction {
         id: "workspace:get",
-        native_tool: "canon_workspace_get",
-        landmark: "workspace",
+        native_tool: NativeTool::CanonWorkspaceGet,
+        landmark: Landmark::Workspace,
         description: "Read the configured MCP workspace root and allowed boundary.",
         read_only: true,
         destructive: false,
@@ -136,17 +225,98 @@ const ACTIONS: &[LandmarkAction] = &[
     },
     LandmarkAction {
         id: "workspace:set",
-        native_tool: "canon_workspace_set",
-        landmark: "workspace",
+        native_tool: NativeTool::CanonWorkspaceSet,
+        landmark: Landmark::Workspace,
         description: "Set the configured MCP workspace root within the allowed boundary.",
         read_only: false,
         destructive: false,
         idempotent: false,
     },
     LandmarkAction {
+        id: "utility:echo",
+        native_tool: NativeTool::Echo,
+        landmark: Landmark::Utility,
+        description: "Echo back the provided text.",
+        read_only: true,
+        destructive: false,
+        idempotent: true,
+    },
+    LandmarkAction {
+        id: "utility:get_current_time",
+        native_tool: NativeTool::GetCurrentTime,
+        landmark: Landmark::Utility,
+        description: "Return the current UTC date and time in ISO 8601 format.",
+        read_only: true,
+        destructive: false,
+        idempotent: true,
+    },
+    LandmarkAction {
+        id: "agents:spawn",
+        native_tool: NativeTool::CanonSpawnAgent,
+        landmark: Landmark::Agents,
+        description: "Spawn a child agent through the AI supervisor.",
+        read_only: false,
+        destructive: false,
+        idempotent: false,
+    },
+    LandmarkAction {
+        id: "agents:send_message",
+        native_tool: NativeTool::CanonSendAgentMessage,
+        landmark: Landmark::Agents,
+        description: "Write a typed message to a named agent mailbox.",
+        read_only: false,
+        destructive: false,
+        idempotent: false,
+    },
+    LandmarkAction {
+        id: "agents:read_mailbox",
+        native_tool: NativeTool::CanonReadMailbox,
+        landmark: Landmark::Agents,
+        description: "Read messages from an agent mailbox since a cursor.",
+        read_only: true,
+        destructive: false,
+        idempotent: true,
+    },
+    LandmarkAction {
+        id: "runtime:state",
+        native_tool: NativeTool::CanonRuntimeState,
+        landmark: Landmark::Runtime,
+        description: "Read the active AI worker state snapshot.",
+        read_only: true,
+        destructive: false,
+        idempotent: true,
+    },
+    LandmarkAction {
+        id: "supervisor:health",
+        native_tool: NativeTool::CanonSupervisorHealth,
+        landmark: Landmark::Supervisor,
+        description: "Read the AI supervisor health and active worker generation.",
+        read_only: true,
+        destructive: false,
+        idempotent: true,
+    },
+    LandmarkAction {
+        id: "supervisor:reload_worker",
+        native_tool: NativeTool::CanonSupervisorReloadWorker,
+        landmark: Landmark::Supervisor,
+        description: "Reload the active AI worker process.",
+        read_only: false,
+        destructive: true,
+        idempotent: false,
+    },
+    LandmarkAction {
+        id: "supervisor:restart",
+        native_tool: NativeTool::CanonSupervisorRestart,
+        landmark: Landmark::Supervisor,
+        description: "Request supervisor process restart through the control API semantics.",
+        read_only: false,
+        destructive: true,
+        idempotent: false,
+    },
+    LandmarkAction {
         id: "browser:list_tabs",
-        native_tool: "canon_browser_list_tabs",
-        landmark: "browser",
+        native_tool: NativeTool::CanonBrowserListTabs,
+        landmark: Landmark::Browser,
         description: "List browser-router CDP page tabs.",
         read_only: true,
         destructive: false,
@@ -154,8 +324,8 @@ const ACTIONS: &[LandmarkAction] = &[
     },
     LandmarkAction {
         id: "browser:close_tab",
-        native_tool: "canon_browser_close_tab",
-        landmark: "browser",
+        native_tool: NativeTool::CanonBrowserCloseTab,
+        landmark: Landmark::Browser,
         description: "Close one browser-router tab by target id.",
         read_only: false,
         destructive: true,
@@ -163,8 +333,8 @@ const ACTIONS: &[LandmarkAction] = &[
     },
     LandmarkAction {
         id: "browser:upload",
-        native_tool: "canon_browser_upload",
-        landmark: "browser",
+        native_tool: NativeTool::CanonBrowserUpload,
+        landmark: Landmark::Browser,
         description: "Run browser-router project file upload action.",
         read_only: false,
         destructive: false,
@@ -172,8 +342,8 @@ const ACTIONS: &[LandmarkAction] = &[
     },
     LandmarkAction {
         id: "browser:group_chat",
-        native_tool: "canon_browser_group_chat",
-        landmark: "browser",
+        native_tool: NativeTool::CanonBrowserGroupChat,
+        landmark: Landmark::Browser,
         description: "Run browser-router group-chat creation action.",
         read_only: false,
         destructive: false,
@@ -181,18 +351,17 @@ const ACTIONS: &[LandmarkAction] = &[
     },
     LandmarkAction {
         id: "graph:plan_patch",
-        native_tool: "canon_graph_plan_patch",
-        landmark: "graph",
-        description:
-            "Plan a deterministic source patch and graph patch receipt from graph mutation ops.",
+        native_tool: NativeTool::CanonGraphPlanPatch,
+        landmark: Landmark::Graph,
+        description: "Plan a deterministic source patch and graph patch receipt from graph mutation ops.",
         read_only: true,
         destructive: false,
         idempotent: true,
     },
     LandmarkAction {
         id: "graph:apply_ops",
-        native_tool: "canon_graph_apply_ops",
-        landmark: "graph",
+        native_tool: NativeTool::CanonGraphApplyOps,
+        landmark: Landmark::Graph,
         description: "Apply graph mutation ops to graph.files, render a worktree, optionally validate, and optionally recapture.",
         read_only: false,
         destructive: false,
@@ -200,8 +369,8 @@ const ACTIONS: &[LandmarkAction] = &[
     },
     LandmarkAction {
         id: "graph:plan_cfg",
-        native_tool: "canon_graph_plan_cfg",
-        landmark: "graph",
+        native_tool: NativeTool::CanonGraphPlanCfg,
+        landmark: Landmark::Graph,
         description: "Plan CFG-oriented graph mutation ops from a function node, strategy, and replacement text.",
         read_only: true,
         destructive: false,
@@ -209,8 +378,8 @@ const ACTIONS: &[LandmarkAction] = &[
     },
     LandmarkAction {
         id: "graph:verify_cfg_delta",
-        native_tool: "canon_graph_verify_cfg_delta",
-        landmark: "graph",
+        native_tool: NativeTool::CanonGraphVerifyCfgDelta,
+        landmark: Landmark::Graph,
         description: "Verify expected CFG metric deltas between an old and new graph.",
         read_only: true,
         destructive: false,
@@ -218,14 +387,31 @@ const ACTIONS: &[LandmarkAction] = &[
     },
     LandmarkAction {
         id: "graph:auto_refactor_cfg",
-        native_tool: "canon_graph_auto_refactor_cfg",
-        landmark: "graph",
+        native_tool: NativeTool::CanonGraphAutoRefactorCfg,
+        landmark: Landmark::Graph,
         description: "Plan CFG ops, apply them to graph.files, render a worktree, optionally validate, optionally recapture, and optionally verify CFG delta.",
         read_only: false,
         destructive: false,
         idempotent: false,
     },
+    LandmarkAction {
+        id: "graph:analysis",
+        native_tool: NativeTool::CanonGraphAnalysis,
+        landmark: Landmark::Graph,
+        description: "Run static analyses and graph projections over a captured compiler fact graph: SCC cycles, layer violations, function intents, call graph, CFG, module graph, def-use, type graph, ownership, effect graph, derived edges, or all at once.",
+        read_only: true,
+        destructive: false,
+        idempotent: true,
+    },
 ];
+
+// ── Gateway constants ──────────────────────────────────────────────────────────
+
+pub const GATEWAY_GET_MANIFEST: &str = "get_manifest";
+pub const GATEWAY_GET_LANDMARKS: &str = "get_landmarks";
+pub const GATEWAY_INSPECT_LANDMARK: &str = "inspect_landmark";
+pub const GATEWAY_CALL_ACTION: &str = "call_action";
+pub const GATEWAY_EXECUTE_SEQUENCE: &str = "execute_sequence";
 
 pub fn is_gateway_tool(name: &str) -> bool {
     matches!(
@@ -238,24 +424,20 @@ pub fn is_gateway_tool(name: &str) -> bool {
     )
 }
 
+// ── Gateway tool list (MCP surface) ───────────────────────────────────────────
+
 pub fn gateway_mcp_tools_list() -> Value {
     json!([
         {
             "name": GATEWAY_GET_MANIFEST,
             "description": "Get Canon AI landmark protocol instructions and high-level topology.",
-            "inputSchema": {
-                "type": "object",
-                "properties": { "intent": { "type": "string" } }
-            },
+            "inputSchema": { "type": "object", "properties": { "intent": { "type": "string" } } },
             "annotations": { "readOnlyHint": true, "destructiveHint": false, "idempotentHint": true, "openWorldHint": false }
         },
         {
             "name": GATEWAY_GET_LANDMARKS,
             "description": "Return high-level functional areas. Use before inspect_landmark.",
-            "inputSchema": {
-                "type": "object",
-                "properties": { "intent": { "type": "string" } }
-            },
+            "inputSchema": { "type": "object", "properties": { "intent": { "type": "string" } } },
             "annotations": { "readOnlyHint": true, "destructiveHint": false, "idempotentHint": true, "openWorldHint": false }
         },
         {
@@ -331,27 +513,55 @@ pub fn gateway_mcp_tools_list() -> Value {
     ])
 }
 
+// ── Manifest / landmarks / inspect ────────────────────────────────────────────
+
 pub fn manifest_result() -> Value {
     text_result(manifest_text())
 }
 
-pub fn landmarks_result() -> Value {
-    let text = r#"### LANDMARK TOPOLOGY
-- **workspace**: File and process operations inside the configured workspace.
-- **utility**: Safe utility actions.
-- **agents**: Supervisor and mailbox actions for multi-agent operation.
-- **runtime**: AI worker runtime state actions.
-- **supervisor**: AI supervisor lifecycle actions.
-- **browser**: Browser-router tab and action operations.
-- **graph**: Graph-backed source mutation planning operations.
+pub fn manifest_text() -> String {
+    r#"# CANON AI LANDMARK TOOL PROTOCOL
 
-Protocol:
-1. Use `get_landmarks` to choose an area.
-2. Use `inspect_landmark` for exact action IDs and schemas.
-3. Use `call_action` for one action or `execute_sequence` for batched actions.
-4. Do not guess parameters; inspect first.
-"#;
-    text_result(text.trim().to_string())
+This MCP server uses progressive landmark discovery.
+
+Available gateway tools:
+- `get_manifest`: protocol rules.
+- `get_landmarks`: high-level areas only.
+- `inspect_landmark`: exact action IDs and schemas.
+- `call_action`: one inspected action.
+- `execute_sequence`: multiple inspected actions with `$stepN.path` piping.
+
+Rules:
+1. Discover before execution.
+2. Inspect the relevant landmark before calling an action.
+3. Call actions by stable landmark IDs, not by guessed native tool names.
+4. For multi-step work, prefer `execute_sequence` and pipe values via `$step0`, `$step1`, or custom aliases.
+5. Effects remain authorized and receipted by the AI kernel.
+"#
+    .trim()
+    .to_string()
+}
+
+/// Built from `Landmark::ALL` so the topology string is always in sync.
+/// Adding a new `Landmark` variant and forgetting `ALL` is caught by
+/// `landmark_topology_covers_all_variants`.
+pub fn landmarks_result() -> Value {
+    let mut text = String::from("### LANDMARK TOPOLOGY\n");
+    for landmark in Landmark::ALL {
+        text.push_str(&format!(
+            "- **{}**: {}\n",
+            landmark.as_str(),
+            landmark.description()
+        ));
+    }
+    text.push_str(
+        "\nProtocol:\n\
+         1. Use `get_landmarks` to choose an area.\n\
+         2. Use `inspect_landmark` for exact action IDs and schemas.\n\
+         3. Use `call_action` for one action or `execute_sequence` for batched actions.\n\
+         4. Do not guess parameters; inspect first.",
+    );
+    text_result(text)
 }
 
 pub fn inspect_landmark_result(args: &Value) -> Value {
@@ -374,6 +584,34 @@ pub fn inspect_landmark_result(args: &Value) -> Value {
         json!({"status": "error", "message": "landmark_id must be a string or array of strings"})
     };
     json_result(inspected)
+}
+
+fn inspect_one(id: &str) -> Value {
+    if let Some(landmark) = Landmark::from_str(id) {
+        let actions: Vec<Value> = ACTIONS
+            .iter()
+            .copied()
+            .filter(|a| a.landmark == landmark)
+            .map(action_summary)
+            .collect();
+        return json!({
+            "landmark_id": landmark.as_str(),
+            "type": "landmark",
+            "actions": actions,
+            "remedy": "Inspect a specific action ID for its exact input schema before calling it."
+        });
+    }
+    match resolve_action_id(id) {
+        Some(action) => action_detail(action),
+        None => {
+            let known: Vec<&str> = Landmark::ALL.iter().map(|l| l.as_str()).collect();
+            json!({
+                "status": "error",
+                "message": format!("Unknown landmark or action: {id}"),
+                "known_landmarks": known
+            })
+        }
+    }
 }
 
 pub fn resolve_action_id(action_id: &str) -> Option<LandmarkAction> {
@@ -400,62 +638,13 @@ pub fn resolve_action_id(action_id: &str) -> Option<LandmarkAction> {
         "canon_graph_apply_ops" => "graph:apply_ops",
         "canon_graph_verify_cfg_delta" => "graph:verify_cfg_delta",
         "canon_graph_auto_refactor_cfg" => "graph:auto_refactor_cfg",
+        "canon_graph_analysis" => "graph:analysis",
+        "canon_score" => "project:score",
+        "canon_plan_read" => "project:plan_read",
+        "canon_plan_update" => "project:plan_update",
         value => value,
     };
-    ACTIONS
-        .iter()
-        .copied()
-        .find(|action| action.id == normalized)
-}
-
-pub fn manifest_text() -> String {
-    r#"# CANON AI LANDMARK TOOL PROTOCOL
-
-This MCP server uses progressive landmark discovery.
-
-Available gateway tools:
-- `get_manifest`: protocol rules.
-- `get_landmarks`: high-level areas only.
-- `inspect_landmark`: exact action IDs and schemas.
-- `call_action`: one inspected action.
-- `execute_sequence`: multiple inspected actions with `$stepN.path` piping.
-
-Rules:
-1. Discover before execution.
-2. Inspect the relevant landmark before calling an action.
-3. Call actions by stable landmark IDs, not by guessed native tool names.
-4. For multi-step work, prefer `execute_sequence` and pipe values via `$step0`, `$step1`, or custom aliases.
-5. Effects remain authorized and receipted by the AI kernel.
-"#
-    .trim()
-    .to_string()
-}
-
-fn inspect_one(id: &str) -> Value {
-    match id {
-        "workspace" | "utility" | "agents" | "runtime" | "supervisor" | "browser" | "graph" => {
-            let actions: Vec<Value> = ACTIONS
-                .iter()
-                .copied()
-                .filter(|action| action.landmark == id)
-                .map(action_summary)
-                .collect();
-            json!({
-                "landmark_id": id,
-                "type": "landmark",
-                "actions": actions,
-                "remedy": "Inspect a specific action ID for its exact input schema before calling it."
-            })
-        }
-        action_id => match resolve_action_id(action_id) {
-            Some(action) => action_detail(action),
-            None => json!({
-                "status": "error",
-                "message": format!("Unknown landmark or action: {action_id}"),
-                "known_landmarks": ["workspace", "utility", "agents", "runtime", "supervisor", "browser", "graph"]
-            }),
-        },
-    }
+    ACTIONS.iter().copied().find(|a| a.id == normalized)
 }
 
 fn action_summary(action: LandmarkAction) -> Value {
@@ -470,12 +659,12 @@ fn action_summary(action: LandmarkAction) -> Value {
 fn action_detail(action: LandmarkAction) -> Value {
     json!({
         "id": action.id,
-        "native_tool": action.native_tool,
-        "landmark": action.landmark,
+        "native_tool": action.native_tool.as_str(),
+        "landmark": action.landmark.as_str(),
         "description": action.description,
         "inputSchema": native_input_schema(action.native_tool),
         "annotations": annotations(action),
-        "aliases": [action.native_tool],
+        "aliases": [action.native_tool.as_str()],
         "call": {
             "tool": GATEWAY_CALL_ACTION,
             "arguments": {
@@ -495,22 +684,18 @@ fn annotations(action: LandmarkAction) -> Value {
     })
 }
 
-fn native_input_schema(native_tool: &str) -> Value {
-    if let Some(schema) = core_native_input_schema(native_tool) {
-        return schema;
-    }
-    if let Some(schema) = browser_native_input_schema(native_tool) {
-        return schema;
-    }
-    if let Some(schema) = graph_native_input_schema(native_tool) {
-        return schema;
-    }
-    json!({ "type": "object", "properties": {} })
+// ── Input schemas — exhaustive match enforced by compiler ─────────────────────
+
+fn intent_only() -> Value {
+    json!({ "type": "object", "properties": { "intent": { "type": "string" } } })
 }
 
-fn core_native_input_schema(native_tool: &str) -> Option<Value> {
-    let schema = match native_tool {
-        "apply_patch" => json!({
+/// Returns the JSON Schema for the given tool's input parameters.
+/// This match is exhaustive over `NativeTool` — the compiler will reject any
+/// new variant that lacks an arm here, preventing silent schema omissions.
+fn native_input_schema(tool: NativeTool) -> Value {
+    match tool {
+        NativeTool::ApplyPatch => json!({
             "type": "object",
             "properties": {
                 "patch": { "type": "string", "description": "apply_patch-style patch text." },
@@ -522,7 +707,8 @@ fn core_native_input_schema(native_tool: &str) -> Option<Value> {
             },
             "required": ["patch"]
         }),
-        "shell" => json!({
+
+        NativeTool::Shell => json!({
             "type": "object",
             "properties": {
                 "command": { "type": "string" },
@@ -533,18 +719,27 @@ fn core_native_input_schema(native_tool: &str) -> Option<Value> {
             },
             "required": ["command"]
         }),
-        "echo" => json!({
+
+        NativeTool::Echo => json!({
             "type": "object",
-            "properties": { "text": { "type": "string" }, "intent": { "type": "string" } },
+            "properties": {
+                "text": { "type": "string" },
+                "intent": { "type": "string" }
+            },
             "required": ["text"]
         }),
-        "get_current_time"
-        | "canon_runtime_state"
-        | "canon_supervisor_health"
-        | "canon_supervisor_reload_worker"
-        | "canon_supervisor_restart"
-        | "canon_workspace_get" => intent_only_input_schema(),
-        "canon_spawn_agent" => json!({
+
+        NativeTool::GetCurrentTime
+        | NativeTool::CanonRuntimeState
+        | NativeTool::CanonSupervisorHealth
+        | NativeTool::CanonSupervisorReloadWorker
+        | NativeTool::CanonSupervisorRestart
+        | NativeTool::CanonWorkspaceGet
+        | NativeTool::CanonScore
+        | NativeTool::CanonPlanRead
+        | NativeTool::CanonBrowserListTabs => intent_only(),
+
+        NativeTool::CanonSpawnAgent => json!({
             "type": "object",
             "properties": {
                 "domain": { "type": "string", "description": "Domain hint for the child agent's objective." },
@@ -554,7 +749,8 @@ fn core_native_input_schema(native_tool: &str) -> Option<Value> {
             },
             "required": ["domain", "metric"]
         }),
-        "canon_send_agent_message" => json!({
+
+        NativeTool::CanonSendAgentMessage => json!({
             "type": "object",
             "properties": {
                 "sender": { "type": "string", "description": "Identifier for the sender." },
@@ -565,7 +761,8 @@ fn core_native_input_schema(native_tool: &str) -> Option<Value> {
             },
             "required": ["sender", "target_agent", "message_kind", "payload"]
         }),
-        "canon_read_mailbox" => json!({
+
+        NativeTool::CanonReadMailbox => json!({
             "type": "object",
             "properties": {
                 "agent_id": { "type": "string", "description": "This agent's identifier." },
@@ -574,7 +771,8 @@ fn core_native_input_schema(native_tool: &str) -> Option<Value> {
             },
             "required": ["agent_id"]
         }),
-        "canon_workspace_set" => json!({
+
+        NativeTool::CanonWorkspaceSet => json!({
             "type": "object",
             "properties": {
                 "root": { "type": "string", "description": "Workspace root path inside the allowed boundary." },
@@ -582,19 +780,8 @@ fn core_native_input_schema(native_tool: &str) -> Option<Value> {
             },
             "required": ["root"]
         }),
-        _ => return None,
-    };
-    Some(schema)
-}
 
-fn intent_only_input_schema() -> Value {
-    json!({ "type": "object", "properties": { "intent": { "type": "string" } } })
-}
-
-fn browser_native_input_schema(native_tool: &str) -> Option<Value> {
-    let schema = match native_tool {
-        "canon_browser_list_tabs" => intent_only_input_schema(),
-        "canon_browser_close_tab" => json!({
+        NativeTool::CanonBrowserCloseTab => json!({
             "type": "object",
             "properties": {
                 "target_id": { "type": "string", "description": "Browser-router target id." },
@@ -602,7 +789,8 @@ fn browser_native_input_schema(native_tool: &str) -> Option<Value> {
             },
             "required": ["target_id"]
         }),
-        "canon_browser_upload" => json!({
+
+        NativeTool::CanonBrowserUpload => json!({
             "type": "object",
             "properties": {
                 "project_id": {},
@@ -618,7 +806,8 @@ fn browser_native_input_schema(native_tool: &str) -> Option<Value> {
                 "intent": { "type": "string" }
             }
         }),
-        "canon_browser_group_chat" => json!({
+
+        NativeTool::CanonBrowserGroupChat => json!({
             "type": "object",
             "properties": {
                 "target_url": { "type": "string" },
@@ -627,14 +816,8 @@ fn browser_native_input_schema(native_tool: &str) -> Option<Value> {
                 "intent": { "type": "string" }
             }
         }),
-        _ => return None,
-    };
-    Some(schema)
-}
 
-fn graph_native_input_schema(native_tool: &str) -> Option<Value> {
-    let schema = match native_tool {
-        "canon_graph_plan_patch" => json!({
+        NativeTool::CanonGraphPlanPatch => json!({
             "type": "object",
             "properties": {
                 "graph_contract": { "type": "string", "description": "Workspace-relative graph snapshot contract NDJSON path." },
@@ -647,7 +830,8 @@ fn graph_native_input_schema(native_tool: &str) -> Option<Value> {
                 "intent": { "type": "string" }
             }
         }),
-        "canon_graph_plan_cfg" => json!({
+
+        NativeTool::CanonGraphPlanCfg => json!({
             "type": "object",
             "properties": {
                 "graph": { "type": "string", "description": "Workspace-relative schema-17 graph.json containing metrics.cfg." },
@@ -664,7 +848,8 @@ fn graph_native_input_schema(native_tool: &str) -> Option<Value> {
             },
             "required": ["node", "strategy"]
         }),
-        "canon_graph_apply_ops" => json!({
+
+        NativeTool::CanonGraphApplyOps => json!({
             "type": "object",
             "properties": {
                 "graph": { "type": "string", "description": "Workspace-relative schema-17 graph.json containing files." },
@@ -685,7 +870,8 @@ fn graph_native_input_schema(native_tool: &str) -> Option<Value> {
             },
             "required": ["ops", "worktree_out"]
         }),
-        "canon_graph_verify_cfg_delta" => json!({
+
+        NativeTool::CanonGraphVerifyCfgDelta => json!({
             "type": "object",
             "properties": {
                 "old_graph": { "type": "string", "description": "Workspace-relative old schema-17 graph.json path." },
@@ -700,7 +886,8 @@ fn graph_native_input_schema(native_tool: &str) -> Option<Value> {
             },
             "required": ["old_graph", "new_graph", "node"]
         }),
-        "canon_graph_auto_refactor_cfg" => json!({
+
+        NativeTool::CanonGraphAutoRefactorCfg => json!({
             "type": "object",
             "properties": {
                 "graph": { "type": "string", "description": "Workspace-relative schema-17 graph.json containing files and metrics.cfg." },
@@ -729,9 +916,78 @@ fn graph_native_input_schema(native_tool: &str) -> Option<Value> {
             },
             "required": ["graph", "node", "strategy", "ops_out", "worktree_out"]
         }),
-        _ => return None,
-    };
-    Some(schema)
+
+        NativeTool::CanonGraphAnalysis => json!({
+            "type": "object",
+            "properties": {
+                "graph": { "type": "string", "description": "Workspace-relative path to a captured graph.json file." },
+                "graph_path": { "type": "string", "description": "Alias for graph." },
+                "analysis": {
+                    "type": "string",
+                    "description": "Which analysis to run.",
+                    "enum": [
+                        "scc", "layers", "intents", "derived_edges",
+                        "call_graph", "cfg", "module_graph", "dependency",
+                        "def_use", "type_graph", "ownership", "effect_graph",
+                        "all"
+                    ]
+                },
+                "node":   { "type": "string", "description": "Exact symbol path to focus on." },
+                "module": { "type": "string", "description": "Module prefix to filter results." },
+                "filter": { "type": "string", "description": "Analysis-specific narrow filter." },
+                "limit":  { "type": "integer", "description": "Max results to return (default 100, max 500).", "default": 100, "maximum": 500 },
+                "intent": { "type": "string" }
+            },
+            "required": ["graph", "analysis"]
+        }),
+
+        NativeTool::CanonPlanUpdate => json!({
+            "type": "object",
+            "properties": {
+                "op": {
+                    "type": "string",
+                    "enum": ["replace", "set_status", "set_assignee", "upsert_node", "add_edge", "remove_node"],
+                    "description": "Operation: replace=full plan swap; set_status/set_assignee=update one node field; upsert_node=add or replace a node; add_edge=add dependency; remove_node=delete node and its edges."
+                },
+                "plan": {
+                    "type": "object",
+                    "description": "For op=replace. Must contain 'nodes' (array) and 'edges' (array). Each node: {id, title, description, status?, assignee?, score_axes?, files?}. Each edge: {from, to}."
+                },
+                "node_id": { "type": "string", "description": "Target node id for set_status, set_assignee, remove_node." },
+                "status": {
+                    "type": "string",
+                    "enum": ["pending", "running", "done", "failed", "skipped"],
+                    "description": "New status for op=set_status."
+                },
+                "assignee": { "type": "string", "description": "New assignee string for op=set_assignee. Omit to clear." },
+                "node": {
+                    "type": "object",
+                    "description": "Node for op=upsert_node. Required: id, title. Optional: description, status, assignee, score_axes (array), files (array).",
+                    "properties": {
+                        "id": { "type": "string" },
+                        "title": { "type": "string" },
+                        "description": { "type": "string" },
+                        "status": { "type": "string", "enum": ["pending", "running", "done", "failed", "skipped"] },
+                        "assignee": { "type": "string" },
+                        "score_axes": { "type": "array", "items": { "type": "string" } },
+                        "files": { "type": "array", "items": { "type": "string" } }
+                    },
+                    "required": ["id", "title"]
+                },
+                "edge": {
+                    "type": "object",
+                    "description": "Edge for op=add_edge. 'to' cannot start until 'from' is done.",
+                    "properties": {
+                        "from": { "type": "string", "description": "ID of the prerequisite node." },
+                        "to": { "type": "string", "description": "ID of the dependent node." }
+                    },
+                    "required": ["from", "to"]
+                },
+                "intent": { "type": "string" }
+            },
+            "required": ["op"]
+        }),
+    }
 }
 
 fn graph_cfg_strategy_schema() -> Value {
@@ -741,11 +997,13 @@ fn graph_cfg_strategy_schema() -> Value {
     })
 }
 
+// ── Sequence / piping helpers ──────────────────────────────────────────────────
+
 pub fn parameters_from_call_action(args: &Value) -> Result<(&str, Value), String> {
     let action = args
         .get("action")
         .and_then(Value::as_str)
-        .filter(|value| !value.is_empty())
+        .filter(|v| !v.is_empty())
         .ok_or_else(|| "call_action requires non-empty 'action'".to_string())?;
     let parameters = args.get("parameters").cloned().unwrap_or_else(|| json!({}));
     if !parameters.is_object() {
@@ -780,13 +1038,13 @@ pub fn sequence_steps(args: &Value) -> Result<Vec<SequenceStep>, String> {
             let action = item
                 .get("action")
                 .and_then(Value::as_str)
-                .filter(|value| !value.is_empty())
+                .filter(|v| !v.is_empty())
                 .ok_or_else(|| format!("step {idx} requires non-empty 'action'"))?
                 .to_string();
             let alias = item
                 .get("alias")
                 .and_then(Value::as_str)
-                .filter(|value| !value.is_empty())
+                .filter(|v| !v.is_empty())
                 .map(ToString::to_string);
             let parameters = item.get("parameters").cloned().unwrap_or_else(|| json!({}));
             if !parameters.is_object() {
@@ -819,7 +1077,7 @@ pub fn resolve_piping(value: Value, aliases: &Map<String, Value>) -> Result<Valu
             .map(Value::Array),
         Value::Object(map) => map
             .into_iter()
-            .map(|(key, value)| resolve_piping(value, aliases).map(|resolved| (key, resolved)))
+            .map(|(k, v)| resolve_piping(v, aliases).map(|r| (k, r)))
             .collect::<Result<Map<String, Value>, _>>()
             .map(Value::Object),
         other => Ok(other),
@@ -829,7 +1087,7 @@ pub fn resolve_piping(value: Value, aliases: &Map<String, Value>) -> Result<Valu
 fn resolve_reference(reference: &str, aliases: &Map<String, Value>) -> Result<Value, String> {
     let body = reference.trim_start_matches('$');
     let (alias, path) = match body.find('.') {
-        Some(index) => (&body[..index], Some(&body[index + 1..])),
+        Some(idx) => (&body[..idx], Some(&body[idx + 1..])),
         None => (body, None),
     };
     if alias.is_empty() {
@@ -858,6 +1116,8 @@ fn descend(value: Value, part: &str) -> Option<Value> {
     value.as_object().and_then(|map| map.get(part)).cloned()
 }
 
+// ── Result helpers ─────────────────────────────────────────────────────────────
+
 pub fn result_is_error(value: &Value) -> bool {
     value
         .get("isError")
@@ -866,7 +1126,7 @@ pub fn result_is_error(value: &Value) -> bool {
         || value
             .get("status")
             .and_then(Value::as_str)
-            .map(|status| status == "error")
+            .map(|s| s == "error")
             .unwrap_or(false)
 }
 
@@ -883,6 +1143,8 @@ pub fn error_result(message: String) -> Value {
     json!({ "content": [{ "type": "text", "text": format!("Error: {message}") }], "isError": true })
 }
 
+// ── Tests ──────────────────────────────────────────────────────────────────────
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -892,6 +1154,65 @@ mod tests {
             .as_str()
             .unwrap_or_default()
             .to_string()
+    }
+
+    /// Every Landmark variant must appear in the topology string.
+    /// Catches forgetting to add a new variant to Landmark::ALL.
+    #[test]
+    fn landmark_topology_covers_all_variants() {
+        let text = content_text(&landmarks_result());
+        for landmark in Landmark::ALL {
+            assert!(
+                text.contains(landmark.as_str()),
+                "landmarks_result() is missing landmark: {}",
+                landmark.as_str()
+            );
+        }
+    }
+
+    /// Every action's landmark must be inspectable via inspect_landmark.
+    /// Catches adding an action that references a landmark not in Landmark::ALL.
+    #[test]
+    fn every_action_landmark_is_inspectable() {
+        for action in ACTIONS {
+            let result = inspect_landmark_result(&json!({"landmark_id": action.landmark.as_str()}));
+            let text = content_text(&result);
+            assert!(
+                text.contains(action.id),
+                "landmark '{}' inspection does not list action '{}'",
+                action.landmark.as_str(),
+                action.id
+            );
+        }
+    }
+
+    /// Every action must have a non-trivial input schema (has a 'properties' field).
+    /// Since native_input_schema is an exhaustive match, the compiler already
+    /// enforces coverage — this test verifies the schemas are non-empty.
+    #[test]
+    fn every_action_has_a_non_empty_input_schema() {
+        for action in ACTIONS {
+            let schema = native_input_schema(action.native_tool);
+            assert!(
+                schema.get("properties").is_some(),
+                "action '{}' (tool={}) has no 'properties' in its schema",
+                action.id,
+                action.native_tool.as_str()
+            );
+        }
+    }
+
+    /// Landmark::from_str and as_str must round-trip for every variant in ALL.
+    #[test]
+    fn landmark_from_str_roundtrips_all_variants() {
+        for landmark in Landmark::ALL {
+            let s = landmark.as_str();
+            assert_eq!(
+                Landmark::from_str(s),
+                Some(*landmark),
+                "Landmark::from_str(\"{s}\") did not round-trip"
+            );
+        }
     }
 
     #[test]
@@ -926,13 +1247,9 @@ mod tests {
         assert!(manifest.contains("call_action"));
 
         let landmarks = content_text(&landmarks_result());
-        assert!(landmarks.contains("workspace"));
-        assert!(landmarks.contains("utility"));
-        assert!(landmarks.contains("agents"));
-        assert!(landmarks.contains("runtime"));
-        assert!(landmarks.contains("supervisor"));
-        assert!(landmarks.contains("browser"));
-        assert!(landmarks.contains("graph"));
+        for landmark in Landmark::ALL {
+            assert!(landmarks.contains(landmark.as_str()));
+        }
     }
 
     #[test]
@@ -950,6 +1267,21 @@ mod tests {
     }
 
     #[test]
+    fn inspect_project_landmark_returns_plan_and_score_actions() {
+        let result = inspect_landmark_result(&json!({"landmark_id": "project"}));
+        let text = content_text(&result);
+        assert!(text.contains("project:plan_read"));
+        assert!(text.contains("project:plan_update"));
+        assert!(text.contains("project:score"));
+
+        let plan_update = inspect_landmark_result(&json!({"landmark_id": "project:plan_update"}));
+        let schema_text = content_text(&plan_update);
+        assert!(schema_text.contains("\"op\""));
+        assert!(schema_text.contains("upsert_node"));
+        assert!(schema_text.contains("set_status"));
+    }
+
+    #[test]
     fn call_action_accepts_landmark_ids_and_legacy_native_aliases() {
         let call = json!({
             "action": "workspace:shell",
@@ -961,7 +1293,7 @@ mod tests {
 
         assert_eq!(
             resolve_action_id("workspace:shell").unwrap().native_tool,
-            "shell"
+            NativeTool::Shell
         );
         assert_eq!(resolve_action_id("shell").unwrap().id, "workspace:shell");
         assert!(parameters_from_call_action(

@@ -9,15 +9,20 @@ pub mod api;
 pub mod capability;
 pub mod codec;
 pub mod domain;
-pub mod error;
-pub mod graph_mutation;
 pub mod kernel;
 pub mod process;
-pub mod recovery;
 pub mod runtime;
-pub mod score;
-pub mod timing;
-pub mod validation_harness;
+pub use crate::capability::eval::score;
+pub use crate::capability::verification::validation_harness;
+pub use crate::kernel::error;
+pub use crate::process::agent::cycle::timing;
+
+pub mod recovery {
+    pub use crate::api::transport::replay::{
+        recovery_action, verify_receipt_chain, FailureClass, ReceiptChainEntry,
+        ReceiptReplayFailure, ReceiptReplayReport, RecoveryAction, ValidationReceipt,
+    };
+}
 
 pub use crate::api::mcp::{
     ai_mcp_tools_list, dispatch_ai_mcp_plan, kernel_command_payload, kernel_command_payload_tag,
@@ -116,8 +121,10 @@ pub use crate::capability::observation::{
     OBSERVATION_INGRESS_RECEIPT_RECORD, OBSERVATION_INGRESS_RECEIPT_SCHEMA_VERSION,
 };
 pub use crate::capability::orchestration::{
-    CapabilityRoute, OrchestrationBatchDecision, OrchestrationBatchRecord, OrchestrationBudget,
-    OrchestrationDecision, OrchestrationRecord, SelectedCapabilityRoute,
+    AgentCycleEvent, AgentCycleEventKind, ChildCompleteRecord, WaveRecord, CapabilityRoute,
+    OrchestrationBatchDecision,
+    OrchestrationBatchRecord, OrchestrationBudget, OrchestrationDecision, OrchestrationRecord,
+    SelectedCapabilityRoute,
 };
 pub use crate::capability::planning::{
     PlanDecision, PlanReceipt, PlanRecord, PLAN_RECEIPT_RECORD, PLAN_RECEIPT_SCHEMA_VERSION,
@@ -125,6 +132,24 @@ pub use crate::capability::planning::{
 pub use crate::capability::policy::{
     PolicyEntry, PolicyLookupReceipt, PolicyProofReceipt, PolicyStore, PolicyStoreError,
     POLICY_FEEDBACK_HASH, POLICY_PROMOTION_SOURCE_SEQ,
+};
+pub use crate::capability::tooling::graph_patch_contract::{
+    append_graph_mutation_receipt_ndjson, append_graph_patch_receipt_ndjson,
+    decode_graph_mutation_op_row_ndjson, decode_graph_mutation_ops_ndjson,
+    decode_graph_mutation_receipt_ndjson, decode_graph_patch_receipt_ndjson,
+    decode_graph_snapshot_contract_ndjson, encode_graph_mutation_op_row_ndjson,
+    encode_graph_mutation_ops_ndjson, encode_graph_mutation_opset_receipt_ndjson,
+    encode_graph_mutation_receipt_ndjson, encode_graph_patch_receipt_ndjson,
+    encode_graph_receipt_ledger_receipt_ndjson, encode_graph_snapshot_contract_ndjson,
+    generate_graph_patch, load_graph_mutation_receipts_ndjson, load_graph_patch_receipts_ndjson,
+    load_graph_snapshot_contract_ndjson, verify_graph_mutation_landing,
+    verify_graph_mutation_ops_ndjson, verify_graph_receipt_ledger_files_ndjson,
+    verify_graph_receipt_ledgers_ndjson, GraphEdgeContract, GraphMutationOp, GraphMutationOpRow,
+    GraphMutationOpSetReceipt, GraphMutationReceipt, GraphMutationVerdict, GraphNodeContract,
+    GraphPatchError, GraphPatchPlan, GraphPatchReceipt, GraphReceiptLedgerReceipt,
+    GraphSnapshotContract, GraphSourceFile, GraphSourceSpan, GRAPH_JSON_SCHEMA_VERSION,
+    GRAPH_MUTATION_LEDGER_RECORD, GRAPH_MUTATION_OPSET_RECORD, GRAPH_MUTATION_RECEIPT_RECORD,
+    GRAPH_MUTATION_SCHEMA_VERSION, GRAPH_MUTATION_VERIFY_RECORD,
 };
 pub use crate::capability::tooling::{
     append_mcp_call_receipt_ndjson, append_process_effect_receipt_ndjson,
@@ -164,24 +189,6 @@ pub use crate::codec::ndjson::{
     append_tlog_ndjson, decode_control_event_ndjson, decode_tlog_ndjson_str,
     encode_control_event_ndjson, encode_tlog_ndjson_string, load_tlog_ndjson, write_tlog_ndjson,
     TLOG_RECORD_EVENT, TLOG_SCHEMA_VERSION,
-};
-pub use crate::graph_mutation::{
-    append_graph_mutation_receipt_ndjson, append_graph_patch_receipt_ndjson,
-    decode_graph_mutation_op_row_ndjson, decode_graph_mutation_ops_ndjson,
-    decode_graph_mutation_receipt_ndjson, decode_graph_patch_receipt_ndjson,
-    decode_graph_snapshot_contract_ndjson, encode_graph_mutation_op_row_ndjson,
-    encode_graph_mutation_ops_ndjson, encode_graph_mutation_opset_receipt_ndjson,
-    encode_graph_mutation_receipt_ndjson, encode_graph_patch_receipt_ndjson,
-    encode_graph_receipt_ledger_receipt_ndjson, encode_graph_snapshot_contract_ndjson,
-    generate_graph_patch, load_graph_mutation_receipts_ndjson, load_graph_patch_receipts_ndjson,
-    load_graph_snapshot_contract_ndjson, verify_graph_mutation_landing,
-    verify_graph_mutation_ops_ndjson, verify_graph_receipt_ledger_files_ndjson,
-    verify_graph_receipt_ledgers_ndjson, GraphEdgeContract, GraphMutationOp, GraphMutationOpRow,
-    GraphMutationOpSetReceipt, GraphMutationReceipt, GraphMutationVerdict, GraphNodeContract,
-    GraphPatchError, GraphPatchPlan, GraphPatchReceipt, GraphReceiptLedgerReceipt,
-    GraphSnapshotContract, GraphSourceFile, GraphSourceSpan, GRAPH_JSON_SCHEMA_VERSION,
-    GRAPH_MUTATION_LEDGER_RECORD, GRAPH_MUTATION_OPSET_RECORD, GRAPH_MUTATION_RECEIPT_RECORD,
-    GRAPH_MUTATION_SCHEMA_VERSION, GRAPH_MUTATION_VERIFY_RECORD,
 };
 pub use crate::kernel::{
     CapabilityRegistryProjection, Cause, ControlEvent, Decision, EventKind, Evidence, FailureClass,
@@ -242,9 +249,9 @@ pub fn run_demo() -> Result<RunReport, CanonError> {
 
     Ok(RunReport {
         ready_state,
-        ready_tlog,
+        ready_tlog: ready_tlog.to_vec(),
         repaired_state,
-        repaired_tlog,
+        repaired_tlog: repaired_tlog.to_vec(),
     })
 }
 

@@ -3,17 +3,19 @@
 //! This module defines the request-frame contract that an HTTP/gRPC adapter can
 //! validate before command envelopes are allowed to mutate runtime state.
 
+pub mod replay;
+
 use std::fs::{File, OpenOptions};
 use std::io::{BufRead, BufReader, Write};
 use std::path::Path;
 
-use crate::api::protocol::{CommandEnvelope, CommandLedger, ControlEventResponse};
-use crate::api::routes::handle_envelope_once;
-use crate::error::CanonError;
-use crate::kernel::{ControlEvent, RuntimeConfig, State, TLog};
-use crate::recovery::{
+use self::replay::{
     verify_receipt_chain, ReceiptChainEntry, ReceiptReplayFailure, ReceiptReplayReport,
 };
+use crate::api::protocol::{CommandEnvelope, CommandLedger, ControlEventResponse};
+use crate::api::routes::handle_envelope_once;
+use crate::kernel::CanonError;
+use crate::kernel::{ControlEvent, RuntimeConfig, State, TLog};
 use crate::runtime::verify_tlog;
 
 pub const API_TRANSPORT_SCHEMA_VERSION: u64 = 1;

@@ -13,9 +13,13 @@ fn temp_tlog_dir(name: &str) -> std::path::PathBuf {
     std::env::temp_dir().join(format!("ai-worker-bin-{name}-{}", std::process::id()))
 }
 
+fn kernel_tlog_bin() -> String {
+    std::env::var("CARGO_BIN_EXE_kernel_tlog").expect("kernel_tlog binary path")
+}
+
 #[test]
 fn worker_help_does_not_require_environment() {
-    let output = Command::new(env!("CARGO_BIN_EXE_kernel_tlog"))
+    let output = Command::new(kernel_tlog_bin())
         .arg("--help")
         .output()
         .expect("kernel_tlog --help should run");
@@ -33,7 +37,7 @@ fn worker_process_serves_health_and_initializes_tlog() {
     let tlog_dir = temp_tlog_dir("health");
     let _ = std::fs::remove_dir_all(&tlog_dir);
 
-    let mut child = Command::new(env!("CARGO_BIN_EXE_kernel_tlog"))
+    let mut child = Command::new(kernel_tlog_bin())
         .env("PORT", port.to_string())
         .env("AI_TLOG_DIR", &tlog_dir)
         .stdin(Stdio::null())

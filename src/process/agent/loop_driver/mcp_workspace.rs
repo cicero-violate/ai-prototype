@@ -5,19 +5,38 @@ use std::net::TcpStream;
 use std::path::Path;
 use std::time::Duration;
 
-/// POST {mcp_url}/workspace with the project root. Mirrors syncMcpWorkspace().
+/// POST {mcp_url}/ai/workspace with the project root. Retries while the supervisor is starting.
 pub(super) fn sync_mcp_workspace(mcp_url: &str, project_dir: &Path) -> Result<(), String> {
+    const MAX_ATTEMPTS: u32 = 12;
+    const RETRY_MS: u64 = 2_500;
+
     let (host, port) = parse_mcp_workspace_endpoint(mcp_url)?;
     let request = build_mcp_workspace_request(&host, port, project_dir);
-    let response = send_mcp_workspace_request(&host, port, &request)?;
 
-    let status = parse_mcp_workspace_status(&response);
-
-    if status != 200 && status != 201 {
-        return Err(format!("MCP workspace sync returned HTTP {status}"));
+    let mut last_err = String::new();
+    for attempt in 1..=MAX_ATTEMPTS {
+        match send_mcp_workspace_request(&host, port, &request) {
+            Ok(response) => {
+                let status = parse_mcp_workspace_status(&response);
+                if status == 200 || status == 201 {
+                    return Ok(());
+                }
+                return Err(format!("MCP workspace sync returned HTTP {status}"));
+            }
+            Err(e) => {
+                last_err = e;
+                if attempt < MAX_ATTEMPTS {
+                    eprintln!(
+                        "agent: MCP workspace sync attempt {attempt}/{MAX_ATTEMPTS} failed: {last_err} — retrying in {RETRY_MS}ms"
+                    );
+                    std::thread::sleep(Duration::from_millis(RETRY_MS));
+                }
+            }
+        }
     }
-
-    Ok(())
+    Err(format!(
+        "MCP workspace sync failed after {MAX_ATTEMPTS} attempts: {last_err}"
+    ))
 }
 
 pub(super) fn send_mcp_workspace_request(
@@ -71,7 +90,7 @@ pub(super) fn build_mcp_workspace_request(host: &str, port: u16, project_dir: &P
     let body = format!("{{\"root\":\"{root}\"}}");
 
     format!(
-        "POST /workspace HTTP/1.1\r\nHost: {host}:{port}\r\nContent-Type: application/json\r\nConnection: close\r\nContent-Length: {len}\r\n\r\n{body}",
+        "POST /ai/workspace HTTP/1.1\r\nHost: {host}:{port}\r\nContent-Type: application/json\r\nConnection: close\r\nContent-Length: {len}\r\n\r\n{body}",
         len = body.len(),
     )
 }

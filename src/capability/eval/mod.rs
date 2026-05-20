@@ -6,6 +6,7 @@
 
 pub mod evolution;
 pub mod record;
+pub mod score;
 
 pub use self::evolution::{
     encode_candidate_receipt_ndjson, CandidateReceipt, CandidateReceiptInput, CandidateVerdict,
@@ -17,3 +18,5 @@ pub use self::record::{
     EvalDimension, EvalRecord, EvalScorecardReceipt, EVAL_SCORECARD_RECORD,
     EVAL_SCORECARD_SCHEMA_VERSION,
 };
+
+pub use self::score::{geometric_mean, ScoreDelta, ScoreVector};

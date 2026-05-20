@@ -12,7 +12,9 @@ use std::time::{Duration, Instant};
 use serde::{Deserialize, Serialize};
 use tokio::process::{Child, Command};
 
-use crate::process::agent::{AgentLoopConfig, LoopDriver};
+use crate::process::agent::{
+    AgentLoopConfig, LoopDriver, DEFAULT_MINI_AGENT_COUNT, MAX_MINI_AGENT_COUNT,
+};
 use crate::runtime::workspace::workspace_state_dir;
 
 pub struct WorkerProcess {
@@ -163,6 +165,7 @@ impl WorkerProcess {
             turn_retry_limit: 2,
             loop_sleep_ms: 5000,
             agent_count: 1,
+            mini_agent_count: 1,
             working_dir: project_dir.clone(),
             sse_chunks_dir,
             project_dir,
@@ -175,6 +178,7 @@ impl WorkerProcess {
             cert_max_steps: 30,
             domain: Some(domain.to_string()),
             metric: Some(metric.to_string()),
+            plan_node_id: None,
         };
 
         eprintln!(
@@ -196,6 +200,78 @@ impl WorkerProcess {
         })
     }
 
+    pub fn start_main_loop(&mut self, req: StartLoopRequest) -> Result<StartLoopDto, String> {
+        let worker_port = self
+            .active
+            .as_ref()
+            .map(|w| w.port)
+            .ok_or_else(|| "no active worker — call /reload first".to_string())?;
+
+        let project_dir = req
+            .working_dir
+            .map(PathBuf::from)
+            .unwrap_or_else(|| self.project_dir.clone());
+        let mcp_connector_url = self.mcp_connector_url.clone();
+        let execute_turns: u32 = req.execute_turns.unwrap_or_else(|| {
+            env::var("EXECUTE_TURNS")
+                .ok()
+                .and_then(|v| v.parse().ok())
+                .unwrap_or(2)
+        });
+        let agent_count: u32 = req.agent_count.unwrap_or_else(|| {
+            env::var("AGENT_COUNT")
+                .ok()
+                .and_then(|v| v.parse().ok())
+                .unwrap_or(1)
+        });
+        let mini_agent_count: u32 = req
+            .mini_agent_count
+            .or_else(|| {
+                env::var("CANON_MINI_AGENT_COUNT")
+                    .ok()
+                    .and_then(|v| v.parse().ok())
+            })
+            .unwrap_or(DEFAULT_MINI_AGENT_COUNT)
+            .clamp(1, MAX_MINI_AGENT_COUNT);
+        let sse_chunks_dir = workspace_state_dir(&project_dir)
+            .join("agent_state")
+            .join("sse-chunks");
+        let config = AgentLoopConfig {
+            execute_turns,
+            turn_retry_limit: 2,
+            loop_sleep_ms: 5000,
+            agent_count,
+            mini_agent_count,
+            working_dir: project_dir.clone(),
+            sse_chunks_dir,
+            project_dir,
+            mcp_connector_url,
+            router_turn_max_ms: 600_000,
+            router_first_capture_ms: 60_000,
+            router_idle_ms: 2_500,
+            worker_port: Some(worker_port),
+            supervisor_port: Some(self.supervisor_port),
+            cert_max_steps: 30,
+            domain: None,
+            metric: None,
+            plan_node_id: None,
+        };
+
+        eprintln!("supervisor: starting main agent loop  execute_turns={execute_turns}  agents={agent_count}  mini_agents={mini_agent_count}  worker_port={worker_port}");
+        std::thread::spawn(move || {
+            LoopDriver::new(config).run_all_agents();
+            eprintln!("supervisor: main agent loop finished");
+        });
+
+        Ok(StartLoopDto {
+            ok: true,
+            worker_port,
+            execute_turns,
+            agent_count,
+            mini_agent_count,
+        })
+    }
+
     pub fn active_worker_port(&self) -> Result<u16, String> {
         self.active
             .as_ref()
@@ -205,6 +281,10 @@ impl WorkerProcess {
 
     pub fn active_generation(&self) -> Option<u64> {
         self.active.as_ref().map(|worker| worker.generation)
+    }
+
+    pub fn project_dir(&self) -> &std::path::Path {
+        &self.project_dir
     }
 }
 
@@ -263,6 +343,37 @@ pub struct SpawnDto {
     pub worker_port: u16,
 }
 
+#[derive(Clone, Debug, Default, Deserialize, PartialEq, Eq)]
+pub struct StartLoopRequest {
+    /// Override working/project directory (default: supervisor's PROJECT_DIR).
+    pub working_dir: Option<String>,
+    /// Execute turns per cycle (default: EXECUTE_TURNS env or 2).
+    pub execute_turns: Option<u32>,
+    /// Parallel agents (default: AGENT_COUNT env or 1).
+    pub agent_count: Option<u32>,
+    /// Parallel bounded DAG mini-agents per scheduling wave (default: 3, max: 5).
+    pub mini_agent_count: Option<u32>,
+}
+
+#[derive(Clone, Debug, Serialize, PartialEq, Eq)]
+pub struct StartLoopDto {
+    pub ok: bool,
+    pub worker_port: u16,
+    pub execute_turns: u32,
+    pub agent_count: u32,
+    pub mini_agent_count: u32,
+}
+
+/// A single dequeued task returned by GET /v1/task/next.
+#[derive(Clone, Debug, Serialize, PartialEq, Eq)]
+pub struct TaskNextDto {
+    pub ok: bool,
+    pub node_id: String,
+    pub title: String,
+    pub description: String,
+    pub ready_count: usize,
+}
+
 async fn spawn_worker(
     binary_path: &PathBuf,
     generation: u64,
@@ -271,6 +382,13 @@ async fn spawn_worker(
 ) -> Result<WorkerInstance, String> {
     ensure_worker_binary(binary_path).await?;
     let port = allocate_port()?;
+    let health_deadline = worker_health_deadline();
+    eprintln!(
+        "supervisor: spawning worker generation {generation}  bin={}  port={}  health_deadline={}s",
+        binary_path.display(),
+        port,
+        health_deadline.as_secs()
+    );
     let mut child = Command::new(binary_path)
         .env("AI_WORKER_MODE", "1")
         .env("PORT", port.to_string())
@@ -280,11 +398,11 @@ async fn spawn_worker(
         .kill_on_drop(true)
         .stdin(Stdio::null())
         .stdout(Stdio::null())
-        .stderr(Stdio::null())
+        .stderr(Stdio::inherit())
         .spawn()
         .map_err(|err| format!("spawn worker failed: {err}"))?;
 
-    if let Err(err) = wait_for_health(port).await {
+    if let Err(err) = wait_for_health(port, health_deadline, &mut child).await {
         let _ = child.kill().await;
         let _ = child.wait().await;
         return Err(err);
@@ -349,14 +467,38 @@ fn allocate_port() -> Result<u16, String> {
         .map_err(|err| format!("read allocated worker port failed: {err}"))
 }
 
-async fn wait_for_health(port: u16) -> Result<(), String> {
+fn worker_health_deadline() -> Duration {
+    env::var("AI_WORKER_HEALTH_DEADLINE_SECS")
+        .ok()
+        .and_then(|raw| raw.parse::<u64>().ok())
+        .filter(|seconds| *seconds > 0)
+        .map(Duration::from_secs)
+        .unwrap_or_else(|| Duration::from_secs(60))
+}
+
+async fn wait_for_health(
+    port: u16,
+    health_deadline: Duration,
+    child: &mut Child,
+) -> Result<(), String> {
     let url = format!("http://127.0.0.1:{port}/health/worker");
-    let deadline = Instant::now() + Duration::from_secs(10);
+    let deadline = Instant::now() + health_deadline;
     while Instant::now() < deadline {
+        if let Some(status) = child
+            .try_wait()
+            .map_err(|err| format!("worker wait failed during health probe: {err}"))?
+        {
+            return Err(format!(
+                "worker exited before health became ready on port {port}: {status}"
+            ));
+        }
         match reqwest::get(&url).await {
             Ok(response) if response.status().is_success() => return Ok(()),
             _ => tokio::time::sleep(Duration::from_millis(100)).await,
         }
     }
-    Err(format!("worker health deadline expired for port {port}"))
+    Err(format!(
+        "worker health deadline expired after {}s for port {port}",
+        health_deadline.as_secs()
+    ))
 }

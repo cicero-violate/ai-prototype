@@ -1,7 +1,7 @@
 //! Graph editor tooling bridge.
 //!
 //! This module is the operational bridge between MCP/tooling and the canonical
-//! graph mutation contract in `crate::graph_mutation`. It owns file/workspace
+//! graph patch contract in `crate::capability::tooling::graph_patch_contract`. It owns file/workspace
 //! I/O and response shaping, but it does not define graph mutation receipt or
 //! verification authority.
 
@@ -12,7 +12,7 @@ use std::fs;
 use std::path::Path;
 use std::process::Command;
 
-use crate::graph_mutation::{
+use crate::capability::tooling::graph_patch_contract::{
     decode_graph_mutation_ops_ndjson, decode_graph_snapshot_contract_ndjson,
     encode_graph_mutation_ops_ndjson, encode_graph_mutation_opset_receipt_ndjson,
     encode_graph_patch_receipt_ndjson, generate_graph_patch, verify_graph_mutation_ops_ndjson,
@@ -203,13 +203,14 @@ impl GraphAutoRefactorCfgRequest {
 }
 
 fn optional_graph_artifact_root(args: &Value) -> Result<Option<String>, String> {
-    Ok(optional_string(args, "graph_artifact_root")?
-        .or(optional_string(args, "artifact_root")?)
-        .or_else(|| Some("state/rustc".to_string())))
+    Ok(
+        optional_string_alias(args, &["graph_artifact_root", "artifact_root"])?
+            .or_else(|| Some("state/rustc".to_string())),
+    )
 }
 
 fn optional_new_graph_path(args: &Value) -> Result<Option<String>, String> {
-    Ok(optional_string(args, "new_graph")?.or(optional_string(args, "new_graph_path")?))
+    optional_string_alias(args, &["new_graph", "new_graph_path"])
 }
 
 pub fn verify_cfg_delta_tool(args: &Value, workspace: &WorkspaceView) -> Value {
@@ -608,25 +609,38 @@ fn write_apply_ops_outputs(
     patch_diff: &str,
     apply_patch_text: &str,
 ) -> Result<(), String> {
-    if let Some(path) = request.graph_out.as_deref() {
-        let out = resolve_workspace_file(workspace, path)?;
-        write_string(
-            &out,
-            &serde_json::to_string_pretty(graph_json).unwrap_or_else(|_| graph_json.to_string()),
-        )?;
-    }
-
-    if let Some(path) = request.patch_out.as_deref() {
-        let out = resolve_workspace_file(workspace, path)?;
-        write_string(&out, patch_diff)?;
-    }
-
-    if let Some(path) = request.apply_patch_out.as_deref() {
-        let out = resolve_workspace_file(workspace, path)?;
-        write_string(&out, apply_patch_text)?;
-    }
-
+    write_optional_pretty_json(workspace, request.graph_out.as_deref(), graph_json)?;
+    write_optional_text(workspace, request.patch_out.as_deref(), patch_diff)?;
+    write_optional_text(
+        workspace,
+        request.apply_patch_out.as_deref(),
+        apply_patch_text,
+    )?;
     Ok(())
+}
+
+fn write_optional_text(
+    workspace: &WorkspaceView,
+    path: Option<&str>,
+    contents: &str,
+) -> Result<(), String> {
+    let Some(path) = path else {
+        return Ok(());
+    };
+    let out = resolve_workspace_file(workspace, path)?;
+    write_string(&out, contents)
+}
+
+fn write_optional_pretty_json(
+    workspace: &WorkspaceView,
+    path: Option<&str>,
+    payload: &Value,
+) -> Result<(), String> {
+    write_optional_text(
+        workspace,
+        path,
+        &serde_json::to_string_pretty(payload).unwrap_or_else(|_| payload.to_string()),
+    )
 }
 
 fn apply_diff_to_source_if_requested(
@@ -685,8 +699,8 @@ fn apply_ops_receipt_payload(
     worktree_out: &Path,
     apply_patch_text: &str,
     source_apply: Option<&Value>,
-    plan: &crate::graph_mutation::GraphPatchPlan,
-    ops_receipt: &crate::graph_mutation::GraphMutationOpSetReceipt,
+    plan: &crate::capability::tooling::graph_patch_contract::GraphPatchPlan,
+    ops_receipt: &crate::capability::tooling::graph_patch_contract::GraphMutationOpSetReceipt,
 ) -> Value {
     json!({
         "ok": true,
@@ -731,8 +745,8 @@ fn run_optional_worktree_command(
 
 fn graph_snapshot_contract_from_graph_json(
     graph_json: &Value,
-) -> Option<crate::graph_mutation::GraphSnapshotContract> {
-    use crate::graph_mutation::{
+) -> Option<crate::capability::tooling::graph_patch_contract::GraphSnapshotContract> {
+    use crate::capability::tooling::graph_patch_contract::{
         GraphEdgeContract, GraphNodeContract, GraphSnapshotContract, GraphSourceSpan,
     };
     let schema = graph_json.get("meta")?.get("schema_version")?.as_u64()? as u32;
@@ -1272,57 +1286,70 @@ fn required_string(args: &Value, key: &str) -> Result<String, String> {
 }
 
 fn optional_string(args: &Value, key: &str) -> Result<Option<String>, String> {
-    match args.get(key) {
-        None | Some(Value::Null) => Ok(None),
-        Some(Value::String(value)) if !value.is_empty() => Ok(Some(value.clone())),
-        Some(Value::String(_)) => Ok(None),
-        Some(_) => Err(format!("{key} must be a string")),
-    }
+    optional_arg(args, key, |value| match value {
+        Value::String(value) if !value.is_empty() => Ok(Some(value.clone())),
+        Value::String(_) => Ok(None),
+        _ => Err(format!("{key} must be a string")),
+    })
 }
 
 fn optional_usize(args: &Value, key: &str) -> Result<Option<usize>, String> {
-    match args.get(key) {
-        None | Some(Value::Null) => Ok(None),
-        Some(Value::Number(value)) => value
+    optional_arg(args, key, |value| match value {
+        Value::Number(value) => value
             .as_u64()
             .map(|value| Some(value as usize))
             .ok_or_else(|| format!("{key} must be a non-negative integer")),
-        Some(Value::String(value)) if value.is_empty() => Ok(None),
-        Some(Value::String(value)) => value
+        Value::String(value) if value.is_empty() => Ok(None),
+        Value::String(value) => value
             .parse::<usize>()
             .map(Some)
             .map_err(|_| format!("{key} must be a non-negative integer")),
-        Some(_) => Err(format!("{key} must be a non-negative integer")),
-    }
+        _ => Err(format!("{key} must be a non-negative integer")),
+    })
 }
 
 fn optional_i64(args: &Value, key: &str) -> Result<Option<i64>, String> {
-    match args.get(key) {
-        None | Some(Value::Null) => Ok(None),
-        Some(Value::Number(value)) => value
+    optional_arg(args, key, |value| match value {
+        Value::Number(value) => value
             .as_i64()
             .map(Some)
             .ok_or_else(|| format!("{key} must be an integer")),
-        Some(Value::String(value)) if value.is_empty() => Ok(None),
-        Some(Value::String(value)) => value
+        Value::String(value) if value.is_empty() => Ok(None),
+        Value::String(value) => value
             .parse::<i64>()
             .map(Some)
             .map_err(|_| format!("{key} must be an integer")),
-        Some(_) => Err(format!("{key} must be an integer")),
-    }
+        _ => Err(format!("{key} must be an integer")),
+    })
 }
 
 fn optional_bool(args: &Value, key: &str) -> Result<Option<bool>, String> {
-    match args.get(key) {
-        None | Some(Value::Null) => Ok(None),
-        Some(Value::Bool(value)) => Ok(Some(*value)),
-        Some(Value::String(value)) if value.is_empty() => Ok(None),
-        Some(Value::String(value)) => value
+    optional_arg(args, key, |value| match value {
+        Value::Bool(value) => Ok(Some(*value)),
+        Value::String(value) if value.is_empty() => Ok(None),
+        Value::String(value) => value
             .parse::<bool>()
             .map(Some)
             .map_err(|_| format!("{key} must be a boolean")),
-        Some(_) => Err(format!("{key} must be a boolean")),
+        _ => Err(format!("{key} must be a boolean")),
+    })
+}
+
+fn optional_arg<T>(
+    args: &Value,
+    key: &str,
+    parse: impl FnOnce(&Value) -> Result<Option<T>, String>,
+) -> Result<Option<T>, String> {
+    match args.get(key) {
+        None | Some(Value::Null) => Ok(None),
+        Some(value) => parse(value),
     }
+}
+
+fn optional_string_alias(args: &Value, keys: &[&str]) -> Result<Option<String>, String> {
+    keys.iter().try_fold(None, |found, key| {
+        optional_string(args, key).map(|value| found.or(value))
+    })
 }
 
 fn resolve_workspace_file(

@@ -172,6 +172,19 @@ pub fn legal_transition(from: Phase, to: Phase, kind: EventKind, cause: Cause) -
         return true;
     }
 
+    // Observational events: any phase self-loops with Persisted (no gate mutation).
+    if from == to
+        && kind == EventKind::Persisted
+        && matches!(
+            cause,
+            Cause::AgentCycleEventSubmitted
+                | Cause::WaveDispatched
+                | Cause::ChildTaskCompleted
+        )
+    {
+        return true;
+    }
+
     TRANSITIONS.iter().any(|transition| {
         transition.from == from
             && transition.to == to
@@ -422,10 +435,15 @@ fn validate_replay_api_command(event: &ControlEvent) -> Result<(), CanonError> {
 
 fn validate_replay_registry_projection(event: &ControlEvent) -> Result<(), CanonError> {
     let projection = event.capability_registry_projection;
+    let is_observational = matches!(
+        event.cause,
+        Cause::AgentCycleEventSubmitted | Cause::WaveDispatched | Cause::ChildTaskCompleted
+    );
 
     if !projection.is_valid()
         || (event.cause == Cause::EvidenceSubmitted && projection.is_empty())
-        || (event.cause != Cause::EvidenceSubmitted && !projection.is_empty())
+        || (event.cause != Cause::EvidenceSubmitted && !is_observational && !projection.is_empty())
+        || (is_observational && !projection.is_empty())
     {
         return Err(CanonError::InvalidReplay);
     }
@@ -533,9 +551,64 @@ fn expected_replay_outcome(state: State, event: &ControlEvent) -> Result<Outcome
         Ok(convergence_outcome(state))
     } else if event.cause == Cause::EvidenceSubmitted {
         evidence_submission_outcome(state, event)
+    } else if matches!(
+        event.cause,
+        Cause::AgentCycleEventSubmitted | Cause::WaveDispatched | Cause::ChildTaskCompleted
+    ) {
+        observational_outcome(state, event)
     } else {
         Ok(reduce(state, event.runtime_config))
     }
+}
+
+fn observational_outcome(state: State, event: &ControlEvent) -> Result<Outcome, CanonError> {
+    if event.from != event.to {
+        return Err(CanonError::InvalidReplay);
+    }
+
+    // Wave events mutate wave_pending; verify the expected delta and that all
+    // other state fields are unchanged.
+    let state_after = match event.cause {
+        Cause::WaveDispatched => {
+            // wave_pending must not decrease on dispatch.
+            if event.state_after.wave_pending < state.wave_pending {
+                return Err(CanonError::InvalidReplay);
+            }
+            let mut expected = state;
+            expected.wave_pending = event.state_after.wave_pending;
+            if expected != event.state_after {
+                return Err(CanonError::InvalidReplay);
+            }
+            event.state_after
+        }
+        Cause::ChildTaskCompleted => {
+            let mut expected = state;
+            expected.wave_pending = state.wave_pending.saturating_sub(1);
+            if expected != event.state_after {
+                return Err(CanonError::InvalidReplay);
+            }
+            event.state_after
+        }
+        _ => {
+            // AgentCycleEventSubmitted and any future pure-observational causes:
+            // state must be completely unchanged.
+            if event.state_after != state {
+                return Err(CanonError::InvalidReplay);
+            }
+            state
+        }
+    };
+
+    Ok(Outcome {
+        state: state_after,
+        kind: EventKind::Persisted,
+        cause: event.cause,
+        evidence: event.evidence,
+        decision: Decision::Continue,
+        failure: None,
+        recovery_action: None,
+        affected_gate: None,
+    })
 }
 
 #[derive(Clone, Copy)]
@@ -593,6 +666,7 @@ fn state_hash(state: State) -> u64 {
     h = mix_option_failure(h, state.failure);
     h = mix_option_recovery(h, state.recovery_action);
     h = mix(h, state.recovery_attempts as u64);
+    h = mix(h, state.wave_pending as u64);
     h
 }
 

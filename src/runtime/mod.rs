@@ -45,7 +45,7 @@ pub use self::verify::{
     replay_tlog_ndjson, verify_tlog, verify_tlog_from, CommandCausalityReport, ReplayReport,
 };
 pub use self::workspace::WorkspaceView;
-pub use crate::error::CanonError;
+pub use crate::kernel::CanonError;
 
 use self::recovery_policy::{evidence_for_gate, recovery_policy_coverage_count};
 pub(crate) use self::reducer::reduce;

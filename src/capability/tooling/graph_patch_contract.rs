@@ -1,10 +1,9 @@
-//! Graph-as-canonical-source mutation contract.
+//! Graph patch contract for graph-backed source mutations.
 //!
-//! The canon-rustc-v3 wrapper emits `graph.json` nodes with source byte spans.
-//! This module defines the root project contract used by external mutation
-//! agents: typed graph operations are checked against the current graph, turned
-//! into deterministic unified-diff hunks, and can later be verified by graph
-//! re-capture plus graph-diff receipts.
+//! This module does not create `graph.json`. It consumes a captured graph
+//! contract, source byte spans, and typed mutation operations, then produces
+//! deterministic unified-diff hunks plus receipts that can be verified after
+//! graph re-capture and graph-diff comparison.
 
 use crate::kernel::mix;
 use std::collections::{BTreeMap, BTreeSet};

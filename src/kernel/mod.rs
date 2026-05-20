@@ -6,6 +6,7 @@
 
 mod capability;
 mod config;
+pub mod error;
 mod event;
 mod gate;
 mod packet;
@@ -15,6 +16,7 @@ mod state;
 
 pub use self::capability::CapabilityRegistryProjection;
 pub use self::config::RuntimeConfig;
+pub use self::error::CanonError;
 pub use self::event::{Cause, ControlEvent, Decision, EventKind, SemanticDelta, TLog};
 pub use self::gate::{
     Evidence, Gate, GateId, GateSet, GateStatus, EXECUTION_GATE_ORDER, GATE_ORDER,

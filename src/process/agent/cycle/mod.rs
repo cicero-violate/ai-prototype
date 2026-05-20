@@ -21,6 +21,7 @@ mod evidence;
 mod phase;
 mod recovery;
 mod state_parse;
+pub mod timing;
 
 use evidence::build_submit_evidence_json;
 use phase::{parse_verdict, phase_gate, use_teacher};

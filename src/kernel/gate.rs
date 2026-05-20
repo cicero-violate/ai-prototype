@@ -61,6 +61,9 @@ pub enum Evidence {
     PersistedRecord = 16,
     LearningRecord = 17,
     PolicyPromotion = 18,
+    AgentCycleEvent = 19,
+    WaveDispatched = 20,
+    ChildTaskComplete = 21,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]

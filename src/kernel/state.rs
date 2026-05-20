@@ -8,6 +8,10 @@ pub struct State {
     pub failure: Option<FailureClass>,
     pub recovery_action: Option<RecoveryAction>,
     pub recovery_attempts: u8,
+    /// Number of child DAG tasks currently in flight (wave fan-out counter).
+    /// Set by WaveDispatch events; decremented by ChildComplete events.
+    /// Stored in TLog so replay can reconstruct the wave state after a crash.
+    pub wave_pending: u16,
 }
 
 impl Default for State {
@@ -19,6 +23,7 @@ impl Default for State {
             failure: None,
             recovery_action: None,
             recovery_attempts: 0,
+            wave_pending: 0,
         }
     }
 }
@@ -32,6 +37,7 @@ impl State {
             failure: None,
             recovery_action: None,
             recovery_attempts: 0,
+            wave_pending: 0,
         }
     }
 

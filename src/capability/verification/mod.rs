@@ -5,6 +5,7 @@
 
 pub mod proof;
 pub mod record;
+pub mod validation_harness;
 
 pub use self::proof::{
     append_verification_proof_record_ndjson, decode_verification_proof_record_ndjson,

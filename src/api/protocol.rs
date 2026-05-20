@@ -1,6 +1,7 @@
 //! External command/evidence protocol.
 
 use crate::capability::observation::ObservationIngressBatch;
+use crate::capability::orchestration::{AgentCycleEvent, ChildCompleteRecord, WaveRecord};
 use crate::capability::tooling::{
     McpCallReceipt, McpCallRequest, SandboxProcessReceipt, SandboxProcessRequest,
 };
@@ -25,6 +26,9 @@ pub enum Command {
     SubmitProcessReceipt(SandboxProcessReceipt),
     SubmitMailboxMessageReceipt(MailboxMessageReceipt),
     SubmitProcessReceiptBatch(Vec<SandboxProcessReceipt>),
+    SubmitAgentCycleEvent(AgentCycleEvent),
+    SubmitWaveDispatch(WaveRecord),
+    SubmitChildComplete(ChildCompleteRecord),
 }
 
 impl Command {
@@ -76,6 +80,9 @@ impl Command {
                     })
                     && process_receipt_hashes_are_unique(receipts)
             }
+            Self::SubmitAgentCycleEvent(event) => event.is_contract_valid(),
+            Self::SubmitWaveDispatch(record) => record.is_contract_valid(),
+            Self::SubmitChildComplete(record) => record.is_contract_valid(),
         }
     }
 
@@ -91,6 +98,9 @@ impl Command {
             Self::SubmitProcessReceipt(_) => 1,
             Self::SubmitMailboxMessageReceipt(_) => 1,
             Self::SubmitProcessReceiptBatch(receipts) => receipts.len(),
+            Self::SubmitAgentCycleEvent(_) => 1,
+            Self::SubmitWaveDispatch(_) => 1,
+            Self::SubmitChildComplete(_) => 1,
         }
     }
 
@@ -188,6 +198,27 @@ impl Command {
                 }
                 h.max(1)
             }
+            Self::SubmitAgentCycleEvent(event) => {
+                let mut h = 0xc4de_5a7e_3b0f_1906u64;
+                h ^= self.submission_count() as u64;
+                h = h.wrapping_mul(0x100000001b3);
+                h ^= event.contract_hash();
+                h.wrapping_mul(0x100000001b3).max(1)
+            }
+            Self::SubmitWaveDispatch(record) => {
+                let mut h = 0xd4a7_3b2e_0091_0001u64;
+                h ^= self.submission_count() as u64;
+                h = h.wrapping_mul(0x100000001b3);
+                h ^= record.contract_hash();
+                h.wrapping_mul(0x100000001b3).max(1)
+            }
+            Self::SubmitChildComplete(record) => {
+                let mut h = 0xc3f1_9a4d_0092_0001u64;
+                h ^= self.submission_count() as u64;
+                h = h.wrapping_mul(0x100000001b3);
+                h ^= record.contract_hash();
+                h.wrapping_mul(0x100000001b3).max(1)
+            }
         }
     }
 }
@@ -263,7 +294,7 @@ impl CommandLedger {
         &mut self,
         envelope: &CommandEnvelope,
         event: &ControlEvent,
-    ) -> Result<CommandReceipt, crate::error::CanonError> {
+    ) -> Result<CommandReceipt, crate::kernel::CanonError> {
         self.push_receipt(envelope.command_id, envelope.command_hash, event)
     }
 }

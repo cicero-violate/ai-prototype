@@ -50,7 +50,7 @@ fn raised_failure_delta(b: State) -> Option<SemanticDelta> {
 }
 
 fn payload_delta(a: State, b: State) -> Option<SemanticDelta> {
-    if a.packet != b.packet || a.gates != b.gates {
+    if a.packet != b.packet || a.gates != b.gates || a.wave_pending != b.wave_pending {
         Some(SemanticDelta::PayloadChanged)
     } else {
         None

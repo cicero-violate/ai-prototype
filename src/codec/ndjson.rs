@@ -4,14 +4,14 @@ use std::fs::{self, File, OpenOptions};
 use std::io::{BufRead, BufReader, Write};
 use std::path::Path;
 
-use crate::error::CanonError;
+use crate::kernel::CanonError;
 use crate::kernel::{
     CapabilityRegistryProjection, Cause, ControlEvent, Decision, EventKind, Evidence, FailureClass,
     Gate, GateId, GateSet, GateStatus, Packet, Phase, RecoveryAction, RuntimeConfig, SemanticDelta,
     State, TLog, GATE_ORDER,
 };
 
-pub const TLOG_SCHEMA_VERSION: u64 = 5;
+pub const TLOG_SCHEMA_VERSION: u64 = 6;
 pub const TLOG_RECORD_EVENT: u64 = 1;
 
 pub fn append_tlog_ndjson(path: impl AsRef<Path>, event: &ControlEvent) -> Result<(), CanonError> {
@@ -339,6 +339,7 @@ fn push_state(out: &mut Vec<u64>, state: State) {
     out.push(opt_failure_to_u64(state.failure));
     out.push(opt_recovery_to_u64(state.recovery_action));
     out.push(state.recovery_attempts as u64);
+    out.push(state.wave_pending as u64);
 }
 
 fn pop_state(cursor: &mut Cursor<'_>) -> Result<State, CanonError> {
@@ -349,6 +350,7 @@ fn pop_state(cursor: &mut Cursor<'_>) -> Result<State, CanonError> {
         failure: opt_failure_from_u64(cursor.take()?)?,
         recovery_action: opt_recovery_from_u64(cursor.take()?)?,
         recovery_attempts: u8_from_u64(cursor.take()?)?,
+        wave_pending: u16_from_u64(cursor.take()?)?,
     })
 }
 
@@ -405,6 +407,10 @@ fn pop_packet(cursor: &mut Cursor<'_>) -> Result<Packet, CanonError> {
 
 fn u8_from_u64(value: u64) -> Result<u8, CanonError> {
     u8::try_from(value).map_err(|_| CanonError::InvalidTlogRecord)
+}
+
+fn u16_from_u64(value: u64) -> Result<u16, CanonError> {
+    u16::try_from(value).map_err(|_| CanonError::InvalidTlogRecord)
 }
 
 fn opt_failure_to_u64(value: Option<FailureClass>) -> u64 {
@@ -501,6 +507,9 @@ const EVIDENCE_TAGS: &[(u64, Evidence)] = &[
     (16, Evidence::PersistedRecord),
     (17, Evidence::LearningRecord),
     (18, Evidence::PolicyPromotion),
+    (19, Evidence::AgentCycleEvent),
+    (20, Evidence::WaveDispatched),
+    (21, Evidence::ChildTaskComplete),
 ];
 
 const FAILURE_TAGS: &[(u64, FailureClass)] = &[
@@ -571,6 +580,9 @@ const CAUSE_TAGS: &[(u64, Cause)] = &[
     (18, Cause::Persisted),
     (19, Cause::PolicyPromoted),
     (20, Cause::EvidenceSubmitted),
+    (21, Cause::AgentCycleEventSubmitted),
+    (22, Cause::WaveDispatched),
+    (23, Cause::ChildTaskCompleted),
 ];
 
 const DECISION_TAGS: &[(u64, Decision)] = &[

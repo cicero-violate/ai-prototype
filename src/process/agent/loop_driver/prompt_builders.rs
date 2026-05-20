@@ -6,7 +6,7 @@ use std::path::Path;
 use crate::process::agent::config::AgentLoopConfig;
 
 use super::http::agent_command_url;
-use super::learning::load_policy_feedback;
+use super::learning::{load_mcp_feedback, load_policy_feedback};
 
 pub(super) struct RunCyclePlan {
     pub(super) is_spawned: bool,
@@ -57,6 +57,7 @@ pub(super) fn build_turn_prompt_context(
     working_dir: &Path,
     domain: Option<&str>,
     metric: Option<&str>,
+    plan_node_id: Option<&str>,
 ) -> TurnPromptContext {
     let effective_turn = turn + turn_offset;
     let turn_mode = project_turn_mode(effective_turn);
@@ -71,6 +72,7 @@ pub(super) fn build_turn_prompt_context(
         spawned_prompt(
             domain.unwrap_or(""),
             metric.unwrap_or(""),
+            plan_node_id,
             turn + 1,
             working_dir,
         )
@@ -96,9 +98,9 @@ pub(super) fn build_project_planning_prompt(
     agent_count: u32,
     working_dir: &Path,
 ) -> String {
-    let score_report = fs::read_to_string(working_dir.join("SCORE_REPORT.md")).ok();
     let auto_refactor_report = auto_refactor_summary(working_dir);
     let policy_feedback = load_policy_feedback(working_dir);
+    let mcp_feedback = load_mcp_feedback(working_dir);
     planning_prompt(
         goal,
         agent_id,
@@ -106,9 +108,10 @@ pub(super) fn build_project_planning_prompt(
         working_dir,
         None,
         None,
-        score_report.as_deref(),
+        None,
         auto_refactor_report.as_deref(),
         policy_feedback.as_deref(),
+        mcp_feedback.as_deref(),
     )
 }
 
@@ -119,9 +122,10 @@ pub(super) fn planning_prompt(
     working_dir: &Path,
     domain: Option<&str>,
     metric: Option<&str>,
-    score_report: Option<&str>,
+    _score_report: Option<&str>,
     auto_refactor_report: Option<&str>,
     policy_feedback: Option<&str>,
+    mcp_feedback: Option<&str>,
 ) -> String {
     let agent_line = agent_identity(agent_id, agent_count);
     let focus_block = match (domain, metric) {
@@ -131,13 +135,7 @@ pub(super) fn planning_prompt(
         (Some(d), None) => format!("## YOUR SPECIFIC TASK\n{d}\n\n"),
         _ => String::new(),
     };
-    let score_block = match score_report {
-        Some(report) => format!(
-            "## STRUCTURAL QUALITY SCORES (SCORE_REPORT.md — graph-derived, updated each commit)\n\
-             ```\n{report}\n```\n\n"
-        ),
-        None => String::new(),
-    };
+    let score_block = String::new();
     let auto_refactor_block = match auto_refactor_report {
         Some(report) if !report.trim().is_empty() => format!(
             "## AUTO-REFACTOR PLANS (state/rustc/auto-refactor — graph-editor planning evidence)\n\
@@ -156,6 +154,13 @@ pub(super) fn planning_prompt(
         ),
         None => String::new(),
     };
+    let mcp_error_block = match mcp_feedback {
+        Some(feedback) if !feedback.trim().is_empty() => format!(
+            "## MCP TOOL FEEDBACK (last cycle errors — avoid repeating these mistakes)\n\
+             {feedback}\n"
+        ),
+        _ => String::new(),
+    };
     format!(
         "{agent_line}\n\
          You are doing the planning turn for this agent loop.\n\n\
@@ -166,28 +171,45 @@ pub(super) fn planning_prompt(
          {score_block}\
          {auto_refactor_block}\
          {policy_block}\
+         {mcp_error_block}\
+         ## HOW MINI-AGENT DISPATCH WORKS\n\
+         After this planning turn finishes, the scheduler reads `state/plan.json` and **spawns one mini-agent per ready node in parallel**. \
+         A ready node is a `pending` node whose every dependency node is already `done`. \
+         Nodes with no incoming edges are immediately ready. \
+         Each mini-agent receives the node `title` as its task and `description` as its success criterion, runs autonomously, and commits its result. \
+         The more work you decompose into independent DAG nodes, the more parallelism you get — up to one agent per node.\n\n\
          ## OPTIMIZATION OBJECTIVE\n\
-         The purpose of this planning turn is to choose the next executable work that maximizes expected project goodness. \
-         Treat the score axes in `score.md` as the current objective surface. \
+         Decompose the next cycle's work into parallel tasks and publish them as a DAG to maximize score gain per wall-clock cycle. \
+         Treat each node's `score_axes` as the current objective surface. \
          Let each possible work item be x, each score axis be p_i(x) in [0,10], and each optional axis weight be w_i >= 0. \
-         Prefer checklist items by expected score gain under:\n\
+         Prefer tasks by expected score gain under:\n\
          x* = argmax_x (product_i p_i(x)^w_i)^(1 / sum_i w_i).\n\
-         Prioritize work that raises the lowest justified score axes first, especially when the work can produce validation evidence. \
-         Do not raise scores without evidence; instead, plan tasks that can produce evidence likely to justify a future score increase.\n\n\
-         Before updating the plan, do the following reconnaissance:\n\
-         1. Read the current `plan.md` and identify the first incomplete item under \"Active Priorities\".\n\
-         2. Read `status.md` for current progress, validation evidence, blockers, and history.\n\
-         3. Read `score.md` for current score values and score rationale.\n\
-         4. Read `SCORE_REPORT.md` for graph-derived structural quality scores (Architecture, Structure, Simplicity, Maintainability, Determinism, Coherency).\n\
-         5. Inspect `state/rustc/auto-refactor/*.graph-editor-plan.json` when present. Use those plans to identify legitimate, current graph-backed refactor candidates.\n\
-         6. Inspect the files, tests, fixtures, evidence paths, and validation commands named by `plan.md`, `status.md`, and selected auto-refactor plans.\n\
-         7. If project evidence files are named in the plan or status, inspect them with the appropriate local tool before changing the checklist.\n\n\
-         Then update `plan.md` so that the active priority section contains a concrete, ordered checklist \
-         of file-level tasks (one file or one test per item) that the execute turns can pick up one at a time. \
-         Tasks must name specific files, functions, tests, fixtures, or artifacts — not describe intent in prose. \
-         Update `status.md` with progress, validation evidence, blockers, and history. \
-         Update `score.md` only when score values or score rationale change. \
-         Keep this turn focused on planning, status, and scoring, and commit those changes at the end of the turn.",
+         Prioritize work that raises the lowest justified score axes first. \
+         Do not raise scores without evidence — plan tasks that produce evidence, then let the evidence justify the score.\n\n\
+         **Reconnaissance — do all of these before touching the DAG:**\n\
+         1. Inspect the `project` landmark to see available plan and score actions:\n\
+            `inspect_landmark` → `{{\"landmark_id\": \"project\", \"intent\": \"discover plan and score actions\"}}`\n\
+         2. Read the current work DAG:\n\
+            `call_action` → `{{\"action\": \"project:plan_read\", \"parameters\": {{}}, \"intent\": \"read current plan DAG\"}}`\n\
+            Inspect `ready_node_ids`, pending, running, and failed nodes.\n\
+         3. Read the evidence references already attached to current DAG nodes.\n\
+         4. Inspect `state/rustc/auto-refactor/*.graph-editor-plan.json` when present — use those to identify graph-backed refactor candidates.\n\
+         5. Inspect the specific files, tests, fixtures, and evidence paths that candidate nodes would touch.\n\n\
+         **Build or update the DAG — use `call_action` with action `project:plan_update`:**\n\
+         - `op=replace` to publish a fresh DAG for this cycle, or `op=upsert_node` / `op=add_edge` to extend an existing one.\n\
+         - Each node must have:\n\
+           - `id`: short kebab-case slug, e.g. `\"fix-scc-layer\"`\n\
+           - `title`: the task in one line, e.g. `\"Fix SCC layer gate validation\"`\n\
+           - `description`: the **exact success criterion** — what command output, test result, or file state proves this node is done. Mini-agents receive this verbatim as their success criterion.\n\
+           - `files`: list of files the node touches (scopes the mini-agent's work)\n\
+           - `score_axes`: axes this node is expected to improve, e.g. `[\"Simplicity\", \"Structure\"]`\n\
+           - `evidence`: usually empty at planning time; mini-agents append references when they complete work.\n\
+         - Add edges with `op=add_edge` — `{{\"from\": \"A\", \"to\": \"B\"}}` means B cannot start until A is `done`.\n\
+         - Only add nodes for work that is concrete, bounded, and independently verifiable.\n\
+         - Each parallel node must write detailed evidence to a disjoint file under `state/agent-evidence/` and then call `project:plan_update` with `op=append_evidence`.\n\
+         - Do not re-add nodes already marked `done`. Only reset a `failed` node if you have a new approach.\n\n\
+         **After updating the DAG:**\n\
+         Commit all changes at the end of this turn.",
         dir = working_dir.display(),
     )
 }
@@ -341,11 +363,34 @@ pub(super) fn json_array_object_count(text: &str, key: &str) -> Option<usize> {
     None
 }
 
-pub(super) fn spawned_prompt(domain: &str, metric: &str, step: u32, working_dir: &Path) -> String {
+pub(super) fn spawned_prompt(
+    domain: &str,
+    metric: &str,
+    plan_node_id: Option<&str>,
+    step: u32,
+    working_dir: &Path,
+) -> String {
     let dir = working_dir.display();
+    let evidence_protocol = match plan_node_id {
+        Some(node_id) => format!(
+            "5. Write detailed evidence to `state/agent-evidence/{node_id}.md`.\n\
+             6. Append an evidence reference with `call_action` action `project:plan_update`, parameters \
+             `{{\"op\":\"append_evidence\",\"node_id\":\"{node_id}\",\"evidence\":{{\"path\":\"state/agent-evidence/{node_id}.md\",\"kind\":\"validation\",\"summary\":\"<one-line result>\"}}}}`.\n\
+             7. Do not modify shared planning or score files.\n\
+             8. When the criterion is met and evidence is attached: commit all changes, then stop. The scheduler will mark your task done automatically.\n\
+             9. If the criterion cannot be met: write the blocker to `state/agent-evidence/{node_id}.md`, append evidence with `kind` set to `blocker`, then stop without committing. The scheduler will mark your task failed."
+        ),
+        None => {
+            "5. Write detailed evidence to a task-specific file under `state/agent-evidence/`.\n\
+             6. Do not modify shared planning or score files.\n\
+             7. When the criterion is met: commit all changes, then stop.\n\
+             8. If the criterion cannot be met: write the blocker to the evidence file, then stop without committing."
+                .to_string()
+        }
+    };
     if step == 1 {
         format!(
-            "You are a sub-agent with a single bounded task.\n\n\
+            "You are a mini-agent with a single bounded task. You were spawned by the scheduler.\n\n\
              ## WORKING DIRECTORY\n\
              `{dir}`\n\
              All commands run from this directory.\n\n\
@@ -358,13 +403,11 @@ pub(super) fn spawned_prompt(domain: &str, metric: &str, step: u32, working_dir:
              2. Take the minimal actions needed to meet the criterion.\n\
              3. Use `call_action` with action `workspace:apply_patch` for all file edits.\n\
              4. Every tool call must include a non-empty `intent` field explaining why.\n\
-             5. Do not modify `plan.md`, `status.md`, `score.md`, or other planning files.\n\
-             6. When the criterion is met: commit all changes, then stop.\n\
-             7. If the criterion cannot be met: document the blocker clearly and stop without committing."
+             {evidence_protocol}"
         )
     } else {
         format!(
-            "You are a sub-agent on step {step} of a bounded task.\n\n\
+            "You are a mini-agent on step {step} of a bounded task. You were spawned by the scheduler.\n\n\
              ## WORKING DIRECTORY\n\
              `{dir}`\n\n\
              ## TASK\n\
@@ -376,7 +419,7 @@ pub(super) fn spawned_prompt(domain: &str, metric: &str, step: u32, working_dir:
              2. If the criterion is already met: commit any uncommitted changes, then stop.\n\
              3. If not met: identify the specific gap, close it, then re-verify.\n\
              4. Every tool call must include a non-empty `intent` field.\n\
-             5. Commit only when the criterion is met. Do not commit partial or failing work."
+             5. Commit only when the criterion is met and evidence is attached. Do not commit partial or failing work."
         )
     }
 }
@@ -386,19 +429,23 @@ pub(super) fn execute_prompt(turn_num: u32, agent_id: u32, agent_count: u32) -> 
     format!(
         "{agent_line}\n\
          You are executing implementation step {turn_num} of this agent loop.\n\n\
-         Read `plan.md`, `status.md`, and `score.md`. Find the first unchecked implementation item ([ ]) under \"Active Priorities\" in `plan.md` \
-         and implement it now. Only change files within the scope named by that checklist item. \
-         If the item names a validation, evidence refresh, documentation, cleanup, or blocker task, perform that task instead of editing unrelated source. \
-         After implementation, run the targeted and broader validation commands named in `plan.md`, fix any failures, \
-         mark the item done in `plan.md`, update `status.md` with progress/evidence/blockers, \
-         update `score.md` only for score changes, and commit all changes. \
-         Only commit if all checks pass; if checks cannot be made green, document the \
-         blocker in `status.md` or the relevant validation item in `plan.md` and do not commit.\n\n\
-         If the plan has two or more unchecked items that are independent of each other \
-         (different files, no shared state), you may delegate one by calling \
-         `canon_spawn_agent` with a specific domain (the file or function to implement) \
-         and metric (the test or check that must pass). Implement the first item yourself \
-         and spawn for the second — do not spawn without also making progress yourself."
+         The DAG scheduler found no ready nodes this cycle — the DAG is either empty, \
+         all nodes are blocked by unfinished dependencies, or all nodes are already done.\n\n\
+         Read the current DAG via `call_action project:plan_read` to understand what is pending, blocked, failed, and already evidenced.\n\n\
+         Choose one of the following based on what you find:\n\
+         - **Blocked DAG nodes**: identify and resolve the blocking dependency directly (implement the prerequisite, fix the failing test, produce the missing evidence).\n\
+         - **Failed DAG nodes**: diagnose the failure, fix the root cause, reset the node to `pending` via `call_action project:plan_update` with `op=set_status`, then let the next planning turn re-dispatch it.\n\
+         - **Empty DAG**: do direct implementation work that moves the lowest justified score axis. Pick one concrete, bounded task — a specific file, function, or test. Use `call_action workspace:apply_patch` for all file edits.\n\n\
+         After implementation:\n\
+         - Run the relevant validation or test command and fix any failures.\n\
+         - Write detailed evidence to a task-specific file under `state/agent-evidence/`.\n\
+         - If the work maps to a DAG node, append an evidence reference with `project:plan_update` op `append_evidence`.\n\
+         - Commit only when checks pass. If checks cannot pass, document the blocker in the evidence file and do not commit.\n\n\
+         If there are two or more independent sub-tasks (different files, no shared state), \
+         spawn a mini-agent for one via `canon_spawn_agent` with:\n\
+         - `domain`: the specific file or function to implement\n\
+         - `metric`: the exact test or check that must pass\n\
+         Implement the first task yourself — do not spawn without also making progress yourself."
     )
 }
 

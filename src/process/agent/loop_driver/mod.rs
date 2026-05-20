@@ -4,11 +4,13 @@ use std::time::Duration;
 
 use crate::capability::llm::openai::{OpenAiChatRequest, OpenAiMessage};
 use crate::process::agent::config::AgentLoopConfig;
-use crate::process::agent::router::RouterClient;
+use crate::process::agent::router::{RouterClient, RouterTabCloseOutcome};
 use crate::process::agent::sse::ChunkLogger;
 use crate::MAX_OBSERVATION_PAYLOAD_BYTES;
 
 mod common;
+mod cycle_log;
+mod dag_scheduler;
 mod evidence_submit;
 mod http;
 mod learning;
@@ -29,10 +31,34 @@ use receipt::{
     RunCycleAttemptOutcome,
 };
 
-fn maybe_wait_for_tab_close(is_spawned: bool, close_handle: Option<thread::JoinHandle<()>>) {
-    if is_spawned {
-        if let Some(handle) = close_handle {
-            let _ = handle.join();
+type TabCloseResult = Result<RouterTabCloseOutcome, String>;
+
+fn wait_for_spawned_tab_close(
+    tag: &str,
+    cycle_num: u64,
+    close_handle: Option<thread::JoinHandle<TabCloseResult>>,
+) {
+    let Some(handle) = close_handle else {
+        eprintln!("[{tag}] tab close verification skipped: no router target  cycle={cycle_num}");
+        return;
+    };
+
+    match handle.join() {
+        Ok(Ok(RouterTabCloseOutcome::Closed)) => {
+            eprintln!("[{tag}] tab close verified  outcome=Closed  cycle={cycle_num}");
+        }
+        Ok(Ok(outcome)) => {
+            eprintln!(
+                "[{tag}] tab close verification incomplete  outcome={outcome:?}  cycle={cycle_num}"
+            );
+        }
+        Ok(Err(e)) => {
+            eprintln!("[{tag}] tab close verification failed: {e}  cycle={cycle_num}");
+        }
+        Err(_) => {
+            eprintln!(
+                "[{tag}] tab close verification failed: close worker panicked  cycle={cycle_num}"
+            );
         }
     }
 }
@@ -132,8 +158,13 @@ impl LoopDriver {
     }
 
     fn run_agent_loop(&self, agent_id: u32) {
-        let tag = agent_tag(agent_id, self.config.agent_count);
         let is_spawned = self.config.domain.is_some();
+        let tag = self
+            .config
+            .plan_node_id
+            .as_ref()
+            .map(|node_id| format!("mini-{node_id}"))
+            .unwrap_or_else(|| agent_tag(agent_id, self.config.agent_count));
 
         if !is_spawned {
             let goal_path = self.config.project_dir.join("GOAL.md");
@@ -143,10 +174,27 @@ impl LoopDriver {
             }
         }
 
+        if let Some(last) = cycle_log::last_completed_cycle(&self.config.sse_chunks_dir, &tag) {
+            eprintln!("[{tag}] cycle log: last completed cycle={last}");
+        }
+
         let mut cycle_num: u64 = 0;
         loop {
             cycle_num += 1;
             eprintln!("[{tag}] ── cycle {cycle_num} ──────────────────────────────");
+
+            // Before opening a top-level planner tab, drain any ready DAG work
+            // that already exists in state/plan.json.  This prevents a new
+            // planner/connector-activation tab from racing the mini-agent tabs
+            // when the previous cycle left pending ready nodes behind.
+            if !is_spawned && dag_scheduler::run_wave(&self.config, &tag, cycle_num) {
+                eprintln!(
+                    "[{tag}] DAG scheduler ran before planner startup; sleeping {}ms before next cycle",
+                    self.config.loop_sleep_ms
+                );
+                thread::sleep(Duration::from_millis(self.config.loop_sleep_ms));
+                continue;
+            }
 
             let mut router = match RouterClient::from_env() {
                 Ok(r) => r,
@@ -156,9 +204,22 @@ impl LoopDriver {
                 }
             };
 
+            let cmd_url = agent_command_url(&self.config);
+            cycle_log::append_cycle_start(
+                &self.config.sse_chunks_dir,
+                &tag,
+                cycle_num,
+                cmd_url.as_deref(),
+            );
             if let Err(e) = self.run_cycle(cycle_num, agent_id, &tag, &mut router) {
                 eprintln!("[{tag}] cycle {cycle_num} failed: {e}");
             }
+            cycle_log::append_cycle_end(
+                &self.config.sse_chunks_dir,
+                &tag,
+                cycle_num,
+                cmd_url.as_deref(),
+            );
 
             let close_handle = if let Some(target_id) = router.target_id().map(str::to_string) {
                 let tag2 = tag.clone();
@@ -170,9 +231,14 @@ impl LoopDriver {
                         &target_id, 8_000,
                     ) {
                         Ok(outcome) => {
-                            eprintln!("[{tag2}] tab close  outcome={outcome:?}  cycle={cycle_num}")
+                            eprintln!("[{tag2}] tab close  outcome={outcome:?}  cycle={cycle_num}");
+                            Ok(outcome)
                         }
-                        Err(e) => eprintln!("[{tag2}] tab close failed: {e}  cycle={cycle_num}"),
+                        Err(e) => {
+                            let message = e.to_string();
+                            eprintln!("[{tag2}] tab close failed: {message}  cycle={cycle_num}");
+                            Err(message)
+                        }
                     }
                 }))
             } else if let Some(url) = router.target_url().map(str::to_string) {
@@ -182,9 +248,14 @@ impl LoopDriver {
                     match crate::process::agent::router::close_tab_for_url_with_timeout(&url, 8_000)
                     {
                         Ok(outcome) => {
-                            eprintln!("[{tag2}] tab close  outcome={outcome:?}  cycle={cycle_num}")
+                            eprintln!("[{tag2}] tab close  outcome={outcome:?}  cycle={cycle_num}");
+                            Ok(outcome)
                         }
-                        Err(e) => eprintln!("[{tag2}] tab close failed: {e}  cycle={cycle_num}"),
+                        Err(e) => {
+                            let message = e.to_string();
+                            eprintln!("[{tag2}] tab close failed: {message}  cycle={cycle_num}");
+                            Err(message)
+                        }
                     }
                 }))
             } else {
@@ -193,7 +264,7 @@ impl LoopDriver {
 
             // Spawned agents run one cycle for their specific task then exit.
             if is_spawned {
-                maybe_wait_for_tab_close(is_spawned, close_handle);
+                wait_for_spawned_tab_close(&tag, cycle_num, close_handle);
                 eprintln!("[{tag}] spawned agent task complete — exiting");
                 break;
             }
@@ -237,6 +308,7 @@ impl LoopDriver {
                 &self.config.working_dir,
                 self.config.domain.as_deref(),
                 self.config.metric.as_deref(),
+                self.config.plan_node_id.as_deref(),
             );
             debug_assert_eq!(turn_context.effective_turn, turn + turn_offset);
 
@@ -279,12 +351,34 @@ impl LoopDriver {
                 }
             }
 
-            if !completed {
+            if completed {
+                cycle_log::append_turn_complete(
+                    &self.config.sse_chunks_dir,
+                    tag,
+                    cycle_num,
+                    &turn_context.label,
+                    &last_reason,
+                    command_url.as_deref(),
+                );
+            } else {
+                cycle_log::append_turn_failed(
+                    &self.config.sse_chunks_dir,
+                    tag,
+                    cycle_num,
+                    &turn_context.label,
+                    command_url.as_deref(),
+                );
                 return Err(format!(
                     "turn {} did not complete after {} attempt(s): {last_reason}",
                     turn_context.label,
                     self.config.turn_retry_limit + 1,
                 ));
+            }
+
+            // After the planning turn: dispatch any ready DAG nodes as child agents.
+            // If a wave ran, skip the execute turns — the child agents did the work.
+            if turn == 0 && !is_spawned && dag_scheduler::run_wave(&self.config, tag, cycle_num) {
+                break;
             }
 
             if turn < total_turns - 1 {
@@ -306,6 +400,7 @@ impl LoopDriver {
                     url,
                     &tlog_dir.join("canon-agent.tlog.ndjson"),
                     &policy_path,
+                    &self.config.working_dir,
                     cycle_num,
                 );
             }
@@ -414,10 +509,11 @@ mod tests {
             turn_retry_limit: 0,
             loop_sleep_ms: 0,
             agent_count: 1,
+            mini_agent_count: 3,
             project_dir: root.to_path_buf(),
             working_dir: root.to_path_buf(),
             sse_chunks_dir: root.join("sse-chunks"),
-            mcp_connector_url: "http://127.0.0.1:4000".to_string(),
+            mcp_connector_url: "http://127.0.0.1:9100".to_string(),
             router_turn_max_ms: 1,
             router_first_capture_ms: 1,
             router_idle_ms: 1,
@@ -426,6 +522,7 @@ mod tests {
             cert_max_steps: 1,
             domain: None,
             metric: None,
+            plan_node_id: None,
         }
     }
 
@@ -494,9 +591,10 @@ mod tests {
         let close_handle = thread::spawn(move || {
             thread::sleep(Duration::from_millis(25));
             tx.send(()).expect("test receiver should stay open");
+            Ok(RouterTabCloseOutcome::Closed)
         });
 
-        maybe_wait_for_tab_close(true, Some(close_handle));
+        wait_for_spawned_tab_close("agent", 1, Some(close_handle));
 
         rx.try_recv()
             .expect("spawned cleanup must wait until close worker finishes");
@@ -549,6 +647,7 @@ mod tests {
         spawned_config.supervisor_port = Some(9_102);
         spawned_config.domain = Some("spawned domain".to_string());
         spawned_config.metric = Some("spawned metric".to_string());
+        spawned_config.plan_node_id = Some("spawned-node".to_string());
         let spawned_plan =
             prepare_run_cycle(&spawned_config).expect("spawned cycle should prepare");
         assert!(spawned_plan.is_spawned);
@@ -588,6 +687,7 @@ mod tests {
             None,
             None,
             None,
+            None,
         );
         let execute = execute_prompt(2, 2, 3);
 
@@ -605,25 +705,31 @@ mod tests {
     fn project_prompts_do_not_claim_to_be_worker_certification() {
         let goal = "Ship the next deterministic runtime slice.";
         let working_dir = Path::new("/workspace/project");
-        let planning = planning_prompt(goal, 0, 1, working_dir, None, None, None, None, None);
+        let planning = planning_prompt(goal, 0, 1, working_dir, None, None, None, None, None, None);
         let execute = execute_prompt(2, 0, 1);
 
         assert!(planning.contains("planning turn for this agent loop"));
-        assert!(planning.contains("update `plan.md`"));
-        assert!(planning.contains("Read `status.md`"));
-        assert!(planning.contains("Update `status.md`"));
-        assert!(planning.contains("Update `score.md` only when score values"));
-        assert!(planning.contains("Read `score.md`"));
-        assert!(planning.contains("Inspect the files, tests, fixtures, evidence paths"));
+        assert!(planning.contains("## HOW MINI-AGENT DISPATCH WORKS"));
+        assert!(planning.contains("spawns one mini-agent per ready node in parallel"));
+        assert!(planning.contains("project:plan_read"));
+        assert!(planning.contains("project:plan_update"));
+        assert!(planning.contains("state/agent-evidence/"));
+        assert!(planning.contains("append_evidence"));
         assert!(planning.contains("## OPTIMIZATION OBJECTIVE"));
         assert!(planning.contains("argmax_x"));
         assert!(planning.contains("Do not raise scores without evidence"));
-        assert!(planning.contains("commit those changes"));
+        assert!(planning.contains("Commit all changes"));
+        assert!(!planning.contains("plan.md"));
+        assert!(!planning.contains("status.md"));
+        assert!(!planning.contains("score.md"));
         assert!(execute.contains("executing implementation step 2"));
-        assert!(execute.contains("Read `plan.md`, `status.md`, and `score.md`"));
-        assert!(execute.contains("Only change files within the scope named by that checklist item"));
-        assert!(execute.contains("update `status.md` with progress/evidence/blockers"));
-        assert!(execute.contains("update `score.md` only for score changes"));
+        assert!(execute.contains("DAG scheduler found no ready nodes"));
+        assert!(execute.contains("project:plan_read"));
+        assert!(execute.contains("state/agent-evidence/"));
+        assert!(execute.contains("append_evidence"));
+        assert!(!execute.contains("plan.md"));
+        assert!(!execute.contains("status.md"));
+        assert!(!execute.contains("score.md"));
         assert!(!planning.contains("AgentCycle certification"));
         assert!(!execute.contains("AgentCycle certification"));
     }
@@ -671,7 +777,7 @@ mod tests {
             .split_once("\r\n\r\n")
             .expect("workspace request must separate headers and body");
 
-        assert!(headers.starts_with("POST /workspace HTTP/1.1\r\n"));
+        assert!(headers.starts_with("POST /ai/workspace HTTP/1.1\r\n"));
         assert!(headers.contains("Host: 127.0.0.1:9100\r\n"));
         assert!(headers.contains("Content-Type: application/json\r\n"));
         assert!(headers.contains("Connection: close\r\n"));

@@ -5,7 +5,7 @@ use std::io::{BufRead, BufReader, Write};
 use std::path::Path;
 
 use crate::capability::{EvidenceProducer, EvidenceSubmission, PacketEffect};
-use crate::error::CanonError;
+use crate::kernel::CanonError;
 use crate::kernel::{mix, Evidence, GateId};
 
 pub const EVAL_SCORECARD_SCHEMA_VERSION: u64 = 1;

@@ -20,7 +20,7 @@ pub mod sse;
 pub mod step;
 pub mod worker_client;
 
-pub use config::AgentLoopConfig;
+pub use config::{AgentLoopConfig, DEFAULT_MINI_AGENT_COUNT, MAX_MINI_AGENT_COUNT};
 pub use cycle::{AgentCycle, CycleError, StopReason};
 pub use loop_driver::LoopDriver;
 pub use objective::AgentObjective;

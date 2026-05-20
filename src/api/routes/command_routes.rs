@@ -5,11 +5,15 @@ use crate::api::protocol::{
     process_authorization_submission, Command, CommandEnvelope, CommandLedger,
     ControlEventResponse,
 };
+use crate::capability::orchestration::{AgentCycleEvent, ChildCompleteRecord, WaveRecord};
 use crate::capability::tooling::{
     McpCallReceipt, McpCallRequest, SandboxProcessReceipt, SandboxProcessRequest,
 };
 use crate::capability::{CapabilityId, CapabilityRegistry, EvidenceSubmission};
-use crate::kernel::{Cause, Decision, EventKind, Phase, RuntimeConfig, State, TLog};
+use crate::kernel::{
+    CapabilityRegistryProjection, Cause, Decision, EventKind, Evidence, Phase, RuntimeConfig,
+    State, TLog,
+};
 use crate::runtime::{
     tick, tick_with_api_command, CanonError, CanonicalWriter, MailboxMessageReceipt,
     MailboxMessageRequest, Outcome,
@@ -103,6 +107,15 @@ fn apply_command(
         Command::SubmitProcessReceiptBatch(receipts) => {
             apply_process_receipt_batch_command(state, tlog, cfg, receipts, receipt)
         }
+        Command::SubmitAgentCycleEvent(event) => {
+            apply_agent_cycle_event_command(state, tlog, cfg, event, receipt)
+        }
+        Command::SubmitWaveDispatch(record) => {
+            apply_wave_dispatch_command(state, tlog, cfg, record, receipt)
+        }
+        Command::SubmitChildComplete(record) => {
+            apply_child_complete_command(state, tlog, cfg, record, receipt)
+        }
     }
 }
 
@@ -168,6 +181,115 @@ fn apply_mailbox_message_receipt_command(
 ) -> Result<(), CanonError> {
     ensure_mailbox_message_receipt_authorized(tlog, &receipt_record)?;
     apply_submission_command(state, tlog, cfg, receipt_record.submission(), receipt)
+}
+
+fn apply_agent_cycle_event_command(
+    state: &mut State,
+    tlog: &mut TLog,
+    cfg: RuntimeConfig,
+    event: AgentCycleEvent,
+    receipt: Option<(u64, u64)>,
+) -> Result<(), CanonError> {
+    let before = *state;
+    // Cycle events are observational: state_after == state_before.
+    // No gate is mutated; no tick is needed.
+    let outcome = Outcome {
+        state: before,
+        kind: EventKind::Persisted,
+        cause: Cause::AgentCycleEventSubmitted,
+        evidence: Evidence::AgentCycleEvent,
+        decision: Decision::Continue,
+        failure: None,
+        recovery_action: None,
+        affected_gate: None,
+    };
+    let tlog_event = append_observational_event(tlog, before, outcome, cfg, receipt)?;
+    *state = tlog_event.state_after;
+    let _ = event;
+    Ok(())
+}
+
+fn apply_wave_dispatch_command(
+    state: &mut State,
+    tlog: &mut TLog,
+    cfg: RuntimeConfig,
+    record: WaveRecord,
+    receipt: Option<(u64, u64)>,
+) -> Result<(), CanonError> {
+    let before = *state;
+    let mut after = before;
+    after.wave_pending = before.wave_pending.saturating_add(record.node_count);
+    let outcome = Outcome {
+        state: after,
+        kind: EventKind::Persisted,
+        cause: Cause::WaveDispatched,
+        evidence: Evidence::WaveDispatched,
+        decision: Decision::Continue,
+        failure: None,
+        recovery_action: None,
+        affected_gate: None,
+    };
+    let tlog_event = append_observational_event(tlog, before, outcome, cfg, receipt)?;
+    *state = tlog_event.state_after;
+    Ok(())
+}
+
+fn apply_child_complete_command(
+    state: &mut State,
+    tlog: &mut TLog,
+    cfg: RuntimeConfig,
+    record: ChildCompleteRecord,
+    receipt: Option<(u64, u64)>,
+) -> Result<(), CanonError> {
+    let before = *state;
+    let mut after = before;
+    after.wave_pending = before.wave_pending.saturating_sub(1);
+    let outcome = Outcome {
+        state: after,
+        kind: EventKind::Persisted,
+        cause: Cause::ChildTaskCompleted,
+        evidence: Evidence::ChildTaskComplete,
+        decision: Decision::Continue,
+        failure: None,
+        recovery_action: None,
+        affected_gate: None,
+    };
+    let tlog_event = append_observational_event(tlog, before, outcome, cfg, receipt)?;
+    *state = tlog_event.state_after;
+    let _ = record;
+    Ok(())
+}
+
+fn append_observational_event(
+    tlog: &mut TLog,
+    before: State,
+    outcome: Outcome,
+    cfg: RuntimeConfig,
+    receipt: Option<(u64, u64)>,
+) -> Result<crate::kernel::ControlEvent, CanonError> {
+    // Observational events must use an empty projection (not the canonical registry).
+    match receipt {
+        Some((command_id, command_hash)) => {
+            CanonicalWriter::append_with_command_and_registry_projection(
+                tlog,
+                before,
+                outcome,
+                cfg,
+                command_id,
+                command_hash,
+                CapabilityRegistryProjection::none(),
+            )
+        }
+        None => CanonicalWriter::append_with_command_and_registry_projection(
+            tlog,
+            before,
+            outcome,
+            cfg,
+            0,
+            0,
+            CapabilityRegistryProjection::none(),
+        ),
+    }
 }
 
 fn apply_process_receipt_batch_command(

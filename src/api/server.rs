@@ -19,12 +19,15 @@ use crate::api::transport::{ApiTransportDisposition, ApiTransportFrame, ApiTrans
 use crate::capability::observation::{
     ObservationCursor, ObservationIngressBatch, ObservationRecord,
 };
+use crate::capability::orchestration::{
+    AgentCycleEvent, AgentCycleEventKind, ChildCompleteRecord, WaveRecord,
+};
 use crate::capability::tooling::{
     Effect, McpCallReceipt, McpCallRequest, SandboxProcessReceipt, SandboxProcessRequest,
     ToolEffectKind,
 };
 use crate::capability::{CapabilityId, CapabilityRegistry, EvidenceSubmission, PacketEffect};
-use crate::error::CanonError;
+use crate::kernel::CanonError;
 use crate::kernel::{Evidence, GateId, RuntimeConfig, State};
 use crate::runtime::{CanonicalWriter, MailboxMessageReceipt, MailboxMessageRequest};
 
@@ -372,6 +375,9 @@ fn command_decoder(payload_tag: &str) -> Result<CommandDecoder, ServerError> {
         "SubmitProcessReceipt" => decode_submit_process_receipt_command,
         "SubmitMailboxMessageReceipt" => decode_submit_mailbox_message_receipt_command,
         "SubmitProcessReceiptBatch" => decode_submit_process_receipt_batch_command,
+        "SubmitAgentCycleEvent" => decode_submit_agent_cycle_event_command,
+        "SubmitWaveDispatch" => decode_submit_wave_dispatch_command,
+        "SubmitChildComplete" => decode_submit_child_complete_command,
         _ => return Err(ServerError::UnsupportedPayloadTag),
     })
 }
@@ -459,6 +465,96 @@ fn decode_submit_process_receipt_batch_command(
         .map(sandbox_process_receipt_from_dto)
         .collect::<Result<Vec<_>, _>>()?;
     Ok(Command::SubmitProcessReceiptBatch(receipts))
+}
+
+fn decode_submit_agent_cycle_event_command(
+    payload: serde_json::Value,
+) -> Result<Command, ServerError> {
+    let kind_u64 = payload
+        .get("kind")
+        .and_then(serde_json::Value::as_u64)
+        .ok_or(ServerError::InvalidPayload)?;
+    let kind = match kind_u64 {
+        1 => AgentCycleEventKind::CycleStart,
+        2 => AgentCycleEventKind::TurnComplete,
+        3 => AgentCycleEventKind::TurnFailed,
+        4 => AgentCycleEventKind::CycleEnd,
+        _ => return Err(ServerError::InvalidPayload),
+    };
+    let agent_hash = payload
+        .get("agent_hash")
+        .and_then(serde_json::Value::as_u64)
+        .ok_or(ServerError::InvalidPayload)?;
+    let cycle = payload
+        .get("cycle")
+        .and_then(serde_json::Value::as_u64)
+        .ok_or(ServerError::InvalidPayload)?;
+    let label_hash = payload
+        .get("label_hash")
+        .and_then(serde_json::Value::as_u64)
+        .unwrap_or(0);
+    let content_hash = payload
+        .get("content_hash")
+        .and_then(serde_json::Value::as_u64)
+        .unwrap_or(0);
+    let event = AgentCycleEvent::new(kind, agent_hash, cycle, label_hash, content_hash);
+    if !event.is_contract_valid() {
+        return Err(ServerError::InvalidCommand);
+    }
+    Ok(Command::SubmitAgentCycleEvent(event))
+}
+
+fn decode_submit_wave_dispatch_command(
+    payload: serde_json::Value,
+) -> Result<Command, ServerError> {
+    let wave_id = payload
+        .get("wave_id")
+        .and_then(serde_json::Value::as_u64)
+        .ok_or(ServerError::InvalidPayload)?;
+    let parent_hash = payload
+        .get("parent_hash")
+        .and_then(serde_json::Value::as_u64)
+        .ok_or(ServerError::InvalidPayload)?;
+    let cycle = payload
+        .get("cycle")
+        .and_then(serde_json::Value::as_u64)
+        .ok_or(ServerError::InvalidPayload)?;
+    let node_count = payload
+        .get("node_count")
+        .and_then(serde_json::Value::as_u64)
+        .ok_or(ServerError::InvalidPayload)? as u16;
+    let node_ids_hash = payload
+        .get("node_ids_hash")
+        .and_then(serde_json::Value::as_u64)
+        .unwrap_or(0);
+    let record = WaveRecord::new(wave_id, parent_hash, cycle, node_count, node_ids_hash);
+    if !record.is_contract_valid() {
+        return Err(ServerError::InvalidCommand);
+    }
+    Ok(Command::SubmitWaveDispatch(record))
+}
+
+fn decode_submit_child_complete_command(
+    payload: serde_json::Value,
+) -> Result<Command, ServerError> {
+    let wave_id = payload
+        .get("wave_id")
+        .and_then(serde_json::Value::as_u64)
+        .ok_or(ServerError::InvalidPayload)?;
+    let node_id_hash = payload
+        .get("node_id_hash")
+        .and_then(serde_json::Value::as_u64)
+        .ok_or(ServerError::InvalidPayload)?;
+    let panicked = payload
+        .get("exit_status")
+        .and_then(serde_json::Value::as_u64)
+        .unwrap_or(0)
+        != 0;
+    let record = ChildCompleteRecord::new(wave_id, node_id_hash, panicked);
+    if !record.is_contract_valid() {
+        return Err(ServerError::InvalidCommand);
+    }
+    Ok(Command::SubmitChildComplete(record))
 }
 
 fn decode_mcp_call_request(payload: serde_json::Value) -> Result<McpCallRequest, ServerError> {

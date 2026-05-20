@@ -7,6 +7,8 @@ use std::env;
 use std::net::SocketAddr;
 use std::path::PathBuf;
 
+use crate::process::endpoints::{mcp_connector_url_from_env, supervisor_port_from_env};
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SupervisorConfig {
     pub addr: SocketAddr,
@@ -24,10 +26,7 @@ pub struct SupervisorConfig {
 
 impl SupervisorConfig {
     pub fn from_env() -> Result<Self, String> {
-        let port = env::var("SUPERVISOR_PORT")
-            .unwrap_or_else(|_| "9100".to_string())
-            .parse::<u16>()
-            .map_err(|_| "SUPERVISOR_PORT must be a u16".to_string())?;
+        let port = supervisor_port_from_env()?;
         let tlog_dir =
             PathBuf::from(env::var("AI_TLOG_DIR").unwrap_or_else(|_| "state/tlog".to_string()));
         let worker_bin = match env::var("AI_KERNEL_TLOG_BIN") {
@@ -41,8 +40,7 @@ impl SupervisorConfig {
         let project_dir = env::var("PROJECT_DIR")
             .map(PathBuf::from)
             .unwrap_or_else(|_| env::current_dir().unwrap_or_default());
-        let mcp_connector_url =
-            env::var("MCP_CONNECTOR_URL").unwrap_or_else(|_| "http://127.0.0.1:4000".to_string());
+        let mcp_connector_url = mcp_connector_url_from_env(port);
         let mcp_base_url = env::var("AI_MCP_BASE_URL").unwrap_or_else(|_| {
             env::var("BASE_URL")
                 .map(|base| format!("{}/ai", base.trim_end_matches('/')))

@@ -62,7 +62,7 @@ fn print_help() {
     println!("environment: SUPERVISOR_PORT, AI_TLOG_DIR, AI_KERNEL_TLOG_BIN, AI_MCP_WORKER_URL");
     println!("             AI_AGENT_BIN, CANON_OPENAI_BASE_URL, PROJECT_DIR, MCP_CONNECTOR_URL");
     println!("             AI_MCP_BASE_URL, AI_MCP_OAUTH_STORE_FILE, AI_MCP_OAUTH_STORE_KEY");
-    println!("routes: GET /, GET /control, GET /health, POST /reload, POST /restart, POST /spawn, POST /v1/command, POST /ai/mcp");
+    println!("routes: GET /, GET /control, GET /health, GET /v1/task/next, POST /reload, POST /restart, POST /agent/start, POST /spawn, POST /v1/command, POST /ai/mcp");
 }
 
 async fn shutdown_signal() {

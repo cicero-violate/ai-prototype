@@ -55,6 +55,30 @@ pub(super) fn submit_agent_turn_receipt(command_url: &str, receipt: &serde_json:
     }
 }
 
+pub(super) fn get_json_body_local(url: &str) -> Result<serde_json::Value, String> {
+    let (host, port, path) = parse_local_http_url(url)?;
+    let mut stream =
+        TcpStream::connect((host.as_str(), port)).map_err(|e| format!("connect: {e}"))?;
+    stream
+        .set_read_timeout(Some(Duration::from_secs(3)))
+        .map_err(|e| format!("set timeout: {e}"))?;
+    stream
+        .set_write_timeout(Some(Duration::from_secs(3)))
+        .map_err(|e| format!("set timeout: {e}"))?;
+    let request =
+        format!("GET {path} HTTP/1.1\r\nHost: {host}:{port}\r\nConnection: close\r\n\r\n");
+    stream
+        .write_all(request.as_bytes())
+        .map_err(|e| format!("write: {e}"))?;
+    stream.flush().map_err(|e| format!("flush: {e}"))?;
+    let mut response = String::new();
+    stream
+        .read_to_string(&mut response)
+        .map_err(|e| format!("read: {e}"))?;
+    let body = response.split("\r\n\r\n").nth(1).unwrap_or(&response);
+    serde_json::from_str(body.trim()).map_err(|e| format!("json: {e}"))
+}
+
 pub(super) fn post_json_local(url: &str, value: &serde_json::Value) -> Result<u16, String> {
     let (host, port, path) = parse_local_http_url(url)?;
     let body = value.to_string();

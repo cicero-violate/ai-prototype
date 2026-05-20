@@ -38,6 +38,9 @@ pub enum Cause {
     Persisted = 18,
     PolicyPromoted = 19,
     EvidenceSubmitted = 20,
+    AgentCycleEventSubmitted = 21,
+    WaveDispatched = 22,
+    ChildTaskCompleted = 23,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]

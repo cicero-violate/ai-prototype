@@ -4,6 +4,7 @@
 //! effect receipts into the runtime.
 
 pub mod graph_editor;
+pub mod graph_patch_contract;
 pub mod mcp_tools;
 pub mod record;
 

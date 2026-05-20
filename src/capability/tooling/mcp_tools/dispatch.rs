@@ -4,7 +4,8 @@ use chrono::{DateTime, Utc};
 use serde_json::{json, Map, Value};
 
 use super::{
-    apply_patch, canon_graph_editor, canon_read_mailbox, canon_send_agent_message, landmarks, shell,
+    apply_patch, canon_graph_analysis, canon_graph_editor, canon_plan, canon_read_mailbox,
+    canon_score, canon_send_agent_message, landmarks, shell,
 };
 use crate::api::mcp::{
     dispatch_ai_mcp_plan, mcp_ok, result_with_warning, tool_error, AiMcpDispatchPlan,
@@ -253,7 +254,7 @@ async fn run_gateway_action<H: McpToolHost>(action_id: &str, parameters: Value, 
             "Unknown action '{action_id}'. Use get_landmarks then inspect_landmark before calling actions."
         ));
     };
-    execute_recorded_native_ai_mcp_tool(action.native_tool, parameters, host).await
+    execute_recorded_native_ai_mcp_tool(action.native_tool.as_str(), parameters, host).await
 }
 
 async fn run_gateway_sequence<H: McpToolHost>(args: &Value, host: &H) -> Value {
@@ -343,6 +344,22 @@ async fn call_ai_mcp_tool<H: McpToolHost>(name: &str, args: &Value, host: &H) ->
             let workspace = host.workspace();
             canon_graph_editor::run_auto_refactor_cfg(args, &workspace)
         }
+        "canon_graph_analysis" => {
+            let workspace = host.workspace();
+            canon_graph_analysis::run(args, &workspace)
+        }
+        "canon_score" => {
+            let workspace = host.workspace();
+            canon_score::run(args, &workspace)
+        }
+        "canon_plan_read" => {
+            let workspace = host.workspace();
+            canon_plan::run_read(args, &workspace)
+        }
+        "canon_plan_update" => {
+            let workspace = host.workspace();
+            canon_plan::run_update(args, &workspace)
+        }
         "shell" => {
             let workspace = host.workspace();
             shell::run_unrecorded(args, &workspace).await
@@ -417,8 +434,14 @@ async fn run_recorded_ai_mcp_shell<H: McpToolHost>(args: &Value, host: &H) -> Va
         ));
     }
 
-    match shell::run_recorded_process(args, &workspace) {
-        Ok((receipt, stdout, stderr)) => {
+    let args_owned = args.clone();
+    let run_result =
+        tokio::task::spawn_blocking(move || shell::run_recorded_process(&args_owned, &workspace))
+            .await;
+    match run_result {
+        Err(join_err) => tool_error(format!("shell task panicked: {join_err}")),
+        Ok(Err(error)) => tool_error(error),
+        Ok(Ok((receipt, stdout, stderr))) => {
             let result = shell::render_recorded_response(&receipt, &stdout, &stderr);
             if let Err(error) = host
                 .submit_kernel_command(KernelCommand::SubmitProcessReceipt(receipt))
@@ -431,6 +454,5 @@ async fn run_recorded_ai_mcp_shell<H: McpToolHost>(args: &Value, host: &H) -> Va
             }
             result
         }
-        Err(error) => tool_error(error),
     }
 }

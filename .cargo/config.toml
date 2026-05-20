@@ -30,17 +30,13 @@ SUPERVISOR_PORT = "9100"
 AI_WORKER_BIN = { value = "../target/debug/worker", relative = true }
 AI_KERNEL_TLOG_BIN = { value = "../target/debug/kernel_tlog", relative = true }
 AI_AGENT_BIN = { value = "../target/debug/agent", relative = true }
-AI_WORKER_PORT = "9100"
 CANON_OPENAI_BASE_URL = "http://127.0.0.1:8082/v1"
 CANON_BROWSER_CDP_URL = "http://127.0.0.1:9223"
-MCP_CONNECTOR_URL = "http://127.0.0.1:4000"
-MCP_CONNECTOR_PORT = "4000"
-MCP_CONNECTOR_DIR = { value = "../chatgpt-mcp-connector", relative = true }
+MCP_CONNECTOR_URL = "http://127.0.0.1:9100"
 MCP_WORKSPACE_ROOT = { value = "..", relative = true }
 MCP_ALLOWED_WORKSPACE_ROOT = { value = "..", relative = true }
-MCP_WORKER_BIN = { value = "../target/debug/chatgpt-mcp-connector", relative = true }
-MCP_WORKER_RESPONSE_TIMEOUT_SECS = "600"
 AI_MCP_WORKER_URL = "http://127.0.0.1:38469/mcp_worker"
+MCP_WORKER_RESPONSE_TIMEOUT_SECS = "600"
 BASE_URL = "https://cheese-server.duckdns.org"
 APPLY_PATCH_BIN = "apply_patch"
 AI_SUPERVISOR_URL = "http://127.0.0.1:9100"
