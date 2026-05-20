@@ -5,12 +5,20 @@
 //! kernel-visible `TaskReady` evidence used by the runtime.
 
 use crate::capability::{EvidenceProducer, EvidenceSubmission, PacketEffect};
-use crate::kernel::{mix, Evidence, GateId, Packet};
+use crate::kernel::{
+    mix, Evidence, GateId, Packet, PlanEdgeProjection, PlanEvidenceProjection,
+    PlanStatePatch,
+};
+use serde::Deserialize;
 
 const PLAN_SCHEMA_VERSION: u64 = 2;
 const MAX_PLAN_TASKS: u8 = 8;
 pub const PLAN_RECEIPT_SCHEMA_VERSION: u64 = 1;
 pub const PLAN_RECEIPT_RECORD: u64 = 0x91a0_0001;
+pub const PLAN_PATCH_SCHEMA_VERSION: u64 = 1;
+pub const PLAN_PATCH_RECORD: u64 = 0x91a0_1001;
+pub const PLAN_PATCH_ACCEPTED_RECORD: u64 = 0x91a0_1002;
+pub const PLAN_PATCH_REJECTED_RECORD: u64 = 0x91a0_1003;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PlanDecision {
@@ -78,6 +86,478 @@ pub struct PlanReceipt {
     pub payload_hash: u64,
     pub verdict: PlanDecision,
     pub receipt_hash: u64,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[repr(u8)]
+pub enum PlanNodeStatus {
+    Pending = 1,
+    Running = 2,
+    Done = 3,
+    Failed = 4,
+    Skipped = 5,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[repr(u8)]
+pub enum PlanPatchKind {
+    NodeUpsert = 1,
+    EdgeAdd = 2,
+    EdgeRemove = 3,
+    NodeRemove = 4,
+    StatusChange = 5,
+    AssigneeChange = 6,
+    EvidenceAppend = 7,
+    FullImport = 8,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct PlanNodeUpsertPatch {
+    pub node_id_hash: u64,
+    pub title_hash: u64,
+    pub description_hash: u64,
+    pub status: PlanNodeStatus,
+    pub assignee_hash: u64,
+    pub score_axes_hash: u64,
+    pub files_hash: u64,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct PlanEdgePatch {
+    pub from_node_hash: u64,
+    pub to_node_hash: u64,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct PlanNodeRemovePatch {
+    pub node_id_hash: u64,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct PlanStatusChangePatch {
+    pub node_id_hash: u64,
+    pub status: PlanNodeStatus,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct PlanAssigneeChangePatch {
+    pub node_id_hash: u64,
+    pub assignee_hash: u64,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct PlanEvidenceAppendPatch {
+    pub node_id_hash: u64,
+    pub path_hash: u64,
+    pub kind_hash: u64,
+    pub summary_hash: u64,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct PlanFullImportPatch {
+    pub node_count: u64,
+    pub edge_count: u64,
+    pub nodes_hash: u64,
+    pub edges_hash: u64,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum PlanPatchPayload {
+    NodeUpsert(PlanNodeUpsertPatch),
+    EdgeAdd(PlanEdgePatch),
+    EdgeRemove(PlanEdgePatch),
+    NodeRemove(PlanNodeRemovePatch),
+    StatusChange(PlanStatusChangePatch),
+    AssigneeChange(PlanAssigneeChangePatch),
+    EvidenceAppend(PlanEvidenceAppendPatch),
+    FullImport(PlanFullImportPatch),
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct PlanPatchRecord {
+    pub schema_version: u64,
+    pub record_type: u64,
+    pub source_hash: u64,
+    pub cycle_id: u64,
+    pub patch_seq: u64,
+    pub contract_hash: u64,
+    pub payload: PlanPatchPayload,
+    pub payload_hash: u64,
+    pub patch_hash: u64,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct AcceptedPlanPatchRecord {
+    pub schema_version: u64,
+    pub record_type: u64,
+    pub source_hash: u64,
+    pub cycle_id: u64,
+    pub patch_seq: u64,
+    pub contract_hash: u64,
+    pub patch_hash: u64,
+    pub applied_revision: u64,
+    pub acceptance_hash: u64,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct RejectedPlanPatchRecord {
+    pub schema_version: u64,
+    pub record_type: u64,
+    pub source_hash: u64,
+    pub cycle_id: u64,
+    pub patch_seq: u64,
+    pub contract_hash: u64,
+    pub patch_hash: u64,
+    pub reason_hash: u64,
+    pub rejection_hash: u64,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PlanJsonImportEvent {
+    pub source_hash: u64,
+    pub cycle_id: u64,
+    pub first_patch_seq: u64,
+    pub patches: Vec<PlanPatchRecord>,
+    pub node_count: u64,
+    pub edge_count: u64,
+    pub nodes_hash: u64,
+    pub edges_hash: u64,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum PlanJsonImportError {
+    InvalidJson,
+    MissingNodeId,
+    MissingNodeTitle,
+    MissingEdgeEndpoint,
+    InvalidStatus,
+    EmptyImport,
+    ReplayRejected,
+}
+
+#[allow(dead_code)]
+#[derive(Clone, Debug, Deserialize)]
+struct PlanJsonDocument {
+    #[serde(default)]
+    nodes: Vec<PlanJsonNode>,
+    #[serde(default)]
+    edges: Vec<PlanJsonEdge>,
+}
+
+#[allow(dead_code)]
+#[derive(Clone, Debug, Deserialize)]
+struct PlanJsonNode {
+    id: String,
+    title: String,
+    #[serde(default)]
+    description: String,
+    #[serde(default = "default_pending_status")]
+    status: String,
+    #[serde(default)]
+    assignee: String,
+    #[serde(default)]
+    score_axes: Vec<String>,
+    #[serde(default)]
+    files: Vec<String>,
+    #[serde(default)]
+    evidence: Vec<PlanJsonEvidence>,
+}
+
+#[allow(dead_code)]
+fn default_pending_status() -> String {
+    "pending".to_string()
+}
+
+#[allow(dead_code)]
+#[derive(Clone, Debug, Deserialize)]
+struct PlanJsonEvidence {
+    path: String,
+    kind: String,
+    summary: String,
+}
+
+#[allow(dead_code)]
+#[derive(Clone, Debug, Deserialize)]
+struct PlanJsonEdge {
+    from: String,
+    to: String,
+}
+
+impl PlanPatchPayload {
+    pub fn kind(self) -> PlanPatchKind {
+        match self {
+            Self::NodeUpsert(_) => PlanPatchKind::NodeUpsert,
+            Self::EdgeAdd(_) => PlanPatchKind::EdgeAdd,
+            Self::EdgeRemove(_) => PlanPatchKind::EdgeRemove,
+            Self::NodeRemove(_) => PlanPatchKind::NodeRemove,
+            Self::StatusChange(_) => PlanPatchKind::StatusChange,
+            Self::AssigneeChange(_) => PlanPatchKind::AssigneeChange,
+            Self::EvidenceAppend(_) => PlanPatchKind::EvidenceAppend,
+            Self::FullImport(_) => PlanPatchKind::FullImport,
+        }
+    }
+
+    pub fn canonical_hash(self) -> u64 {
+        match self {
+            Self::NodeUpsert(payload) => fold_ordered_plan_hash(
+                0x504c_414e_5550_0001u64,
+                &[
+                    PlanPatchKind::NodeUpsert as u64,
+                    payload.node_id_hash,
+                    payload.title_hash,
+                    payload.description_hash,
+                    payload.status as u64,
+                    payload.assignee_hash,
+                    payload.score_axes_hash,
+                    payload.files_hash,
+                ],
+            ),
+            Self::EdgeAdd(payload) => fold_ordered_plan_hash(
+                0x504c_414e_4541_0001u64,
+                &[
+                    PlanPatchKind::EdgeAdd as u64,
+                    payload.from_node_hash,
+                    payload.to_node_hash,
+                ],
+            ),
+            Self::EdgeRemove(payload) => fold_ordered_plan_hash(
+                0x504c_414e_4552_0001u64,
+                &[
+                    PlanPatchKind::EdgeRemove as u64,
+                    payload.from_node_hash,
+                    payload.to_node_hash,
+                ],
+            ),
+            Self::NodeRemove(payload) => fold_ordered_plan_hash(
+                0x504c_414e_4e52_0001u64,
+                &[PlanPatchKind::NodeRemove as u64, payload.node_id_hash],
+            ),
+            Self::StatusChange(payload) => fold_ordered_plan_hash(
+                0x504c_414e_5354_0001u64,
+                &[
+                    PlanPatchKind::StatusChange as u64,
+                    payload.node_id_hash,
+                    payload.status as u64,
+                ],
+            ),
+            Self::AssigneeChange(payload) => fold_ordered_plan_hash(
+                0x504c_414e_4153_0001u64,
+                &[
+                    PlanPatchKind::AssigneeChange as u64,
+                    payload.node_id_hash,
+                    payload.assignee_hash,
+                ],
+            ),
+            Self::EvidenceAppend(payload) => fold_ordered_plan_hash(
+                0x504c_414e_4556_0001u64,
+                &[
+                    PlanPatchKind::EvidenceAppend as u64,
+                    payload.node_id_hash,
+                    payload.path_hash,
+                    payload.kind_hash,
+                    payload.summary_hash,
+                ],
+            ),
+            Self::FullImport(payload) => fold_ordered_plan_hash(
+                0x504c_414e_494d_0001u64,
+                &[
+                    PlanPatchKind::FullImport as u64,
+                    payload.node_count,
+                    payload.edge_count,
+                    payload.nodes_hash,
+                    payload.edges_hash,
+                ],
+            ),
+        }
+    }
+
+    pub fn is_valid(self) -> bool {
+        match self {
+            Self::NodeUpsert(payload) => payload.node_id_hash != 0 && payload.title_hash != 0,
+            Self::EdgeAdd(payload) | Self::EdgeRemove(payload) => {
+                payload.from_node_hash != 0
+                    && payload.to_node_hash != 0
+                    && payload.from_node_hash != payload.to_node_hash
+            }
+            Self::NodeRemove(payload) => payload.node_id_hash != 0,
+            Self::StatusChange(payload) => payload.node_id_hash != 0,
+            Self::AssigneeChange(payload) => payload.node_id_hash != 0,
+            Self::EvidenceAppend(payload) => {
+                payload.node_id_hash != 0
+                    && payload.path_hash != 0
+                    && payload.kind_hash != 0
+                    && payload.summary_hash != 0
+            }
+            Self::FullImport(payload) => {
+                payload.nodes_hash != 0
+                    && payload.edges_hash != 0
+                    && (payload.node_count != 0 || payload.edge_count == 0)
+            }
+        }
+    }
+}
+
+impl PlanPatchPayload {
+    pub fn plan_state_patch(self) -> PlanStatePatch {
+        match self {
+            Self::NodeUpsert(p) => PlanStatePatch::NodeUpsert { node_id_hash: p.node_id_hash, title_hash: p.title_hash, description_hash: p.description_hash, status: p.status as u64, assignee_hash: p.assignee_hash, score_axes_hash: p.score_axes_hash, files_hash: p.files_hash },
+            Self::EdgeAdd(p) => PlanStatePatch::EdgeAdd(PlanEdgeProjection { from_node_hash: p.from_node_hash, to_node_hash: p.to_node_hash }),
+            Self::EdgeRemove(p) => PlanStatePatch::EdgeRemove(PlanEdgeProjection { from_node_hash: p.from_node_hash, to_node_hash: p.to_node_hash }),
+            Self::NodeRemove(p) => PlanStatePatch::NodeRemove { node_id_hash: p.node_id_hash },
+            Self::StatusChange(p) => PlanStatePatch::StatusChange { node_id_hash: p.node_id_hash, status: p.status as u64 },
+            Self::AssigneeChange(p) => PlanStatePatch::AssigneeChange { node_id_hash: p.node_id_hash, assignee_hash: p.assignee_hash },
+            Self::EvidenceAppend(p) => PlanStatePatch::EvidenceAppend { node_id_hash: p.node_id_hash, evidence: PlanEvidenceProjection { path_hash: p.path_hash, kind_hash: p.kind_hash, summary_hash: p.summary_hash } },
+            Self::FullImport(p) => PlanStatePatch::FullImport { node_count: p.node_count, edge_count: p.edge_count, nodes_hash: p.nodes_hash, edges_hash: p.edges_hash },
+        }
+    }
+}
+
+impl PlanPatchRecord {
+    pub fn new(source_hash: u64, cycle_id: u64, patch_seq: u64, payload: PlanPatchPayload) -> Self {
+        let contract_hash = plan_patch_contract_hash();
+        let payload_hash = payload.canonical_hash();
+        let mut record = Self {
+            schema_version: PLAN_PATCH_SCHEMA_VERSION,
+            record_type: PLAN_PATCH_RECORD,
+            source_hash,
+            cycle_id,
+            patch_seq,
+            contract_hash,
+            payload,
+            payload_hash,
+            patch_hash: 0,
+        };
+        record.patch_hash = record.expected_patch_hash();
+        record
+    }
+
+    pub fn accepted(self, applied_revision: u64) -> AcceptedPlanPatchRecord {
+        AcceptedPlanPatchRecord::from_patch(self, applied_revision)
+    }
+
+    pub fn rejected(self, reason_hash: u64) -> RejectedPlanPatchRecord {
+        RejectedPlanPatchRecord::from_patch(self, reason_hash)
+    }
+
+    pub fn expected_patch_hash(self) -> u64 {
+        fold_ordered_plan_hash(
+            0x91a0_1001_5eed_0001u64,
+            &[
+                self.schema_version,
+                self.record_type,
+                self.source_hash,
+                self.cycle_id,
+                self.patch_seq,
+                self.contract_hash,
+                self.payload.kind() as u64,
+                self.payload_hash,
+            ],
+        )
+    }
+
+    pub fn is_self_consistent(self) -> bool {
+        self.schema_version == PLAN_PATCH_SCHEMA_VERSION
+            && self.record_type == PLAN_PATCH_RECORD
+            && self.source_hash != 0
+            && self.cycle_id != 0
+            && self.patch_seq != 0
+            && self.contract_hash == plan_patch_contract_hash()
+            && self.payload.is_valid()
+            && self.payload_hash == self.payload.canonical_hash()
+            && self.patch_hash == self.expected_patch_hash()
+    }
+}
+
+impl AcceptedPlanPatchRecord {
+    pub fn from_patch(patch: PlanPatchRecord, applied_revision: u64) -> Self {
+        let mut record = Self {
+            schema_version: PLAN_PATCH_SCHEMA_VERSION,
+            record_type: PLAN_PATCH_ACCEPTED_RECORD,
+            source_hash: patch.source_hash,
+            cycle_id: patch.cycle_id,
+            patch_seq: patch.patch_seq,
+            contract_hash: patch.contract_hash,
+            patch_hash: patch.patch_hash,
+            applied_revision,
+            acceptance_hash: 0,
+        };
+        record.acceptance_hash = record.expected_acceptance_hash();
+        record
+    }
+
+    pub fn expected_acceptance_hash(self) -> u64 {
+        fold_ordered_plan_hash(
+            0x91a0_1002_5eed_0001u64,
+            &[
+                self.schema_version,
+                self.record_type,
+                self.source_hash,
+                self.cycle_id,
+                self.patch_seq,
+                self.contract_hash,
+                self.patch_hash,
+                self.applied_revision,
+            ],
+        )
+    }
+
+    pub fn is_self_consistent(self) -> bool {
+        self.schema_version == PLAN_PATCH_SCHEMA_VERSION
+            && self.record_type == PLAN_PATCH_ACCEPTED_RECORD
+            && self.source_hash != 0
+            && self.cycle_id != 0
+            && self.patch_seq != 0
+            && self.contract_hash == plan_patch_contract_hash()
+            && self.patch_hash != 0
+            && self.applied_revision != 0
+            && self.acceptance_hash == self.expected_acceptance_hash()
+    }
+}
+
+impl RejectedPlanPatchRecord {
+    pub fn from_patch(patch: PlanPatchRecord, reason_hash: u64) -> Self {
+        let mut record = Self {
+            schema_version: PLAN_PATCH_SCHEMA_VERSION,
+            record_type: PLAN_PATCH_REJECTED_RECORD,
+            source_hash: patch.source_hash,
+            cycle_id: patch.cycle_id,
+            patch_seq: patch.patch_seq,
+            contract_hash: patch.contract_hash,
+            patch_hash: patch.patch_hash,
+            reason_hash,
+            rejection_hash: 0,
+        };
+        record.rejection_hash = record.expected_rejection_hash();
+        record
+    }
+
+    pub fn expected_rejection_hash(self) -> u64 {
+        fold_ordered_plan_hash(
+            0x91a0_1003_5eed_0001u64,
+            &[
+                self.schema_version,
+                self.record_type,
+                self.source_hash,
+                self.cycle_id,
+                self.patch_seq,
+                self.contract_hash,
+                self.patch_hash,
+                self.reason_hash,
+            ],
+        )
+    }
+
+    pub fn is_self_consistent(self) -> bool {
+        self.schema_version == PLAN_PATCH_SCHEMA_VERSION
+            && self.record_type == PLAN_PATCH_REJECTED_RECORD
+            && self.source_hash != 0
+            && self.cycle_id != 0
+            && self.patch_seq != 0
+            && self.contract_hash == plan_patch_contract_hash()
+            && self.patch_hash != 0
+            && self.reason_hash != 0
+            && self.rejection_hash == self.expected_rejection_hash()
+    }
 }
 
 impl PlanRecord {
@@ -372,6 +852,26 @@ fn plan_payload_hash(record: &PlanRecord) -> u64 {
     )
 }
 
+pub fn plan_patch_contract_hash() -> u64 {
+    fold_ordered_plan_hash(
+        0x504c_414e_5041_5443u64,
+        &[
+            PLAN_PATCH_SCHEMA_VERSION,
+            PLAN_PATCH_RECORD,
+            PLAN_PATCH_ACCEPTED_RECORD,
+            PLAN_PATCH_REJECTED_RECORD,
+            PlanPatchKind::NodeUpsert as u64,
+            PlanPatchKind::EdgeAdd as u64,
+            PlanPatchKind::EdgeRemove as u64,
+            PlanPatchKind::NodeRemove as u64,
+            PlanPatchKind::StatusChange as u64,
+            PlanPatchKind::AssigneeChange as u64,
+            PlanPatchKind::EvidenceAppend as u64,
+            PlanPatchKind::FullImport as u64,
+        ],
+    )
+}
+
 fn fold_ordered_plan_hash(seed: u64, fields: &[u64]) -> u64 {
     fields.iter().fold(seed, |h, field| mix(h, *field)).max(1)
 }
@@ -487,5 +987,93 @@ mod tests {
         assert!(receipt.is_self_consistent());
         assert!(receipt.is_valid_for(&record));
         assert!(!receipt.submission().passed);
+    }
+
+    #[test]
+    fn plan_patch_records_cover_mutation_variants_with_stable_hashes() {
+        let source_hash = fold_ordered_plan_hash(0x5352_4301, &[11]);
+        let node_hash = fold_ordered_plan_hash(0x4e4f_4445, &[1]);
+        let other_node_hash = fold_ordered_plan_hash(0x4e4f_4445, &[2]);
+        let text_hash = fold_ordered_plan_hash(0x5445_5854, &[3]);
+
+        let payloads = [
+            PlanPatchPayload::NodeUpsert(PlanNodeUpsertPatch {
+                node_id_hash: node_hash,
+                title_hash: text_hash,
+                description_hash: 0,
+                status: PlanNodeStatus::Pending,
+                assignee_hash: 0,
+                score_axes_hash: 0,
+                files_hash: 0,
+            }),
+            PlanPatchPayload::EdgeAdd(PlanEdgePatch {
+                from_node_hash: node_hash,
+                to_node_hash: other_node_hash,
+            }),
+            PlanPatchPayload::EdgeRemove(PlanEdgePatch {
+                from_node_hash: node_hash,
+                to_node_hash: other_node_hash,
+            }),
+            PlanPatchPayload::NodeRemove(PlanNodeRemovePatch {
+                node_id_hash: node_hash,
+            }),
+            PlanPatchPayload::StatusChange(PlanStatusChangePatch {
+                node_id_hash: node_hash,
+                status: PlanNodeStatus::Done,
+            }),
+            PlanPatchPayload::AssigneeChange(PlanAssigneeChangePatch {
+                node_id_hash: node_hash,
+                assignee_hash: text_hash,
+            }),
+            PlanPatchPayload::EvidenceAppend(PlanEvidenceAppendPatch {
+                node_id_hash: node_hash,
+                path_hash: text_hash,
+                kind_hash: text_hash,
+                summary_hash: text_hash,
+            }),
+            PlanPatchPayload::FullImport(PlanFullImportPatch {
+                node_count: 2,
+                edge_count: 1,
+                nodes_hash: node_hash,
+                edges_hash: other_node_hash,
+            }),
+        ];
+
+        for (idx, payload) in payloads.iter().copied().enumerate() {
+            let patch = PlanPatchRecord::new(source_hash, 7, idx as u64 + 1, payload);
+            assert!(patch.is_self_consistent());
+            assert_eq!(patch.contract_hash, plan_patch_contract_hash());
+            assert_eq!(patch.payload_hash, payload.canonical_hash());
+            assert_eq!(patch.patch_hash, patch.expected_patch_hash());
+
+            let accepted = patch.accepted(9);
+            assert!(accepted.is_self_consistent());
+            assert_eq!(accepted.patch_hash, patch.patch_hash);
+
+            let rejected = patch.rejected(text_hash);
+            assert!(rejected.is_self_consistent());
+            assert_eq!(rejected.patch_hash, patch.patch_hash);
+        }
+    }
+
+    #[test]
+    fn plan_patch_records_reject_tampered_bindings() {
+        let payload = PlanPatchPayload::StatusChange(PlanStatusChangePatch {
+            node_id_hash: 99,
+            status: PlanNodeStatus::Running,
+        });
+        let mut patch = PlanPatchRecord::new(11, 12, 13, payload);
+        assert!(patch.is_self_consistent());
+
+        patch.payload_hash ^= 1;
+        assert!(!patch.is_self_consistent());
+
+        let mut accepted = PlanPatchRecord::new(11, 12, 13, payload).accepted(1);
+        accepted.contract_hash ^= 1;
+        assert!(!accepted.is_self_consistent());
+
+        let mut rejected = PlanPatchRecord::new(11, 12, 13, payload).rejected(14);
+        rejected.reason_hash = 0;
+        assert!(!rejected.is_self_consistent());
     }
 }
