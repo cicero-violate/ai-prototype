@@ -224,6 +224,13 @@ pub fn plan_state_projection(plan: &PlanDag) -> PlanState {
 pub fn ready_nodes_from_plan_state(plan: &PlanDag) -> Vec<&PlanNode> {
     let projection = plan_state_projection(plan);
 
+    ready_nodes_from_plan_state_projection(plan, &projection)
+}
+
+pub fn ready_nodes_from_plan_state_projection<'a>(
+    plan: &'a PlanDag,
+    projection: &PlanState,
+) -> Vec<&'a PlanNode> {
     plan.nodes
         .iter()
         .filter(|node| {
@@ -245,6 +252,16 @@ pub fn ready_nodes_from_plan_state(plan: &PlanDag) -> Vec<&PlanNode> {
                     })
         })
         .collect()
+}
+
+pub fn ready_nodes_from_available_plan_state<'a>(
+    plan: &'a PlanDag,
+    projection: Option<&PlanState>,
+) -> Vec<&'a PlanNode> {
+    match projection {
+        Some(projection) => ready_nodes_from_plan_state_projection(plan, projection),
+        None => ready_nodes_from_plan_state(plan),
+    }
 }
 
 fn node_status_projection(status: &NodeStatus) -> u64 {
@@ -464,7 +481,7 @@ fn visit_acyclic(
 
 pub fn run_read(_args: &Value, workspace: &WorkspaceView) -> Value {
     let plan = load_plan(&workspace.root);
-    let ready: Vec<&str> = ready_nodes_from_plan_state(&plan).iter().map(|n| n.id.as_str()).collect();
+    let ready: Vec<&str> = ready_nodes_from_available_plan_state(&plan, None).iter().map(|n| n.id.as_str()).collect();
     ok(json!({ "plan": plan, "ready_node_ids": ready }))
 }
 
@@ -589,7 +606,7 @@ pub fn run_update(args: &Value, workspace: &WorkspaceView) -> Value {
         return error(format!("failed to save plan: {e}"));
     }
 
-    let ready: Vec<&str> = ready_nodes_from_plan_state(&plan).iter().map(|n| n.id.as_str()).collect();
+    let ready: Vec<&str> = ready_nodes_from_available_plan_state(&plan, None).iter().map(|n| n.id.as_str()).collect();
     ok(
         json!({ "ok": true, "op": op, "node_count": plan.nodes.len(), "edge_count": plan.edges.len(), "ready_node_ids": ready }),
     )
@@ -699,6 +716,36 @@ mod tests {
         plan.nodes[2].status = NodeStatus::Pending;
 
         let ready = ready_nodes_from_plan_state(&plan);
+
+        assert_eq!(
+            ready.iter().map(|node| node.id.as_str()).collect::<Vec<_>>(),
+            vec!["b"]
+        );
+    }
+
+    #[test]
+    fn available_plan_state_projection_overrides_persisted_plan_status() {
+        let plan = dag(vec![edge("a", "b")]);
+        let mut projection = plan_state_projection(&plan);
+        let a_hash = plan_text_hash("a");
+        let b_hash = plan_text_hash("b");
+        projection.nodes.get_mut(&a_hash).unwrap().status = PROJECTED_STATUS_DONE;
+        projection.nodes.get_mut(&b_hash).unwrap().status = PROJECTED_STATUS_PENDING;
+
+        let ready = ready_nodes_from_available_plan_state(&plan, Some(&projection));
+
+        assert_eq!(
+            ready.iter().map(|node| node.id.as_str()).collect::<Vec<_>>(),
+            vec!["b"]
+        );
+    }
+
+    #[test]
+    fn unavailable_plan_state_projection_falls_back_to_persisted_plan_projection() {
+        let mut plan = dag(vec![edge("a", "b")]);
+        plan.nodes[0].status = NodeStatus::Done;
+
+        let ready = ready_nodes_from_available_plan_state(&plan, None);
 
         assert_eq!(
             ready.iter().map(|node| node.id.as_str()).collect::<Vec<_>>(),
