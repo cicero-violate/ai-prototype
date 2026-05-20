@@ -11,6 +11,7 @@ use crate::kernel::{
 pub(crate) mod command_ledger;
 pub(crate) mod diff;
 pub mod durable;
+pub mod event_bus;
 pub mod introspection;
 pub mod mailbox;
 pub mod mcp_transcript;
@@ -26,6 +27,9 @@ pub use self::diff::semantic_diff;
 pub use self::durable::{
     durable_replay_report, resume_durable_runtime, run_until_done_durable,
     run_until_done_durable_with_ledger, tick_durable, tick_durable_checked, DurableRuntimeState,
+};
+pub use self::event_bus::{
+    replay_event_bus, RuntimeEventBus, RuntimeWakeup, RuntimeWakeupKey, WakeupKind,
 };
 pub use self::introspection::{
     append_canonical_line, append_score_report_update_ndjson, append_validation_result_ndjson,
@@ -48,6 +52,7 @@ pub use self::workspace::WorkspaceView;
 pub use crate::kernel::CanonError;
 
 use self::recovery_policy::{evidence_for_gate, recovery_policy_coverage_count};
+pub(crate) use self::recovery_policy::recovery_action_for;
 pub(crate) use self::reducer::reduce;
 use self::transition_table::TRANSITIONS;
 pub(crate) use self::writer::CanonicalWriter;
