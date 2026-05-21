@@ -2,7 +2,7 @@
 
 use std::time::{SystemTime, UNIX_EPOCH};
 
-pub(super) fn stable_agent_hash(bytes: &[u8]) -> u64 {
+pub(crate) fn stable_agent_hash(bytes: &[u8]) -> u64 {
     let mut h = 0xcbf2_9ce4_8422_2325u64;
     for byte in bytes {
         h ^= u64::from(*byte);

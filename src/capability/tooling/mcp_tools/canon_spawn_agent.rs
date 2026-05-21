@@ -32,8 +32,7 @@ impl SpawnAgentToolRequest {
             .get("max_steps")
             .and_then(Value::as_u64)
             .unwrap_or(20)
-            .max(1)
-            .min(100);
+            .clamp(1, 100);
         Ok(Self {
             domain,
             metric,

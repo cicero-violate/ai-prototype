@@ -3,11 +3,12 @@ use ai::{
     api_transport_receipt_replay_classification_with_expected_count,
     append_api_transport_receipt_ndjson, decode_api_transport_receipt_ndjson,
     encode_api_transport_receipt_ndjson, handle_transport_frame_once,
-    load_api_transport_ledger_ndjson, load_api_transport_receipts_ndjson, tick,
-    verify_api_transport_receipt_chain, verify_api_transport_receipts, verify_tlog,
-    ApiTransportDisposition, ApiTransportFrame, ApiTransportLedger, ApiTransportReceipt,
-    ApiTransportSession, CanonError, Command, CommandEnvelope, CommandLedger, ObservationRecord,
-    Phase, RuntimeConfig, State, TLog,
+    load_api_transport_ledger_ndjson, load_api_transport_receipts_ndjson, replay_report_from,
+    resume_durable_runtime, tick, verify_api_transport_receipt_chain,
+    verify_api_transport_receipts, verify_tlog, write_tlog_ndjson, ApiTransportDisposition,
+    ApiTransportFrame, ApiTransportLedger, ApiTransportReceipt, ApiTransportSession, CanonError,
+    Cause, ChildCompleteRecord, Command, CommandEnvelope, CommandLedger, ObservationRecord, Phase,
+    RuntimeConfig, State, TLog, WaveRecord,
 };
 
 fn transport_receipt_path(name: &str) -> std::path::PathBuf {
@@ -27,6 +28,22 @@ fn observation_frame() -> ApiTransportFrame {
     let record = ObservationRecord::new(1, 1, 0xabc, 1);
     let envelope = CommandEnvelope::new(11, Command::SubmitEvidence(record.submission()));
     ApiTransportFrame::new(101, envelope)
+}
+
+fn wave_dispatch_frame(request_id: u64, command_id: u64, node_count: u16) -> ApiTransportFrame {
+    let record = WaveRecord::new(0x77, 0x11, 1, node_count, 0x99);
+    ApiTransportFrame::new(
+        request_id,
+        CommandEnvelope::new(command_id, Command::SubmitWaveDispatch(record)),
+    )
+}
+
+fn child_complete_frame(request_id: u64, command_id: u64, node_hash: u64) -> ApiTransportFrame {
+    let record = ChildCompleteRecord::new(0x77, node_hash, false);
+    ApiTransportFrame::new(
+        request_id,
+        CommandEnvelope::new(command_id, Command::SubmitChildComplete(record)),
+    )
 }
 
 fn accepted_transport_receipts(count: u64) -> (TLog, Vec<ApiTransportReceipt>) {
@@ -59,6 +76,184 @@ fn accepted_transport_receipts(count: u64) -> (TLog, Vec<ApiTransportReceipt>) {
     }
 
     (tlog, transport_ledger.receipts().to_vec())
+}
+
+#[test]
+fn wave_dispatch_sets_pending_and_child_complete_decrements_once() {
+    let cfg = RuntimeConfig::default();
+    let mut state = State::default();
+    let mut tlog = TLog::default();
+    let mut command_ledger = CommandLedger::default();
+    let mut transport_ledger = ApiTransportLedger::default();
+
+    let dispatch = handle_transport_frame_once(
+        &mut state,
+        &mut tlog,
+        cfg,
+        &mut command_ledger,
+        &mut transport_ledger,
+        wave_dispatch_frame(900, 1900, 3),
+    )
+    .expect("wave dispatch should be accepted");
+    assert_eq!(dispatch.control.event.cause, Cause::WaveDispatched);
+    assert_eq!(dispatch.control.event.state_before.wave_pending, 0);
+    assert_eq!(dispatch.control.event.state_after.wave_pending, 3);
+    assert_eq!(state.wave_pending, 3);
+
+    let first_child = handle_transport_frame_once(
+        &mut state,
+        &mut tlog,
+        cfg,
+        &mut command_ledger,
+        &mut transport_ledger,
+        child_complete_frame(901, 1901, 0xa1),
+    )
+    .expect("first child completion should be accepted");
+    assert_eq!(first_child.control.event.cause, Cause::ChildTaskCompleted);
+    assert_eq!(first_child.control.event.state_before.wave_pending, 3);
+    assert_eq!(first_child.control.event.state_after.wave_pending, 2);
+    assert_eq!(state.wave_pending, 2);
+
+    let second_child = handle_transport_frame_once(
+        &mut state,
+        &mut tlog,
+        cfg,
+        &mut command_ledger,
+        &mut transport_ledger,
+        child_complete_frame(902, 1902, 0xa2),
+    )
+    .expect("second child completion should be accepted");
+    assert_eq!(second_child.control.event.state_before.wave_pending, 2);
+    assert_eq!(second_child.control.event.state_after.wave_pending, 1);
+    assert_eq!(state.wave_pending, 1);
+
+    let reset_dispatch = handle_transport_frame_once(
+        &mut state,
+        &mut tlog,
+        cfg,
+        &mut command_ledger,
+        &mut transport_ledger,
+        wave_dispatch_frame(903, 1903, 4),
+    )
+    .expect("later wave dispatch should be accepted");
+    assert_eq!(reset_dispatch.control.event.state_before.wave_pending, 1);
+    assert_eq!(reset_dispatch.control.event.state_after.wave_pending, 4);
+    assert_eq!(state.wave_pending, 4);
+}
+
+#[test]
+fn child_complete_underflow_is_rejected() {
+    let cfg = RuntimeConfig::default();
+    let mut state = State::default();
+    let mut tlog = TLog::default();
+    let mut command_ledger = CommandLedger::default();
+    let mut transport_ledger = ApiTransportLedger::default();
+
+    assert_eq!(
+        handle_transport_frame_once(
+            &mut state,
+            &mut tlog,
+            cfg,
+            &mut command_ledger,
+            &mut transport_ledger,
+            child_complete_frame(910, 1910, 0xb1),
+        ),
+        Err(CanonError::InvalidReplay)
+    );
+    assert_eq!(state.wave_pending, 0);
+    assert!(tlog.is_empty());
+
+    handle_transport_frame_once(
+        &mut state,
+        &mut tlog,
+        cfg,
+        &mut command_ledger,
+        &mut transport_ledger,
+        wave_dispatch_frame(911, 1911, 1),
+    )
+    .expect("single-node wave dispatch should be accepted");
+    handle_transport_frame_once(
+        &mut state,
+        &mut tlog,
+        cfg,
+        &mut command_ledger,
+        &mut transport_ledger,
+        child_complete_frame(912, 1912, 0xb2),
+    )
+    .expect("one child completion should drain the wave");
+    assert_eq!(state.wave_pending, 0);
+
+    assert_eq!(
+        handle_transport_frame_once(
+            &mut state,
+            &mut tlog,
+            cfg,
+            &mut command_ledger,
+            &mut transport_ledger,
+            child_complete_frame(913, 1913, 0xb3),
+        ),
+        Err(CanonError::InvalidReplay)
+    );
+    assert_eq!(state.wave_pending, 0);
+}
+
+#[test]
+fn replay_reconstructs_wave_pending_after_crash() {
+    let cfg = RuntimeConfig::default();
+    let initial = State::default();
+    let mut state = initial;
+    let mut tlog = TLog::default();
+    let mut command_ledger = CommandLedger::default();
+    let mut transport_ledger = ApiTransportLedger::default();
+
+    handle_transport_frame_once(
+        &mut state,
+        &mut tlog,
+        cfg,
+        &mut command_ledger,
+        &mut transport_ledger,
+        wave_dispatch_frame(920, 1920, 3),
+    )
+    .expect("wave dispatch should be accepted");
+    handle_transport_frame_once(
+        &mut state,
+        &mut tlog,
+        cfg,
+        &mut command_ledger,
+        &mut transport_ledger,
+        child_complete_frame(921, 1921, 0xc1),
+    )
+    .expect("first child completion should be accepted");
+
+    assert_eq!(state.wave_pending, 2);
+    assert_eq!(
+        replay_report_from(initial, &tlog)
+            .unwrap()
+            .final_state
+            .wave_pending,
+        2
+    );
+
+    let path = transport_receipt_path("wave-replay-crash-tlog");
+    write_tlog_ndjson(&path, &tlog).expect("test should persist simulated crash tlog");
+
+    let resumed = resume_durable_runtime(initial, &path).expect("runtime should resume from tlog");
+    assert_eq!(resumed.state.wave_pending, 2);
+    assert_eq!(resumed.tlog, tlog);
+
+    let mut resumed_state = resumed.state;
+    let mut resumed_tlog = resumed.tlog;
+    let mut resumed_ledger = resumed.command_ledger;
+    handle_transport_frame_once(
+        &mut resumed_state,
+        &mut resumed_tlog,
+        cfg,
+        &mut resumed_ledger,
+        &mut transport_ledger,
+        child_complete_frame(922, 1922, 0xc2),
+    )
+    .expect("resumed child completion should decrement reconstructed count");
+    assert_eq!(resumed_state.wave_pending, 1);
 }
 
 fn tamper_first_transport_receipt_hash_unchecked(transport_ledger: &mut ApiTransportLedger) {

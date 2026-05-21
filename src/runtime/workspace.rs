@@ -80,7 +80,11 @@ fn normalize_path(path: &Path) -> PathBuf {
                 out.pop();
             }
             Component::CurDir => {}
-            other => out.push(other),
+            other @ Component::Prefix(_)
+            | other @ Component::RootDir
+            | other @ Component::Normal(_) => {
+                out.push(other);
+            }
         }
     }
     out

@@ -329,11 +329,11 @@ fn graph_mcp_action_generates_patch_and_landing_receipt() {
 
     let value = ai::capability::tooling::graph_editor::plan_patch_tool(
         &json!({
-            "graph_contract": old_graph.strip_prefix(&dir).unwrap().to_str().unwrap(),
-            "source_root": source_root.strip_prefix(&dir).unwrap().to_str().unwrap(),
-            "ops": ops.strip_prefix(&dir).unwrap().to_str().unwrap(),
-            "patch_out": patch.strip_prefix(&dir).unwrap().to_str().unwrap(),
-            "receipt_out": patch_receipt.strip_prefix(&dir).unwrap().to_str().unwrap(),
+            "graph_contract": old_graph.strip_prefix(&dir).expect("test path should be under temp dir").to_str().expect("test path should be valid UTF-8"),
+            "source_root": source_root.strip_prefix(&dir).expect("test path should be under temp dir").to_str().expect("test path should be valid UTF-8"),
+            "ops": ops.strip_prefix(&dir).expect("test path should be under temp dir").to_str().expect("test path should be valid UTF-8"),
+            "patch_out": patch.strip_prefix(&dir).expect("test path should be under temp dir").to_str().expect("test path should be valid UTF-8"),
+            "receipt_out": patch_receipt.strip_prefix(&dir).expect("test path should be under temp dir").to_str().expect("test path should be valid UTF-8"),
         }),
         &workspace,
     );
@@ -377,11 +377,11 @@ fn graph_mcp_actions_roundtrip_generated_receipts_into_ledger_verifier() {
 
     let value = ai::capability::tooling::graph_editor::plan_patch_tool(
         &json!({
-            "graph_contract": old_graph.strip_prefix(&dir).unwrap().to_str().unwrap(),
-            "source_root": source_root.strip_prefix(&dir).unwrap().to_str().unwrap(),
-            "ops": ops.strip_prefix(&dir).unwrap().to_str().unwrap(),
-            "patch_out": patch.strip_prefix(&dir).unwrap().to_str().unwrap(),
-            "receipt_out": patch_receipt.strip_prefix(&dir).unwrap().to_str().unwrap(),
+            "graph_contract": old_graph.strip_prefix(&dir).expect("test path should be under temp dir").to_str().expect("test path should be valid UTF-8"),
+            "source_root": source_root.strip_prefix(&dir).expect("test path should be under temp dir").to_str().expect("test path should be valid UTF-8"),
+            "ops": ops.strip_prefix(&dir).expect("test path should be under temp dir").to_str().expect("test path should be valid UTF-8"),
+            "patch_out": patch.strip_prefix(&dir).expect("test path should be under temp dir").to_str().expect("test path should be valid UTF-8"),
+            "receipt_out": patch_receipt.strip_prefix(&dir).expect("test path should be under temp dir").to_str().expect("test path should be valid UTF-8"),
         }),
         &workspace,
     );

@@ -4,10 +4,18 @@
 //! into a structured judgment record. The kernel still sees only
 //! `Evidence::JudgmentRecord`.
 
+pub mod browser_router;
 pub mod ollama;
 pub mod openai;
 pub mod record;
+pub mod sse;
+pub mod task_receipt;
 pub mod transport;
+
+pub use self::browser_router::{
+    RouterClient, RouterStreamingResult, RouterTabCloseOutcome, RouterTurnResult,
+};
+pub use self::sse::{ChunkLogger, SseResult};
 
 pub use self::ollama::{
     append_ollama_judgment_proof_event_ndjson, append_ollama_llm_effect_receipt_ndjson,
@@ -41,3 +49,4 @@ pub use self::openai::{
 pub use self::record::{
     LlmDecision, LlmPromptRecord, LlmRecord, LlmResponseRecord, LlmStructuredAdapter,
 };
+pub use self::task_receipt::{LlmTaskContext, LlmTurnReceipt, LlmTurnRecord};

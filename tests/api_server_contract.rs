@@ -251,10 +251,10 @@ async fn worker_accepts_process_receipt_command_over_http() {
                 .uri("/v1/command")
                 .header("Content-Type", "application/json")
                 .body(Body::from(process_authorize_body(59, &receipt).to_string()))
-                .unwrap(),
+                .expect("test operation should succeed"),
         )
         .await
-        .unwrap();
+        .expect("test operation should succeed");
     let authorize_response: ai::CommandResponseDto = ok_response_json(authorize_response).await;
     assert!(authorize_response.ok);
     assert_eq!(authorize_response.disposition, "accepted");
@@ -266,15 +266,21 @@ async fn worker_accepts_process_receipt_command_over_http() {
                 .uri("/v1/command")
                 .header("Content-Type", "application/json")
                 .body(Body::from(process_receipt_body(60, &receipt).to_string()))
-                .unwrap(),
+                .expect("test operation should succeed"),
         )
         .await
-        .unwrap();
+        .expect("test operation should succeed");
     let response: ai::CommandResponseDto = ok_response_json(response).await;
 
     assert!(response.ok);
     assert_eq!(response.disposition, "accepted");
-    assert_eq!(state.snapshot().unwrap().tlog_len, 3);
+    assert_eq!(
+        state
+            .snapshot()
+            .expect("state snapshot should succeed")
+            .tlog_len,
+        3
+    );
     let _ = std::fs::remove_file(path);
 }
 
@@ -296,13 +302,15 @@ async fn worker_health_route_returns_ok() {
             Request::builder()
                 .uri("/health/worker")
                 .body(Body::empty())
-                .unwrap(),
+                .expect("test operation should succeed"),
         )
         .await
-        .unwrap();
+        .expect("test operation should succeed");
 
     assert_eq!(response.status(), StatusCode::OK);
-    let body = to_bytes(response.into_body(), usize::MAX).await.unwrap();
+    let body = to_bytes(response.into_body(), usize::MAX)
+        .await
+        .expect("test operation should succeed");
     assert_eq!(&body[..], b"ok");
     let _ = std::fs::remove_file(path);
 }
@@ -319,26 +327,32 @@ async fn state_route_is_read_only() {
             Request::builder()
                 .uri("/v1/state")
                 .body(Body::empty())
-                .unwrap(),
+                .expect("test operation should succeed"),
         )
         .await
-        .unwrap();
+        .expect("test operation should succeed");
     let second = app
         .oneshot(
             Request::builder()
                 .uri("/v1/state")
                 .body(Body::empty())
-                .unwrap(),
+                .expect("test operation should succeed"),
         )
         .await
-        .unwrap();
+        .expect("test operation should succeed");
 
     assert_eq!(first.status(), StatusCode::OK);
     assert_eq!(second.status(), StatusCode::OK);
     let first: StateDto = response_json(first).await;
     let second: StateDto = response_json(second).await;
     assert_eq!(first, second);
-    assert_eq!(state.snapshot().unwrap().tlog_len, 0);
+    assert_eq!(
+        state
+            .snapshot()
+            .expect("state snapshot should succeed")
+            .tlog_len,
+        0
+    );
     let _ = std::fs::remove_file(path);
 }
 
@@ -375,17 +389,28 @@ async fn command_route_uses_transport_session_and_persists_tlog() {
                 .uri("/v1/command")
                 .header("Content-Type", "application/json")
                 .body(Body::from(body.to_string()))
-                .unwrap(),
+                .expect("request body should build"),
         )
         .await
-        .unwrap();
+        .expect("test operation should succeed");
 
     let response: ai::CommandResponseDto = ok_response_json(response).await;
     assert!(response.ok);
     assert_eq!(response.request_id, 1);
     assert_eq!(response.disposition, "accepted");
-    assert_eq!(state.snapshot().unwrap().tlog_len, 3);
-    assert!(std::fs::metadata(&path).unwrap().len() > 0);
+    assert_eq!(
+        state
+            .snapshot()
+            .expect("state snapshot should succeed")
+            .tlog_len,
+        3
+    );
+    assert!(
+        std::fs::metadata(&path)
+            .expect("test value should be present")
+            .len()
+            > 0
+    );
     let _ = std::fs::remove_file(path);
 }
 
@@ -424,17 +449,23 @@ async fn command_route_maps_tlog_persistence_failure_to_internal_server_error() 
                 .uri("/v1/command")
                 .header("Content-Type", "application/json")
                 .body(Body::from(body.to_string()))
-                .unwrap(),
+                .expect("request body should build"),
         )
         .await
-        .unwrap();
+        .expect("test operation should succeed");
 
     assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
     let error: ai::ErrorDto = response_json(response).await;
     assert!(!error.ok);
     assert_eq!(error.error, "TlogIo");
     assert!(!path.exists());
-    assert_eq!(state.snapshot().unwrap().tlog_len, 3);
+    assert_eq!(
+        state
+            .snapshot()
+            .expect("state snapshot should succeed")
+            .tlog_len,
+        3
+    );
 }
 
 #[tokio::test]
@@ -470,16 +501,21 @@ async fn command_route_replays_after_durable_resume_without_appending_tlog() {
                 .uri("/v1/command")
                 .header("Content-Type", "application/json")
                 .body(Body::from(body.to_string()))
-                .unwrap(),
+                .expect("request body should build"),
         )
         .await
-        .unwrap();
+        .expect("test operation should succeed");
     let first_response: ai::CommandResponseDto = ok_response_json(first_response).await;
     assert_eq!(first_response.disposition, "accepted");
-    let persisted_snapshot = first_state.snapshot().unwrap();
-    let persisted_disk_len = std::fs::metadata(&path).unwrap().len();
+    let persisted_snapshot = first_state
+        .snapshot()
+        .expect("state snapshot should succeed");
+    let persisted_disk_len = std::fs::metadata(&path)
+        .expect("test value should be present")
+        .len();
 
-    let resumed = resume_durable_runtime(State::default(), &path).unwrap();
+    let resumed =
+        resume_durable_runtime(State::default(), &path).expect("test operation should succeed");
     assert_eq!(
         format!("{:?}", resumed.state.phase),
         persisted_snapshot.phase
@@ -503,20 +539,28 @@ async fn command_route_replays_after_durable_resume_without_appending_tlog() {
                 .uri("/v1/command")
                 .header("Content-Type", "application/json")
                 .body(Body::from(body.to_string()))
-                .unwrap(),
+                .expect("request body should build"),
         )
         .await
-        .unwrap();
+        .expect("test operation should succeed");
     let replay_response: ai::CommandResponseDto = ok_response_json(replay_response).await;
 
     assert_eq!(replay_response.disposition, "replayed");
     assert_eq!(replay_response.event_hash, first_response.event_hash);
     assert_eq!(replay_response.event_seq, first_response.event_seq);
     assert_eq!(
-        resumed_state.snapshot().unwrap().tlog_len,
+        resumed_state
+            .snapshot()
+            .expect("state snapshot should succeed")
+            .tlog_len,
         persisted_snapshot.tlog_len
     );
-    assert_eq!(std::fs::metadata(&path).unwrap().len(), persisted_disk_len);
+    assert_eq!(
+        std::fs::metadata(&path)
+            .expect("test value should be present")
+            .len(),
+        persisted_disk_len
+    );
     let _ = std::fs::remove_file(path);
 }
 
@@ -568,17 +612,28 @@ async fn command_route_accepts_mcp_receipt_submission_and_persists_tlog() {
                 .uri("/v1/command")
                 .header("Content-Type", "application/json")
                 .body(Body::from(body.to_string()))
-                .unwrap(),
+                .expect("request body should build"),
         )
         .await
-        .unwrap();
+        .expect("test operation should succeed");
 
     let response: ai::CommandResponseDto = ok_response_json(response).await;
     assert!(response.ok);
     assert_eq!(response.request_id, 1);
     assert_eq!(response.disposition, "accepted");
-    assert_eq!(state.snapshot().unwrap().tlog_len, 2);
-    assert!(std::fs::metadata(&path).unwrap().len() > 0);
+    assert_eq!(
+        state
+            .snapshot()
+            .expect("state snapshot should succeed")
+            .tlog_len,
+        2
+    );
+    assert!(
+        std::fs::metadata(&path)
+            .expect("test value should be present")
+            .len()
+            > 0
+    );
     let _ = std::fs::remove_file(path);
 }
 
@@ -616,15 +671,21 @@ async fn command_route_authorizes_mcp_then_records_receipt_in_tlog() {
                 .uri("/v1/command")
                 .header("Content-Type", "application/json")
                 .body(Body::from(mcp_authorize_body(50, &request).to_string()))
-                .unwrap(),
+                .expect("test operation should succeed"),
         )
         .await
-        .unwrap();
+        .expect("test operation should succeed");
     let authorization_response: ai::CommandResponseDto =
         ok_response_json(authorization_response).await;
     assert!(authorization_response.ok);
     assert_eq!(authorization_response.disposition, "accepted");
-    assert_eq!(state.snapshot().unwrap().tlog_len, 1);
+    assert_eq!(
+        state
+            .snapshot()
+            .expect("state snapshot should succeed")
+            .tlog_len,
+        1
+    );
 
     let receipt = McpCallReceipt::from_response(
         &request,
@@ -642,14 +703,20 @@ async fn command_route_authorizes_mcp_then_records_receipt_in_tlog() {
                 .uri("/v1/command")
                 .header("Content-Type", "application/json")
                 .body(Body::from(mcp_receipt_body(51, &receipt).to_string()))
-                .unwrap(),
+                .expect("test operation should succeed"),
         )
         .await
-        .unwrap();
+        .expect("test operation should succeed");
     let receipt_response: ai::CommandResponseDto = ok_response_json(receipt_response).await;
     assert!(receipt_response.ok);
     assert_eq!(receipt_response.disposition, "accepted");
-    assert_eq!(state.snapshot().unwrap().tlog_len, 3);
+    assert_eq!(
+        state
+            .snapshot()
+            .expect("state snapshot should succeed")
+            .tlog_len,
+        3
+    );
 
     let replay =
         ai::replay_report_ndjson(execute_state, &path).expect("authorized mcp tlog replays");
@@ -658,7 +725,12 @@ async fn command_route_authorizes_mcp_then_records_receipt_in_tlog() {
         replay.final_state.gates.execution.evidence,
         ai::Evidence::ExecutionReceipt
     );
-    assert!(std::fs::metadata(&path).unwrap().len() > 0);
+    assert!(
+        std::fs::metadata(&path)
+            .expect("test value should be present")
+            .len()
+            > 0
+    );
     let _ = std::fs::remove_file(path);
 }
 
@@ -667,7 +739,7 @@ async fn invalid_command_does_not_mutate_state() {
     let path = tlog_path("invalid");
     let _ = std::fs::remove_file(&path);
     let state = WorkerAppState::new_default(&path);
-    let before = state.snapshot().unwrap();
+    let before = state.snapshot().expect("state snapshot should succeed");
     let app = build_router(state.clone());
     let body = serde_json::json!({
         "command_id": 22,
@@ -683,13 +755,16 @@ async fn invalid_command_does_not_mutate_state() {
                 .uri("/v1/command")
                 .header("Content-Type", "application/json")
                 .body(Body::from(body.to_string()))
-                .unwrap(),
+                .expect("request body should build"),
         )
         .await
-        .unwrap();
+        .expect("test operation should succeed");
 
     assert_eq!(response.status(), StatusCode::BAD_REQUEST);
-    assert_eq!(state.snapshot().unwrap(), before);
+    assert_eq!(
+        state.snapshot().expect("state snapshot should succeed"),
+        before
+    );
     assert!(!path.exists());
 }
 
@@ -698,7 +773,7 @@ async fn api_server_rejects_unknown_submission_gate_and_evidence() {
     let path = tlog_path("unknown-submission-token");
     let _ = std::fs::remove_file(&path);
     let state = WorkerAppState::new_default(&path);
-    let before = state.snapshot().unwrap();
+    let before = state.snapshot().expect("state snapshot should succeed");
     let app = build_router(state.clone());
     let submission = EvidenceSubmission::with_payload(
         ai::GateId::Analysis,
@@ -726,12 +801,15 @@ async fn api_server_rejects_unknown_submission_gate_and_evidence() {
                 .uri("/v1/command")
                 .header("Content-Type", "application/json")
                 .body(Body::from(unknown_gate_body.to_string()))
-                .unwrap(),
+                .expect("request body should build"),
         )
         .await
-        .unwrap();
+        .expect("test operation should succeed");
     assert_eq!(unknown_gate_response.status(), StatusCode::BAD_REQUEST);
-    assert_eq!(state.snapshot().unwrap(), before);
+    assert_eq!(
+        state.snapshot().expect("state snapshot should succeed"),
+        before
+    );
     assert!(!path.exists());
 
     let unknown_evidence_body = command_body_with_payload(
@@ -752,12 +830,15 @@ async fn api_server_rejects_unknown_submission_gate_and_evidence() {
                 .uri("/v1/command")
                 .header("Content-Type", "application/json")
                 .body(Body::from(unknown_evidence_body.to_string()))
-                .unwrap(),
+                .expect("request body should build"),
         )
         .await
-        .unwrap();
+        .expect("test operation should succeed");
     assert_eq!(unknown_evidence_response.status(), StatusCode::BAD_REQUEST);
-    assert_eq!(state.snapshot().unwrap(), before);
+    assert_eq!(
+        state.snapshot().expect("state snapshot should succeed"),
+        before
+    );
     assert!(!path.exists());
 }
 
@@ -766,7 +847,7 @@ async fn oversized_batch_command_does_not_mutate_state_or_disk() {
     let path = tlog_path("oversized-batch");
     let _ = std::fs::remove_file(&path);
     let state = WorkerAppState::new_default(&path);
-    let before = state.snapshot().unwrap();
+    let before = state.snapshot().expect("state snapshot should succeed");
     let app = build_router(state.clone());
     let submissions: Vec<_> = (0..=ai::api::protocol::API_COMMAND_BATCH_LIMIT)
         .map(|idx| {
@@ -787,13 +868,16 @@ async fn oversized_batch_command_does_not_mutate_state_or_disk() {
                 .uri("/v1/command")
                 .header("Content-Type", "application/json")
                 .body(Body::from(body.to_string()))
-                .unwrap(),
+                .expect("request body should build"),
         )
         .await
-        .unwrap();
+        .expect("test operation should succeed");
 
     assert_eq!(response.status(), StatusCode::BAD_REQUEST);
-    assert_eq!(state.snapshot().unwrap(), before);
+    assert_eq!(
+        state.snapshot().expect("state snapshot should succeed"),
+        before
+    );
     assert!(!path.exists());
 }
 
@@ -802,7 +886,7 @@ async fn malformed_batch_payload_does_not_mutate_state_or_disk() {
     let path = tlog_path("malformed-batch");
     let _ = std::fs::remove_file(&path);
     let state = WorkerAppState::new_default(&path);
-    let before = state.snapshot().unwrap();
+    let before = state.snapshot().expect("state snapshot should succeed");
     let app = build_router(state.clone());
     let valid = EvidenceSubmission::with_payload(
         ai::GateId::Invariant,
@@ -820,13 +904,16 @@ async fn malformed_batch_payload_does_not_mutate_state_or_disk() {
                 .uri("/v1/command")
                 .header("Content-Type", "application/json")
                 .body(Body::from(body.to_string()))
-                .unwrap(),
+                .expect("request body should build"),
         )
         .await
-        .unwrap();
+        .expect("test operation should succeed");
 
     assert_eq!(response.status(), StatusCode::BAD_REQUEST);
-    assert_eq!(state.snapshot().unwrap(), before);
+    assert_eq!(
+        state.snapshot().expect("state snapshot should succeed"),
+        before
+    );
     assert!(!path.exists());
 }
 
@@ -835,7 +922,7 @@ async fn tampered_batch_envelope_does_not_mutate_state_or_disk() {
     let path = tlog_path("tampered-batch-envelope");
     let _ = std::fs::remove_file(&path);
     let state = WorkerAppState::new_default(&path);
-    let before = state.snapshot().unwrap();
+    let before = state.snapshot().expect("state snapshot should succeed");
     let app = build_router(state.clone());
     let valid = EvidenceSubmission::with_payload(
         ai::GateId::Invariant,
@@ -844,8 +931,10 @@ async fn tampered_batch_envelope_does_not_mutate_state_or_disk() {
         0xabc,
     );
     let mut body = evidence_batch_body(63, &[valid]);
-    body["command_hash"] =
-        serde_json::json!(body["command_hash"].as_u64().unwrap().wrapping_add(1));
+    body["command_hash"] = serde_json::json!(body["command_hash"]
+        .as_u64()
+        .expect("command_hash should be present")
+        .wrapping_add(1));
 
     let response = app
         .oneshot(
@@ -854,12 +943,15 @@ async fn tampered_batch_envelope_does_not_mutate_state_or_disk() {
                 .uri("/v1/command")
                 .header("Content-Type", "application/json")
                 .body(Body::from(body.to_string()))
-                .unwrap(),
+                .expect("request body should build"),
         )
         .await
-        .unwrap();
+        .expect("test operation should succeed");
 
     assert_eq!(response.status(), StatusCode::BAD_REQUEST);
-    assert_eq!(state.snapshot().unwrap(), before);
+    assert_eq!(
+        state.snapshot().expect("state snapshot should succeed"),
+        before
+    );
     assert!(!path.exists());
 }

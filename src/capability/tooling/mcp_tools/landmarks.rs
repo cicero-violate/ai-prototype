@@ -191,7 +191,7 @@ const ACTIONS: &[LandmarkAction] = &[
         id: "project:plan_update",
         native_tool: NativeTool::CanonPlanUpdate,
         landmark: Landmark::Project,
-        description: "Update the plan DAG in state/plan.json. op=replace (full plan), op=set_status {node_id, status}, op=set_assignee {node_id, assignee}, op=upsert_node {node}, op=append_evidence {node_id, evidence:{path,kind,summary}}, op=add_edge {edge}, op=remove_node {node_id}.",
+        description: "Update the plan DAG scaffold/projection. Structural ops update state/plan.json; op=set_status appends a TLog plan patch; op=append_evidence appends TLog evidence only.",
         read_only: false,
         destructive: false,
         idempotent: false,
@@ -946,8 +946,8 @@ fn native_input_schema(tool: NativeTool) -> Value {
             "properties": {
                 "op": {
                     "type": "string",
-                    "enum": ["replace", "set_status", "set_assignee", "upsert_node", "add_edge", "remove_node"],
-                    "description": "Operation: replace=full plan swap; set_status/set_assignee=update one node field; upsert_node=add or replace a node; add_edge=add dependency; remove_node=delete node and its edges."
+                    "enum": ["replace", "set_status", "set_assignee", "upsert_node", "append_evidence", "add_edge", "remove_node"],
+                    "description": "Operation: replace=full scaffold swap; set_status=append lifecycle status patch to TLog; set_assignee=update scaffold assignee; upsert_node=add or replace a node; append_evidence=append TLog evidence patch only; add_edge=add dependency; remove_node=delete node and its edges."
                 },
                 "plan": {
                     "type": "object",
@@ -957,7 +957,7 @@ fn native_input_schema(tool: NativeTool) -> Value {
                 "status": {
                     "type": "string",
                     "enum": ["pending", "running", "done", "failed", "skipped"],
-                    "description": "New status for op=set_status."
+                    "description": "Projected lifecycle status for op=set_status; this appends a TLog plan patch rather than mutating raw plan.json status."
                 },
                 "assignee": { "type": "string", "description": "New assignee string for op=set_assignee. Omit to clear." },
                 "node": {
@@ -982,6 +982,10 @@ fn native_input_schema(tool: NativeTool) -> Value {
                         "to": { "type": "string", "description": "ID of the dependent node." }
                     },
                     "required": ["from", "to"]
+                },
+                "evidence": {
+                    "type": "object",
+                    "description": "Evidence reference for op=append_evidence. Required: path, kind, summary. Optional typed receipt fields: gate, evidence, receipt_hash, accepted."
                 },
                 "intent": { "type": "string" }
             },
@@ -1080,7 +1084,10 @@ pub fn resolve_piping(value: Value, aliases: &Map<String, Value>) -> Result<Valu
             .map(|(k, v)| resolve_piping(v, aliases).map(|r| (k, r)))
             .collect::<Result<Map<String, Value>, _>>()
             .map(Value::Object),
-        other => Ok(other),
+        other @ Value::Null
+        | other @ Value::Bool(_)
+        | other @ Value::Number(_)
+        | other @ Value::String(_) => Ok(other),
     }
 }
 
@@ -1292,10 +1299,17 @@ mod tests {
         assert_eq!(params["command"], "pwd");
 
         assert_eq!(
-            resolve_action_id("workspace:shell").unwrap().native_tool,
+            resolve_action_id("workspace:shell")
+                .expect("test value should be present")
+                .native_tool,
             NativeTool::Shell
         );
-        assert_eq!(resolve_action_id("shell").unwrap().id, "workspace:shell");
+        assert_eq!(
+            resolve_action_id("shell")
+                .expect("test value should be present")
+                .id,
+            "workspace:shell"
+        );
         assert!(parameters_from_call_action(
             &json!({"action": "workspace:shell", "parameters": []})
         )

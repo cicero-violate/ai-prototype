@@ -1,7 +1,7 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::thread;
 
-use ai::capability::tooling::mcp_tools::canon_plan::{load_plan, ready_nodes, PlanNode};
+use ai::domain::plan::{load_plan, ready_nodes, PlanNode};
 use ai::process::agent::{AgentLoopConfig, LoopDriver, DEFAULT_MINI_AGENT_COUNT};
 use ai::process::endpoints::{
     mcp_connector_url_from_env, supervisor_port_from_env, DEFAULT_SUPERVISOR_PORT,
@@ -60,15 +60,15 @@ fn main() {
     }
 }
 
-fn child_config(workspace: &PathBuf, node: &PlanNode, execute_turns: u32) -> AgentLoopConfig {
+fn child_config(workspace: &Path, node: &PlanNode, execute_turns: u32) -> AgentLoopConfig {
     AgentLoopConfig {
         execute_turns,
         turn_retry_limit: env_u32("TURN_RETRY_LIMIT", 0),
         loop_sleep_ms: env_u64("LOOP_SLEEP_MS", 1000),
         agent_count: 1,
         mini_agent_count: 1,
-        project_dir: workspace.clone(),
-        working_dir: workspace.clone(),
+        project_dir: workspace.to_path_buf(),
+        working_dir: workspace.to_path_buf(),
         sse_chunks_dir: workspace
             .join("state")
             .join("agent_state")
@@ -81,6 +81,10 @@ fn child_config(workspace: &PathBuf, node: &PlanNode, execute_turns: u32) -> Age
             .ok()
             .and_then(|v| v.parse::<u16>().ok()),
         supervisor_port: Some(supervisor_port()),
+        browser_router_url: std::env::var("CANON_OPENAI_BASE_URL").ok().map(|url| {
+            let url = url.trim_end_matches('/').to_string();
+            url.strip_suffix("/v1").unwrap_or(&url).to_string()
+        }),
         cert_max_steps: env_u64("AI_CERT_MAX_STEPS", 30),
         domain: Some(node.title.clone()),
         metric: Some(node.description.clone()),

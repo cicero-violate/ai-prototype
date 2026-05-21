@@ -41,6 +41,95 @@ pub enum RecoveryAction {
     Escalate = 10,
 }
 
+impl FailureClass {
+    pub const ALL: [FailureClass; 21] = [
+        FailureClass::InvariantUnknown,
+        FailureClass::InvariantBlocked,
+        FailureClass::AnalysisMissing,
+        FailureClass::AnalysisFailed,
+        FailureClass::JudgmentMissing,
+        FailureClass::JudgmentFailed,
+        FailureClass::PlanMissing,
+        FailureClass::PlanFailed,
+        FailureClass::PlanReadyQueueEmpty,
+        FailureClass::ExecutionMissing,
+        FailureClass::ExecutionFailed,
+        FailureClass::TaskReceiptMissing,
+        FailureClass::VerificationUnknown,
+        FailureClass::VerificationFailed,
+        FailureClass::ArtifactLineageBroken,
+        FailureClass::EvalMissing,
+        FailureClass::EvalFailed,
+        FailureClass::RecoveryExhausted,
+        FailureClass::ConvergenceFailed,
+        FailureClass::LearningMissing,
+        FailureClass::LearningFailed,
+    ];
+
+    pub fn name(self) -> &'static str {
+        match self {
+            FailureClass::InvariantUnknown => "InvariantUnknown",
+            FailureClass::InvariantBlocked => "InvariantBlocked",
+            FailureClass::AnalysisMissing => "AnalysisMissing",
+            FailureClass::AnalysisFailed => "AnalysisFailed",
+            FailureClass::JudgmentMissing => "JudgmentMissing",
+            FailureClass::JudgmentFailed => "JudgmentFailed",
+            FailureClass::PlanMissing => "PlanMissing",
+            FailureClass::PlanFailed => "PlanFailed",
+            FailureClass::PlanReadyQueueEmpty => "PlanReadyQueueEmpty",
+            FailureClass::ExecutionMissing => "ExecutionMissing",
+            FailureClass::ExecutionFailed => "ExecutionFailed",
+            FailureClass::TaskReceiptMissing => "TaskReceiptMissing",
+            FailureClass::VerificationUnknown => "VerificationUnknown",
+            FailureClass::VerificationFailed => "VerificationFailed",
+            FailureClass::ArtifactLineageBroken => "ArtifactLineageBroken",
+            FailureClass::EvalMissing => "EvalMissing",
+            FailureClass::EvalFailed => "EvalFailed",
+            FailureClass::RecoveryExhausted => "RecoveryExhausted",
+            FailureClass::ConvergenceFailed => "ConvergenceFailed",
+            FailureClass::LearningMissing => "LearningMissing",
+            FailureClass::LearningFailed => "LearningFailed",
+        }
+    }
+
+    pub fn parse(name: &str) -> Option<Self> {
+        Self::ALL.into_iter().find(|class| class.name() == name)
+    }
+}
+
+impl RecoveryAction {
+    pub fn name(self) -> &'static str {
+        match self {
+            RecoveryAction::RecheckInvariant => "RecheckInvariant",
+            RecoveryAction::RunAnalysis => "RunAnalysis",
+            RecoveryAction::Rejudge => "Rejudge",
+            RecoveryAction::Replan => "Replan",
+            RecoveryAction::BindReadyTask => "BindReadyTask",
+            RecoveryAction::Reexecute => "Reexecute",
+            RecoveryAction::Reverify => "Reverify",
+            RecoveryAction::RepairArtifactLineage => "RepairArtifactLineage",
+            RecoveryAction::RecomputeEval => "RecomputeEval",
+            RecoveryAction::Escalate => "Escalate",
+        }
+    }
+
+    pub fn parse(name: &str) -> Option<Self> {
+        match name {
+            "RecheckInvariant" => Some(RecoveryAction::RecheckInvariant),
+            "RunAnalysis" => Some(RecoveryAction::RunAnalysis),
+            "Rejudge" => Some(RecoveryAction::Rejudge),
+            "Replan" => Some(RecoveryAction::Replan),
+            "BindReadyTask" => Some(RecoveryAction::BindReadyTask),
+            "Reexecute" => Some(RecoveryAction::Reexecute),
+            "Reverify" => Some(RecoveryAction::Reverify),
+            "RepairArtifactLineage" => Some(RecoveryAction::RepairArtifactLineage),
+            "RecomputeEval" => Some(RecoveryAction::RecomputeEval),
+            "Escalate" => Some(RecoveryAction::Escalate),
+            _ => None,
+        }
+    }
+}
+
 impl RecoveryAction {
     pub fn target(self) -> Phase {
         match self {

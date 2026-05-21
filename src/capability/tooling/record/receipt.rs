@@ -965,7 +965,7 @@ mod tests {
         let artifact_proof_event_seq = artifact.event_seq + 5;
         let (_, artifact_proof) = artifact
             .to_canonical_effect_proof(artifact_proof_event_seq)
-            .unwrap();
+            .expect("test setup should succeed");
         assert_eq!(artifact_proof.verifier_context_hash, artifact_verifier);
         assert_eq!(
             artifact_proof.receipt.proof_event_seq,
@@ -976,7 +976,7 @@ mod tests {
         let process_proof_event_seq = process.event_seq + 5;
         let (_, process_proof) = process
             .to_canonical_effect_proof(process_proof_event_seq)
-            .unwrap();
+            .expect("test setup should succeed");
         assert_eq!(process_proof.verifier_context_hash, process_verifier);
         assert_eq!(
             process_proof.receipt.proof_event_seq,
@@ -986,10 +986,10 @@ mod tests {
 
         let artifact_provider = artifact
             .provider_proof_hash(artifact_proof_event_seq)
-            .unwrap();
+            .expect("test setup should succeed");
         let process_provider = process
             .provider_proof_hash(process_proof_event_seq)
-            .unwrap();
+            .expect("test setup should succeed");
         assert_ne!(artifact_provider, artifact_core);
         assert_ne!(artifact_provider, artifact_verifier);
         assert_ne!(process_provider, process_core);

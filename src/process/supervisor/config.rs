@@ -52,7 +52,7 @@ impl SupervisorConfig {
             .unwrap_or_else(|_| project_dir.clone());
         let oauth_store_file = env::var("AI_MCP_OAUTH_STORE_FILE")
             .map(PathBuf::from)
-            .unwrap_or_else(|_| PathBuf::from("/tmp/canon-ai-mcp/oauth-store.enc"));
+            .unwrap_or_else(|_| default_oauth_store_file(&project_dir));
         let oauth_store_key = env::var("AI_MCP_OAUTH_STORE_KEY").unwrap_or_else(|_| {
             eprintln!("AI_MCP_OAUTH_STORE_KEY is not set; using a local development key");
             "canon-ai-mcp-dev-key".to_string()
@@ -73,6 +73,10 @@ impl SupervisorConfig {
     }
 }
 
+fn default_oauth_store_file(project_dir: &std::path::Path) -> PathBuf {
+    project_dir.join("state").join("oauth-store.enc")
+}
+
 fn default_worker_bin() -> Result<PathBuf, String> {
     let exe = env::current_exe().map_err(|err| format!("current_exe failed: {err}"))?;
     let dir = exe
@@ -83,4 +87,18 @@ fn default_worker_bin() -> Result<PathBuf, String> {
         path.set_extension("exe");
     }
     Ok(path)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn default_oauth_store_file_is_workspace_local() {
+        let project_dir = PathBuf::from("/workspace/project");
+        assert_eq!(
+            default_oauth_store_file(&project_dir),
+            PathBuf::from("/workspace/project/state/oauth-store.enc")
+        );
+    }
 }

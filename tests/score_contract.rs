@@ -42,7 +42,11 @@ fn score_values_preserve_all_goodness_axes() {
         maintainability: 0.55,
     };
     assert_eq!(s.values().len(), 17);
-    assert!(s.geometric_mean().unwrap() < 1.0);
+    assert!(
+        s.geometric_mean()
+            .expect("geometric mean should be defined")
+            < 1.0
+    );
 }
 
 #[test]

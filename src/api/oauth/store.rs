@@ -87,6 +87,10 @@ impl OAuthStore {
         .into_response()
     }
 
+    #[expect(
+        clippy::result_large_err,
+        reason = "OAuth route helper returns concrete axum Response errors for direct into_response use"
+    )]
     pub fn authorize_page_context(
         &self,
         q: &AuthorizeQuery,

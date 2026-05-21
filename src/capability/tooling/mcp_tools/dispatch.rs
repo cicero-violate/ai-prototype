@@ -1,31 +1,17 @@
 //! MCP dispatch, receipt recording, and MCP tool execution.
 
-use chrono::{DateTime, Utc};
+use chrono::Utc;
 use serde_json::{json, Map, Value};
 
-use super::{
-    apply_patch, canon_graph_analysis, canon_graph_editor, canon_plan, canon_read_mailbox,
-    canon_score, canon_send_agent_message, landmarks, shell,
-};
+use super::landmarks;
 use crate::api::mcp::{
     dispatch_ai_mcp_plan, mcp_ok, result_with_warning, tool_error, AiMcpDispatchPlan,
 };
 use crate::api::protocol::Command as KernelCommand;
-use crate::runtime::{append_mcp_transcript, WorkspaceView};
+use crate::capability::tooling::native;
+pub use crate::capability::tooling::native::NativeToolHost as McpToolHost;
+use crate::runtime::append_mcp_transcript;
 use crate::{CapabilityRegistry, McpCallReceipt, McpCallRequest};
-
-#[allow(async_fn_in_trait)]
-pub trait McpToolHost {
-    fn workspace(&self) -> WorkspaceView;
-
-    async fn active_generation(&self) -> u64;
-
-    fn record_session(&self, session_id: String, worker_generation: u64, created_at: DateTime<Utc>);
-
-    async fn submit_kernel_command(&self, command: KernelCommand) -> Result<(), String>;
-
-    async fn run_host_tool(&self, name: &str, args: &Value) -> Option<Value>;
-}
 
 pub async fn dispatch_ai_mcp<H: McpToolHost>(
     method: &str,
@@ -174,9 +160,9 @@ async fn execute_recorded_native_ai_mcp_tool<H: McpToolHost>(
     }
 
     let result = if name == "shell" {
-        run_recorded_ai_mcp_shell(&args, host).await
+        native::execute_recorded_shell(&args, host).await
     } else {
-        call_ai_mcp_tool(name, &args, host).await
+        native::execute_native_tool(name, &args, host).await
     };
     eprintln!(
         "[canon-ai-mcp] native tool finish name={} is_error={}",
@@ -308,151 +294,4 @@ async fn run_gateway_sequence<H: McpToolHost>(args: &Value, host: &H) -> Value {
     }
 
     landmarks::json_result(Value::Array(results))
-}
-
-async fn call_ai_mcp_tool<H: McpToolHost>(name: &str, args: &Value, host: &H) -> Value {
-    match name {
-        "echo" => json!({
-            "content": [{ "type": "text", "text": args.get("text").and_then(Value::as_str).unwrap_or("") }],
-            "isError": false
-        }),
-        "get_current_time" => json!({
-            "content": [{ "type": "text", "text": Utc::now().to_rfc3339() }],
-            "isError": false
-        }),
-        "apply_patch" => {
-            let workspace = host.workspace();
-            apply_patch::run(args, &workspace).await
-        }
-        "canon_graph_plan_patch" => {
-            let workspace = host.workspace();
-            canon_graph_editor::run_plan_patch(args, &workspace)
-        }
-        "canon_graph_plan_cfg" => {
-            let workspace = host.workspace();
-            canon_graph_editor::run_plan_cfg(args, &workspace)
-        }
-        "canon_graph_apply_ops" => {
-            let workspace = host.workspace();
-            canon_graph_editor::run_apply_ops(args, &workspace)
-        }
-        "canon_graph_verify_cfg_delta" => {
-            let workspace = host.workspace();
-            canon_graph_editor::run_verify_cfg_delta(args, &workspace)
-        }
-        "canon_graph_auto_refactor_cfg" => {
-            let workspace = host.workspace();
-            canon_graph_editor::run_auto_refactor_cfg(args, &workspace)
-        }
-        "canon_graph_analysis" => {
-            let workspace = host.workspace();
-            canon_graph_analysis::run(args, &workspace)
-        }
-        "canon_score" => {
-            let workspace = host.workspace();
-            canon_score::run(args, &workspace)
-        }
-        "canon_plan_read" => {
-            let workspace = host.workspace();
-            canon_plan::run_read(args, &workspace)
-        }
-        "canon_plan_update" => {
-            let workspace = host.workspace();
-            canon_plan::run_update(args, &workspace)
-        }
-        "shell" => {
-            let workspace = host.workspace();
-            shell::run_unrecorded(args, &workspace).await
-        }
-        "canon_spawn_agent"
-        | "canon_runtime_state"
-        | "canon_supervisor_health"
-        | "canon_supervisor_reload_worker"
-        | "canon_supervisor_restart"
-        | "canon_workspace_get"
-        | "canon_workspace_set"
-        | "canon_browser_list_tabs"
-        | "canon_browser_close_tab"
-        | "canon_browser_upload"
-        | "canon_browser_group_chat" => host
-            .run_host_tool(name, args)
-            .await
-            .unwrap_or_else(|| tool_error(format!("Unknown host tool: {name}"))),
-        "canon_send_agent_message" => run_authorized_mailbox_send(args, host).await,
-        "canon_read_mailbox" => {
-            let root = host.workspace().root;
-            canon_read_mailbox::run(args, &root)
-        }
-        _ => tool_error(format!("Unknown tool: {name}")),
-    }
-}
-
-async fn run_authorized_mailbox_send<H: McpToolHost>(args: &Value, host: &H) -> Value {
-    let parsed = match canon_send_agent_message::parse_args(args) {
-        Ok(parsed) => parsed,
-        Err(error) => return tool_error(error),
-    };
-    if let Err(error) = host
-        .submit_kernel_command(KernelCommand::AuthorizeMailboxMessage(parsed.request))
-        .await
-    {
-        return tool_error(format!(
-            "mailbox message denied before append by ai worker: {error}"
-        ));
-    }
-
-    let root = host.workspace().root;
-    match canon_send_agent_message::append_authorized(&parsed, &root) {
-        Ok((receipt, result)) => {
-            if let Err(error) = host
-                .submit_kernel_command(KernelCommand::SubmitMailboxMessageReceipt(receipt))
-                .await
-            {
-                return result_with_warning(
-                    result,
-                    format!("mailbox receipt recording failed in ai worker: {error}"),
-                );
-            }
-            result
-        }
-        Err(error) => tool_error(error),
-    }
-}
-
-async fn run_recorded_ai_mcp_shell<H: McpToolHost>(args: &Value, host: &H) -> Value {
-    let workspace = host.workspace();
-    let request = match shell::recorded_process_request(args, &workspace) {
-        Ok(request) => request,
-        Err(error) => return tool_error(error),
-    };
-    if let Err(error) = host
-        .submit_kernel_command(KernelCommand::AuthorizeProcessCall(request))
-        .await
-    {
-        return tool_error(format!(
-            "process execution denied before execution by ai worker: {error}"
-        ));
-    }
-
-    let args_owned = args.clone();
-    let run_result =
-        tokio::task::spawn_blocking(move || shell::run_recorded_process(&args_owned, &workspace))
-            .await;
-    match run_result {
-        Err(join_err) => tool_error(format!("shell task panicked: {join_err}")),
-        Ok(Err(error)) => tool_error(error),
-        Ok(Ok((receipt, stdout, stderr))) => {
-            let result = shell::render_recorded_response(&receipt, &stdout, &stderr);
-            if let Err(error) = host
-                .submit_kernel_command(KernelCommand::SubmitProcessReceipt(receipt))
-                .await
-            {
-                return result_with_warning(
-                    result,
-                    format!("process receipt recording failed in ai worker: {error}"),
-                );
-            }
-            result
-        }
-    }
 }

@@ -29,7 +29,10 @@ pub struct TradingSimulationPlan {
 }
 
 impl TradingSimulationPlan {
-    #[allow(clippy::too_many_arguments)]
+    #[expect(
+        clippy::too_many_arguments,
+        reason = "constructors mirror canonical trading record fields"
+    )]
     pub fn new(
         plan_id: impl Into<String>,
         market_id: impl Into<String>,
@@ -83,7 +86,10 @@ pub struct BacktestReceiptRequirements {
 }
 
 impl BacktestReceiptRequirements {
-    #[allow(clippy::too_many_arguments)]
+    #[expect(
+        clippy::too_many_arguments,
+        reason = "constructors mirror canonical trading record fields"
+    )]
     pub fn new(
         dataset_hash: impl Into<String>,
         date_range_hash: impl Into<String>,

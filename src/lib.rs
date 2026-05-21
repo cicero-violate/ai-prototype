@@ -121,10 +121,10 @@ pub use crate::capability::observation::{
     OBSERVATION_INGRESS_RECEIPT_RECORD, OBSERVATION_INGRESS_RECEIPT_SCHEMA_VERSION,
 };
 pub use crate::capability::orchestration::{
-    AgentCycleEvent, AgentCycleEventKind, ChildCompleteRecord, WaveRecord, CapabilityRoute,
-    OrchestrationBatchDecision,
-    OrchestrationBatchRecord, OrchestrationBudget, OrchestrationDecision, OrchestrationRecord,
-    SelectedCapabilityRoute,
+    AgentCycleEvent, AgentCycleEventKind, CapabilityRoute, ChildCompleteRecord,
+    OrchestrationBatchDecision, OrchestrationBatchRecord, OrchestrationBudget,
+    OrchestrationDecision, OrchestrationRecord, SelectedCapabilityRoute, TaskLifecycleKind,
+    TaskLifecycleReceipt, WaveRecord,
 };
 pub use crate::capability::planning::{
     PlanDecision, PlanReceipt, PlanRecord, PLAN_RECEIPT_RECORD, PLAN_RECEIPT_SCHEMA_VERSION,
@@ -270,7 +270,7 @@ mod tests {
         target: &std::path::Path,
         field_index: usize,
     ) {
-        let input = std::fs::read_to_string(source).unwrap();
+        let input = std::fs::read_to_string(source).expect("test setup should succeed");
         let mut output = String::new();
         let mut changed = false;
 
@@ -312,18 +312,27 @@ mod tests {
         }
 
         assert!(changed);
-        std::fs::write(target, output).unwrap();
+        std::fs::write(target, output).expect("test setup should succeed");
     }
 
     #[test]
     fn ready_state_converges_to_done() {
-        let (state, tlog) = run_until_done(State::ready(), RuntimeConfig::default()).unwrap();
+        let (state, tlog) = run_until_done(State::ready(), RuntimeConfig::default())
+            .expect("test setup should succeed");
 
         assert!(state.is_success());
-        assert_eq!(tlog.last().unwrap().kind, EventKind::Learned);
-        assert_eq!(tlog.last().unwrap().affected_gate, Some(GateId::Learning));
+        assert_eq!(
+            tlog.last().expect("test value should be present").kind,
+            EventKind::Learned
+        );
+        assert_eq!(
+            tlog.last()
+                .expect("test value should be present")
+                .affected_gate,
+            Some(GateId::Learning)
+        );
         assert!(tlog.iter().any(|e| e.kind == EventKind::Persisted));
-        verify_tlog(&tlog).unwrap();
+        verify_tlog(&tlog).expect("test setup should succeed");
     }
 
     #[test]
@@ -371,38 +380,46 @@ mod tests {
 
     #[test]
     fn learning_materializes_policy_entry_from_tlog_history() {
-        let (_state, tlog) = run_until_done(State::ready(), RuntimeConfig::default()).unwrap();
+        let (_state, tlog) = run_until_done(State::ready(), RuntimeConfig::default())
+            .expect("test setup should succeed");
 
-        let promotion = PolicyPromotion::from_tlog(&tlog, 1).unwrap();
+        let promotion = PolicyPromotion::from_tlog(&tlog, 1).expect("test setup should succeed");
         assert!(promotion.is_valid());
         assert_eq!(promotion.submission().gate, GateId::Learning);
         assert!(promotion.submission().passed);
 
         let mut store = PolicyStore::default();
-        let entry = *store.promote(promotion.clone()).unwrap();
+        let entry = *store
+            .promote(promotion.clone())
+            .expect("test setup should succeed");
 
         assert_eq!(entry.version, 1);
         assert_eq!(entry.value, promotion.source_seq);
         assert_eq!(store.latest_version(), 1);
         assert_eq!(store.latest(entry.key), Some(&entry));
-        verify_tlog(&tlog).unwrap();
+        verify_tlog(&tlog).expect("test setup should succeed");
     }
 
     #[test]
     fn policy_promotion_entry_helpers_preserve_source_and_feedback_entries() {
-        let (_state, tlog) = run_until_done(State::ready(), RuntimeConfig::default()).unwrap();
-        let promotion = PolicyPromotion::from_tlog(&tlog, 1).unwrap();
+        let (_state, tlog) = run_until_done(State::ready(), RuntimeConfig::default())
+            .expect("test setup should succeed");
+        let promotion = PolicyPromotion::from_tlog(&tlog, 1).expect("test setup should succeed");
         assert!(promotion.is_valid());
 
         let mut source_store = PolicyStore::default();
-        let source_entry = *source_store.promote(promotion.clone()).unwrap();
+        let source_entry = *source_store
+            .promote(promotion.clone())
+            .expect("test setup should succeed");
         assert_eq!(source_entry.version, promotion.promoted_policy_version);
         assert_eq!(source_entry.key, POLICY_PROMOTION_SOURCE_SEQ);
         assert_eq!(source_entry.value, promotion.source_seq);
         assert_eq!(source_store.entries(), &[source_entry]);
 
         let mut feedback_store = PolicyStore::default();
-        let feedback_entry = *feedback_store.promote_feedback(promotion.clone()).unwrap();
+        let feedback_entry = *feedback_store
+            .promote_feedback(promotion.clone())
+            .expect("test setup should succeed");
         assert_eq!(feedback_entry.version, promotion.promoted_policy_version);
         assert_eq!(feedback_entry.key, POLICY_FEEDBACK_HASH);
         assert_eq!(feedback_entry.value, promotion.promoted_policy_hash);
@@ -426,20 +443,25 @@ mod tests {
         );
         assert!(rejected_feedback_store.entries().is_empty());
 
-        verify_tlog(&tlog).unwrap();
+        verify_tlog(&tlog).expect("test setup should succeed");
     }
 
     #[test]
     fn policy_promotion_route_helper_preserves_source_and_feedback_entries() {
-        let (_state, tlog) = run_until_done(State::ready(), RuntimeConfig::default()).unwrap();
-        let promotion = PolicyPromotion::from_tlog(&tlog, 1).unwrap();
+        let (_state, tlog) = run_until_done(State::ready(), RuntimeConfig::default())
+            .expect("test setup should succeed");
+        let promotion = PolicyPromotion::from_tlog(&tlog, 1).expect("test setup should succeed");
         assert!(promotion.is_valid());
 
         let mut source_store = PolicyStore::default();
-        let source_entry = *source_store.promote(promotion.clone()).unwrap();
+        let source_entry = *source_store
+            .promote(promotion.clone())
+            .expect("test setup should succeed");
 
         let mut feedback_store = PolicyStore::default();
-        let feedback_entry = *feedback_store.promote_feedback(promotion.clone()).unwrap();
+        let feedback_entry = *feedback_store
+            .promote_feedback(promotion.clone())
+            .expect("test setup should succeed");
 
         assert_ne!(source_entry, feedback_entry);
         assert_eq!(source_entry.version, promotion.promoted_policy_version);
@@ -469,13 +491,14 @@ mod tests {
         );
         assert!(rejected_feedback_store.entries().is_empty());
 
-        verify_tlog(&tlog).unwrap();
+        verify_tlog(&tlog).expect("test setup should succeed");
     }
 
     #[test]
     fn policy_promotion_durable_entry_helpers_preserve_source_and_feedback_entries() {
-        let (_state, tlog) = run_until_done(State::ready(), RuntimeConfig::default()).unwrap();
-        let promotion = PolicyPromotion::from_tlog(&tlog, 1).unwrap();
+        let (_state, tlog) = run_until_done(State::ready(), RuntimeConfig::default())
+            .expect("test setup should succeed");
+        let promotion = PolicyPromotion::from_tlog(&tlog, 1).expect("test setup should succeed");
         assert!(promotion.is_valid());
 
         let source_path = std::env::temp_dir().join(format!(
@@ -494,8 +517,9 @@ mod tests {
         let mut source_store = PolicyStore::default();
         let source_entry = *source_store
             .promote_durable(&source_path, promotion.clone())
-            .unwrap();
-        let loaded_source = PolicyStore::load_ndjson(&source_path).unwrap();
+            .expect("test setup should succeed");
+        let loaded_source =
+            PolicyStore::load_ndjson(&source_path).expect("test setup should succeed");
         assert_eq!(source_entry.version, promotion.promoted_policy_version);
         assert_eq!(source_entry.key, POLICY_PROMOTION_SOURCE_SEQ);
         assert_eq!(source_entry.value, promotion.source_seq);
@@ -505,8 +529,9 @@ mod tests {
         let mut feedback_store = PolicyStore::default();
         let feedback_entry = *feedback_store
             .promote_feedback_durable(&feedback_path, promotion.clone())
-            .unwrap();
-        let loaded_feedback = PolicyStore::load_ndjson(&feedback_path).unwrap();
+            .expect("test setup should succeed");
+        let loaded_feedback =
+            PolicyStore::load_ndjson(&feedback_path).expect("test setup should succeed");
         assert_eq!(feedback_entry.version, promotion.promoted_policy_version);
         assert_eq!(feedback_entry.key, POLICY_FEEDBACK_HASH);
         assert_eq!(feedback_entry.value, promotion.promoted_policy_hash);
@@ -550,13 +575,14 @@ mod tests {
         assert!(rejected_feedback_store.entries().is_empty());
         assert!(!invalid_feedback_path.exists());
 
-        verify_tlog(&tlog).unwrap();
+        verify_tlog(&tlog).expect("test setup should succeed");
     }
 
     #[test]
     fn durable_policy_store_roundtrips_promoted_policy() {
-        let (_state, tlog) = run_until_done(State::ready(), RuntimeConfig::default()).unwrap();
-        let promotion = PolicyPromotion::from_tlog(&tlog, 1).unwrap();
+        let (_state, tlog) = run_until_done(State::ready(), RuntimeConfig::default())
+            .expect("test setup should succeed");
+        let promotion = PolicyPromotion::from_tlog(&tlog, 1).expect("test setup should succeed");
         let path = std::env::temp_dir().join(format!(
             "ai-policy-store-{}-{}.ndjson",
             std::process::id(),
@@ -565,8 +591,10 @@ mod tests {
         std::fs::remove_file(&path).ok();
 
         let mut store = PolicyStore::default();
-        let entry = *store.promote_durable(&path, promotion).unwrap();
-        let loaded = PolicyStore::load_ndjson(&path).unwrap();
+        let entry = *store
+            .promote_durable(&path, promotion)
+            .expect("test setup should succeed");
+        let loaded = PolicyStore::load_ndjson(&path).expect("test setup should succeed");
         std::fs::remove_file(&path).ok();
 
         assert_eq!(loaded.entries(), &[entry]);
@@ -575,11 +603,13 @@ mod tests {
 
     #[test]
     fn canonical_effect_named_constructors_preserve_kind_and_validation_boundaries() {
-        let cases: [(
-            fn(u64, u64) -> Option<CanonicalEffect>,
+        type CanonicalEffectConstructor = fn(u64, u64) -> Option<CanonicalEffect>;
+        type CanonicalEffectCase = (
+            CanonicalEffectConstructor,
             CanonicalEffectKind,
             ProofSubjectKind,
-        ); 5] = [
+        );
+        let cases: [CanonicalEffectCase; 5] = [
             (
                 CanonicalEffect::artifact,
                 CanonicalEffectKind::Artifact,
@@ -608,7 +638,7 @@ mod tests {
         ];
 
         for (constructor, expected_kind, expected_subject) in cases {
-            let effect = constructor(0xfeed_beef, 0xcafe_f00d).unwrap();
+            let effect = constructor(0xfeed_beef, 0xcafe_f00d).expect("test setup should succeed");
 
             assert_eq!(effect.kind, expected_kind);
             assert_eq!(effect.digest, 0xfeed_beef);
@@ -623,29 +653,35 @@ mod tests {
 
     #[test]
     fn policy_effect_projects_into_generic_verification_spine() {
-        let (_state, tlog) = run_until_done(State::ready(), RuntimeConfig::default()).unwrap();
-        let promotion = PolicyPromotion::from_tlog(&tlog, 1).unwrap();
+        let (_state, tlog) = run_until_done(State::ready(), RuntimeConfig::default())
+            .expect("test setup should succeed");
+        let promotion = PolicyPromotion::from_tlog(&tlog, 1).expect("test setup should succeed");
 
         let mut store = PolicyStore::default();
-        let entry = *store.promote(promotion).unwrap();
+        let entry = *store.promote(promotion).expect("test setup should succeed");
         let receipt_event = tlog
             .iter()
             .find(|event| {
                 event.cause == Cause::PolicyPromoted && event.evidence == Evidence::PolicyPromotion
             })
-            .unwrap();
+            .expect("test setup should succeed");
         let receipt = PolicyProofReceipt::new(
             entry,
             store.fingerprint(),
             receipt_event.seq,
             receipt_event.self_hash,
         )
-        .unwrap();
-        let proof_event_seq = tlog.last().unwrap().seq + 1;
-        let (canonical_receipt, effect_proof) =
-            receipt.to_canonical_effect_proof(proof_event_seq).unwrap();
-        let proof_record = effect_proof.to_verification_proof_record().unwrap();
-        let binding = effect_proof.verification_proof_binding().unwrap();
+        .expect("test setup should succeed");
+        let proof_event_seq = tlog.last().expect("test value should be present").seq + 1;
+        let (canonical_receipt, effect_proof) = receipt
+            .to_canonical_effect_proof(proof_event_seq)
+            .expect("test setup should succeed");
+        let proof_record = effect_proof
+            .to_verification_proof_record()
+            .expect("test setup should succeed");
+        let binding = effect_proof
+            .verification_proof_binding()
+            .expect("test setup should succeed");
 
         assert_eq!(canonical_receipt.subject, ProofSubjectKind::PolicyEffect);
         assert_eq!(canonical_receipt.effect.kind, CanonicalEffectKind::Policy);
@@ -653,12 +689,15 @@ mod tests {
         assert!(effect_proof.is_valid());
         assert_eq!(proof_record.subject, ProofSubjectKind::PolicyEffect);
         assert_eq!(
-            receipt.verification_proof_binding(proof_event_seq).unwrap(),
+            receipt
+                .verification_proof_binding(proof_event_seq)
+                .expect("test value should be present"),
             binding
         );
         assert!(proof_record.matches_binding(binding));
         assert_eq!(
-            verify_verification_proof_record_replay(&tlog, &[proof_record], &[binding]).unwrap(),
+            verify_verification_proof_record_replay(&tlog, &[proof_record], &[binding])
+                .expect("test value should be present"),
             1
         );
 
@@ -668,14 +707,15 @@ mod tests {
             proof_record.record_hash
         ));
         std::fs::remove_file(&path).ok();
-        write_tlog_ndjson(&path, &tlog).unwrap();
+        write_tlog_ndjson(&path, &tlog).expect("test setup should succeed");
         crate::capability::verification::append_verification_proof_record_ndjson(
             &path,
             &proof_record,
         )
-        .unwrap();
+        .expect("test setup should succeed");
         assert_eq!(
-            verify_verification_proof_record_replay_ndjson(&path, &[binding]).unwrap(),
+            verify_verification_proof_record_replay_ndjson(&path, &[binding])
+                .expect("test value should be present"),
             1
         );
         std::fs::remove_file(&path).ok();
@@ -723,7 +763,7 @@ mod tests {
             RuntimeConfig::default(),
             crate::api::protocol::Command::SubmitEvidence(record.submission()),
         )
-        .unwrap();
+        .expect("test setup should succeed");
 
         assert_eq!(response.event.from, Phase::Eval);
         assert_eq!(response.event.to, Phase::Persist);
@@ -731,7 +771,7 @@ mod tests {
         assert_eq!(state.phase, Phase::Persist);
         assert_eq!(state.gates.eval.status, GateStatus::Pass);
         assert_eq!(
-            verify_tlog_from(tlog[0].state_before, &tlog).unwrap(),
+            verify_tlog_from(tlog[0].state_before, &tlog).expect("test value should be present"),
             state
         );
     }
@@ -781,7 +821,7 @@ mod tests {
             RuntimeConfig::default(),
             crate::api::protocol::Command::SubmitEvidence(record.submission()),
         )
-        .unwrap();
+        .expect("test setup should succeed");
 
         assert_eq!(tlog[0].from, Phase::Invariant);
         assert_eq!(tlog[0].to, Phase::Invariant);
@@ -790,7 +830,7 @@ mod tests {
         assert_eq!(response.event.from, Phase::Invariant);
         assert_eq!(response.event.to, Phase::Analysis);
         assert_eq!(state.gates.invariant.status, GateStatus::Pass);
-        verify_tlog(&tlog).unwrap();
+        verify_tlog(&tlog).expect("test setup should succeed");
     }
 
     #[test]
@@ -808,7 +848,7 @@ mod tests {
             RuntimeConfig::default(),
             crate::api::protocol::Command::SubmitEvidence(record.submission()),
         )
-        .unwrap();
+        .expect("test setup should succeed");
 
         assert_eq!(record.decision(), ObservationDecision::Rejected);
         assert_eq!(tlog[0].cause, Cause::EvidenceSubmitted);
@@ -816,7 +856,7 @@ mod tests {
         assert_eq!(state.phase, Phase::Recovery);
         assert_eq!(state.gates.invariant.status, GateStatus::Fail);
         assert_eq!(response.event.failure, Some(FailureClass::InvariantBlocked));
-        verify_tlog(&tlog).unwrap();
+        verify_tlog(&tlog).expect("test setup should succeed");
     }
 
     #[test]
@@ -903,9 +943,9 @@ mod tests {
             &cursor_path,
             "[1,190709761,7,2,12345]\n[1,190709761,7,3,0]\n",
         )
-        .unwrap();
+        .expect("test setup should succeed");
 
-        let error = load_observation_cursor_ndjson(&cursor_path).unwrap_err();
+        let error = load_observation_cursor_ndjson(&cursor_path).expect_err("test should fail");
 
         assert_eq!(error.kind(), std::io::ErrorKind::InvalidData);
         std::fs::remove_file(&cursor_path).ok();
@@ -931,16 +971,16 @@ mod tests {
             last_observed_hash: 12345,
         };
 
-        write_observation_cursor_ndjson(&cursor_path, first).unwrap();
-        write_observation_cursor_ndjson(&cursor_path, second).unwrap();
+        write_observation_cursor_ndjson(&cursor_path, first).expect("test setup should succeed");
+        write_observation_cursor_ndjson(&cursor_path, second).expect("test setup should succeed");
 
         let loaded = load_observation_cursor_ndjson(&cursor_path)
-            .unwrap()
-            .unwrap();
+            .expect("test value should be present")
+            .expect("test setup should succeed");
         assert_eq!(loaded, second);
         assert_eq!(
             std::fs::read_to_string(&cursor_path)
-                .unwrap()
+                .expect("test value should be present")
                 .lines()
                 .count(),
             1
@@ -957,7 +997,7 @@ mod tests {
         let cursor_path = stem.with_extension("cursor.ndjson");
         std::fs::remove_file(&source_path).ok();
         std::fs::remove_file(&cursor_path).ok();
-        std::fs::write(&source_path, b"alpha\nbeta\ngamma\n").unwrap();
+        std::fs::write(&source_path, b"alpha\nbeta\ngamma\n").expect("test setup should succeed");
 
         let pressured = BoundedLineObservationSource::new(
             source_path.clone(),
@@ -965,13 +1005,13 @@ mod tests {
             ObservationIngressConfig::new(9, 1, 2, 5),
         )
         .read_batch()
-        .unwrap();
+        .expect("test setup should succeed");
 
         assert_eq!(pressured.decision, ObservationIngressDecision::Backpressure);
         assert_eq!(pressured.backlog_len, 3);
         assert!(pressured.records.is_empty());
         assert!(load_observation_cursor_ndjson(&cursor_path)
-            .unwrap()
+            .expect("test value should be present")
             .is_none());
 
         let source = BoundedLineObservationSource::new(
@@ -979,7 +1019,7 @@ mod tests {
             cursor_path.clone(),
             ObservationIngressConfig::new(9, 2, 4, 5),
         );
-        let first = source.read_batch().unwrap();
+        let first = source.read_batch().expect("test setup should succeed");
 
         assert_eq!(first.decision, ObservationIngressDecision::Accepted);
         assert_eq!(first.records.len(), 2);
@@ -989,19 +1029,19 @@ mod tests {
         assert!(first.is_accepted());
 
         let persisted = load_observation_cursor_ndjson(&cursor_path)
-            .unwrap()
-            .unwrap();
+            .expect("test value should be present")
+            .expect("test setup should succeed");
         assert_eq!(persisted.source_id, 9);
         assert_eq!(persisted.last_sequence, 2);
         assert_eq!(persisted.last_observed_hash, first.records[1].observed_hash);
 
-        let second = source.read_batch().unwrap();
+        let second = source.read_batch().expect("test setup should succeed");
         assert_eq!(second.decision, ObservationIngressDecision::Accepted);
         assert_eq!(second.records.len(), 1);
         assert_eq!(second.records[0].sequence, 3);
         assert_eq!(second.backlog_len, 0);
 
-        let finished = source.read_batch().unwrap();
+        let finished = source.read_batch().expect("test setup should succeed");
         assert_eq!(finished.decision, ObservationIngressDecision::Empty);
         assert!(finished.records.is_empty());
 
@@ -1017,7 +1057,8 @@ mod tests {
         let cursor_path = stem.with_extension("cursor.ndjson");
         std::fs::remove_file(&source_path).ok();
         std::fs::remove_file(&cursor_path).ok();
-        std::fs::write(&source_path, b"external-alpha\nexternal-beta\n").unwrap();
+        std::fs::write(&source_path, b"external-alpha\nexternal-beta\n")
+            .expect("test setup should succeed");
 
         let batch = BoundedLineObservationSource::new(
             source_path.clone(),
@@ -1025,7 +1066,7 @@ mod tests {
             ObservationIngressConfig::new(31, 2, 4, 11),
         )
         .read_batch()
-        .unwrap();
+        .expect("test setup should succeed");
 
         assert!(batch.is_contract_valid());
         assert_eq!(batch.submission().gate, GateId::Invariant);
@@ -1036,7 +1077,7 @@ mod tests {
         let mut tlog = Vec::new();
         let mut ledger = CommandLedger::default();
         let cfg = RuntimeConfig::default();
-        tick(&mut state, &mut tlog, cfg).unwrap();
+        tick(&mut state, &mut tlog, cfg).expect("test setup should succeed");
         assert_eq!(state.phase, Phase::Invariant);
 
         let envelope = CommandEnvelope::new(91, Command::SubmitObservationIngress(batch));
@@ -1048,7 +1089,7 @@ mod tests {
             &mut ledger,
             envelope,
         )
-        .unwrap();
+        .expect("test setup should succeed");
 
         assert_eq!(response.event.from, Phase::Invariant);
         assert_eq!(response.event.to, Phase::Analysis);
@@ -1057,7 +1098,7 @@ mod tests {
         assert_eq!(state.gates.invariant.status, GateStatus::Pass);
         assert_eq!(state.gates.invariant.evidence, Evidence::InvariantProof);
         assert_eq!(ledger.len(), 1);
-        verify_tlog(&tlog).unwrap();
+        verify_tlog(&tlog).expect("test setup should succeed");
 
         std::fs::remove_file(&source_path).ok();
         std::fs::remove_file(&cursor_path).ok();
@@ -1103,14 +1144,14 @@ mod tests {
             RuntimeConfig::default(),
             crate::api::protocol::Command::SubmitEvidence(record.submission()),
         )
-        .unwrap();
+        .expect("test setup should succeed");
 
         assert_eq!(record.decision(), ContextDecision::Assembled);
         assert_eq!(response.event.from, Phase::Analysis);
         assert_eq!(response.event.to, Phase::Judgment);
         assert_eq!(response.event.evidence, Evidence::AnalysisReport);
         assert_eq!(state.gates.analysis.status, GateStatus::Pass);
-        verify_tlog(&tlog).unwrap();
+        verify_tlog(&tlog).expect("test setup should succeed");
     }
 
     #[test]
@@ -1119,7 +1160,7 @@ mod tests {
         let cfg = RuntimeConfig::default();
         let mut tlog = Vec::new();
 
-        tick(&mut state, &mut tlog, cfg).unwrap();
+        tick(&mut state, &mut tlog, cfg).expect("test setup should succeed");
         assert_eq!(state.phase, Phase::Invariant);
 
         let observation = ObservationRecord::new(7, 1, 0xabc, 1);
@@ -1129,7 +1170,7 @@ mod tests {
             cfg,
             crate::api::protocol::Command::SubmitEvidence(observation.submission()),
         )
-        .unwrap();
+        .expect("test setup should succeed");
         assert_eq!(state.phase, Phase::Analysis);
 
         let mut memory = MemoryIndex::default();
@@ -1144,12 +1185,12 @@ mod tests {
             cfg,
             crate::api::protocol::Command::SubmitEvidence(context.submission()),
         )
-        .unwrap();
+        .expect("test setup should succeed");
 
         assert_eq!(state.phase, Phase::Judgment);
         assert_eq!(state.gates.invariant.status, GateStatus::Pass);
         assert_eq!(state.gates.analysis.status, GateStatus::Pass);
-        verify_tlog(&tlog).unwrap();
+        verify_tlog(&tlog).expect("test setup should succeed");
     }
 
     #[test]
@@ -1234,13 +1275,16 @@ mod tests {
 
     #[test]
     fn ollama_adapter_builds_openai_compatible_qwen_request() {
-        let client = OllamaClient::new(OllamaConfig::default()).unwrap();
+        let client = OllamaClient::new(OllamaConfig::default()).expect("test setup should succeed");
         let body = client
             .request_json(&[OllamaMessage::system("system"), OllamaMessage::user("ping")])
-            .unwrap();
+            .expect("test setup should succeed");
 
         assert_eq!(
-            client.config().chat_completions_path().unwrap(),
+            client
+                .config()
+                .chat_completions_path()
+                .expect("test value should be present"),
             "/v1/chat/completions"
         );
         assert!(body.contains("\"model\":\"qwen2.5-coder:7b\""));
@@ -1251,10 +1295,12 @@ mod tests {
 
     #[test]
     fn ollama_retry_budget_ledger_rejects_duplicate_request_identity() {
-        let policy = OllamaRetryBudgetPolicy::new(30_000, 2, 3).unwrap();
+        let policy = OllamaRetryBudgetPolicy::new(30_000, 2, 3).expect("test setup should succeed");
         let mut ledger = OllamaRetryBudgetLedger::new(policy);
 
-        let first = ledger.record_request(1, 2, 3, 4).unwrap();
+        let first = ledger
+            .record_request(1, 2, 3, 4)
+            .expect("test setup should succeed");
         assert!(first.allowed);
         assert_eq!(first.retry_count, 0);
         assert!(!first.budget_exhausted);
@@ -1282,14 +1328,14 @@ mod tests {
         let lookup = memory.lookup(state.packet.objective_id, 8);
         let context = ContextRecord::from_packet_memory(state.packet, 0xabc, &lookup);
         let policy = PolicyStore::default();
-        let client = OllamaClient::new(OllamaConfig::default()).unwrap();
+        let client = OllamaClient::new(OllamaConfig::default()).expect("test setup should succeed");
         let llm = client
             .record_from_response_body(
                 &context,
                 &policy,
                 "{\"id\":\"chatcmpl-1\",\"object\":\"chat.completion\",\"choices\":[{\"index\":0,\"message\":{\"role\":\"assistant\",\"content\":\"Proceed with the plan gate.\"},\"finish_reason\":\"stop\"}],\"usage\":{\"prompt_tokens\":30,\"completion_tokens\":8,\"total_tokens\":38}}",
             )
-            .unwrap();
+            .expect("test setup should succeed");
 
         let mut tlog = Vec::new();
         let response = crate::api::routes::handle_command(
@@ -1298,7 +1344,7 @@ mod tests {
             RuntimeConfig::default(),
             crate::api::protocol::Command::SubmitEvidence(llm.submission()),
         )
-        .unwrap();
+        .expect("test setup should succeed");
 
         assert_eq!(llm.decision(), LlmDecision::Structured);
         assert_eq!(llm.response.model_id, client.config().model_id());
@@ -1306,7 +1352,7 @@ mod tests {
         assert_eq!(response.event.from, Phase::Judgment);
         assert_eq!(response.event.to, Phase::Plan);
         assert_eq!(state.gates.judgment.status, GateStatus::Pass);
-        verify_tlog(&tlog).unwrap();
+        verify_tlog(&tlog).expect("test setup should succeed");
     }
 
     #[test]
@@ -1323,14 +1369,14 @@ mod tests {
         let lookup = memory.lookup(state.packet.objective_id, 8);
         let context = ContextRecord::from_packet_memory(state.packet, 0xabc, &lookup);
         let policy = PolicyStore::default();
-        let client = OllamaClient::new(OllamaConfig::default()).unwrap();
+        let client = OllamaClient::new(OllamaConfig::default()).expect("test setup should succeed");
         let call = client
             .call_from_response_body(
                 &context,
                 &policy,
                 "{\"id\":\"chatcmpl-1\",\"object\":\"chat.completion\",\"choices\":[{\"index\":0,\"message\":{\"role\":\"assistant\",\"content\":\"Persist this external llm receipt.\"},\"finish_reason\":\"stop\"}],\"usage\":{\"prompt_tokens\":30,\"completion_tokens\":8,\"total_tokens\":38}}",
             )
-            .unwrap();
+            .expect("test setup should succeed");
         let envelope = CommandEnvelope::new(
             call.request_hash,
             crate::api::protocol::Command::SubmitEvidence(call.submission()),
@@ -1343,7 +1389,7 @@ mod tests {
             RuntimeConfig::default(),
             envelope.clone(),
         )
-        .unwrap();
+        .expect("test setup should succeed");
         let persisted_event = tlog
             .iter()
             .find(|event| {
@@ -1352,10 +1398,10 @@ mod tests {
                     && event.api_command_hash == envelope.command_hash
             })
             .copied()
-            .unwrap();
+            .expect("test setup should succeed");
         let receipt = call
             .receipt_for_configured_event(client.config(), envelope.command_hash, &persisted_event)
-            .unwrap();
+            .expect("test setup should succeed");
 
         assert!(receipt.is_valid());
         assert!(receipt.replay_verified(&tlog));
@@ -1377,7 +1423,8 @@ mod tests {
         assert_eq!(receipt.response_hash, call.response_hash);
 
         let encoded = encode_ollama_llm_effect_receipt_ndjson(receipt);
-        let decoded = decode_ollama_llm_effect_receipt_ndjson(&encoded).unwrap();
+        let decoded =
+            decode_ollama_llm_effect_receipt_ndjson(&encoded).expect("test setup should succeed");
         assert_eq!(decoded, receipt);
 
         let path = std::env::temp_dir().join(format!(
@@ -1386,17 +1433,20 @@ mod tests {
             receipt.receipt_hash
         ));
         std::fs::remove_file(&path).ok();
-        write_tlog_ndjson(&path, &tlog).unwrap();
-        append_ollama_llm_effect_receipt_ndjson(&path, &receipt).unwrap();
+        write_tlog_ndjson(&path, &tlog).expect("test setup should succeed");
+        append_ollama_llm_effect_receipt_ndjson(&path, &receipt)
+            .expect("test setup should succeed");
 
-        let loaded_tlog = load_tlog_ndjson(&path).unwrap();
-        let loaded_receipts = load_ollama_llm_effect_receipts_ndjson(&path).unwrap();
+        let loaded_tlog = load_tlog_ndjson(&path).expect("test setup should succeed");
+        let loaded_receipts =
+            load_ollama_llm_effect_receipts_ndjson(&path).expect("test setup should succeed");
         std::fs::remove_file(&path).ok();
 
         assert_eq!(loaded_tlog, tlog);
         assert_eq!(loaded_receipts, vec![receipt]);
         assert_eq!(
-            verify_ollama_llm_effect_receipts(&loaded_tlog, &loaded_receipts).unwrap(),
+            verify_ollama_llm_effect_receipts(&loaded_tlog, &loaded_receipts)
+                .expect("test value should be present"),
             1
         );
 
@@ -1420,14 +1470,14 @@ mod tests {
         let lookup = memory.lookup(state.packet.objective_id, 8);
         let context = ContextRecord::from_packet_memory(state.packet, 0xabc, &lookup);
         let policy = PolicyStore::default();
-        let client = OllamaClient::new(OllamaConfig::default()).unwrap();
+        let client = OllamaClient::new(OllamaConfig::default()).expect("test setup should succeed");
         let call = client
             .call_from_response_body(
                 &context,
                 &policy,
                 "{\"id\":\"chatcmpl-1\",\"object\":\"chat.completion\",\"choices\":[{\"index\":0,\"message\":{\"role\":\"assistant\",\"content\":\"Preserve distinct effect receipt hash domains.\"},\"finish_reason\":\"stop\"}],\"usage\":{\"prompt_tokens\":30,\"completion_tokens\":8,\"total_tokens\":38}}",
             )
-            .unwrap();
+            .expect("test setup should succeed");
         let envelope = CommandEnvelope::new(
             call.request_hash,
             crate::api::protocol::Command::SubmitEvidence(call.submission()),
@@ -1441,7 +1491,7 @@ mod tests {
             RuntimeConfig::default(),
             envelope,
         )
-        .unwrap();
+        .expect("test setup should succeed");
         let persisted_event = tlog
             .iter()
             .find(|event| {
@@ -1450,19 +1500,25 @@ mod tests {
                     && event.api_command_hash == command_hash
             })
             .copied()
-            .unwrap();
+            .expect("test setup should succeed");
         let receipt = call
             .receipt_for_configured_event(client.config(), command_hash, &persisted_event)
-            .unwrap();
+            .expect("test setup should succeed");
         assert!(receipt.is_valid());
 
-        let authority_hash = receipt.canonical_authority_hash().unwrap();
-        let request_hash = receipt.canonical_request_hash().unwrap();
+        let authority_hash = receipt
+            .canonical_authority_hash()
+            .expect("test setup should succeed");
+        let request_hash = receipt
+            .canonical_request_hash()
+            .expect("test setup should succeed");
         assert_ne!(authority_hash, 0);
         assert_ne!(request_hash, 0);
         assert_ne!(authority_hash, request_hash);
 
-        let canonical_receipt = receipt.canonical_effect_receipt().unwrap();
+        let canonical_receipt = receipt
+            .canonical_effect_receipt()
+            .expect("test setup should succeed");
         assert_eq!(canonical_receipt.authority_hash, authority_hash);
         assert_eq!(canonical_receipt.request_hash, request_hash);
 
@@ -1471,7 +1527,7 @@ mod tests {
             receipt.max_retries,
             receipt.attempt_budget,
         )
-        .unwrap();
+        .expect("test setup should succeed");
         let mut authority_tamper = OllamaLlmEffectReceipt {
             timeout_ms: authority_policy.timeout_ms,
             retry_budget_hash: authority_policy.policy_hash(),
@@ -1481,11 +1537,15 @@ mod tests {
         authority_tamper.receipt_hash = authority_tamper.expected_receipt_hash();
         assert!(authority_tamper.is_valid());
         assert_ne!(
-            authority_tamper.canonical_authority_hash().unwrap(),
+            authority_tamper
+                .canonical_authority_hash()
+                .expect("test value should be present"),
             authority_hash
         );
         assert_eq!(
-            authority_tamper.canonical_request_hash().unwrap(),
+            authority_tamper
+                .canonical_request_hash()
+                .expect("test value should be present"),
             request_hash
         );
 
@@ -1497,11 +1557,15 @@ mod tests {
         request_tamper.receipt_hash = request_tamper.expected_receipt_hash();
         assert!(request_tamper.is_valid());
         assert_eq!(
-            request_tamper.canonical_authority_hash().unwrap(),
+            request_tamper
+                .canonical_authority_hash()
+                .expect("test value should be present"),
             authority_hash
         );
         assert_ne!(
-            request_tamper.canonical_request_hash().unwrap(),
+            request_tamper
+                .canonical_request_hash()
+                .expect("test value should be present"),
             request_hash
         );
 
@@ -1529,14 +1593,14 @@ mod tests {
         let lookup = memory.lookup(state.packet.objective_id, 8);
         let context = ContextRecord::from_packet_memory(state.packet, 0xabc, &lookup);
         let policy = PolicyStore::default();
-        let client = OllamaClient::new(OllamaConfig::default()).unwrap();
+        let client = OllamaClient::new(OllamaConfig::default()).expect("test setup should succeed");
         let call = client
             .call_from_response_body(
                 &context,
                 &policy,
                 "{\"id\":\"chatcmpl-1\",\"object\":\"chat.completion\",\"choices\":[{\"index\":0,\"message\":{\"role\":\"assistant\",\"content\":\"Durably persist the final proof line.\"},\"finish_reason\":\"stop\"}],\"usage\":{\"prompt_tokens\":30,\"completion_tokens\":8,\"total_tokens\":38}}",
             )
-            .unwrap();
+            .expect("test setup should succeed");
         let envelope = CommandEnvelope::new(
             call.request_hash,
             crate::api::protocol::Command::SubmitEvidence(call.submission()),
@@ -1548,7 +1612,7 @@ mod tests {
             RuntimeConfig::default(),
             envelope.clone(),
         )
-        .unwrap();
+        .expect("test setup should succeed");
         let persisted_event = tlog
             .iter()
             .find(|event| {
@@ -1557,10 +1621,10 @@ mod tests {
                     && event.api_command_hash == envelope.command_hash
             })
             .copied()
-            .unwrap();
+            .expect("test setup should succeed");
         let base_receipt = call
             .receipt_for_configured_event(client.config(), envelope.command_hash, &persisted_event)
-            .unwrap();
+            .expect("test setup should succeed");
 
         let (receipt, proof_event) = OllamaJudgmentProofEvent::finalize_receipt_after_tlog(
             base_receipt,
@@ -1570,7 +1634,7 @@ mod tests {
             base_receipt.base_url_provenance_verified(client.config()),
             state.phase == Phase::Plan,
         )
-        .unwrap();
+        .expect("test setup should succeed");
         assert!(receipt.has_proof_binding());
         assert_eq!(receipt.proof_hash, proof_event.proof_hash);
         assert_eq!(
@@ -1580,7 +1644,8 @@ mod tests {
         assert!(proof_event.matches_receipt(receipt, &tlog));
 
         let encoded = encode_ollama_judgment_proof_event_ndjson(proof_event);
-        let decoded = decode_ollama_judgment_proof_event_ndjson(&encoded).unwrap();
+        let decoded =
+            decode_ollama_judgment_proof_event_ndjson(&encoded).expect("test setup should succeed");
         assert_eq!(decoded, proof_event);
 
         let path = std::env::temp_dir().join(format!(
@@ -1589,13 +1654,17 @@ mod tests {
             proof_event.proof_hash
         ));
         std::fs::remove_file(&path).ok();
-        write_tlog_ndjson(&path, &tlog).unwrap();
-        append_ollama_llm_effect_receipt_ndjson(&path, &receipt).unwrap();
-        append_ollama_judgment_proof_event_ndjson(&path, &proof_event).unwrap();
+        write_tlog_ndjson(&path, &tlog).expect("test setup should succeed");
+        append_ollama_llm_effect_receipt_ndjson(&path, &receipt)
+            .expect("test setup should succeed");
+        append_ollama_judgment_proof_event_ndjson(&path, &proof_event)
+            .expect("test setup should succeed");
 
-        let loaded_tlog = load_tlog_ndjson(&path).unwrap();
-        let loaded_receipts = load_ollama_llm_effect_receipts_ndjson(&path).unwrap();
-        let loaded_proofs = load_ollama_judgment_proof_events_ndjson(&path).unwrap();
+        let loaded_tlog = load_tlog_ndjson(&path).expect("test setup should succeed");
+        let loaded_receipts =
+            load_ollama_llm_effect_receipts_ndjson(&path).expect("test setup should succeed");
+        let loaded_proofs =
+            load_ollama_judgment_proof_events_ndjson(&path).expect("test setup should succeed");
         std::fs::remove_file(&path).ok();
 
         assert_eq!(loaded_tlog, tlog);
@@ -1603,7 +1672,7 @@ mod tests {
         assert_eq!(loaded_proofs, vec![proof_event]);
         assert_eq!(
             verify_ollama_judgment_proof_events(&loaded_tlog, &loaded_receipts, &loaded_proofs)
-                .unwrap(),
+                .expect("test value should be present"),
             1
         );
     }
@@ -1622,14 +1691,14 @@ mod tests {
         let lookup = memory.lookup(state.packet.objective_id, 8);
         let context = ContextRecord::from_packet_memory(state.packet, 0xabc, &lookup);
         let policy = PolicyStore::default();
-        let client = OllamaClient::new(OllamaConfig::default()).unwrap();
+        let client = OllamaClient::new(OllamaConfig::default()).expect("test setup should succeed");
         let call = client
             .call_from_response_body(
                 &context,
                 &policy,
                 "{\"id\":\"chatcmpl-1\",\"object\":\"chat.completion\",\"choices\":[{\"index\":0,\"message\":{\"role\":\"assistant\",\"content\":\"Project proof into generic verification spine.\"},\"finish_reason\":\"stop\"}],\"usage\":{\"prompt_tokens\":30,\"completion_tokens\":8,\"total_tokens\":38}}",
             )
-            .unwrap();
+            .expect("test setup should succeed");
         let envelope = CommandEnvelope::new(
             call.request_hash,
             crate::api::protocol::Command::SubmitEvidence(call.submission()),
@@ -1642,7 +1711,7 @@ mod tests {
             RuntimeConfig::default(),
             envelope.clone(),
         )
-        .unwrap();
+        .expect("test setup should succeed");
         let persisted_event = tlog
             .iter()
             .find(|event| {
@@ -1651,10 +1720,10 @@ mod tests {
                     && event.api_command_hash == envelope.command_hash
             })
             .copied()
-            .unwrap();
+            .expect("test setup should succeed");
         let base_receipt = call
             .receipt_for_configured_event(client.config(), envelope.command_hash, &persisted_event)
-            .unwrap();
+            .expect("test setup should succeed");
         let (receipt, proof_event) = OllamaJudgmentProofEvent::finalize_receipt_after_tlog(
             base_receipt,
             &tlog,
@@ -1663,37 +1732,44 @@ mod tests {
             base_receipt.base_url_provenance_verified(client.config()),
             state.phase == Phase::Plan,
         )
-        .unwrap();
+        .expect("test setup should succeed");
 
         let (canonical_receipt, proof_record) = proof_event
             .to_canonical_verification_proof_record(receipt)
-            .unwrap();
+            .expect("test setup should succeed");
         let binding = canonical_receipt
             .verification_proof_binding(proof_event.proof_hash)
-            .unwrap();
+            .expect("test setup should succeed");
         assert_eq!(proof_record.subject, ProofSubjectKind::LlmEffect);
         assert!(proof_record.matches_binding(binding));
         assert_eq!(
-            verify_verification_proof_record_bindings(&[proof_record], &[binding]).unwrap(),
+            verify_verification_proof_record_bindings(&[proof_record], &[binding])
+                .expect("test value should be present"),
             1
         );
         assert_eq!(
-            verify_ollama_judgment_proof_events(&tlog, &[receipt], &[proof_event]).unwrap(),
+            verify_ollama_judgment_proof_events(&tlog, &[receipt], &[proof_event])
+                .expect("test value should be present"),
             1
         );
 
-        let (canonical_receipt, effect_proof) =
-            proof_event.to_canonical_effect_proof(receipt).unwrap();
+        let (canonical_receipt, effect_proof) = proof_event
+            .to_canonical_effect_proof(receipt)
+            .expect("test setup should succeed");
         assert_eq!(canonical_receipt.subject, ProofSubjectKind::LlmEffect);
         assert_eq!(canonical_receipt.effect.kind, CanonicalEffectKind::Llm);
         assert_eq!(canonical_receipt.effect.digest, receipt.response_hash);
         assert_eq!(
             canonical_receipt.authority_hash,
-            receipt.canonical_authority_hash().unwrap()
+            receipt
+                .canonical_authority_hash()
+                .expect("test value should be present")
         );
         assert_eq!(
             canonical_receipt.request_hash,
-            receipt.canonical_request_hash().unwrap()
+            receipt
+                .canonical_request_hash()
+                .expect("test value should be present")
         );
         assert_eq!(canonical_receipt.replay_seq, receipt.event_seq);
         assert_eq!(canonical_receipt.replay_hash, receipt.event_hash);
@@ -1704,13 +1780,17 @@ mod tests {
         assert!(canonical_receipt.is_bound_to_proof());
         assert!(effect_proof.is_valid());
 
-        let canonical_record = effect_proof.to_verification_proof_record().unwrap();
-        let canonical_binding = effect_proof.verification_proof_binding().unwrap();
+        let canonical_record = effect_proof
+            .to_verification_proof_record()
+            .expect("test setup should succeed");
+        let canonical_binding = effect_proof
+            .verification_proof_binding()
+            .expect("test setup should succeed");
         assert_eq!(canonical_record.subject, ProofSubjectKind::LlmEffect);
         assert!(canonical_record.matches_binding(canonical_binding));
         assert_eq!(
             verify_verification_proof_record_bindings(&[canonical_record], &[canonical_binding])
-                .unwrap(),
+                .expect("test value should be present"),
             1
         );
 
@@ -1734,14 +1814,14 @@ mod tests {
         let lookup = memory.lookup(state.packet.objective_id, 8);
         let context = ContextRecord::from_packet_memory(state.packet, 0xabc, &lookup);
         let policy = PolicyStore::default();
-        let client = OllamaClient::new(OllamaConfig::default()).unwrap();
+        let client = OllamaClient::new(OllamaConfig::default()).expect("test setup should succeed");
         let call = client
             .call_from_response_body(
                 &context,
                 &policy,
                 "{\"id\":\"chatcmpl-1\",\"object\":\"chat.completion\",\"choices\":[{\"index\":0,\"message\":{\"role\":\"assistant\",\"content\":\"Preserve distinct proof event hash domains.\"},\"finish_reason\":\"stop\"}],\"usage\":{\"prompt_tokens\":30,\"completion_tokens\":8,\"total_tokens\":38}}",
             )
-            .unwrap();
+            .expect("test setup should succeed");
         let envelope = CommandEnvelope::new(
             call.request_hash,
             crate::api::protocol::Command::SubmitEvidence(call.submission()),
@@ -1755,7 +1835,7 @@ mod tests {
             RuntimeConfig::default(),
             envelope,
         )
-        .unwrap();
+        .expect("test setup should succeed");
         let persisted_event = tlog
             .iter()
             .find(|event| {
@@ -1764,10 +1844,10 @@ mod tests {
                     && event.api_command_hash == command_hash
             })
             .copied()
-            .unwrap();
+            .expect("test setup should succeed");
         let base_receipt = call
             .receipt_for_configured_event(client.config(), command_hash, &persisted_event)
-            .unwrap();
+            .expect("test setup should succeed");
         let (receipt, proof_event) = OllamaJudgmentProofEvent::finalize_receipt_after_tlog(
             base_receipt,
             &tlog,
@@ -1776,7 +1856,7 @@ mod tests {
             base_receipt.base_url_provenance_verified(client.config()),
             state.phase == Phase::Plan,
         )
-        .unwrap();
+        .expect("test setup should succeed");
 
         let provider_proof_hash = proof_event.expected_proof_hash();
         let verifier_context_hash = proof_event.verifier_context_hash();
@@ -1784,8 +1864,9 @@ mod tests {
         assert_ne!(verifier_context_hash, 0);
         assert_ne!(verifier_context_hash, provider_proof_hash);
 
-        let (canonical_receipt, effect_proof) =
-            proof_event.to_canonical_effect_proof(receipt).unwrap();
+        let (canonical_receipt, effect_proof) = proof_event
+            .to_canonical_effect_proof(receipt)
+            .expect("test setup should succeed");
         assert_eq!(effect_proof.verifier_context_hash, verifier_context_hash);
         assert_eq!(effect_proof.provider_proof_hash, provider_proof_hash);
         assert_eq!(effect_proof.receipt.proof_hash, effect_proof.proof_hash);
@@ -1836,9 +1917,11 @@ mod tests {
         let context = ContextRecord::from_packet_memory(state.packet, 0xabc, &lookup);
         let policy = PolicyStore::default();
         let config = OpenAiConfig::default();
-        let client = OpenAiClient::new(config.clone()).unwrap();
+        let client = OpenAiClient::new(config.clone()).expect("test setup should succeed");
         let request = OpenAiChatRequest::new(openai_messages_from_context(&context, &policy));
-        let request_hash = client.request_hash_for(&request).unwrap();
+        let request_hash = client
+            .request_hash_for(&request)
+            .expect("test setup should succeed");
         let response = OpenAiChatResponse {
             id: "chatcmpl-openai-effect-domains".to_string(),
             content: "Preserve distinct OpenAI effect receipt hash domains.".to_string(),
@@ -1857,7 +1940,7 @@ mod tests {
                 config.model_id(),
                 request_hash,
             )
-            .unwrap();
+            .expect("test setup should succeed");
         let record = LlmStructuredAdapter::record_from_external_response(
             &context,
             &policy,
@@ -1900,7 +1983,7 @@ mod tests {
             RuntimeConfig::default(),
             envelope,
         )
-        .unwrap();
+        .expect("test setup should succeed");
         let persisted_event = tlog
             .iter()
             .find(|event| {
@@ -1909,19 +1992,25 @@ mod tests {
                     && event.api_command_hash == command_hash
             })
             .copied()
-            .unwrap();
+            .expect("test setup should succeed");
         let receipt = call
             .receipt_for_configured_event(&config, command_hash, &persisted_event)
-            .unwrap();
+            .expect("test setup should succeed");
         assert!(receipt.is_valid());
 
-        let authority_hash = receipt.canonical_authority_hash().unwrap();
-        let request_hash = receipt.canonical_request_hash().unwrap();
+        let authority_hash = receipt
+            .canonical_authority_hash()
+            .expect("test setup should succeed");
+        let request_hash = receipt
+            .canonical_request_hash()
+            .expect("test setup should succeed");
         assert_ne!(authority_hash, 0);
         assert_ne!(request_hash, 0);
         assert_ne!(authority_hash, request_hash);
 
-        let canonical_receipt = receipt.canonical_effect_receipt().unwrap();
+        let canonical_receipt = receipt
+            .canonical_effect_receipt()
+            .expect("test setup should succeed");
         assert_eq!(canonical_receipt.authority_hash, authority_hash);
         assert_eq!(canonical_receipt.request_hash, request_hash);
 
@@ -1930,7 +2019,7 @@ mod tests {
             receipt.max_retries,
             receipt.attempt_budget,
         )
-        .unwrap();
+        .expect("test setup should succeed");
         let mut authority_tamper = OpenAiLlmEffectReceipt {
             timeout_ms: authority_policy.timeout_ms,
             retry_budget_hash: authority_policy.policy_hash(),
@@ -1940,11 +2029,15 @@ mod tests {
         authority_tamper.receipt_hash = authority_tamper.expected_receipt_hash();
         assert!(authority_tamper.is_valid());
         assert_ne!(
-            authority_tamper.canonical_authority_hash().unwrap(),
+            authority_tamper
+                .canonical_authority_hash()
+                .expect("test value should be present"),
             authority_hash
         );
         assert_eq!(
-            authority_tamper.canonical_request_hash().unwrap(),
+            authority_tamper
+                .canonical_request_hash()
+                .expect("test value should be present"),
             request_hash
         );
 
@@ -1956,11 +2049,15 @@ mod tests {
         request_tamper.receipt_hash = request_tamper.expected_receipt_hash();
         assert!(request_tamper.is_valid());
         assert_eq!(
-            request_tamper.canonical_authority_hash().unwrap(),
+            request_tamper
+                .canonical_authority_hash()
+                .expect("test value should be present"),
             authority_hash
         );
         assert_ne!(
-            request_tamper.canonical_request_hash().unwrap(),
+            request_tamper
+                .canonical_request_hash()
+                .expect("test value should be present"),
             request_hash
         );
 
@@ -1998,9 +2095,11 @@ mod tests {
         let context = ContextRecord::from_packet_memory(state.packet, 0xabc, &lookup);
         let policy = PolicyStore::default();
         let config = OpenAiConfig::default();
-        let client = OpenAiClient::new(config.clone()).unwrap();
+        let client = OpenAiClient::new(config.clone()).expect("test setup should succeed");
         let request = OpenAiChatRequest::new(openai_messages_from_context(&context, &policy));
-        let request_hash = client.request_hash_for(&request).unwrap();
+        let request_hash = client
+            .request_hash_for(&request)
+            .expect("test setup should succeed");
         let response = OpenAiChatResponse {
             id: "chatcmpl-openai-proof-domains".to_string(),
             content: "Preserve distinct OpenAI proof event hash domains.".to_string(),
@@ -2018,7 +2117,7 @@ mod tests {
                 config.model_id(),
                 request_hash,
             )
-            .unwrap();
+            .expect("test setup should succeed");
         let record = LlmStructuredAdapter::record_from_external_response(
             &context,
             &policy,
@@ -2061,7 +2160,7 @@ mod tests {
             RuntimeConfig::default(),
             envelope,
         )
-        .unwrap();
+        .expect("test setup should succeed");
         let persisted_event = tlog
             .iter()
             .find(|event| {
@@ -2070,10 +2169,10 @@ mod tests {
                     && event.api_command_hash == command_hash
             })
             .copied()
-            .unwrap();
+            .expect("test setup should succeed");
         let base_receipt = call
             .receipt_for_configured_event(&config, command_hash, &persisted_event)
-            .unwrap();
+            .expect("test setup should succeed");
         let (receipt, proof_event) = OpenAiJudgmentProofEvent::finalize_receipt_after_tlog(
             base_receipt,
             &tlog,
@@ -2082,7 +2181,7 @@ mod tests {
             base_receipt.base_url_provenance_verified(&config),
             state.phase == Phase::Plan,
         )
-        .unwrap();
+        .expect("test setup should succeed");
 
         let provider_proof_hash = proof_event.expected_proof_hash();
         let verifier_context_hash = proof_event.verifier_context_hash();
@@ -2090,8 +2189,9 @@ mod tests {
         assert_ne!(verifier_context_hash, 0);
         assert_ne!(verifier_context_hash, provider_proof_hash);
 
-        let (canonical_receipt, effect_proof) =
-            proof_event.to_canonical_effect_proof(receipt).unwrap();
+        let (canonical_receipt, effect_proof) = proof_event
+            .to_canonical_effect_proof(receipt)
+            .expect("test setup should succeed");
         assert_eq!(effect_proof.verifier_context_hash, verifier_context_hash);
         assert_eq!(effect_proof.provider_proof_hash, provider_proof_hash);
         assert_eq!(effect_proof.receipt.proof_hash, effect_proof.proof_hash);
@@ -2121,9 +2221,13 @@ mod tests {
     #[test]
     fn generic_verification_proof_replay_rejects_missing_duplicate_and_displaced_events() {
         let initial = State::default();
-        let (_, tlog) = run_until_done(initial, RuntimeConfig::default()).unwrap();
-        let receipt_event = tlog.first().copied().unwrap();
-        let proof_event_seq = tlog.last().map(|event| event.seq + 1).unwrap();
+        let (_, tlog) =
+            run_until_done(initial, RuntimeConfig::default()).expect("test setup should succeed");
+        let receipt_event = tlog.first().copied().expect("test setup should succeed");
+        let proof_event_seq = tlog
+            .last()
+            .map(|event| event.seq + 1)
+            .expect("test setup should succeed");
         let binding = VerificationProofBinding::new(
             ProofSubjectKind::SemanticVerification,
             0xabc1,
@@ -2132,7 +2236,7 @@ mod tests {
             receipt_event.self_hash,
             0xabc3,
         )
-        .unwrap();
+        .expect("test setup should succeed");
         let proof_record = VerificationProofRecord::from_binding(
             binding,
             0xabc4,
@@ -2140,7 +2244,7 @@ mod tests {
             0xabc5,
             crate::capability::verification::PROOF_FLAGS_REQUIRED,
         )
-        .unwrap();
+        .expect("test setup should succeed");
 
         let base = std::env::temp_dir().join(format!(
             "ai-generic-proof-replay-{}-{}",
@@ -2155,40 +2259,42 @@ mod tests {
             std::fs::remove_file(path).ok();
         }
 
-        write_tlog_ndjson(&valid_path, &tlog).unwrap();
+        write_tlog_ndjson(&valid_path, &tlog).expect("test setup should succeed");
         crate::capability::verification::append_verification_proof_record_ndjson(
             &valid_path,
             &proof_record,
         )
-        .unwrap();
+        .expect("test setup should succeed");
         assert_eq!(
-            verify_verification_proof_record_replay_ndjson(&valid_path, &[binding]).unwrap(),
+            verify_verification_proof_record_replay_ndjson(&valid_path, &[binding])
+                .expect("test value should be present"),
             1
         );
         assert_eq!(
-            verify_verification_proof_record_order_ndjson(&valid_path).unwrap(),
+            verify_verification_proof_record_order_ndjson(&valid_path)
+                .expect("test value should be present"),
             1
         );
 
-        write_tlog_ndjson(&missing_path, &tlog).unwrap();
+        write_tlog_ndjson(&missing_path, &tlog).expect("test setup should succeed");
         assert!(verify_verification_proof_record_replay_ndjson(&missing_path, &[binding]).is_err());
 
-        write_tlog_ndjson(&duplicate_path, &tlog).unwrap();
+        write_tlog_ndjson(&duplicate_path, &tlog).expect("test setup should succeed");
         crate::capability::verification::append_verification_proof_record_ndjson(
             &duplicate_path,
             &proof_record,
         )
-        .unwrap();
+        .expect("test setup should succeed");
         crate::capability::verification::append_verification_proof_record_ndjson(
             &duplicate_path,
             &proof_record,
         )
-        .unwrap();
+        .expect("test setup should succeed");
         assert!(
             verify_verification_proof_record_replay_ndjson(&duplicate_path, &[binding]).is_err()
         );
 
-        write_tlog_ndjson(&displaced_path, &tlog).unwrap();
+        write_tlog_ndjson(&displaced_path, &tlog).expect("test setup should succeed");
         {
             use std::io::Write as _;
 
@@ -2197,20 +2303,20 @@ mod tests {
             let mut file = std::fs::OpenOptions::new()
                 .append(true)
                 .open(&displaced_path)
-                .unwrap();
+                .expect("test setup should succeed");
             writeln!(
                 file,
                 "{}",
                 crate::codec::ndjson::encode_control_event_ndjson(&displaced_event)
             )
-            .unwrap();
-            file.sync_all().unwrap();
+            .expect("test setup should succeed");
+            file.sync_all().expect("test setup should succeed");
         }
         crate::capability::verification::append_verification_proof_record_ndjson(
             &displaced_path,
             &proof_record,
         )
-        .unwrap();
+        .expect("test setup should succeed");
         assert!(verify_verification_proof_record_order_ndjson(&displaced_path).is_err());
         assert!(
             verify_verification_proof_record_replay_ndjson(&displaced_path, &[binding]).is_err()
@@ -2235,14 +2341,14 @@ mod tests {
         let lookup = memory.lookup(state.packet.objective_id, 8);
         let context = ContextRecord::from_packet_memory(state.packet, 0xabc, &lookup);
         let policy = PolicyStore::default();
-        let client = OllamaClient::new(OllamaConfig::default()).unwrap();
+        let client = OllamaClient::new(OllamaConfig::default()).expect("test setup should succeed");
         let call = client
             .call_from_response_body(
                 &context,
                 &policy,
                 "{\"id\":\"chatcmpl-1\",\"object\":\"chat.completion\",\"choices\":[{\"index\":0,\"message\":{\"role\":\"assistant\",\"content\":\"Bind receipt and proof hashes both ways.\"},\"finish_reason\":\"stop\"}],\"usage\":{\"prompt_tokens\":30,\"completion_tokens\":8,\"total_tokens\":38}}",
             )
-            .unwrap();
+            .expect("test setup should succeed");
         let envelope = CommandEnvelope::new(
             call.request_hash,
             crate::api::protocol::Command::SubmitEvidence(call.submission()),
@@ -2255,7 +2361,7 @@ mod tests {
             RuntimeConfig::default(),
             envelope.clone(),
         )
-        .unwrap();
+        .expect("test setup should succeed");
         let persisted_event = tlog
             .iter()
             .find(|event| {
@@ -2264,10 +2370,10 @@ mod tests {
                     && event.api_command_hash == envelope.command_hash
             })
             .copied()
-            .unwrap();
+            .expect("test setup should succeed");
         let base_receipt = call
             .receipt_for_configured_event(client.config(), envelope.command_hash, &persisted_event)
-            .unwrap();
+            .expect("test setup should succeed");
 
         assert!(!base_receipt.has_proof_binding());
         let (receipt, proof_event) = OllamaJudgmentProofEvent::finalize_receipt_after_tlog(
@@ -2278,7 +2384,7 @@ mod tests {
             base_receipt.base_url_provenance_verified(client.config()),
             state.phase == Phase::Plan,
         )
-        .unwrap();
+        .expect("test setup should succeed");
 
         assert!(receipt.has_proof_binding());
         assert_eq!(receipt.proof_hash, proof_event.proof_hash);
@@ -2314,14 +2420,14 @@ mod tests {
         let lookup = memory.lookup(state.packet.objective_id, 8);
         let context = ContextRecord::from_packet_memory(state.packet, 0xabc, &lookup);
         let policy = PolicyStore::default();
-        let client = OllamaClient::new(OllamaConfig::default()).unwrap();
+        let client = OllamaClient::new(OllamaConfig::default()).expect("test setup should succeed");
         let call = client
             .call_from_response_body(
                 &context,
                 &policy,
                 "{\"id\":\"chatcmpl-1\",\"object\":\"chat.completion\",\"choices\":[{\"index\":0,\"message\":{\"role\":\"assistant\",\"content\":\"Bind proof event sequence into the receipt hash.\"},\"finish_reason\":\"stop\"}],\"usage\":{\"prompt_tokens\":30,\"completion_tokens\":8,\"total_tokens\":38}}",
             )
-            .unwrap();
+            .expect("test setup should succeed");
         let envelope = CommandEnvelope::new(
             call.request_hash,
             crate::api::protocol::Command::SubmitEvidence(call.submission()),
@@ -2334,7 +2440,7 @@ mod tests {
             RuntimeConfig::default(),
             envelope.clone(),
         )
-        .unwrap();
+        .expect("test setup should succeed");
         let persisted_event = tlog
             .iter()
             .find(|event| {
@@ -2343,10 +2449,10 @@ mod tests {
                     && event.api_command_hash == envelope.command_hash
             })
             .copied()
-            .unwrap();
+            .expect("test setup should succeed");
         let base_receipt = call
             .receipt_for_configured_event(client.config(), envelope.command_hash, &persisted_event)
-            .unwrap();
+            .expect("test setup should succeed");
 
         assert_eq!(base_receipt.proof_event_seq, 0);
         let base_hash = base_receipt.receipt_hash;
@@ -2358,12 +2464,14 @@ mod tests {
             base_receipt.base_url_provenance_verified(client.config()),
             state.phase == Phase::Plan,
         )
-        .unwrap();
+        .expect("test setup should succeed");
 
         assert_eq!(receipt.proof_event_seq, proof_event.proof_event_seq);
         assert_eq!(
             receipt.proof_event_seq,
-            tlog.last().map(|event| event.seq + 1).unwrap()
+            tlog.last()
+                .map(|event| event.seq + 1)
+                .expect("test value should be present")
         );
         assert!(receipt.proof_event_seq > receipt.event_seq);
         assert_ne!(receipt.receipt_hash, base_hash);
@@ -2398,14 +2506,14 @@ mod tests {
         let lookup = memory.lookup(state.packet.objective_id, 8);
         let context = ContextRecord::from_packet_memory(state.packet, 0xabc, &lookup);
         let policy = PolicyStore::default();
-        let client = OllamaClient::new(OllamaConfig::default()).unwrap();
+        let client = OllamaClient::new(OllamaConfig::default()).expect("test setup should succeed");
         let call = client
             .call_from_response_body(
                 &context,
                 &policy,
                 "{\"id\":\"chatcmpl-1\",\"object\":\"chat.completion\",\"choices\":[{\"index\":0,\"message\":{\"role\":\"assistant\",\"content\":\"Reject displaced proof ordering.\"},\"finish_reason\":\"stop\"}],\"usage\":{\"prompt_tokens\":30,\"completion_tokens\":8,\"total_tokens\":38}}",
             )
-            .unwrap();
+            .expect("test setup should succeed");
         let envelope = CommandEnvelope::new(
             call.request_hash,
             crate::api::protocol::Command::SubmitEvidence(call.submission()),
@@ -2418,7 +2526,7 @@ mod tests {
             RuntimeConfig::default(),
             envelope.clone(),
         )
-        .unwrap();
+        .expect("test setup should succeed");
         let persisted_event = tlog
             .iter()
             .find(|event| {
@@ -2427,10 +2535,10 @@ mod tests {
                     && event.api_command_hash == envelope.command_hash
             })
             .copied()
-            .unwrap();
+            .expect("test setup should succeed");
         let base_receipt = call
             .receipt_for_configured_event(client.config(), envelope.command_hash, &persisted_event)
-            .unwrap();
+            .expect("test setup should succeed");
         let (receipt, proof_event) = OllamaJudgmentProofEvent::finalize_receipt_after_tlog(
             base_receipt,
             &tlog,
@@ -2439,7 +2547,7 @@ mod tests {
             base_receipt.base_url_provenance_verified(client.config()),
             state.phase == Phase::Plan,
         )
-        .unwrap();
+        .expect("test setup should succeed");
 
         let valid_path = std::env::temp_dir().join(format!(
             "ai-ollama-proof-order-valid-{}-{}.ndjson",
@@ -2454,16 +2562,20 @@ mod tests {
         std::fs::remove_file(&valid_path).ok();
         std::fs::remove_file(&displaced_path).ok();
 
-        write_tlog_ndjson(&valid_path, &tlog).unwrap();
-        append_ollama_llm_effect_receipt_ndjson(&valid_path, &receipt).unwrap();
-        append_ollama_judgment_proof_event_ndjson(&valid_path, &proof_event).unwrap();
+        write_tlog_ndjson(&valid_path, &tlog).expect("test setup should succeed");
+        append_ollama_llm_effect_receipt_ndjson(&valid_path, &receipt)
+            .expect("test setup should succeed");
+        append_ollama_judgment_proof_event_ndjson(&valid_path, &proof_event)
+            .expect("test setup should succeed");
         assert_eq!(
-            verify_ollama_judgment_proof_events_ndjson(&valid_path).unwrap(),
+            verify_ollama_judgment_proof_events_ndjson(&valid_path)
+                .expect("test value should be present"),
             1
         );
 
-        write_tlog_ndjson(&displaced_path, &tlog).unwrap();
-        append_ollama_llm_effect_receipt_ndjson(&displaced_path, &receipt).unwrap();
+        write_tlog_ndjson(&displaced_path, &tlog).expect("test setup should succeed");
+        append_ollama_llm_effect_receipt_ndjson(&displaced_path, &receipt)
+            .expect("test setup should succeed");
         {
             use std::io::Write as _;
 
@@ -2472,16 +2584,17 @@ mod tests {
             let mut file = std::fs::OpenOptions::new()
                 .append(true)
                 .open(&displaced_path)
-                .unwrap();
+                .expect("test setup should succeed");
             writeln!(
                 file,
                 "{}",
                 crate::codec::ndjson::encode_control_event_ndjson(&displaced_event)
             )
-            .unwrap();
-            file.sync_all().unwrap();
+            .expect("test setup should succeed");
+            file.sync_all().expect("test setup should succeed");
         }
-        append_ollama_judgment_proof_event_ndjson(&displaced_path, &proof_event).unwrap();
+        append_ollama_judgment_proof_event_ndjson(&displaced_path, &proof_event)
+            .expect("test setup should succeed");
 
         assert!(matches!(
             verify_ollama_judgment_proof_events_ndjson(&displaced_path),
@@ -2506,7 +2619,7 @@ mod tests {
         let lookup = memory.lookup(state.packet.objective_id, 8);
         let context = ContextRecord::from_packet_memory(state.packet, 0xabc, &lookup);
         let policy = PolicyStore::default();
-        let client = OllamaClient::new(OllamaConfig::default()).unwrap();
+        let client = OllamaClient::new(OllamaConfig::default()).expect("test setup should succeed");
         let config = client.config().clone();
         let call = client
             .call_from_response_body(
@@ -2514,7 +2627,7 @@ mod tests {
                 &policy,
                 "{\"id\":\"chatcmpl-1\",\"object\":\"chat.completion\",\"choices\":[{\"index\":0,\"message\":{\"role\":\"assistant\",\"content\":\"Bind the endpoint provenance.\"},\"finish_reason\":\"stop\"}],\"usage\":{\"prompt_tokens\":30,\"completion_tokens\":8,\"total_tokens\":38}}",
             )
-            .unwrap();
+            .expect("test setup should succeed");
         let envelope = CommandEnvelope::new(
             call.request_hash,
             crate::api::protocol::Command::SubmitEvidence(call.submission()),
@@ -2527,7 +2640,7 @@ mod tests {
             RuntimeConfig::default(),
             envelope.clone(),
         )
-        .unwrap();
+        .expect("test setup should succeed");
         let persisted_event = tlog
             .iter()
             .find(|event| {
@@ -2536,10 +2649,10 @@ mod tests {
                     && event.api_command_hash == envelope.command_hash
             })
             .copied()
-            .unwrap();
+            .expect("test setup should succeed");
         let receipt = call
             .receipt_for_configured_event(&config, envelope.command_hash, &persisted_event)
-            .unwrap();
+            .expect("test setup should succeed");
 
         assert!(config.validate().is_ok());
         assert!(call.base_url_provenance_verified(&config));
@@ -2608,14 +2721,14 @@ mod tests {
         let lookup = memory.lookup(state.packet.objective_id, 8);
         let context = ContextRecord::from_packet_memory(state.packet, 0xabc, &lookup);
         let policy = PolicyStore::default();
-        let client = OllamaClient::new(OllamaConfig::default()).unwrap();
+        let client = OllamaClient::new(OllamaConfig::default()).expect("test setup should succeed");
         let call = client
             .call_from_response_body(
                 &context,
                 &policy,
                 "{\"id\":\"chatcmpl-1\",\"object\":\"chat.completion\",\"choices\":[{\"index\":0,\"message\":{\"role\":\"assistant\",\"content\":\"Reject non-local provenance before receipt.\"},\"finish_reason\":\"stop\"}],\"usage\":{\"prompt_tokens\":30,\"completion_tokens\":8,\"total_tokens\":38}}",
             )
-            .unwrap();
+            .expect("test setup should succeed");
         let envelope = CommandEnvelope::new(
             call.request_hash,
             crate::api::protocol::Command::SubmitEvidence(call.submission()),
@@ -2628,7 +2741,7 @@ mod tests {
             RuntimeConfig::default(),
             envelope.clone(),
         )
-        .unwrap();
+        .expect("test setup should succeed");
         let persisted_event = tlog
             .iter()
             .find(|event| {
@@ -2637,7 +2750,7 @@ mod tests {
                     && event.api_command_hash == envelope.command_hash
             })
             .copied()
-            .unwrap();
+            .expect("test setup should succeed");
 
         let local_config = client.config().clone();
         assert!(call
@@ -2674,14 +2787,14 @@ mod tests {
         let lookup = memory.lookup(state.packet.objective_id, 8);
         let context = ContextRecord::from_packet_memory(state.packet, 0xabc, &lookup);
         let policy = PolicyStore::default();
-        let client = OllamaClient::new(OllamaConfig::default()).unwrap();
+        let client = OllamaClient::new(OllamaConfig::default()).expect("test setup should succeed");
         let call = client
             .call_from_response_body(
                 &context,
                 &policy,
                 "{\"id\":\"chatcmpl-1\",\"object\":\"chat.completion\",\"choices\":[{\"index\":0,\"message\":{\"role\":\"assistant\",\"content\":\"Persist this external llm receipt.\"},\"finish_reason\":\"stop\"}],\"usage\":{\"prompt_tokens\":30,\"completion_tokens\":8,\"total_tokens\":38}}",
             )
-            .unwrap();
+            .expect("test setup should succeed");
         let envelope = CommandEnvelope::new(
             call.request_hash,
             crate::api::protocol::Command::SubmitEvidence(call.submission()),
@@ -2694,7 +2807,7 @@ mod tests {
             RuntimeConfig::default(),
             envelope.clone(),
         )
-        .unwrap();
+        .expect("test setup should succeed");
         let persisted_event = tlog
             .iter()
             .find(|event| {
@@ -2703,10 +2816,10 @@ mod tests {
                     && event.api_command_hash == envelope.command_hash
             })
             .copied()
-            .unwrap();
+            .expect("test setup should succeed");
         let receipt = call
             .receipt_for_configured_event(client.config(), envelope.command_hash, &persisted_event)
-            .unwrap();
+            .expect("test setup should succeed");
 
         let path = std::env::temp_dir().join(format!(
             "ollama_judgment-{}-{}.tlog.ndjson",
@@ -2715,9 +2828,13 @@ mod tests {
         ));
         std::fs::remove_file(&path).ok();
 
-        write_tlog_ndjson(&path, &tlog).unwrap();
-        append_ollama_llm_effect_receipt_ndjson(&path, &receipt).unwrap();
-        assert_eq!(verify_ollama_judgment_tlog_ndjson(&path).unwrap(), 1);
+        write_tlog_ndjson(&path, &tlog).expect("test setup should succeed");
+        append_ollama_llm_effect_receipt_ndjson(&path, &receipt)
+            .expect("test setup should succeed");
+        assert_eq!(
+            verify_ollama_judgment_tlog_ndjson(&path).expect("test value should be present"),
+            1
+        );
 
         for (field_name, field_index) in [
             ("provider", 2usize),
@@ -2760,8 +2877,9 @@ mod tests {
 
     #[test]
     fn policy_feedback_entry_roundtrips_and_fingerprints() {
-        let (_state, tlog) = run_until_done(State::ready(), RuntimeConfig::default()).unwrap();
-        let promotion = PolicyPromotion::from_tlog(&tlog, 1).unwrap();
+        let (_state, tlog) = run_until_done(State::ready(), RuntimeConfig::default())
+            .expect("test setup should succeed");
+        let promotion = PolicyPromotion::from_tlog(&tlog, 1).expect("test setup should succeed");
         assert!(promotion.is_valid());
         assert_eq!(promotion.eval_seq, promotion.source_seq);
         assert!(promotion.judgment_seq < promotion.eval_seq);
@@ -2779,8 +2897,8 @@ mod tests {
         let empty_fingerprint = store.fingerprint();
         let entry = *store
             .promote_feedback_durable(&path, promotion.clone())
-            .unwrap();
-        let loaded = PolicyStore::load_ndjson(&path).unwrap();
+            .expect("test setup should succeed");
+        let loaded = PolicyStore::load_ndjson(&path).expect("test setup should succeed");
         std::fs::remove_file(&path).ok();
 
         assert_eq!(entry.key, POLICY_FEEDBACK_HASH);
@@ -2793,8 +2911,9 @@ mod tests {
 
     #[test]
     fn verified_policy_promotion_distills_training_ready_row() {
-        let (_state, tlog) = run_until_done(State::ready(), RuntimeConfig::default()).unwrap();
-        let promotion = PolicyPromotion::from_tlog(&tlog, 1).unwrap();
+        let (_state, tlog) = run_until_done(State::ready(), RuntimeConfig::default())
+            .expect("test setup should succeed");
+        let promotion = PolicyPromotion::from_tlog(&tlog, 1).expect("test setup should succeed");
         let row = DistillationRow::from_policy_promotion(
             &promotion,
             0x1111,
@@ -2804,20 +2923,21 @@ mod tests {
             100,
             promotion.promoted_policy_hash,
         )
-        .unwrap();
+        .expect("test setup should succeed");
 
         assert_eq!(row.schema_version, DISTILLATION_ROW_SCHEMA_VERSION);
         assert_eq!(row.source_event, promotion.source_seq);
         assert_eq!(row.proof_hash, promotion.promoted_policy_hash);
         assert_ne!(row.row_hash, 0);
         assert!(row.is_valid_for(&promotion));
-        verify_tlog(&tlog).unwrap();
+        verify_tlog(&tlog).expect("test setup should succeed");
     }
 
     #[test]
     fn distillation_row_rejects_unbound_or_zero_training_fields() {
-        let (_state, tlog) = run_until_done(State::ready(), RuntimeConfig::default()).unwrap();
-        let promotion = PolicyPromotion::from_tlog(&tlog, 1).unwrap();
+        let (_state, tlog) = run_until_done(State::ready(), RuntimeConfig::default())
+            .expect("test setup should succeed");
+        let promotion = PolicyPromotion::from_tlog(&tlog, 1).expect("test setup should succeed");
 
         assert!(DistillationRow::from_policy_promotion(
             &promotion,
@@ -2843,8 +2963,9 @@ mod tests {
 
     #[test]
     fn gated_distillation_export_writes_only_verified_passing_tlog_rows() {
-        let (_state, tlog) = run_until_done(State::ready(), RuntimeConfig::default()).unwrap();
-        let promotion = PolicyPromotion::from_tlog(&tlog, 1).unwrap();
+        let (_state, tlog) = run_until_done(State::ready(), RuntimeConfig::default())
+            .expect("test setup should succeed");
+        let promotion = PolicyPromotion::from_tlog(&tlog, 1).expect("test setup should succeed");
         let path = std::env::temp_dir().join(format!(
             "ai-distill-export-{}-{}.jsonl",
             std::process::id(),
@@ -2866,8 +2987,8 @@ mod tests {
                 minimum_score: 90,
             },
         )
-        .unwrap();
-        let output = std::fs::read_to_string(&path).unwrap();
+        .expect("test setup should succeed");
+        let output = std::fs::read_to_string(&path).expect("test setup should succeed");
         std::fs::remove_file(&path).ok();
 
         assert_eq!(receipt.schema_version, DISTILLATION_ROW_SCHEMA_VERSION);
@@ -2885,8 +3006,9 @@ mod tests {
 
     #[test]
     fn gated_distillation_export_rejects_tamper_and_low_score() {
-        let (_state, tlog) = run_until_done(State::ready(), RuntimeConfig::default()).unwrap();
-        let promotion = PolicyPromotion::from_tlog(&tlog, 1).unwrap();
+        let (_state, tlog) = run_until_done(State::ready(), RuntimeConfig::default())
+            .expect("test setup should succeed");
+        let promotion = PolicyPromotion::from_tlog(&tlog, 1).expect("test setup should succeed");
         let path = std::env::temp_dir().join(format!(
             "ai-distill-export-reject-{}-{}.jsonl",
             std::process::id(),
@@ -2935,10 +3057,13 @@ mod tests {
         let base_policy = PolicyStore::default();
         let base_llm = LlmStructuredAdapter::record_from_context(&context, &base_policy, 11);
 
-        let (_state, tlog) = run_until_done(State::ready(), RuntimeConfig::default()).unwrap();
-        let promotion = PolicyPromotion::from_tlog(&tlog, 1).unwrap();
+        let (_state, tlog) = run_until_done(State::ready(), RuntimeConfig::default())
+            .expect("test setup should succeed");
+        let promotion = PolicyPromotion::from_tlog(&tlog, 1).expect("test setup should succeed");
         let mut feedback_policy = PolicyStore::default();
-        feedback_policy.promote_feedback(promotion).unwrap();
+        feedback_policy
+            .promote_feedback(promotion)
+            .expect("test setup should succeed");
         let feedback_llm =
             LlmStructuredAdapter::record_from_context(&context, &feedback_policy, 11);
 
@@ -2958,10 +3083,14 @@ mod tests {
     #[test]
     fn learning_policy_llm_feedback_loop_drives_judgment() {
         let (_learned_state, learned_tlog) =
-            run_until_done(State::ready(), RuntimeConfig::default()).unwrap();
-        let promotion = PolicyPromotion::from_tlog(&learned_tlog, 1).unwrap();
+            run_until_done(State::ready(), RuntimeConfig::default())
+                .expect("test setup should succeed");
+        let promotion =
+            PolicyPromotion::from_tlog(&learned_tlog, 1).expect("test setup should succeed");
         let mut policy = PolicyStore::default();
-        policy.promote_feedback(promotion).unwrap();
+        policy
+            .promote_feedback(promotion)
+            .expect("test setup should succeed");
 
         let mut state = State {
             phase: Phase::Judgment,
@@ -2986,13 +3115,13 @@ mod tests {
             RuntimeConfig::default(),
             crate::api::protocol::Command::SubmitEvidence(llm.submission()),
         )
-        .unwrap();
+        .expect("test setup should succeed");
 
         assert_eq!(response.event.from, Phase::Judgment);
         assert_eq!(response.event.to, Phase::Plan);
         assert_eq!(response.event.evidence, Evidence::JudgmentRecord);
         assert_eq!(state.gates.judgment.status, GateStatus::Pass);
-        verify_tlog(&tlog).unwrap();
+        verify_tlog(&tlog).expect("test setup should succeed");
     }
 
     #[test]
@@ -3018,13 +3147,13 @@ mod tests {
             RuntimeConfig::default(),
             crate::api::protocol::Command::SubmitEvidence(llm.submission()),
         )
-        .unwrap();
+        .expect("test setup should succeed");
 
         assert_eq!(response.event.from, Phase::Judgment);
         assert_eq!(response.event.to, Phase::Plan);
         assert_eq!(response.event.evidence, Evidence::JudgmentRecord);
         assert_eq!(state.gates.judgment.status, GateStatus::Pass);
-        verify_tlog(&tlog).unwrap();
+        verify_tlog(&tlog).expect("test setup should succeed");
     }
 
     #[test]
@@ -3048,14 +3177,14 @@ mod tests {
             RuntimeConfig::default(),
             crate::api::protocol::Command::SubmitEvidence(llm.submission()),
         )
-        .unwrap();
+        .expect("test setup should succeed");
 
         assert_eq!(llm.decision(), LlmDecision::Refused);
         assert_eq!(tlog[0].decision, Decision::Block);
         assert_eq!(state.phase, Phase::Recovery);
         assert_eq!(state.gates.judgment.status, GateStatus::Fail);
         assert_eq!(response.event.failure, Some(FailureClass::JudgmentFailed));
-        verify_tlog(&tlog).unwrap();
+        verify_tlog(&tlog).expect("test setup should succeed");
     }
 
     #[test]
@@ -3064,7 +3193,7 @@ mod tests {
         let cfg = RuntimeConfig::default();
         let mut tlog = Vec::new();
 
-        tick(&mut state, &mut tlog, cfg).unwrap();
+        tick(&mut state, &mut tlog, cfg).expect("test setup should succeed");
         assert_eq!(state.phase, Phase::Invariant);
 
         let observation = ObservationRecord::new(7, 1, 0xabc, 1);
@@ -3074,7 +3203,7 @@ mod tests {
             cfg,
             crate::api::protocol::Command::SubmitEvidence(observation.submission()),
         )
-        .unwrap();
+        .expect("test setup should succeed");
         assert_eq!(state.phase, Phase::Analysis);
 
         let mut memory = MemoryIndex::default();
@@ -3088,7 +3217,7 @@ mod tests {
             cfg,
             crate::api::protocol::Command::SubmitEvidence(context.submission()),
         )
-        .unwrap();
+        .expect("test setup should succeed");
         assert_eq!(state.phase, Phase::Judgment);
 
         let policy = PolicyStore::default();
@@ -3099,13 +3228,13 @@ mod tests {
             cfg,
             crate::api::protocol::Command::SubmitEvidence(llm.submission()),
         )
-        .unwrap();
+        .expect("test setup should succeed");
 
         assert_eq!(state.phase, Phase::Plan);
         assert_eq!(state.gates.invariant.status, GateStatus::Pass);
         assert_eq!(state.gates.analysis.status, GateStatus::Pass);
         assert_eq!(state.gates.judgment.status, GateStatus::Pass);
-        verify_tlog(&tlog).unwrap();
+        verify_tlog(&tlog).expect("test setup should succeed");
     }
 
     #[test]
@@ -3136,7 +3265,7 @@ mod tests {
         let mut state = State::default();
         let mut tlog = Vec::new();
         let cfg = RuntimeConfig::default();
-        tick(&mut state, &mut tlog, cfg).unwrap();
+        tick(&mut state, &mut tlog, cfg).expect("test setup should succeed");
         assert_eq!(state.phase, Phase::Invariant);
 
         let record = OrchestrationRecord::from_state(state, 7);
@@ -3146,7 +3275,7 @@ mod tests {
             cfg,
             crate::api::protocol::Command::SubmitEvidenceBatch(record.ordered_submissions()),
         )
-        .unwrap();
+        .expect("test setup should succeed");
 
         assert_eq!(response.event.from, Phase::Eval);
         assert_eq!(response.event.to, Phase::Persist);
@@ -3155,7 +3284,7 @@ mod tests {
         assert!(state.gates.all_execution_passed());
         assert!(state.packet.objective_complete());
         assert!(state.packet.lineage_valid());
-        verify_tlog(&tlog).unwrap();
+        verify_tlog(&tlog).expect("test setup should succeed");
     }
 
     #[test]
@@ -3255,7 +3384,7 @@ mod tests {
         let mut state = State::default();
         let mut tlog = Vec::new();
         let cfg = RuntimeConfig::default();
-        tick(&mut state, &mut tlog, cfg).unwrap();
+        tick(&mut state, &mut tlog, cfg).expect("test setup should succeed");
         let before = state;
         let before_len = tlog.len();
 
@@ -3332,17 +3461,17 @@ mod tests {
         let mut state = State::default();
         let mut tlog = Vec::new();
         let cfg = RuntimeConfig::default();
-        tick(&mut state, &mut tlog, cfg).unwrap();
+        tick(&mut state, &mut tlog, cfg).expect("test setup should succeed");
         assert_eq!(state.phase, Phase::Invariant);
 
         let observation = ObservationRecord::new(1, 1, 0xabc, 1);
         let envelope = CommandEnvelope::new(1, Command::SubmitEvidence(observation.submission()));
-        let response =
-            crate::api::routes::handle_envelope(&mut state, &mut tlog, cfg, envelope).unwrap();
+        let response = crate::api::routes::handle_envelope(&mut state, &mut tlog, cfg, envelope)
+            .expect("test setup should succeed");
 
         assert_eq!(response.event.cause, Cause::GatePassed);
         assert_eq!(state.phase, Phase::Analysis);
-        verify_tlog(&tlog).unwrap();
+        verify_tlog(&tlog).expect("test setup should succeed");
     }
 
     #[test]
@@ -3382,7 +3511,7 @@ mod tests {
         let mut tlog = Vec::new();
         let mut ledger = CommandLedger::default();
         let cfg = RuntimeConfig::default();
-        tick(&mut state, &mut tlog, cfg).unwrap();
+        tick(&mut state, &mut tlog, cfg).expect("test setup should succeed");
 
         let observation = ObservationRecord::new(1, 1, 0xabc, 1);
         let envelope = CommandEnvelope::new(1, Command::SubmitEvidence(observation.submission()));
@@ -3393,7 +3522,7 @@ mod tests {
             &mut ledger,
             envelope.clone(),
         )
-        .unwrap();
+        .expect("test setup should succeed");
         let state_after_first = state;
         let tlog_len_after_first = tlog.len();
 
@@ -3404,13 +3533,13 @@ mod tests {
             &mut ledger,
             envelope,
         )
-        .unwrap();
+        .expect("test setup should succeed");
 
         assert_eq!(first, second);
         assert_eq!(state, state_after_first);
         assert_eq!(tlog.len(), tlog_len_after_first);
         assert_eq!(ledger.len(), 1);
-        verify_tlog(&tlog).unwrap();
+        verify_tlog(&tlog).expect("test setup should succeed");
     }
 
     #[test]
@@ -3419,7 +3548,7 @@ mod tests {
         let mut tlog = Vec::new();
         let mut ledger = CommandLedger::default();
         let cfg = RuntimeConfig::default();
-        tick(&mut state, &mut tlog, cfg).unwrap();
+        tick(&mut state, &mut tlog, cfg).expect("test setup should succeed");
 
         let first = CommandEnvelope::new(
             41,
@@ -3437,14 +3566,14 @@ mod tests {
             &mut ledger,
             first,
         )
-        .unwrap();
+        .expect("test setup should succeed");
 
         assert_eq!(
             ledger.push_response(&second, &response.event),
             Err(CanonError::InvalidReplay)
         );
         assert_eq!(ledger.len(), 1);
-        verify_tlog(&tlog).unwrap();
+        verify_tlog(&tlog).expect("test setup should succeed");
     }
 
     #[test]
@@ -3453,7 +3582,7 @@ mod tests {
         let mut tlog = Vec::new();
         let mut ledger = CommandLedger::default();
         let cfg = RuntimeConfig::default();
-        tick(&mut state, &mut tlog, cfg).unwrap();
+        tick(&mut state, &mut tlog, cfg).expect("test setup should succeed");
 
         let observation = ObservationRecord::new(1, 1, 0xabc, 1);
         let envelope = CommandEnvelope::new(17, Command::SubmitEvidence(observation.submission()));
@@ -3464,16 +3593,17 @@ mod tests {
             &mut ledger,
             envelope.clone(),
         )
-        .unwrap();
+        .expect("test setup should succeed");
 
         assert_eq!(first.event.api_command_id, envelope.command_id);
         assert_eq!(first.event.api_command_hash, envelope.command_hash);
 
         let encoded = encode_tlog_ndjson_string(&tlog);
-        let decoded = decode_tlog_ndjson_str(&encoded).unwrap();
+        let decoded = decode_tlog_ndjson_str(&encoded).expect("test setup should succeed");
         assert_eq!(decoded, tlog);
 
-        let mut rebuilt_ledger = CommandLedger::reconstruct_from_tlog(&decoded).unwrap();
+        let mut rebuilt_ledger =
+            CommandLedger::reconstruct_from_tlog(&decoded).expect("test setup should succeed");
         assert_eq!(rebuilt_ledger.receipts(), ledger.receipts());
 
         let state_after_first = state;
@@ -3485,13 +3615,13 @@ mod tests {
             &mut rebuilt_ledger,
             envelope,
         )
-        .unwrap();
+        .expect("test setup should succeed");
 
         assert_eq!(first, second);
         assert_eq!(state, state_after_first);
         assert_eq!(tlog.len(), tlog_len_after_first);
         assert_eq!(rebuilt_ledger.len(), 1);
-        verify_tlog(&tlog).unwrap();
+        verify_tlog(&tlog).expect("test setup should succeed");
     }
 
     #[test]
@@ -3500,7 +3630,7 @@ mod tests {
         let mut tlog = Vec::new();
         let mut ledger = CommandLedger::default();
         let cfg = RuntimeConfig::default();
-        tick(&mut state, &mut tlog, cfg).unwrap();
+        tick(&mut state, &mut tlog, cfg).expect("test setup should succeed");
 
         let first_observation = ObservationRecord::new(1, 1, 0xabc, 1);
         let first_envelope =
@@ -3512,7 +3642,7 @@ mod tests {
             &mut ledger,
             first_envelope,
         )
-        .unwrap();
+        .expect("test setup should succeed");
 
         let state_after_first = state;
         let tlog_len_after_first = tlog.len();
@@ -3534,7 +3664,7 @@ mod tests {
         assert_eq!(state, state_after_first);
         assert_eq!(tlog.len(), tlog_len_after_first);
         assert_eq!(ledger.len(), 1);
-        verify_tlog(&tlog).unwrap();
+        verify_tlog(&tlog).expect("test setup should succeed");
     }
 
     #[test]
@@ -3555,7 +3685,8 @@ mod tests {
             envelope.command_hash.wrapping_add(1).max(1),
             0xfee1_dead,
         );
-        let mut transport_ledger = ApiTransportLedger::from_receipts(vec![forged_receipt]).unwrap();
+        let mut transport_ledger = ApiTransportLedger::from_receipts(vec![forged_receipt])
+            .expect("test setup should succeed");
         let before_state = state;
         let before_tlog = tlog.clone();
 
@@ -3576,9 +3707,10 @@ mod tests {
 
     #[test]
     fn codec_public_event_roundtrip_preserves_event() {
-        let (_, tlog) = run_until_done(State::ready(), RuntimeConfig::default()).unwrap();
+        let (_, tlog) = run_until_done(State::ready(), RuntimeConfig::default())
+            .expect("test setup should succeed");
         let encoded = encode_control_event_ndjson(&tlog[0]);
-        let decoded = decode_control_event_ndjson(&encoded).unwrap();
+        let decoded = decode_control_event_ndjson(&encoded).expect("test setup should succeed");
 
         assert_eq!(decoded, tlog[0]);
     }
@@ -3586,10 +3718,11 @@ mod tests {
     #[test]
     fn codec_public_tlog_string_roundtrip_replays() {
         let initial = State::default();
-        let (state, tlog) = run_until_done(initial, RuntimeConfig::default()).unwrap();
+        let (state, tlog) =
+            run_until_done(initial, RuntimeConfig::default()).expect("test setup should succeed");
         let encoded = encode_tlog_ndjson_string(&tlog);
-        let decoded = decode_tlog_ndjson_str(&encoded).unwrap();
-        let replayed = verify_tlog_from(initial, &decoded).unwrap();
+        let decoded = decode_tlog_ndjson_str(&encoded).expect("test setup should succeed");
+        let replayed = verify_tlog_from(initial, &decoded).expect("test setup should succeed");
 
         assert_eq!(decoded, tlog);
         assert_eq!(replayed, state);
@@ -3613,14 +3746,14 @@ mod tests {
             RuntimeConfig::default(),
             crate::api::protocol::Command::SubmitEvidence(record.submission()),
         )
-        .unwrap();
+        .expect("test setup should succeed");
 
         assert_eq!(response.event.from, Phase::Plan);
         assert_eq!(response.event.to, Phase::Execute);
         assert_eq!(response.event.evidence, Evidence::TaskReady);
         assert_eq!(state.gates.plan.status, GateStatus::Pass);
         assert!(state.packet.has_ready_task());
-        verify_tlog(&tlog).unwrap();
+        verify_tlog(&tlog).expect("test setup should succeed");
     }
 
     #[test]
@@ -3643,14 +3776,14 @@ mod tests {
             RuntimeConfig::default(),
             crate::api::protocol::Command::SubmitEvidence(record.submission()),
         )
-        .unwrap();
+        .expect("test setup should succeed");
 
         assert_eq!(response.event.from, Phase::Execute);
         assert_eq!(response.event.to, Phase::Verify);
         assert_eq!(response.event.evidence, Evidence::ArtifactReceipt);
         assert_eq!(state.gates.execution.status, GateStatus::Pass);
         assert!(state.packet.artifact_receipt_valid());
-        verify_tlog(&tlog).unwrap();
+        verify_tlog(&tlog).expect("test setup should succeed");
     }
 
     #[test]
@@ -3676,7 +3809,7 @@ mod tests {
             &mut ledger,
             envelope.clone(),
         )
-        .unwrap();
+        .expect("test setup should succeed");
 
         assert_eq!(response.event.from, Phase::Execute);
         assert_eq!(response.event.to, Phase::Verify);
@@ -3689,34 +3822,37 @@ mod tests {
                     && event.cause == Cause::EvidenceSubmitted
                     && event.affected_gate == Some(GateId::Execution)
             })
-            .unwrap();
+            .expect("test setup should succeed");
 
         assert_eq!(persisted.api_command_id, envelope.command_id);
         assert_eq!(persisted.api_command_hash, envelope.command_hash);
         assert_eq!(response.event.api_command_id, envelope.command_id);
         assert_eq!(response.event.api_command_hash, envelope.command_hash);
 
-        let effect_receipt = record.effect_receipt_for_event(persisted).unwrap();
+        let effect_receipt = record
+            .effect_receipt_for_event(persisted)
+            .expect("test setup should succeed");
         assert_eq!(effect_receipt.receipt_hash, record.receipt.receipt_hash);
         assert!(effect_receipt.replay_verified(&tlog));
 
         let proof_event_seq = effect_receipt.event_seq + 1;
         let proof_record = effect_receipt
             .to_verification_proof_record(proof_event_seq)
-            .unwrap();
+            .expect("test setup should succeed");
         let binding = effect_receipt
             .verification_proof_binding(proof_event_seq)
-            .unwrap();
+            .expect("test setup should succeed");
         assert_eq!(proof_record.subject, ProofSubjectKind::ArtifactEffect);
         assert!(proof_record.matches_binding(binding));
         assert_eq!(
-            verify_verification_proof_record_bindings(&[proof_record], &[binding]).unwrap(),
+            verify_verification_proof_record_bindings(&[proof_record], &[binding])
+                .expect("test value should be present"),
             1
         );
         let mut tampered = proof_record;
         tampered.provider_proof_hash ^= 1;
         assert!(verify_verification_proof_record_bindings(&[tampered], &[binding]).is_err());
-        verify_tlog(&tlog).unwrap();
+        verify_tlog(&tlog).expect("test setup should succeed");
     }
 
     #[test]
@@ -3741,8 +3877,12 @@ mod tests {
 
         let mut tlog = Vec::new();
         let executor = LiveSandboxToolExecutor::new(&sandbox_root);
-        let record = executor.execute_packet(state.packet).unwrap();
-        let artifact_path = executor.artifact_path_for(record.request).unwrap();
+        let record = executor
+            .execute_packet(state.packet)
+            .expect("test setup should succeed");
+        let artifact_path = executor
+            .artifact_path_for(record.request)
+            .expect("test setup should succeed");
 
         assert_eq!(record.request.tool_kind, ToolKind::SandboxFile);
         assert_eq!(record.decision(), ToolDecision::Succeeded);
@@ -3757,7 +3897,7 @@ mod tests {
             RuntimeConfig::default(),
             Command::SubmitEvidence(record.submission()),
         )
-        .unwrap();
+        .expect("test setup should succeed");
 
         let persisted = tlog
             .iter()
@@ -3766,23 +3906,30 @@ mod tests {
                     && event.cause == Cause::EvidenceSubmitted
                     && event.affected_gate == Some(GateId::Execution)
             })
-            .unwrap();
-        let effect_receipt = record.effect_receipt_for_event(persisted).unwrap();
+            .expect("test setup should succeed");
+        let effect_receipt = record
+            .effect_receipt_for_event(persisted)
+            .expect("test setup should succeed");
 
         assert!(effect_receipt.is_sandbox_artifact_bound());
         assert!(effect_receipt.replay_verified(&tlog));
 
-        append_tool_effect_receipt_ndjson(&receipt_path, &effect_receipt).unwrap();
-        let loaded = load_tool_effect_receipts_ndjson(&receipt_path).unwrap();
+        append_tool_effect_receipt_ndjson(&receipt_path, &effect_receipt)
+            .expect("test setup should succeed");
+        let loaded =
+            load_tool_effect_receipts_ndjson(&receipt_path).expect("test setup should succeed");
 
         assert_eq!(loaded, vec![effect_receipt]);
-        assert_eq!(verify_tool_effect_receipts(&tlog, &loaded).unwrap(), 1);
+        assert_eq!(
+            verify_tool_effect_receipts(&tlog, &loaded).expect("test value should be present"),
+            1
+        );
         assert_eq!(
             decode_tool_effect_receipt_ndjson(&encode_tool_effect_receipt_ndjson(effect_receipt))
-                .unwrap(),
+                .expect("test value should be present"),
             effect_receipt
         );
-        verify_tlog(&tlog).unwrap();
+        verify_tlog(&tlog).expect("test setup should succeed");
 
         let _ = std::fs::remove_dir_all(&sandbox_root);
     }
@@ -3805,7 +3952,7 @@ mod tests {
 
         let receipt = executor
             .execute_process("/usr/bin/printf", &["canon-process"], "")
-            .unwrap();
+            .expect("test setup should succeed");
 
         assert_eq!(receipt.exit_status, 0);
         assert!(!receipt.timed_out);
@@ -3813,10 +3960,12 @@ mod tests {
         assert!(receipt.effect_is_normalized());
         assert!(executor
             .replay_receipt(&receipt, "/usr/bin/printf", &["canon-process"], "")
-            .unwrap());
+            .expect("test value should be present"));
 
-        append_sandbox_process_receipt_ndjson(&receipt_path, &receipt).unwrap();
-        let loaded = load_sandbox_process_receipts_ndjson(&receipt_path).unwrap();
+        append_sandbox_process_receipt_ndjson(&receipt_path, &receipt)
+            .expect("test setup should succeed");
+        let loaded =
+            load_sandbox_process_receipts_ndjson(&receipt_path).expect("test setup should succeed");
 
         assert_eq!(loaded, vec![receipt.clone()]);
         assert_eq!(
@@ -3827,12 +3976,12 @@ mod tests {
                 &["canon-process"],
                 ""
             )
-            .unwrap(),
+            .expect("test value should be present"),
             1
         );
         assert_eq!(
             decode_sandbox_process_receipt_ndjson(&encode_sandbox_process_receipt_ndjson(&receipt))
-                .unwrap(),
+                .expect("test value should be present"),
             receipt
         );
 
@@ -3857,7 +4006,7 @@ mod tests {
 
         let receipt = executor
             .execute_process("/usr/bin/printf", &["canon-process-effect"], "")
-            .unwrap();
+            .expect("test setup should succeed");
 
         let mut state = State {
             phase: Phase::Execute,
@@ -3888,14 +4037,14 @@ mod tests {
             RuntimeConfig::default(),
             authorization,
         )
-        .unwrap();
+        .expect("test setup should succeed");
         crate::api::routes::handle_command(
             &mut state,
             &mut tlog,
             RuntimeConfig::default(),
             Command::SubmitProcessReceipt(receipt.clone()),
         )
-        .unwrap();
+        .expect("test setup should succeed");
 
         let persisted = tlog
             .iter()
@@ -3905,7 +4054,7 @@ mod tests {
                     && event.evidence == Evidence::ExecutionReceipt
                     && event.affected_gate == Some(GateId::Execution)
             })
-            .unwrap();
+            .expect("test setup should succeed");
 
         assert_eq!(persisted.state_before.packet, persisted.state_after.packet);
         assert_eq!(
@@ -3914,38 +4063,44 @@ mod tests {
         );
         assert_eq!(receipt.submission().effect, PacketEffect::None);
 
-        let effect_receipt =
-            ProcessEffectReceipt::from_persisted_event(&receipt, persisted).unwrap();
+        let effect_receipt = ProcessEffectReceipt::from_persisted_event(&receipt, persisted)
+            .expect("test setup should succeed");
         assert_eq!(effect_receipt.effect.kind, ToolEffectKind::Process);
         assert!(effect_receipt.replay_verified(&tlog));
 
         let proof_event_seq = effect_receipt.event_seq + 1;
         let proof_record = effect_receipt
             .to_verification_proof_record(proof_event_seq)
-            .unwrap();
+            .expect("test setup should succeed");
         let binding = effect_receipt
             .verification_proof_binding(proof_event_seq)
-            .unwrap();
+            .expect("test setup should succeed");
         assert_eq!(proof_record.subject, ProofSubjectKind::ProcessEffect);
         assert!(proof_record.matches_binding(binding));
         assert_eq!(
-            verify_verification_proof_record_bindings(&[proof_record], &[binding]).unwrap(),
+            verify_verification_proof_record_bindings(&[proof_record], &[binding])
+                .expect("test value should be present"),
             1
         );
 
-        append_process_effect_receipt_ndjson(&receipt_path, &effect_receipt).unwrap();
-        let loaded = load_process_effect_receipts_ndjson(&receipt_path).unwrap();
+        append_process_effect_receipt_ndjson(&receipt_path, &effect_receipt)
+            .expect("test setup should succeed");
+        let loaded =
+            load_process_effect_receipts_ndjson(&receipt_path).expect("test setup should succeed");
 
         assert_eq!(loaded, vec![effect_receipt]);
-        assert_eq!(verify_process_effect_receipts(&tlog, &loaded).unwrap(), 1);
+        assert_eq!(
+            verify_process_effect_receipts(&tlog, &loaded).expect("test value should be present"),
+            1
+        );
         assert_eq!(
             decode_process_effect_receipt_ndjson(&encode_process_effect_receipt_ndjson(
                 effect_receipt
             ))
-            .unwrap(),
+            .expect("test value should be present"),
             effect_receipt
         );
-        verify_tlog(&tlog).unwrap();
+        verify_tlog(&tlog).expect("test setup should succeed");
 
         let _ = std::fs::remove_dir_all(&sandbox_root);
     }
@@ -3966,7 +4121,7 @@ mod tests {
             .with_max_output_bytes(4096);
         let receipt = executor
             .execute_process("/usr/bin/printf", &["unauthorized-process-receipt"], "")
-            .unwrap();
+            .expect("test setup should succeed");
 
         let mut state = State {
             phase: Phase::Execute,
@@ -4010,10 +4165,10 @@ mod tests {
             .with_max_output_bytes(4096);
         let receipt = executor
             .execute_process("/usr/bin/printf", &["actual-process-receipt"], "")
-            .unwrap();
+            .expect("test setup should succeed");
         let mismatched_receipt = executor
             .execute_process("/usr/bin/printf", &["authorized-different-process"], "")
-            .unwrap();
+            .expect("test setup should succeed");
         let mismatched_request = crate::capability::tooling::SandboxProcessRequest {
             capability: CapabilityId::Tooling,
             registry_policy_hash: mismatched_receipt.registry_policy_hash,
@@ -4045,7 +4200,7 @@ mod tests {
                 Command::AuthorizeProcessCall(mismatched_request),
             ),
         )
-        .unwrap();
+        .expect("test setup should succeed");
 
         let before = state;
         let before_tlog = tlog.clone();
@@ -4134,7 +4289,7 @@ mod tests {
             RuntimeConfig::default(),
             CommandEnvelope::new(0xa014_0004, Command::AuthorizeMcpCall(authorized_request)),
         )
-        .unwrap();
+        .expect("test setup should succeed");
 
         let before = state;
         let before_tlog = tlog.clone();
@@ -4166,13 +4321,19 @@ mod tests {
         };
         assert!(receipt.is_valid());
 
-        let authority_hash = receipt.canonical_authority_hash().unwrap();
-        let request_hash = receipt.canonical_request_hash().unwrap();
+        let authority_hash = receipt
+            .canonical_authority_hash()
+            .expect("test setup should succeed");
+        let request_hash = receipt
+            .canonical_request_hash()
+            .expect("test setup should succeed");
         assert_ne!(authority_hash, 0);
         assert_ne!(request_hash, 0);
         assert_ne!(authority_hash, request_hash);
 
-        let canonical_receipt = receipt.canonical_effect_receipt().unwrap();
+        let canonical_receipt = receipt
+            .canonical_effect_receipt()
+            .expect("test setup should succeed");
         assert_eq!(canonical_receipt.authority_hash, authority_hash);
         assert_eq!(canonical_receipt.request_hash, request_hash);
 
@@ -4182,11 +4343,15 @@ mod tests {
         };
         assert!(authority_tamper.is_valid());
         assert_ne!(
-            authority_tamper.canonical_authority_hash().unwrap(),
+            authority_tamper
+                .canonical_authority_hash()
+                .expect("test value should be present"),
             authority_hash
         );
         assert_eq!(
-            authority_tamper.canonical_request_hash().unwrap(),
+            authority_tamper
+                .canonical_request_hash()
+                .expect("test value should be present"),
             request_hash
         );
 
@@ -4196,11 +4361,15 @@ mod tests {
         };
         assert!(request_tamper.is_valid());
         assert_eq!(
-            request_tamper.canonical_authority_hash().unwrap(),
+            request_tamper
+                .canonical_authority_hash()
+                .expect("test value should be present"),
             authority_hash
         );
         assert_ne!(
-            request_tamper.canonical_request_hash().unwrap(),
+            request_tamper
+                .canonical_request_hash()
+                .expect("test value should be present"),
             request_hash
         );
 
@@ -4230,7 +4399,7 @@ mod tests {
             .with_max_output_bytes(4096);
         let receipt = executor
             .execute_process("/usr/bin/printf", &["duplicate-process-batch"], "")
-            .unwrap();
+            .expect("test setup should succeed");
 
         let mut state = State {
             phase: Phase::Execute,
@@ -4278,7 +4447,7 @@ mod tests {
             receipts.push(
                 executor
                     .execute_process("/usr/bin/printf", &[arg.as_str()], "")
-                    .unwrap(),
+                    .expect("test value should be present"),
             );
         }
 
@@ -4348,7 +4517,7 @@ mod tests {
             RuntimeConfig::default(),
             Command::SubmitEvidence(record.submission()),
         )
-        .unwrap();
+        .expect("test setup should succeed");
 
         let persisted = tlog
             .iter()
@@ -4357,8 +4526,10 @@ mod tests {
                     && event.cause == Cause::EvidenceSubmitted
                     && event.affected_gate == Some(GateId::Execution)
             })
-            .unwrap();
-        let effect_receipt = record.effect_receipt_for_event(persisted).unwrap();
+            .expect("test setup should succeed");
+        let effect_receipt = record
+            .effect_receipt_for_event(persisted)
+            .expect("test setup should succeed");
 
         let mut tampered = tlog.clone();
         tampered[0].state_after.packet.artifact_bytes = tampered[0]
@@ -4485,7 +4656,7 @@ mod tests {
             RuntimeConfig::default(),
             Command::SubmitEvidence(record.submission()),
         )
-        .unwrap();
+        .expect("test setup should succeed");
 
         let persisted = tlog
             .iter()
@@ -4494,8 +4665,10 @@ mod tests {
                     && event.cause == Cause::EvidenceSubmitted
                     && event.affected_gate == Some(GateId::Execution)
             })
-            .unwrap();
-        let effect_receipt = record.effect_receipt_for_event(persisted).unwrap();
+            .expect("test setup should succeed");
+        let effect_receipt = record
+            .effect_receipt_for_event(persisted)
+            .expect("test setup should succeed");
 
         assert_eq!(
             effect_receipt.registry_policy_hash,
@@ -4527,7 +4700,7 @@ mod tests {
             RuntimeConfig::default(),
             Command::SubmitEvidence(record.submission()),
         )
-        .unwrap();
+        .expect("test setup should succeed");
 
         let persisted = tlog
             .iter()
@@ -4536,16 +4709,18 @@ mod tests {
                     && event.cause == Cause::EvidenceSubmitted
                     && event.affected_gate == Some(GateId::Execution)
             })
-            .unwrap();
+            .expect("test setup should succeed");
 
         assert_eq!(
             persisted.capability_registry_projection,
             CapabilityRegistry::canonical().projection()
         );
 
-        let effect_receipt = record.effect_receipt_for_event(persisted).unwrap();
+        let effect_receipt = record
+            .effect_receipt_for_event(persisted)
+            .expect("test setup should succeed");
         assert!(effect_receipt.replay_verified(&tlog));
-        verify_tlog(&tlog).unwrap();
+        verify_tlog(&tlog).expect("test setup should succeed");
     }
 
     #[test]
@@ -4568,7 +4743,7 @@ mod tests {
             RuntimeConfig::default(),
             Command::SubmitEvidence(record.submission()),
         )
-        .unwrap();
+        .expect("test setup should succeed");
 
         let persisted_index = tlog
             .iter()
@@ -4577,10 +4752,10 @@ mod tests {
                     && event.cause == Cause::EvidenceSubmitted
                     && event.affected_gate == Some(GateId::Execution)
             })
-            .unwrap();
+            .expect("test setup should succeed");
         let effect_receipt = record
             .effect_receipt_for_event(&tlog[persisted_index])
-            .unwrap();
+            .expect("test setup should succeed");
 
         let mut drifted = tlog.clone();
         drifted[persisted_index].capability_registry_projection =
@@ -4628,14 +4803,14 @@ mod tests {
             RuntimeConfig::default(),
             crate::api::protocol::Command::SubmitEvidence(record.submission()),
         )
-        .unwrap();
+        .expect("test setup should succeed");
 
         assert_eq!(response.event.from, Phase::Verify);
         assert_eq!(response.event.to, Phase::Eval);
         assert_eq!(response.event.evidence, Evidence::LineageProof);
         assert_eq!(state.gates.verification.status, GateStatus::Pass);
         assert!(state.packet.lineage_valid());
-        verify_tlog(&tlog).unwrap();
+        verify_tlog(&tlog).expect("test setup should succeed");
     }
 
     #[test]
@@ -4726,7 +4901,7 @@ mod tests {
             std::process::id(),
             content_hash(artifact)
         ));
-        std::fs::write(&path, artifact).unwrap();
+        std::fs::write(&path, artifact).expect("test setup should succeed");
 
         let profile = ArtifactBackedSemanticProfile::new(
             ArtifactVerificationProfileKind::SourcePatch,
@@ -4780,7 +4955,7 @@ mod tests {
             std::process::id(),
             content_hash(expected)
         ));
-        std::fs::write(&path, actual).unwrap();
+        std::fs::write(&path, actual).expect("test setup should succeed");
 
         let profile = ArtifactBackedSemanticProfile::new(
             ArtifactVerificationProfileKind::DistillationRow,
@@ -4823,7 +4998,7 @@ mod tests {
             RuntimeConfig::default(),
             crate::api::protocol::Command::SubmitEvidence(record.submission()),
         )
-        .unwrap();
+        .expect("test setup should succeed");
 
         assert_eq!(response.event.from, Phase::Verify);
         assert_eq!(response.event.to, Phase::Recovery);
@@ -4833,7 +5008,7 @@ mod tests {
         );
         assert_eq!(state.gates.verification.status, GateStatus::Fail);
         assert!(!state.packet.lineage_valid());
-        verify_tlog(&tlog).unwrap();
+        verify_tlog(&tlog).expect("test setup should succeed");
     }
 
     #[test]
@@ -4856,7 +5031,7 @@ mod tests {
             cfg,
             crate::api::protocol::Command::SubmitEvidence(plan.submission()),
         )
-        .unwrap();
+        .expect("test setup should succeed");
 
         let tool = ToolExecutionRecord::from_packet(state.packet);
         crate::api::routes::handle_command(
@@ -4865,7 +5040,7 @@ mod tests {
             cfg,
             crate::api::protocol::Command::SubmitEvidence(tool.submission()),
         )
-        .unwrap();
+        .expect("test setup should succeed");
 
         let verification = VerificationRecord::from_packet(state.packet);
         crate::api::routes::handle_command(
@@ -4874,7 +5049,7 @@ mod tests {
             cfg,
             crate::api::protocol::Command::SubmitEvidence(verification.submission()),
         )
-        .unwrap();
+        .expect("test setup should succeed");
 
         let eval = EvalRecord {
             score: 95,
@@ -4891,7 +5066,7 @@ mod tests {
             cfg,
             crate::api::protocol::Command::SubmitEvidence(eval.submission()),
         )
-        .unwrap();
+        .expect("test setup should succeed");
 
         assert_eq!(state.phase, Phase::Persist);
         assert_eq!(state.gates.plan.status, GateStatus::Pass);
@@ -4900,7 +5075,7 @@ mod tests {
         assert_eq!(state.gates.eval.status, GateStatus::Pass);
         assert!(state.packet.objective_complete());
         assert!(state.packet.lineage_valid());
-        verify_tlog(&tlog).unwrap();
+        verify_tlog(&tlog).expect("test setup should succeed");
     }
 
     #[test]
@@ -4909,7 +5084,8 @@ mod tests {
             max_steps: 96,
             max_recovery_attempts: 8,
         };
-        let (state, tlog) = run_until_done(State::default(), cfg).unwrap();
+        let (state, tlog) =
+            run_until_done(State::default(), cfg).expect("test setup should succeed");
 
         assert!(state.is_success());
         assert_eq!(state.recovery_attempts, 7);
@@ -4923,14 +5099,14 @@ mod tests {
             .all(|e| e.recovery_action.is_none() && e.affected_gate == Some(GateId::Learning)));
         assert!(tlog.iter().any(|e| {
             e.kind == EventKind::Persisted
-                && e.recovery_action == Some(RecoveryAction::BindReadyTask)
+                && e.recovery_action == Some(RecoveryAction::Replan)
                 && e.affected_gate == Some(GateId::Plan)
-                && e.evidence == Evidence::TaskReady
+                && e.evidence == Evidence::PlanRecord
         }));
         assert!(tlog.iter().any(|e| {
-            e.recovery_action == Some(RecoveryAction::BindReadyTask)
+            e.recovery_action == Some(RecoveryAction::Replan)
                 && e.affected_gate == Some(GateId::Plan)
-                && e.evidence == Evidence::TaskReady
+                && e.evidence == Evidence::PlanRecord
         }));
         assert!(tlog.iter().any(|e| {
             e.recovery_action == Some(RecoveryAction::Reexecute)
@@ -4938,7 +5114,7 @@ mod tests {
                 && e.state_after.packet.artifact_present()
         }));
 
-        verify_tlog(&tlog).unwrap();
+        verify_tlog(&tlog).expect("test setup should succeed");
     }
 
     #[test]
@@ -4954,7 +5130,7 @@ mod tests {
         state.packet.active_task_id = 0;
         state.packet.objective_done_tasks = 0;
 
-        let (state, tlog) = run_until_done(state, cfg).unwrap();
+        let (state, tlog) = run_until_done(state, cfg).expect("test setup should succeed");
 
         assert!(state.is_success());
         assert!(tlog.iter().any(|e| {
@@ -4967,7 +5143,7 @@ mod tests {
                 && e.evidence == Evidence::TaskReady
         }));
 
-        verify_tlog(&tlog).unwrap();
+        verify_tlog(&tlog).expect("test setup should succeed");
     }
 
     #[test]
@@ -4981,7 +5157,7 @@ mod tests {
         state.phase = Phase::Verify;
         state.packet.artifact_lineage_hash = 123;
 
-        let (state, tlog) = run_until_done(state, cfg).unwrap();
+        let (state, tlog) = run_until_done(state, cfg).expect("test setup should succeed");
 
         assert!(state.is_success());
         assert!(tlog.iter().any(|e| {
@@ -4994,14 +5170,15 @@ mod tests {
                 && e.state_after.packet.lineage_valid()
         }));
 
-        verify_tlog(&tlog).unwrap();
+        verify_tlog(&tlog).expect("test setup should succeed");
     }
 
     #[test]
     fn replay_reconstructs_final_state() {
         let initial = State::default();
-        let (state, tlog) = run_until_done(initial, RuntimeConfig::default()).unwrap();
-        let replayed = verify_tlog_from(initial, &tlog).unwrap();
+        let (state, tlog) =
+            run_until_done(initial, RuntimeConfig::default()).expect("test setup should succeed");
+        let replayed = verify_tlog_from(initial, &tlog).expect("test setup should succeed");
 
         assert_eq!(replayed, state);
     }
@@ -5009,16 +5186,17 @@ mod tests {
     #[test]
     fn disk_tlog_roundtrip_replays_final_state() {
         let initial = State::default();
-        let (state, tlog) = run_until_done(initial, RuntimeConfig::default()).unwrap();
+        let (state, tlog) =
+            run_until_done(initial, RuntimeConfig::default()).expect("test setup should succeed");
         let path = std::env::temp_dir().join(format!(
             "ai-tlog-roundtrip-{}-{}.ndjson",
             std::process::id(),
             tlog.len()
         ));
 
-        write_tlog_ndjson(&path, &tlog).unwrap();
-        let loaded = load_tlog_ndjson(&path).unwrap();
-        let replayed = replay_tlog_ndjson(initial, &path).unwrap();
+        write_tlog_ndjson(&path, &tlog).expect("test setup should succeed");
+        let loaded = load_tlog_ndjson(&path).expect("test setup should succeed");
+        let replayed = replay_tlog_ndjson(initial, &path).expect("test setup should succeed");
         std::fs::remove_file(&path).ok();
 
         assert_eq!(loaded, tlog);
@@ -5040,12 +5218,14 @@ mod tests {
                 &path,
                 RuntimeConfig::default(),
             )
-            .unwrap();
+            .expect("test setup should succeed");
         }
 
         let (resumed_state, resumed_tlog) =
-            run_until_done_durable(State::default(), RuntimeConfig::default(), &path).unwrap();
-        let replayed = replay_tlog_ndjson(State::default(), &path).unwrap();
+            run_until_done_durable(State::default(), RuntimeConfig::default(), &path)
+                .expect("test setup should succeed");
+        let replayed =
+            replay_tlog_ndjson(State::default(), &path).expect("test setup should succeed");
         std::fs::remove_file(&path).ok();
 
         assert!(resumed_state.is_success());
@@ -5065,7 +5245,7 @@ mod tests {
         let mut state = State::default();
         let mut tlog = Vec::new();
         let mut ledger = CommandLedger::default();
-        tick(&mut state, &mut tlog, cfg).unwrap();
+        tick(&mut state, &mut tlog, cfg).expect("test setup should succeed");
 
         let observation = ObservationRecord::new(1, 1, 0xabc, 1);
         let envelope = CommandEnvelope::new(71, Command::SubmitEvidence(observation.submission()));
@@ -5076,16 +5256,18 @@ mod tests {
             &mut ledger,
             envelope.clone(),
         )
-        .unwrap();
+        .expect("test setup should succeed");
 
-        write_tlog_ndjson(&path, &tlog).unwrap();
-        let resumed = resume_durable_runtime(State::default(), &path).unwrap();
+        write_tlog_ndjson(&path, &tlog).expect("test setup should succeed");
+        let resumed =
+            resume_durable_runtime(State::default(), &path).expect("test setup should succeed");
 
         assert_eq!(resumed.state, state);
         assert_eq!(resumed.tlog, tlog);
         assert_eq!(resumed.command_ledger.receipts(), ledger.receipts());
 
-        let completed = run_until_done_durable_with_ledger(State::default(), cfg, &path).unwrap();
+        let completed = run_until_done_durable_with_ledger(State::default(), cfg, &path)
+            .expect("test setup should succeed");
         assert!(completed.state.is_success());
         assert_eq!(completed.command_ledger.receipts(), ledger.receipts());
 
@@ -5100,7 +5282,7 @@ mod tests {
             &mut resumed_ledger,
             envelope,
         )
-        .unwrap();
+        .expect("test setup should succeed");
         std::fs::remove_file(&path).ok();
 
         assert_eq!(first, second);
@@ -5111,15 +5293,19 @@ mod tests {
     #[test]
     fn replay_report_exposes_final_hash_and_seq_bounds() {
         let initial = State::ready();
-        let (state, tlog) = run_until_done(initial, RuntimeConfig::default()).unwrap();
-        let report = replay_report_from(initial, &tlog).unwrap();
+        let (state, tlog) =
+            run_until_done(initial, RuntimeConfig::default()).expect("test setup should succeed");
+        let report = replay_report_from(initial, &tlog).expect("test setup should succeed");
 
         assert_eq!(report.initial_state, initial);
         assert_eq!(report.final_state, state);
         assert_eq!(report.event_count, tlog.len());
         assert_eq!(report.first_seq, Some(1));
         assert_eq!(report.last_seq, Some(tlog.len() as u64));
-        assert_eq!(report.final_hash, tlog.last().unwrap().self_hash);
+        assert_eq!(
+            report.final_hash,
+            tlog.last().expect("test value should be present").self_hash
+        );
     }
 
     #[test]
@@ -5153,42 +5339,50 @@ mod tests {
             RuntimeConfig::default(),
             CommandEnvelope::new(0xc015_0004, Command::AuthorizeMcpCall(request)),
         )
-        .unwrap();
+        .expect("test setup should succeed");
         crate::api::routes::handle_envelope(
             &mut state,
             &mut tlog,
             RuntimeConfig::default(),
             CommandEnvelope::new(0xc015_0005, Command::SubmitMcpCallReceipt(receipt)),
         )
-        .unwrap();
+        .expect("test setup should succeed");
 
-        let report = command_causality_report_from(initial, &tlog).unwrap();
+        let report =
+            command_causality_report_from(initial, &tlog).expect("test setup should succeed");
         assert_eq!(report.event_count, tlog.len());
         assert_eq!(report.authorization_event_count, 1);
         assert_eq!(report.receipt_event_count, 1);
         assert_eq!(report.first_authorization_seq, Some(1));
         assert_eq!(report.last_receipt_seq, Some(2));
-        assert_eq!(report.final_hash, tlog.last().unwrap().self_hash);
+        assert_eq!(
+            report.final_hash,
+            tlog.last().expect("test value should be present").self_hash
+        );
         assert!(report.command_event_count >= 2);
     }
 
     #[test]
     fn durable_replay_report_matches_disk_tlog() {
         let initial = State::default();
-        let (state, tlog) = run_until_done(initial, RuntimeConfig::default()).unwrap();
+        let (state, tlog) =
+            run_until_done(initial, RuntimeConfig::default()).expect("test setup should succeed");
         let path = std::env::temp_dir().join(format!(
             "ai-durable-report-{}-{}.ndjson",
             std::process::id(),
             tlog.len()
         ));
 
-        write_tlog_ndjson(&path, &tlog).unwrap();
-        let report = durable_replay_report(initial, &path).unwrap();
+        write_tlog_ndjson(&path, &tlog).expect("test setup should succeed");
+        let report = durable_replay_report(initial, &path).expect("test setup should succeed");
         std::fs::remove_file(&path).ok();
 
         assert_eq!(report.final_state, state);
         assert_eq!(report.event_count, tlog.len());
-        assert_eq!(report.final_hash, tlog.last().unwrap().self_hash);
+        assert_eq!(
+            report.final_hash,
+            tlog.last().expect("test value should be present").self_hash
+        );
     }
 
     #[test]
@@ -5200,7 +5394,7 @@ mod tests {
 
         let mut state = State::default();
         let mut tlog = Vec::new();
-        tick_durable(&mut state, &mut tlog, &path, cfg).unwrap();
+        tick_durable(&mut state, &mut tlog, &path, cfg).expect("test setup should succeed");
 
         let mut drifted_tlog = tlog.clone();
         drifted_tlog.clear();
@@ -5225,7 +5419,7 @@ mod tests {
 
         let mut disk_state = State::default();
         let mut tlog = Vec::new();
-        tick_durable(&mut disk_state, &mut tlog, &path, cfg).unwrap();
+        tick_durable(&mut disk_state, &mut tlog, &path, cfg).expect("test setup should succeed");
 
         let mut drifted_state = State::default();
         let result =
@@ -5247,7 +5441,7 @@ mod tests {
         state.phase = Phase::Eval;
         state.gates.plan = Gate::fail(Evidence::PlanRecord);
 
-        let (state, tlog) = run_until_done(state, cfg).unwrap();
+        let (state, tlog) = run_until_done(state, cfg).expect("test setup should succeed");
 
         assert!(state.is_success());
         assert_eq!(state.gates.plan.status, GateStatus::Pass);
@@ -5256,7 +5450,7 @@ mod tests {
             e.failure == Some(FailureClass::PlanFailed) && e.affected_gate == Some(GateId::Plan)
         }));
 
-        verify_tlog(&tlog).unwrap();
+        verify_tlog(&tlog).expect("test setup should succeed");
     }
 
     #[test]
@@ -5266,17 +5460,23 @@ mod tests {
             max_recovery_attempts: 1,
         };
 
-        let (state, tlog) = run_until_done(State::default(), cfg).unwrap();
+        let (state, tlog) =
+            run_until_done(State::default(), cfg).expect("test setup should succeed");
 
         assert_eq!(state.phase, Phase::Done);
         assert_eq!(state.failure, Some(FailureClass::RecoveryExhausted));
-        assert_eq!(tlog.last().unwrap().decision, Decision::Halt);
         assert_eq!(
-            tlog.last().unwrap().recovery_action,
+            tlog.last().expect("test value should be present").decision,
+            Decision::Halt
+        );
+        assert_eq!(
+            tlog.last()
+                .expect("test value should be present")
+                .recovery_action,
             Some(RecoveryAction::Escalate)
         );
 
-        verify_tlog(&tlog).unwrap();
+        verify_tlog(&tlog).expect("test setup should succeed");
     }
 
     #[test]
@@ -5309,7 +5509,8 @@ mod tests {
 
     #[test]
     fn tampered_tlog_fails_verification() {
-        let (_, mut tlog) = run_until_done(State::ready(), RuntimeConfig::default()).unwrap();
+        let (_, mut tlog) = run_until_done(State::ready(), RuntimeConfig::default())
+            .expect("test setup should succeed");
         tlog[0].self_hash = 123;
 
         assert_eq!(verify_tlog(&tlog), Err(CanonError::InvalidHashChain));
@@ -5317,7 +5518,8 @@ mod tests {
 
     #[test]
     fn broken_state_continuity_fails_verification() {
-        let (_, mut tlog) = run_until_done(State::ready(), RuntimeConfig::default()).unwrap();
+        let (_, mut tlog) = run_until_done(State::ready(), RuntimeConfig::default())
+            .expect("test setup should succeed");
         tlog[1].state_before.phase = Phase::Done;
 
         assert_eq!(verify_tlog(&tlog), Err(CanonError::InvalidStateContinuity));
@@ -5325,7 +5527,8 @@ mod tests {
 
     #[test]
     fn broken_packet_continuity_fails_verification() {
-        let (_, mut tlog) = run_until_done(State::ready(), RuntimeConfig::default()).unwrap();
+        let (_, mut tlog) = run_until_done(State::ready(), RuntimeConfig::default())
+            .expect("test setup should succeed");
         tlog[1].state_before.packet.revision =
             tlog[1].state_before.packet.revision.saturating_add(1);
 
@@ -5334,7 +5537,8 @@ mod tests {
 
     #[test]
     fn tampered_semantic_delta_fails_verification() {
-        let (_, mut tlog) = run_until_done(State::ready(), RuntimeConfig::default()).unwrap();
+        let (_, mut tlog) = run_until_done(State::ready(), RuntimeConfig::default())
+            .expect("test setup should succeed");
         tlog[0].delta = SemanticDelta::NoChange;
 
         assert_eq!(verify_tlog(&tlog), Err(CanonError::InvalidSemanticDelta));
@@ -5342,7 +5546,8 @@ mod tests {
 
     #[test]
     fn broken_state_after_phase_fails_verification() {
-        let (_, mut tlog) = run_until_done(State::ready(), RuntimeConfig::default()).unwrap();
+        let (_, mut tlog) = run_until_done(State::ready(), RuntimeConfig::default())
+            .expect("test setup should succeed");
         tlog[0].state_after.phase = Phase::Done;
 
         assert_eq!(verify_tlog(&tlog), Err(CanonError::InvalidStateContinuity));
@@ -5370,7 +5575,7 @@ mod tests {
         let cfg = RuntimeConfig::default();
         let mut state = initial;
         let mut tlog = Vec::new();
-        tick(&mut state, &mut tlog, cfg).unwrap();
+        tick(&mut state, &mut tlog, cfg).expect("test setup should succeed");
 
         let mut event = tlog[0];
         event.state_after.packet.revision = event.state_after.packet.revision.saturating_add(1);

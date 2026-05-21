@@ -70,7 +70,7 @@ fn recorded_process_executor(
     if Path::new(&cwd).is_absolute() {
         return Err("cwd must be workspace-relative for native process capability".to_string());
     }
-    let tmp_dir = tmp_dir()?;
+    let tmp_dir = tmp_dir(&workspace.root)?;
     let executor = LiveSandboxProcessExecutor::new(workspace.root.clone())
         .with_allowed_command("/bin/sh")
         .with_locked_env(

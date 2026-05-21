@@ -7,7 +7,10 @@ use serde::{Deserialize, Deserializer, Serialize};
 
 pub const DOMAIN_SCHEMA_VERSION: &str = "canon_domain_v1";
 
-#[allow(dead_code)]
+#[expect(
+    dead_code,
+    reason = "domain contract types define canonical schemas used by external integrations"
+)]
 fn domain_schema_version() -> &'static str {
     DOMAIN_SCHEMA_VERSION
 }
@@ -226,7 +229,14 @@ fn require_plan_live_effect(
                 field: "requested_live_effect_level",
             })
         }
-        _ => require_not_financial_execution(
+        PlanKind::ResearchPlan
+        | PlanKind::BusinessWorkflowPlan
+        | PlanKind::FinanceAnalysisPlan
+        | PlanKind::FinanceResearch
+        | PlanKind::AllocationHypothesisPlan
+        | PlanKind::TradingSimulationPlan
+        | PlanKind::TradingSimulation
+        | PlanKind::LearningPromotionPlan => require_not_financial_execution(
             "requested_live_effect_level",
             requested_live_effect_level,
         ),
@@ -250,6 +260,10 @@ pub struct DomainSignal {
 }
 
 impl DomainSignal {
+    #[expect(
+        clippy::too_many_arguments,
+        reason = "domain contract constructors mirror canonical record fields"
+    )]
     pub fn new(
         signal_id: impl Into<String>,
         domain_id: DomainId,
@@ -307,6 +321,10 @@ pub struct DomainContext {
 }
 
 impl DomainContext {
+    #[expect(
+        clippy::too_many_arguments,
+        reason = "domain contract constructors mirror canonical record fields"
+    )]
     pub fn new(
         context_id: impl Into<String>,
         domain_id: DomainId,
@@ -358,6 +376,10 @@ pub struct DomainRiskEnvelope {
 }
 
 impl DomainRiskEnvelope {
+    #[expect(
+        clippy::too_many_arguments,
+        reason = "domain contract constructors mirror canonical record fields"
+    )]
     pub fn new(
         envelope_id: impl Into<String>,
         domain_id: DomainId,
@@ -449,6 +471,10 @@ impl<'de> Deserialize<'de> for DomainJudgment {
 }
 
 impl DomainJudgment {
+    #[expect(
+        clippy::too_many_arguments,
+        reason = "domain contract constructors mirror canonical record fields"
+    )]
     pub fn new(
         judgment_id: impl Into<String>,
         domain_id: DomainId,
@@ -545,6 +571,10 @@ impl<'de> Deserialize<'de> for DomainPlan {
 }
 
 impl DomainPlan {
+    #[expect(
+        clippy::too_many_arguments,
+        reason = "domain contract constructors mirror canonical record fields"
+    )]
     pub fn new(
         plan_id: impl Into<String>,
         domain_id: DomainId,
@@ -615,6 +645,10 @@ pub struct DomainEval {
 }
 
 impl DomainEval {
+    #[expect(
+        clippy::too_many_arguments,
+        reason = "domain contract constructors mirror canonical record fields"
+    )]
     pub fn new(
         eval_id: impl Into<String>,
         domain_id: DomainId,
@@ -665,6 +699,10 @@ pub struct DomainPromotionCandidate {
 }
 
 impl DomainPromotionCandidate {
+    #[expect(
+        clippy::too_many_arguments,
+        reason = "domain contract constructors mirror canonical record fields"
+    )]
     pub fn new(
         candidate_id: impl Into<String>,
         domain_id: DomainId,

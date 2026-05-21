@@ -1,4 +1,12 @@
-//! Recovery routing helpers for AgentCycle.
+//! Recovery routing projection for AgentCycle.
+//!
+//! Runtime owns recovery-policy selection. This module only adapts typed
+//! kernel/runtime recovery data to worker prompt strings and state JSON fields.
+
+#![allow(dead_code)]
+
+use crate::kernel::{FailureClass, RecoveryAction};
+use crate::runtime::recovery_action_for;
 
 #[derive(Clone, Copy)]
 pub(super) struct RecoveryActionSpec {
@@ -8,111 +16,51 @@ pub(super) struct RecoveryActionSpec {
 
 pub(super) struct RecoveryRoute {
     pub(super) action: &'static str,
-    pub(super) failures: &'static [&'static str],
+    pub(super) failures: Vec<&'static str>,
     pub(super) spec: RecoveryActionSpec,
 }
 
-const RECOVERY_ROUTES: &[RecoveryRoute] = &[
-    RecoveryRoute {
-        action: "RecheckInvariant",
-        failures: &["InvariantUnknown", "InvariantBlocked"],
-        spec: RecoveryActionSpec {
-            gate: Some(("Invariant", "InvariantProof")),
-            target_phase: "Invariant",
-        },
-    },
-    RecoveryRoute {
-        action: "RunAnalysis",
-        failures: &["AnalysisMissing", "AnalysisFailed"],
-        spec: RecoveryActionSpec {
-            gate: Some(("Analysis", "AnalysisReport")),
-            target_phase: "Analysis",
-        },
-    },
-    RecoveryRoute {
-        action: "Rejudge",
-        failures: &["JudgmentMissing", "JudgmentFailed"],
-        spec: RecoveryActionSpec {
-            gate: Some(("Judgment", "JudgmentRecord")),
-            target_phase: "Judgment",
-        },
-    },
-    RecoveryRoute {
-        action: "Replan",
-        failures: &["PlanMissing", "PlanFailed"],
-        spec: RecoveryActionSpec {
-            gate: Some(("Plan", "PlanRecord")),
-            target_phase: "Plan",
-        },
-    },
-    RecoveryRoute {
-        action: "BindReadyTask",
-        failures: &["PlanReadyQueueEmpty"],
-        spec: RecoveryActionSpec {
-            gate: Some(("Plan", "TaskReady")),
-            target_phase: "Plan",
-        },
-    },
-    RecoveryRoute {
-        action: "Reexecute",
-        failures: &["ExecutionMissing", "ExecutionFailed", "TaskReceiptMissing"],
-        spec: RecoveryActionSpec {
-            gate: Some(("Execution", "ArtifactReceipt")),
-            target_phase: "Execute",
-        },
-    },
-    RecoveryRoute {
-        action: "Reverify",
-        failures: &["VerificationUnknown", "VerificationFailed"],
-        spec: RecoveryActionSpec {
-            gate: Some(("Verification", "VerificationReport")),
-            target_phase: "Verify",
-        },
-    },
-    RecoveryRoute {
-        action: "RepairArtifactLineage",
-        failures: &["ArtifactLineageBroken"],
-        spec: RecoveryActionSpec {
-            gate: Some(("Verification", "LineageProof")),
-            target_phase: "Verify",
-        },
-    },
-    RecoveryRoute {
-        action: "RecomputeEval",
-        failures: &["EvalMissing", "EvalFailed"],
-        spec: RecoveryActionSpec {
-            gate: Some(("Eval", "EvalScore")),
-            target_phase: "Eval",
-        },
-    },
-    RecoveryRoute {
-        action: "Escalate",
-        failures: &["RecoveryExhausted", "ConvergenceFailed"],
-        spec: RecoveryActionSpec {
-            gate: None,
-            target_phase: "Done",
-        },
-    },
-];
-
-pub(super) fn recovery_route_matching(
-    predicate: impl Fn(&RecoveryRoute) -> bool,
-) -> Option<&'static RecoveryRoute> {
-    RECOVERY_ROUTES.iter().find(|route| predicate(route))
+pub(super) fn recovery_route_for_action(action: &str) -> Option<RecoveryRoute> {
+    let action = RecoveryAction::parse(action)?;
+    Some(route_for_action(action))
 }
 
-pub(super) fn recovery_route_for_action(action: &str) -> Option<&'static RecoveryRoute> {
-    recovery_route_matching(|route| route.action == action)
-}
-
-pub(super) fn recovery_route_for_failure(failure: &str) -> Option<&'static RecoveryRoute> {
-    recovery_route_matching(|route| route.failures.contains(&failure))
+pub(super) fn recovery_route_for_failure(failure: &str) -> Option<RecoveryRoute> {
+    let failure = FailureClass::parse(failure)?;
+    Some(route_for_action(recovery_action_for(failure)))
 }
 
 pub(super) fn recovery_action_for_failure(failure: &str) -> Option<&'static str> {
-    recovery_route_for_failure(failure).map(|route| route.action)
+    let failure = FailureClass::parse(failure)?;
+    Some(recovery_action_for(failure).name())
 }
 
 pub(super) fn recovery_action_spec(action: &str) -> Option<RecoveryActionSpec> {
-    recovery_route_for_action(action).map(|route| route.spec)
+    Some(spec_for_action(RecoveryAction::parse(action)?))
+}
+
+fn route_for_action(action: RecoveryAction) -> RecoveryRoute {
+    RecoveryRoute {
+        action: action.name(),
+        failures: FailureClass::ALL
+            .into_iter()
+            .filter(|failure| recovery_action_for(*failure) == action)
+            .map(FailureClass::name)
+            .collect(),
+        spec: spec_for_action(action),
+    }
+}
+
+fn spec_for_action(action: RecoveryAction) -> RecoveryActionSpec {
+    RecoveryActionSpec {
+        gate: action
+            .repaired_gate()
+            .zip(action.produced_evidence())
+            .map(|(gate, evidence)| (stable_name(gate), stable_name(evidence))),
+        target_phase: stable_name(action.target()),
+    }
+}
+
+fn stable_name(value: impl std::fmt::Debug) -> &'static str {
+    Box::leak(format!("{value:?}").into_boxed_str())
 }

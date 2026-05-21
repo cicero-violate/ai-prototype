@@ -6,7 +6,9 @@
 
 use std::collections::HashSet;
 
-use crate::kernel::{Cause, ControlEvent, Decision, EventKind, Evidence, FailureClass, GateId, TLog};
+use crate::kernel::{
+    Cause, ControlEvent, Decision, EventKind, Evidence, FailureClass, GateId, TLog,
+};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum WakeupKind {
@@ -163,8 +165,10 @@ fn is_receipt_accepted(event: &ControlEvent) -> bool {
             | Evidence::VerificationReport
             | Evidence::LineageProof
             | Evidence::PersistedRecord
-    ) && matches!(event.kind, EventKind::Advanced | EventKind::Completed | EventKind::Persisted)
-        && matches!(event.decision, Decision::Continue | Decision::Complete)
+    ) && matches!(
+        event.kind,
+        EventKind::Advanced | EventKind::Completed | EventKind::Persisted
+    ) && matches!(event.decision, Decision::Continue | Decision::Complete)
 }
 
 fn is_gate_failed(event: &ControlEvent) -> bool {
@@ -181,7 +185,10 @@ fn is_eval_verdict(event: &ControlEvent) -> bool {
 fn is_learning_candidate(event: &ControlEvent) -> bool {
     matches!(event.kind, EventKind::Learned)
         || matches!(event.cause, Cause::PolicyPromoted)
-        || matches!(event.evidence, Evidence::LearningRecord | Evidence::PolicyPromotion)
+        || matches!(
+            event.evidence,
+            Evidence::LearningRecord | Evidence::PolicyPromotion
+        )
 }
 
 #[cfg(test)]
@@ -195,7 +202,12 @@ mod tests {
     #[test]
     fn replay_reconstructs_typed_wakeups_from_tlog() {
         let tlog = vec![
-            event(1, EventKind::Advanced, Cause::PlanReady, Evidence::TaskReady),
+            event(
+                1,
+                EventKind::Advanced,
+                Cause::PlanReady,
+                Evidence::TaskReady,
+            ),
             event(
                 2,
                 EventKind::Failed,
@@ -209,7 +221,12 @@ mod tests {
                 Evidence::ExecutionReceipt,
             ),
             event(4, EventKind::Blocked, Cause::GateFailed, Evidence::Missing),
-            event(5, EventKind::Advanced, Cause::EvalPassed, Evidence::EvalScore),
+            event(
+                5,
+                EventKind::Advanced,
+                Cause::EvalPassed,
+                Evidence::EvalScore,
+            ),
             event(
                 6,
                 EventKind::Learned,
@@ -242,9 +259,17 @@ mod tests {
     #[test]
     fn project_append_is_idempotent_for_same_tlog_event() {
         let mut bus = RuntimeEventBus::new();
-        let ready = event(7, EventKind::Advanced, Cause::PlanReady, Evidence::TaskReady);
+        let ready = event(
+            7,
+            EventKind::Advanced,
+            Cause::PlanReady,
+            Evidence::TaskReady,
+        );
 
-        assert_eq!(bus.project_append(&ready).map(|w| w.kind), Some(WakeupKind::TaskReady));
+        assert_eq!(
+            bus.project_append(&ready).map(|w| w.kind),
+            Some(WakeupKind::TaskReady)
+        );
         assert_eq!(bus.project_append(&ready), None);
         assert_eq!(bus.project_append(&ready), None);
 
@@ -255,7 +280,12 @@ mod tests {
     #[test]
     fn replay_reconstructs_missed_wakeups_after_projection_is_discarded() {
         let tlog = vec![
-            event(11, EventKind::Advanced, Cause::PlanReady, Evidence::TaskReady),
+            event(
+                11,
+                EventKind::Advanced,
+                Cause::PlanReady,
+                Evidence::TaskReady,
+            ),
             event(12, EventKind::Blocked, Cause::GateFailed, Evidence::Missing),
         ];
         let mut disposable = RuntimeEventBus::replay(&tlog);
@@ -279,8 +309,18 @@ mod tests {
     #[test]
     fn wakeups_are_ordered_by_event_seq_even_when_appends_arrive_out_of_order() {
         let mut bus = RuntimeEventBus::new();
-        let eval = event(30, EventKind::Advanced, Cause::EvalPassed, Evidence::EvalScore);
-        let ready = event(10, EventKind::Advanced, Cause::PlanReady, Evidence::TaskReady);
+        let eval = event(
+            30,
+            EventKind::Advanced,
+            Cause::EvalPassed,
+            Evidence::EvalScore,
+        );
+        let ready = event(
+            10,
+            EventKind::Advanced,
+            Cause::PlanReady,
+            Evidence::TaskReady,
+        );
         let receipt = event(
             20,
             EventKind::Advanced,
@@ -292,7 +332,11 @@ mod tests {
         bus.project_append(&ready);
         bus.project_append(&receipt);
 
-        let seqs = bus.wakeups().iter().map(|wakeup| wakeup.event_seq).collect::<Vec<_>>();
+        let seqs = bus
+            .wakeups()
+            .iter()
+            .map(|wakeup| wakeup.event_seq)
+            .collect::<Vec<_>>();
         assert_eq!(seqs, vec![10, 20, 30]);
     }
 

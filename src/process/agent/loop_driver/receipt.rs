@@ -16,6 +16,10 @@ use super::common::{stable_agent_hash, timestamp_ms};
 use super::evidence_submit::submit_judgment_evidence;
 use super::http::submit_agent_turn_receipt;
 
+#[expect(
+    clippy::too_many_arguments,
+    reason = "receipt finalization records all attempt metadata at one boundary"
+)]
 pub(super) fn finalize_run_cycle_attempt_result(
     receipt_dir: &Path,
     tag: &str,

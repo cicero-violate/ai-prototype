@@ -2,6 +2,7 @@
 
 use crate::capability::observation::ObservationIngressBatch;
 use crate::capability::orchestration::{AgentCycleEvent, ChildCompleteRecord, WaveRecord};
+use crate::capability::planning::PlanPatchRecord;
 use crate::capability::tooling::{
     McpCallReceipt, McpCallRequest, SandboxProcessReceipt, SandboxProcessRequest,
 };
@@ -29,6 +30,7 @@ pub enum Command {
     SubmitAgentCycleEvent(AgentCycleEvent),
     SubmitWaveDispatch(WaveRecord),
     SubmitChildComplete(ChildCompleteRecord),
+    SubmitPlanPatch(PlanPatchRecord),
 }
 
 impl Command {
@@ -83,6 +85,7 @@ impl Command {
             Self::SubmitAgentCycleEvent(event) => event.is_contract_valid(),
             Self::SubmitWaveDispatch(record) => record.is_contract_valid(),
             Self::SubmitChildComplete(record) => record.is_contract_valid(),
+            Self::SubmitPlanPatch(record) => record.is_self_consistent(),
         }
     }
 
@@ -101,6 +104,7 @@ impl Command {
             Self::SubmitAgentCycleEvent(_) => 1,
             Self::SubmitWaveDispatch(_) => 1,
             Self::SubmitChildComplete(_) => 1,
+            Self::SubmitPlanPatch(_) => 1,
         }
     }
 
@@ -217,6 +221,13 @@ impl Command {
                 h ^= self.submission_count() as u64;
                 h = h.wrapping_mul(0x100000001b3);
                 h ^= record.contract_hash();
+                h.wrapping_mul(0x100000001b3).max(1)
+            }
+            Self::SubmitPlanPatch(record) => {
+                let mut h = 0x91a0_1001_504c_414eu64;
+                h ^= self.submission_count() as u64;
+                h = h.wrapping_mul(0x100000001b3);
+                h ^= record.patch_hash;
                 h.wrapping_mul(0x100000001b3).max(1)
             }
         }

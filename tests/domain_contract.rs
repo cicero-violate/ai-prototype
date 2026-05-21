@@ -321,7 +321,9 @@ fn domain_identity_is_deterministic() {
         let mut changed_record = material_record.clone();
         changed_record["payload_hash"] = json!(format!(
             "{}:changed",
-            changed_record["payload_hash"].as_str().unwrap()
+            changed_record["payload_hash"]
+                .as_str()
+                .expect("payload_hash should be present")
         ));
         assert_ne!(domain_hash_json(&changed_record), repeated_hash);
     }

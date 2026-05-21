@@ -4,5 +4,8 @@
 //! HTTP/MCP edges stay under `api`; reducer/TLog execution stays under `runtime`.
 
 pub mod agent;
+pub mod dispatch;
 pub mod endpoints;
+pub mod recovery;
+pub mod scheduler;
 pub mod supervisor;

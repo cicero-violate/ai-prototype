@@ -92,7 +92,10 @@ mod tests {
         let plan = dispatch_ai_mcp_plan("tools/list", json!(1), Value::Null, None);
         let response = match plan {
             AiMcpDispatchPlan::Immediate { response } => response,
-            other => panic!("expected immediate tools/list response, got {other:?}"),
+            other @ AiMcpDispatchPlan::Initialize { .. }
+            | other @ AiMcpDispatchPlan::ToolCall { .. } => {
+                panic!("expected immediate tools/list response, got {other:?}")
+            }
         };
         let names: Vec<&str> = response["result"]["tools"]
             .as_array()
@@ -136,7 +139,10 @@ mod tests {
                 assert_eq!(args["action"], "workspace:shell");
                 assert_eq!(args["parameters"]["command"], "pwd");
             }
-            other => panic!("expected gateway tool call dispatch, got {other:?}"),
+            other @ AiMcpDispatchPlan::Initialize { .. }
+            | other @ AiMcpDispatchPlan::Immediate { .. } => {
+                panic!("expected gateway tool call dispatch, got {other:?}")
+            }
         }
     }
 }

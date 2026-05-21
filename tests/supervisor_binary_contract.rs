@@ -155,7 +155,12 @@ fn supervisor_spawns_worker_and_reloads_generation() {
     let second = wait_for_json(&health_url);
     assert_eq!(second["ok"], true);
     assert_eq!(second["generation"], 2);
-    assert_eq!(second["worker_port"].as_u64().unwrap() as u16, second_port);
+    assert_eq!(
+        second["worker_port"]
+            .as_u64()
+            .expect("worker_port should be present") as u16,
+        second_port
+    );
     assert!(
         reqwest::blocking::get(format!("http://127.0.0.1:{second_port}/health/worker"))
             .expect("new worker health response")

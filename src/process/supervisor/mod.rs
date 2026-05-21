@@ -9,7 +9,9 @@ pub mod workspace;
 pub use config::SupervisorConfig;
 pub use process::{
     ActiveWorkerDto, HealthDto, ReloadDto, RestartDto, SpawnDto, SpawnRequest, StartLoopDto,
-    StartLoopRequest, TaskNextDto, WorkerProcess,
+    StartLoopRequest, TaskClaimDto, TaskClaimRequest, TaskCompleteDto, TaskCompleteRequest,
+    TaskFailDto, TaskFailRequest, TaskHeartbeatDto, TaskHeartbeatRequest, TaskNextDto,
+    WorkerProcess,
 };
 pub use runtime::run;
 pub use state::{ErrorDto, NativeMcpSession, NativeMcpState, SupervisorState};

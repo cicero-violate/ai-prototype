@@ -28,8 +28,5 @@ pub use objective::AgentObjective;
 pub use router::{RouterClient, RouterStreamingResult, RouterTurnResult};
 pub use sse::{ChunkLogger, SseResult};
 pub use step::{AgentActionKind, AgentDecision, AgentRunSummary, AgentStep};
-pub use worker::{
-    complete_claim, fail_claim, heartbeat_claim, run_with_heartbeat, wait_for_task_ready_and_claim,
-    ActiveClaim,
-};
+pub use worker::{complete_claim, fail_claim, heartbeat_claim, run_with_heartbeat, ActiveClaim};
 pub use worker_client::{WorkerClient, WorkerClientError, WorkerResponse};

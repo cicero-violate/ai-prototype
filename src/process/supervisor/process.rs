@@ -15,7 +15,10 @@ use tokio::process::{Child, Command as TokioCommand};
 
 use crate::api::protocol::{Command as KernelCommand, CommandEnvelope};
 use crate::capability::orchestration::TaskLifecycleReceipt;
-use crate::domain::plan::{plan_text_hash, NodeStatus, PlanEvidenceRef};
+use crate::domain::plan::{
+    plan_text_hash, NodeStatus, PlanEvidenceRef, EVIDENCE_KIND_EXECUTION_RECEIPT,
+    EVIDENCE_GATE_EXECUTION, EVIDENCE_TYPE_EXECUTION_RECEIPT,
+};
 use crate::kernel::{mix, PlanEvidenceProjection};
 use crate::process::agent::loop_driver::http::post_json_local;
 use crate::process::agent::{
@@ -615,7 +618,7 @@ impl WorkerProcess {
                 continue;
             }
 
-            let has_blocker = node.evidence.iter().any(|e| e.kind == "blocker");
+            let has_blocker = node.evidence.iter().any(|e| e.is_blocker());
             let has_accepted_receipt = node
                 .evidence
                 .iter()
@@ -973,10 +976,10 @@ fn has_projected_evidence_ref(
 fn completion_execution_evidence(node_id: &str, receipt_hash: u64) -> PlanEvidenceRef {
     PlanEvidenceRef {
         path: format!("state/agent-evidence/{node_id}.md"),
-        kind: "execution_receipt".to_string(),
+        kind: EVIDENCE_KIND_EXECUTION_RECEIPT.to_string(),
         summary: format!("Supervisor accepted completion ExecutionReceipt {receipt_hash}."),
-        gate: "Execution".to_string(),
-        evidence: "ExecutionReceipt".to_string(),
+        gate: EVIDENCE_GATE_EXECUTION.to_string(),
+        evidence: EVIDENCE_TYPE_EXECUTION_RECEIPT.to_string(),
         receipt_hash,
         accepted: true,
     }

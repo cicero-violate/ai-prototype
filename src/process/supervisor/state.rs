@@ -12,6 +12,7 @@ use super::process::WorkerProcess;
 use crate::api::oauth::OAuthStore;
 use crate::api::protocol::Command as KernelCommand;
 use crate::capability::tooling::mcp_tools::{McpToolHost, SpawnAgentToolRequest};
+use crate::process::scheduler::handler::TaskReadyNotifier;
 use crate::process::supervisor::SupervisorConfig;
 use crate::process::supervisor::WorkspaceConfig;
 use std::time::Duration;
@@ -20,6 +21,9 @@ use std::time::Duration;
 pub struct SupervisorState {
     pub inner: Arc<tokio::sync::Mutex<WorkerProcess>>,
     pub mcp: Arc<NativeMcpState>,
+    /// Shared wakeup signal — supervisor writes, task runners read.
+    /// Notified when a node transitions to Pending (retry, reset, plan update).
+    pub task_ready_notifier: TaskReadyNotifier,
 }
 
 impl SupervisorState {
@@ -27,13 +31,58 @@ impl SupervisorState {
         Ok(Self {
             inner: Arc::new(tokio::sync::Mutex::new(process)),
             mcp: Arc::new(NativeMcpState::from_config(cfg)?),
+            task_ready_notifier: TaskReadyNotifier::new(),
         })
+    }
+
+    pub async fn restart_supervisor(
+        &self,
+    ) -> Result<crate::process::supervisor::RestartDto, String> {
+        let replacement = crate::api::routes::supervisor::control::schedule_supervisor_replacement(
+            crate::api::routes::supervisor::control::SUPERVISOR_RESTART_DELAY_MS,
+        )?;
+        Ok(crate::process::supervisor::RestartDto {
+            ok: true,
+            pid: std::process::id(),
+            replacement,
+            delay_ms: crate::api::routes::supervisor::control::SUPERVISOR_RESTART_DELAY_MS,
+        })
+    }
+
+    pub fn workspace_status_json(&self) -> Value {
+        let workspace = self.workspace();
+        json!({
+            "ok": true,
+            "workspaceRoot": workspace.root.display().to_string(),
+            "allowedWorkspaceRoot": workspace.allowed_boundary.display().to_string()
+        })
+    }
+
+    pub fn set_workspace_root(&self, root: std::path::PathBuf) -> Result<Value, String> {
+        let allowed = self
+            .mcp
+            .workspace
+            .lock()
+            .expect("workspace mutex should not be poisoned")
+            .allowed_boundary
+            .clone();
+        let next = WorkspaceConfig::new(root, allowed)?;
+        *self
+            .mcp
+            .workspace
+            .lock()
+            .expect("workspace mutex should not be poisoned") = next;
+        Ok(self.workspace_status_json())
     }
 }
 
 impl McpToolHost for SupervisorState {
     fn workspace(&self) -> WorkspaceConfig {
-        self.mcp.workspace.lock().unwrap().clone()
+        self.mcp
+            .workspace
+            .lock()
+            .expect("workspace mutex should not be poisoned")
+            .clone()
     }
 
     async fn active_generation(&self) -> u64 {
@@ -46,13 +95,17 @@ impl McpToolHost for SupervisorState {
         worker_generation: u64,
         created_at: DateTime<Utc>,
     ) {
-        self.mcp.sessions.lock().unwrap().insert(
-            session_id,
-            NativeMcpSession {
-                _worker_generation: worker_generation,
-                _created_at: created_at,
-            },
-        );
+        self.mcp
+            .sessions
+            .lock()
+            .expect("sessions mutex should not be poisoned")
+            .insert(
+                session_id,
+                NativeMcpSession {
+                    _worker_generation: worker_generation,
+                    _created_at: created_at,
+                },
+            );
     }
 
     async fn submit_kernel_command(&self, command: KernelCommand) -> Result<(), String> {
@@ -175,7 +228,12 @@ impl SupervisorState {
 
     fn run_workspace_get(&self) -> Value {
         eprintln!("[canon-ai-supervisor] workspace:get requested");
-        let workspace = self.mcp.workspace.lock().unwrap().clone();
+        let workspace = self
+            .mcp
+            .workspace
+            .lock()
+            .expect("workspace mutex should not be poisoned")
+            .clone();
         json_text_result(json!({
             "ok": true,
             "workspaceRoot": workspace.root.display().to_string(),
@@ -194,12 +252,22 @@ impl SupervisorState {
                 "workspace:set requires non-empty 'root'".to_string(),
             );
         };
-        let allowed = self.mcp.workspace.lock().unwrap().allowed_boundary.clone();
+        let allowed = self
+            .mcp
+            .workspace
+            .lock()
+            .expect("workspace mutex should not be poisoned")
+            .allowed_boundary
+            .clone();
         let next = match WorkspaceConfig::new(root.into(), allowed) {
             Ok(next) => next,
             Err(error) => return crate::api::mcp::tool_error(error),
         };
-        *self.mcp.workspace.lock().unwrap() = next;
+        *self
+            .mcp
+            .workspace
+            .lock()
+            .expect("workspace mutex should not be poisoned") = next;
         self.run_workspace_get()
     }
 

@@ -1578,6 +1578,10 @@ fn policy_reuse_evidence_retrieval_result_manifest_smoke_mode() -> Result<Compac
     ))
 }
 
+#[expect(
+    clippy::too_many_arguments,
+    reason = "regression guard helper accepts independent boolean invariants explicitly"
+)]
 fn policy_reuse_common_regression_guards(
     receipt_is_valid: bool,
     retrieval_read_performed: bool,
@@ -2462,6 +2466,10 @@ fn root_validate_dispatch_catalog_mode() -> Result<CompactModeOutcome, String> {
 }
 
 #[cfg(test)]
+#[expect(
+    clippy::items_after_test_module,
+    reason = "root_validate keeps compact-mode contract tests near dispatch catalog helpers"
+)]
 mod tests {
     use super::*;
 
@@ -2607,7 +2615,6 @@ pub fn compact_mode_stdout_for_contract(
     Ok(stdout)
 }
 
-#[allow(dead_code)]
 fn main() {
     let arg = std::env::args().nth(1);
     if let Some(arg) = arg.as_deref() {

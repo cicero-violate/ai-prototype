@@ -172,7 +172,7 @@ pub(super) fn effect_for_gate_evidence(
     EFFECT_ROUTES
         .iter()
         .find(|route| {
-            route.gate == gate && route.evidence.map_or(true, |expected| expected == evidence)
+            route.gate == gate && route.evidence.is_none_or(|expected| expected == evidence)
         })
         .map(|route| (route.effect_u64, route.effect_json))
         .unwrap_or((0, "null"))

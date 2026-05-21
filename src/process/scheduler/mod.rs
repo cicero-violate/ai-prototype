@@ -4,8 +4,8 @@
 //! owns the graph model and pure rules; this module owns repository-state I/O
 //! needed by scheduler/supervisor processes.
 
+pub mod dispatch;
 pub mod handler;
 pub mod plan_store;
-pub mod wave;
 
-pub(crate) use wave::run_wave;
+pub(crate) use dispatch::run_wave;

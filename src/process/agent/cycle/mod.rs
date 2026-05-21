@@ -699,7 +699,12 @@ mod hash_tests {
         );
         assert_recovery_lookup_boundary(
             "RecomputeEval",
-            &["EvalMissing", "EvalFailed"],
+            &[
+                "EvalMissing",
+                "EvalFailed",
+                "LearningMissing",
+                "LearningFailed",
+            ],
             Some(("Eval", "EvalScore")),
             "Eval",
         );
@@ -899,8 +904,8 @@ mod hash_tests {
         );
 
         // Recompute via our standalone functions and assert equality.
-        let gate_u64 = gate_id_u64("Invariant").unwrap();
-        let ev_u64 = evidence_u64_value("InvariantProof").unwrap();
+        let gate_u64 = gate_id_u64("Invariant").expect("test setup should succeed");
+        let ev_u64 = evidence_u64_value("InvariantProof").expect("test setup should succeed");
         let (effect_u64, _) = effect_for_gate_evidence("Invariant", "InvariantProof", true);
 
         let payload_hash = compute_structural_payload_hash(gate_u64, ev_u64, passed, effect_u64);
@@ -931,7 +936,8 @@ mod hash_tests {
         );
 
         // Also verify JSON is parseable and has the right command_id
-        let json = build_submit_evidence_json("Invariant", "InvariantProof", true, 1).unwrap();
+        let json = build_submit_evidence_json("Invariant", "InvariantProof", true, 1)
+            .expect("test setup should succeed");
         assert!(
             json.contains("\"command_id\":1"),
             "json must have command_id:1"
@@ -967,8 +973,8 @@ mod hash_tests {
         let invariant_envelope_hash = compute_envelope_hash(1, invariant_command_hash);
         assert_eq!(invariant_envelope_hash, 15_885_761_918_420_965_375);
 
-        let invariant_json =
-            build_submit_evidence_json("Invariant", "InvariantProof", true, 1).unwrap();
+        let invariant_json = build_submit_evidence_json("Invariant", "InvariantProof", true, 1)
+            .expect("test setup should succeed");
         assert!(invariant_json.contains(&format!("\"command_hash\":{invariant_envelope_hash}")));
 
         let plan_gate = gate_id_u64("Plan").expect("plan gate id");
@@ -986,7 +992,8 @@ mod hash_tests {
         let plan_envelope_hash = compute_envelope_hash(2, plan_command_hash);
         assert_eq!(plan_envelope_hash, 11_338_161_946_621_137_912);
 
-        let plan_json = build_submit_evidence_json("Plan", "TaskReady", true, 2).unwrap();
+        let plan_json = build_submit_evidence_json("Plan", "TaskReady", true, 2)
+            .expect("test setup should succeed");
         assert!(plan_json.contains(&format!("\"command_hash\":{plan_envelope_hash}")));
 
         assert_ne!(
@@ -1015,8 +1022,8 @@ mod hash_tests {
         assert_eq!(invariant_contract_hash, 14_536_423_188_960_378_451);
         assert_eq!(invariant_command_hash, 9_478_300_790_639_245_917);
         assert_eq!(invariant_envelope_hash, 15_885_761_918_420_965_375);
-        let invariant_json =
-            build_submit_evidence_json("Invariant", "InvariantProof", true, 1).unwrap();
+        let invariant_json = build_submit_evidence_json("Invariant", "InvariantProof", true, 1)
+            .expect("test setup should succeed");
         assert!(invariant_json.contains(&format!("\"command_hash\":{invariant_envelope_hash}")));
 
         let plan_gate = gate_id_u64("Plan").expect("plan gate id");
@@ -1030,7 +1037,8 @@ mod hash_tests {
         assert_eq!(plan_contract_hash, 17_249_021_275_427_525_055);
         assert_eq!(plan_command_hash, 7_339_961_626_233_781_721);
         assert_eq!(plan_envelope_hash, 11_338_161_946_621_137_912);
-        let plan_json = build_submit_evidence_json("Plan", "TaskReady", true, 2).unwrap();
+        let plan_json = build_submit_evidence_json("Plan", "TaskReady", true, 2)
+            .expect("test setup should succeed");
         assert!(plan_json.contains(&format!("\"command_hash\":{plan_envelope_hash}")));
 
         let scalar = 42;
@@ -1113,8 +1121,8 @@ mod hash_tests {
             invariant_envelope_hash,
             compute_envelope_hash(1, invariant_command_hash)
         );
-        let invariant_json =
-            build_submit_evidence_json("Invariant", "InvariantProof", true, 1).unwrap();
+        let invariant_json = build_submit_evidence_json("Invariant", "InvariantProof", true, 1)
+            .expect("test setup should succeed");
         assert!(invariant_json.contains(&format!("\"command_hash\":{invariant_envelope_hash}")));
 
         let plan_gate = gate_id_u64("Plan").expect("plan gate id");
@@ -1151,7 +1159,8 @@ mod hash_tests {
             plan_envelope_hash,
             compute_envelope_hash(2, plan_command_hash)
         );
-        let plan_json = build_submit_evidence_json("Plan", "TaskReady", true, 2).unwrap();
+        let plan_json = build_submit_evidence_json("Plan", "TaskReady", true, 2)
+            .expect("test setup should succeed");
         assert!(plan_json.contains(&format!("\"command_hash\":{plan_envelope_hash}")));
 
         let scalar = 42;
@@ -1256,8 +1265,8 @@ mod hash_tests {
             invariant_envelope_hash,
             compute_envelope_hash(1, invariant_command_hash)
         );
-        let invariant_json =
-            build_submit_evidence_json("Invariant", "InvariantProof", true, 1).unwrap();
+        let invariant_json = build_submit_evidence_json("Invariant", "InvariantProof", true, 1)
+            .expect("test setup should succeed");
         assert!(invariant_json.contains(&format!("\"command_hash\":{invariant_envelope_hash}")));
 
         let plan_gate = gate_id_u64("Plan").expect("plan gate id");
@@ -1313,7 +1322,8 @@ mod hash_tests {
             plan_envelope_hash,
             compute_envelope_hash(2, plan_command_hash)
         );
-        let plan_json = build_submit_evidence_json("Plan", "TaskReady", true, 2).unwrap();
+        let plan_json = build_submit_evidence_json("Plan", "TaskReady", true, 2)
+            .expect("test setup should succeed");
         assert!(plan_json.contains(&format!("\"command_hash\":{plan_envelope_hash}")));
 
         let scalar = 42;
@@ -1360,8 +1370,8 @@ mod hash_tests {
         assert!(submission.is_contract_valid());
         assert_eq!(submission.effect, PacketEffect::BindReadyTask);
 
-        let gate_u64 = gate_id_u64("Plan").unwrap();
-        let ev_u64 = evidence_u64_value("TaskReady").unwrap();
+        let gate_u64 = gate_id_u64("Plan").expect("test setup should succeed");
+        let ev_u64 = evidence_u64_value("TaskReady").expect("test setup should succeed");
         let (effect_u64, _) = effect_for_gate_evidence("Plan", "TaskReady", true);
         assert_eq!(effect_u64, 1u64); // BindReadyTask = 1
 
@@ -1437,14 +1447,15 @@ mod hash_tests {
 
     #[test]
     fn submit_evidence_hash_helpers_preserve_known_vectors() {
-        let invariant_json =
-            build_submit_evidence_json("Invariant", "InvariantProof", true, 1).unwrap();
+        let invariant_json = build_submit_evidence_json("Invariant", "InvariantProof", true, 1)
+            .expect("test setup should succeed");
         assert_eq!(
             invariant_json,
             r#"{"command_id":1,"command_hash":15885761918420965375,"payload_tag":"SubmitEvidence","payload":{"gate":"Invariant","evidence":"InvariantProof","passed":true,"effect":null,"payload_hash":11251148856225099997}}"#
         );
 
-        let task_ready_json = build_submit_evidence_json("Plan", "TaskReady", true, 2).unwrap();
+        let task_ready_json = build_submit_evidence_json("Plan", "TaskReady", true, 2)
+            .expect("test setup should succeed");
         assert_eq!(
             task_ready_json,
             r#"{"command_id":2,"command_hash":11338161946621137912,"payload_tag":"SubmitEvidence","payload":{"gate":"Plan","evidence":"TaskReady","passed":true,"effect":"BindReadyTask","payload_hash":15192544920361791511}}"#

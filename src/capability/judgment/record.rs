@@ -1346,10 +1346,13 @@ mod tests {
 
     fn promoted_policy() -> PolicyStore {
         let (_state, tlog) =
-            run_until_done(crate::kernel::State::ready(), RuntimeConfig::default()).unwrap();
-        let promotion = PolicyPromotion::from_tlog(&tlog, 1).unwrap();
+            run_until_done(crate::kernel::State::ready(), RuntimeConfig::default())
+                .expect("test setup should succeed");
+        let promotion = PolicyPromotion::from_tlog(&tlog, 1).expect("test setup should succeed");
         let mut policy = PolicyStore::default();
-        policy.promote_feedback(promotion).unwrap();
+        policy
+            .promote_feedback(promotion)
+            .expect("test setup should succeed");
         policy
     }
 

@@ -37,7 +37,7 @@ const RECOVERY_POLICY: [RecoveryPolicyRule; 21] = [
     },
     RecoveryPolicyRule {
         failure: FailureClass::PlanMissing,
-        action: RecoveryAction::BindReadyTask,
+        action: RecoveryAction::Replan,
     },
     RecoveryPolicyRule {
         failure: FailureClass::PlanFailed,
@@ -148,14 +148,50 @@ fn failed_failure_for_gate(id: GateId) -> FailureClass {
 pub(crate) fn event_kind_for_failure(class: FailureClass) -> EventKind {
     match class {
         FailureClass::InvariantUnknown | FailureClass::InvariantBlocked => EventKind::Blocked,
-        _ => EventKind::Failed,
+        FailureClass::AnalysisMissing
+        | FailureClass::AnalysisFailed
+        | FailureClass::JudgmentMissing
+        | FailureClass::JudgmentFailed
+        | FailureClass::PlanMissing
+        | FailureClass::PlanFailed
+        | FailureClass::PlanReadyQueueEmpty
+        | FailureClass::ExecutionMissing
+        | FailureClass::ExecutionFailed
+        | FailureClass::TaskReceiptMissing
+        | FailureClass::VerificationUnknown
+        | FailureClass::VerificationFailed
+        | FailureClass::ArtifactLineageBroken
+        | FailureClass::EvalMissing
+        | FailureClass::EvalFailed
+        | FailureClass::RecoveryExhausted
+        | FailureClass::ConvergenceFailed
+        | FailureClass::LearningMissing
+        | FailureClass::LearningFailed => EventKind::Failed,
     }
 }
 
 pub(crate) fn decision_for_failure(class: FailureClass) -> Decision {
     match class {
         FailureClass::InvariantUnknown | FailureClass::InvariantBlocked => Decision::Block,
-        _ => Decision::Fail,
+        FailureClass::AnalysisMissing
+        | FailureClass::AnalysisFailed
+        | FailureClass::JudgmentMissing
+        | FailureClass::JudgmentFailed
+        | FailureClass::PlanMissing
+        | FailureClass::PlanFailed
+        | FailureClass::PlanReadyQueueEmpty
+        | FailureClass::ExecutionMissing
+        | FailureClass::ExecutionFailed
+        | FailureClass::TaskReceiptMissing
+        | FailureClass::VerificationUnknown
+        | FailureClass::VerificationFailed
+        | FailureClass::ArtifactLineageBroken
+        | FailureClass::EvalMissing
+        | FailureClass::EvalFailed
+        | FailureClass::RecoveryExhausted
+        | FailureClass::ConvergenceFailed
+        | FailureClass::LearningMissing
+        | FailureClass::LearningFailed => Decision::Fail,
     }
 }
 

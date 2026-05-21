@@ -1977,7 +1977,8 @@ mod tests {
     use super::*;
 
     fn valid_test_receipt() -> OllamaLlmEffectReceipt {
-        let policy = OllamaRetryBudgetPolicy::new(120_000, 2, 3).unwrap();
+        let policy =
+            OllamaRetryBudgetPolicy::new(120_000, 2, 3).expect("test setup should succeed");
         let provider_hash = ollama_provider_hash();
         let base_url_hash = hash_text("http://127.0.0.1:11434/v1");
         let model_id = hash_text("qwen2.5-coder:7b");
@@ -2019,10 +2020,10 @@ mod tests {
         let base_receipt = valid_test_receipt();
         let (receipt, proof_event) =
             OllamaJudgmentProofEvent::finalize_receipt(base_receipt, true, true, true, true)
-                .unwrap();
+                .expect("test setup should succeed");
 
         let receipt_line = encode_ollama_llm_effect_receipt_ndjson(receipt);
-        let receipt_fields = parse_u64_fields(&receipt_line).unwrap();
+        let receipt_fields = parse_u64_fields(&receipt_line).expect("test setup should succeed");
         assert_eq!(receipt_fields.len(), 25);
         assert_eq!(receipt_fields[0], OLLAMA_LLM_EFFECT_RECEIPT_SCHEMA_VERSION);
         assert_eq!(receipt_fields[1], OLLAMA_LLM_EFFECT_RECEIPT_RECORD);
@@ -2036,12 +2037,13 @@ mod tests {
         assert_eq!(receipt_fields[23], receipt.proof_hash);
         assert_eq!(receipt_fields[24], receipt.receipt_hash);
         assert_eq!(
-            decode_ollama_llm_effect_receipt_ndjson(&receipt_line).unwrap(),
+            decode_ollama_llm_effect_receipt_ndjson(&receipt_line)
+                .expect("test value should be present"),
             receipt
         );
 
         let proof_line = encode_ollama_judgment_proof_event_ndjson(proof_event);
-        let proof_fields = parse_u64_fields(&proof_line).unwrap();
+        let proof_fields = parse_u64_fields(&proof_line).expect("test setup should succeed");
         assert_eq!(proof_fields.len(), 23);
         assert_eq!(proof_fields[0], OLLAMA_JUDGMENT_PROOF_SCHEMA_VERSION);
         assert_eq!(proof_fields[1], OLLAMA_JUDGMENT_PROOF_RECORD);
@@ -2057,7 +2059,8 @@ mod tests {
         assert_eq!(proof_fields[21], proof_event.phase_plan as u64);
         assert_eq!(proof_fields[22], proof_event.proof_hash);
         assert_eq!(
-            decode_ollama_judgment_proof_event_ndjson(&proof_line).unwrap(),
+            decode_ollama_judgment_proof_event_ndjson(&proof_line)
+                .expect("test value should be present"),
             proof_event
         );
     }
@@ -2067,14 +2070,14 @@ mod tests {
         let base_receipt = valid_test_receipt();
         let (receipt, proof_event) =
             OllamaJudgmentProofEvent::finalize_receipt(base_receipt, true, true, true, true)
-                .unwrap();
+                .expect("test setup should succeed");
 
         let dir = std::env::temp_dir().join(format!(
             "canon-ollama-ndjson-loader-{}",
             std::thread::current().name().unwrap_or("unnamed")
         ));
         let _ = std::fs::remove_dir_all(&dir);
-        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::create_dir_all(&dir).expect("test setup should succeed");
         let mixed_path = dir.join("mixed.ndjson");
         let unchecked_path = dir.join("unchecked.ndjson");
         let missing_path = dir.join("missing.ndjson");
@@ -2091,18 +2094,21 @@ mod tests {
             &encode_ollama_judgment_proof_event_ndjson(proof_event),
         ]
         .join("\n");
-        std::fs::write(&mixed_path, format!("{mixed_body}\n")).unwrap();
+        std::fs::write(&mixed_path, format!("{mixed_body}\n")).expect("test setup should succeed");
 
         assert_eq!(
-            load_ollama_llm_effect_receipts_ndjson(&mixed_path).unwrap(),
+            load_ollama_llm_effect_receipts_ndjson(&mixed_path)
+                .expect("test value should be present"),
             vec![receipt]
         );
         assert_eq!(
-            load_ollama_judgment_proof_events_ndjson(&mixed_path).unwrap(),
+            load_ollama_judgment_proof_events_ndjson(&mixed_path)
+                .expect("test value should be present"),
             vec![proof_event]
         );
         assert_eq!(
-            load_ollama_llm_effect_receipts_ndjson_unchecked(&mixed_path).unwrap(),
+            load_ollama_llm_effect_receipts_ndjson_unchecked(&mixed_path)
+                .expect("test value should be present"),
             vec![receipt]
         );
 
@@ -2121,30 +2127,31 @@ mod tests {
                 encode_ollama_llm_effect_receipt_ndjson(unchecked_only)
             ),
         )
-        .unwrap();
+        .expect("test setup should succeed");
 
         assert!(matches!(
             load_ollama_llm_effect_receipts_ndjson(&unchecked_path),
             Err(OllamaError::InvalidReceipt)
         ));
         assert_eq!(
-            load_ollama_llm_effect_receipts_ndjson_unchecked(&unchecked_path).unwrap(),
+            load_ollama_llm_effect_receipts_ndjson_unchecked(&unchecked_path)
+                .expect("test value should be present"),
             vec![unchecked_only]
         );
 
         assert!(load_ollama_llm_effect_receipts_ndjson(&missing_path)
-            .unwrap()
+            .expect("test value should be present")
             .is_empty());
         assert!(
             load_ollama_llm_effect_receipts_ndjson_unchecked(&missing_path)
-                .unwrap()
+                .expect("test value should be present")
                 .is_empty()
         );
         assert!(load_ollama_judgment_proof_events_ndjson(&missing_path)
-            .unwrap()
+            .expect("test value should be present")
             .is_empty());
 
-        std::fs::remove_dir_all(dir).unwrap();
+        std::fs::remove_dir_all(dir).expect("test setup should succeed");
     }
 
     #[test]
@@ -2152,7 +2159,7 @@ mod tests {
         let base_receipt = valid_test_receipt();
         let (receipt, proof_event) =
             OllamaJudgmentProofEvent::finalize_receipt(base_receipt, true, true, true, true)
-                .unwrap();
+                .expect("test setup should succeed");
 
         assert!(receipt.is_valid());
         assert!(receipt.has_proof_binding());
@@ -2169,8 +2176,9 @@ mod tests {
         assert_eq!(provider_proof_hash, proof_event.proof_hash);
         assert_ne!(verifier_context_hash, provider_proof_hash);
 
-        let (canonical_receipt, effect_proof) =
-            proof_event.to_canonical_effect_proof(receipt).unwrap();
+        let (canonical_receipt, effect_proof) = proof_event
+            .to_canonical_effect_proof(receipt)
+            .expect("test setup should succeed");
         assert_eq!(effect_proof.verifier_context_hash, verifier_context_hash);
         assert_eq!(effect_proof.provider_proof_hash, provider_proof_hash);
         assert_eq!(

@@ -9,7 +9,7 @@ use crate::process::agent::config::AgentLoopConfig;
 use super::mcp_workspace::parse_mcp_workspace_status;
 use super::receipt::agent_turn_kernel_command;
 
-pub(super) fn agent_command_url(config: &AgentLoopConfig) -> Option<String> {
+pub(crate) fn agent_command_url(config: &AgentLoopConfig) -> Option<String> {
     config
         .supervisor_port
         .map(|port| format!("http://127.0.0.1:{port}/v1/command"))
@@ -55,7 +55,7 @@ pub(super) fn submit_agent_turn_receipt(command_url: &str, receipt: &serde_json:
     }
 }
 
-pub(super) fn get_json_body_local(url: &str) -> Result<serde_json::Value, String> {
+pub(crate) fn get_json_body_local(url: &str) -> Result<serde_json::Value, String> {
     let (host, port, path) = parse_local_http_url(url)?;
     let mut stream =
         TcpStream::connect((host.as_str(), port)).map_err(|e| format!("connect: {e}"))?;
@@ -76,10 +76,22 @@ pub(super) fn get_json_body_local(url: &str) -> Result<serde_json::Value, String
         .read_to_string(&mut response)
         .map_err(|e| format!("read: {e}"))?;
     let body = response.split("\r\n\r\n").nth(1).unwrap_or(&response);
-    serde_json::from_str(body.trim()).map_err(|e| format!("json: {e}"))
+    let body = body.trim();
+    if body.is_empty() {
+        return Ok(serde_json::Value::Null);
+    }
+    serde_json::from_str(body).map_err(|e| format!("json: {e}"))
 }
 
-pub(super) fn post_json_local(url: &str, value: &serde_json::Value) -> Result<u16, String> {
+pub(crate) fn post_json_local(url: &str, value: &serde_json::Value) -> Result<u16, String> {
+    post_json_body_local(url, value).map(|(status, _)| status)
+}
+
+/// POST JSON and return both the HTTP status code and the parsed response body.
+pub(crate) fn post_json_body_local(
+    url: &str,
+    value: &serde_json::Value,
+) -> Result<(u16, serde_json::Value), String> {
     let (host, port, path) = parse_local_http_url(url)?;
     let body = value.to_string();
     let mut stream =
@@ -102,7 +114,10 @@ pub(super) fn post_json_local(url: &str, value: &serde_json::Value) -> Result<u1
     stream
         .read_to_string(&mut response)
         .map_err(|err| format!("read: {err}"))?;
-    Ok(parse_mcp_workspace_status(&response))
+    let status = parse_mcp_workspace_status(&response);
+    let body_str = response.split("\r\n\r\n").nth(1).unwrap_or("");
+    let body_value = serde_json::from_str(body_str.trim()).unwrap_or(serde_json::Value::Null);
+    Ok((status, body_value))
 }
 
 pub(super) fn parse_local_http_url(url: &str) -> Result<(String, u16, String), String> {

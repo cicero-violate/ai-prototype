@@ -87,8 +87,7 @@ pub struct ChildCompleteRecord {
 impl ChildCompleteRecord {
     pub fn new(wave_id: u64, node_id_hash: u64, panicked: bool) -> Self {
         let exit_status = u8::from(panicked);
-        let contract_hash =
-            expected_child_contract_hash(wave_id, node_id_hash, exit_status);
+        let contract_hash = expected_child_contract_hash(wave_id, node_id_hash, exit_status);
         Self {
             wave_id,
             node_id_hash,

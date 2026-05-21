@@ -2181,7 +2181,7 @@ mod tests {
                 hi: 45,
             }],
         )
-        .unwrap();
+        .expect("test setup should succeed");
 
         assert!(plan.receipt.is_self_consistent());
         assert_eq!(plan.receipt.verdict, GraphMutationVerdict::Pass);
@@ -2207,7 +2207,7 @@ mod tests {
                 new_label: "pure".into(),
             }],
         )
-        .unwrap();
+        .expect("test setup should succeed");
 
         assert!(plan.receipt.is_self_consistent());
         assert!(plan.diff.contains("+#[canon_intent = \"pure\"]"));
@@ -2227,7 +2227,7 @@ mod tests {
                 hi: 45,
             }],
         )
-        .unwrap_err();
+        .expect_err("test should fail");
 
         assert_eq!(err, GraphPatchError::StaleOperation("demo::remove".into()));
     }
@@ -2255,7 +2255,7 @@ mod tests {
                 },
             ],
         )
-        .unwrap_err();
+        .expect_err("test should fail");
 
         assert_eq!(
             err,
@@ -2294,7 +2294,7 @@ mod tests {
                 },
             ],
         )
-        .unwrap();
+        .expect("test setup should succeed");
 
         assert!(receipt.is_self_consistent());
         assert_eq!(receipt.verdict, GraphMutationVerdict::Pass);
@@ -2321,7 +2321,7 @@ mod tests {
                 new_label: "pure".into(),
             }],
         )
-        .unwrap();
+        .expect("test setup should succeed");
 
         assert!(receipt.is_self_consistent());
         assert_eq!(receipt.verdict, GraphMutationVerdict::Pass);
@@ -2341,7 +2341,7 @@ mod tests {
                 hi: 45,
             }],
         )
-        .unwrap();
+        .expect("test setup should succeed");
 
         assert!(receipt.is_self_consistent());
         assert_eq!(receipt.verdict, GraphMutationVerdict::Fail);
@@ -2362,10 +2362,11 @@ mod tests {
                 hi: 45,
             }],
         )
-        .unwrap();
+        .expect("test setup should succeed");
 
         let encoded = encode_graph_patch_receipt_ndjson(&plan.receipt);
-        let decoded = decode_graph_patch_receipt_ndjson(&encoded).unwrap();
+        let decoded =
+            decode_graph_patch_receipt_ndjson(&encoded).expect("test setup should succeed");
 
         assert_eq!(decoded, plan.receipt);
         assert!(decode_graph_patch_receipt_ndjson("[1,2]").is_none());
@@ -2388,11 +2389,11 @@ mod tests {
                 hi: 45,
             }],
         )
-        .unwrap();
+        .expect("test setup should succeed");
 
         let encoded = encode_graph_mutation_receipt_ndjson(&receipt);
         assert_eq!(
-            decode_graph_mutation_receipt_ndjson(&encoded).unwrap(),
+            decode_graph_mutation_receipt_ndjson(&encoded).expect("test value should be present"),
             receipt
         );
 
@@ -2413,7 +2414,7 @@ mod tests {
                 hi: 45,
             }],
         )
-        .unwrap();
+        .expect("test setup should succeed");
         let mut new_graph = old_graph.clone();
         new_graph.nodes.remove("demo::remove");
         new_graph.graph_hash = 0xbeef;
@@ -2427,7 +2428,7 @@ mod tests {
                 hi: 45,
             }],
         )
-        .unwrap();
+        .expect("test setup should succeed");
 
         let receipt = verify_graph_receipt_ledgers_ndjson(
             &encode_graph_patch_receipt_ndjson(&patch.receipt),
@@ -2456,7 +2457,7 @@ mod tests {
                 hi: 45,
             }],
         )
-        .unwrap();
+        .expect("test setup should succeed");
         let mut encoded = encode_graph_patch_receipt_ndjson(&patch.receipt);
         encoded = encoded.replacen(&patch.receipt.hunk_count.to_string(), "99", 1);
 
@@ -2489,7 +2490,8 @@ mod tests {
         ];
 
         let encoded = encode_graph_mutation_ops_ndjson(&ops);
-        let decoded = decode_graph_mutation_ops_ndjson(&encoded).unwrap();
+        let decoded =
+            decode_graph_mutation_ops_ndjson(&encoded).expect("test setup should succeed");
         let receipt = verify_graph_mutation_ops_ndjson(&encoded);
 
         assert_eq!(

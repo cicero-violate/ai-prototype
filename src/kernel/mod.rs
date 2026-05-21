@@ -29,4 +29,7 @@ pub(crate) fn mix(mut h: u64, x: u64) -> u64 {
 pub use self::packet::Packet;
 pub use self::phase::{Phase, PHASES};
 pub use self::recovery::{FailureClass, RecoveryAction};
-pub use self::state::State;
+pub use self::state::{
+    PlanEdgeProjection, PlanEvidenceProjection, PlanNodeProjection, PlanState, PlanStatePatch,
+    PlanStateRejection, State,
+};

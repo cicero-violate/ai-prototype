@@ -58,7 +58,6 @@ pub struct AuthorizeForm {
     pub client_id: String,
     pub redirect_uri: String,
     pub code_challenge: String,
-    #[allow(dead_code)]
     pub code_challenge_method: String,
     pub state: Option<String>,
     pub decision: String,

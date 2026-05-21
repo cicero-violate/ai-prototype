@@ -2,6 +2,11 @@ use std::process::Command;
 use std::thread;
 use std::time::Duration;
 
+use ai::capability::planning::{
+    PlanEvidenceAppendPatch, PlanNodeStatus, PlanPatchPayload, PlanPatchRecord,
+    PlanStatusChangePatch,
+};
+
 fn temp_root(name: &str) -> std::path::PathBuf {
     std::path::PathBuf::from("target/test-tmp/canonical-tlog")
         .join(format!("{name}-{}", std::process::id()))
@@ -116,6 +121,102 @@ fn stale_legacy_worker_tlogs_are_reported() {
     let report = ai::introspect_canonical_tlog(&canonical).expect("introspect");
     assert_eq!(report.worker_state.status, "stale_legacy_worker_tlog");
     assert_eq!(report.worker_state.legacy_paths, vec![legacy]);
+
+    let _ = std::fs::remove_dir_all(root);
+}
+
+#[test]
+fn plan_patch_records_roundtrip_without_breaking_event_replay() {
+    let root = temp_root("plan-patch");
+    let _ = std::fs::remove_dir_all(&root);
+    std::fs::create_dir_all(root.join("state/tlog")).expect("test tlog dir");
+    let canonical = root.join("state/tlog/canon-agent.tlog.ndjson");
+
+    let initial = ai::State::default();
+    let (state, tlog) = ai::run_until_done(initial, ai::RuntimeConfig::default()).expect("run");
+    assert_eq!(state.phase, ai::Phase::Done);
+    ai::write_tlog_ndjson(&canonical, &tlog).expect("write canonical tlog");
+
+    let patch = PlanPatchRecord::new(
+        0x51,
+        0x52,
+        1,
+        PlanPatchPayload::StatusChange(PlanStatusChangePatch {
+            node_id_hash: 0x53,
+            status: PlanNodeStatus::Running,
+        }),
+    );
+    let accepted = patch.accepted(2);
+    let evidence_patch = PlanPatchRecord::new(
+        0x51,
+        0x52,
+        2,
+        PlanPatchPayload::EvidenceAppend(PlanEvidenceAppendPatch {
+            node_id_hash: 0x53,
+            path_hash: 0x54,
+            kind_hash: 0x55,
+            summary_hash: 0x56,
+        }),
+    );
+    let rejected = evidence_patch.rejected(0x57);
+
+    ai::codec::append_plan_patch_record_ndjson(
+        &canonical,
+        ai::codec::PlanPatchTlogRecord::Patch(patch),
+    )
+    .expect("append patch record");
+    ai::codec::append_plan_patch_record_ndjson(
+        &canonical,
+        ai::codec::PlanPatchTlogRecord::Accepted(accepted),
+    )
+    .expect("append accepted patch record");
+    ai::codec::append_plan_patch_record_ndjson(
+        &canonical,
+        ai::codec::PlanPatchTlogRecord::Patch(evidence_patch),
+    )
+    .expect("append second patch record");
+    ai::codec::append_plan_patch_record_ndjson(
+        &canonical,
+        ai::codec::PlanPatchTlogRecord::Rejected(rejected),
+    )
+    .expect("append rejected patch record");
+
+    let loaded_tlog = ai::load_tlog_ndjson(&canonical).expect("load event tlog");
+    assert_eq!(loaded_tlog, tlog);
+
+    let replay =
+        ai::replay_report_ndjson(initial, &canonical).expect("event replay ignores plan rows");
+    assert_eq!(replay.event_count, tlog.len());
+    assert_eq!(replay.final_state, state);
+
+    let loaded_plan_records =
+        ai::codec::load_plan_patch_records_ndjson(&canonical).expect("load plan records");
+    assert_eq!(loaded_plan_records.len(), 4);
+    assert_eq!(
+        loaded_plan_records[0],
+        ai::codec::PlanPatchTlogRecord::Patch(patch)
+    );
+    assert_eq!(
+        loaded_plan_records[1],
+        ai::codec::PlanPatchTlogRecord::Accepted(accepted)
+    );
+    assert_eq!(
+        loaded_plan_records[2],
+        ai::codec::PlanPatchTlogRecord::Patch(evidence_patch)
+    );
+    assert_eq!(
+        loaded_plan_records[3],
+        ai::codec::PlanPatchTlogRecord::Rejected(rejected)
+    );
+
+    let encoded = ai::codec::encode_plan_patch_record_ndjson(
+        ai::codec::PlanPatchTlogRecord::Patch(evidence_patch),
+    );
+    let decoded = ai::codec::decode_plan_patch_record_ndjson(&encoded).expect("decode plan patch");
+    assert_eq!(
+        decoded,
+        ai::codec::PlanPatchTlogRecord::Patch(evidence_patch)
+    );
 
     let _ = std::fs::remove_dir_all(root);
 }

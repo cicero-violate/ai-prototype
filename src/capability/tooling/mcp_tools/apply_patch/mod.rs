@@ -11,6 +11,7 @@ use std::path::{Path, PathBuf};
 use uuid::Uuid;
 
 use super::common::{tmp_dir, tool_error};
+use crate::capability::tooling::patch::{categorize_patch_paths, AffectedPaths};
 use crate::runtime::WorkspaceView;
 use fs_copy::{copy_dir_recursive_excluding, TempDirGuard};
 use parser::{collect_apply_patch_changed_files, validate_workspace_relative_path};
@@ -36,14 +37,18 @@ async fn run_inner(args: &Value, workspace: &WorkspaceView) -> Result<Value, Str
     let request = parse_apply_patch_request(args)?;
     let work_dir = workspace.resolve_cwd(request.cwd)?;
     let changed_files = collect_valid_changed_files(request.patch_text)?;
+    let affected =
+        categorize_patch_paths(request.patch_text).unwrap_or_else(|_| AffectedPaths::default());
 
-    let (run_dir, _guard) = prepare_apply_patch_run_dir(request.do_apply, &work_dir)?;
+    let (run_dir, _guard) =
+        prepare_apply_patch_run_dir(request.do_apply, &workspace.root, &work_dir)?;
     let stdout = run_validated_apply_patch(request.patch_text, &run_dir).await?;
 
     Ok(success_response(
         request.mode,
         request.do_apply,
         changed_files,
+        affected,
         stdout,
     ))
 }
@@ -106,12 +111,13 @@ fn collect_valid_changed_files(patch_text: &str) -> Result<Vec<String>, String> 
 
 fn prepare_apply_patch_run_dir(
     do_apply: bool,
+    workspace_root: &Path,
     work_dir: &Path,
 ) -> Result<(PathBuf, Option<TempDirGuard>), String> {
     if do_apply {
         Ok((work_dir.to_path_buf(), None))
     } else {
-        let temp_root = tmp_dir()?;
+        let temp_root = tmp_dir(workspace_root)?;
         let temp = temp_root.join(format!("apply-patch-{}", Uuid::new_v4()));
         copy_dir_recursive_excluding(work_dir, &temp, &[temp_root])?;
         Ok((temp.clone(), Some(TempDirGuard(temp))))
@@ -122,6 +128,7 @@ fn success_response(
     mode: &str,
     do_apply: bool,
     changed_files: Vec<String>,
+    affected: AffectedPaths,
     stdout: String,
 ) -> Value {
     let summary = if stdout.is_empty() {
@@ -136,6 +143,11 @@ fn success_response(
         "ok": true,
         "mode": mode,
         "changedFiles": changed_files,
+        "affectedPaths": {
+            "added": affected.added,
+            "modified": affected.modified,
+            "deleted": affected.deleted,
+        },
         "summary": summary,
         "rejects": []
     });

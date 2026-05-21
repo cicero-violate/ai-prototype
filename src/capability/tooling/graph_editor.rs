@@ -691,6 +691,10 @@ fn apply_unified_diff_to_workspace(
     }))
 }
 
+#[expect(
+    clippy::too_many_arguments,
+    reason = "receipt payload assembly records all graph mutation metadata at one boundary"
+)]
 fn apply_ops_receipt_payload(
     workspace: &WorkspaceView,
     request: &GraphApplyOpsRequest,
@@ -1139,7 +1143,9 @@ fn validate_relative_render_path(path: &str) -> Result<(), String> {
     for component in path.components() {
         match component {
             std::path::Component::Normal(_) | std::path::Component::CurDir => {}
-            _ => {
+            std::path::Component::Prefix(_)
+            | std::path::Component::RootDir
+            | std::path::Component::ParentDir => {
                 return Err(format!(
                     "render path escapes output dir: {}",
                     path.display()
@@ -1289,7 +1295,9 @@ fn optional_string(args: &Value, key: &str) -> Result<Option<String>, String> {
     optional_arg(args, key, |value| match value {
         Value::String(value) if !value.is_empty() => Ok(Some(value.clone())),
         Value::String(_) => Ok(None),
-        _ => Err(format!("{key} must be a string")),
+        Value::Null | Value::Bool(_) | Value::Number(_) | Value::Array(_) | Value::Object(_) => {
+            Err(format!("{key} must be a string"))
+        }
     })
 }
 
@@ -1304,7 +1312,9 @@ fn optional_usize(args: &Value, key: &str) -> Result<Option<usize>, String> {
             .parse::<usize>()
             .map(Some)
             .map_err(|_| format!("{key} must be a non-negative integer")),
-        _ => Err(format!("{key} must be a non-negative integer")),
+        Value::Null | Value::Bool(_) | Value::Array(_) | Value::Object(_) => {
+            Err(format!("{key} must be a non-negative integer"))
+        }
     })
 }
 
@@ -1319,7 +1329,9 @@ fn optional_i64(args: &Value, key: &str) -> Result<Option<i64>, String> {
             .parse::<i64>()
             .map(Some)
             .map_err(|_| format!("{key} must be an integer")),
-        _ => Err(format!("{key} must be an integer")),
+        Value::Null | Value::Bool(_) | Value::Array(_) | Value::Object(_) => {
+            Err(format!("{key} must be an integer"))
+        }
     })
 }
 
@@ -1331,7 +1343,9 @@ fn optional_bool(args: &Value, key: &str) -> Result<Option<bool>, String> {
             .parse::<bool>()
             .map(Some)
             .map_err(|_| format!("{key} must be a boolean")),
-        _ => Err(format!("{key} must be a boolean")),
+        Value::Null | Value::Number(_) | Value::Array(_) | Value::Object(_) => {
+            Err(format!("{key} must be a boolean"))
+        }
     })
 }
 

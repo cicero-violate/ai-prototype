@@ -6,11 +6,13 @@
 
 pub mod cycle_event;
 pub mod record;
+pub mod task_lifecycle;
 pub mod wave;
 
 pub use self::cycle_event::{AgentCycleEvent, AgentCycleEventKind};
-pub use self::wave::{ChildCompleteRecord, WaveRecord};
 pub use self::record::{
     CapabilityRoute, OrchestrationBatchDecision, OrchestrationBatchRecord, OrchestrationBudget,
     OrchestrationDecision, OrchestrationRecord, SelectedCapabilityRoute,
 };
+pub use self::task_lifecycle::{TaskLifecycleKind, TaskLifecycleReceipt};
+pub use self::wave::{ChildCompleteRecord, WaveRecord};

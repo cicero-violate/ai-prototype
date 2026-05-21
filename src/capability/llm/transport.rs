@@ -110,7 +110,8 @@ mod tests {
 
     #[test]
     fn endpoint_parser_accepts_local_openai_compatible_base_urls() {
-        let endpoint = parse_local_http_endpoint("http://127.0.0.1:11434/v1").unwrap();
+        let endpoint = parse_local_http_endpoint("http://127.0.0.1:11434/v1")
+            .expect("test setup should succeed");
         assert_eq!(endpoint.host, "127.0.0.1");
         assert_eq!(endpoint.port, 11434);
         assert_eq!(endpoint.path_prefix, "/v1");

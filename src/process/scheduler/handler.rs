@@ -9,18 +9,10 @@ use crate::process::supervisor::process::{
     TaskClaimDto, TaskClaimRequest, TaskCompleteDto, TaskCompleteRequest, TaskFailDto,
     TaskFailRequest, WorkerProcess,
 };
+pub use crate::runtime::event_bus::WakeupKind as SchedulerWakeupKind;
 
-/// Stable wakeup keys emitted by TLog/event projection code.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum SchedulerWakeupKind {
-    TaskReady,
-    LeaseExpired,
-    ReceiptAccepted,
-    GateFailed,
-}
-
-/// A projected scheduler wakeup. The projection source is intentionally explicit
-/// so callers wire this to TLog/event cursors rather than elapsed-time polling.
+/// A projected scheduler wakeup. The wakeup taxonomy comes from runtime event
+/// projection; this adapter only carries process lifecycle context.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SchedulerWakeup {
     pub kind: SchedulerWakeupKind,
@@ -197,6 +189,9 @@ pub fn handle_scheduler_wakeup(
         SchedulerWakeupKind::LeaseExpired => handle_lease_expired(boundary, wakeup),
         SchedulerWakeupKind::ReceiptAccepted => handle_receipt_accepted(boundary, wakeup),
         SchedulerWakeupKind::GateFailed => handle_gate_failed(boundary, wakeup),
+        SchedulerWakeupKind::EvalVerdict | SchedulerWakeupKind::LearningCandidate => Ok(
+            SchedulerHandlerEffect::Ignored(SchedulerHandlerIgnore::WrongWakeupKind),
+        ),
     }
 }
 
@@ -329,6 +324,58 @@ fn delegate_failure(
 
 fn is_idempotent_already_applied(error: &str) -> bool {
     error.contains("no active lease") || error.contains("is not pending")
+}
+
+// ── TaskReadyNotifier ─────────────────────────────────────────────────────────
+
+use std::sync::{Arc, Condvar, Mutex};
+use std::time::Duration;
+
+/// Shared signal between the supervisor (task source) and task runners (consumers).
+///
+/// The supervisor calls `notify()` when a node transitions to Pending — on retry,
+/// on startup reset, or on plan update. Task runners block on `wait_or_timeout`
+/// instead of sleeping on a fixed timer, so they react immediately when work arrives.
+///
+/// This is a process-level disposable projection. If a signal is missed the
+/// 30-second timeout fallback in `wait_or_timeout` reconstructs any pending work.
+/// Truth is always the supervisor's plan.json + TLog; the notifier is wakeup-only.
+#[derive(Clone)]
+pub struct TaskReadyNotifier {
+    inner: Arc<(Mutex<bool>, Condvar)>,
+}
+
+impl Default for TaskReadyNotifier {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl TaskReadyNotifier {
+    pub fn new() -> Self {
+        Self {
+            inner: Arc::new((Mutex::new(false), Condvar::new())),
+        }
+    }
+
+    /// Signal that one or more tasks may be ready to claim.
+    /// Idempotent: N calls before a drain collapse to a single check.
+    pub fn notify(&self) {
+        let (lock, condvar) = &*self.inner;
+        *lock.lock().unwrap() = true;
+        condvar.notify_all();
+    }
+
+    /// Block until notified or until `timeout` elapses (replay-safety fallback).
+    /// Returns `true` if a signal arrived, `false` if the timeout elapsed.
+    pub fn wait_or_timeout(&self, timeout: Duration) -> bool {
+        let (lock, condvar) = &*self.inner;
+        let guard = lock.lock().unwrap();
+        let (mut guard, _) = condvar.wait_timeout(guard, timeout).unwrap();
+        let was_notified = *guard;
+        *guard = false;
+        was_notified
+    }
 }
 
 #[cfg(test)]

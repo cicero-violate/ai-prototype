@@ -243,7 +243,7 @@ mod tests {
     #[test]
     fn receipt_chain_accepts_valid_replay() {
         let receipts = chain(3);
-        let report = verify_receipt_chain(77, 3, &receipts).unwrap();
+        let report = verify_receipt_chain(77, 3, &receipts).expect("test setup should succeed");
 
         assert_eq!(report.run_id, 77);
         assert_eq!(report.receipt_count, 3);

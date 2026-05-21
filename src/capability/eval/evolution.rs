@@ -302,7 +302,7 @@ mod tests {
             replay_valid,
             proof_hash: 5000 + id,
         })
-        .unwrap()
+        .expect("test value should be present")
     }
 
     #[test]
@@ -312,7 +312,9 @@ mod tests {
         assert!(receipt.is_structurally_valid());
         assert_eq!(
             receipt.lineage_hash,
-            receipt.expected_lineage_hash().unwrap()
+            receipt
+                .expected_lineage_hash()
+                .expect("test value should be present")
         );
     }
 
@@ -330,7 +332,8 @@ mod tests {
             candidate(2, 95, CandidateVerdict::Pass, true),
             candidate(3, 99, CandidateVerdict::Fail, true),
         ];
-        let selected = SelectionRecord::select_winner(&candidates).unwrap();
+        let selected =
+            SelectionRecord::select_winner(&candidates).expect("test setup should succeed");
         assert_eq!(selected.selected_candidate_id, 2);
         assert_eq!(selected.selected_score, 95);
         assert_eq!(selected.pass_count, 2);
@@ -342,7 +345,8 @@ mod tests {
         let a = candidate(1, 91, CandidateVerdict::Pass, true);
         let b = candidate(2, 91, CandidateVerdict::Pass, true);
         let candidates = vec![a.clone(), b.clone()];
-        let selected = SelectionRecord::select_winner(&candidates).unwrap();
+        let selected =
+            SelectionRecord::select_winner(&candidates).expect("test setup should succeed");
         let expected = if a.lineage_hash < b.lineage_hash {
             1
         } else {
@@ -362,7 +366,7 @@ mod tests {
     fn ndjson_encoder_rejects_invalid_receipt() {
         let mut receipt = candidate(1, 91, CandidateVerdict::Pass, true);
         assert!(encode_candidate_receipt_ndjson(&receipt)
-            .unwrap()
+            .expect("test value should be present")
             .starts_with("[1,"));
         receipt.proof_hash ^= 1;
         assert!(encode_candidate_receipt_ndjson(&receipt).is_none());

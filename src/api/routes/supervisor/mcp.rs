@@ -27,7 +27,7 @@ pub async fn ai_mcp_post(
         .map_or_else(|| vec![&body], |items| items.iter().collect());
     if messages
         .iter()
-        .all(|message| message.get("id").map_or(true, Value::is_null))
+        .all(|message| message.get("id").is_none_or(Value::is_null))
     {
         return StatusCode::ACCEPTED.into_response();
     }
@@ -60,7 +60,9 @@ pub async fn ai_mcp_post(
     if let Some(sid) = new_session_id {
         builder = builder.header("mcp-session-id", sid);
     }
-    builder.body(body.to_string().into()).unwrap()
+    builder
+        .body(body.to_string().into())
+        .expect("building JSON-RPC response should succeed")
 }
 
 pub async fn ai_mcp_get_sse(
@@ -88,7 +90,12 @@ pub async fn ai_mcp_delete(
         .and_then(|value| value.to_str().ok())
     {
         Some(sid) => {
-            state.mcp.sessions.lock().unwrap().remove(sid);
+            state
+                .mcp
+                .sessions
+                .lock()
+                .expect("sessions mutex should not be poisoned")
+                .remove(sid);
             StatusCode::OK
         }
         None => StatusCode::BAD_REQUEST,

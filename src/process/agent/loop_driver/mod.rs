@@ -8,11 +8,10 @@ use crate::process::agent::router::{RouterClient, RouterTabCloseOutcome};
 use crate::process::agent::sse::ChunkLogger;
 use crate::MAX_OBSERVATION_PAYLOAD_BYTES;
 
-mod common;
+pub(crate) mod common;
 mod cycle_log;
-mod dag_scheduler;
 mod evidence_submit;
-mod http;
+pub(crate) mod http;
 mod learning;
 mod mcp_workspace;
 mod prompt_builders;
@@ -73,7 +72,7 @@ use mcp_workspace::{
 };
 #[cfg(test)]
 use prompt_builders::{
-    agent_identity, execute_prompt, planning_prompt, project_turn_mode, LoopMode,
+    agent_identity, execute_prompt, planning_prompt, project_turn_mode, spawned_prompt, LoopMode,
 };
 #[cfg(test)]
 use receipt::agent_turn_kernel_command;
@@ -96,14 +95,14 @@ impl LoopDriver {
     }
 
     /// Spawn one agent thread per AGENT_COUNT and wait for all (blocking).
-    pub fn run_all_agents(&self) {
+    pub fn run_all_agents(&self) -> bool {
         let goal_path = self.config.project_dir.join("GOAL.md");
         if !goal_path.exists() {
             eprintln!(
                 "agent: PROJECT_DIR={} has no GOAL.md — loop disabled",
                 self.config.project_dir.display()
             );
-            return;
+            return false;
         }
 
         eprintln!("agent: project_dir={}", self.config.project_dir.display());
@@ -132,13 +131,13 @@ impl LoopDriver {
                     );
                 } else {
                     eprintln!("agent: MCP workspace sync failed: {e}");
-                    return;
+                    return false;
                 }
             }
         }
 
         if self.config.agent_count <= 1 {
-            self.run_agent_loop(0);
+            self.run_agent_loop(0)
         } else {
             let mut handles = Vec::new();
             for agent_id in 0..self.config.agent_count {
@@ -147,17 +146,19 @@ impl LoopDriver {
                     if agent_id > 0 {
                         thread::sleep(Duration::from_millis(u64::from(agent_id) * 5000));
                     }
-                    LoopDriver { config }.run_agent_loop(agent_id);
+                    LoopDriver { config }.run_agent_loop(agent_id)
                 });
                 handles.push(handle);
             }
+            let mut all_completed = true;
             for h in handles {
-                let _ = h.join();
+                all_completed &= h.join().unwrap_or(false);
             }
+            all_completed
         }
     }
 
-    fn run_agent_loop(&self, agent_id: u32) {
+    fn run_agent_loop(&self, agent_id: u32) -> bool {
         let is_spawned = self.config.domain.is_some();
         let tag = self
             .config
@@ -170,7 +171,7 @@ impl LoopDriver {
             let goal_path = self.config.project_dir.join("GOAL.md");
             if !goal_path.exists() {
                 eprintln!("[{tag}] no GOAL.md — loop disabled");
-                return;
+                return false;
             }
         }
 
@@ -187,7 +188,7 @@ impl LoopDriver {
             // that already exists in state/plan.json.  This prevents a new
             // planner/connector-activation tab from racing the mini-agent tabs
             // when the previous cycle left pending ready nodes behind.
-            if !is_spawned && dag_scheduler::run_wave(&self.config, &tag, cycle_num) {
+            if !is_spawned && crate::process::scheduler::run_wave(&self.config, &tag, cycle_num) {
                 eprintln!(
                     "[{tag}] DAG scheduler ran before planner startup; sleeping {}ms before next cycle",
                     self.config.loop_sleep_ms
@@ -200,7 +201,7 @@ impl LoopDriver {
                 Ok(r) => r,
                 Err(e) => {
                     eprintln!("[{tag}] router init failed: {e}");
-                    break;
+                    return false;
                 }
             };
 
@@ -211,9 +212,13 @@ impl LoopDriver {
                 cycle_num,
                 cmd_url.as_deref(),
             );
-            if let Err(e) = self.run_cycle(cycle_num, agent_id, &tag, &mut router) {
-                eprintln!("[{tag}] cycle {cycle_num} failed: {e}");
-            }
+            let cycle_completed = match self.run_cycle(cycle_num, agent_id, &tag, &mut router) {
+                Ok(()) => true,
+                Err(e) => {
+                    eprintln!("[{tag}] cycle {cycle_num} failed: {e}");
+                    false
+                }
+            };
             cycle_log::append_cycle_end(
                 &self.config.sse_chunks_dir,
                 &tag,
@@ -266,7 +271,7 @@ impl LoopDriver {
             if is_spawned {
                 wait_for_spawned_tab_close(&tag, cycle_num, close_handle);
                 eprintln!("[{tag}] spawned agent task complete — exiting");
-                break;
+                return cycle_completed;
             }
 
             eprintln!(
@@ -377,7 +382,10 @@ impl LoopDriver {
 
             // After the planning turn: dispatch any ready DAG nodes as child agents.
             // If a wave ran, skip the execute turns — the child agents did the work.
-            if turn == 0 && !is_spawned && dag_scheduler::run_wave(&self.config, tag, cycle_num) {
+            if turn == 0
+                && !is_spawned
+                && crate::process::scheduler::run_wave(&self.config, tag, cycle_num)
+            {
                 break;
             }
 
@@ -519,6 +527,7 @@ mod tests {
             router_idle_ms: 1,
             worker_port: None,
             supervisor_port: None,
+            browser_router_url: None,
             cert_max_steps: 1,
             domain: None,
             metric: None,
@@ -711,6 +720,7 @@ mod tests {
         assert!(planning.contains("planning turn for this agent loop"));
         assert!(planning.contains("## HOW MINI-AGENT DISPATCH WORKS"));
         assert!(planning.contains("spawns one mini-agent per ready node in parallel"));
+        assert!(planning.contains("TLog-projected plan read model"));
         assert!(planning.contains("project:plan_read"));
         assert!(planning.contains("project:plan_update"));
         assert!(planning.contains("state/agent-evidence/"));
@@ -727,6 +737,8 @@ mod tests {
         assert!(execute.contains("project:plan_read"));
         assert!(execute.contains("state/agent-evidence/"));
         assert!(execute.contains("append_evidence"));
+        assert!(!execute.contains("op=set_status"));
+        assert!(!execute.contains("reset the node to `pending`"));
         assert!(!execute.contains("plan.md"));
         assert!(!execute.contains("status.md"));
         assert!(!execute.contains("score.md"));
@@ -735,21 +747,43 @@ mod tests {
     }
 
     #[test]
+    fn spawned_prompt_rejects_empty_success_criterion_and_preserves_supervisor_authority() {
+        let prompt = spawned_prompt(
+            "Align agent cycle route contract",
+            "   ",
+            Some("align-agent-cycle-route-contract"),
+            1,
+            Path::new("/workspace/project"),
+        );
+
+        assert!(prompt.contains("## SUCCESS CRITERION"));
+        assert!(prompt.contains("BLOCKER: no success criterion was supplied"));
+        assert!(prompt.contains("Do not invent scope"));
+        assert!(prompt.contains("op=append_evidence"));
+        assert!(prompt.contains("do not call `op=set_status`"));
+        assert!(prompt.contains("The supervisor will decide completion"));
+        assert!(!prompt.contains("The scheduler will mark your task done automatically"));
+        assert!(!prompt.contains("The scheduler will mark your task failed"));
+    }
+
+    #[test]
     fn mcp_workspace_endpoint_parser_preserves_host_port_and_errors() {
         assert_eq!(
-            parse_mcp_workspace_endpoint("http://127.0.0.1:9100").unwrap(),
+            parse_mcp_workspace_endpoint("http://127.0.0.1:9100")
+                .expect("test value should be present"),
             ("127.0.0.1".to_string(), 9100)
         );
         assert_eq!(
-            parse_mcp_workspace_endpoint("http://localhost/").unwrap(),
+            parse_mcp_workspace_endpoint("http://localhost/")
+                .expect("test value should be present"),
             ("localhost".to_string(), 80)
         );
 
         assert!(parse_mcp_workspace_endpoint("https://localhost:9100")
-            .unwrap_err()
+            .expect_err("test should fail")
             .contains("must start with http://"));
         assert!(parse_mcp_workspace_endpoint("http://localhost:not-a-port")
-            .unwrap_err()
+            .expect_err("test should fail")
             .contains("invalid port"));
     }
 
@@ -814,8 +848,18 @@ mod tests {
         assert_eq!(command["payload_tag"], "SubmitEvidenceBatch");
         assert_eq!(command["source"], "agent");
         assert_eq!(command["agent_turn"]["label"], "plan");
-        assert!(command["command_id"].as_u64().unwrap() != 0);
-        assert!(command["command_hash"].as_u64().unwrap() != 0);
+        assert!(
+            command["command_id"]
+                .as_u64()
+                .expect("test value should be present")
+                != 0
+        );
+        assert!(
+            command["command_hash"]
+                .as_u64()
+                .expect("test value should be present")
+                != 0
+        );
         assert_eq!(command["payload"][0]["gate"], "Plan");
         assert_eq!(command["payload"][0]["effect"], "BindReadyTask");
         assert_eq!(command["payload"][1]["gate"], "Execution");
@@ -938,7 +982,8 @@ mod tests {
     #[test]
     fn local_http_url_parser_accepts_loopback_command_url() {
         assert_eq!(
-            parse_local_http_url("http://127.0.0.1:9100/v1/command").unwrap(),
+            parse_local_http_url("http://127.0.0.1:9100/v1/command")
+                .expect("test value should be present"),
             ("127.0.0.1".to_string(), 9100, "/v1/command".to_string())
         );
         assert!(parse_local_http_url("https://127.0.0.1:9100/v1/command").is_err());

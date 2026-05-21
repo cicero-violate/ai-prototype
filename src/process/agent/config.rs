@@ -33,6 +33,9 @@ pub struct AgentLoopConfig {
     /// Supervisor HTTP port. When set, the supervisor's /reload endpoint is
     /// called before each certification to give the cycle a fresh worker state.
     pub supervisor_port: Option<u16>,
+    /// Browser-router base URL (from CANON_OPENAI_BASE_URL, /v1 suffix stripped).
+    /// Used by the DAG scheduler to cap the wave size by available CDP tabs.
+    pub browser_router_url: Option<String>,
     /// Maximum steps for the certification AgentCycle (default 30).
     pub cert_max_steps: u64,
     /// Specific sub-task domain for this agent (injected into the planning prompt).
@@ -75,6 +78,10 @@ impl AgentLoopConfig {
             .ok()
             .and_then(|v| v.parse::<u16>().ok());
         let supervisor_port = supervisor_port_from_env().unwrap_or(DEFAULT_SUPERVISOR_PORT);
+        let browser_router_url = env::var("CANON_OPENAI_BASE_URL").ok().map(|url| {
+            let url = url.trim_end_matches('/').to_string();
+            url.strip_suffix("/v1").unwrap_or(&url).to_string()
+        });
         Self {
             execute_turns: env_parsed::<u32>("EXECUTE_TURNS", 2),
             turn_retry_limit: env_parsed::<u32>("TURN_RETRY_LIMIT", 2),
@@ -91,6 +98,7 @@ impl AgentLoopConfig {
             router_idle_ms: env_parsed::<u64>("ROUTER_IDLE_MS", 2_500),
             worker_port,
             supervisor_port: Some(supervisor_port),
+            browser_router_url,
             cert_max_steps: env_parsed::<u64>("AI_CERT_MAX_STEPS", 30),
             domain: env::var("AI_AGENT_DOMAIN").ok().filter(|s| !s.is_empty()),
             metric: env::var("AI_AGENT_METRIC").ok().filter(|s| !s.is_empty()),

@@ -41,7 +41,10 @@ pub struct FinanceHypothesis {
 }
 
 impl FinanceHypothesis {
-    #[allow(clippy::too_many_arguments)]
+    #[expect(
+        clippy::too_many_arguments,
+        reason = "constructors mirror canonical finance record fields"
+    )]
     pub fn new(
         hypothesis_id: impl Into<String>,
         asset_universe: AssetUniverse,
@@ -91,7 +94,10 @@ pub struct FinanceRiskDimensions {
 }
 
 impl FinanceRiskDimensions {
-    #[allow(clippy::too_many_arguments)]
+    #[expect(
+        clippy::too_many_arguments,
+        reason = "constructors mirror canonical finance record fields"
+    )]
     pub fn new(
         drawdown: u16,
         volatility: u16,

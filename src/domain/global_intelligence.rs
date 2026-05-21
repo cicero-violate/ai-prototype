@@ -24,7 +24,11 @@ impl From<DomainSignalClass> for SignalClass {
             DomainSignalClass::TechnologyShift => Self::TechnologyShift,
             DomainSignalClass::RiskAlert => Self::RiskAlert,
             DomainSignalClass::CapabilityLearning => Self::CapabilityLearning,
-            _ => Self::Unknown,
+            DomainSignalClass::Unknown
+            | DomainSignalClass::CustomerNeed
+            | DomainSignalClass::BusinessWorkflow
+            | DomainSignalClass::FinanceResearch
+            | DomainSignalClass::TradingSimulation => Self::Unknown,
         }
     }
 }

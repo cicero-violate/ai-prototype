@@ -169,7 +169,7 @@ fn write_canonical_json(record: &Value, out: &mut Vec<u8>) {
         Value::Object(values) => {
             out.push(b'{');
             let mut entries: Vec<_> = values.iter().collect();
-            entries.sort_by(|(left_key, _), (right_key, _)| left_key.cmp(right_key));
+            entries.sort_by_key(|(left_key, _)| *left_key);
             for (index, (key, value)) in entries.into_iter().enumerate() {
                 if index > 0 {
                     out.push(b',');
@@ -199,7 +199,8 @@ mod tests {
 
     #[test]
     fn domain_hash_newtype_validates_prefix_and_non_empty_suffix() {
-        let hash = DomainHash::try_from("domain:abc123".to_string()).unwrap();
+        let hash =
+            DomainHash::try_from("domain:abc123".to_string()).expect("test setup should succeed");
 
         assert_eq!(hash.as_str(), "domain:abc123");
         assert_eq!(hash.as_ref(), "domain:abc123");

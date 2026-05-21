@@ -460,7 +460,7 @@ mod lookup_receipt_tests {
                 key: POLICY_FEEDBACK_HASH,
                 value: 0xfeed,
             })
-            .unwrap();
+            .expect("test setup should succeed");
         store
     }
 
@@ -469,7 +469,7 @@ mod lookup_receipt_tests {
         let store = store_with_feedback();
         let (entry, receipt) = store.feedback_lookup_with_receipt();
 
-        assert_eq!(entry.unwrap().value, 0xfeed);
+        assert_eq!(entry.expect("test value should be present").value, 0xfeed);
         assert_eq!(receipt.found_version, 1);
         assert_eq!(receipt.found_value, 0xfeed);
         assert_eq!(receipt.policy_store_hash, store.fingerprint());
@@ -506,7 +506,7 @@ mod lookup_receipt_tests {
                 key: POLICY_PROMOTION_SOURCE_SEQ,
                 value: 7,
             })
-            .unwrap();
+            .expect("test setup should succeed");
         let (_, original_receipt) = store.feedback_lookup_with_receipt();
         assert!(!original_receipt.is_valid_for(&changed_store, POLICY_FEEDBACK_HASH));
     }
@@ -520,17 +520,31 @@ mod lookup_receipt_tests {
                 key: POLICY_FEEDBACK_HASH,
                 value: 0xfeed,
             })
-            .unwrap();
-        let entry = store.latest(POLICY_FEEDBACK_HASH).copied().unwrap();
+            .expect("test setup should succeed");
+        let entry = store
+            .latest(POLICY_FEEDBACK_HASH)
+            .copied()
+            .expect("test setup should succeed");
         let policy_store_hash = store.fingerprint();
-        let receipt = PolicyProofReceipt::new(entry, policy_store_hash, 7, 0xabc).unwrap();
+        let receipt = PolicyProofReceipt::new(entry, policy_store_hash, 7, 0xabc)
+            .expect("test setup should succeed");
 
-        let entry_hash = receipt.entry_hash().unwrap();
-        let receipt_core_hash = receipt.receipt_core_hash().unwrap();
-        let expected_receipt_hash = receipt.expected_receipt_hash().unwrap();
-        let verifier_context_hash = receipt.verifier_context_hash().unwrap();
-        let canonical_authority_hash = receipt.canonical_authority_hash().unwrap();
-        let canonical_request_hash = receipt.canonical_request_hash().unwrap();
+        let entry_hash = receipt.entry_hash().expect("test setup should succeed");
+        let receipt_core_hash = receipt
+            .receipt_core_hash()
+            .expect("test setup should succeed");
+        let expected_receipt_hash = receipt
+            .expected_receipt_hash()
+            .expect("test setup should succeed");
+        let verifier_context_hash = receipt
+            .verifier_context_hash()
+            .expect("test setup should succeed");
+        let canonical_authority_hash = receipt
+            .canonical_authority_hash()
+            .expect("test setup should succeed");
+        let canonical_request_hash = receipt
+            .canonical_request_hash()
+            .expect("test setup should succeed");
 
         for value in [
             entry_hash,
@@ -584,48 +598,48 @@ mod lookup_receipt_tests {
         assert_eq!(receipt.receipt_hash, expected_receipt_hash);
         assert_eq!(
             PolicyProofReceipt::new(entry, policy_store_hash, 7, 0xabc)
-                .unwrap()
+                .expect("test value should be present")
                 .receipt_core_hash(),
             Some(receipt_core_hash)
         );
         assert_eq!(
             PolicyProofReceipt::new(entry, policy_store_hash, 7, 0xabc)
-                .unwrap()
+                .expect("test value should be present")
                 .verifier_context_hash(),
             Some(verifier_context_hash)
         );
 
         let changed_store_hash = PolicyProofReceipt::new(entry, policy_store_hash ^ 1, 7, 0xabc)
-            .unwrap()
+            .expect("test value should be present")
             .receipt_core_hash();
         assert_ne!(changed_store_hash, Some(receipt_core_hash));
         assert_ne!(
             PolicyProofReceipt::new(entry, policy_store_hash ^ 1, 7, 0xabc)
-                .unwrap()
+                .expect("test value should be present")
                 .verifier_context_hash(),
             Some(verifier_context_hash)
         );
         assert_ne!(
             PolicyProofReceipt::new(entry, policy_store_hash, 8, 0xabc)
-                .unwrap()
+                .expect("test value should be present")
                 .receipt_core_hash(),
             Some(receipt_core_hash)
         );
         assert_eq!(
             PolicyProofReceipt::new(entry, policy_store_hash, 8, 0xabc)
-                .unwrap()
+                .expect("test value should be present")
                 .verifier_context_hash(),
             Some(verifier_context_hash)
         );
         assert_ne!(
             PolicyProofReceipt::new(entry, policy_store_hash, 7, 0xabd)
-                .unwrap()
+                .expect("test value should be present")
                 .receipt_core_hash(),
             Some(receipt_core_hash)
         );
         assert_eq!(
             PolicyProofReceipt::new(entry, policy_store_hash, 7, 0xabd)
-                .unwrap()
+                .expect("test value should be present")
                 .verifier_context_hash(),
             Some(verifier_context_hash)
         );
@@ -637,18 +651,20 @@ mod lookup_receipt_tests {
         };
         assert_ne!(
             PolicyProofReceipt::new(changed_entry, policy_store_hash, 7, 0xabc)
-                .unwrap()
+                .expect("test value should be present")
                 .receipt_core_hash(),
             Some(receipt_core_hash)
         );
         assert_ne!(
             PolicyProofReceipt::new(changed_entry, policy_store_hash, 7, 0xabc)
-                .unwrap()
+                .expect("test value should be present")
                 .verifier_context_hash(),
             Some(verifier_context_hash)
         );
 
-        let (effect_receipt, effect_proof) = receipt.to_canonical_effect_proof(8).unwrap();
+        let (effect_receipt, effect_proof) = receipt
+            .to_canonical_effect_proof(8)
+            .expect("test setup should succeed");
         assert!(effect_receipt.is_valid());
         assert!(effect_proof.is_valid());
         assert_eq!(effect_proof.verifier_context_hash, verifier_context_hash);

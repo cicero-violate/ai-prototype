@@ -67,7 +67,7 @@ impl McpTranscriptRecord {
             && self.request_hash != 0
             && self.receipt_hash != 0
             && self.response_hash != 0
-            && self.response_bytes as usize == self.response_json.as_bytes().len()
+            && self.response_bytes as usize == self.response_json.len()
             && !self.created_at.is_empty()
             && self.self_hash == self.expected_self_hash()
     }
@@ -113,7 +113,7 @@ pub fn append_mcp_transcript(
         exit_status: receipt.exit_status,
         timed_out: receipt.timed_out,
         created_at: Utc::now().to_rfc3339(),
-        prev_hash: mcp_transcript_last_hash(workspace_root)?,
+        prev_hash: mcp_transcript_last_hash_or_recover(workspace_root)?,
         self_hash: 0,
     };
     record.self_hash = record.expected_self_hash();
@@ -219,9 +219,34 @@ fn mcp_transcript_last_hash(workspace_root: &Path) -> Result<u64, String> {
         .unwrap_or(0))
 }
 
+fn mcp_transcript_last_hash_or_recover(workspace_root: &Path) -> Result<u64, String> {
+    match mcp_transcript_last_hash(workspace_root) {
+        Ok(hash) => Ok(hash),
+        Err(error) => {
+            let path = mcp_transcript_path(workspace_root);
+            if !path.exists() {
+                return Ok(0);
+            }
+            let timestamp = Utc::now()
+                .format("%Y%m%dT%H%M%S%.fZ")
+                .to_string()
+                .replace('.', "");
+            let quarantine_path = path.with_extension(format!("tlog.ndjson.invalid-{timestamp}"));
+            fs::rename(&path, &quarantine_path).map_err(|rename_error| {
+                format!(
+                    "{error}; failed to quarantine invalid MCP transcript {} to {}: {rename_error}",
+                    path.display(),
+                    quarantine_path.display()
+                )
+            })?;
+            Ok(0)
+        }
+    }
+}
+
 fn string_hash(value: &str) -> u64 {
     let mut h = 0x4d43_5054_4841_5301u64;
-    h = mix(h, value.as_bytes().len() as u64);
+    h = mix(h, value.len() as u64);
     for byte in value.as_bytes() {
         h = mix(h, *byte as u64);
     }
@@ -300,6 +325,58 @@ mod tests {
         fs::write(&path, tampered).expect("write transcript");
 
         assert!(replay_mcp_transcripts(&workspace).is_err());
+        let _ = fs::remove_dir_all(workspace);
+    }
+
+    #[test]
+    fn mcp_transcript_append_quarantines_invalid_existing_chain() {
+        let workspace = unique_workspace();
+        let request = McpCallRequest::new(
+            CapabilityRegistry::canonical(),
+            "ai-native:/ai/mcp",
+            "echo",
+            r#"{\"text\":\"hello\"}"#,
+            1000,
+            65_536,
+        );
+        let response =
+            r#"{\"content\":[{\"type\":\"text\",\"text\":\"hello\"}],\"isError\":false}"#;
+        let receipt = McpCallReceipt::from_response(&request, response.as_bytes(), 0, false);
+        append_mcp_transcript(
+            &workspace,
+            "echo",
+            r#"{\"text\":\"hello\"}"#,
+            response,
+            &request,
+            &receipt,
+        )
+        .expect("append transcript");
+
+        let path = mcp_transcript_path(&workspace);
+        let tampered = fs::read_to_string(&path)
+            .expect("read transcript")
+            .replace("hello", "tampered");
+        fs::write(&path, tampered).expect("write transcript");
+
+        let recovered = append_mcp_transcript(
+            &workspace,
+            "echo",
+            r#"{\"text\":\"hello\"}"#,
+            response,
+            &request,
+            &receipt,
+        )
+        .expect("append after invalid existing transcript");
+        assert_eq!(recovered.prev_hash, 0);
+        let records = replay_mcp_transcripts(&workspace).expect("replay recovered transcript");
+        assert_eq!(records.len(), 1);
+
+        let quarantine_count = fs::read_dir(path.parent().expect("transcript parent"))
+            .expect("read transcript dir")
+            .filter_map(Result::ok)
+            .filter(|entry| entry.file_name().to_string_lossy().contains("invalid-"))
+            .count();
+        assert_eq!(quarantine_count, 1);
         let _ = fs::remove_dir_all(workspace);
     }
 }

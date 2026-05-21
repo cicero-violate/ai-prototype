@@ -2,13 +2,14 @@ use ai::capability::planning::{
     PlanEdgePatch, PlanEvidenceAppendPatch, PlanNodeStatus, PlanNodeUpsertPatch, PlanPatchPayload,
     PlanPatchRecord, PlanStatusChangePatch,
 };
-use ai::capability::tooling::mcp_tools::canon_plan::{
-    load_plan, plan_state_projection, ready_nodes_from_plan_state_projection,
-    validate_plan_patch_mutation, NodeStatus, PlanDag, PlanEdge, PlanEvidenceRef, PlanNode,
+use ai::domain::plan::{
+    plan_state_projection, ready_nodes_from_plan_state_projection, validate_plan_patch_mutation,
+    NodeStatus, PlanDag, PlanEdge, PlanEvidenceRef, PlanNode,
 };
 use ai::kernel::{
     PlanEdgeProjection, PlanEvidenceProjection, PlanState, PlanStatePatch, PlanStateRejection,
 };
+use ai::process::scheduler::plan_store::load_plan;
 use ai::{Packet, PlanDecision, PlanRecord};
 use std::path::PathBuf;
 
@@ -109,6 +110,7 @@ fn plan_state_replay_contract_imports_accepts_rejects_and_reconstructs_ready_nod
             contract_node("blocked", NodeStatus::Pending),
         ],
         edges: vec![contract_edge("root", "blocked")],
+        ..Default::default()
     };
     std::fs::write(
         root.join("state/plan.json"),
@@ -161,10 +163,18 @@ fn plan_state_replay_contract_imports_accepts_rejects_and_reconstructs_ready_nod
                     path: "state/agent-evidence/new.md".to_string(),
                     kind: "validation".to_string(),
                     summary: "new evidence".to_string(),
+                    gate: "Execution".to_string(),
+                    evidence: "ExecutionReceipt".to_string(),
+                    receipt_hash: 1,
+                    accepted: true,
                 }],
             },
         ],
-        edges: vec![contract_edge("root", "blocked"), contract_edge("blocked", "new")],
+        edges: vec![
+            contract_edge("root", "blocked"),
+            contract_edge("blocked", "new"),
+        ],
+        ..Default::default()
     };
     let read_projection = plan_state_projection(&read_model);
     let new_hash = read_projection
@@ -242,10 +252,13 @@ fn plan_state_replay_contract_imports_accepts_rejects_and_reconstructs_ready_nod
         .plan_state_patch(),
     ]);
 
-    let replayed = PlanState::replay(accepted_mutations.clone()).expect("replay accepted mutations");
+    let replayed =
+        PlanState::replay(accepted_mutations.clone()).expect("replay accepted mutations");
     let mut applied = PlanState::default();
     for mutation in accepted_mutations.iter().copied() {
-        applied.apply_patch(mutation).expect("apply accepted mutation");
+        applied
+            .apply_patch(mutation)
+            .expect("apply accepted mutation");
     }
 
     assert_eq!(replayed, applied);
@@ -263,10 +276,14 @@ fn plan_state_replay_contract_imports_accepts_rejects_and_reconstructs_ready_nod
     assert_eq!(ready_node_ids, vec!["new"]);
 
     let cycle_plan = PlanDag {
-        edges: vec![contract_edge("root", "blocked"), contract_edge("blocked", "root")],
+        edges: vec![
+            contract_edge("root", "blocked"),
+            contract_edge("blocked", "root"),
+        ],
         ..loaded_plan.clone()
     };
-    let cycle_error = validate_plan_patch_mutation(&cycle_plan).unwrap_err();
+    let cycle_error = validate_plan_patch_mutation(&cycle_plan)
+        .expect_err("plan patch mutation should be rejected");
     assert_eq!(cycle_error.code, "dependency_cycle");
     let cycle_patch = PlanPatchRecord::new(
         0xadd9,
@@ -285,7 +302,8 @@ fn plan_state_replay_contract_imports_accepts_rejects_and_reconstructs_ready_nod
         edges: vec![contract_edge("missing", "blocked")],
         ..loaded_plan
     };
-    let missing_error = validate_plan_patch_mutation(&missing_dependency_plan).unwrap_err();
+    let missing_error = validate_plan_patch_mutation(&missing_dependency_plan)
+        .expect_err("plan patch mutation should be rejected");
     assert_eq!(missing_error.code, "unknown_dependency");
     let missing_patch = PlanPatchRecord::new(
         0xadd9,
@@ -305,7 +323,7 @@ fn plan_state_replay_contract_imports_accepts_rejects_and_reconstructs_ready_nod
             from_node_hash: 0xfeed,
             to_node_hash: blocked_hash,
         })])
-        .unwrap_err(),
+        .expect_err("plan patch mutation should be rejected"),
         PlanStateRejection::MissingNode
     );
 

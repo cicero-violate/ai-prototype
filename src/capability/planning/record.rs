@@ -6,8 +6,7 @@
 
 use crate::capability::{EvidenceProducer, EvidenceSubmission, PacketEffect};
 use crate::kernel::{
-    mix, Evidence, GateId, Packet, PlanEdgeProjection, PlanEvidenceProjection,
-    PlanStatePatch,
+    mix, Evidence, GateId, Packet, PlanEdgeProjection, PlanEvidenceProjection, PlanStatePatch,
 };
 use serde::Deserialize;
 
@@ -235,7 +234,10 @@ pub enum PlanJsonImportError {
     ReplayRejected,
 }
 
-#[allow(dead_code)]
+#[expect(
+    dead_code,
+    reason = "planning record constructors are retained for protocol-compatible callers"
+)]
 #[derive(Clone, Debug, Deserialize)]
 struct PlanJsonDocument {
     #[serde(default)]
@@ -244,7 +246,10 @@ struct PlanJsonDocument {
     edges: Vec<PlanJsonEdge>,
 }
 
-#[allow(dead_code)]
+#[expect(
+    dead_code,
+    reason = "planning record constructors are retained for protocol-compatible callers"
+)]
 #[derive(Clone, Debug, Deserialize)]
 struct PlanJsonNode {
     id: String,
@@ -263,12 +268,18 @@ struct PlanJsonNode {
     evidence: Vec<PlanJsonEvidence>,
 }
 
-#[allow(dead_code)]
+#[expect(
+    dead_code,
+    reason = "planning record constructors are retained for protocol-compatible callers"
+)]
 fn default_pending_status() -> String {
     "pending".to_string()
 }
 
-#[allow(dead_code)]
+#[expect(
+    dead_code,
+    reason = "planning record constructors are retained for protocol-compatible callers"
+)]
 #[derive(Clone, Debug, Deserialize)]
 struct PlanJsonEvidence {
     path: String,
@@ -276,7 +287,10 @@ struct PlanJsonEvidence {
     summary: String,
 }
 
-#[allow(dead_code)]
+#[expect(
+    dead_code,
+    reason = "planning record constructors are retained for protocol-compatible callers"
+)]
 #[derive(Clone, Debug, Deserialize)]
 struct PlanJsonEdge {
     from: String,
@@ -400,14 +414,48 @@ impl PlanPatchPayload {
 impl PlanPatchPayload {
     pub fn plan_state_patch(self) -> PlanStatePatch {
         match self {
-            Self::NodeUpsert(p) => PlanStatePatch::NodeUpsert { node_id_hash: p.node_id_hash, title_hash: p.title_hash, description_hash: p.description_hash, status: p.status as u64, assignee_hash: p.assignee_hash, score_axes_hash: p.score_axes_hash, files_hash: p.files_hash },
-            Self::EdgeAdd(p) => PlanStatePatch::EdgeAdd(PlanEdgeProjection { from_node_hash: p.from_node_hash, to_node_hash: p.to_node_hash }),
-            Self::EdgeRemove(p) => PlanStatePatch::EdgeRemove(PlanEdgeProjection { from_node_hash: p.from_node_hash, to_node_hash: p.to_node_hash }),
-            Self::NodeRemove(p) => PlanStatePatch::NodeRemove { node_id_hash: p.node_id_hash },
-            Self::StatusChange(p) => PlanStatePatch::StatusChange { node_id_hash: p.node_id_hash, status: p.status as u64 },
-            Self::AssigneeChange(p) => PlanStatePatch::AssigneeChange { node_id_hash: p.node_id_hash, assignee_hash: p.assignee_hash },
-            Self::EvidenceAppend(p) => PlanStatePatch::EvidenceAppend { node_id_hash: p.node_id_hash, evidence: PlanEvidenceProjection { path_hash: p.path_hash, kind_hash: p.kind_hash, summary_hash: p.summary_hash } },
-            Self::FullImport(p) => PlanStatePatch::FullImport { node_count: p.node_count, edge_count: p.edge_count, nodes_hash: p.nodes_hash, edges_hash: p.edges_hash },
+            Self::NodeUpsert(p) => PlanStatePatch::NodeUpsert {
+                node_id_hash: p.node_id_hash,
+                title_hash: p.title_hash,
+                description_hash: p.description_hash,
+                status: p.status as u64,
+                assignee_hash: p.assignee_hash,
+                score_axes_hash: p.score_axes_hash,
+                files_hash: p.files_hash,
+            },
+            Self::EdgeAdd(p) => PlanStatePatch::EdgeAdd(PlanEdgeProjection {
+                from_node_hash: p.from_node_hash,
+                to_node_hash: p.to_node_hash,
+            }),
+            Self::EdgeRemove(p) => PlanStatePatch::EdgeRemove(PlanEdgeProjection {
+                from_node_hash: p.from_node_hash,
+                to_node_hash: p.to_node_hash,
+            }),
+            Self::NodeRemove(p) => PlanStatePatch::NodeRemove {
+                node_id_hash: p.node_id_hash,
+            },
+            Self::StatusChange(p) => PlanStatePatch::StatusChange {
+                node_id_hash: p.node_id_hash,
+                status: p.status as u64,
+            },
+            Self::AssigneeChange(p) => PlanStatePatch::AssigneeChange {
+                node_id_hash: p.node_id_hash,
+                assignee_hash: p.assignee_hash,
+            },
+            Self::EvidenceAppend(p) => PlanStatePatch::EvidenceAppend {
+                node_id_hash: p.node_id_hash,
+                evidence: PlanEvidenceProjection {
+                    path_hash: p.path_hash,
+                    kind_hash: p.kind_hash,
+                    summary_hash: p.summary_hash,
+                },
+            },
+            Self::FullImport(p) => PlanStatePatch::FullImport {
+                node_count: p.node_count,
+                edge_count: p.edge_count,
+                nodes_hash: p.nodes_hash,
+                edges_hash: p.edges_hash,
+            },
         }
     }
 }

@@ -368,7 +368,7 @@ fn apply_plan_tlog_patch(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::domain::plan::{PlanEdge, PlanEvidenceRef, PlanNode};
+    use crate::domain::plan::{PlanEdge, PlanEvidenceRef, PlanNode, EVIDENCE_KIND_VALIDATION};
 
     fn test_root(name: &str) -> PathBuf {
         let mut root = std::env::temp_dir();
@@ -441,7 +441,7 @@ mod tests {
         let root = test_root("evidence");
         let accepted = PlanEvidenceRef {
             path: "state/agent-evidence/a.md".to_string(),
-            kind: "validation".to_string(),
+            kind: EVIDENCE_KIND_VALIDATION.to_string(),
             summary: "accepted evidence".to_string(),
             gate: String::new(),
             evidence: String::new(),
@@ -450,7 +450,7 @@ mod tests {
         };
         let stale = PlanEvidenceRef {
             path: "state/agent-evidence/stale.md".to_string(),
-            kind: "validation".to_string(),
+            kind: EVIDENCE_KIND_VALIDATION.to_string(),
             summary: "stale evidence".to_string(),
             gate: String::new(),
             evidence: String::new(),

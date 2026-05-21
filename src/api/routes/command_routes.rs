@@ -6,6 +6,7 @@ use crate::api::protocol::{
     ControlEventResponse,
 };
 use crate::capability::orchestration::{AgentCycleEvent, ChildCompleteRecord, WaveRecord};
+use crate::capability::planning::PlanPatchRecord;
 use crate::capability::tooling::{
     McpCallReceipt, McpCallRequest, SandboxProcessReceipt, SandboxProcessRequest,
 };
@@ -116,6 +117,9 @@ fn apply_command(
         Command::SubmitChildComplete(record) => {
             apply_child_complete_command(state, tlog, cfg, record, receipt)
         }
+        Command::SubmitPlanPatch(record) => {
+            apply_plan_patch_command(state, tlog, cfg, record, receipt)
+        }
     }
 }
 
@@ -218,7 +222,7 @@ fn apply_wave_dispatch_command(
 ) -> Result<(), CanonError> {
     let before = *state;
     let mut after = before;
-    after.wave_pending = before.wave_pending.saturating_add(record.node_count);
+    after.wave_pending = record.node_count;
     let outcome = Outcome {
         state: after,
         kind: EventKind::Persisted,
@@ -242,8 +246,11 @@ fn apply_child_complete_command(
     receipt: Option<(u64, u64)>,
 ) -> Result<(), CanonError> {
     let before = *state;
+    if before.wave_pending == 0 {
+        return Err(CanonError::InvalidReplay);
+    }
     let mut after = before;
-    after.wave_pending = before.wave_pending.saturating_sub(1);
+    after.wave_pending = before.wave_pending - 1;
     let outcome = Outcome {
         state: after,
         kind: EventKind::Persisted,
@@ -257,6 +264,31 @@ fn apply_child_complete_command(
     let tlog_event = append_observational_event(tlog, before, outcome, cfg, receipt)?;
     *state = tlog_event.state_after;
     let _ = record;
+    Ok(())
+}
+
+fn apply_plan_patch_command(
+    state: &mut State,
+    tlog: &mut TLog,
+    cfg: RuntimeConfig,
+    record: PlanPatchRecord,
+    receipt: Option<(u64, u64)>,
+) -> Result<(), CanonError> {
+    let before = *state;
+    let mut after = before;
+    after.plan_state_hash = record.patch_hash;
+    let outcome = Outcome {
+        state: after,
+        kind: EventKind::Persisted,
+        cause: Cause::PlanReady,
+        evidence: Evidence::PlanRecord,
+        decision: Decision::Continue,
+        failure: None,
+        recovery_action: None,
+        affected_gate: None,
+    };
+    let tlog_event = append_observational_event(tlog, before, outcome, cfg, receipt)?;
+    *state = tlog_event.state_after;
     Ok(())
 }
 

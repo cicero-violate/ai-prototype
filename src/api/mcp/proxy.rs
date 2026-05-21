@@ -15,7 +15,14 @@ pub fn kernel_command_payload_tag(command: &KernelCommand) -> &'static str {
         KernelCommand::SubmitMcpCallReceipt(_) => "SubmitMcpCallReceipt",
         KernelCommand::SubmitProcessReceipt(_) => "SubmitProcessReceipt",
         KernelCommand::SubmitMailboxMessageReceipt(_) => "SubmitMailboxMessageReceipt",
-        _ => "Unsupported",
+        KernelCommand::SubmitEvidence(_)
+        | KernelCommand::SubmitEvidenceBatch(_)
+        | KernelCommand::SubmitObservationIngress(_)
+        | KernelCommand::SubmitProcessReceiptBatch(_)
+        | KernelCommand::SubmitAgentCycleEvent(_)
+        | KernelCommand::SubmitWaveDispatch(_)
+        | KernelCommand::SubmitChildComplete(_)
+        | KernelCommand::SubmitPlanPatch(_) => "Unsupported",
     }
 }
 
@@ -58,7 +65,14 @@ pub fn kernel_command_payload(command: &KernelCommand) -> Result<Value, String> 
         KernelCommand::SubmitMailboxMessageReceipt(receipt) => {
             Ok(mailbox_message_receipt_payload(receipt))
         }
-        _ => Err("unsupported ai mcp kernel command".to_string()),
+        KernelCommand::SubmitEvidence(_)
+        | KernelCommand::SubmitEvidenceBatch(_)
+        | KernelCommand::SubmitObservationIngress(_)
+        | KernelCommand::SubmitProcessReceiptBatch(_)
+        | KernelCommand::SubmitAgentCycleEvent(_)
+        | KernelCommand::SubmitWaveDispatch(_)
+        | KernelCommand::SubmitChildComplete(_)
+        | KernelCommand::SubmitPlanPatch(_) => Err("unsupported ai mcp kernel command".to_string()),
     }
 }
 
@@ -77,36 +91,55 @@ pub async fn submit_mcp_kernel_command(
         "payload": payload,
         "source": "ai-mcp"
     });
-    let response = reqwest::Client::new()
-        .post(format!("http://127.0.0.1:{worker_port}/v1/command"))
-        .header("content-type", "application/json")
-        .body(body.to_string())
-        .send()
-        .await
-        .map_err(|err| format!("worker command proxy failed: {err}"))?;
-    let status = response.status();
-    let bytes = response
-        .bytes()
-        .await
-        .map_err(|err| format!("worker command body read failed: {err}"))?;
-    if status.is_success() {
-        Ok(())
-    } else {
-        Err(format!(
-            "worker returned HTTP {}: {}",
-            status.as_u16(),
-            String::from_utf8_lossy(&bytes)
-        ))
+    let body_str = body.to_string();
+    let url = format!("http://127.0.0.1:{worker_port}/v1/command");
+    let mut last_err = String::new();
+    for attempt in 0u32..3 {
+        if attempt > 0 {
+            tokio::time::sleep(std::time::Duration::from_millis(300 * u64::from(attempt))).await;
+        }
+        let result = reqwest::Client::new()
+            .post(&url)
+            .header("content-type", "application/json")
+            .body(body_str.clone())
+            .send()
+            .await;
+        match result {
+            Err(err) => {
+                last_err = format!("worker command proxy failed: {err}");
+                continue;
+            }
+            Ok(response) => {
+                let status = response.status();
+                let bytes = response
+                    .bytes()
+                    .await
+                    .map_err(|err| format!("worker command body read failed: {err}"))?;
+                if status.is_success() {
+                    return Ok(());
+                }
+                // 5xx: transient — retry. 4xx: definitive — don't retry.
+                last_err = format!(
+                    "worker returned HTTP {}: {}",
+                    status.as_u16(),
+                    String::from_utf8_lossy(&bytes)
+                );
+                if status.as_u16() < 500 {
+                    return Err(last_err);
+                }
+            }
+        }
     }
+    Err(last_err)
 }
 
 fn sandbox_process_request_payload(request: &SandboxProcessRequest) -> Value {
     sandbox_process_base_payload(
-        &request.registry_policy_hash,
-        &request.command_hash,
-        &request.argv_hash,
-        &request.cwd_hash,
-        &request.env_hash,
+        request.registry_policy_hash,
+        request.command_hash,
+        request.argv_hash,
+        request.cwd_hash,
+        request.env_hash,
         request.timeout_ms,
         request.max_output_bytes,
     )
@@ -114,11 +147,11 @@ fn sandbox_process_request_payload(request: &SandboxProcessRequest) -> Value {
 
 fn sandbox_process_receipt_payload(receipt: &SandboxProcessReceipt) -> Value {
     let mut payload = sandbox_process_base_payload(
-        &receipt.registry_policy_hash,
-        &receipt.command_hash,
-        &receipt.argv_hash,
-        &receipt.cwd_hash,
-        &receipt.env_hash,
+        receipt.registry_policy_hash,
+        receipt.command_hash,
+        receipt.argv_hash,
+        receipt.cwd_hash,
+        receipt.env_hash,
         receipt.timeout_ms,
         receipt.max_output_bytes,
     );
@@ -158,21 +191,21 @@ fn sandbox_process_base_payload(
 
 fn mailbox_message_request_payload(request: &MailboxMessageRequest) -> Value {
     mailbox_message_base_payload(
-        &request.registry_policy_hash,
-        &request.sender_hash,
-        &request.target_hash,
-        &request.kind_hash,
-        &request.payload_hash,
+        request.registry_policy_hash,
+        request.sender_hash,
+        request.target_hash,
+        request.kind_hash,
+        request.payload_hash,
     )
 }
 
 fn mailbox_message_receipt_payload(receipt: &MailboxMessageReceipt) -> Value {
     let mut payload = mailbox_message_base_payload(
-        &receipt.registry_policy_hash,
-        &receipt.sender_hash,
-        &receipt.target_hash,
-        &receipt.kind_hash,
-        &receipt.payload_hash,
+        receipt.registry_policy_hash,
+        receipt.sender_hash,
+        receipt.target_hash,
+        receipt.kind_hash,
+        receipt.payload_hash,
     );
     payload["request_hash"] = json!(receipt.request_hash);
     payload["message_id_hash"] = json!(receipt.message_id_hash);

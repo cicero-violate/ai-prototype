@@ -1,23 +1,19 @@
 [build]
-# rustc-wrapper = "../scripts/rustc-wrapper-auto.sh"
-
-rustflags = [
-"-Dwarnings",
-"-Dunused",
-"-Dunused-attributes",
-"-Dunused-imports",
-"-Dunused-variables",
-"-Ddead-code",
-"-Dclippy::allow_attributes",
-"-Dclippy::allow_attributes_without_reason"
-]
+rustc-wrapper = "../scripts/rustc-wrapper-auto.sh"
 
 [target.'cfg(all())']
 rustflags = [
   "-Dwarnings",
+  "-Dunused",
+  "-Dunused-attributes",
+  "-Dunused-imports",
+  "-Dunused-variables",
   "-Ddead-code",
   "-Dclippy::allow_attributes",
-  "-Dclippy::allow_attributes_without_reason"
+  "-Dclippy::allow_attributes_without_reason",
+  "-Dclippy::wildcard_enum_match_arm",
+  "-Dclippy::match_wildcard_for_single_variants",
+  "-Dclippy::unwrap_used",
 ]
 
 

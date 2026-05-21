@@ -47,6 +47,10 @@ pub(super) struct TurnPromptContext {
     pub(super) prompt: String,
 }
 
+#[expect(
+    clippy::too_many_arguments,
+    reason = "prompt assembly requires all turn context fields at one boundary"
+)]
 pub(super) fn build_turn_prompt_context(
     turn: u32,
     turn_offset: u32,
@@ -115,6 +119,10 @@ pub(super) fn build_project_planning_prompt(
     )
 }
 
+#[expect(
+    clippy::too_many_arguments,
+    reason = "prompt assembly requires all turn context fields at one boundary"
+)]
 pub(super) fn planning_prompt(
     goal: &str,
     agent_id: u32,
@@ -173,8 +181,8 @@ pub(super) fn planning_prompt(
          {policy_block}\
          {mcp_error_block}\
          ## HOW MINI-AGENT DISPATCH WORKS\n\
-         After this planning turn finishes, the scheduler reads `state/plan.json` and **spawns one mini-agent per ready node in parallel**. \
-         A ready node is a `pending` node whose every dependency node is already `done`. \
+         After this planning turn finishes, the scheduler reads the TLog-projected plan read model and **spawns one mini-agent per ready node in parallel**. \
+         A ready node is projected `pending` whose every dependency node is projected `done`. \
          Nodes with no incoming edges are immediately ready. \
          Each mini-agent receives the node `title` as its task and `description` as its success criterion, runs autonomously, and commits its result. \
          The more work you decompose into independent DAG nodes, the more parallelism you get — up to one agent per node.\n\n\
@@ -371,19 +379,25 @@ pub(super) fn spawned_prompt(
     working_dir: &Path,
 ) -> String {
     let dir = working_dir.display();
+    let success_criterion = if metric.trim().is_empty() {
+        "BLOCKER: no success criterion was supplied by the scheduler. Do not invent scope. Assess the missing criterion, write blocker evidence, attach it as blocker evidence when a plan node is available, and stop without committing."
+    } else {
+        metric
+    };
     let evidence_protocol = match plan_node_id {
         Some(node_id) => format!(
             "5. Write detailed evidence to `state/agent-evidence/{node_id}.md`.\n\
              6. Append an evidence reference with `call_action` action `project:plan_update`, parameters \
              `{{\"op\":\"append_evidence\",\"node_id\":\"{node_id}\",\"evidence\":{{\"path\":\"state/agent-evidence/{node_id}.md\",\"kind\":\"validation\",\"summary\":\"<one-line result>\"}}}}`.\n\
-             7. Do not modify shared planning or score files.\n\
-             8. When the criterion is met and evidence is attached: commit all changes, then stop. The scheduler will mark your task done automatically.\n\
-             9. If the criterion cannot be met: write the blocker to `state/agent-evidence/{node_id}.md`, append evidence with `kind` set to `blocker`, then stop without committing. The scheduler will mark your task failed."
+             7. Use `project:plan_update` only with `op=append_evidence`; do not call `op=set_status`.\n\
+             8. Do not directly edit `state/plan.json`, shared planning files, score files, or TLog files.\n\
+             9. When the criterion is met: write evidence, attach evidence, commit code/evidence changes as lineage proof, then stop. The supervisor will decide completion from accepted receipts and projected evidence.\n\
+             10. If the criterion cannot be met: write the blocker to `state/agent-evidence/{node_id}.md`, append evidence with `kind` set to `blocker`, then stop without committing. The supervisor will decide failure/retry from accepted receipts and projected evidence."
         ),
         None => {
             "5. Write detailed evidence to a task-specific file under `state/agent-evidence/`.\n\
-             6. Do not modify shared planning or score files.\n\
-             7. When the criterion is met: commit all changes, then stop.\n\
+             6. Do not directly edit `state/plan.json`, shared planning files, score files, or TLog files.\n\
+             7. When the criterion is met: commit code/evidence changes as lineage proof, then stop.\n\
              8. If the criterion cannot be met: write the blocker to the evidence file, then stop without committing."
                 .to_string()
         }
@@ -397,7 +411,7 @@ pub(super) fn spawned_prompt(
              ## TASK\n\
              {domain}\n\n\
              ## SUCCESS CRITERION\n\
-             {metric}\n\n\
+             {success_criterion}\n\n\
              ## PROTOCOL\n\
              1. Assess the current state against the success criterion before doing anything else.\n\
              2. Take the minimal actions needed to meet the criterion.\n\
@@ -413,13 +427,14 @@ pub(super) fn spawned_prompt(
              ## TASK\n\
              {domain}\n\n\
              ## SUCCESS CRITERION\n\
-             {metric}\n\n\
+             {success_criterion}\n\n\
              ## PROTOCOL\n\
              1. Verify the current state against the success criterion first.\n\
-             2. If the criterion is already met: commit any uncommitted changes, then stop.\n\
+             2. If the criterion is already met: make sure evidence is written and attached when a plan node is available, commit only relevant code/evidence changes as lineage proof, then stop.\n\
              3. If not met: identify the specific gap, close it, then re-verify.\n\
              4. Every tool call must include a non-empty `intent` field.\n\
-             5. Commit only when the criterion is met and evidence is attached. Do not commit partial or failing work."
+             5. Do not call `project:plan_update` with `op=set_status`; lifecycle status is supervisor/TLog-owned.\n\
+             6. Commit only when the criterion is met and evidence is attached. Do not commit partial or failing work."
         )
     }
 }
@@ -434,7 +449,7 @@ pub(super) fn execute_prompt(turn_num: u32, agent_id: u32, agent_count: u32) -> 
          Read the current DAG via `call_action project:plan_read` to understand what is pending, blocked, failed, and already evidenced.\n\n\
          Choose one of the following based on what you find:\n\
          - **Blocked DAG nodes**: identify and resolve the blocking dependency directly (implement the prerequisite, fix the failing test, produce the missing evidence).\n\
-         - **Failed DAG nodes**: diagnose the failure, fix the root cause, reset the node to `pending` via `call_action project:plan_update` with `op=set_status`, then let the next planning turn re-dispatch it.\n\
+         - **Failed DAG nodes**: diagnose the failure, fix the root cause, write blocker or recovery evidence, and let the supervisor/recovery policy append lifecycle events for re-dispatch.\n\
          - **Empty DAG**: do direct implementation work that moves the lowest justified score axis. Pick one concrete, bounded task — a specific file, function, or test. Use `call_action workspace:apply_patch` for all file edits.\n\n\
          After implementation:\n\
          - Run the relevant validation or test command and fix any failures.\n\

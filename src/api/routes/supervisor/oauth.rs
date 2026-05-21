@@ -37,7 +37,11 @@ pub async fn ai_oauth_register(
     AxumState(state): AxumState<SupervisorState>,
     Json(body): Json<RegisterBody>,
 ) -> Response {
-    let mut oauth = state.mcp.oauth.lock().unwrap();
+    let mut oauth = state
+        .mcp
+        .oauth
+        .lock()
+        .expect("oauth mutex should not be poisoned");
     oauth.register_client_response(body)
 }
 
@@ -45,7 +49,11 @@ pub async fn ai_oauth_authorize_get(
     AxumState(state): AxumState<SupervisorState>,
     Query(q): Query<AuthorizeQuery>,
 ) -> Response {
-    let oauth = state.mcp.oauth.lock().unwrap();
+    let oauth = state
+        .mcp
+        .oauth
+        .lock()
+        .expect("oauth mutex should not be poisoned");
     let page = match oauth.authorize_page_context(&q) {
         Ok(page) => page,
         Err(response) => return response,
@@ -85,7 +93,7 @@ pub async fn ai_oauth_authorize_post(
         .mcp
         .oauth
         .lock()
-        .unwrap()
+        .expect("oauth mutex should not be poisoned")
         .authorize_decision_response(form)
 }
 
@@ -93,7 +101,12 @@ pub async fn ai_oauth_token(
     AxumState(state): AxumState<SupervisorState>,
     Form(form): Form<TokenForm>,
 ) -> Response {
-    state.mcp.oauth.lock().unwrap().token_response(form)
+    state
+        .mcp
+        .oauth
+        .lock()
+        .expect("oauth mutex should not be poisoned")
+        .token_response(form)
 }
 
 pub fn require_ai_mcp_auth(state: &SupervisorState, headers: &HeaderMap) -> Option<Response> {
@@ -102,7 +115,16 @@ pub fn require_ai_mcp_auth(state: &SupervisorState, headers: &HeaderMap) -> Opti
         .and_then(|value| value.to_str().ok())
         .and_then(|value| value.strip_prefix("Bearer "));
     match token {
-        Some(token) if state.mcp.oauth.lock().unwrap().access_token_valid(token) => None,
+        Some(token)
+            if state
+                .mcp
+                .oauth
+                .lock()
+                .expect("oauth mutex should not be poisoned")
+                .access_token_valid(token) =>
+        {
+            None
+        }
         Some(_) => Some(ai_mcp_auth_error_response(state, "invalid_token")),
         None => Some(ai_mcp_auth_error_response(state, "unauthorized")),
     }

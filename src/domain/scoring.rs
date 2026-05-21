@@ -235,7 +235,11 @@ pub fn verdict_for_scores(domain_id: DomainId, inputs: DomainScoreInputs) -> Dom
         }
         _ if domain_value.get() < 100 || actionability.get() < 50 => DomainVerdict::Ignore,
         _ if domain_value.get() < 200 => DomainVerdict::Watch,
-        _ => DomainVerdict::Research,
+        DomainId::Unknown
+        | DomainId::GlobalIntelligence
+        | DomainId::Finance
+        | DomainId::Business
+        | DomainId::TradingSandbox => DomainVerdict::Research,
     }
 }
 

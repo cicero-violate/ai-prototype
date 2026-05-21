@@ -17,14 +17,20 @@ pub struct WorkspaceUpdateBody {
 }
 
 pub async fn ai_workspace_get(AxumState(state): AxumState<SupervisorState>) -> Json<Value> {
-    Json(workspace_json(&state))
+    Json(state.workspace_status_json())
 }
 
 pub async fn ai_workspace_update(
     AxumState(state): AxumState<SupervisorState>,
     Json(body): Json<WorkspaceUpdateBody>,
 ) -> Response {
-    let allowed = state.mcp.workspace.lock().unwrap().allowed_boundary.clone();
+    let allowed = state
+        .mcp
+        .workspace
+        .lock()
+        .expect("workspace mutex should not be poisoned")
+        .allowed_boundary
+        .clone();
     let next = match WorkspaceConfig::new(body.root, allowed) {
         Ok(next) => next,
         Err(error) => {
@@ -35,12 +41,21 @@ pub async fn ai_workspace_update(
                 .into_response();
         }
     };
-    *state.mcp.workspace.lock().unwrap() = next;
+    *state
+        .mcp
+        .workspace
+        .lock()
+        .expect("workspace mutex should not be poisoned") = next;
     Json(workspace_json(&state)).into_response()
 }
 
 fn workspace_json(state: &SupervisorState) -> Value {
-    let workspace = state.mcp.workspace.lock().unwrap().clone();
+    let workspace = state
+        .mcp
+        .workspace
+        .lock()
+        .expect("workspace mutex should not be poisoned")
+        .clone();
     json!({
         "ok": true,
         "workspaceRoot": workspace.root.display().to_string(),
