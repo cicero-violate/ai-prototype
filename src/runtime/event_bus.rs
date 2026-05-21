@@ -253,6 +253,30 @@ mod tests {
     }
 
     #[test]
+    fn replay_reconstructs_missed_wakeups_after_projection_is_discarded() {
+        let tlog = vec![
+            event(11, EventKind::Advanced, Cause::PlanReady, Evidence::TaskReady),
+            event(12, EventKind::Blocked, Cause::GateFailed, Evidence::Missing),
+        ];
+        let mut disposable = RuntimeEventBus::replay(&tlog);
+        let before_drop = disposable.wakeups().to_vec();
+
+        disposable.clear_disposable_projection();
+        assert!(disposable.wakeups().is_empty());
+
+        let replayed = RuntimeEventBus::replay(&tlog);
+        assert_eq!(replayed.wakeups(), before_drop.as_slice());
+        assert_eq!(
+            replayed
+                .wakeups()
+                .iter()
+                .map(|wakeup| wakeup.kind)
+                .collect::<Vec<_>>(),
+            vec![WakeupKind::TaskReady, WakeupKind::GateFailed]
+        );
+    }
+
+    #[test]
     fn wakeups_are_ordered_by_event_seq_even_when_appends_arrive_out_of_order() {
         let mut bus = RuntimeEventBus::new();
         let eval = event(30, EventKind::Advanced, Cause::EvalPassed, Evidence::EvalScore);
