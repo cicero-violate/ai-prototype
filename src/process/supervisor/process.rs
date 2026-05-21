@@ -590,6 +590,69 @@ impl WorkerProcess {
         }
     }
 
+    /// Scan the plan read-model for nodes that have terminal evidence in the TLog
+    /// but whose status has not been promoted yet.
+    ///
+    /// Two cases are closed:
+    /// - Any non-terminal node with a `blocker` evidence entry → Failed.
+    ///   Workers that hit an unresolvable condition write a blocker and stop
+    ///   without sending a completion callback, leaving the node stuck.
+    /// - Any non-terminal node with an accepted execution-receipt evidence entry
+    ///   → Done. Guards against missed completion callbacks (e.g. worker crash
+    ///   after appending evidence but before the HTTP POST returned).
+    pub fn reconcile_terminal_evidence(&self) {
+        let (plan, _) = load_plan_read_model(&self.project_dir)
+            .unwrap_or_else(|_| (load_plan(&self.project_dir), None));
+
+        let mut promoted_done = 0usize;
+        let mut promoted_failed = 0usize;
+
+        for node in &plan.nodes {
+            if matches!(
+                node.status,
+                NodeStatus::Done | NodeStatus::Failed | NodeStatus::Skipped
+            ) {
+                continue;
+            }
+
+            let has_blocker = node.evidence.iter().any(|e| e.kind == "blocker");
+            let has_accepted_receipt = node.evidence.iter().any(|e| e.is_accepted_execution_receipt());
+
+            // Accepted receipt takes precedence over a blocker if somehow both exist.
+            if has_accepted_receipt {
+                eprintln!(
+                    "supervisor: reconcile — promoting {} to Done (accepted receipt evidence found)",
+                    node.id
+                );
+                match append_status_change_patch(&self.project_dir, &node.id, &NodeStatus::Done) {
+                    Ok(()) => promoted_done += 1,
+                    Err(e) => eprintln!(
+                        "supervisor: reconcile Done patch failed for {}: {e}",
+                        node.id
+                    ),
+                }
+            } else if has_blocker {
+                eprintln!(
+                    "supervisor: reconcile — promoting {} to Failed (blocker evidence found)",
+                    node.id
+                );
+                match append_status_change_patch(&self.project_dir, &node.id, &NodeStatus::Failed) {
+                    Ok(()) => promoted_failed += 1,
+                    Err(e) => eprintln!(
+                        "supervisor: reconcile Failed patch failed for {}: {e}",
+                        node.id
+                    ),
+                }
+            }
+        }
+
+        if promoted_done + promoted_failed > 0 {
+            eprintln!(
+                "supervisor: reconcile complete — done={promoted_done} failed={promoted_failed}"
+            );
+        }
+    }
+
     /// Node IDs with non-expired leases (used by GET /v1/task/next to filter).
     pub fn active_claimed_node_ids(&self) -> Vec<String> {
         let now_ms = current_ms();
