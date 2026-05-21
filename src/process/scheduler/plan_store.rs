@@ -8,17 +8,20 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 
 use crate::capability::planning::{
-    PlanEvidenceAppendPatch, PlanNodeStatus, PlanPatchPayload, PlanPatchRecord,
-    PlanStatusChangePatch,
+    PlanAssigneeChangePatch, PlanEdgePatch, PlanEvidenceAppendPatch, PlanNodeRemovePatch,
+    PlanNodeStatus, PlanNodeUpsertPatch, PlanPatchPayload, PlanPatchRecord, PlanStatusChangePatch,
 };
 use crate::codec::{
     append_plan_patch_record_ndjson, load_plan_patch_records_ndjson, PlanPatchTlogRecord,
 };
-use crate::domain::plan::{plan_state_projection, plan_text_hash, NodeStatus, PlanDag};
-use crate::kernel::PlanState;
+use crate::domain::plan::{
+    plan_state_projection, plan_text_hash, NodeStatus, PlanDag, PlanEdge, PlanNode,
+};
+use crate::kernel::{PlanState, PlanStatePatch, PlanStateRejection};
 
 pub const PLAN_FILE: &str = "state/plan.json";
 pub const CANONICAL_TLOG_FILE: &str = "state/tlog/canon-agent.tlog.ndjson";
+pub const PLAN_PATCH_TLOG_FILE: &str = "state/tlog/plan-patches.tlog.ndjson";
 
 pub fn plan_path(workspace_root: &Path) -> PathBuf {
     workspace_root.join(PLAN_FILE)
@@ -26,6 +29,10 @@ pub fn plan_path(workspace_root: &Path) -> PathBuf {
 
 pub fn canonical_tlog_path(workspace_root: &Path) -> PathBuf {
     workspace_root.join(CANONICAL_TLOG_FILE)
+}
+
+pub fn plan_patch_tlog_path(workspace_root: &Path) -> PathBuf {
+    workspace_root.join(PLAN_PATCH_TLOG_FILE)
 }
 
 pub fn append_status_change_patch(
@@ -60,8 +67,73 @@ pub fn append_evidence_patch(
     )
 }
 
-fn append_accepted_plan_patch(workspace_root: &Path, payload: PlanPatchPayload) -> Result<(), String> {
-    let tlog_path = canonical_tlog_path(workspace_root);
+pub fn append_node_upsert_patch(workspace_root: &Path, node: &PlanNode) -> Result<(), String> {
+    append_accepted_plan_patch(
+        workspace_root,
+        PlanPatchPayload::NodeUpsert(PlanNodeUpsertPatch {
+            node_id_hash: plan_text_hash(&node.id),
+            title_hash: plan_text_hash(&node.title),
+            description_hash: plan_text_hash(&node.description),
+            status: plan_node_status(&node.status),
+            assignee_hash: node
+                .assignee
+                .as_deref()
+                .map(plan_text_hash)
+                .unwrap_or_default(),
+            score_axes_hash: plan_text_list_hash(&node.score_axes),
+            files_hash: plan_text_list_hash(&node.files),
+        }),
+    )
+}
+
+pub fn append_edge_add_patch(workspace_root: &Path, edge: &PlanEdge) -> Result<(), String> {
+    append_accepted_plan_patch(
+        workspace_root,
+        PlanPatchPayload::EdgeAdd(PlanEdgePatch {
+            from_node_hash: plan_text_hash(&edge.from),
+            to_node_hash: plan_text_hash(&edge.to),
+        }),
+    )
+}
+
+pub fn append_edge_remove_patch(workspace_root: &Path, edge: &PlanEdge) -> Result<(), String> {
+    append_accepted_plan_patch(
+        workspace_root,
+        PlanPatchPayload::EdgeRemove(PlanEdgePatch {
+            from_node_hash: plan_text_hash(&edge.from),
+            to_node_hash: plan_text_hash(&edge.to),
+        }),
+    )
+}
+
+pub fn append_node_remove_patch(workspace_root: &Path, node_id: &str) -> Result<(), String> {
+    append_accepted_plan_patch(
+        workspace_root,
+        PlanPatchPayload::NodeRemove(PlanNodeRemovePatch {
+            node_id_hash: plan_text_hash(node_id),
+        }),
+    )
+}
+
+pub fn append_assignee_change_patch(
+    workspace_root: &Path,
+    node_id: &str,
+    assignee: Option<&str>,
+) -> Result<(), String> {
+    append_accepted_plan_patch(
+        workspace_root,
+        PlanPatchPayload::AssigneeChange(PlanAssigneeChangePatch {
+            node_id_hash: plan_text_hash(node_id),
+            assignee_hash: assignee.map(plan_text_hash).unwrap_or_default(),
+        }),
+    )
+}
+
+fn append_accepted_plan_patch(
+    workspace_root: &Path,
+    payload: PlanPatchPayload,
+) -> Result<(), String> {
+    let tlog_path = plan_patch_tlog_path(workspace_root);
     if let Some(parent) = tlog_path.parent() {
         std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
     }
@@ -126,6 +198,12 @@ fn plan_node_status(status: &NodeStatus) -> PlanNodeStatus {
     }
 }
 
+fn plan_text_list_hash(values: &[String]) -> u64 {
+    values.iter().fold(0x504c_414e_4c49_5354u64, |hash, value| {
+        hash.wrapping_mul(0x0000_0100_0000_01b3) ^ plan_text_hash(value)
+    })
+}
+
 fn structural_plan_import_projection(plan: &PlanDag) -> PlanState {
     let mut projection = plan.clone();
     for node in &mut projection.nodes {
@@ -164,7 +242,7 @@ pub fn save_plan(workspace_root: &Path, plan: &PlanDag) -> Result<(), String> {
 /// used only as the import/read-model base before replaying accepted TLog
 /// mutations.
 pub fn load_tlog_projected_plan_state(workspace_root: &Path) -> Result<Option<PlanState>, String> {
-    load_tlog_projected_plan_state_from_path(workspace_root, &canonical_tlog_path(workspace_root))
+    load_tlog_projected_plan_state_from_path(workspace_root, &plan_patch_tlog_path(workspace_root))
 }
 
 pub fn load_plan_read_model(workspace_root: &Path) -> Result<(PlanDag, Option<PlanState>), String> {
@@ -251,8 +329,7 @@ pub fn load_tlog_projected_plan_state_from_path(
                 let Some(patch) = pending.get(&accepted.patch_hash).copied() else {
                     continue;
                 };
-                projection
-                    .apply_patch(patch.payload.plan_state_patch())
+                apply_plan_tlog_patch(&mut projection, patch.payload)
                     .map_err(|rejection| format!("plan TLog replay rejected: {rejection:?}"))?;
                 applied += 1;
             }
@@ -264,6 +341,27 @@ pub fn load_tlog_projected_plan_state_from_path(
         Ok(None)
     } else {
         Ok(Some(projection))
+    }
+}
+
+fn apply_plan_tlog_patch(
+    projection: &mut PlanState,
+    payload: PlanPatchPayload,
+) -> Result<(), PlanStateRejection> {
+    let mutation = payload.plan_state_patch();
+    match projection.apply_patch(mutation) {
+        Ok(_) => Ok(()),
+        Err(PlanStateRejection::MissingNode)
+            if matches!(mutation, PlanStatePatch::NodeRemove { .. }) =>
+        {
+            Ok(())
+        }
+        Err(PlanStateRejection::MissingEdge)
+            if matches!(mutation, PlanStatePatch::EdgeRemove(_)) =>
+        {
+            Ok(())
+        }
+        Err(rejection) => Err(rejection),
     }
 }
 
@@ -303,7 +401,10 @@ mod tests {
         let root = test_root("status");
         let mut plan = PlanDag {
             version: 1,
-            nodes: vec![node("a", NodeStatus::Pending), node("b", NodeStatus::Pending)],
+            nodes: vec![
+                node("a", NodeStatus::Pending),
+                node("b", NodeStatus::Pending),
+            ],
             edges: vec![PlanEdge {
                 from: "a".to_string(),
                 to: "b".to_string(),
@@ -317,7 +418,8 @@ mod tests {
         plan.nodes[0].status = NodeStatus::Pending;
         save_plan(&root, &plan).expect("save stale read model");
 
-        let (read_model, plan_state) = load_plan_read_model(&root).expect("load projected read model");
+        let (read_model, plan_state) =
+            load_plan_read_model(&root).expect("load projected read model");
 
         assert_eq!(read_model.nodes[0].status, NodeStatus::Done);
         assert_eq!(
@@ -373,7 +475,8 @@ mod tests {
         )
         .expect("append evidence patch");
 
-        let (read_model, plan_state) = load_plan_read_model(&root).expect("load projected read model");
+        let (read_model, plan_state) =
+            load_plan_read_model(&root).expect("load projected read model");
 
         assert!(plan_state.is_some());
         assert_eq!(read_model.nodes[0].evidence.len(), 1);
