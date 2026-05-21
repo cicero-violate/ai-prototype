@@ -3,19 +3,38 @@
 //! This belongs to the outer API layer because it owns OS process lifecycle,
 //! HTTP health probing, and bridge calls into the agent loop driver.
 
+use std::collections::HashMap;
 use std::env;
 use std::net::TcpListener as StdTcpListener;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Stdio;
 use std::time::{Duration, Instant};
 
 use serde::{Deserialize, Serialize};
-use tokio::process::{Child, Command};
+use tokio::process::{Child, Command as TokioCommand};
 
+use crate::api::protocol::{Command as KernelCommand, CommandEnvelope};
+use crate::capability::orchestration::TaskLifecycleReceipt;
+use crate::domain::plan::{plan_text_hash, NodeStatus, PlanEvidenceRef};
+use crate::kernel::{mix, PlanEvidenceProjection};
+use crate::process::agent::loop_driver::http::post_json_local;
 use crate::process::agent::{
     AgentLoopConfig, LoopDriver, DEFAULT_MINI_AGENT_COUNT, MAX_MINI_AGENT_COUNT,
 };
+use crate::process::scheduler::plan_store::{
+    append_evidence_patch, append_status_change_patch, load_plan, load_plan_read_model,
+    load_tlog_projected_plan_state,
+};
 use crate::runtime::workspace::workspace_state_dir;
+
+const DEFAULT_LEASE_TTL_MS: u64 = 300_000;
+
+fn current_ms() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_millis() as u64
+}
 
 pub struct WorkerProcess {
     active: Option<WorkerInstance>,
@@ -29,6 +48,9 @@ pub struct WorkerProcess {
     mcp_connector_url: String,
     supervisor_port: u16,
     next_spawn: u64,
+    /// Active task leases keyed by node_id.
+    task_leases: HashMap<String, TaskLease>,
+    next_claim_id: u64,
 }
 
 impl WorkerProcess {
@@ -53,6 +75,8 @@ impl WorkerProcess {
             mcp_connector_url,
             supervisor_port,
             next_spawn: 0,
+            task_leases: HashMap::new(),
+            next_claim_id: 1,
         }
     }
 
@@ -156,7 +180,7 @@ impl WorkerProcess {
 
         let project_dir = self.project_dir.clone();
         let mcp_connector_url = self.mcp_connector_url.clone();
-        let execute_turns = max_steps.min(100).max(1) as u32;
+        let execute_turns = max_steps.clamp(1, 100) as u32;
         let sse_chunks_dir = workspace_state_dir(&project_dir)
             .join("agent_state")
             .join("sse-chunks");
@@ -175,6 +199,10 @@ impl WorkerProcess {
             router_idle_ms: 2_500,
             worker_port: Some(worker_port),
             supervisor_port: Some(self.supervisor_port),
+            browser_router_url: std::env::var("CANON_OPENAI_BASE_URL").ok().map(|url| {
+                let url = url.trim_end_matches('/').to_string();
+                url.strip_suffix("/v1").unwrap_or(&url).to_string()
+            }),
             cert_max_steps: 30,
             domain: Some(domain.to_string()),
             metric: Some(metric.to_string()),
@@ -251,6 +279,10 @@ impl WorkerProcess {
             router_idle_ms: 2_500,
             worker_port: Some(worker_port),
             supervisor_port: Some(self.supervisor_port),
+            browser_router_url: std::env::var("CANON_OPENAI_BASE_URL").ok().map(|url| {
+                let url = url.trim_end_matches('/').to_string();
+                url.strip_suffix("/v1").unwrap_or(&url).to_string()
+            }),
             cert_max_steps: 30,
             domain: None,
             metric: None,
@@ -272,6 +304,302 @@ impl WorkerProcess {
         })
     }
 
+    /// Claim a ready plan node for a worker.  Atomic under the supervisor Mutex.
+    pub fn claim_task(&mut self, req: TaskClaimRequest) -> Result<TaskClaimDto, String> {
+        let now_ms = current_ms();
+        self.task_leases.retain(|_, l| l.expires_at_ms > now_ms);
+
+        // Idempotency: same worker + same key on the same node → re-use existing claim.
+        if let Some(existing) = self.task_leases.get(&req.node_id) {
+            if existing.worker_id == req.worker_id
+                && existing.idempotency_key == req.idempotency_key
+            {
+                let receipt = TaskLifecycleReceipt::claim(
+                    &existing.node_id,
+                    &existing.worker_id,
+                    existing.claim_id,
+                    existing.idempotency_key,
+                    existing.expires_at_ms,
+                    now_ms,
+                );
+                let tlog_submitted = self.submit_task_lifecycle_receipt(receipt, "claim");
+                return Ok(TaskClaimDto {
+                    ok: true,
+                    node_id: req.node_id,
+                    claim_id: existing.claim_id,
+                    expires_at_ms: existing.expires_at_ms,
+                    receipt_hash: receipt.receipt_hash,
+                    tlog_submitted,
+                });
+            }
+            return Err(format!("node {} is already claimed", req.node_id));
+        }
+
+        let (plan, _) = load_plan_read_model(&self.project_dir)
+            .unwrap_or_else(|_| (load_plan(&self.project_dir), None));
+        let node = plan
+            .nodes
+            .iter()
+            .find(|n| n.id == req.node_id)
+            .ok_or_else(|| format!("node {} not found in plan", req.node_id))?;
+
+        if node.status != NodeStatus::Pending {
+            return Err(format!(
+                "node {} is not pending (current status is not claimable)",
+                req.node_id
+            ));
+        }
+
+        let claim_id = self.next_claim_id;
+        self.next_claim_id = self.next_claim_id.saturating_add(1).max(1);
+
+        let lease_ttl_ms = req.lease_ttl_ms.unwrap_or(DEFAULT_LEASE_TTL_MS);
+        let expires_at_ms = now_ms.saturating_add(lease_ttl_ms);
+
+        append_status_change_patch(&self.project_dir, &req.node_id, &NodeStatus::Running)
+            .map_err(|e| format!("append task claim plan patch failed: {e}"))?;
+
+        self.task_leases.insert(
+            req.node_id.clone(),
+            TaskLease {
+                node_id: req.node_id.clone(),
+                worker_id: req.worker_id.clone(),
+                claim_id,
+                idempotency_key: req.idempotency_key,
+                expires_at_ms,
+            },
+        );
+
+        let receipt = TaskLifecycleReceipt::claim(
+            &req.node_id,
+            &req.worker_id,
+            claim_id,
+            req.idempotency_key,
+            expires_at_ms,
+            now_ms,
+        );
+        let tlog_submitted = self.submit_task_lifecycle_receipt(receipt, "claim");
+
+        eprintln!(
+            "supervisor: task claimed  node={}  worker={}  claim_id={}  expires_at_ms={}",
+            req.node_id, req.worker_id, claim_id, expires_at_ms
+        );
+        Ok(TaskClaimDto {
+            ok: true,
+            node_id: req.node_id.clone(),
+            claim_id,
+            expires_at_ms,
+            receipt_hash: receipt.receipt_hash,
+            tlog_submitted,
+        })
+    }
+
+    /// Renew the lease for an active claim.
+    pub fn heartbeat_task(
+        &mut self,
+        req: TaskHeartbeatRequest,
+    ) -> Result<TaskHeartbeatDto, String> {
+        let now_ms = current_ms();
+
+        let lease = self
+            .task_leases
+            .get_mut(&req.node_id)
+            .ok_or_else(|| format!("no active lease for node {}", req.node_id))?;
+
+        if lease.claim_id != req.claim_id {
+            return Err(format!("claim_id mismatch for node {}", req.node_id));
+        }
+        if lease.worker_id != req.worker_id {
+            return Err(format!("worker_id mismatch for node {}", req.node_id));
+        }
+        if lease.expires_at_ms <= now_ms {
+            self.task_leases.remove(&req.node_id);
+            return Err(format!("lease for node {} has expired", req.node_id));
+        }
+
+        let lease_ttl_ms = req.lease_ttl_ms.unwrap_or(DEFAULT_LEASE_TTL_MS);
+        lease.expires_at_ms = now_ms.saturating_add(lease_ttl_ms);
+        let expires_at_ms = lease.expires_at_ms;
+
+        let receipt = TaskLifecycleReceipt::heartbeat(
+            &req.node_id,
+            &req.worker_id,
+            req.claim_id,
+            expires_at_ms,
+            now_ms,
+        );
+        let tlog_submitted = self.submit_task_lifecycle_receipt(receipt, "heartbeat");
+
+        Ok(TaskHeartbeatDto {
+            ok: true,
+            expires_at_ms,
+            receipt_hash: receipt.receipt_hash,
+            tlog_submitted,
+        })
+    }
+
+    /// Mark a claimed task as successfully completed.
+    pub fn complete_task(&mut self, req: TaskCompleteRequest) -> Result<TaskCompleteDto, String> {
+        let now_ms = current_ms();
+
+        let lease = self
+            .task_leases
+            .get(&req.node_id)
+            .ok_or_else(|| format!("no active lease for node {}", req.node_id))?;
+
+        if lease.claim_id != req.claim_id {
+            return Err(format!("claim_id mismatch for node {}", req.node_id));
+        }
+        if lease.worker_id != req.worker_id {
+            return Err(format!("worker_id mismatch for node {}", req.node_id));
+        }
+        if lease.expires_at_ms <= now_ms {
+            self.task_leases.remove(&req.node_id);
+            return Err(format!("lease for node {} has expired", req.node_id));
+        }
+
+        let lease_expires_at_ms = lease.expires_at_ms;
+        let evidence_hash = projected_node_evidence_hash(&self.project_dir, &req.node_id)
+            .ok_or_else(|| format!("node {} not found in plan", req.node_id))
+            .and_then(|hash| {
+                if hash == 0 {
+                    Err(format!(
+                        "node {} cannot be completed without projected task evidence",
+                        req.node_id
+                    ))
+                } else {
+                    Ok(hash)
+                }
+            })?;
+
+        let receipt = TaskLifecycleReceipt::complete(
+            &req.node_id,
+            &req.worker_id,
+            req.claim_id,
+            lease_expires_at_ms,
+            now_ms,
+            evidence_hash,
+        );
+        if !receipt.is_contract_valid() {
+            return Err(format!(
+                "invalid completion receipt for node {}",
+                req.node_id
+            ));
+        }
+        let tlog_submitted = self.submit_task_lifecycle_receipt(receipt, "complete");
+        if self.active.is_some() && !tlog_submitted {
+            return Err(format!(
+                "node {} cannot be completed because completion receipt was not accepted",
+                req.node_id
+            ));
+        }
+
+        let execution_evidence = completion_execution_evidence(&req.node_id, receipt.receipt_hash);
+        attach_supervisor_execution_evidence(&self.project_dir, &req.node_id, &execution_evidence)
+            .map_err(|e| format!("append task completion evidence patch failed: {e}"))?;
+        if !has_projected_evidence_ref(&self.project_dir, &req.node_id, &execution_evidence) {
+            return Err(format!(
+                "node {} cannot be completed without accepted execution receipt evidence",
+                req.node_id
+            ));
+        }
+
+        append_status_change_patch(&self.project_dir, &req.node_id, &NodeStatus::Done)
+            .map_err(|e| format!("append task completion plan patch failed: {e}"))?;
+        self.task_leases.remove(&req.node_id);
+
+        eprintln!(
+            "supervisor: task completed  node={}  worker={}  claim_id={}",
+            req.node_id, req.worker_id, req.claim_id
+        );
+        Ok(TaskCompleteDto {
+            ok: true,
+            receipt_hash: receipt.receipt_hash,
+            tlog_submitted,
+        })
+    }
+
+    /// Mark a claimed task as failed, optionally scheduling a retry.
+    /// `retry_after_ms == 0` → set status to Failed (no retry).
+    /// `retry_after_ms > 0`  → reset status to Pending so it can be re-claimed.
+    pub fn fail_task(&mut self, req: TaskFailRequest) -> Result<TaskFailDto, String> {
+        // Allow failing even with a mismatched/expired lease so workers can
+        // always report failure (idempotent failure path).
+        if let Some(lease) = self.task_leases.get(&req.node_id) {
+            if lease.claim_id != req.claim_id {
+                return Err(format!("claim_id mismatch for node {}", req.node_id));
+            }
+            if lease.worker_id != req.worker_id {
+                return Err(format!("worker_id mismatch for node {}", req.node_id));
+            }
+        }
+        let status = if req.retry_after_ms == 0 {
+            NodeStatus::Failed
+        } else {
+            NodeStatus::Pending
+        };
+        append_status_change_patch(&self.project_dir, &req.node_id, &status)
+            .map_err(|e| format!("append task failure plan patch failed: {e}"))?;
+        self.task_leases.remove(&req.node_id);
+
+        let receipt = TaskLifecycleReceipt::fail(
+            &req.node_id,
+            &req.worker_id,
+            req.claim_id,
+            current_ms(),
+            req.retry_after_ms,
+        );
+        let tlog_submitted = self.submit_task_lifecycle_receipt(receipt, "fail");
+
+        eprintln!(
+            "supervisor: task failed  node={}  worker={}  claim_id={}  retry_after_ms={}",
+            req.node_id, req.worker_id, req.claim_id, req.retry_after_ms
+        );
+        Ok(TaskFailDto {
+            ok: true,
+            receipt_hash: receipt.receipt_hash,
+            tlog_submitted,
+        })
+    }
+
+    /// On supervisor startup the in-memory lease table is empty, so any node
+    /// persisted as Running in plan.json has no valid lease and is stale.
+    /// Reset all such nodes to Pending so the task runner can re-claim them.
+    pub fn reset_stale_running_nodes(&self) {
+        let (plan, _) = load_plan_read_model(&self.project_dir)
+            .unwrap_or_else(|_| (load_plan(&self.project_dir), None));
+        let mut changed = 0usize;
+        for node in &plan.nodes {
+            if node.status == NodeStatus::Running {
+                eprintln!(
+                    "supervisor: stale running node reset to pending  node={}  was_assignee={:?}",
+                    node.id, node.assignee
+                );
+                match append_status_change_patch(&self.project_dir, &node.id, &NodeStatus::Pending)
+                {
+                    Ok(()) => changed += 1,
+                    Err(e) => eprintln!(
+                        "supervisor: reset_stale_running_nodes append patch failed for {}: {e}",
+                        node.id
+                    ),
+                }
+            }
+        }
+        if changed > 0 {
+            eprintln!("supervisor: reset {changed} stale running node(s) to pending");
+        }
+    }
+
+    /// Node IDs with non-expired leases (used by GET /v1/task/next to filter).
+    pub fn active_claimed_node_ids(&self) -> Vec<String> {
+        let now_ms = current_ms();
+        self.task_leases
+            .iter()
+            .filter(|(_, l)| l.expires_at_ms > now_ms)
+            .map(|(id, _)| id.clone())
+            .collect()
+    }
+
     pub fn active_worker_port(&self) -> Result<u16, String> {
         self.active
             .as_ref()
@@ -285,6 +613,61 @@ impl WorkerProcess {
 
     pub fn project_dir(&self) -> &std::path::Path {
         &self.project_dir
+    }
+
+    fn submit_task_lifecycle_receipt(&self, receipt: TaskLifecycleReceipt, label: &str) -> bool {
+        if !receipt.is_contract_valid() {
+            return false;
+        }
+        let Some(worker_port) = self.active.as_ref().map(|worker| worker.port) else {
+            eprintln!(
+                "supervisor: task lifecycle receipt not submitted  label={label}  receipt_hash={}  reason=no-active-worker",
+                receipt.receipt_hash
+            );
+            return false;
+        };
+
+        let submission = receipt.submission();
+        let command = KernelCommand::SubmitEvidence(submission);
+        let envelope = CommandEnvelope::new(receipt.receipt_hash, command);
+        let url = format!("http://127.0.0.1:{worker_port}/v1/command");
+        let payload = serde_json::json!({
+            "command_id": envelope.command_id,
+            "command_hash": envelope.command_hash,
+            "payload_tag": "SubmitEvidence",
+            "payload": {
+                "gate": "Execution",
+                "evidence": "ExecutionReceipt",
+                "passed": submission.passed,
+                "effect": "None",
+                "payload_hash": submission.payload_hash,
+            },
+            "source": "supervisor_task_lifecycle",
+        });
+
+        match post_json_local(&url, &payload) {
+            Ok(status) if (200..300).contains(&status) => {
+                eprintln!(
+                    "supervisor: task lifecycle receipt submitted  label={label}  receipt_hash={}  status={status}",
+                    receipt.receipt_hash
+                );
+                true
+            }
+            Ok(status) => {
+                eprintln!(
+                    "supervisor: task lifecycle receipt submit failed  label={label}  receipt_hash={}  status={status}",
+                    receipt.receipt_hash
+                );
+                false
+            }
+            Err(error) => {
+                eprintln!(
+                    "supervisor: task lifecycle receipt submit error  label={label}  receipt_hash={}  error={error}",
+                    receipt.receipt_hash
+                );
+                false
+            }
+        }
     }
 }
 
@@ -374,6 +757,193 @@ pub struct TaskNextDto {
     pub ready_count: usize,
 }
 
+// ── Task lifecycle (claim / heartbeat / complete / fail) ─────────────────────
+
+/// In-memory lease record held by the supervisor under its Mutex.
+pub struct TaskLease {
+    pub node_id: String,
+    pub worker_id: String,
+    pub claim_id: u64,
+    pub idempotency_key: u64,
+    pub expires_at_ms: u64,
+}
+
+/// POST /v1/task/claim request body.
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
+pub struct TaskClaimRequest {
+    pub node_id: String,
+    pub worker_id: String,
+    /// Client-chosen key: same (node_id, worker_id, idempotency_key) → idempotent re-claim.
+    #[serde(default)]
+    pub idempotency_key: u64,
+    /// Lease duration in milliseconds (default: 300 000 = 5 min).
+    pub lease_ttl_ms: Option<u64>,
+}
+
+#[derive(Clone, Debug, Serialize, PartialEq, Eq)]
+pub struct TaskClaimDto {
+    pub ok: bool,
+    pub node_id: String,
+    pub claim_id: u64,
+    pub expires_at_ms: u64,
+    pub receipt_hash: u64,
+    pub tlog_submitted: bool,
+}
+
+/// POST /v1/task/heartbeat request body.
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
+pub struct TaskHeartbeatRequest {
+    pub node_id: String,
+    pub worker_id: String,
+    pub claim_id: u64,
+    /// New TTL from now (default: 300 000 ms).
+    pub lease_ttl_ms: Option<u64>,
+}
+
+#[derive(Clone, Debug, Serialize, PartialEq, Eq)]
+pub struct TaskHeartbeatDto {
+    pub ok: bool,
+    pub expires_at_ms: u64,
+    pub receipt_hash: u64,
+    pub tlog_submitted: bool,
+}
+
+/// POST /v1/task/complete request body.
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
+pub struct TaskCompleteRequest {
+    pub node_id: String,
+    pub worker_id: String,
+    pub claim_id: u64,
+}
+
+#[derive(Clone, Debug, Serialize, PartialEq, Eq)]
+pub struct TaskCompleteDto {
+    pub ok: bool,
+    pub receipt_hash: u64,
+    pub tlog_submitted: bool,
+}
+
+/// POST /v1/task/fail request body.
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
+pub struct TaskFailRequest {
+    pub node_id: String,
+    pub worker_id: String,
+    pub claim_id: u64,
+    /// 0 → mark Failed permanently; >0 → reset to Pending for retry.
+    #[serde(default)]
+    pub retry_after_ms: u64,
+}
+
+#[derive(Clone, Debug, Serialize, PartialEq, Eq)]
+pub struct TaskFailDto {
+    pub ok: bool,
+    pub receipt_hash: u64,
+    pub tlog_submitted: bool,
+}
+
+fn plan_evidence_refs_hash(evidence: &[PlanEvidenceRef]) -> u64 {
+    let mut h = 0xe11d_eace_4fd0_0101u64;
+    h = mix(h, evidence.len() as u64);
+    for item in evidence {
+        h = mix(h, string_hash(&item.path));
+        h = mix(h, string_hash(&item.kind));
+        h = mix(h, string_hash(&item.summary));
+        h = mix(h, string_hash(&item.gate));
+        h = mix(h, string_hash(&item.evidence));
+        h = mix(h, item.receipt_hash);
+        h = mix(h, u64::from(item.accepted));
+    }
+    h.max(1)
+}
+
+fn projected_node_evidence_hash(project_dir: &Path, node_id: &str) -> Option<u64> {
+    if let Ok(Some(plan_state)) = load_tlog_projected_plan_state(project_dir) {
+        return plan_state
+            .nodes
+            .get(&plan_text_hash(node_id))
+            .map(|node| plan_projected_evidence_hash(&node.evidence));
+    }
+
+    let plan = load_plan(project_dir);
+    plan.nodes
+        .into_iter()
+        .find(|node| node.id == node_id)
+        .map(|node| plan_evidence_refs_hash(&node.evidence))
+}
+
+fn plan_projected_evidence_hash(evidence: &[PlanEvidenceProjection]) -> u64 {
+    if evidence.is_empty() {
+        return 0;
+    }
+    let mut h = 0xe11d_eace_4fd0_0201u64;
+    h = mix(h, evidence.len() as u64);
+    for item in evidence {
+        h = mix(h, item.path_hash);
+        h = mix(h, item.kind_hash);
+        h = mix(h, item.summary_hash);
+    }
+    h.max(1)
+}
+
+fn has_projected_evidence_ref(
+    project_dir: &Path,
+    node_id: &str,
+    evidence: &PlanEvidenceRef,
+) -> bool {
+    let Ok(Some(plan_state)) = load_tlog_projected_plan_state(project_dir) else {
+        return false;
+    };
+    let Some(node) = plan_state.nodes.get(&plan_text_hash(node_id)) else {
+        return false;
+    };
+    let expected = PlanEvidenceProjection {
+        path_hash: plan_text_hash(&evidence.path),
+        kind_hash: plan_text_hash(&evidence.kind),
+        summary_hash: plan_text_hash(&evidence.summary),
+    };
+    node.evidence.contains(&expected)
+}
+
+fn completion_execution_evidence(node_id: &str, receipt_hash: u64) -> PlanEvidenceRef {
+    PlanEvidenceRef {
+        path: format!("state/agent-evidence/{node_id}.md"),
+        kind: "execution_receipt".to_string(),
+        summary: format!("Supervisor accepted completion ExecutionReceipt {receipt_hash}."),
+        gate: "Execution".to_string(),
+        evidence: "ExecutionReceipt".to_string(),
+        receipt_hash,
+        accepted: true,
+    }
+}
+
+fn attach_supervisor_execution_evidence(
+    project_dir: &Path,
+    node_id: &str,
+    evidence: &PlanEvidenceRef,
+) -> Result<(), String> {
+    let plan = load_plan(project_dir);
+    plan.nodes
+        .iter()
+        .find(|node| node.id == node_id)
+        .ok_or_else(|| format!("node {node_id} not found in plan"))?;
+    append_evidence_patch(
+        project_dir,
+        node_id,
+        &evidence.path,
+        &evidence.kind,
+        &evidence.summary,
+    )
+}
+
+fn string_hash(value: &str) -> u64 {
+    let mut h = 0xcbf2_9ce4_8422_2325u64;
+    for b in value.as_bytes() {
+        h ^= *b as u64;
+        h = h.wrapping_mul(0x0000_0100_0000_01b3);
+    }
+    h.max(1)
+}
+
 async fn spawn_worker(
     binary_path: &PathBuf,
     generation: u64,
@@ -389,7 +959,7 @@ async fn spawn_worker(
         port,
         health_deadline.as_secs()
     );
-    let mut child = Command::new(binary_path)
+    let mut child = TokioCommand::new(binary_path)
         .env("AI_WORKER_MODE", "1")
         .env("PORT", port.to_string())
         .env("AI_TLOG_DIR", tlog_dir)
@@ -415,7 +985,7 @@ async fn spawn_worker(
     })
 }
 
-async fn ensure_worker_binary(binary_path: &PathBuf) -> Result<(), String> {
+async fn ensure_worker_binary(binary_path: &Path) -> Result<(), String> {
     if binary_path.exists() {
         return Ok(());
     }
@@ -430,7 +1000,7 @@ async fn ensure_worker_binary(binary_path: &PathBuf) -> Result<(), String> {
         .ok_or_else(|| "CARGO_MANIFEST_DIR has no workspace parent".to_string())?
         .join("Cargo.toml");
 
-    let mut command = Command::new("cargo");
+    let mut command = TokioCommand::new("cargo");
     command
         .arg("build")
         .arg("--manifest-path")

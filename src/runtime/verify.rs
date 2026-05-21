@@ -12,6 +12,10 @@ use crate::kernel::{
 use super::transition_table::TRANSITIONS;
 use super::{convergence_outcome, reduce, semantic_diff, CanonError, CanonicalWriter, Outcome};
 
+// Expose the full transition table for integration-test coverage contracts.
+pub use super::transition_table::Transition as TransitionEntry;
+pub use super::transition_table::TRANSITIONS as TRANSITIONS_FOR_TEST;
+
 #[derive(Clone, Copy)]
 pub(crate) struct EventView {
     pub(crate) from: Phase,
@@ -177,9 +181,7 @@ pub fn legal_transition(from: Phase, to: Phase, kind: EventKind, cause: Cause) -
         && kind == EventKind::Persisted
         && matches!(
             cause,
-            Cause::AgentCycleEventSubmitted
-                | Cause::WaveDispatched
-                | Cause::ChildTaskCompleted
+            Cause::AgentCycleEventSubmitted | Cause::WaveDispatched | Cause::ChildTaskCompleted
         )
     {
         return true;
@@ -583,14 +585,37 @@ fn observational_outcome(state: State, event: &ControlEvent) -> Result<Outcome, 
         }
         Cause::ChildTaskCompleted => {
             let mut expected = state;
-            expected.wave_pending = state.wave_pending.saturating_sub(1);
+            expected.wave_pending = state
+                .wave_pending
+                .checked_sub(1)
+                .ok_or(CanonError::InvalidReplay)?;
             if expected != event.state_after {
                 return Err(CanonError::InvalidReplay);
             }
             event.state_after
         }
-        _ => {
-            // AgentCycleEventSubmitted and any future pure-observational causes:
+        Cause::Start
+        | Cause::GatePassed
+        | Cause::GateFailed
+        | Cause::EvidenceMissing
+        | Cause::JudgmentMade
+        | Cause::PlanReady
+        | Cause::ReadyQueueEmpty
+        | Cause::ExecutionFinished
+        | Cause::TaskReceiptMissing
+        | Cause::VerificationPassed
+        | Cause::ArtifactLineageBroken
+        | Cause::EvalPassed
+        | Cause::EvalFailed
+        | Cause::RepairSelected
+        | Cause::RepairApplied
+        | Cause::RecoveryLimit
+        | Cause::MaxSteps
+        | Cause::Persisted
+        | Cause::PolicyPromoted
+        | Cause::EvidenceSubmitted
+        | Cause::AgentCycleEventSubmitted => {
+            // AgentCycleEventSubmitted and other pure-observational causes:
             // state must be completely unchanged.
             if event.state_after != state {
                 return Err(CanonError::InvalidReplay);

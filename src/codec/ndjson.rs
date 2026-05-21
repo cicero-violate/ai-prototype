@@ -4,6 +4,13 @@ use std::fs::{self, File, OpenOptions};
 use std::io::{BufRead, BufReader, Write};
 use std::path::Path;
 
+use crate::capability::planning::{
+    AcceptedPlanPatchRecord, PlanAssigneeChangePatch, PlanEdgePatch, PlanEvidenceAppendPatch,
+    PlanFullImportPatch, PlanNodeRemovePatch, PlanNodeStatus, PlanNodeUpsertPatch, PlanPatchKind,
+    PlanPatchPayload, PlanPatchRecord, PlanStatusChangePatch, RejectedPlanPatchRecord,
+    PLAN_PATCH_ACCEPTED_RECORD, PLAN_PATCH_RECORD, PLAN_PATCH_REJECTED_RECORD,
+    PLAN_PATCH_SCHEMA_VERSION,
+};
 use crate::kernel::CanonError;
 use crate::kernel::{
     CapabilityRegistryProjection, Cause, ControlEvent, Decision, EventKind, Evidence, FailureClass,
@@ -13,6 +20,13 @@ use crate::kernel::{
 
 pub const TLOG_SCHEMA_VERSION: u64 = 6;
 pub const TLOG_RECORD_EVENT: u64 = 1;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum PlanPatchTlogRecord {
+    Patch(PlanPatchRecord),
+    Accepted(AcceptedPlanPatchRecord),
+    Rejected(RejectedPlanPatchRecord),
+}
 
 pub fn append_tlog_ndjson(path: impl AsRef<Path>, event: &ControlEvent) -> Result<(), CanonError> {
     let path = path.as_ref();
@@ -42,6 +56,27 @@ pub fn write_tlog_ndjson(path: impl AsRef<Path>, tlog: &[ControlEvent]) -> Resul
     }
 
     fs::rename(&tmp_path, path).map_err(|_| CanonError::TlogIo)?;
+    sync_parent_dir(path)
+}
+
+pub fn append_plan_patch_record_ndjson(
+    path: impl AsRef<Path>,
+    record: PlanPatchTlogRecord,
+) -> Result<(), CanonError> {
+    append_canonical_record_line(path, &encode_plan_patch_record_ndjson(record))
+}
+
+fn append_canonical_record_line(path: impl AsRef<Path>, line: &str) -> Result<(), CanonError> {
+    let path = path.as_ref();
+    {
+        let mut file = OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(path)
+            .map_err(|_| CanonError::TlogIo)?;
+        writeln!(file, "{line}").map_err(|_| CanonError::TlogIo)?;
+        file.sync_all().map_err(|_| CanonError::TlogIo)?;
+    }
     sync_parent_dir(path)
 }
 
@@ -91,10 +126,47 @@ pub fn load_tlog_ndjson(path: impl AsRef<Path>) -> Result<TLog, CanonError> {
     Ok(tlog)
 }
 
+pub fn load_plan_patch_records_ndjson(
+    path: impl AsRef<Path>,
+) -> Result<Vec<PlanPatchTlogRecord>, CanonError> {
+    let path = path.as_ref();
+    if !path.exists() {
+        return Ok(Vec::new());
+    }
+
+    let file = File::open(path).map_err(|_| CanonError::TlogIo)?;
+    let reader = BufReader::new(file);
+    let mut records = Vec::new();
+
+    for line in reader.lines() {
+        let line = line.map_err(|_| CanonError::TlogIo)?;
+        if line.trim().is_empty() {
+            continue;
+        }
+        if !is_plan_patch_record_line(&line)? {
+            continue;
+        }
+        records.push(decode_plan_patch_record_ndjson(&line)?);
+    }
+
+    Ok(records)
+}
+
 pub fn encode_control_event_ndjson(event: &ControlEvent) -> String {
     let mut fields = Vec::with_capacity(92);
     fields.extend([TLOG_SCHEMA_VERSION, TLOG_RECORD_EVENT]);
     push_event(&mut fields, *event);
+    let body = fields
+        .iter()
+        .map(u64::to_string)
+        .collect::<Vec<_>>()
+        .join(",");
+    format!("[{body}]")
+}
+
+pub fn encode_plan_patch_record_ndjson(record: PlanPatchTlogRecord) -> String {
+    let mut fields = Vec::with_capacity(20);
+    push_plan_patch_record(&mut fields, record);
     let body = fields
         .iter()
         .map(u64::to_string)
@@ -133,6 +205,29 @@ pub fn decode_control_event_ndjson(line: &str) -> Result<ControlEvent, CanonErro
     Ok(event)
 }
 
+pub fn decode_plan_patch_record_ndjson(line: &str) -> Result<PlanPatchTlogRecord, CanonError> {
+    let mut cursor = cursor_from_ndjson_line(line)?;
+    let schema_version = cursor.take()?;
+    if schema_version != PLAN_PATCH_SCHEMA_VERSION {
+        return Err(CanonError::InvalidTlogRecord);
+    }
+    let record_type = cursor.take()?;
+    let record = match record_type {
+        PLAN_PATCH_RECORD => PlanPatchTlogRecord::Patch(pop_plan_patch_record(&mut cursor)?),
+        PLAN_PATCH_ACCEPTED_RECORD => {
+            PlanPatchTlogRecord::Accepted(pop_accepted_plan_patch_record(&mut cursor)?)
+        }
+        PLAN_PATCH_REJECTED_RECORD => {
+            PlanPatchTlogRecord::Rejected(pop_rejected_plan_patch_record(&mut cursor)?)
+        }
+        _ => return Err(CanonError::InvalidTlogRecord),
+    };
+    if cursor.pos != cursor.fields.len() || !plan_patch_tlog_record_is_consistent(record) {
+        return Err(CanonError::InvalidTlogRecord);
+    }
+    Ok(record)
+}
+
 pub fn encode_tlog_ndjson_string(tlog: &[ControlEvent]) -> String {
     let mut out = String::new();
     for event in tlog {
@@ -157,9 +252,27 @@ pub fn decode_tlog_ndjson_str(input: &str) -> Result<TLog, CanonError> {
 }
 
 fn is_control_event_record_line(line: &str) -> Result<bool, CanonError> {
+    let Some((version, record)) = record_header(line)? else {
+        return Ok(false);
+    };
+    Ok(version == TLOG_SCHEMA_VERSION && record == TLOG_RECORD_EVENT)
+}
+
+fn is_plan_patch_record_line(line: &str) -> Result<bool, CanonError> {
+    let Some((version, record)) = record_header(line)? else {
+        return Ok(false);
+    };
+    Ok(version == PLAN_PATCH_SCHEMA_VERSION
+        && matches!(
+            record,
+            PLAN_PATCH_RECORD | PLAN_PATCH_ACCEPTED_RECORD | PLAN_PATCH_REJECTED_RECORD
+        ))
+}
+
+fn record_header(line: &str) -> Result<Option<(u64, u64)>, CanonError> {
     let trimmed = line.trim();
     if !trimmed.starts_with('[') {
-        return Ok(false);
+        return Ok(None);
     }
     let body = trimmed
         .strip_prefix('[')
@@ -180,7 +293,29 @@ fn is_control_event_record_line(line: &str) -> Result<bool, CanonError> {
         .trim()
         .parse::<u64>()
         .map_err(|_| CanonError::InvalidTlogRecord)?;
-    Ok(version == TLOG_SCHEMA_VERSION && record == TLOG_RECORD_EVENT)
+    Ok(Some((version, record)))
+}
+
+fn cursor_from_ndjson_line(line: &str) -> Result<Cursor<'static>, CanonError> {
+    let trimmed = line.trim();
+    let body = trimmed
+        .strip_prefix('[')
+        .and_then(|v| v.strip_suffix(']'))
+        .ok_or(CanonError::InvalidTlogRecord)?;
+    let mut fields = Vec::new();
+    if !body.trim().is_empty() {
+        for raw in body.split(',') {
+            fields.push(
+                raw.trim()
+                    .parse::<u64>()
+                    .map_err(|_| CanonError::InvalidTlogRecord)?,
+            );
+        }
+    }
+    Ok(Cursor {
+        fields: Box::leak(fields.into_boxed_slice()),
+        pos: 0,
+    })
 }
 
 struct Cursor<'a> {
@@ -197,6 +332,30 @@ impl Cursor<'_> {
         self.pos += 1;
         Ok(value)
     }
+}
+
+/// Encode a ControlEvent into the canonical u64 field array (schema header included).
+/// Used by binary_tlog to write the same record format without JSON text overhead.
+#[cfg_attr(not(feature = "binary-tlog"), allow(dead_code))]
+pub(crate) fn control_event_to_fields(event: &ControlEvent) -> Vec<u64> {
+    let mut fields = Vec::with_capacity(92);
+    fields.extend([TLOG_SCHEMA_VERSION, TLOG_RECORD_EVENT]);
+    push_event(&mut fields, *event);
+    fields
+}
+
+/// Decode a ControlEvent from a u64 field slice (schema header included).
+#[cfg_attr(not(feature = "binary-tlog"), allow(dead_code))]
+pub(crate) fn control_event_from_fields(fields: &[u64]) -> Result<ControlEvent, CanonError> {
+    let mut cursor = Cursor { fields, pos: 0 };
+    if cursor.take()? != TLOG_SCHEMA_VERSION || cursor.take()? != TLOG_RECORD_EVENT {
+        return Err(CanonError::InvalidTlogRecord);
+    }
+    let event = pop_event(&mut cursor)?;
+    if cursor.pos != fields.len() {
+        return Err(CanonError::InvalidTlogRecord);
+    }
+    Ok(event)
 }
 
 fn push_event(out: &mut Vec<u64>, event: ControlEvent) {
@@ -340,6 +499,7 @@ fn push_state(out: &mut Vec<u64>, state: State) {
     out.push(opt_recovery_to_u64(state.recovery_action));
     out.push(state.recovery_attempts as u64);
     out.push(state.wave_pending as u64);
+    out.push(state.plan_state_hash);
 }
 
 fn pop_state(cursor: &mut Cursor<'_>) -> Result<State, CanonError> {
@@ -351,6 +511,7 @@ fn pop_state(cursor: &mut Cursor<'_>) -> Result<State, CanonError> {
         recovery_action: opt_recovery_from_u64(cursor.take()?)?,
         recovery_attempts: u8_from_u64(cursor.take()?)?,
         wave_pending: u16_from_u64(cursor.take()?)?,
+        plan_state_hash: cursor.take()?,
     })
 }
 
@@ -403,6 +564,194 @@ fn pop_packet(cursor: &mut Cursor<'_>) -> Result<Packet, CanonError> {
         artifact_lineage_hash: cursor.take()?,
         revision: cursor.take()?,
     })
+}
+
+fn push_plan_patch_record(out: &mut Vec<u64>, record: PlanPatchTlogRecord) {
+    match record {
+        PlanPatchTlogRecord::Patch(record) => {
+            out.extend([
+                record.schema_version,
+                record.record_type,
+                record.source_hash,
+                record.cycle_id,
+                record.patch_seq,
+                record.contract_hash,
+                record.payload.kind() as u64,
+            ]);
+            push_plan_patch_payload(out, record.payload);
+            out.extend([record.payload_hash, record.patch_hash]);
+        }
+        PlanPatchTlogRecord::Accepted(record) => out.extend([
+            record.schema_version,
+            record.record_type,
+            record.source_hash,
+            record.cycle_id,
+            record.patch_seq,
+            record.contract_hash,
+            record.patch_hash,
+            record.applied_revision,
+            record.acceptance_hash,
+        ]),
+        PlanPatchTlogRecord::Rejected(record) => out.extend([
+            record.schema_version,
+            record.record_type,
+            record.source_hash,
+            record.cycle_id,
+            record.patch_seq,
+            record.contract_hash,
+            record.patch_hash,
+            record.reason_hash,
+            record.rejection_hash,
+        ]),
+    }
+}
+
+fn push_plan_patch_payload(out: &mut Vec<u64>, payload: PlanPatchPayload) {
+    match payload {
+        PlanPatchPayload::NodeUpsert(payload) => out.extend([
+            payload.node_id_hash,
+            payload.title_hash,
+            payload.description_hash,
+            payload.status as u64,
+            payload.assignee_hash,
+            payload.score_axes_hash,
+            payload.files_hash,
+        ]),
+        PlanPatchPayload::EdgeAdd(payload) | PlanPatchPayload::EdgeRemove(payload) => {
+            out.extend([payload.from_node_hash, payload.to_node_hash]);
+        }
+        PlanPatchPayload::NodeRemove(payload) => out.push(payload.node_id_hash),
+        PlanPatchPayload::StatusChange(payload) => {
+            out.extend([payload.node_id_hash, payload.status as u64]);
+        }
+        PlanPatchPayload::AssigneeChange(payload) => {
+            out.extend([payload.node_id_hash, payload.assignee_hash]);
+        }
+        PlanPatchPayload::EvidenceAppend(payload) => out.extend([
+            payload.node_id_hash,
+            payload.path_hash,
+            payload.kind_hash,
+            payload.summary_hash,
+        ]),
+        PlanPatchPayload::FullImport(payload) => out.extend([
+            payload.node_count,
+            payload.edge_count,
+            payload.nodes_hash,
+            payload.edges_hash,
+        ]),
+    }
+}
+
+fn pop_plan_patch_record(cursor: &mut Cursor<'_>) -> Result<PlanPatchRecord, CanonError> {
+    let source_hash = cursor.take()?;
+    let cycle_id = cursor.take()?;
+    let patch_seq = cursor.take()?;
+    let contract_hash = cursor.take()?;
+    let kind = plan_patch_kind_from_u64(cursor.take()?)?;
+    let payload = pop_plan_patch_payload(cursor, kind)?;
+    Ok(PlanPatchRecord {
+        schema_version: PLAN_PATCH_SCHEMA_VERSION,
+        record_type: PLAN_PATCH_RECORD,
+        source_hash,
+        cycle_id,
+        patch_seq,
+        contract_hash,
+        payload,
+        payload_hash: cursor.take()?,
+        patch_hash: cursor.take()?,
+    })
+}
+
+fn pop_accepted_plan_patch_record(
+    cursor: &mut Cursor<'_>,
+) -> Result<AcceptedPlanPatchRecord, CanonError> {
+    Ok(AcceptedPlanPatchRecord {
+        schema_version: PLAN_PATCH_SCHEMA_VERSION,
+        record_type: PLAN_PATCH_ACCEPTED_RECORD,
+        source_hash: cursor.take()?,
+        cycle_id: cursor.take()?,
+        patch_seq: cursor.take()?,
+        contract_hash: cursor.take()?,
+        patch_hash: cursor.take()?,
+        applied_revision: cursor.take()?,
+        acceptance_hash: cursor.take()?,
+    })
+}
+
+fn pop_rejected_plan_patch_record(
+    cursor: &mut Cursor<'_>,
+) -> Result<RejectedPlanPatchRecord, CanonError> {
+    Ok(RejectedPlanPatchRecord {
+        schema_version: PLAN_PATCH_SCHEMA_VERSION,
+        record_type: PLAN_PATCH_REJECTED_RECORD,
+        source_hash: cursor.take()?,
+        cycle_id: cursor.take()?,
+        patch_seq: cursor.take()?,
+        contract_hash: cursor.take()?,
+        patch_hash: cursor.take()?,
+        reason_hash: cursor.take()?,
+        rejection_hash: cursor.take()?,
+    })
+}
+
+fn pop_plan_patch_payload(
+    cursor: &mut Cursor<'_>,
+    kind: PlanPatchKind,
+) -> Result<PlanPatchPayload, CanonError> {
+    Ok(match kind {
+        PlanPatchKind::NodeUpsert => PlanPatchPayload::NodeUpsert(PlanNodeUpsertPatch {
+            node_id_hash: cursor.take()?,
+            title_hash: cursor.take()?,
+            description_hash: cursor.take()?,
+            status: plan_node_status_from_u64(cursor.take()?)?,
+            assignee_hash: cursor.take()?,
+            score_axes_hash: cursor.take()?,
+            files_hash: cursor.take()?,
+        }),
+        PlanPatchKind::EdgeAdd => PlanPatchPayload::EdgeAdd(PlanEdgePatch {
+            from_node_hash: cursor.take()?,
+            to_node_hash: cursor.take()?,
+        }),
+        PlanPatchKind::EdgeRemove => PlanPatchPayload::EdgeRemove(PlanEdgePatch {
+            from_node_hash: cursor.take()?,
+            to_node_hash: cursor.take()?,
+        }),
+        PlanPatchKind::NodeRemove => PlanPatchPayload::NodeRemove(PlanNodeRemovePatch {
+            node_id_hash: cursor.take()?,
+        }),
+        PlanPatchKind::StatusChange => PlanPatchPayload::StatusChange(PlanStatusChangePatch {
+            node_id_hash: cursor.take()?,
+            status: plan_node_status_from_u64(cursor.take()?)?,
+        }),
+        PlanPatchKind::AssigneeChange => {
+            PlanPatchPayload::AssigneeChange(PlanAssigneeChangePatch {
+                node_id_hash: cursor.take()?,
+                assignee_hash: cursor.take()?,
+            })
+        }
+        PlanPatchKind::EvidenceAppend => {
+            PlanPatchPayload::EvidenceAppend(PlanEvidenceAppendPatch {
+                node_id_hash: cursor.take()?,
+                path_hash: cursor.take()?,
+                kind_hash: cursor.take()?,
+                summary_hash: cursor.take()?,
+            })
+        }
+        PlanPatchKind::FullImport => PlanPatchPayload::FullImport(PlanFullImportPatch {
+            node_count: cursor.take()?,
+            edge_count: cursor.take()?,
+            nodes_hash: cursor.take()?,
+            edges_hash: cursor.take()?,
+        }),
+    })
+}
+
+fn plan_patch_tlog_record_is_consistent(record: PlanPatchTlogRecord) -> bool {
+    match record {
+        PlanPatchTlogRecord::Patch(record) => record.is_self_consistent(),
+        PlanPatchTlogRecord::Accepted(record) => record.is_self_consistent(),
+        PlanPatchTlogRecord::Rejected(record) => record.is_self_consistent(),
+    }
 }
 
 fn u8_from_u64(value: u64) -> Result<u8, CanonError> {
@@ -607,6 +956,25 @@ const SEMANTIC_DELTA_TAGS: &[(u64, SemanticDelta)] = &[
     (10, SemanticDelta::LearningPromoted),
 ];
 
+const PLAN_NODE_STATUS_TAGS: &[(u64, PlanNodeStatus)] = &[
+    (1, PlanNodeStatus::Pending),
+    (2, PlanNodeStatus::Running),
+    (3, PlanNodeStatus::Done),
+    (4, PlanNodeStatus::Failed),
+    (5, PlanNodeStatus::Skipped),
+];
+
+const PLAN_PATCH_KIND_TAGS: &[(u64, PlanPatchKind)] = &[
+    (1, PlanPatchKind::NodeUpsert),
+    (2, PlanPatchKind::EdgeAdd),
+    (3, PlanPatchKind::EdgeRemove),
+    (4, PlanPatchKind::NodeRemove),
+    (5, PlanPatchKind::StatusChange),
+    (6, PlanPatchKind::AssigneeChange),
+    (7, PlanPatchKind::EvidenceAppend),
+    (8, PlanPatchKind::FullImport),
+];
+
 macro_rules! decode_enum_from_u64 {
     ($name:ident, $ty:ty, $table:ident) => {
         fn $name(value: u64) -> Result<$ty, CanonError> {
@@ -625,3 +993,13 @@ decode_enum_from_u64!(event_kind_from_u64, EventKind, EVENT_KIND_TAGS);
 decode_enum_from_u64!(cause_from_u64, Cause, CAUSE_TAGS);
 decode_enum_from_u64!(decision_from_u64, Decision, DECISION_TAGS);
 decode_enum_from_u64!(semantic_delta_from_u64, SemanticDelta, SEMANTIC_DELTA_TAGS);
+decode_enum_from_u64!(
+    plan_node_status_from_u64,
+    PlanNodeStatus,
+    PLAN_NODE_STATUS_TAGS
+);
+decode_enum_from_u64!(
+    plan_patch_kind_from_u64,
+    PlanPatchKind,
+    PLAN_PATCH_KIND_TAGS
+);

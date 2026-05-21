@@ -3,14 +3,14 @@
 use crate::kernel::{Cause, EventKind, Phase};
 
 #[derive(Clone, Copy)]
-pub(crate) struct Transition {
-    pub(crate) from: Phase,
-    pub(crate) to: Phase,
-    pub(crate) kind: EventKind,
-    pub(crate) cause: Cause,
+pub struct Transition {
+    pub from: Phase,
+    pub to: Phase,
+    pub kind: EventKind,
+    pub cause: Cause,
 }
 
-pub(crate) const TRANSITIONS: [Transition; 50] = [
+pub const TRANSITIONS: [Transition; 50] = [
     Transition {
         from: Phase::Delta,
         to: Phase::Invariant,

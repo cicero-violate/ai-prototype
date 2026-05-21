@@ -25,8 +25,10 @@ pub mod contracts;
 pub mod finance;
 pub mod global_intelligence;
 pub mod identity;
+pub mod plan;
 pub mod risk;
 pub mod scoring;
+pub mod semantic;
 pub mod trading;
 
 pub use bridge::{bridge_target_for_verdict, default_plan_kind};

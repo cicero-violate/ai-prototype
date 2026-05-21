@@ -12,11 +12,14 @@ pub(crate) mod command_ledger;
 pub(crate) mod diff;
 pub mod durable;
 pub mod event_bus;
+pub mod event_check;
+pub mod event_wire;
 pub mod introspection;
 pub mod mailbox;
 pub mod mcp_transcript;
 pub(crate) mod recovery_policy;
 pub(crate) mod reducer;
+pub mod snapshot;
 pub(crate) mod transition_table;
 pub mod verify;
 pub mod workspace;
@@ -31,6 +34,7 @@ pub use self::durable::{
 pub use self::event_bus::{
     replay_event_bus, RuntimeEventBus, RuntimeWakeup, RuntimeWakeupKey, WakeupKind,
 };
+pub use self::event_wire::{wire_class, wire_transition_allowed, WireEventClass, WireEventSummary};
 pub use self::introspection::{
     append_canonical_line, append_score_report_update_ndjson, append_validation_result_ndjson,
     canonical_tlog_path_from_dir, default_canonical_tlog_path, introspect_canonical_tlog,
@@ -44,6 +48,10 @@ pub use self::mailbox::{
 pub use self::mcp_transcript::{
     append_mcp_transcript, mcp_transcript_path, replay_mcp_transcripts, McpTranscriptRecord,
 };
+pub use self::snapshot::{
+    find_last_completed_seq, read_snapshot_meta, snapshot_meta_from_tlog, write_snapshot_meta,
+    TlogSnapshotMeta,
+};
 pub use self::verify::{
     command_causality_report_from, legal_transition, replay_report_from, replay_report_ndjson,
     replay_tlog_ndjson, verify_tlog, verify_tlog_from, CommandCausalityReport, ReplayReport,
@@ -51,8 +59,8 @@ pub use self::verify::{
 pub use self::workspace::WorkspaceView;
 pub use crate::kernel::CanonError;
 
-use self::recovery_policy::{evidence_for_gate, recovery_policy_coverage_count};
 pub(crate) use self::recovery_policy::recovery_action_for;
+use self::recovery_policy::{evidence_for_gate, recovery_policy_coverage_count};
 pub(crate) use self::reducer::reduce;
 use self::transition_table::TRANSITIONS;
 pub(crate) use self::writer::CanonicalWriter;

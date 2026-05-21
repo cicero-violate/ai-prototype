@@ -15,6 +15,7 @@ pub mod observation;
 pub mod orchestration;
 pub mod planning;
 pub mod policy;
+pub mod skills;
 pub mod tooling;
 pub mod verification;
 
@@ -141,7 +142,7 @@ impl CapabilityEffectRoute {
     }
 }
 
-pub const CAPABILITY_EFFECT_ROUTES: [CapabilityEffectRoute; 15] = [
+pub const CAPABILITY_EFFECT_ROUTES: [CapabilityEffectRoute; 16] = [
     CapabilityEffectRoute::new(
         CapabilityId::Observation,
         GateId::Invariant,
@@ -213,6 +214,12 @@ pub const CAPABILITY_EFFECT_ROUTES: [CapabilityEffectRoute; 15] = [
         GateId::Plan,
         Evidence::TaskReady,
         PacketEffect::BindReadyTask,
+    ),
+    CapabilityEffectRoute::new(
+        CapabilityId::Orchestration,
+        GateId::Execution,
+        Evidence::ExecutionReceipt,
+        PacketEffect::None,
     ),
     CapabilityEffectRoute::new(
         CapabilityId::Orchestration,
