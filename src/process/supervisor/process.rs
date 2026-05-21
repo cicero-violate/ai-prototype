@@ -616,7 +616,10 @@ impl WorkerProcess {
             }
 
             let has_blocker = node.evidence.iter().any(|e| e.kind == "blocker");
-            let has_accepted_receipt = node.evidence.iter().any(|e| e.is_accepted_execution_receipt());
+            let has_accepted_receipt = node
+                .evidence
+                .iter()
+                .any(|e| e.is_accepted_execution_receipt());
 
             // Accepted receipt takes precedence over a blocker if somehow both exist.
             if has_accepted_receipt {

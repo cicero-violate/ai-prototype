@@ -85,7 +85,7 @@ fn maybe_start_task_runner(cfg: &SupervisorConfig, notifier: TaskReadyNotifier) 
         .ok()
         .and_then(|value| value.parse::<u32>().ok())
         .filter(|count| *count > 0)
-        .unwrap_or(2);
+        .unwrap_or(1);
     let hostname = env::var("HOSTNAME").unwrap_or_else(|_| "local".to_string());
 
     for runner_index in 0..runner_count {
@@ -114,7 +114,7 @@ fn print_help() {
     println!("             AI_AGENT_BIN, CANON_OPENAI_BASE_URL, PROJECT_DIR, MCP_CONNECTOR_URL");
     println!("             AI_MCP_BASE_URL, AI_MCP_OAUTH_STORE_FILE, AI_MCP_OAUTH_STORE_KEY");
     println!("             TASK_RUNNER_ENABLED (set to 0 to disable; default on)");
-    println!("             TASK_RUNNER_COUNT (parallel task runners; default 2)");
+    println!("             TASK_RUNNER_COUNT (parallel task runners; default 1)");
     println!("routes: GET /, GET /control, GET /health, GET /v1/task/next, POST /reload, POST /restart, POST /agent/start, POST /spawn, POST /v1/command, POST /v1/task/claim, POST /v1/task/heartbeat, POST /v1/task/complete, POST /v1/task/fail, POST /ai/mcp");
 }
 

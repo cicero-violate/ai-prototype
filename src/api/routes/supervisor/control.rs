@@ -6,12 +6,13 @@ use axum::http::StatusCode;
 use axum::response::{Html, IntoResponse};
 use axum::Json;
 use std::process::{Command as StdCommand, Stdio};
-use std::time::Duration;
 
-use crate::capability::tooling::mcp_tools::canon_plan::{load_plan, ready_nodes};
+use crate::domain::plan::ready_nodes_from_plan_state;
+use crate::process::scheduler::plan_store::{load_plan, load_plan_read_model};
 use crate::process::supervisor::{
     HealthDto, ReloadDto, RestartDto, SpawnDto, SpawnRequest, StartLoopDto, StartLoopRequest,
-    TaskNextDto,
+    TaskClaimDto, TaskClaimRequest, TaskCompleteDto, TaskCompleteRequest, TaskFailDto,
+    TaskFailRequest, TaskHeartbeatDto, TaskHeartbeatRequest, TaskNextDto,
 };
 
 use crate::process::supervisor::{ErrorDto, SupervisorState};
@@ -80,21 +81,11 @@ pub async fn reload(
 pub async fn restart(
     AxumState(state): AxumState<SupervisorState>,
 ) -> Result<Json<RestartDto>, (StatusCode, Json<ErrorDto>)> {
-    let replacement =
-        schedule_supervisor_replacement(SUPERVISOR_RESTART_DELAY_MS).map_err(error_response)?;
-    let pid = std::process::id();
-    tokio::spawn(async move {
-        tokio::time::sleep(Duration::from_millis(SUPERVISOR_EXIT_DELAY_MS)).await;
-        let mut guard = state.inner.lock().await;
-        guard.shutdown().await;
-        std::process::exit(0);
-    });
-    Ok(Json(RestartDto {
-        ok: true,
-        pid,
-        replacement,
-        delay_ms: SUPERVISOR_RESTART_DELAY_MS,
-    }))
+    state
+        .restart_supervisor()
+        .await
+        .map(Json)
+        .map_err(error_response)
 }
 
 pub async fn start_agent_loop_handler(
@@ -111,7 +102,7 @@ pub async fn spawn_agent_handler(
     Json(body): Json<SpawnRequest>,
 ) -> Result<Json<SpawnDto>, (StatusCode, Json<ErrorDto>)> {
     let mut guard = state.inner.lock().await;
-    let max_steps = body.max_steps.unwrap_or(20).max(1).min(100);
+    let max_steps = body.max_steps.unwrap_or(20).clamp(1, 100);
     guard
         .spawn_agent(&body.domain, &body.metric, max_steps)
         .map(Json)
@@ -207,22 +198,29 @@ fn command_log_fields(body: &[u8]) -> (String, String, String) {
     (command_id, payload_tag, source)
 }
 
-/// Return the first ready plan node for a worker to pull.
+/// Return the first ready, unclaimed plan node for a worker to pull.
 ///
-/// Reads the plan DAG from the project state directory and returns the first
-/// Pending node whose dependencies are all Done.  Returns 204 when no tasks
-/// are ready.  This is the pull endpoint for the Temporal-like pull model;
-/// in the current push architecture it is informational.
+/// Filters out nodes with active (non-expired) leases so two concurrent
+/// workers cannot both see the same node.  Workers then race to POST
+/// /v1/task/claim; the second caller gets a 409.  Returns 204 when no
+/// unclaimed ready tasks exist.
 pub async fn get_task_next(
     AxumState(state): AxumState<SupervisorState>,
 ) -> Result<Json<TaskNextDto>, (StatusCode, Json<ErrorDto>)> {
-    let project_dir = {
+    let (project_dir, claimed) = {
         let guard = state.inner.lock().await;
-        guard.project_dir().to_path_buf()
+        let claimed: std::collections::HashSet<String> =
+            guard.active_claimed_node_ids().into_iter().collect();
+        (guard.project_dir().to_path_buf(), claimed)
     };
 
-    let plan = load_plan(&project_dir);
-    let ready = ready_nodes(&plan);
+    let plan = load_plan_read_model(&project_dir)
+        .map(|(p, _)| p)
+        .unwrap_or_else(|_| load_plan(&project_dir));
+    let ready: Vec<_> = ready_nodes_from_plan_state(&plan)
+        .into_iter()
+        .filter(|n| !claimed.contains(n.id.as_str()))
+        .collect();
 
     let Some(node) = ready.first() else {
         return Err((
@@ -241,6 +239,65 @@ pub async fn get_task_next(
         description: node.description.clone(),
         ready_count: ready.len(),
     }))
+}
+
+/// Atomically claim a ready plan node and obtain a timed lease.
+///
+/// Returns 409 if the node is already claimed by a different worker.
+/// Idempotent: same (node_id, worker_id, idempotency_key) returns the
+/// existing lease without error.
+pub async fn post_task_claim(
+    AxumState(state): AxumState<SupervisorState>,
+    Json(body): Json<TaskClaimRequest>,
+) -> Result<Json<TaskClaimDto>, (StatusCode, Json<ErrorDto>)> {
+    let mut guard = state.inner.lock().await;
+    guard.claim_task(body).map(Json).map_err(|e| {
+        (
+            StatusCode::CONFLICT,
+            Json(ErrorDto {
+                ok: false,
+                error: e,
+            }),
+        )
+    })
+}
+
+/// Renew the lease for an active claim.  Workers should heartbeat before
+/// their lease_ttl_ms elapses (recommended: every lease_ttl_ms / 3).
+pub async fn post_task_heartbeat(
+    AxumState(state): AxumState<SupervisorState>,
+    Json(body): Json<TaskHeartbeatRequest>,
+) -> Result<Json<TaskHeartbeatDto>, (StatusCode, Json<ErrorDto>)> {
+    let mut guard = state.inner.lock().await;
+    guard.heartbeat_task(body).map(Json).map_err(error_response)
+}
+
+/// Mark a claimed task as successfully completed. Appends completion evidence
+/// and a TLog-backed done patch, then releases the lease.
+pub async fn post_task_complete(
+    AxumState(state): AxumState<SupervisorState>,
+    Json(body): Json<TaskCompleteRequest>,
+) -> Result<Json<TaskCompleteDto>, (StatusCode, Json<ErrorDto>)> {
+    let mut guard = state.inner.lock().await;
+    guard.complete_task(body).map(Json).map_err(error_response)
+}
+
+/// Mark a claimed task as failed.  Pass retry_after_ms == 0 to set status
+/// to "failed" permanently; pass >0 to reset to "pending" for retry.
+pub async fn post_task_fail(
+    AxumState(state): AxumState<SupervisorState>,
+    Json(body): Json<TaskFailRequest>,
+) -> Result<Json<TaskFailDto>, (StatusCode, Json<ErrorDto>)> {
+    let retry_after_ms = body.retry_after_ms;
+    let result = {
+        let mut guard = state.inner.lock().await;
+        guard.fail_task(body).map(Json).map_err(error_response)?
+    };
+    // Notify task runners: a retried task is now Pending and ready to claim.
+    if retry_after_ms > 0 {
+        state.task_ready_notifier.notify();
+    }
+    Ok(result)
 }
 
 pub(crate) fn schedule_supervisor_replacement(delay_ms: u64) -> Result<String, String> {
