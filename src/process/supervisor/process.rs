@@ -22,7 +22,7 @@ use crate::domain::plan::{
 use crate::kernel::{mix, PlanEvidenceProjection};
 use crate::process::agent::loop_driver::http::post_json_local;
 use crate::process::agent::{
-    AgentLoopConfig, LoopDriver, DEFAULT_MINI_AGENT_COUNT, MAX_MINI_AGENT_COUNT,
+    AgentLoopConfig, LoopDriver, DEFAULT_EXECUTOR_COUNT, MAX_EXECUTOR_COUNT,
 };
 use crate::process::scheduler::plan_store::{
     append_evidence_patch, append_node_remove_patch, append_status_change_patch, load_plan,
@@ -192,7 +192,7 @@ impl WorkerProcess {
             turn_retry_limit: 2,
             loop_sleep_ms: 5000,
             agent_count: 1,
-            mini_agent_count: 1,
+            executor_count: 1,
             working_dir: project_dir.clone(),
             sse_chunks_dir,
             project_dir,
@@ -255,15 +255,15 @@ impl WorkerProcess {
                 .and_then(|v| v.parse().ok())
                 .unwrap_or(1)
         });
-        let mini_agent_count: u32 = req
-            .mini_agent_count
+        let executor_count: u32 = req
+            .executor_count
             .or_else(|| {
-                env::var("CANON_MINI_AGENT_COUNT")
+                env::var("CANON_EXECUTOR_COUNT")
                     .ok()
                     .and_then(|v| v.parse().ok())
             })
-            .unwrap_or(DEFAULT_MINI_AGENT_COUNT)
-            .clamp(1, MAX_MINI_AGENT_COUNT);
+            .unwrap_or(DEFAULT_EXECUTOR_COUNT)
+            .clamp(1, MAX_EXECUTOR_COUNT);
         let sse_chunks_dir = workspace_state_dir(&project_dir)
             .join("agent_state")
             .join("sse-chunks");
@@ -272,7 +272,7 @@ impl WorkerProcess {
             turn_retry_limit: 2,
             loop_sleep_ms: 5000,
             agent_count,
-            mini_agent_count,
+            executor_count,
             working_dir: project_dir.clone(),
             sse_chunks_dir,
             project_dir,
@@ -292,7 +292,7 @@ impl WorkerProcess {
             plan_node_id: None,
         };
 
-        eprintln!("supervisor: starting main agent loop  execute_turns={execute_turns}  agents={agent_count}  mini_agents={mini_agent_count}  worker_port={worker_port}");
+        eprintln!("supervisor: starting main agent loop  execute_turns={execute_turns}  agents={agent_count}  mini_agents={executor_count}  worker_port={worker_port}");
         std::thread::spawn(move || {
             LoopDriver::new(config).run_all_agents();
             eprintln!("supervisor: main agent loop finished");
@@ -303,7 +303,7 @@ impl WorkerProcess {
             worker_port,
             execute_turns,
             agent_count,
-            mini_agent_count,
+            executor_count,
         })
     }
 
@@ -816,7 +816,7 @@ pub struct StartLoopRequest {
     /// Parallel agents (default: AGENT_COUNT env or 1).
     pub agent_count: Option<u32>,
     /// Parallel bounded DAG mini-agents per scheduling wave (default: 3, max: 5).
-    pub mini_agent_count: Option<u32>,
+    pub executor_count: Option<u32>,
 }
 
 #[derive(Clone, Debug, Serialize, PartialEq, Eq)]
@@ -825,7 +825,7 @@ pub struct StartLoopDto {
     pub worker_port: u16,
     pub execute_turns: u32,
     pub agent_count: u32,
-    pub mini_agent_count: u32,
+    pub executor_count: u32,
 }
 
 /// A single dequeued task returned by GET /v1/task/next.

@@ -21,7 +21,7 @@ use crate::process::agent::loop_driver::common::stable_agent_hash;
 use crate::process::agent::loop_driver::http::{
     agent_command_url, get_json_body_local, post_json_local,
 };
-use crate::process::agent::{AgentLoopConfig, LoopDriver, MAX_MINI_AGENT_COUNT};
+use crate::process::agent::{AgentLoopConfig, LoopDriver, MAX_EXECUTOR_COUNT};
 use crate::process::dispatch::task_client::{TaskClaim, TaskClient};
 use crate::process::scheduler::plan_store::{
     append_status_change_patch, load_plan, load_plan_read_model,
@@ -52,7 +52,7 @@ pub(crate) fn run_wave(config: &AgentLoopConfig, tag: &str, cycle_num: u64) -> b
     ready_owned.sort_by(|a, b| a.id.cmp(&b.id));
 
     // Cap by configured max AND by available browser tabs (resource scheduler).
-    let agent_cap = config.mini_agent_count.clamp(1, MAX_MINI_AGENT_COUNT) as usize;
+    let agent_cap = config.executor_count.clamp(1, MAX_EXECUTOR_COUNT) as usize;
     let tab_cap = query_available_tab_count(config);
     let wave_cap = agent_cap.min(tab_cap);
     if tab_cap < agent_cap {
@@ -465,7 +465,7 @@ fn child_config(parent: &AgentLoopConfig, node: &PlanNode) -> AgentLoopConfig {
         turn_retry_limit: parent.turn_retry_limit,
         loop_sleep_ms: parent.loop_sleep_ms,
         agent_count: 1,
-        mini_agent_count: 1,
+        executor_count: 1,
         working_dir: parent.working_dir.clone(),
         sse_chunks_dir,
         project_dir: parent.project_dir.clone(),

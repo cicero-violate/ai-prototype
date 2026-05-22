@@ -21,7 +21,7 @@ pub mod step;
 pub mod worker;
 pub mod worker_client;
 
-pub use config::{AgentLoopConfig, DEFAULT_MINI_AGENT_COUNT, MAX_MINI_AGENT_COUNT};
+pub use config::{AgentLoopConfig, DEFAULT_EXECUTOR_COUNT, MAX_EXECUTOR_COUNT};
 pub use cycle::{AgentCycle, CycleError, StopReason};
 pub use loop_driver::LoopDriver;
 pub use objective::AgentObjective;
