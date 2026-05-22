@@ -394,7 +394,8 @@ fn supervisor_accepts_legacy_task_evidence_by_attaching_completion_receipt() {
         .evidence
         .is_empty());
     let raw_plan = load_plan(&root);
-    assert!(raw_plan.nodes[0].evidence.is_empty());
+    assert_eq!(raw_plan.nodes[0].status, NodeStatus::Done);
+    assert!(!raw_plan.nodes[0].evidence.is_empty());
     let _ = std::fs::remove_dir_all(root);
 }
 
@@ -443,7 +444,8 @@ fn supervisor_accepts_completion_by_attaching_execution_receipt_to_projected_evi
         .evidence
         .is_empty());
     let raw_plan = load_plan(&root);
-    assert!(raw_plan.nodes[0].evidence.is_empty());
+    assert_eq!(raw_plan.nodes[0].status, NodeStatus::Done);
+    assert!(!raw_plan.nodes[0].evidence.is_empty());
     let _ = std::fs::remove_dir_all(root);
 }
 
@@ -527,7 +529,7 @@ fn supervisor_task_lifecycle_responses_are_receipt_backed() {
     assert!(!complete.tlog_submitted);
 
     let raw_plan = load_plan(&root);
-    assert_eq!(raw_plan.nodes[0].status, NodeStatus::Pending);
+    assert_eq!(raw_plan.nodes[0].status, NodeStatus::Done);
     let (read_model, plan_state) = load_plan_read_model(&root).expect("read model should project");
     assert!(plan_state.is_some());
     assert_eq!(read_model.nodes[0].status, NodeStatus::Done);

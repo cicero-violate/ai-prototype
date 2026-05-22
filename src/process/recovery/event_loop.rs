@@ -43,7 +43,11 @@ async fn run(tlog_path: PathBuf, state: SupervisorState) {
     let mut interval = tokio::time::interval(Duration::from_secs(POLL_INTERVAL_SECS));
     // `last_seen_seq` is the highest event_seq processed in any previous scan.
     // Only wakeups with event_seq > last_seen_seq are treated as new.
-    let mut last_seen_seq: u64 = 0;
+    let mut last_seen_seq = load_tlog_ndjson(&tlog_path)
+        .ok()
+        .map(|tlog| replay_event_bus(&tlog))
+        .map(|bus| max_wakeup_seq(bus.wakeups().iter().map(|w| w.event_seq)))
+        .unwrap_or(0);
 
     loop {
         interval.tick().await;
@@ -60,16 +64,6 @@ async fn run(tlog_path: PathBuf, state: SupervisorState) {
         // This prevents re-processing any wakeup we've already acted on.
         let scan_max_seq = wakeups.iter().map(|w| w.event_seq).max().unwrap_or(0);
 
-        let recovery_count = wakeups
-            .iter()
-            .filter(|w| w.event_seq > last_seen_seq)
-            .filter(|w| matches!(w.kind, WakeupKind::GateFailed | WakeupKind::LeaseExpired))
-            .count();
-
-        // Advance cursor unconditionally so non-recovery wakeups are not
-        // re-examined as candidates in future scans.
-        last_seen_seq = last_seen_seq.max(scan_max_seq);
-
         // Reconcile terminal evidence on every scan: nodes with blocker or
         // accepted-receipt evidence are promoted to Failed/Done regardless of
         // whether a recovery wakeup was detected.  This closes the gap when a
@@ -79,6 +73,15 @@ async fn run(tlog_path: PathBuf, state: SupervisorState) {
             let guard = state.inner.lock().await;
             guard.reconcile_terminal_evidence();
         }
+
+        let recovery_count = count_recovery_wakeups_since(
+            wakeups.iter().map(|w| (w.event_seq, w.kind)),
+            last_seen_seq,
+        );
+
+        // Advance cursor unconditionally so non-recovery wakeups are not
+        // re-examined as candidates in future scans.
+        last_seen_seq = last_seen_seq.max(scan_max_seq);
 
         if recovery_count == 0 {
             continue;
@@ -93,5 +96,48 @@ async fn run(tlog_path: PathBuf, state: SupervisorState) {
             guard.reset_stale_running_nodes();
         }
         state.task_ready_notifier.notify();
+    }
+}
+
+fn count_recovery_wakeups_since<I>(wakeups: I, last_seen_seq: u64) -> usize
+where
+    I: IntoIterator<Item = (u64, WakeupKind)>,
+{
+    wakeups
+        .into_iter()
+        .filter(|(event_seq, _)| *event_seq > last_seen_seq)
+        .filter(|(_, kind)| matches!(kind, WakeupKind::GateFailed | WakeupKind::LeaseExpired))
+        .count()
+}
+
+fn max_wakeup_seq<I>(seqs: I) -> u64
+where
+    I: IntoIterator<Item = u64>,
+{
+    seqs.into_iter().max().unwrap_or(0)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn recovery_wakeup_count_ignores_cursor_history_and_non_recovery_events() {
+        let wakeups = [
+            (7, WakeupKind::GateFailed),
+            (8, WakeupKind::TaskReady),
+            (9, WakeupKind::LeaseExpired),
+            (10, WakeupKind::ReceiptAccepted),
+        ];
+
+        assert_eq!(count_recovery_wakeups_since(wakeups, 7), 1);
+        assert_eq!(count_recovery_wakeups_since(wakeups, 9), 0);
+        assert_eq!(count_recovery_wakeups_since(wakeups, 0), 2);
+    }
+
+    #[test]
+    fn max_wakeup_seq_defaults_to_zero_for_empty_history() {
+        assert_eq!(max_wakeup_seq([]), 0);
+        assert_eq!(max_wakeup_seq([3, 8, 5]), 8);
     }
 }

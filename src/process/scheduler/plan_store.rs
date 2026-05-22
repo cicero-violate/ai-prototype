@@ -15,7 +15,7 @@ use crate::codec::{
     append_plan_patch_record_ndjson, load_plan_patch_records_ndjson, PlanPatchTlogRecord,
 };
 use crate::domain::plan::{
-    plan_state_projection, plan_text_hash, NodeStatus, PlanDag, PlanEdge, PlanNode,
+    plan_state_projection, plan_text_hash, NodeStatus, PlanDag, PlanEdge, PlanEvidenceRef, PlanNode,
 };
 use crate::kernel::{PlanState, PlanStatePatch, PlanStateRejection};
 
@@ -46,7 +46,8 @@ pub fn append_status_change_patch(
             node_id_hash: plan_text_hash(node_id),
             status: plan_node_status(status),
         }),
-    )
+    )?;
+    mirror_status_to_plan_json(workspace_root, node_id, status)
 }
 
 pub fn append_evidence_patch(
@@ -64,7 +65,54 @@ pub fn append_evidence_patch(
             kind_hash: plan_text_hash(kind),
             summary_hash: plan_text_hash(summary),
         }),
-    )
+    )?;
+    mirror_evidence_to_plan_json(workspace_root, node_id, path, kind, summary)
+}
+
+fn mirror_status_to_plan_json(
+    workspace_root: &Path,
+    node_id: &str,
+    status: &NodeStatus,
+) -> Result<(), String> {
+    let mut plan = load_plan(workspace_root);
+    let Some(node) = plan.nodes.iter_mut().find(|node| node.id == node_id) else {
+        return Ok(());
+    };
+    node.status = status.clone();
+    if !matches!(status, NodeStatus::Running) {
+        node.assignee = None;
+    }
+    save_plan(workspace_root, &plan)
+}
+
+fn mirror_evidence_to_plan_json(
+    workspace_root: &Path,
+    node_id: &str,
+    path: &str,
+    kind: &str,
+    summary: &str,
+) -> Result<(), String> {
+    let mut plan = load_plan(workspace_root);
+    let Some(node) = plan.nodes.iter_mut().find(|node| node.id == node_id) else {
+        return Ok(());
+    };
+    let evidence = PlanEvidenceRef {
+        path: path.to_string(),
+        kind: kind.to_string(),
+        summary: summary.to_string(),
+        gate: String::new(),
+        evidence: String::new(),
+        receipt_hash: 0,
+        accepted: false,
+    };
+    if !node.evidence.iter().any(|existing| {
+        existing.path == evidence.path
+            && existing.kind == evidence.kind
+            && existing.summary == evidence.summary
+    }) {
+        node.evidence.push(evidence);
+    }
+    save_plan(workspace_root, &plan)
 }
 
 pub fn append_node_upsert_patch(workspace_root: &Path, node: &PlanNode) -> Result<(), String> {
@@ -354,8 +402,17 @@ fn apply_plan_tlog_patch(
     let mutation = payload.plan_state_patch();
     match projection.apply_patch(mutation) {
         Ok(_) => Ok(()),
+        // NodeRemove on an already-removed node is idempotent.
         Err(PlanStateRejection::MissingNode)
             if matches!(mutation, PlanStatePatch::NodeRemove { .. }) =>
+        {
+            Ok(())
+        }
+        // StatusChange on an already-removed node is idempotent — the reconciler may
+        // write StatusChange+NodeRemove pairs on each run; later runs' StatusChange
+        // patches arrive after earlier runs' NodeRemove patches.
+        Err(PlanStateRejection::MissingNode)
+            if matches!(mutation, PlanStatePatch::StatusChange { .. }) =>
         {
             Ok(())
         }
@@ -509,7 +566,10 @@ mod tests {
 
         let persisted_plan = load_plan(&root);
         assert_eq!(persisted_plan.nodes.len(), 2);
-        assert!(persisted_plan.nodes.iter().any(|node| node.id == "terminal"));
+        assert!(persisted_plan
+            .nodes
+            .iter()
+            .any(|node| node.id == "terminal"));
 
         let (read_model, plan_state) =
             load_plan_read_model(&root).expect("load projected read model");

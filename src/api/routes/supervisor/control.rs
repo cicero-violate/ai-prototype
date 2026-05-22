@@ -117,8 +117,7 @@ pub async fn command_gateway(
     let (command_id, payload_tag, source) = command_log_fields(&body);
     let worker_port = {
         let mut guard = state.inner.lock().await;
-        guard.reap_retired().await;
-        guard.active_worker_port().map_err(error_response)?
+        guard.ensure_worker_alive_or_reload().await.map_err(error_response)?
     };
 
     eprintln!(

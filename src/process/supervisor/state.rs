@@ -112,8 +112,7 @@ impl McpToolHost for SupervisorState {
         let command_id = self.mcp.next_command_id();
         let worker_port = {
             let mut guard = self.inner.lock().await;
-            guard.reap_retired().await;
-            guard.active_worker_port()?
+            guard.ensure_worker_alive_or_reload().await?
         };
         crate::api::mcp::submit_mcp_kernel_command(command_id, worker_port, command).await
     }
@@ -171,8 +170,7 @@ impl SupervisorState {
         eprintln!("[canon-ai-supervisor] runtime:state requested");
         let worker_port = {
             let mut guard = self.inner.lock().await;
-            guard.reap_retired().await;
-            match guard.active_worker_port() {
+            match guard.ensure_worker_alive_or_reload().await {
                 Ok(port) => port,
                 Err(error) => return crate::api::mcp::tool_error(error),
             }

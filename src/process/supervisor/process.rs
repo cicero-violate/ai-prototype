@@ -688,6 +688,25 @@ impl WorkerProcess {
             .ok_or_else(|| "no active worker — call /reload first".to_string())
     }
 
+    /// Returns the active worker port, auto-reloading if the worker has exited.
+    pub async fn ensure_worker_alive_or_reload(&mut self) -> Result<u16, String> {
+        if let Some(active) = self.active.as_mut() {
+            if let Ok(Some(status)) = active.child.try_wait() {
+                let generation = active.generation;
+                self.active = None;
+                eprintln!(
+                    "supervisor: active worker generation {generation} exited with {status}, auto-reloading"
+                );
+            }
+        }
+        if self.active.is_none() {
+            self.reload_inner().await?;
+        } else {
+            self.reap_retired().await;
+        }
+        self.active_worker_port()
+    }
+
     pub fn active_generation(&self) -> Option<u64> {
         self.active.as_ref().map(|worker| worker.generation)
     }

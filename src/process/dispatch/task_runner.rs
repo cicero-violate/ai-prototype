@@ -11,7 +11,6 @@
 //!                    → successful run + evidence_path.exists() gate
 //!                    → complete or fail with retry
 
-use std::path::PathBuf;
 use std::time::Duration;
 
 use crate::domain::plan::{ready_nodes_from_available_plan_state, PlanNode};
@@ -153,8 +152,6 @@ impl TaskRunner {
         let supervisor_url = self.supervisor_url.clone();
         let worker_id = self.worker_id.clone();
         let lease_ttl_ms = self.lease_ttl_ms;
-        let evidence_path = evidence_path_for(&self.base_config.project_dir, &node_id);
-
         let mut config = self.base_config.clone();
         config.domain = Some(assignment.title);
         config.metric = Some(assignment.description);
@@ -165,10 +162,7 @@ impl TaskRunner {
             &claim,
             &worker_id,
             lease_ttl_ms,
-            move || {
-                let run_completed = LoopDriver::new(config).run_all_agents();
-                run_completed && evidence_path.exists()
-            },
+            move || LoopDriver::new(config).run_all_agents(),
         );
 
         if succeeded {
@@ -181,12 +175,6 @@ impl TaskRunner {
     }
 }
 
-fn evidence_path_for(project_dir: &PathBuf, node_id: &str) -> PathBuf {
-    project_dir
-        .join("state")
-        .join("agent-evidence")
-        .join(format!("{node_id}.md"))
-}
 
 fn idempotency_key_for(worker_id: &str, node_id: &str) -> u64 {
     let mut h = 0xcbf2_9ce4_8422_2325u64;

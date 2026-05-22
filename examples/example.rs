@@ -2,14 +2,14 @@ use std::path::{Path, PathBuf};
 use std::thread;
 
 use ai::domain::plan::{load_plan, ready_nodes, PlanNode};
-use ai::process::agent::{AgentLoopConfig, LoopDriver, DEFAULT_MINI_AGENT_COUNT};
+use ai::process::agent::{AgentLoopConfig, LoopDriver, DEFAULT_EXECUTOR_COUNT};
 use ai::process::endpoints::{
     mcp_connector_url_from_env, supervisor_port_from_env, DEFAULT_SUPERVISOR_PORT,
 };
 
 fn main() {
     let workspace = workspace_root();
-    let max_agents = env_u32("CANON_EXAMPLE_MAX_AGENTS", DEFAULT_MINI_AGENT_COUNT).clamp(1, 5);
+    let max_agents = env_u32("CANON_EXAMPLE_MAX_AGENTS", DEFAULT_EXECUTOR_COUNT).clamp(1, 5);
     let execute_turns = env_u32("CANON_EXAMPLE_EXECUTE_TURNS", 1).max(1);
 
     let plan = load_plan(&workspace);
@@ -66,7 +66,7 @@ fn child_config(workspace: &Path, node: &PlanNode, execute_turns: u32) -> AgentL
         turn_retry_limit: env_u32("TURN_RETRY_LIMIT", 0),
         loop_sleep_ms: env_u64("LOOP_SLEEP_MS", 1000),
         agent_count: 1,
-        mini_agent_count: 1,
+        executor_count: 1,
         project_dir: workspace.to_path_buf(),
         working_dir: workspace.to_path_buf(),
         sse_chunks_dir: workspace

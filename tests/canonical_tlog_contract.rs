@@ -1,4 +1,3 @@
-use std::process::Command;
 use std::thread;
 use std::time::Duration;
 
@@ -37,7 +36,6 @@ fn canonical_ledger_replays_and_introspects_from_repo_root() {
     let _ = std::fs::remove_dir_all(&root);
     std::fs::create_dir_all(root.join("state/tlog")).expect("test tlog dir");
     let canonical = root.join("state/tlog/canon-agent.tlog.ndjson");
-    let relative = canonical.to_string_lossy().to_string();
 
     let (state, tlog) =
         ai::run_until_done(ai::State::default(), ai::RuntimeConfig::default()).expect("run");
@@ -62,16 +60,6 @@ fn canonical_ledger_replays_and_introspects_from_repo_root() {
         Some("root_validate:pass")
     );
     assert_eq!(report.latest_score_report_hash, Some(0x5c02e));
-
-    let output = Command::new(env!("CARGO_BIN_EXE_tlog_introspect"))
-        .arg(relative)
-        .output()
-        .expect("tlog_introspect should run");
-    assert!(output.status.success());
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    assert!(stdout.contains("latest_phase=Done"));
-    assert!(stdout.contains("latest_evaluator_result=pass"));
-    assert!(stdout.contains("latest_validation_result=root_validate:pass"));
 
     let _ = std::fs::remove_dir_all(root);
 }

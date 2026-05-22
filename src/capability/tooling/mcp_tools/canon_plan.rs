@@ -166,8 +166,21 @@ pub fn run_update(args: &Value, workspace: &WorkspaceView) -> Value {
                 return error("append_evidence requires non-empty evidence.path, evidence.kind, and evidence.summary");
             }
             match plan.nodes.iter_mut().find(|n| n.id == node_id) {
-                Some(_) => {
+                Some(node) => {
+                    if !node.evidence.iter().any(|existing| {
+                        existing.path == evidence.path
+                            && existing.kind == evidence.kind
+                            && existing.summary == evidence.summary
+                    }) {
+                        node.evidence.push(evidence.clone());
+                    }
+                    if let Some(status) = status_for_appended_evidence(&evidence.kind) {
+                        node.status = status.clone();
+                        node.assignee = None;
+                        status_patch = Some((node_id.to_string(), status));
+                    }
                     evidence_patch = Some((node_id.to_string(), evidence));
+                    plan_changed = true;
                 }
                 None => return error(format!("node '{node_id}' not found")),
             }
@@ -296,6 +309,14 @@ fn plan_edge_exists(edges: &[PlanEdge], needle: &PlanEdge) -> bool {
         .any(|edge| edge.from == needle.from && edge.to == needle.to)
 }
 
+fn status_for_appended_evidence(kind: &str) -> Option<NodeStatus> {
+    match kind {
+        "validation" | "execution-receipt" => Some(NodeStatus::Done),
+        "blocker" => Some(NodeStatus::Failed),
+        _ => None,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -348,7 +369,7 @@ mod tests {
         assert_eq!(result.get("isError").and_then(Value::as_bool), Some(false));
 
         let raw_plan = load_plan(&root);
-        assert_eq!(raw_plan.nodes[0].status, NodeStatus::Pending);
+        assert_eq!(raw_plan.nodes[0].status, NodeStatus::Done);
 
         let (read_model, plan_state) = load_plan_read_model(&root).expect("read model projects");
         assert!(plan_state.is_some());
@@ -358,7 +379,7 @@ mod tests {
     }
 
     #[test]
-    fn append_evidence_appends_tlog_patch_without_mutating_plan_json_evidence() {
+    fn append_evidence_writes_to_plan_json_and_tlog() {
         let root = test_root("evidence-patch");
         let _ = std::fs::remove_dir_all(&root);
         std::fs::create_dir_all(&root).expect("root should exist");
@@ -379,9 +400,17 @@ mod tests {
         );
         assert_eq!(result.get("isError").and_then(Value::as_bool), Some(false));
 
+        // Evidence and terminal status are written to plan.json so plan_read and
+        // the visible artifact do not drift from the accepted TLog projection.
         let raw_plan = load_plan(&root);
-        assert!(raw_plan.nodes[0].evidence.is_empty());
+        assert_eq!(raw_plan.nodes[0].status, NodeStatus::Done);
+        assert_eq!(raw_plan.nodes[0].evidence.len(), 1);
+        assert_eq!(
+            raw_plan.nodes[0].evidence[0].path,
+            "state/agent-evidence/node-1.md"
+        );
 
+        // TLog also records the hashes and terminal status for projection filtering.
         let plan_state = load_tlog_projected_plan_state(&root)
             .expect("TLog projection should load")
             .expect("TLog evidence patch should project");
@@ -389,7 +418,49 @@ mod tests {
             .nodes
             .get(&plan_text_hash("node-1"))
             .expect("node should project");
+        assert_eq!(node.status, 3);
         assert_eq!(node.evidence.len(), 1);
+
+        let _ = std::fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn blocker_evidence_marks_node_failed_but_commit_evidence_does_not_close_it() {
+        let root = test_root("evidence-status-policy");
+        let _ = std::fs::remove_dir_all(&root);
+        std::fs::create_dir_all(&root).expect("root should exist");
+        write_plan(&root, NodeStatus::Pending);
+        let workspace = WorkspaceView::new(root.clone(), root.clone()).expect("workspace view");
+
+        let commit = run_update(
+            &json!({
+                "op": "append_evidence",
+                "node_id": "node-1",
+                "evidence": {
+                    "path": "git/abc123",
+                    "kind": "commit",
+                    "summary": "abc123"
+                }
+            }),
+            &workspace,
+        );
+        assert_eq!(commit.get("isError").and_then(Value::as_bool), Some(false));
+        assert_eq!(load_plan(&root).nodes[0].status, NodeStatus::Pending);
+
+        let blocker = run_update(
+            &json!({
+                "op": "append_evidence",
+                "node_id": "node-1",
+                "evidence": {
+                    "path": "state/agent-evidence/node-1.md",
+                    "kind": "blocker",
+                    "summary": "validation command unavailable"
+                }
+            }),
+            &workspace,
+        );
+        assert_eq!(blocker.get("isError").and_then(Value::as_bool), Some(false));
+        assert_eq!(load_plan(&root).nodes[0].status, NodeStatus::Failed);
 
         let _ = std::fs::remove_dir_all(root);
     }

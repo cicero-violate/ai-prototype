@@ -102,7 +102,6 @@ pub(super) fn build_project_planning_prompt(
     agent_count: u32,
     working_dir: &Path,
 ) -> String {
-    let auto_refactor_report = auto_refactor_summary(working_dir);
     let policy_feedback = load_policy_feedback(working_dir);
     let mcp_feedback = load_mcp_feedback(working_dir);
     planning_prompt(
@@ -113,16 +112,11 @@ pub(super) fn build_project_planning_prompt(
         None,
         None,
         None,
-        auto_refactor_report.as_deref(),
         policy_feedback.as_deref(),
         mcp_feedback.as_deref(),
     )
 }
 
-#[expect(
-    clippy::too_many_arguments,
-    reason = "prompt assembly requires all turn context fields at one boundary"
-)]
 pub(super) fn planning_prompt(
     goal: &str,
     agent_id: u32,
@@ -131,7 +125,6 @@ pub(super) fn planning_prompt(
     domain: Option<&str>,
     metric: Option<&str>,
     _score_report: Option<&str>,
-    auto_refactor_report: Option<&str>,
     policy_feedback: Option<&str>,
     mcp_feedback: Option<&str>,
 ) -> String {
@@ -144,15 +137,6 @@ pub(super) fn planning_prompt(
         _ => String::new(),
     };
     let score_block = String::new();
-    let auto_refactor_block = match auto_refactor_report {
-        Some(report) if !report.trim().is_empty() => format!(
-            "## AUTO-REFACTOR PLANS (state/rustc/auto-refactor — graph-editor planning evidence)\n\
-             ```\n{report}\n```\n\
-             Treat these as candidate evidence only. Prefer small `MergeFn` operations whose target exists in the current graph. \
-             Do not apply generated merge recommendations blindly; generated serde/self-pair noise must be filtered manually.\n\n"
-        ),
-        _ => String::new(),
-    };
     let policy_block = match policy_feedback {
         Some(feedback) => format!(
             "## PRIOR LEARNING (promoted from verified TLog cycles)\n\
@@ -177,15 +161,14 @@ pub(super) fn planning_prompt(
          {focus_block}\
          ## GOAL\n{goal}\n\n\
          {score_block}\
-         {auto_refactor_block}\
          {policy_block}\
          {mcp_error_block}\
-         ## HOW MINI-AGENT DISPATCH WORKS\n\
-         After this planning turn finishes, the scheduler reads the TLog-projected plan read model and **spawns one mini-agent per ready node in parallel**. \
+         ## HOW EXECUTOR DISPATCH WORKS\n\
+         After this planning turn finishes, the scheduler reads the TLog-projected plan read model and **spawns one executor per ready node in parallel**. \
          A ready node is projected `pending` whose every dependency node is projected `done`. \
          Nodes with no incoming edges are immediately ready. \
-         Each mini-agent receives the node `title` as its task and `description` as its success criterion, runs autonomously, and commits its result. \
-         The more work you decompose into independent DAG nodes, the more parallelism you get — up to one agent per node.\n\n\
+         Each executor receives the node `title` as its task and `description` as its success criterion, runs autonomously, and commits its result. \
+         The more work you decompose into independent DAG nodes, the more parallelism you get — up to one executor per node.\n\n\
          ## OPTIMIZATION OBJECTIVE\n\
          Decompose the next cycle's work into parallel tasks and publish them as a DAG to maximize score gain per wall-clock cycle. \
          Treat each node's `score_axes` as the current objective surface. \
@@ -201,8 +184,7 @@ pub(super) fn planning_prompt(
             `call_action` → `{{\"action\": \"project:plan_read\", \"parameters\": {{}}, \"intent\": \"read current plan DAG\"}}`\n\
             Inspect `ready_node_ids`, pending, running, and failed nodes.\n\
          3. Read the evidence references already attached to current DAG nodes.\n\
-         4. Inspect `state/rustc/auto-refactor/*.graph-editor-plan.json` when present — use those to identify graph-backed refactor candidates.\n\
-         5. Inspect the specific files, tests, fixtures, and evidence paths that candidate nodes would touch.\n\n\
+         4. Inspect the specific files, tests, fixtures, and evidence paths that candidate nodes would touch.\n\n\
          **Build or update the DAG — use `call_action` with action `project:plan_update`:**\n\
          - `op=replace` to publish a fresh DAG for this cycle, or `op=upsert_node` / `op=add_edge` to extend an existing one.\n\
          - Each node must have:\n\
@@ -222,155 +204,6 @@ pub(super) fn planning_prompt(
     )
 }
 
-pub(super) fn auto_refactor_summary(project_dir: &Path) -> Option<String> {
-    let dir = project_dir
-        .join("state")
-        .join("rustc")
-        .join("auto-refactor");
-    let entries = fs::read_dir(&dir).ok()?;
-    let mut files: Vec<_> = entries
-        .flatten()
-        .map(|entry| entry.path())
-        .filter(|path| path.extension().and_then(|v| v.to_str()) == Some("json"))
-        .collect();
-    files.sort();
-
-    let mut out = String::new();
-    let mut listed = 0usize;
-    for path in files {
-        let Ok(text) = fs::read_to_string(&path) else {
-            continue;
-        };
-        let Some(summary) = summarize_auto_refactor_plan(&path, &text) else {
-            continue;
-        };
-        if !out.is_empty() {
-            out.push('\n');
-        }
-        out.push_str(&summary);
-        listed += 1;
-        if listed >= 20 {
-            break;
-        }
-    }
-
-    (!out.is_empty()).then_some(out)
-}
-
-pub(super) fn summarize_auto_refactor_plan(path: &Path, text: &str) -> Option<String> {
-    let file_name = path.file_name()?.to_str()?;
-    let crate_name = json_string_field(text, "crate_name").unwrap_or_else(|| "unknown".into());
-    let operation_count = json_usize_field(text, "operation_count").unwrap_or(0);
-    let merge_count = text.matches("\"op\": \"MergeFn\"").count()
-        + json_array_object_count(text, "merge_surface").unwrap_or(0);
-    let split_count = text.matches("\"op\": \"SplitFn\"").count();
-    let merge_targets = json_string_values_after_key(text, "target_fn", 5);
-
-    let mut line = format!(
-        "{file_name}: crate={crate_name} operations={operation_count} merge_fn={merge_count} split_fn={split_count}"
-    );
-    if !merge_targets.is_empty() {
-        line.push_str(" merge_targets=");
-        line.push_str(&merge_targets.join(","));
-    }
-    Some(line)
-}
-
-pub(super) fn json_string_field(text: &str, key: &str) -> Option<String> {
-    let needle = format!("\"{key}\"");
-    let start = text.find(&needle)? + needle.len();
-    let after_colon = text[start..].find(':')? + start + 1;
-    parse_json_string_at(text, after_colon)
-}
-
-pub(super) fn json_usize_field(text: &str, key: &str) -> Option<usize> {
-    let needle = format!("\"{key}\"");
-    let start = text.find(&needle)? + needle.len();
-    let after_colon = text[start..].find(':')? + start + 1;
-    let rest = text[after_colon..].trim_start();
-    let digits: String = rest.chars().take_while(|c| c.is_ascii_digit()).collect();
-    digits.parse().ok()
-}
-
-pub(super) fn json_string_values_after_key(text: &str, key: &str, limit: usize) -> Vec<String> {
-    let needle = format!("\"{key}\"");
-    let mut out = Vec::new();
-    let mut offset = 0usize;
-    while out.len() < limit {
-        let Some(found) = text[offset..].find(&needle) else {
-            break;
-        };
-        let start = offset + found + needle.len();
-        let Some(colon_rel) = text[start..].find(':') else {
-            break;
-        };
-        if let Some(value) = parse_json_string_at(text, start + colon_rel + 1) {
-            out.push(value);
-        }
-        offset = start;
-    }
-    out
-}
-
-pub(super) fn parse_json_string_at(text: &str, offset: usize) -> Option<String> {
-    let rest = text[offset..].trim_start();
-    let mut chars = rest.chars();
-    if chars.next()? != '"' {
-        return None;
-    }
-    let mut value = String::new();
-    let mut escaped = false;
-    for ch in chars {
-        if escaped {
-            value.push(ch);
-            escaped = false;
-        } else if ch == '\\' {
-            escaped = true;
-        } else if ch == '"' {
-            return Some(value);
-        } else {
-            value.push(ch);
-        }
-    }
-    None
-}
-
-pub(super) fn json_array_object_count(text: &str, key: &str) -> Option<usize> {
-    let needle = format!("\"{key}\"");
-    let start = text.find(&needle)? + needle.len();
-    let after_colon = text[start..].find(':')? + start + 1;
-    let array_start = text[after_colon..].find('[')? + after_colon;
-    let mut depth = 0i32;
-    let mut count = 0usize;
-    let mut in_string = false;
-    let mut escaped = false;
-    for ch in text[array_start..].chars() {
-        if in_string {
-            if escaped {
-                escaped = false;
-            } else if ch == '\\' {
-                escaped = true;
-            } else if ch == '"' {
-                in_string = false;
-            }
-            continue;
-        }
-        match ch {
-            '"' => in_string = true,
-            '[' => depth += 1,
-            ']' => {
-                depth -= 1;
-                if depth == 0 {
-                    return Some(count);
-                }
-            }
-            '{' if depth == 1 => count += 1,
-            _ => {}
-        }
-    }
-    None
-}
-
 pub(super) fn spawned_prompt(
     domain: &str,
     metric: &str,
@@ -379,6 +212,12 @@ pub(super) fn spawned_prompt(
     working_dir: &Path,
 ) -> String {
     let dir = working_dir.display();
+    let goal_block = match fs::read_to_string(working_dir.join("GOAL.md")) {
+        Ok(goal) if !goal.trim().is_empty() => {
+            format!("## PROJECT GOAL\n{goal}\n\n")
+        }
+        _ => String::new(),
+    };
     let success_criterion = if metric.trim().is_empty() {
         "BLOCKER: no success criterion was supplied by the scheduler. Do not invent scope. Assess the missing criterion, write blocker evidence, attach it as blocker evidence when a plan node is available, and stop without committing."
     } else {
@@ -386,28 +225,32 @@ pub(super) fn spawned_prompt(
     };
     let evidence_protocol = match plan_node_id {
         Some(node_id) => format!(
-            "5. Write detailed evidence to `state/agent-evidence/{node_id}.md`.\n\
-             6. Append an evidence reference with `call_action` action `project:plan_update`, parameters \
-             `{{\"op\":\"append_evidence\",\"node_id\":\"{node_id}\",\"evidence\":{{\"path\":\"state/agent-evidence/{node_id}.md\",\"kind\":\"validation\",\"summary\":\"<one-line result>\"}}}}`.\n\
-             7. Use `project:plan_update` only with `op=append_evidence`; do not call `op=set_status`.\n\
-             8. Do not directly edit `state/plan.json`, shared planning files, score files, or TLog files.\n\
-             9. When the criterion is met: write evidence, attach evidence, commit code/evidence changes as lineage proof, then stop. The supervisor will decide completion from accepted receipts and projected evidence.\n\
-             10. If the criterion cannot be met: write the blocker to `state/agent-evidence/{node_id}.md`, append evidence with `kind` set to `blocker`, then stop without committing. The supervisor will decide failure/retry from accepted receipts and projected evidence."
+            "5. Write detailed task evidence to `state/agent-evidence/{node_id}.md` with commands, validation output, artifact paths, counts, and samples.\n\
+             6. When the success criterion is met, append that evidence file with `call_action` action `project:plan_update` using `op=append_evidence`, parameters \
+             `{{\"op\":\"append_evidence\",\"node_id\":\"{node_id}\",\"evidence\":{{\"path\":\"state/agent-evidence/{node_id}.md\",\"kind\":\"validation\",\"summary\":\"<one-line validation result>\"}}}}`; this accepted evidence is the supervisor completion signal.\n\
+             7. Commit only passing work: `git add -A && git commit -m \"<short description>\"`.\n\
+             8. Capture the commit hash: `git rev-parse HEAD` → let this be COMMIT_HASH.\n\
+             9. Append the commit as additional evidence with `call_action` action `project:plan_update`, parameters \
+             `{{\"op\":\"append_evidence\",\"node_id\":\"{node_id}\",\"evidence\":{{\"path\":\"git/COMMIT_HASH\",\"kind\":\"commit\",\"summary\":\"COMMIT_HASH\"}}}}`\n\
+             (replace COMMIT_HASH with the actual hash from step 8).\n\
+             10. Do not directly edit `state/plan.json`, shared planning files, score files, or TLog files, and do not call `op=set_status`.\n\
+             11. When the criterion is met: write the evidence file, append validation evidence, commit passing work, append commit evidence, then stop. The supervisor will decide completion.\n\
+             12. If the criterion cannot be met: write the blocker to `state/agent-evidence/{node_id}.md`; do not commit; append evidence with `kind` set to `blocker` and summary describing the blocker, then stop."
         ),
         None => {
-            "5. Write detailed evidence to a task-specific file under `state/agent-evidence/`.\n\
+            "5. Commit only passing work: `git add -A && git commit -m \"<short description>\"`.\n\
              6. Do not directly edit `state/plan.json`, shared planning files, score files, or TLog files.\n\
-             7. When the criterion is met: commit code/evidence changes as lineage proof, then stop.\n\
-             8. If the criterion cannot be met: write the blocker to the evidence file, then stop without committing."
+             7. When the criterion is met: commit and stop. If it cannot be met: do not commit; document the blocker and stop."
                 .to_string()
         }
     };
     if step == 1 {
         format!(
-            "You are a mini-agent with a single bounded task. You were spawned by the scheduler.\n\n\
+            "You are an executor with a single bounded task. You were spawned by the scheduler.\n\n\
              ## WORKING DIRECTORY\n\
              `{dir}`\n\
              All commands run from this directory.\n\n\
+             {goal_block}\
              ## TASK\n\
              {domain}\n\n\
              ## SUCCESS CRITERION\n\
@@ -421,9 +264,10 @@ pub(super) fn spawned_prompt(
         )
     } else {
         format!(
-            "You are a mini-agent on step {step} of a bounded task. You were spawned by the scheduler.\n\n\
+            "You are an executor on step {step} of a bounded task. You were spawned by the scheduler.\n\n\
              ## WORKING DIRECTORY\n\
              `{dir}`\n\n\
+             {goal_block}\
              ## TASK\n\
              {domain}\n\n\
              ## SUCCESS CRITERION\n\
