@@ -2,6 +2,8 @@
 
 use chrono::Utc;
 use serde_json::{json, Map, Value};
+use std::fs::{self, OpenOptions};
+use std::io::Write;
 
 use super::landmarks;
 use crate::api::mcp::{
@@ -10,7 +12,7 @@ use crate::api::mcp::{
 use crate::api::protocol::Command as KernelCommand;
 use crate::capability::tooling::native;
 pub use crate::capability::tooling::native::NativeToolHost as McpToolHost;
-use crate::runtime::append_mcp_transcript;
+use crate::runtime::{append_mcp_transcript, WorkspaceView};
 use crate::{CapabilityRegistry, McpCallReceipt, McpCallRequest};
 
 pub async fn dispatch_ai_mcp<H: McpToolHost>(
@@ -42,6 +44,206 @@ async fn execute_recorded_ai_mcp_tool<H: McpToolHost>(name: &str, args: Value, h
         return execute_recorded_gateway_tool(name, args, host).await;
     }
     execute_recorded_native_ai_mcp_tool(name, args, host).await
+}
+
+fn append_mcp_transcript_for_workspace(
+    workspace: &WorkspaceView,
+    name: &str,
+    args_json: &str,
+    response_json: &str,
+    request: &McpCallRequest,
+    receipt: &McpCallReceipt,
+) -> Option<String> {
+    let mut errors = Vec::new();
+    let mut recorded = false;
+    append_raw_mcp_tool_result(workspace, name, args_json, response_json, receipt)
+        .unwrap_or_else(|error| eprintln!("[canon-ai-mcp] raw tool result save failed: {error}"));
+
+    match append_mcp_transcript(
+        &workspace.root,
+        name,
+        args_json,
+        response_json,
+        request,
+        receipt,
+    ) {
+        Ok(_) => recorded = true,
+        Err(error) => errors.push(format!("workspace {}: {error}", workspace.root.display())),
+    }
+
+    if workspace.allowed_boundary != workspace.root {
+        match append_mcp_transcript(
+            &workspace.allowed_boundary,
+            name,
+            args_json,
+            response_json,
+            request,
+            receipt,
+        ) {
+            Ok(_) => recorded = true,
+            Err(error) => errors.push(format!(
+                "project {}: {error}",
+                workspace.allowed_boundary.display()
+            )),
+        }
+    }
+
+    if errors.is_empty() {
+        None
+    } else if recorded {
+        Some(format!(
+            "MCP transcript mirror warning: {}",
+            errors.join("; ")
+        ))
+    } else {
+        Some(format!(
+            "MCP transcript recording failed in runtime: {}",
+            errors.join("; ")
+        ))
+    }
+}
+
+fn append_raw_mcp_tool_result(
+    workspace: &WorkspaceView,
+    name: &str,
+    args_json: &str,
+    response_json: &str,
+    receipt: &McpCallReceipt,
+) -> Result<(), String> {
+    let path = workspace
+        .allowed_boundary
+        .join("state")
+        .join("agent_state")
+        .join("mcp")
+        .join("tool-results.ndjson");
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent).map_err(|error| format!("create raw result dir: {error}"))?;
+    }
+    let line = json!({
+        "created_at": Utc::now().to_rfc3339(),
+        "tool_name": name,
+        "request_json": args_json,
+        "response_json": response_json,
+        "receipt_hash": receipt.receipt_hash,
+        "response_hash": receipt.response_hash,
+        "response_bytes": receipt.response_bytes,
+        "exit_status": receipt.exit_status,
+        "timed_out": receipt.timed_out
+    });
+    let mut file = OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&path)
+        .map_err(|error| format!("open raw result {}: {error}", path.display()))?;
+    writeln!(file, "{line}").map_err(|error| format!("write raw result: {error}"))?;
+    file.sync_all()
+        .map_err(|error| format!("sync raw result: {error}"))?;
+    eprintln!(
+        "[canon-ai-mcp] raw tool result saved path={}",
+        path.display()
+    );
+    Ok(())
+}
+
+#[cfg(test)]
+mod transcript_tests {
+    use super::*;
+    use crate::runtime::{mcp_transcript_path, replay_mcp_transcripts};
+    use std::fs;
+    use std::path::PathBuf;
+    use uuid::Uuid;
+
+    fn unique_project() -> PathBuf {
+        std::env::temp_dir().join(format!("canon-mcp-dispatch-test-{}", Uuid::new_v4()))
+    }
+
+    #[test]
+    fn mcp_transcript_is_mirrored_from_nested_workspace_to_project_state() {
+        let project = unique_project();
+        let nested = project.join("browser-router");
+        fs::create_dir_all(&nested).expect("create nested workspace");
+        fs::create_dir_all(project.join("state")).expect("create shared state");
+        let workspace = WorkspaceView::new(nested.clone(), project.clone()).expect("workspace");
+        let args_json = r#"{"command":"get_landmarks"}"#;
+        let response_json = r#"{"content":[{"type":"text","text":"saved"}],"isError":false}"#;
+        let request = McpCallRequest::new(
+            CapabilityRegistry::canonical(),
+            "ai-native:/ai/mcp",
+            "get_landmarks",
+            args_json,
+            1000,
+            65_536,
+        );
+        let receipt = McpCallReceipt::from_response(&request, response_json.as_bytes(), 0, false);
+
+        let warning = append_mcp_transcript_for_workspace(
+            &workspace,
+            "get_landmarks",
+            args_json,
+            response_json,
+            &request,
+            &receipt,
+        );
+
+        assert!(warning.is_none());
+        let nested_records = replay_mcp_transcripts(&nested).expect("nested transcript");
+        let project_records = replay_mcp_transcripts(&project).expect("project transcript");
+        assert_eq!(nested_records.len(), 1);
+        assert_eq!(project_records.len(), 1);
+        assert_eq!(project_records[0].response_json, response_json);
+        assert!(
+            project
+                .join("state")
+                .join("agent_state")
+                .join("mcp")
+                .join("tool-results.ndjson")
+                .exists(),
+            "raw result sink is written under the project state root"
+        );
+        assert_eq!(
+            mcp_transcript_path(&project),
+            project
+                .join("state")
+                .join("agent_state")
+                .join("mcp")
+                .join("mcp-transcript.tlog.ndjson")
+        );
+
+        let _ = fs::remove_dir_all(project);
+    }
+
+    #[test]
+    fn mcp_transcript_is_not_duplicated_when_workspace_is_project_root() {
+        let project = unique_project();
+        fs::create_dir_all(&project).expect("create project");
+        let workspace = WorkspaceView::new(project.clone(), project.clone()).expect("workspace");
+        let args_json = r#"{"command":"get_manifest"}"#;
+        let response_json = r#"{"content":[{"type":"text","text":"manifest"}],"isError":false}"#;
+        let request = McpCallRequest::new(
+            CapabilityRegistry::canonical(),
+            "ai-native:/ai/mcp",
+            "get_manifest",
+            args_json,
+            1000,
+            65_536,
+        );
+        let receipt = McpCallReceipt::from_response(&request, response_json.as_bytes(), 0, false);
+
+        let warning = append_mcp_transcript_for_workspace(
+            &workspace,
+            "get_manifest",
+            args_json,
+            response_json,
+            &request,
+            &receipt,
+        );
+
+        assert!(warning.is_none());
+        let project_records = replay_mcp_transcripts(&project).expect("project transcript");
+        assert_eq!(project_records.len(), 1);
+
+        let _ = fs::remove_dir_all(project);
+    }
 }
 
 async fn execute_recorded_gateway_tool<H: McpToolHost>(name: &str, args: Value, host: &H) -> Value {
@@ -97,19 +299,14 @@ async fn execute_recorded_gateway_tool<H: McpToolHost>(name: &str, args: Value, 
     };
     let receipt = McpCallReceipt::from_response(&request, &response_bytes, exit_status, false);
     let workspace = host.workspace();
-    let transcript_warning = match append_mcp_transcript(
-        &workspace.root,
+    let transcript_warning = append_mcp_transcript_for_workspace(
+        &workspace,
         name,
         &args_json,
         &response_json,
         &request,
         &receipt,
-    ) {
-        Ok(_) => None,
-        Err(error) => Some(format!(
-            "MCP transcript recording failed in runtime: {error}"
-        )),
-    };
+    );
     if let Err(error) = host
         .submit_kernel_command(KernelCommand::SubmitMcpCallReceipt(receipt))
         .await
@@ -186,19 +383,14 @@ async fn execute_recorded_native_ai_mcp_tool<H: McpToolHost>(
     };
     let receipt = McpCallReceipt::from_response(&request, &response_bytes, exit_status, false);
     let workspace = host.workspace();
-    let transcript_warning = match append_mcp_transcript(
-        &workspace.root,
+    let transcript_warning = append_mcp_transcript_for_workspace(
+        &workspace,
         name,
         &args_json,
         &response_json,
         &request,
         &receipt,
-    ) {
-        Ok(_) => None,
-        Err(error) => Some(format!(
-            "MCP transcript recording failed in runtime: {error}"
-        )),
-    };
+    );
     if let Err(error) = host
         .submit_kernel_command(KernelCommand::SubmitMcpCallReceipt(receipt))
         .await

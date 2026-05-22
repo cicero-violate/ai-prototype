@@ -6,13 +6,14 @@
 
 use std::env;
 use std::fmt;
-use std::fs::{self, File, OpenOptions};
+use std::fs::File;
 use std::io::{BufRead, BufReader, Read, Write};
 use std::net::TcpStream;
 use std::path::Path;
 use std::time::Duration;
 
 use crate::capability::context::ContextRecord;
+use crate::capability::llm::provider_common;
 use crate::capability::llm::record::{
     retry_budget_decision_receiptable, retry_budget_decision_valid, retry_budget_exhausted,
     retry_budget_policy_valid, LlmRecord, LlmStructuredAdapter,
@@ -1493,18 +1494,8 @@ fn parse_local_endpoint(base_url: &str) -> Result<LocalLlmEndpoint, OpenAiError>
 }
 
 fn split_http_response(response: &str) -> Result<(u16, &str), OpenAiError> {
-    let (head, body) = response
-        .split_once("\r\n\r\n")
-        .ok_or(OpenAiError::InvalidResponse)?;
-    let status = head
-        .lines()
-        .next()
-        .and_then(|line| line.split_whitespace().nth(1))
-        .and_then(|raw| raw.parse::<u16>().ok())
-        .ok_or(OpenAiError::InvalidResponse)?;
-    Ok((status, body))
+    provider_common::split_http_response(response).ok_or(OpenAiError::InvalidResponse)
 }
-
 fn parse_chat_response_body(body: &str) -> Result<OpenAiChatResponse, OpenAiError> {
     let id = json_string_field(body, "\"id\"").unwrap_or_default();
     let content = message_content_field(body).ok_or(OpenAiError::InvalidResponse)?;
@@ -1748,16 +1739,8 @@ pub fn encode_openai_judgment_proof_event_ndjson(event: OpenAiJudgmentProofEvent
 }
 
 fn encode_openai_u64_fields_ndjson(fields: &[u64]) -> String {
-    format!(
-        "[{}]",
-        fields
-            .iter()
-            .map(u64::to_string)
-            .collect::<Vec<_>>()
-            .join(",")
-    )
+    provider_common::encode_u64_fields_ndjson(fields)
 }
-
 pub fn decode_openai_llm_effect_receipt_ndjson(
     line: &str,
 ) -> Result<OpenAiLlmEffectReceipt, OpenAiError> {
@@ -1859,23 +1842,8 @@ fn decode_openai_judgment_proof_event_fields(
 }
 
 fn parse_u64_fields(line: &str) -> Result<Vec<u64>, OpenAiError> {
-    let body = line
-        .trim()
-        .strip_prefix('[')
-        .and_then(|v| v.strip_suffix(']'))
-        .ok_or(OpenAiError::InvalidReceiptRecord)?;
-    if body.trim().is_empty() {
-        return Ok(Vec::new());
-    }
-    body.split(',')
-        .map(|raw| {
-            raw.trim()
-                .parse::<u64>()
-                .map_err(|_| OpenAiError::InvalidReceiptRecord)
-        })
-        .collect()
+    provider_common::parse_u64_fields(line).ok_or(OpenAiError::InvalidReceiptRecord)
 }
-
 fn load_openai_llm_effect_receipts_ndjson_unchecked(
     path: impl AsRef<Path>,
 ) -> Result<Vec<OpenAiLlmEffectReceipt>, OpenAiError> {
@@ -1898,16 +1866,8 @@ fn append_openai_ndjson_record(
     path: impl AsRef<Path>,
     encoded_record: String,
 ) -> Result<(), OpenAiError> {
-    let path = path.as_ref();
-    ensure_openai_record_parent(path)?;
-
-    {
-        let mut file = OpenOptions::new().create(true).append(true).open(path)?;
-        writeln!(file, "{}", encoded_record)?;
-        file.sync_all()?;
-    }
-
-    sync_parent_dir(path)
+    provider_common::append_ndjson_record(path.as_ref(), &encoded_record)?;
+    Ok(())
 }
 
 fn load_openai_ndjson_records<T, F>(
@@ -1918,46 +1878,7 @@ fn load_openai_ndjson_records<T, F>(
 where
     F: Fn(&[u64]) -> Result<T, OpenAiError>,
 {
-    let path = path.as_ref();
-    if !path.exists() {
-        return Ok(Vec::new());
-    }
-
-    let file = File::open(path)?;
-    let reader = BufReader::new(file);
-    let mut records = Vec::new();
-    for line in reader.lines() {
-        let line = line?;
-        if line.trim().is_empty() {
-            continue;
-        }
-        let fields = parse_u64_fields(&line)?;
-        if fields.len() >= 2 && fields[1] == record_tag {
-            records.push(decode(&fields)?);
-        }
-    }
-    Ok(records)
-}
-
-fn ensure_openai_record_parent(path: &Path) -> Result<(), OpenAiError> {
-    if let Some(parent) = path.parent() {
-        if !parent.as_os_str().is_empty() {
-            fs::create_dir_all(parent)?;
-        }
-    }
-    Ok(())
-}
-
-fn sync_parent_dir(path: &Path) -> Result<(), OpenAiError> {
-    let Some(parent) = path.parent() else {
-        return Ok(());
-    };
-    if parent.as_os_str().is_empty() {
-        return Ok(());
-    }
-    let dir = File::open(parent)?;
-    dir.sync_all()?;
-    Ok(())
+    provider_common::load_ndjson_records(path.as_ref(), record_tag, parse_u64_fields, decode)
 }
 
 fn message_content_field(body: &str) -> Option<String> {
@@ -2029,21 +1950,8 @@ fn decode_json_string(raw: &str) -> Option<String> {
 }
 
 fn json_escape(value: &str) -> String {
-    let mut out = String::new();
-    for ch in value.chars() {
-        match ch {
-            '"' => out.push_str("\\\""),
-            '\\' => out.push_str("\\\\"),
-            '\n' => out.push_str("\\n"),
-            '\r' => out.push_str("\\r"),
-            '\t' => out.push_str("\\t"),
-            c if c.is_control() => out.push(' '),
-            c => out.push(c),
-        }
-    }
-    out
+    provider_common::json_escape(value)
 }
-
 fn hash_text(value: &str) -> u64 {
     let mut h = 0xcbf29ce484222325u64;
     h = mix(h, value.len() as u64);

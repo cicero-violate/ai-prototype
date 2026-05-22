@@ -24,18 +24,18 @@ path = "src/bin/supervisor.rs"
 binary-tlog = []
 
 [dependencies]
-axum = { version = "0.7", features = [] }
-base64 = "0.22"
-chrono = { version = "0.4", features = ["serde"] }
-futures = "0.3"
-ignore = "0.4"
-nucleo-matcher = "0.3"
-reqwest = { version = "0.12", default-features = false, features = ["blocking", "json"] }
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
-serde_yaml = "0.9"
-sha2 = "0.10"
-tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "time", "signal", "io-util", "process"] }
-tower = { version = "0.5", features = ["util"] }
-uuid = { version = "1", features = ["v4"] }
+axum = { workspace = true }
+base64 = { workspace = true }
+chrono = { workspace = true }
+futures = { workspace = true }
+ignore = { workspace = true }
+nucleo-matcher = { workspace = true }
+reqwest = { workspace = true, features = ["blocking", "json"] }
+serde = { workspace = true }
+serde_json = { workspace = true }
+serde_yaml = { workspace = true }
+sha2 = { workspace = true }
+tokio = { workspace = true, features = ["rt-multi-thread", "macros", "net", "time", "signal", "io-util", "process"] }
+tower = { workspace = true }
+uuid = { workspace = true }
 validation = { path = "../validation" }

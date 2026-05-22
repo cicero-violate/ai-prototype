@@ -1,8 +1,11 @@
 //! `canon_score` MCP tool — runs the score binary and returns axis values.
 //!
 //! Parameters (all optional):
-//!   artifact_root  — workspace-relative path to rustc artifact dir (default: state/rustc)
-//!   report         — workspace-relative path to write SCORE_REPORT.md (default: SCORE_REPORT.md)
+//!   artifact_root    — workspace-relative path to rustc artifact dir (default: state/rustc)
+//!   report           — workspace-relative path to write SCORE_REPORT.md (default: SCORE_REPORT.md)
+//!   plan_seed        — workspace-relative path to plan.json for automatic node seeding
+//!                      (default: state/plan.json; pass "" to disable)
+//!   seed_threshold   — axes scoring below this value get new plan nodes (default: 7.0)
 
 use std::process::Command;
 
@@ -21,6 +24,15 @@ pub fn run(args: &Value, workspace: &WorkspaceView) -> Value {
         .get("report")
         .and_then(Value::as_str)
         .unwrap_or("SCORE_REPORT.md");
+    // Default to state/plan.json; pass "" to disable seeding.
+    let plan_seed = args
+        .get("plan_seed")
+        .and_then(Value::as_str)
+        .unwrap_or("state/plan.json");
+    let seed_threshold = args
+        .get("seed_threshold")
+        .and_then(Value::as_f64)
+        .unwrap_or(7.0);
 
     let bin = match score_bin() {
         Ok(b) => b,
@@ -30,16 +42,23 @@ pub fn run(args: &Value, workspace: &WorkspaceView) -> Value {
     let artifact_root_abs = workspace.root.join(artifact_root);
     let report_abs = workspace.root.join(report);
 
-    let output = match Command::new(&bin)
-        .arg("--artifact-root")
+    let mut cmd = Command::new(&bin);
+    cmd.arg("--artifact-root")
         .arg(&artifact_root_abs)
         .arg("--report")
         .arg(&report_abs)
         .arg("--date")
-        .arg(current_date())
-        .current_dir(&workspace.root)
-        .output()
-    {
+        .arg(current_date());
+
+    if !plan_seed.is_empty() {
+        let plan_seed_abs = workspace.root.join(plan_seed);
+        cmd.arg("--plan-seed")
+            .arg(&plan_seed_abs)
+            .arg("--seed-threshold")
+            .arg(seed_threshold.to_string());
+    }
+
+    let output = match cmd.current_dir(&workspace.root).output() {
         Ok(o) => o,
         Err(e) => return error(format!("Failed to run score binary at {bin}: {e}")),
     };

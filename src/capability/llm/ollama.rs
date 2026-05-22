@@ -7,13 +7,14 @@
 
 use std::env;
 use std::fmt;
-use std::fs::{self, File, OpenOptions};
+use std::fs::File;
 use std::io::{BufRead, BufReader, Read, Write};
 use std::net::TcpStream;
 use std::path::Path;
 use std::time::Duration;
 
 use crate::capability::context::ContextRecord;
+use crate::capability::llm::provider_common;
 use crate::capability::llm::record::{
     retry_budget_decision_receiptable, retry_budget_decision_valid, retry_budget_exhausted,
     retry_budget_policy_valid, LlmRecord, LlmStructuredAdapter,
@@ -1357,18 +1358,8 @@ fn parse_local_endpoint(base_url: &str) -> Result<LocalLlmEndpoint, OllamaError>
 }
 
 fn split_http_response(response: &str) -> Result<(u16, &str), OllamaError> {
-    let (head, body) = response
-        .split_once("\r\n\r\n")
-        .ok_or(OllamaError::InvalidResponse)?;
-    let status_line = head.lines().next().ok_or(OllamaError::InvalidResponse)?;
-    let status = status_line
-        .split_whitespace()
-        .nth(1)
-        .and_then(|raw| raw.parse::<u16>().ok())
-        .ok_or(OllamaError::InvalidResponse)?;
-    Ok((status, body))
+    provider_common::split_http_response(response).ok_or(OllamaError::InvalidResponse)
 }
-
 fn parse_chat_response_body(body: &str) -> Result<OllamaChatResponse, OllamaError> {
     let message_start = body.find("\"message\"").unwrap_or(0);
     let content = extract_json_string(body, "\"content\"", message_start)
@@ -1405,7 +1396,7 @@ pub fn load_ollama_llm_effect_receipts_ndjson(
 ) -> Result<Vec<OllamaLlmEffectReceipt>, OllamaError> {
     load_ollama_ndjson_records(
         path,
-        OllamaNdjsonRecordKind::LlmEffectReceipt,
+        OLLAMA_LLM_EFFECT_RECEIPT_RECORD,
         decode_ollama_llm_effect_receipt_fields,
     )
 }
@@ -1447,7 +1438,7 @@ pub fn load_ollama_judgment_proof_events_ndjson(
 ) -> Result<Vec<OllamaJudgmentProofEvent>, OllamaError> {
     load_ollama_ndjson_records(
         path,
-        OllamaNdjsonRecordKind::JudgmentProofEvent,
+        OLLAMA_JUDGMENT_PROOF_RECORD,
         decode_ollama_judgment_proof_event_fields,
     )
 }
@@ -1619,14 +1610,8 @@ pub fn encode_ollama_judgment_proof_event_ndjson(event: OllamaJudgmentProofEvent
 }
 
 fn encode_ollama_u64_fields_ndjson(fields: &[u64]) -> String {
-    let body = fields
-        .iter()
-        .map(u64::to_string)
-        .collect::<Vec<_>>()
-        .join(",");
-    format!("[{body}]")
+    provider_common::encode_u64_fields_ndjson(fields)
 }
-
 pub fn decode_ollama_llm_effect_receipt_ndjson(
     line: &str,
 ) -> Result<OllamaLlmEffectReceipt, OllamaError> {
@@ -1732,113 +1717,35 @@ fn decode_ollama_judgment_proof_event_fields(
 }
 
 fn parse_u64_fields(line: &str) -> Result<Vec<u64>, OllamaError> {
-    let body = line
-        .trim()
-        .strip_prefix('[')
-        .and_then(|v| v.strip_suffix(']'))
-        .ok_or(OllamaError::InvalidReceiptRecord)?;
-    if body.trim().is_empty() {
-        return Ok(Vec::new());
-    }
-    body.split(',')
-        .map(|raw| {
-            raw.trim()
-                .parse::<u64>()
-                .map_err(|_| OllamaError::InvalidReceiptRecord)
-        })
-        .collect()
+    provider_common::parse_u64_fields(line).ok_or(OllamaError::InvalidReceiptRecord)
 }
-
 fn load_ollama_llm_effect_receipts_ndjson_unchecked(
     path: impl AsRef<Path>,
 ) -> Result<Vec<OllamaLlmEffectReceipt>, OllamaError> {
     load_ollama_ndjson_records(
         path,
-        OllamaNdjsonRecordKind::LlmEffectReceipt,
+        OLLAMA_LLM_EFFECT_RECEIPT_RECORD,
         decode_ollama_llm_effect_receipt_fields_unchecked,
     )
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-enum OllamaNdjsonRecordKind {
-    LlmEffectReceipt,
-    JudgmentProofEvent,
-}
-
-impl OllamaNdjsonRecordKind {
-    fn tag(self) -> u64 {
-        match self {
-            OllamaNdjsonRecordKind::LlmEffectReceipt => OLLAMA_LLM_EFFECT_RECEIPT_RECORD,
-            OllamaNdjsonRecordKind::JudgmentProofEvent => OLLAMA_JUDGMENT_PROOF_RECORD,
-        }
-    }
 }
 
 fn append_ollama_ndjson_record(
     path: impl AsRef<Path>,
     encoded_record: String,
 ) -> Result<(), OllamaError> {
-    let path = path.as_ref();
-    ensure_ollama_record_parent(path)?;
-
-    {
-        let mut file = OpenOptions::new().create(true).append(true).open(path)?;
-        writeln!(file, "{}", encoded_record)?;
-        file.sync_all()?;
-    }
-
-    sync_parent_dir(path)
+    provider_common::append_ndjson_record(path.as_ref(), &encoded_record)?;
+    Ok(())
 }
 
 fn load_ollama_ndjson_records<T, F>(
     path: impl AsRef<Path>,
-    record_kind: OllamaNdjsonRecordKind,
+    record_tag: u64,
     decode: F,
 ) -> Result<Vec<T>, OllamaError>
 where
     F: Fn(&[u64]) -> Result<T, OllamaError>,
 {
-    let path = path.as_ref();
-    if !path.exists() {
-        return Ok(Vec::new());
-    }
-
-    let file = File::open(path)?;
-    let reader = BufReader::new(file);
-    let mut records = Vec::new();
-    let record_tag = record_kind.tag();
-    for line in reader.lines() {
-        let line = line?;
-        if line.trim().is_empty() {
-            continue;
-        }
-        let fields = parse_u64_fields(&line)?;
-        if fields.len() >= 2 && fields[1] == record_tag {
-            records.push(decode(&fields)?);
-        }
-    }
-    Ok(records)
-}
-
-fn ensure_ollama_record_parent(path: &Path) -> Result<(), OllamaError> {
-    if let Some(parent) = path.parent() {
-        if !parent.as_os_str().is_empty() {
-            fs::create_dir_all(parent)?;
-        }
-    }
-    Ok(())
-}
-
-fn sync_parent_dir(path: &Path) -> Result<(), OllamaError> {
-    let Some(parent) = path.parent() else {
-        return Ok(());
-    };
-    if parent.as_os_str().is_empty() {
-        return Ok(());
-    }
-    let dir = File::open(parent)?;
-    dir.sync_all()?;
-    Ok(())
+    provider_common::load_ndjson_records(path.as_ref(), record_tag, parse_u64_fields, decode)
 }
 
 fn extract_json_u32(body: &str, key: &str) -> Option<u32> {
@@ -1906,34 +1813,8 @@ fn extract_json_string(body: &str, key: &str, start_at: usize) -> Option<String>
 }
 
 fn json_escape(value: &str) -> String {
-    let mut out = String::new();
-    for ch in value.chars() {
-        push_json_escaped_char(&mut out, ch);
-    }
-    out
+    provider_common::json_escape(value)
 }
-
-fn push_json_escaped_char(out: &mut String, ch: char) {
-    if let Some(escaped) = json_escape_sequence(ch) {
-        out.push_str(escaped);
-    } else if ch.is_control() {
-        out.push(' ');
-    } else {
-        out.push(ch);
-    }
-}
-
-fn json_escape_sequence(ch: char) -> Option<&'static str> {
-    match ch {
-        '"' => Some("\\\""),
-        '\\' => Some("\\\\"),
-        '\n' => Some("\\n"),
-        '\r' => Some("\\r"),
-        '\t' => Some("\\t"),
-        _ => None,
-    }
-}
-
 pub(crate) fn hash_text(value: &str) -> u64 {
     let mut h = 0x91f2_49bb_1f6d_7c35u64;
     for byte in value.as_bytes() {

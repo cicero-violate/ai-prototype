@@ -356,7 +356,8 @@ fn load_plan_read_model_projects_lifecycle_authority_from_accepted_plan_patches(
         "state/agent-evidence/accepted.md",
         "accepted validation evidence",
     );
-    let stale_evidence = contract_evidence("state/agent-evidence/stale.md", "stale scaffold evidence");
+    let stale_evidence =
+        contract_evidence("state/agent-evidence/stale.md", "stale scaffold evidence");
     let mut scaffold_authoritative = contract_node("authoritative", NodeStatus::Failed);
     scaffold_authoritative.assignee = Some("accepted-worker".to_string());
     scaffold_authoritative.evidence = vec![accepted_evidence.clone(), stale_evidence];
@@ -390,8 +391,15 @@ fn load_plan_read_model_projects_lifecycle_authority_from_accepted_plan_patches(
 
     let (read_model, plan_state) = load_plan_read_model(&root).expect("load projected read model");
 
-    assert!(plan_state.is_some(), "accepted patches must produce a projection");
-    assert_eq!(read_model.nodes.len(), 1, "accepted removal hides scaffold node");
+    assert!(
+        plan_state.is_some(),
+        "accepted patches must produce a projection"
+    );
+    assert_eq!(
+        read_model.nodes.len(),
+        1,
+        "accepted removal hides scaffold node"
+    );
     let node = read_model
         .nodes
         .iter()
@@ -407,7 +415,11 @@ fn load_plan_read_model_projects_lifecycle_authority_from_accepted_plan_patches(
         Some("accepted-worker"),
         "assignee is retained only when accepted projection authorizes it"
     );
-    assert_eq!(node.evidence.len(), 1, "stale scaffold evidence is filtered");
+    assert_eq!(
+        node.evidence.len(),
+        1,
+        "stale scaffold evidence is filtered"
+    );
     assert_eq!(node.evidence[0].path, accepted_evidence.path);
 
     let _ = std::fs::remove_dir_all(root);
@@ -437,7 +449,10 @@ fn load_plan_read_model_clears_stale_scaffold_assignee_without_accepted_patch() 
 
     let (read_model, plan_state) = load_plan_read_model(&root).expect("load projected read model");
 
-    assert!(plan_state.is_some(), "accepted status patch must produce projection");
+    assert!(
+        plan_state.is_some(),
+        "accepted status patch must produce projection"
+    );
     assert_eq!(read_model.nodes[0].status, NodeStatus::Done);
     assert_eq!(
         read_model.nodes[0].assignee, None,

@@ -11,10 +11,12 @@
 //!                    → successful run + evidence_path.exists() gate
 //!                    → complete or fail with retry
 
+use std::cell::Cell;
 use std::time::Duration;
 
-use crate::domain::plan::{ready_nodes_from_available_plan_state, PlanNode};
+use crate::domain::plan::{ready_nodes_from_available_plan_state, NodeStatus, PlanNode};
 use crate::process::agent::config::AgentLoopConfig;
+use crate::process::agent::loop_driver::http::post_json_body_local;
 use crate::process::agent::loop_driver::LoopDriver;
 use crate::process::agent::worker::{complete_claim, fail_claim, run_with_heartbeat, ActiveClaim};
 use crate::process::dispatch::task_client::TaskClient;
@@ -25,6 +27,8 @@ const DEFAULT_LEASE_TTL_MS: u64 = 120_000;
 const RETRY_AFTER_MS: u64 = 60_000;
 /// How long to wait for a signal before performing a replay-safety scan.
 const REPLAY_FALLBACK_SECS: u64 = 30;
+/// Minimum gap between successive planner triggers (prevents repeated spawns while planner runs).
+const PLANNER_COOLDOWN_MS: u64 = 300_000;
 
 pub struct TaskRunner {
     supervisor_url: String,
@@ -32,6 +36,7 @@ pub struct TaskRunner {
     lease_ttl_ms: u64,
     base_config: AgentLoopConfig,
     notifier: TaskReadyNotifier,
+    last_planner_trigger_ms: Cell<u64>,
 }
 
 impl TaskRunner {
@@ -51,6 +56,7 @@ impl TaskRunner {
             lease_ttl_ms,
             base_config,
             notifier,
+            last_planner_trigger_ms: Cell::new(0),
         }
     }
 
@@ -85,6 +91,7 @@ impl TaskRunner {
         let client = TaskClient::new(&self.supervisor_url);
         let ready = self.ready_candidates_from_replay();
         if ready.is_empty() {
+            self.maybe_trigger_planner();
             return;
         }
 
@@ -142,6 +149,59 @@ impl TaskRunner {
         }
     }
 
+    /// Trigger the agent planner when the plan is fully exhausted and the cooldown
+    /// has elapsed. The planner (non-spawned LoopDriver) reads the current scores,
+    /// decides what to improve, and extends plan.json via canon_plan_update calls.
+    fn maybe_trigger_planner(&self) {
+        let now_ms = now_ms();
+        if now_ms.saturating_sub(self.last_planner_trigger_ms.get()) < PLANNER_COOLDOWN_MS {
+            return;
+        }
+        if !self.is_plan_exhausted() {
+            return;
+        }
+        self.last_planner_trigger_ms.set(now_ms);
+        let url = format!("{}/agent/start", self.supervisor_url);
+        eprintln!(
+            "[task_runner] plan exhausted — triggering agent planner  worker={}",
+            self.worker_id
+        );
+        match post_json_body_local(&url, &serde_json::Value::Object(Default::default())) {
+            Ok((status, _)) if (200..300).contains(&status) => {
+                eprintln!(
+                    "[task_runner] agent planner started  worker={}  status={status}",
+                    self.worker_id
+                );
+            }
+            Ok((status, body)) => {
+                eprintln!(
+                    "[task_runner] agent planner start failed  worker={}  status={status}  body={body}",
+                    self.worker_id
+                );
+            }
+            Err(e) => {
+                eprintln!(
+                    "[task_runner] agent planner start error  worker={}  err={e}",
+                    self.worker_id
+                );
+            }
+        }
+    }
+
+    fn is_plan_exhausted(&self) -> bool {
+        let plan = match load_plan_read_model(&self.base_config.project_dir) {
+            Ok((p, _)) => p,
+            Err(_) => load_plan(&self.base_config.project_dir),
+        };
+        !plan.nodes.is_empty()
+            && plan.nodes.iter().all(|n| {
+                matches!(
+                    n.status,
+                    NodeStatus::Done | NodeStatus::Failed | NodeStatus::Skipped
+                )
+            })
+    }
+
     fn run_claimed_task(&self, assignment: PlanNode, claim: ActiveClaim) {
         let node_id = claim.node_id.clone();
         eprintln!(
@@ -175,6 +235,12 @@ impl TaskRunner {
     }
 }
 
+fn now_ms() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_millis() as u64
+}
 
 fn idempotency_key_for(worker_id: &str, node_id: &str) -> u64 {
     let mut h = 0xcbf2_9ce4_8422_2325u64;

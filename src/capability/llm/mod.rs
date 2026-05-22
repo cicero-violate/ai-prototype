@@ -7,6 +7,7 @@
 pub mod browser_router;
 pub mod ollama;
 pub mod openai;
+mod provider_common;
 pub mod record;
 pub mod sse;
 pub mod task_receipt;

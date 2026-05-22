@@ -122,11 +122,9 @@ pub(crate) fn run_wave(config: &AgentLoopConfig, tag: &str, cycle_num: u64) -> b
         ready_owned = claimed;
     } else {
         for node in &ready_owned {
-            if let Err(e) = append_status_change_patch(
-                &config.working_dir,
-                &node.id,
-                &NodeStatus::Running,
-            ) {
+            if let Err(e) =
+                append_status_change_patch(&config.working_dir, &node.id, &NodeStatus::Running)
+            {
                 eprintln!(
                     "[{tag}] DAG scheduler: append running state failed for node={}: {e}",
                     node.id
