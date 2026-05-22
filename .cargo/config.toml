@@ -1,5 +1,8 @@
 [build]
-rustc-wrapper = "../scripts/rustc-wrapper-auto.sh"
+rustc-wrapper = "scripts/rustc-wrapper-auto.sh"
+
+[target.x86_64-unknown-linux-gnu]
+linker = "clang"
 
 [target.'cfg(all())']
 rustflags = [
@@ -14,6 +17,8 @@ rustflags = [
   "-Dclippy::wildcard_enum_match_arm",
   "-Dclippy::match_wildcard_for_single_variants",
   "-Dclippy::unwrap_used",
+  "-C",
+  "link-arg=-fuse-ld=mold",
 ]
 
 
