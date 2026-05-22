@@ -45,10 +45,10 @@ pub enum NativeTool {
     CanonGraphApplyOps,
     CanonGraphVerifyCfgDelta,
     CanonGraphAutoRefactorCfg,
-    CanonGraphAnalysis,
     CanonScore,
     CanonPlanRead,
     CanonPlanUpdate,
+    Python,
 }
 
 impl NativeTool {
@@ -76,10 +76,10 @@ impl NativeTool {
             Self::CanonGraphApplyOps => "canon_graph_apply_ops",
             Self::CanonGraphVerifyCfgDelta => "canon_graph_verify_cfg_delta",
             Self::CanonGraphAutoRefactorCfg => "canon_graph_auto_refactor_cfg",
-            Self::CanonGraphAnalysis => "canon_graph_analysis",
             Self::CanonScore => "canon_score",
             Self::CanonPlanRead => "canon_plan_read",
             Self::CanonPlanUpdate => "canon_plan_update",
+            Self::Python => "python",
         }
     }
 }
@@ -251,6 +251,15 @@ const ACTIONS: &[LandmarkAction] = &[
         idempotent: true,
     },
     LandmarkAction {
+        id: "utility:python",
+        native_tool: NativeTool::Python,
+        landmark: Landmark::Utility,
+        description: "Execute a Python 3 code snippet and return stdout/stderr. Runs python3 -c <code> bounded to the configured workspace.",
+        read_only: false,
+        destructive: false,
+        idempotent: false,
+    },
+    LandmarkAction {
         id: "agents:spawn",
         native_tool: NativeTool::CanonSpawnAgent,
         landmark: Landmark::Agents,
@@ -393,15 +402,6 @@ const ACTIONS: &[LandmarkAction] = &[
         read_only: false,
         destructive: false,
         idempotent: false,
-    },
-    LandmarkAction {
-        id: "graph:analysis",
-        native_tool: NativeTool::CanonGraphAnalysis,
-        landmark: Landmark::Graph,
-        description: "Run static analyses and graph projections over a captured compiler fact graph: SCC cycles, layer violations, function intents, call graph, CFG, module graph, def-use, type graph, ownership, effect graph, derived edges, or all at once.",
-        read_only: true,
-        destructive: false,
-        idempotent: true,
     },
 ];
 
@@ -638,10 +638,10 @@ pub fn resolve_action_id(action_id: &str) -> Option<LandmarkAction> {
         "canon_graph_apply_ops" => "graph:apply_ops",
         "canon_graph_verify_cfg_delta" => "graph:verify_cfg_delta",
         "canon_graph_auto_refactor_cfg" => "graph:auto_refactor_cfg",
-        "canon_graph_analysis" => "graph:analysis",
         "canon_score" => "project:score",
         "canon_plan_read" => "project:plan_read",
         "canon_plan_update" => "project:plan_update",
+        "python" => "utility:python",
         value => value,
     };
     ACTIONS.iter().copied().find(|a| a.id == normalized)
@@ -917,28 +917,16 @@ fn native_input_schema(tool: NativeTool) -> Value {
             "required": ["graph", "node", "strategy", "ops_out", "worktree_out"]
         }),
 
-        NativeTool::CanonGraphAnalysis => json!({
+        NativeTool::Python => json!({
             "type": "object",
             "properties": {
-                "graph": { "type": "string", "description": "Workspace-relative path to a captured graph.json file." },
-                "graph_path": { "type": "string", "description": "Alias for graph." },
-                "analysis": {
-                    "type": "string",
-                    "description": "Which analysis to run.",
-                    "enum": [
-                        "scc", "layers", "intents", "derived_edges",
-                        "call_graph", "cfg", "module_graph", "dependency",
-                        "def_use", "type_graph", "ownership", "effect_graph",
-                        "all"
-                    ]
-                },
-                "node":   { "type": "string", "description": "Exact symbol path to focus on." },
-                "module": { "type": "string", "description": "Module prefix to filter results." },
-                "filter": { "type": "string", "description": "Analysis-specific narrow filter." },
-                "limit":  { "type": "integer", "description": "Max results to return (default 100, max 500).", "default": 100, "maximum": 500 },
+                "code": { "type": "string", "description": "Python 3 source code to execute." },
+                "cwd": { "type": "string", "description": "Workspace-root-relative working directory.", "default": "." },
+                "timeout_ms": { "type": "integer", "default": 30000 },
+                "max_output_bytes": { "type": "integer", "default": 65536 },
                 "intent": { "type": "string" }
             },
-            "required": ["graph", "analysis"]
+            "required": ["code"]
         }),
 
         NativeTool::CanonPlanUpdate => json!({

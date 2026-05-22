@@ -4,8 +4,8 @@ use axum::routing::{get, post};
 use axum::Router;
 
 use super::control::{
-    command_gateway, control_page, get_task_next, health, post_task_claim, post_task_complete,
-    post_task_fail, post_task_heartbeat, reload, restart, spawn_agent_handler,
+    command_gateway, control_page, get_plan_status, get_task_next, health, post_task_claim,
+    post_task_complete, post_task_fail, post_task_heartbeat, reload, restart, spawn_agent_handler,
     start_agent_loop_handler,
 };
 use super::mcp::{ai_mcp_delete, ai_mcp_get_sse, ai_mcp_post};
@@ -26,6 +26,7 @@ pub fn build_supervisor_router(state: SupervisorState) -> Router {
         .route("/spawn", post(spawn_agent_handler))
         .route("/agent/start", post(start_agent_loop_handler))
         .route("/v1/command", post(command_gateway))
+        .route("/v1/plan/status", get(get_plan_status))
         .route("/v1/task/next", get(get_task_next))
         .route("/v1/task/claim", post(post_task_claim))
         .route("/v1/task/heartbeat", post(post_task_heartbeat))

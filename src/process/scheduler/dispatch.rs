@@ -23,7 +23,9 @@ use crate::process::agent::loop_driver::http::{
 };
 use crate::process::agent::{AgentLoopConfig, LoopDriver, MAX_MINI_AGENT_COUNT};
 use crate::process::dispatch::task_client::{TaskClaim, TaskClient};
-use crate::process::scheduler::plan_store::{load_plan, load_plan_read_model, save_plan};
+use crate::process::scheduler::plan_store::{
+    append_status_change_patch, load_plan, load_plan_read_model,
+};
 use crate::runtime::workspace::workspace_state_dir;
 
 /// Dispatch one wave: claim all currently-ready plan nodes, spawn one
@@ -93,8 +95,8 @@ pub(crate) fn run_wave(config: &AgentLoopConfig, tag: &str, cycle_num: u64) -> b
     // The supervisor appends TLog-backed plan patches; dispatch reads the
     // projected plan instead of relying on raw plan.json status.
     //
-    // Without a supervisor, fall back to direct plan.json writes (tests,
-    // standalone mode).
+    // Without a supervisor, append accepted TLog-backed status patches directly
+    // (tests, standalone mode). Do not mutate raw plan.json lifecycle state.
     let sv_url = supervisor_url_from_config(config);
     let scheduler_worker_id = format!("dag-{tag}-cycle-{cycle_num}");
 
@@ -119,17 +121,17 @@ pub(crate) fn run_wave(config: &AgentLoopConfig, tag: &str, cycle_num: u64) -> b
         }
         ready_owned = claimed;
     } else {
-        // Direct plan.json write: mark all ready nodes as Running before spawning
-        // so parallel top-level agents don't double-pick the same node.
-        let mut plan_mut = plan;
         for node in &ready_owned {
-            if let Some(n) = plan_mut.nodes.iter_mut().find(|n| n.id == node.id) {
-                n.status = NodeStatus::Running;
-                n.assignee = Some(format!("cycle-{cycle_num}"));
+            if let Err(e) = append_status_change_patch(
+                &config.working_dir,
+                &node.id,
+                &NodeStatus::Running,
+            ) {
+                eprintln!(
+                    "[{tag}] DAG scheduler: append running state failed for node={}: {e}",
+                    node.id
+                );
             }
-        }
-        if let Err(e) = save_plan(&config.working_dir, &plan_mut) {
-            eprintln!("[{tag}] DAG scheduler: save running state failed: {e}");
         }
     }
 
@@ -158,14 +160,6 @@ pub(crate) fn run_wave(config: &AgentLoopConfig, tag: &str, cycle_num: u64) -> b
     //
     // Supervisor path: report complete/fail via HTTP — supervisor appends
     // TLog-backed lifecycle patches.
-    // Direct path: accumulate updates in plan_final, save once at the end.
-    let mut plan_final = if sv_url.is_none() {
-        // Reload so we preserve any writes the mini-agents made via MCP.
-        Some(load_plan(&config.working_dir))
-    } else {
-        None
-    };
-
     for (node_id, handle) in handles {
         let panicked = handle.join().is_err();
 
@@ -176,16 +170,16 @@ pub(crate) fn run_wave(config: &AgentLoopConfig, tag: &str, cycle_num: u64) -> b
             } else {
                 complete_node_via_supervisor(sv, &node_id, &scheduler_worker_id, claim_id);
             }
-        } else if let Some(ref mut pf) = plan_final {
-            if let Some(node) = pf.nodes.iter_mut().find(|n| n.id == node_id) {
-                // Only update if the mini-agent didn't already update it via MCP.
-                if node.status == NodeStatus::Running {
-                    node.status = if panicked {
-                        NodeStatus::Failed
-                    } else {
-                        NodeStatus::Done
-                    };
-                }
+        } else {
+            let status = if panicked {
+                NodeStatus::Failed
+            } else {
+                NodeStatus::Done
+            };
+            if let Err(e) = append_status_change_patch(&config.working_dir, &node_id, &status) {
+                eprintln!(
+                    "[{tag}] DAG scheduler: append final state failed for node={node_id}: {e}"
+                );
             }
         }
 
@@ -201,12 +195,6 @@ pub(crate) fn run_wave(config: &AgentLoopConfig, tag: &str, cycle_num: u64) -> b
             ChildCompleteRecord::new(wave_id, stable_agent_hash(node_id.as_bytes()), panicked);
         if let Some(url) = &cmd_url {
             submit_child_complete(url, child_record, &node_id, tag);
-        }
-    }
-
-    if let Some(pf) = plan_final {
-        if let Err(e) = save_plan(&config.working_dir, &pf) {
-            eprintln!("[{tag}] DAG scheduler: save final state failed: {e}");
         }
     }
 

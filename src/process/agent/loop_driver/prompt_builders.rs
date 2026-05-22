@@ -430,11 +430,10 @@ pub(super) fn spawned_prompt(
              {success_criterion}\n\n\
              ## PROTOCOL\n\
              1. Verify the current state against the success criterion first.\n\
-             2. If the criterion is already met: make sure evidence is written and attached when a plan node is available, commit only relevant code/evidence changes as lineage proof, then stop.\n\
-             3. If not met: identify the specific gap, close it, then re-verify.\n\
+             2. If not met: identify the specific gap, close it, then re-verify.\n\
+             3. Use `call_action` with action `workspace:apply_patch` for all file edits.\n\
              4. Every tool call must include a non-empty `intent` field.\n\
-             5. Do not call `project:plan_update` with `op=set_status`; lifecycle status is supervisor/TLog-owned.\n\
-             6. Commit only when the criterion is met and evidence is attached. Do not commit partial or failing work."
+             {evidence_protocol}"
         )
     }
 }

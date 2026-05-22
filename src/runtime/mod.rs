@@ -1,7 +1,15 @@
 //! Runtime reducer and in-memory execution loop.
 //!
-//! This layer owns phase advancement policy. Capabilities submit evidence;
-//! the frozen kernel only carries the evidence token and gate state.
+//! Ownership boundary:
+//! - `kernel` owns stable packet, state, event, and recovery vocabulary.
+//! - `runtime` owns reducer transitions, canonical event emission, event-bus
+//!   wakeup projection, and recovery-policy selection.
+//! - `process` owns scheduling, task lifecycle mutation, leases, and external
+//!   process orchestration.
+//!
+//! Capabilities submit evidence; the frozen kernel only carries the evidence
+//! token and gate state. Process adapters must call into this layer for runtime
+//! policy instead of duplicating reducer, event, or recovery decisions.
 
 use crate::kernel::{
     Cause, Decision, EventKind, Evidence, FailureClass, GateId, GateSet, GateStatus, Packet, Phase,

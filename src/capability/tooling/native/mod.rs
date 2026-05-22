@@ -37,13 +37,12 @@ pub trait NativeToolHost {
 pub async fn execute_native_tool<H: NativeToolHost>(name: &str, args: &Value, host: &H) -> Value {
     match name {
         "echo" | "get_current_time" => utility::execute(name, args),
-        "apply_patch" | "shell" => workspace::execute(name, args, host).await,
+        "apply_patch" | "shell" | "python" => workspace::execute(name, args, host).await,
         "canon_graph_plan_patch"
         | "canon_graph_plan_cfg"
         | "canon_graph_apply_ops"
         | "canon_graph_verify_cfg_delta"
-        | "canon_graph_auto_refactor_cfg"
-        | "canon_graph_analysis" => graph::execute(name, args, host),
+        | "canon_graph_auto_refactor_cfg" => graph::execute(name, args, host),
         "canon_score" | "canon_plan_read" | "canon_plan_update" => {
             project::execute(name, args, host)
         }

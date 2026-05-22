@@ -10,6 +10,10 @@ use ai::kernel::{
     PlanEdgeProjection, PlanEvidenceProjection, PlanState, PlanStatePatch, PlanStateRejection,
 };
 use ai::process::scheduler::plan_store::load_plan;
+use ai::process::scheduler::plan_store::{
+    append_assignee_change_patch, append_evidence_patch, append_node_remove_patch,
+    append_status_change_patch, load_plan_read_model, save_plan,
+};
 use ai::{Packet, PlanDecision, PlanRecord};
 use std::path::PathBuf;
 
@@ -70,6 +74,18 @@ fn contract_node(id: &str, status: NodeStatus) -> PlanNode {
         score_axes: vec!["Determinism".to_string()],
         files: vec![format!("ai/src/{id}.rs")],
         evidence: Vec::new(),
+    }
+}
+
+fn contract_evidence(path: &str, summary: &str) -> PlanEvidenceRef {
+    PlanEvidenceRef {
+        path: path.to_string(),
+        kind: "validation".to_string(),
+        summary: summary.to_string(),
+        gate: String::new(),
+        evidence: String::new(),
+        receipt_hash: 0,
+        accepted: false,
     }
 }
 
@@ -325,6 +341,107 @@ fn plan_state_replay_contract_imports_accepts_rejects_and_reconstructs_ready_nod
         })])
         .expect_err("plan patch mutation should be rejected"),
         PlanStateRejection::MissingNode
+    );
+
+    let _ = std::fs::remove_dir_all(root);
+}
+
+#[test]
+fn load_plan_read_model_projects_lifecycle_authority_from_accepted_plan_patches() {
+    let root = replay_contract_root("read-model-authority");
+    let _ = std::fs::remove_dir_all(&root);
+    std::fs::create_dir_all(root.join("state")).expect("test state dir");
+
+    let accepted_evidence = contract_evidence(
+        "state/agent-evidence/accepted.md",
+        "accepted validation evidence",
+    );
+    let stale_evidence = contract_evidence("state/agent-evidence/stale.md", "stale scaffold evidence");
+    let mut scaffold_authoritative = contract_node("authoritative", NodeStatus::Failed);
+    scaffold_authoritative.assignee = Some("accepted-worker".to_string());
+    scaffold_authoritative.evidence = vec![accepted_evidence.clone(), stale_evidence];
+    let mut scaffold_removed = contract_node("removed", NodeStatus::Done);
+    scaffold_removed.assignee = Some("removed-worker".to_string());
+
+    save_plan(
+        &root,
+        &PlanDag {
+            version: 1,
+            nodes: vec![scaffold_authoritative, scaffold_removed],
+            edges: Vec::new(),
+            ..Default::default()
+        },
+    )
+    .expect("save stale raw plan scaffold");
+
+    append_status_change_patch(&root, "authoritative", &NodeStatus::Running)
+        .expect("append accepted status patch");
+    append_assignee_change_patch(&root, "authoritative", Some("accepted-worker"))
+        .expect("append accepted assignee patch");
+    append_evidence_patch(
+        &root,
+        "authoritative",
+        &accepted_evidence.path,
+        &accepted_evidence.kind,
+        &accepted_evidence.summary,
+    )
+    .expect("append accepted evidence patch");
+    append_node_remove_patch(&root, "removed").expect("append accepted removal patch");
+
+    let (read_model, plan_state) = load_plan_read_model(&root).expect("load projected read model");
+
+    assert!(plan_state.is_some(), "accepted patches must produce a projection");
+    assert_eq!(read_model.nodes.len(), 1, "accepted removal hides scaffold node");
+    let node = read_model
+        .nodes
+        .iter()
+        .find(|node| node.id == "authoritative")
+        .expect("authoritative node remains projected");
+    assert_eq!(
+        node.status,
+        NodeStatus::Running,
+        "accepted status patch must override stale scaffold lifecycle status"
+    );
+    assert_eq!(
+        node.assignee.as_deref(),
+        Some("accepted-worker"),
+        "assignee is retained only when accepted projection authorizes it"
+    );
+    assert_eq!(node.evidence.len(), 1, "stale scaffold evidence is filtered");
+    assert_eq!(node.evidence[0].path, accepted_evidence.path);
+
+    let _ = std::fs::remove_dir_all(root);
+}
+
+#[test]
+fn load_plan_read_model_clears_stale_scaffold_assignee_without_accepted_patch() {
+    let root = replay_contract_root("read-model-clears-assignee");
+    let _ = std::fs::remove_dir_all(&root);
+    std::fs::create_dir_all(root.join("state")).expect("test state dir");
+
+    let mut scaffold = contract_node("node", NodeStatus::Failed);
+    scaffold.assignee = Some("raw-scaffold-worker".to_string());
+    save_plan(
+        &root,
+        &PlanDag {
+            version: 1,
+            nodes: vec![scaffold],
+            edges: Vec::new(),
+            ..Default::default()
+        },
+    )
+    .expect("save stale raw plan scaffold");
+
+    append_status_change_patch(&root, "node", &NodeStatus::Done)
+        .expect("append accepted status patch");
+
+    let (read_model, plan_state) = load_plan_read_model(&root).expect("load projected read model");
+
+    assert!(plan_state.is_some(), "accepted status patch must produce projection");
+    assert_eq!(read_model.nodes[0].status, NodeStatus::Done);
+    assert_eq!(
+        read_model.nodes[0].assignee, None,
+        "raw scaffold assignee is not lifecycle truth without accepted patch authority"
     );
 
     let _ = std::fs::remove_dir_all(root);

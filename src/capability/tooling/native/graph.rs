@@ -4,7 +4,7 @@ use serde_json::Value;
 
 use super::NativeToolHost;
 use crate::api::mcp::tool_error;
-use crate::capability::tooling::mcp_tools::{canon_graph_analysis, canon_graph_editor};
+use crate::capability::tooling::mcp_tools::canon_graph_editor;
 
 pub fn execute<H: NativeToolHost>(name: &str, args: &Value, host: &H) -> Value {
     let workspace = host.workspace();
@@ -18,7 +18,6 @@ pub fn execute<H: NativeToolHost>(name: &str, args: &Value, host: &H) -> Value {
         "canon_graph_auto_refactor_cfg" => {
             canon_graph_editor::run_auto_refactor_cfg(args, &workspace)
         }
-        "canon_graph_analysis" => canon_graph_analysis::run(args, &workspace),
         _ => tool_error(format!("Unknown graph tool: {name}")),
     }
 }

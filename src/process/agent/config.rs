@@ -6,8 +6,8 @@ use crate::process::endpoints::{
 };
 use crate::runtime::workspace::workspace_state_dir;
 
-pub const DEFAULT_MINI_AGENT_COUNT: u32 = 3;
-pub const MAX_MINI_AGENT_COUNT: u32 = 5;
+pub const DEFAULT_EXECUTOR_COUNT: u32 = 1;
+pub const MAX_EXECUTOR_COUNT: u32 = 5;
 
 /// Runtime config for the agent loop, sourced from environment variables.
 /// Mirrors chatgpt-agent-loop/config.mjs, extended with certification fields.
@@ -18,7 +18,7 @@ pub struct AgentLoopConfig {
     pub turn_retry_limit: u32,
     pub loop_sleep_ms: u64,
     pub agent_count: u32,
-    pub mini_agent_count: u32,
+    pub executor_count: u32,
     pub project_dir: PathBuf,
     pub working_dir: PathBuf,
     pub sse_chunks_dir: PathBuf,
@@ -87,8 +87,8 @@ impl AgentLoopConfig {
             turn_retry_limit: env_parsed::<u32>("TURN_RETRY_LIMIT", 2),
             loop_sleep_ms: env_parsed::<u64>("LOOP_SLEEP_MS", 5000),
             agent_count: env_parsed::<u32>("AGENT_COUNT", 1),
-            mini_agent_count: env_parsed::<u32>("CANON_MINI_AGENT_COUNT", DEFAULT_MINI_AGENT_COUNT)
-                .clamp(1, MAX_MINI_AGENT_COUNT),
+            executor_count: env_parsed::<u32>("CANON_EXECUTOR_COUNT", DEFAULT_EXECUTOR_COUNT)
+                .clamp(1, MAX_EXECUTOR_COUNT),
             project_dir,
             working_dir,
             sse_chunks_dir,

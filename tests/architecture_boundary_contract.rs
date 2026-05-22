@@ -159,12 +159,16 @@ fn runtime_kernel_process_ownership_boundaries_are_single_source() {
             && runtime.contains("mod reducer"),
         "runtime should own event emission projection, reducer transitions, and recovery policy"
     );
+    assert!(runtime.contains("Ownership boundary:"));
+    assert!(runtime.contains("event-bus"));
+    assert!(runtime.contains("policy instead of duplicating"));
 
     let process = source("src/process/mod.rs");
     assert!(
         process.contains("owns autonomous agent loops and supervisor process lifecycle"),
         "process should own scheduling and task lifecycle orchestration"
     );
+    assert!(process.contains("adapter code"));
 }
 
 #[test]

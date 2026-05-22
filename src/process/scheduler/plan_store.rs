@@ -268,6 +268,9 @@ pub fn project_plan_read_model_from_state(plan: &PlanDag, plan_state: &PlanState
         if let Some(status) = node_status_from_projection(projected.status) {
             node.status = status;
         }
+        node.assignee = node.assignee.take().filter(|assignee| {
+            projected.assignee_hash != 0 && projected.assignee_hash == plan_text_hash(assignee)
+        });
         node.evidence.retain(|evidence| {
             projected.evidence.iter().any(|projected_evidence| {
                 projected_evidence.path_hash == plan_text_hash(&evidence.path)
@@ -481,6 +484,46 @@ mod tests {
         assert!(plan_state.is_some());
         assert_eq!(read_model.nodes[0].evidence.len(), 1);
         assert_eq!(read_model.nodes[0].evidence[0].path, accepted.path);
+
+        let _ = std::fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn tlog_replay_archives_removed_nodes_from_accepted_patch() {
+        let root = test_root("node-remove");
+        let plan = PlanDag {
+            version: 1,
+            nodes: vec![
+                node("terminal", NodeStatus::Done),
+                node("remaining", NodeStatus::Pending),
+            ],
+            edges: vec![PlanEdge {
+                from: "terminal".to_string(),
+                to: "remaining".to_string(),
+            }],
+            ..Default::default()
+        };
+
+        save_plan(&root, &plan).expect("save initial read model");
+        append_node_remove_patch(&root, "terminal").expect("append remove patch");
+
+        let persisted_plan = load_plan(&root);
+        assert_eq!(persisted_plan.nodes.len(), 2);
+        assert!(persisted_plan.nodes.iter().any(|node| node.id == "terminal"));
+
+        let (read_model, plan_state) =
+            load_plan_read_model(&root).expect("load projected read model");
+
+        assert!(plan_state.is_some());
+        assert_eq!(
+            read_model
+                .nodes
+                .iter()
+                .map(|node| node.id.as_str())
+                .collect::<Vec<_>>(),
+            vec!["remaining"]
+        );
+        assert!(read_model.edges.is_empty());
 
         let _ = std::fs::remove_dir_all(root);
     }

@@ -7,12 +7,12 @@ use axum::response::{Html, IntoResponse};
 use axum::Json;
 use std::process::{Command as StdCommand, Stdio};
 
-use crate::domain::plan::ready_nodes_from_plan_state;
+use crate::domain::plan::{ready_nodes_from_plan_state, NodeStatus};
 use crate::process::scheduler::plan_store::{load_plan, load_plan_read_model};
 use crate::process::supervisor::{
-    HealthDto, ReloadDto, RestartDto, SpawnDto, SpawnRequest, StartLoopDto, StartLoopRequest,
-    TaskClaimDto, TaskClaimRequest, TaskCompleteDto, TaskCompleteRequest, TaskFailDto,
-    TaskFailRequest, TaskHeartbeatDto, TaskHeartbeatRequest, TaskNextDto,
+    HealthDto, PlanStatusDto, ReloadDto, RestartDto, SpawnDto, SpawnRequest, StartLoopDto,
+    StartLoopRequest, TaskClaimDto, TaskClaimRequest, TaskCompleteDto, TaskCompleteRequest,
+    TaskFailDto, TaskFailRequest, TaskHeartbeatDto, TaskHeartbeatRequest, TaskNextDto,
 };
 
 use crate::process::supervisor::{ErrorDto, SupervisorState};
@@ -239,6 +239,43 @@ pub async fn get_task_next(
         description: node.description.clone(),
         ready_count: ready.len(),
     }))
+}
+
+pub async fn get_plan_status(
+    AxumState(state): AxumState<SupervisorState>,
+) -> Result<Json<PlanStatusDto>, (StatusCode, Json<ErrorDto>)> {
+    let project_dir = {
+        let guard = state.inner.lock().await;
+        guard.project_dir().to_path_buf()
+    };
+
+    let plan = load_plan_read_model(&project_dir)
+        .map(|(p, _)| p)
+        .map_err(|err| error_response(format!("load plan read model failed: {err}")))?;
+    let ready = ready_nodes_from_plan_state(&plan).len();
+
+    let mut dto = PlanStatusDto {
+        ok: true,
+        pending: 0,
+        running: 0,
+        done: 0,
+        failed: 0,
+        skipped: 0,
+        total: plan.nodes.len(),
+        ready,
+    };
+
+    for node in &plan.nodes {
+        match node.status {
+            NodeStatus::Pending => dto.pending += 1,
+            NodeStatus::Running => dto.running += 1,
+            NodeStatus::Done => dto.done += 1,
+            NodeStatus::Failed => dto.failed += 1,
+            NodeStatus::Skipped => dto.skipped += 1,
+        }
+    }
+
+    Ok(Json(dto))
 }
 
 /// Atomically claim a ready plan node and obtain a timed lease.

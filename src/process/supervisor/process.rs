@@ -16,8 +16,8 @@ use tokio::process::{Child, Command as TokioCommand};
 use crate::api::protocol::{Command as KernelCommand, CommandEnvelope};
 use crate::capability::orchestration::TaskLifecycleReceipt;
 use crate::domain::plan::{
-    plan_text_hash, NodeStatus, PlanEvidenceRef, EVIDENCE_KIND_EXECUTION_RECEIPT,
-    EVIDENCE_GATE_EXECUTION, EVIDENCE_TYPE_EXECUTION_RECEIPT,
+    plan_text_hash, NodeStatus, PlanEvidenceRef, EVIDENCE_GATE_EXECUTION,
+    EVIDENCE_KIND_EXECUTION_RECEIPT, EVIDENCE_TYPE_EXECUTION_RECEIPT,
 };
 use crate::kernel::{mix, PlanEvidenceProjection};
 use crate::process::agent::loop_driver::http::post_json_local;
@@ -25,8 +25,8 @@ use crate::process::agent::{
     AgentLoopConfig, LoopDriver, DEFAULT_MINI_AGENT_COUNT, MAX_MINI_AGENT_COUNT,
 };
 use crate::process::scheduler::plan_store::{
-    append_evidence_patch, append_status_change_patch, load_plan, load_plan_read_model,
-    load_tlog_projected_plan_state,
+    append_evidence_patch, append_node_remove_patch, append_status_change_patch, load_plan,
+    load_plan_read_model, load_tlog_projected_plan_state,
 };
 use crate::runtime::workspace::workspace_state_dir;
 
@@ -631,7 +631,10 @@ impl WorkerProcess {
                     node.id
                 );
                 match append_status_change_patch(&self.project_dir, &node.id, &NodeStatus::Done) {
-                    Ok(()) => promoted_done += 1,
+                    Ok(()) => {
+                        self.archive_reconciled_terminal_node(&node.id);
+                        promoted_done += 1;
+                    }
                     Err(e) => eprintln!(
                         "supervisor: reconcile Done patch failed for {}: {e}",
                         node.id
@@ -643,7 +646,10 @@ impl WorkerProcess {
                     node.id
                 );
                 match append_status_change_patch(&self.project_dir, &node.id, &NodeStatus::Failed) {
-                    Ok(()) => promoted_failed += 1,
+                    Ok(()) => {
+                        self.archive_reconciled_terminal_node(&node.id);
+                        promoted_failed += 1;
+                    }
                     Err(e) => eprintln!(
                         "supervisor: reconcile Failed patch failed for {}: {e}",
                         node.id
@@ -656,6 +662,12 @@ impl WorkerProcess {
             eprintln!(
                 "supervisor: reconcile complete — done={promoted_done} failed={promoted_failed}"
             );
+        }
+    }
+
+    fn archive_reconciled_terminal_node(&self, node_id: &str) {
+        if let Err(err) = append_node_remove_patch(&self.project_dir, node_id) {
+            eprintln!("supervisor: reconcile node remove failed for {node_id}: {err}");
         }
     }
 
@@ -824,6 +836,19 @@ pub struct TaskNextDto {
     pub title: String,
     pub description: String,
     pub ready_count: usize,
+}
+
+/// Summary counts returned by GET /v1/plan/status.
+#[derive(Clone, Debug, Serialize, PartialEq, Eq)]
+pub struct PlanStatusDto {
+    pub ok: bool,
+    pub pending: usize,
+    pub running: usize,
+    pub done: usize,
+    pub failed: usize,
+    pub skipped: usize,
+    pub total: usize,
+    pub ready: usize,
 }
 
 // ── Task lifecycle (claim / heartbeat / complete / fail) ─────────────────────
