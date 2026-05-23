@@ -938,6 +938,7 @@ Remove in this order:
 - Migrated graph verify-cfg-delta constants to the execution action facade.
 - Migrated graph auto-refactor constants to the execution action facade.
 - Migrated API server contract request type references to ActionCallRequest while preserving external command tags.
+- Migrated API server contract receipt type references to ActionReceipt while preserving external command tags.
 ### Quick Acceptance Criteria
 
 The migration is complete when:

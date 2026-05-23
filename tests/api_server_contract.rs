@@ -1,6 +1,6 @@
 use ai::{
     build_router, resume_durable_runtime, tick, ApiTransportLedger, ApiTransportSession, Command,
-    CommandEnvelope, CommandLedger, EvidenceSubmission, EvidenceSubmissionDto, McpCallReceipt,
+    CommandEnvelope, CommandLedger, EvidenceSubmission, EvidenceSubmissionDto, ActionReceipt,
     ActionCallRequest, RuntimeConfig, SandboxProcessReceipt, SandboxProcessRequest, State, StateDto,
     TLog, ToolEffectKind, WorkerAppState,
 };
@@ -108,7 +108,7 @@ fn mcp_request_payload(request: &ActionCallRequest) -> serde_json::Value {
     })
 }
 
-fn mcp_receipt_payload(receipt: &McpCallReceipt) -> serde_json::Value {
+fn mcp_receipt_payload(receipt: &ActionReceipt) -> serde_json::Value {
     serde_json::json!({
         "request_hash": receipt.request_hash,
         "registry_policy_hash": receipt.registry_policy_hash,
@@ -138,12 +138,12 @@ fn mcp_authorize_body(command_id: u64, request: &ActionCallRequest) -> serde_jso
     })
 }
 
-fn mcp_receipt_body(command_id: u64, receipt: &McpCallReceipt) -> serde_json::Value {
-    let envelope = CommandEnvelope::new(command_id, Command::SubmitMcpCallReceipt(receipt.clone()));
+fn mcp_receipt_body(command_id: u64, receipt: &ActionReceipt) -> serde_json::Value {
+    let envelope = CommandEnvelope::new(command_id, Command::SubmitActionReceipt(receipt.clone()));
     serde_json::json!({
         "command_id": envelope.command_id,
         "command_hash": envelope.command_hash,
-        "payload_tag": "SubmitMcpCallReceipt",
+        "payload_tag": "SubmitActionReceipt",
         "payload": mcp_receipt_payload(receipt),
     })
 }
@@ -588,7 +588,7 @@ async fn command_route_accepts_mcp_receipt_submission_and_persists_tlog() {
         1000,
         4096,
     );
-    let receipt = McpCallReceipt::from_response(
+    let receipt = ActionReceipt::from_response(
         &request,
         br#"{"jsonrpc":"2.0","id":1,"result":{"content":[{"type":"text","text":"ok"}]}}"#,
         0,
@@ -687,7 +687,7 @@ async fn command_route_authorizes_mcp_then_records_receipt_in_tlog() {
         1
     );
 
-    let receipt = McpCallReceipt::from_response(
+    let receipt = ActionReceipt::from_response(
         &request,
         br#"{"jsonrpc":"2.0","id":1,"result":{"content":[{"type":"text","text":"ok"}]}}"#,
         0,
