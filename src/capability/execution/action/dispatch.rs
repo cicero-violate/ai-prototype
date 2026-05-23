@@ -13,8 +13,8 @@ use crate::capability::execution::{
     ActionCallRequest as McpCallRequest, ActionReceipt as McpCallReceipt,
 };
 use crate::capability::execution::action::landmarks;
-use crate::capability::tooling::native;
-pub use crate::capability::tooling::native::NativeToolHost as ActionHost;
+use crate::capability::execution::action::host;
+pub use crate::capability::execution::action::host::ActionHost;
 use crate::runtime::{append_action_transcript, ActionTranscriptReceiptFacts, WorkspaceView};
 use crate::CapabilityRegistry;
 
@@ -359,9 +359,9 @@ async fn execute_recorded_native_action<H: ActionHost>(name: &str, args: Value, 
     }
 
     let result = if name == "shell" {
-        native::execute_recorded_shell(&args, host).await
+    host::execute_recorded_shell(&args, host).await
     } else {
-        native::execute_native_tool(name, &args, host).await
+    host::execute_native_tool(name, &args, host).await
     };
     eprintln!(
         "[canon-ai-mcp] native tool finish name={} is_error={}",

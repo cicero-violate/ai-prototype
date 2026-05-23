@@ -1,6 +1,8 @@
 //! Action execution compatibility facade.
 
 pub mod dispatch;
+pub mod host;
+pub mod landmarks;
 pub mod record;
 
 pub use crate::capability::tooling::mcp_tools::*;
