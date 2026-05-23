@@ -144,7 +144,7 @@ pub use crate::capability::policy::{
     PolicyEntry, PolicyLookupReceipt, PolicyProofReceipt, PolicyStore, PolicyStoreError,
     POLICY_FEEDBACK_HASH, POLICY_PROMOTION_SOURCE_SEQ,
 };
-pub use crate::capability::tooling::graph_patch_contract::{
+pub use crate::capability::execution::graph::{
     append_graph_mutation_receipt_ndjson, append_graph_patch_receipt_ndjson,
     decode_graph_mutation_op_row_ndjson, decode_graph_mutation_ops_ndjson,
     decode_graph_mutation_receipt_ndjson, decode_graph_patch_receipt_ndjson,
