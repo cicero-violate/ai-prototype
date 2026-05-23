@@ -935,6 +935,7 @@ Remove in this order:
 - Migrated graph plan-patch constants to the execution action facade.
 - Migrated graph apply-ops constants to the execution action facade.
 - Migrated graph plan-cfg constants to the execution action facade.
+- Migrated graph verify-cfg-delta constants to the execution action facade.
 ### Quick Acceptance Criteria
 
 The migration is complete when:

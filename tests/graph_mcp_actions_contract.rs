@@ -428,7 +428,7 @@ fn graph_mcp_actions_expose_stable_contract_surface() {
         "canon_graph_plan_cfg"
     );
     assert_eq!(
-        ai::capability::tooling::mcp_tools::CANON_GRAPH_VERIFY_CFG_DELTA_TOOL,
+        ai::capability::execution::action::CANON_GRAPH_VERIFY_CFG_DELTA_TOOL,
         "canon_graph_verify_cfg_delta"
     );
     assert_eq!(
