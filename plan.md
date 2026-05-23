@@ -928,6 +928,7 @@ Remove in this order:
 - Migrated action dispatch imports to direct action request/receipt type names.
 - Migrated action dispatch request references away from MCP alias names.
 - Migrated action dispatch receipt references away from MCP alias names.
+- Renamed runtime action transcript replay test away from MCP terminology.
 ### Quick Acceptance Criteria
 
 The migration is complete when:

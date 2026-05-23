@@ -308,7 +308,7 @@ mod tests {
     }
 
     #[test]
-    fn mcp_transcript_appends_and_replays_hash_chain() {
+    fn action_transcript_appends_and_replays_hash_chain() {
         let workspace = unique_workspace();
         let response = r#"{"content":[{"type":"text","text":"hello"}],"isError":false}"#;
 
