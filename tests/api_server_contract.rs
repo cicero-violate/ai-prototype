@@ -1,7 +1,7 @@
 use ai::{
     build_router, resume_durable_runtime, tick, ApiTransportLedger, ApiTransportSession, Command,
     CommandEnvelope, CommandLedger, EvidenceSubmission, EvidenceSubmissionDto, McpCallReceipt,
-    McpCallRequest, RuntimeConfig, SandboxProcessReceipt, SandboxProcessRequest, State, StateDto,
+    ActionCallRequest, RuntimeConfig, SandboxProcessReceipt, SandboxProcessRequest, State, StateDto,
     TLog, ToolEffectKind, WorkerAppState,
 };
 use axum::body::{to_bytes, Body};
@@ -97,7 +97,7 @@ fn command_body_with_payload(
     })
 }
 
-fn mcp_request_payload(request: &McpCallRequest) -> serde_json::Value {
+fn mcp_request_payload(request: &ActionCallRequest) -> serde_json::Value {
     serde_json::json!({
         "registry_policy_hash": request.registry_policy_hash,
         "worker_url_hash": request.worker_url_hash,
@@ -128,7 +128,7 @@ fn mcp_receipt_payload(receipt: &McpCallReceipt) -> serde_json::Value {
     })
 }
 
-fn mcp_authorize_body(command_id: u64, request: &McpCallRequest) -> serde_json::Value {
+fn mcp_authorize_body(command_id: u64, request: &ActionCallRequest) -> serde_json::Value {
     let envelope = CommandEnvelope::new(command_id, Command::AuthorizeMcpCall(*request));
     serde_json::json!({
         "command_id": envelope.command_id,
@@ -580,7 +580,7 @@ async fn command_route_accepts_mcp_receipt_submission_and_persists_tlog() {
     .expect("execute-phase session should verify");
     let state = WorkerAppState::new(session, &path);
     let app = build_router(state.clone());
-    let request = McpCallRequest::new(
+    let request = ActionCallRequest::new(
         ai::CapabilityRegistry::canonical(),
         "http://127.0.0.1:38469/mcp_worker",
         "shell",
@@ -654,7 +654,7 @@ async fn command_route_authorizes_mcp_then_records_receipt_in_tlog() {
     let state = WorkerAppState::new(session, &path);
     let app = build_router(state.clone());
 
-    let request = McpCallRequest::new(
+    let request = ActionCallRequest::new(
         ai::CapabilityRegistry::canonical(),
         "http://127.0.0.1:38469/mcp_worker",
         "shell",

@@ -937,6 +937,7 @@ Remove in this order:
 - Migrated graph plan-cfg constants to the execution action facade.
 - Migrated graph verify-cfg-delta constants to the execution action facade.
 - Migrated graph auto-refactor constants to the execution action facade.
+- Migrated API server contract request type references to ActionCallRequest while preserving external command tags.
 ### Quick Acceptance Criteria
 
 The migration is complete when:
