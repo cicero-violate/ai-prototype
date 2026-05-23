@@ -910,6 +910,7 @@ Remove in this order:
 - Migrated DAG scheduler agent/scheduler imports to service facades.
 - Migrated loop driver agent/scheduler references to service facades.
 - Migrated task client loop HTTP imports to the service agent facade.
+- Migrated agent worker task-client imports to the service dispatch facade.
 ### Quick Acceptance Criteria
 
 The migration is complete when:

@@ -7,7 +7,7 @@ use std::sync::mpsc;
 use std::thread;
 use std::time::Duration;
 
-use crate::process::dispatch::task_client::{TaskClaim, TaskClient};
+use crate::service::dispatch::task_client::{TaskClaim, TaskClient};
 
 /// Opaque task ownership claim returned by the dispatch task client.
 #[derive(Clone, Debug)]
