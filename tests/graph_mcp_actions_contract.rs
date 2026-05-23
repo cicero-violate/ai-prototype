@@ -432,7 +432,7 @@ fn graph_mcp_actions_expose_stable_contract_surface() {
         "canon_graph_verify_cfg_delta"
     );
     assert_eq!(
-        ai::capability::tooling::mcp_tools::CANON_GRAPH_AUTO_REFACTOR_CFG_TOOL,
+        ai::capability::execution::action::CANON_GRAPH_AUTO_REFACTOR_CFG_TOOL,
         "canon_graph_auto_refactor_cfg"
     );
 }
