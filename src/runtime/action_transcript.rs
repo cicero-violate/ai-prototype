@@ -331,7 +331,7 @@ mod tests {
     }
 
     #[test]
-    fn mcp_transcript_rejects_tampered_hash_chain() {
+    fn action_transcript_rejects_tampered_hash_chain() {
         let workspace = unique_workspace();
         let response = r#"{"content":[{"type":"text","text":"hello"}],"isError":false}"#;
         append_action_transcript(
