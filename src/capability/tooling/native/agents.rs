@@ -5,7 +5,7 @@ use serde_json::Value;
 use super::NativeToolHost;
 use crate::api::action::{result_with_warning, tool_error};
 use crate::api::protocol::Command as KernelCommand;
-use crate::capability::tooling::mcp_tools::{canon_read_mailbox, canon_send_agent_message};
+use crate::capability::execution::action::{canon_read_mailbox, canon_send_agent_message};
 
 pub async fn execute<H: NativeToolHost>(name: &str, args: &Value, host: &H) -> Value {
     match name {

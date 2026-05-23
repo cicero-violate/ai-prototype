@@ -622,6 +622,7 @@ This establishes the target vocabulary in code without creating a large risky mo
 - Migrated selected sandbox process request/receipt imports from `capability::tooling` to the `capability::execution` facade.
 - Migrated selected graph public exports and graph tool callers from `capability::tooling` to `capability::execution::graph` / execution action facades.
 - Migrated native workspace shell/patch callers from `capability::tooling::mcp_tools` to `capability::execution::{shell,patch}` facades.
+- Migrated native project/agent action-tool callers from `capability::tooling::mcp_tools` to the `capability::execution::action` facade.
 
 Verified with:
 
