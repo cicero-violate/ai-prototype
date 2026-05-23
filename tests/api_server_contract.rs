@@ -97,7 +97,7 @@ fn command_body_with_payload(
     })
 }
 
-fn mcp_request_payload(request: &ActionCallRequest) -> serde_json::Value {
+fn action_request_payload(request: &ActionCallRequest) -> serde_json::Value {
     serde_json::json!({
         "registry_policy_hash": request.registry_policy_hash,
         "worker_url_hash": request.worker_url_hash,
@@ -134,7 +134,7 @@ fn mcp_authorize_body(command_id: u64, request: &ActionCallRequest) -> serde_jso
         "command_id": envelope.command_id,
         "command_hash": envelope.command_hash,
         "payload_tag": "AuthorizeMcpCall",
-        "payload": mcp_request_payload(request),
+        "payload": action_request_payload(request),
     })
 }
 
