@@ -11,8 +11,8 @@ use serde_json::Value;
 use crate::api::mcp::mcp_err;
 
 use super::oauth::require_ai_mcp_auth;
-use crate::capability::tooling::mcp_tools::dispatch::dispatch_ai_mcp;
-use crate::process::supervisor::SupervisorState;
+use crate::capability::execution::action::dispatch_action_request;
+use crate::service::supervisor::SupervisorState;
 
 pub async fn ai_mcp_post(
     AxumState(state): AxumState<SupervisorState>,
@@ -43,7 +43,7 @@ pub async fn ai_mcp_post(
             continue;
         };
         let params = message.get("params").cloned().unwrap_or(Value::Null);
-        let (response, sid) = dispatch_ai_mcp(method, id, params, &state).await;
+        let (response, sid) = dispatch_action_request(method, id, params, &state).await;
         if sid.is_some() {
             new_session_id = sid;
         }

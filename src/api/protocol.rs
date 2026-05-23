@@ -1,11 +1,10 @@
 //! External command/evidence protocol.
 
+use crate::capability::execution::{ActionCallRequest, ActionReceipt};
 use crate::capability::observation::ObservationIngressBatch;
 use crate::capability::orchestration::{AgentCycleEvent, ChildCompleteRecord, WaveRecord};
 use crate::capability::planning::PlanPatchRecord;
-use crate::capability::tooling::{
-    McpCallReceipt, McpCallRequest, SandboxProcessReceipt, SandboxProcessRequest,
-};
+use crate::capability::tooling::{SandboxProcessReceipt, SandboxProcessRequest};
 use crate::capability::{CapabilityRegistry, EvidenceSubmission};
 use crate::kernel::{ControlEvent, Evidence, GateId, TLog};
 pub use crate::runtime::{
@@ -20,10 +19,12 @@ pub enum Command {
     SubmitEvidence(EvidenceSubmission),
     SubmitEvidenceBatch(Vec<EvidenceSubmission>),
     SubmitObservationIngress(ObservationIngressBatch),
-    AuthorizeMcpCall(McpCallRequest),
+    AuthorizeActionCall(ActionCallRequest),
+    AuthorizeMcpCall(ActionCallRequest),
     AuthorizeProcessCall(SandboxProcessRequest),
     AuthorizeMailboxMessage(MailboxMessageRequest),
-    SubmitMcpCallReceipt(McpCallReceipt),
+    SubmitActionReceipt(ActionReceipt),
+    SubmitMcpCallReceipt(ActionReceipt),
     SubmitProcessReceipt(SandboxProcessReceipt),
     SubmitMailboxMessageReceipt(MailboxMessageReceipt),
     SubmitProcessReceiptBatch(Vec<SandboxProcessReceipt>),
@@ -51,7 +52,9 @@ impl Command {
                     && batch.is_contract_valid()
                     && batch.submission().is_contract_valid()
             }
-            Self::AuthorizeMcpCall(request) => request.is_admissible(),
+            Self::AuthorizeActionCall(request) | Self::AuthorizeMcpCall(request) => {
+                request.is_admissible()
+            }
             Self::AuthorizeProcessCall(request) => {
                 request.is_admissible()
                     && request.registry_policy_hash == CapabilityRegistry::canonical().policy_hash()
@@ -60,7 +63,7 @@ impl Command {
                 request.is_admissible()
                     && request.registry_policy_hash == CapabilityRegistry::canonical().policy_hash()
             }
-            Self::SubmitMcpCallReceipt(receipt) => {
+            Self::SubmitActionReceipt(receipt) | Self::SubmitMcpCallReceipt(receipt) => {
                 receipt.is_contract_valid()
                     && receipt.registry_policy_hash == CapabilityRegistry::canonical().policy_hash()
             }
@@ -94,10 +97,10 @@ impl Command {
             Self::SubmitEvidence(_) => 1,
             Self::SubmitEvidenceBatch(submissions) => submissions.len(),
             Self::SubmitObservationIngress(batch) => batch.records.len(),
-            Self::AuthorizeMcpCall(_) => 1,
+            Self::AuthorizeActionCall(_) | Self::AuthorizeMcpCall(_) => 1,
             Self::AuthorizeProcessCall(_) => 1,
             Self::AuthorizeMailboxMessage(_) => 1,
-            Self::SubmitMcpCallReceipt(_) => 1,
+            Self::SubmitActionReceipt(_) | Self::SubmitMcpCallReceipt(_) => 1,
             Self::SubmitProcessReceipt(_) => 1,
             Self::SubmitMailboxMessageReceipt(_) => 1,
             Self::SubmitProcessReceiptBatch(receipts) => receipts.len(),
@@ -136,6 +139,15 @@ impl Command {
                 h ^= batch.submission().contract_hash();
                 h.wrapping_mul(0x100000001b3).max(1)
             }
+            Self::AuthorizeActionCall(request) => {
+                let mut h = 0x4143_5441_5554_4801u64;
+                h ^= self.submission_count() as u64;
+                h = h.wrapping_mul(0x100000001b3);
+                h ^= request.contract_hash();
+                h = h.wrapping_mul(0x100000001b3);
+                h ^= action_authorization_submission(*request).contract_hash();
+                h.wrapping_mul(0x100000001b3).max(1)
+            }
             Self::AuthorizeMcpCall(request) => {
                 let mut h = 0x4d43_5041_5554_4801u64;
                 h ^= self.submission_count() as u64;
@@ -163,6 +175,15 @@ impl Command {
                 h ^= mailbox_authorization_submission(*request).contract_hash();
                 h.wrapping_mul(0x100000001b3).max(1)
             }
+            Self::SubmitActionReceipt(receipt) => {
+                let mut h = 0x4143_5452_4350_5401u64;
+                h ^= self.submission_count() as u64;
+                h = h.wrapping_mul(0x100000001b3);
+                h ^= receipt.contract_hash();
+                h = h.wrapping_mul(0x100000001b3);
+                h ^= receipt.submission().contract_hash();
+                h.wrapping_mul(0x100000001b3).max(1)
+            }
             Self::SubmitMcpCallReceipt(receipt) => {
                 let mut h = 0x4d43_5052_4350_5401u64;
                 h ^= self.submission_count() as u64;
@@ -187,7 +208,7 @@ impl Command {
                 h = h.wrapping_mul(0x100000001b3);
                 h ^= receipt.contract_hash();
                 h = h.wrapping_mul(0x100000001b3);
-                h ^= receipt.submission().contract_hash();
+                h ^= mailbox_receipt_submission(*receipt).contract_hash();
                 h.wrapping_mul(0x100000001b3).max(1)
             }
             Self::SubmitProcessReceiptBatch(receipts) => {
@@ -234,13 +255,17 @@ impl Command {
     }
 }
 
-pub fn mcp_authorization_submission(request: McpCallRequest) -> EvidenceSubmission {
+pub fn action_authorization_submission(request: ActionCallRequest) -> EvidenceSubmission {
     EvidenceSubmission::with_payload(
         GateId::Plan,
         Evidence::TaskReady,
         false,
         request.contract_hash(),
     )
+}
+
+pub fn mcp_authorization_submission(request: ActionCallRequest) -> EvidenceSubmission {
+    action_authorization_submission(request)
 }
 
 pub fn process_authorization_submission(request: SandboxProcessRequest) -> EvidenceSubmission {
@@ -253,7 +278,21 @@ pub fn process_authorization_submission(request: SandboxProcessRequest) -> Evide
 }
 
 pub fn mailbox_authorization_submission(request: MailboxMessageRequest) -> EvidenceSubmission {
-    request.submission()
+    EvidenceSubmission::with_payload(
+        GateId::Plan,
+        Evidence::TaskReady,
+        false,
+        request.contract_hash(),
+    )
+}
+
+pub fn mailbox_receipt_submission(receipt: MailboxMessageReceipt) -> EvidenceSubmission {
+    EvidenceSubmission::with_payload(
+        GateId::Execution,
+        Evidence::ExecutionReceipt,
+        true,
+        receipt.receipt_hash,
+    )
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

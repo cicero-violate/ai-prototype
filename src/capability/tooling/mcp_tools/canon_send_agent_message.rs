@@ -8,6 +8,7 @@ use std::path::Path;
 use serde_json::{json, Value};
 
 use super::common::tool_error;
+use crate::capability::CapabilityRegistry;
 use crate::runtime::{append_mailbox_message, MailboxMessageReceipt, MailboxMessageRequest};
 
 pub const CANON_SEND_AGENT_MESSAGE_TOOL: &str = "canon_send_agent_message";
@@ -44,7 +45,13 @@ pub fn parse_args(args: &Value) -> Result<SendAgentMessageArgs, String> {
         .and_then(Value::as_str)
         .unwrap_or("{}")
         .to_string();
-    let request = MailboxMessageRequest::new(&sender, &target, &kind, &payload)?;
+    let request = MailboxMessageRequest::new(
+        CapabilityRegistry::canonical().policy_hash(),
+        &sender,
+        &target,
+        &kind,
+        &payload,
+    )?;
     Ok(SendAgentMessageArgs {
         sender,
         target,

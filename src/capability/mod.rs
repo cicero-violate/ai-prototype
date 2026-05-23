@@ -7,6 +7,7 @@ use crate::kernel::{mix, CapabilityRegistryProjection, Evidence, GateId, State};
 
 pub mod context;
 pub mod eval;
+pub mod execution;
 pub mod judgment;
 pub mod learning;
 pub mod llm;

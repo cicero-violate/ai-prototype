@@ -6,7 +6,6 @@ use std::path::{Path, PathBuf};
 
 use serde_json::Value;
 
-use crate::capability::eval::{decode_eval_scorecard_receipt_ndjson, EvalDecision};
 use crate::codec::ndjson::load_tlog_ndjson;
 use crate::kernel::CanonError;
 
@@ -122,11 +121,8 @@ fn scan_canonical_tlog_evidence(path: &Path) -> Result<CanonicalEvidenceScan, Ca
         if trimmed.is_empty() {
             continue;
         }
-        if let Ok(receipt) = decode_eval_scorecard_receipt_ndjson(trimmed) {
-            evidence.latest_evaluator_result = Some(match receipt.verdict {
-                EvalDecision::Pass => "pass".to_string(),
-                EvalDecision::Fail => "fail".to_string(),
-            });
+        if let Some(verdict) = eval_scorecard_verdict_from_ndjson(trimmed) {
+            evidence.latest_evaluator_result = Some(verdict.to_string());
             continue;
         }
         let Ok(value) = serde_json::from_str::<Value>(trimmed) else {
@@ -161,6 +157,23 @@ fn scan_canonical_tlog_evidence(path: &Path) -> Result<CanonicalEvidenceScan, Ca
     }
 
     Ok(evidence)
+}
+
+fn eval_scorecard_verdict_from_ndjson(line: &str) -> Option<&'static str> {
+    let trimmed = line.trim();
+    let body = trimmed.strip_prefix('[')?.strip_suffix(']')?;
+    let mut fields = Vec::new();
+    for part in body.split(',') {
+        fields.push(part.trim().parse::<u64>().ok()?);
+    }
+    if fields.len() != 13 {
+        return None;
+    }
+    match fields[11] {
+        1 => Some("pass"),
+        2 => Some("fail"),
+        _ => None,
+    }
 }
 
 fn detect_worker_state(canonical_path: &Path) -> WorkerStateReport {

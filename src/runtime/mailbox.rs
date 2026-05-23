@@ -13,16 +13,16 @@ use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::capability::{CapabilityId, CapabilityRegistry, EvidenceSubmission};
-use crate::kernel::{mix, Evidence, GateId};
+use crate::kernel::mix;
 use crate::runtime::workspace::workspace_state_dir;
 
 pub const MAILBOX_TLOG_SCHEMA_VERSION: u64 = 1;
 pub const MAILBOX_TLOG_RECORD_MESSAGE: u64 = 1;
+pub const MAILBOX_MESSAGE_CAPABILITY_ID: u64 = 7;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct MailboxMessageRequest {
-    pub capability: CapabilityId,
+    pub capability_id: u64,
     pub registry_policy_hash: u64,
     pub sender_hash: u64,
     pub target_hash: u64,
@@ -31,13 +31,19 @@ pub struct MailboxMessageRequest {
 }
 
 impl MailboxMessageRequest {
-    pub fn new(sender: &str, target: &str, kind: &str, payload: &str) -> Result<Self, String> {
+    pub fn new(
+        registry_policy_hash: u64,
+        sender: &str,
+        target: &str,
+        kind: &str,
+        payload: &str,
+    ) -> Result<Self, String> {
         validate_agent_id(sender)?;
         validate_agent_id(target)?;
         validate_message_kind(kind)?;
         Ok(Self {
-            capability: CapabilityId::Tooling,
-            registry_policy_hash: CapabilityRegistry::canonical().policy_hash(),
+            capability_id: MAILBOX_MESSAGE_CAPABILITY_ID,
+            registry_policy_hash,
             sender_hash: string_hash(sender),
             target_hash: string_hash(target),
             kind_hash: string_hash(kind),
@@ -46,8 +52,8 @@ impl MailboxMessageRequest {
     }
 
     pub fn is_admissible(self) -> bool {
-        self.capability == CapabilityId::Tooling
-            && self.registry_policy_hash == CapabilityRegistry::canonical().policy_hash()
+        self.capability_id == MAILBOX_MESSAGE_CAPABILITY_ID
+            && self.registry_policy_hash != 0
             && self.sender_hash != 0
             && self.target_hash != 0
             && self.kind_hash != 0
@@ -56,7 +62,7 @@ impl MailboxMessageRequest {
 
     pub fn contract_hash(self) -> u64 {
         let mut h = 0x4d42_584d_5347_0001u64;
-        h = mix(h, self.capability as u64);
+        h = mix(h, self.capability_id);
         h = mix(h, self.registry_policy_hash);
         h = mix(h, self.sender_hash);
         h = mix(h, self.target_hash);
@@ -65,14 +71,6 @@ impl MailboxMessageRequest {
         h.max(1)
     }
 
-    pub fn submission(self) -> EvidenceSubmission {
-        EvidenceSubmission::with_payload(
-            GateId::Plan,
-            Evidence::TaskReady,
-            false,
-            self.contract_hash(),
-        )
-    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -118,7 +116,7 @@ impl MailboxMessageReceipt {
     }
 
     pub fn is_contract_valid(self) -> bool {
-        self.registry_policy_hash == CapabilityRegistry::canonical().policy_hash()
+        self.registry_policy_hash != 0
             && self.request_hash != 0
             && self.sender_hash != 0
             && self.target_hash != 0
@@ -132,15 +130,6 @@ impl MailboxMessageReceipt {
 
     pub fn contract_hash(self) -> u64 {
         self.compute_receipt_hash()
-    }
-
-    pub fn submission(self) -> EvidenceSubmission {
-        EvidenceSubmission::with_payload(
-            GateId::Execution,
-            Evidence::ExecutionReceipt,
-            true,
-            self.receipt_hash,
-        )
     }
 
     fn compute_receipt_hash(self) -> u64 {
@@ -383,7 +372,7 @@ mod tests {
     fn mailbox_request_and_receipt_are_contract_valid() {
         let workspace = unique_workspace();
         let request =
-            MailboxMessageRequest::new("agent-a", "agent-b", "Observation", "{\"ok\":true}")
+            MailboxMessageRequest::new(1, "agent-a", "agent-b", "Observation", "{\"ok\":true}")
                 .expect("request should parse");
         assert!(request.is_admissible());
 
@@ -428,7 +417,7 @@ mod tests {
     #[test]
     fn invalid_agent_ids_are_rejected() {
         assert!(validate_agent_id("../agent").is_err());
-        assert!(MailboxMessageRequest::new("agent/a", "agent-b", "Observation", "{}").is_err());
-        assert!(MailboxMessageRequest::new("agent-a", "agent-b", "", "{}").is_err());
+        assert!(MailboxMessageRequest::new(1, "agent/a", "agent-b", "Observation", "{}").is_err());
+        assert!(MailboxMessageRequest::new(1, "agent-a", "agent-b", "", "{}").is_err());
     }
 }

@@ -11,12 +11,12 @@
 //! executor authorization live in typed submodules below this boundary.
 
 mod artifact;
-mod hash;
+pub(crate) mod hash;
 mod mcp;
 mod process;
 mod receipt;
 mod request;
-mod types;
+pub(crate) mod types;
 
 pub use self::artifact::{
     DeterministicToolExecutor, LiveSandboxToolExecutor, ToolExecutionRecord, ToolReceipt,

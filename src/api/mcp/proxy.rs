@@ -9,9 +9,11 @@ use crate::runtime::{MailboxMessageReceipt, MailboxMessageRequest};
 
 pub fn kernel_command_payload_tag(command: &KernelCommand) -> &'static str {
     match command {
+        KernelCommand::AuthorizeActionCall(_) => "AuthorizeActionCall",
         KernelCommand::AuthorizeMcpCall(_) => "AuthorizeMcpCall",
         KernelCommand::AuthorizeProcessCall(_) => "AuthorizeProcessCall",
         KernelCommand::AuthorizeMailboxMessage(_) => "AuthorizeMailboxMessage",
+        KernelCommand::SubmitActionReceipt(_) => "SubmitActionReceipt",
         KernelCommand::SubmitMcpCallReceipt(_) => "SubmitMcpCallReceipt",
         KernelCommand::SubmitProcessReceipt(_) => "SubmitProcessReceipt",
         KernelCommand::SubmitMailboxMessageReceipt(_) => "SubmitMailboxMessageReceipt",
@@ -28,6 +30,14 @@ pub fn kernel_command_payload_tag(command: &KernelCommand) -> &'static str {
 
 pub fn kernel_command_payload(command: &KernelCommand) -> Result<Value, String> {
     match command {
+        KernelCommand::AuthorizeActionCall(request) => Ok(json!({
+            "registry_policy_hash": request.registry_policy_hash,
+            "worker_url_hash": request.worker_url_hash,
+            "tool_name_hash": request.tool_name_hash,
+            "args_hash": request.args_hash,
+            "timeout_ms": request.timeout_ms,
+            "max_output_bytes": request.max_output_bytes
+        })),
         KernelCommand::AuthorizeMcpCall(request) => Ok(json!({
             "registry_policy_hash": request.registry_policy_hash,
             "worker_url_hash": request.worker_url_hash,
@@ -42,6 +52,23 @@ pub fn kernel_command_payload(command: &KernelCommand) -> Result<Value, String> 
         KernelCommand::AuthorizeMailboxMessage(request) => {
             Ok(mailbox_message_request_payload(request))
         }
+        KernelCommand::SubmitActionReceipt(receipt) => Ok(json!({
+            "request_hash": receipt.request_hash,
+            "registry_policy_hash": receipt.registry_policy_hash,
+            "worker_url_hash": receipt.worker_url_hash,
+            "tool_name_hash": receipt.tool_name_hash,
+            "args_hash": receipt.args_hash,
+            "timeout_ms": receipt.timeout_ms,
+            "max_output_bytes": receipt.max_output_bytes,
+            "effect_kind": receipt.effect.kind as u64,
+            "effect_digest": receipt.effect.digest,
+            "effect_metadata": receipt.effect.metadata,
+            "response_hash": receipt.response_hash,
+            "response_bytes": receipt.response_bytes,
+            "exit_status": receipt.exit_status,
+            "timed_out": receipt.timed_out,
+            "receipt_hash": receipt.receipt_hash
+        })),
         KernelCommand::SubmitMcpCallReceipt(receipt) => Ok(json!({
             "request_hash": receipt.request_hash,
             "registry_policy_hash": receipt.registry_policy_hash,

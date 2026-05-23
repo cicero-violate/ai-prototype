@@ -12,10 +12,11 @@ pub mod domain;
 pub mod kernel;
 pub mod process;
 pub mod runtime;
+pub mod service;
 pub use crate::capability::eval::score;
 pub use crate::capability::verification::validation_harness;
 pub use crate::kernel::error;
-pub use crate::process::agent::cycle::timing;
+pub use crate::service::agent::cycle::timing;
 
 pub mod recovery {
     pub use crate::api::transport::replay::{
@@ -24,6 +25,10 @@ pub mod recovery {
     };
 }
 
+pub use crate::api::action::{
+    action_err, action_kernel_command_payload, action_kernel_command_payload_tag, action_ok,
+    action_schema_list, dispatch_action_plan, ActionDispatchPlan,
+};
 pub use crate::api::mcp::{
     ai_mcp_tools_list, dispatch_ai_mcp_plan, kernel_command_payload, kernel_command_payload_tag,
     mcp_err, mcp_ok, result_with_warning, tool_error, AiMcpDispatchPlan,
@@ -35,15 +40,16 @@ pub use crate::api::oauth::{
     AuthorizeQuery, OAuthStore, RegisterBody, TokenForm,
 };
 pub use crate::api::protocol::{
-    mcp_authorization_submission, Command, CommandEnvelope, ControlEventResponse,
-    API_COMMAND_BATCH_LIMIT, API_PROTOCOL_SCHEMA_VERSION,
+    action_authorization_submission, mailbox_receipt_submission, mcp_authorization_submission,
+    Command, CommandEnvelope, ControlEventResponse, API_COMMAND_BATCH_LIMIT,
+    API_PROTOCOL_SCHEMA_VERSION,
 };
 pub use crate::api::routes::{
-    ai_mcp_delete, ai_mcp_get_sse, ai_mcp_post, ai_oauth_authorize_get, ai_oauth_authorize_post,
-    ai_oauth_metadata, ai_oauth_protected_resource_metadata, ai_oauth_register, ai_oauth_token,
-    ai_workspace_get, ai_workspace_update, build_supervisor_router, command_gateway,
-    health as supervisor_health, reload as supervisor_reload, require_ai_mcp_auth,
-    spawn_agent_handler,
+    ai_action_delete, ai_action_get_sse, ai_action_post, ai_mcp_delete, ai_mcp_get_sse,
+    ai_mcp_post, ai_oauth_authorize_get, ai_oauth_authorize_post, ai_oauth_metadata,
+    ai_oauth_protected_resource_metadata, ai_oauth_register, ai_oauth_token, ai_workspace_get,
+    ai_workspace_update, build_supervisor_router, command_gateway, health as supervisor_health,
+    reload as supervisor_reload, require_ai_mcp_auth, spawn_agent_handler,
 };
 pub use crate::api::server::{
     build_router, CommandEnvelopeDto, CommandResponseDto, ErrorDto, EvidenceSubmissionDto,
@@ -72,6 +78,11 @@ pub use crate::capability::eval::{
     EvalDecision, EvalDimension, EvalRecord, EvalScorecardReceipt, SelectionRecord,
     EVAL_SCORECARD_RECORD, EVAL_SCORECARD_SCHEMA_VERSION, EVOLUTION_LEDGER_RECORD,
     EVOLUTION_LEDGER_SCHEMA_VERSION,
+};
+pub use crate::capability::execution::{
+    append_action_receipt_ndjson, decode_action_receipt_ndjson, encode_action_receipt_ndjson,
+    load_action_receipts_ndjson, verify_action_receipts, ActionCallRequest, ActionReceipt,
+    LiveActionExecutor, ACTION_RECEIPT_RECORD, ACTION_RECEIPT_SCHEMA_VERSION,
 };
 pub use crate::capability::judgment::{
     JudgmentRecord, PolicyJudgmentDecision, PolicyJudgmentRecord, PolicyReuseCostCatalogReceipt,
@@ -195,12 +206,9 @@ pub use crate::kernel::{
     Gate, GateId, GateSet, GateStatus, Packet, Phase, RecoveryAction, RuntimeConfig, SemanticDelta,
     State, TLog, EXECUTION_GATE_ORDER, GATE_ORDER, PHASES,
 };
-pub use crate::process::supervisor::run as supervisor_run;
-pub use crate::process::supervisor::SupervisorConfig;
-pub use crate::process::supervisor::WorkspaceConfig;
-pub use crate::process::supervisor::{
-    ActiveWorkerDto, ErrorDto as SupervisorErrorDto, HealthDto, NativeMcpSession, NativeMcpState,
-    ReloadDto, RestartDto, SpawnDto, SpawnRequest, SupervisorState, WorkerProcess,
+pub use crate::runtime::action_transcript::{
+    action_transcript_path, append_action_transcript, replay_action_transcripts,
+    ActionTranscriptRecord, ACTION_TRANSCRIPT_RECORD_CALL_RESULT, ACTION_TRANSCRIPT_SCHEMA_VERSION,
 };
 pub use crate::runtime::{
     append_canonical_line, append_score_report_update_ndjson, append_validation_result_ndjson,
@@ -212,6 +220,13 @@ pub use crate::runtime::{
     CanonicalIntrospectionReport, CommandCausalityReport, CommandLedger, CommandReceipt,
     DurableRuntimeState, ReplayReport, WorkerStateReport, CANONICAL_TLOG_RELATIVE_PATH,
     LEGACY_WORKER_TLOG_FILE_NAME,
+};
+pub use crate::service::supervisor::run as supervisor_run;
+pub use crate::service::supervisor::SupervisorConfig;
+pub use crate::service::supervisor::WorkspaceConfig;
+pub use crate::service::supervisor::{
+    ActiveWorkerDto, ErrorDto as SupervisorErrorDto, HealthDto, NativeMcpSession, NativeMcpState,
+    ReloadDto, RestartDto, SpawnDto, SpawnRequest, SupervisorState, WorkerProcess,
 };
 
 #[cfg(test)]

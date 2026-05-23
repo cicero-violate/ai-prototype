@@ -9,13 +9,13 @@ use std::process::{Command as StdCommand, Stdio};
 
 use crate::domain::plan::{ready_nodes_from_plan_state, NodeStatus};
 use crate::process::scheduler::plan_store::{load_plan, load_plan_read_model};
-use crate::process::supervisor::{
+use crate::service::supervisor::{
     HealthDto, PlanStatusDto, ReloadDto, RestartDto, SpawnDto, SpawnRequest, StartLoopDto,
     StartLoopRequest, TaskClaimDto, TaskClaimRequest, TaskCompleteDto, TaskCompleteRequest,
     TaskFailDto, TaskFailRequest, TaskHeartbeatDto, TaskHeartbeatRequest, TaskNextDto,
 };
 
-use crate::process::supervisor::{ErrorDto, SupervisorState};
+use crate::service::supervisor::{ErrorDto, SupervisorState};
 
 pub(crate) const SUPERVISOR_RESTART_DELAY_MS: u64 = 700;
 pub(crate) const SUPERVISOR_EXIT_DELAY_MS: u64 = 150;

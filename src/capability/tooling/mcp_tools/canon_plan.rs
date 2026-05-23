@@ -29,12 +29,12 @@ use crate::domain::plan::{
     load_plan, ready_nodes_from_available_plan_state, save_plan, validate_plan_patch_mutation,
     NodeStatus, PlanDag, PlanEdge, PlanEvidenceRef, PlanNode,
 };
-use crate::process::scheduler::plan_store::{
+use crate::runtime::WorkspaceView;
+use crate::service::scheduler::plan_store::{
     append_assignee_change_patch, append_edge_add_patch, append_edge_remove_patch,
     append_evidence_patch, append_node_remove_patch, append_node_upsert_patch,
     append_status_change_patch, load_plan_read_model,
 };
-use crate::runtime::WorkspaceView;
 use serde_json::{json, Value};
 
 pub const CANON_PLAN_READ_TOOL: &str = "canon_plan_read";
@@ -321,7 +321,7 @@ fn status_for_appended_evidence(kind: &str) -> Option<NodeStatus> {
 mod tests {
     use super::*;
     use crate::domain::plan::plan_text_hash;
-    use crate::process::scheduler::plan_store::load_tlog_projected_plan_state;
+    use crate::service::scheduler::plan_store::load_tlog_projected_plan_state;
     use std::path::{Path, PathBuf};
 
     fn test_root(name: &str) -> PathBuf {

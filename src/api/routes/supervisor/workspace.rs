@@ -7,9 +7,9 @@ use axum::Json;
 use serde::Deserialize;
 use serde_json::{json, Value};
 
-use crate::process::supervisor::WorkspaceConfig;
+use crate::service::supervisor::WorkspaceConfig;
 
-use crate::process::supervisor::SupervisorState;
+use crate::service::supervisor::SupervisorState;
 
 #[derive(Deserialize)]
 pub struct WorkspaceUpdateBody {

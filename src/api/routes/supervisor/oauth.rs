@@ -13,7 +13,7 @@ use crate::api::oauth::{
     AuthorizeQuery, RegisterBody, TokenForm,
 };
 
-use crate::process::supervisor::SupervisorState;
+use crate::service::supervisor::SupervisorState;
 
 pub async fn ai_oauth_metadata(AxumState(state): AxumState<SupervisorState>) -> Json<Value> {
     Json(ai_oauth_metadata_value(&state))

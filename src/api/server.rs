@@ -16,6 +16,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::api::protocol::{Command, CommandEnvelope};
 use crate::api::transport::{ApiTransportDisposition, ApiTransportFrame, ApiTransportSession};
+use crate::capability::execution::{
+    ActionCallRequest as McpCallRequest, ActionReceipt as McpCallReceipt,
+};
 use crate::capability::observation::{
     ObservationCursor, ObservationIngressBatch, ObservationRecord,
 };
@@ -23,8 +26,7 @@ use crate::capability::orchestration::{
     AgentCycleEvent, AgentCycleEventKind, ChildCompleteRecord, WaveRecord,
 };
 use crate::capability::tooling::{
-    Effect, McpCallReceipt, McpCallRequest, SandboxProcessReceipt, SandboxProcessRequest,
-    ToolEffectKind,
+    Effect, SandboxProcessReceipt, SandboxProcessRequest, ToolEffectKind,
 };
 use crate::capability::{CapabilityId, CapabilityRegistry, EvidenceSubmission, PacketEffect};
 use crate::kernel::CanonError;
@@ -368,9 +370,11 @@ fn command_decoder(payload_tag: &str) -> Result<CommandDecoder, ServerError> {
         "SubmitEvidence" => decode_submit_evidence_command,
         "SubmitObservationIngress" => decode_submit_observation_ingress_command,
         "SubmitEvidenceBatch" => decode_submit_evidence_batch_command,
+        "AuthorizeActionCall" => decode_authorize_action_call_command,
         "AuthorizeMcpCall" => decode_authorize_mcp_call_command,
         "AuthorizeProcessCall" => decode_authorize_process_call_command,
         "AuthorizeMailboxMessage" => decode_authorize_mailbox_message_command,
+        "SubmitActionReceipt" => decode_submit_action_receipt_command,
         "SubmitMcpCallReceipt" => decode_submit_mcp_call_receipt_command,
         "SubmitProcessReceipt" => decode_submit_process_receipt_command,
         "SubmitMailboxMessageReceipt" => decode_submit_mailbox_message_receipt_command,
@@ -415,6 +419,14 @@ fn decode_authorize_mcp_call_command(payload: serde_json::Value) -> Result<Comma
     Ok(Command::AuthorizeMcpCall(decode_mcp_call_request(payload)?))
 }
 
+fn decode_authorize_action_call_command(
+    payload: serde_json::Value,
+) -> Result<Command, ServerError> {
+    Ok(Command::AuthorizeActionCall(decode_mcp_call_request(
+        payload,
+    )?))
+}
+
 fn decode_authorize_process_call_command(
     payload: serde_json::Value,
 ) -> Result<Command, ServerError> {
@@ -435,6 +447,14 @@ fn decode_submit_mcp_call_receipt_command(
     payload: serde_json::Value,
 ) -> Result<Command, ServerError> {
     Ok(Command::SubmitMcpCallReceipt(decode_mcp_call_receipt(
+        payload,
+    )?))
+}
+
+fn decode_submit_action_receipt_command(
+    payload: serde_json::Value,
+) -> Result<Command, ServerError> {
+    Ok(Command::SubmitActionReceipt(decode_mcp_call_receipt(
         payload,
     )?))
 }
@@ -573,7 +593,7 @@ fn decode_mailbox_message_request(
     let dto: MailboxMessageRequestDto =
         serde_json::from_value(payload).map_err(|_| ServerError::InvalidPayload)?;
     let request = MailboxMessageRequest {
-        capability: CapabilityId::Tooling,
+        capability_id: crate::runtime::MAILBOX_MESSAGE_CAPABILITY_ID,
         registry_policy_hash: dto.registry_policy_hash,
         sender_hash: dto.sender_hash,
         target_hash: dto.target_hash,

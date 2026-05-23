@@ -1,11 +1,13 @@
 //! Axum-facing supervisor routes.
 
+pub mod action;
 pub mod control;
 pub mod mcp;
 pub mod oauth;
 pub mod router;
 pub mod workspace;
 
+pub use action::{ai_action_delete, ai_action_get_sse, ai_action_post};
 pub use control::{
     command_gateway, control_page, get_task_next, health, reload, restart, spawn_agent_handler,
     start_agent_loop_handler,

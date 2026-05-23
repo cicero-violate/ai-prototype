@@ -14,7 +14,7 @@ use super::oauth::{
     ai_oauth_protected_resource_metadata, ai_oauth_register, ai_oauth_token,
 };
 use super::workspace::{ai_workspace_get, ai_workspace_update};
-use crate::process::supervisor::SupervisorState;
+use crate::service::supervisor::SupervisorState;
 
 pub fn build_supervisor_router(state: SupervisorState) -> Router {
     Router::new()

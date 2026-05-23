@@ -3,7 +3,7 @@
 use serde_json::{json, Value};
 use uuid::Uuid;
 
-use crate::process::supervisor::WorkspaceConfig;
+use crate::service::supervisor::WorkspaceConfig;
 
 use super::jsonrpc::{mcp_err, mcp_ok};
 use super::schema::ai_mcp_tools_list;

@@ -1,15 +1,16 @@
 //! Deterministic command handlers.
 
 use crate::api::protocol::{
-    mailbox_authorization_submission, mcp_authorization_submission,
-    process_authorization_submission, Command, CommandEnvelope, CommandLedger,
-    ControlEventResponse,
+    action_authorization_submission, mailbox_authorization_submission, mailbox_receipt_submission,
+    mcp_authorization_submission, process_authorization_submission, Command, CommandEnvelope,
+    CommandLedger, ControlEventResponse,
+};
+use crate::capability::execution::{
+    ActionCallRequest as McpCallRequest, ActionReceipt as McpCallReceipt,
 };
 use crate::capability::orchestration::{AgentCycleEvent, ChildCompleteRecord, WaveRecord};
 use crate::capability::planning::PlanPatchRecord;
-use crate::capability::tooling::{
-    McpCallReceipt, McpCallRequest, SandboxProcessReceipt, SandboxProcessRequest,
-};
+use crate::capability::tooling::{SandboxProcessReceipt, SandboxProcessRequest};
 use crate::capability::{CapabilityId, CapabilityRegistry, EvidenceSubmission};
 use crate::kernel::{
     CapabilityRegistryProjection, Cause, Decision, EventKind, Evidence, Phase, RuntimeConfig,
@@ -75,6 +76,13 @@ fn apply_command(
         Command::SubmitObservationIngress(batch) => {
             apply_submission_command(state, tlog, cfg, batch.submission(), receipt)
         }
+        Command::AuthorizeActionCall(request) => append_submission_event(
+            state,
+            tlog,
+            cfg,
+            action_authorization_submission(request),
+            receipt,
+        ),
         Command::AuthorizeMcpCall(request) => append_submission_event(
             state,
             tlog,
@@ -98,6 +106,9 @@ fn apply_command(
         ),
         Command::SubmitMcpCallReceipt(receipt_record) => {
             apply_mcp_receipt_command(state, tlog, cfg, receipt_record, receipt)
+        }
+        Command::SubmitActionReceipt(receipt_record) => {
+            apply_action_receipt_command(state, tlog, cfg, receipt_record, receipt)
         }
         Command::SubmitProcessReceipt(receipt_record) => {
             apply_process_receipt_command(state, tlog, cfg, receipt_record, receipt)
@@ -161,7 +172,18 @@ fn apply_mcp_receipt_command(
     receipt_record: McpCallReceipt,
     receipt: Option<(u64, u64)>,
 ) -> Result<(), CanonError> {
-    ensure_mcp_receipt_authorized(tlog, &receipt_record)?;
+    ensure_action_or_mcp_receipt_authorized(tlog, &receipt_record)?;
+    apply_submission_command(state, tlog, cfg, receipt_record.submission(), receipt)
+}
+
+fn apply_action_receipt_command(
+    state: &mut State,
+    tlog: &mut TLog,
+    cfg: RuntimeConfig,
+    receipt_record: McpCallReceipt,
+    receipt: Option<(u64, u64)>,
+) -> Result<(), CanonError> {
+    ensure_action_or_mcp_receipt_authorized(tlog, &receipt_record)?;
     apply_submission_command(state, tlog, cfg, receipt_record.submission(), receipt)
 }
 
@@ -184,7 +206,13 @@ fn apply_mailbox_message_receipt_command(
     receipt: Option<(u64, u64)>,
 ) -> Result<(), CanonError> {
     ensure_mailbox_message_receipt_authorized(tlog, &receipt_record)?;
-    apply_submission_command(state, tlog, cfg, receipt_record.submission(), receipt)
+    apply_submission_command(
+        state,
+        tlog,
+        cfg,
+        mailbox_receipt_submission(receipt_record),
+        receipt,
+    )
 }
 
 fn apply_agent_cycle_event_command(
@@ -409,7 +437,10 @@ pub fn handle_envelope_once(
     Ok(response)
 }
 
-fn ensure_mcp_receipt_authorized(tlog: &TLog, receipt: &McpCallReceipt) -> Result<(), CanonError> {
+fn ensure_action_or_mcp_receipt_authorized(
+    tlog: &TLog,
+    receipt: &McpCallReceipt,
+) -> Result<(), CanonError> {
     let request = McpCallRequest {
         capability: CapabilityId::Tooling,
         registry_policy_hash: receipt.registry_policy_hash,
@@ -422,7 +453,8 @@ fn ensure_mcp_receipt_authorized(tlog: &TLog, receipt: &McpCallReceipt) -> Resul
     if !receipt.is_valid_for(&request) {
         return Err(CanonError::InvalidApiCommand);
     }
-    ensure_prior_authorization(tlog, Command::AuthorizeMcpCall(request))
+    ensure_prior_authorization(tlog, Command::AuthorizeActionCall(request))
+        .or_else(|_| ensure_prior_authorization(tlog, Command::AuthorizeMcpCall(request)))
 }
 
 fn ensure_process_receipt_authorized(
@@ -450,7 +482,7 @@ fn ensure_mailbox_message_receipt_authorized(
     receipt: &MailboxMessageReceipt,
 ) -> Result<(), CanonError> {
     let request = MailboxMessageRequest {
-        capability: CapabilityId::Tooling,
+        capability_id: crate::runtime::MAILBOX_MESSAGE_CAPABILITY_ID,
         registry_policy_hash: receipt.registry_policy_hash,
         sender_hash: receipt.sender_hash,
         target_hash: receipt.target_hash,

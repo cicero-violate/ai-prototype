@@ -4,8 +4,8 @@
 //! - `kernel` owns stable packet, state, event, and recovery vocabulary.
 //! - `runtime` owns reducer transitions, canonical event emission, event-bus
 //!   wakeup projection, and recovery-policy selection.
-//! - `process` owns scheduling, task lifecycle mutation, leases, and external
-//!   process orchestration.
+//! - `service` owns scheduling, task lifecycle mutation, leases, and external
+//!   worker orchestration.
 //!
 //! Capabilities submit evidence; the frozen kernel only carries the evidence
 //! token and gate state. Process adapters must call into this layer for runtime
@@ -16,6 +16,7 @@ use crate::kernel::{
     RecoveryAction, RuntimeConfig, SemanticDelta, State, TLog, GATE_ORDER, PHASES,
 };
 
+pub mod action_transcript;
 pub(crate) mod command_ledger;
 pub(crate) mod diff;
 pub mod durable;
@@ -33,6 +34,11 @@ pub mod verify;
 pub mod workspace;
 pub(crate) mod writer;
 
+pub use self::action_transcript::{
+    action_transcript_path, append_action_transcript, replay_action_transcripts,
+    ActionTranscriptReceiptFacts, ActionTranscriptRecord, ACTION_TRANSCRIPT_RECORD_CALL_RESULT,
+    ACTION_TRANSCRIPT_SCHEMA_VERSION,
+};
 pub use self::command_ledger::{CommandLedger, CommandReceipt};
 pub use self::diff::semantic_diff;
 pub use self::durable::{
@@ -52,6 +58,7 @@ pub use self::introspection::{
 pub use self::mailbox::{
     append_mailbox_message, mailbox_path, read_mailbox_projection, validate_agent_id,
     MailboxMessageReceipt, MailboxMessageRecord, MailboxMessageRequest, MailboxReadProjection,
+    MAILBOX_MESSAGE_CAPABILITY_ID,
 };
 pub use self::mcp_transcript::{
     append_mcp_transcript, mcp_transcript_path, replay_mcp_transcripts, McpTranscriptRecord,
