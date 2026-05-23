@@ -14,8 +14,8 @@ fn receipt_path(name: &str) -> std::path::PathBuf {
         .duration_since(UNIX_EPOCH)
         .expect("system clock should be after unix epoch")
         .as_nanos();
-    std::path::PathBuf::from("target/test-tmp/mcp-receipts").join(format!(
-        "ai-mcp-receipt-{name}-{}-{nonce}.ndjson",
+    std::path::PathBuf::from("target/test-tmp/action-receipts").join(format!(
+        "ai-action-receipt-{name}-{}-{nonce}.ndjson",
         std::process::id(),
     ))
 }
@@ -32,7 +32,7 @@ fn request() -> ActionCallRequest {
 }
 
 #[test]
-fn mcp_request_hash_is_stable_and_admissible() {
+fn action_request_hash_is_stable_and_admissible() {
     let first = request();
     let second = request();
 
@@ -42,7 +42,7 @@ fn mcp_request_hash_is_stable_and_admissible() {
 }
 
 #[test]
-fn mcp_receipt_normalizes_process_effect() {
+fn action_receipt_normalizes_process_effect() {
     let request = request();
     let receipt = ActionReceipt::from_response(&request, br#"{"ok":true}"#, 0, false);
 
@@ -64,7 +64,7 @@ fn mcp_receipt_normalizes_process_effect() {
 }
 
 #[test]
-fn mcp_receipt_roundtrips_ndjson_and_persists() {
+fn action_receipt_roundtrips_ndjson_and_persists() {
     let request = request();
     let receipt = ActionReceipt::from_response(&request, br#"{"ok":true}"#, 0, false);
     let encoded = encode_mcp_call_receipt_ndjson(&receipt);
@@ -92,7 +92,7 @@ fn mcp_receipt_roundtrips_ndjson_and_persists() {
 }
 
 #[test]
-fn mcp_receipt_rejects_tampered_hash_and_shape() {
+fn action_receipt_rejects_tampered_hash_and_shape() {
     let request = request();
     let mut receipt = ActionReceipt::from_response(&request, br#"{"ok":true}"#, 0, false);
     receipt.receipt_hash ^= 1;
@@ -108,7 +108,7 @@ fn mcp_receipt_rejects_tampered_hash_and_shape() {
 }
 
 #[test]
-fn mcp_executor_enforces_allowlist_and_args_bound() {
+fn action_executor_enforces_allowlist_and_args_bound() {
     let executor = LiveActionExecutor::new("http://127.0.0.1:38469/mcp_worker")
         .with_allowed_tool("shell")
         .with_timeout_ms(100)
@@ -126,7 +126,7 @@ fn mcp_executor_enforces_allowlist_and_args_bound() {
 }
 
 #[test]
-fn mcp_executor_calls_local_worker_and_records_receipt() {
+fn action_executor_calls_local_worker_and_records_receipt() {
     let listener = TcpListener::bind("127.0.0.1:0").expect("bind local mcp worker");
     let port = listener.local_addr().expect("local addr").port();
     let worker_url = format!("http://127.0.0.1:{port}/mcp_worker");
@@ -190,7 +190,7 @@ fn mcp_executor_calls_local_worker_and_records_receipt() {
 }
 
 #[test]
-fn mcp_executor_records_connection_failure_as_receipt() {
+fn action_executor_records_connection_failure_as_receipt() {
     let listener = TcpListener::bind("127.0.0.1:0").expect("reserve local unused mcp port");
     let port = listener.local_addr().expect("local addr").port();
     drop(listener);
@@ -221,7 +221,7 @@ fn mcp_executor_records_connection_failure_as_receipt() {
 }
 
 #[test]
-fn mcp_executor_records_worker_timeout_as_receipt() {
+fn action_executor_records_worker_timeout_as_receipt() {
     let listener = TcpListener::bind("127.0.0.1:0").expect("bind local mcp worker");
     let port = listener.local_addr().expect("local addr").port();
     let worker_url = format!("http://127.0.0.1:{port}/mcp_worker");
@@ -268,7 +268,7 @@ fn mcp_executor_records_worker_timeout_as_receipt() {
 }
 
 #[test]
-fn mcp_executor_records_worker_http_failure_as_receipt() {
+fn action_executor_records_worker_http_failure_as_receipt() {
     let listener = TcpListener::bind("127.0.0.1:0").expect("bind local mcp worker");
     let port = listener.local_addr().expect("local addr").port();
     let worker_url = format!("http://127.0.0.1:{port}/mcp_worker");

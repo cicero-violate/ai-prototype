@@ -138,7 +138,7 @@ fn mcp_authorize_body(command_id: u64, request: &ActionCallRequest) -> serde_jso
     })
 }
 
-fn mcp_receipt_body(command_id: u64, receipt: &ActionReceipt) -> serde_json::Value {
+fn action_receipt_body(command_id: u64, receipt: &ActionReceipt) -> serde_json::Value {
     let envelope = CommandEnvelope::new(command_id, Command::SubmitActionReceipt(receipt.clone()));
     serde_json::json!({
         "command_id": envelope.command_id,
@@ -565,8 +565,8 @@ async fn command_route_replays_after_durable_resume_without_appending_tlog() {
 }
 
 #[tokio::test]
-async fn command_route_accepts_mcp_receipt_submission_and_persists_tlog() {
-    let path = tlog_path("mcp-receipt-submission");
+async fn command_route_accepts_action_receipt_submission_and_persists_tlog() {
+    let path = tlog_path("action-receipt-submission");
     let _ = std::fs::remove_file(&path);
     let mut execute_state = State::ready();
     execute_state.phase = ai::Phase::Execute;
@@ -702,7 +702,7 @@ async fn command_route_authorizes_mcp_then_records_receipt_in_tlog() {
                 .method("POST")
                 .uri("/v1/command")
                 .header("Content-Type", "application/json")
-                .body(Body::from(mcp_receipt_body(51, &receipt).to_string()))
+                .body(Body::from(action_receipt_body(51, &receipt).to_string()))
                 .expect("test operation should succeed"),
         )
         .await

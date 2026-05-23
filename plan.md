@@ -944,6 +944,8 @@ Remove in this order:
 - Migrated receipt contract test imports from MCP aliases to action receipt types.
 - Migrated receipt contract request type references to ActionCallRequest.
 - Migrated supervisor state `SpawnAgentToolRequest` import to the execution action facade.
+- Renamed receipt-contract test functions from MCP request/receipt/executor terminology to action terminology.
+- Renamed API server receipt-submission helper/test wording to action terminology while preserving explicit MCP authorization compatibility coverage.
 
 ### 2026-05-22 update: latest migration batch
 
@@ -957,6 +959,8 @@ Completed in the latest batch:
 - Migrated API server contract test helper/type names toward action terminology while preserving external command tags.
 - Migrated receipt contract test imports/request type names toward action terminology.
 - Migrated supervisor state `SpawnAgentToolRequest` import from `capability::tooling::mcp_tools` to `capability::execution::action`.
+- Renamed remaining receipt-contract test names to action terminology and moved temporary receipt fixture paths from `mcp-receipts` to `action-receipts`.
+- Renamed the API server action receipt-submission helper and direct action-receipt test name while preserving the legacy MCP authorization test.
 
 Build checkpoint after the batch:
 
@@ -979,6 +983,14 @@ cargo test --manifest-path ai/Cargo.toml --test architecture_boundary_contract -
 ```
 
 Result: passed, 28 tests.
+
+Focused verification after test-terminology slice:
+
+```bash
+cargo test --manifest-path ai/Cargo.toml --test mcp_receipt_contract --test api_server_contract
+```
+
+Result: passed, 22 tests.
 
 Notes:
 
