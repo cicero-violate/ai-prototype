@@ -55,7 +55,7 @@ fn append_action_transcript_for_workspace(
     args_json: &str,
     response_json: &str,
     request: &ActionCallRequest,
-    receipt: &McpCallReceipt,
+    receipt: &ActionReceipt,
 ) -> Option<String> {
     let mut errors = Vec::new();
     let mut recorded = false;
@@ -117,7 +117,7 @@ fn append_raw_action_result(
     name: &str,
     args_json: &str,
     response_json: &str,
-    receipt: &McpCallReceipt,
+    receipt: &ActionReceipt,
 ) -> Result<(), String> {
     let path = workspace
         .allowed_boundary
@@ -180,7 +180,7 @@ mod transcript_tests {
             1000,
             65_536,
         );
-        let receipt = McpCallReceipt::from_response(&request, response_json.as_bytes(), 0, false);
+        let receipt = ActionReceipt::from_response(&request, response_json.as_bytes(), 0, false);
 
         let warning = append_action_transcript_for_workspace(
             &workspace,
@@ -233,7 +233,7 @@ mod transcript_tests {
             1000,
             65_536,
         );
-        let receipt = McpCallReceipt::from_response(&request, response_json.as_bytes(), 0, false);
+        let receipt = ActionReceipt::from_response(&request, response_json.as_bytes(), 0, false);
 
         let warning = append_action_transcript_for_workspace(
             &workspace,
@@ -303,7 +303,7 @@ async fn execute_recorded_gateway_tool<H: ActionHost>(name: &str, args: Value, h
     } else {
         0
     };
-    let receipt = McpCallReceipt::from_response(&request, &response_bytes, exit_status, false);
+    let receipt = ActionReceipt::from_response(&request, &response_bytes, exit_status, false);
     let workspace = host.workspace();
     let transcript_warning = append_action_transcript_for_workspace(
         &workspace,
@@ -383,7 +383,7 @@ async fn execute_recorded_native_action<H: ActionHost>(name: &str, args: Value, 
     } else {
         0
     };
-    let receipt = McpCallReceipt::from_response(&request, &response_bytes, exit_status, false);
+    let receipt = ActionReceipt::from_response(&request, &response_bytes, exit_status, false);
     let workspace = host.workspace();
     let transcript_warning = append_action_transcript_for_workspace(
         &workspace,
