@@ -3,7 +3,7 @@
 use std::fs;
 use std::path::Path;
 
-use crate::process::agent::config::AgentLoopConfig;
+use crate::service::agent::config::AgentLoopConfig;
 
 use super::http::agent_command_url;
 use super::learning::{load_mcp_feedback, load_policy_feedback};

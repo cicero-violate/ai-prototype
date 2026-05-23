@@ -905,6 +905,7 @@ Remove in this order:
 
 - Migrated agent config endpoint imports from `crate::process::endpoints` to `crate::service::endpoints`.
 - Migrated loop HTTP config imports to `crate::service::agent::config`.
+- Migrated prompt builder config imports to the service agent facade.
 ### Quick Acceptance Criteria
 
 The migration is complete when:
