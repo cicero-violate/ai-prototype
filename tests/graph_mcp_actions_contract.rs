@@ -420,7 +420,7 @@ fn graph_mcp_actions_expose_stable_contract_surface() {
         "canon_graph_plan_patch"
     );
     assert_eq!(
-        ai::capability::tooling::mcp_tools::CANON_GRAPH_APPLY_OPS_TOOL,
+        ai::capability::execution::action::CANON_GRAPH_APPLY_OPS_TOOL,
         "canon_graph_apply_ops"
     );
     assert_eq!(
