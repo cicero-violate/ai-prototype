@@ -7,7 +7,7 @@ use std::env;
 use std::net::SocketAddr;
 use std::path::PathBuf;
 
-use crate::process::endpoints::{mcp_connector_url_from_env, supervisor_port_from_env};
+use crate::service::endpoints::{mcp_connector_url_from_env, supervisor_port_from_env};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SupervisorConfig {

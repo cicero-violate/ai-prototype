@@ -913,6 +913,7 @@ Remove in this order:
 - Migrated agent worker task-client imports to the service dispatch facade.
 - Migrated task runner agent/dispatch/scheduler imports to service facades.
 - Migrated recovery event-loop supervisor imports to the service facade.
+- Migrated supervisor config endpoint imports to the service facade.
 ### Quick Acceptance Criteria
 
 The migration is complete when:
