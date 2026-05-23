@@ -1,7 +1,7 @@
 //! Graph editor tooling bridge.
 //!
 //! This module is the operational bridge between MCP/tooling and the canonical
-//! graph patch contract in `crate::capability::tooling::graph_patch_contract`. It owns file/workspace
+//! graph patch contract in `crate::capability::execution::graph`. It owns file/workspace
 //! I/O and response shaping, but it does not define graph mutation receipt or
 //! verification authority.
 
@@ -12,7 +12,7 @@ use std::fs;
 use std::path::Path;
 use std::process::Command;
 
-use crate::capability::tooling::graph_patch_contract::{
+use crate::capability::execution::graph::{
     decode_graph_mutation_ops_ndjson, decode_graph_snapshot_contract_ndjson,
     encode_graph_mutation_ops_ndjson, encode_graph_mutation_opset_receipt_ndjson,
     encode_graph_patch_receipt_ndjson, generate_graph_patch, verify_graph_mutation_ops_ndjson,
@@ -703,8 +703,8 @@ fn apply_ops_receipt_payload(
     worktree_out: &Path,
     apply_patch_text: &str,
     source_apply: Option<&Value>,
-    plan: &crate::capability::tooling::graph_patch_contract::GraphPatchPlan,
-    ops_receipt: &crate::capability::tooling::graph_patch_contract::GraphMutationOpSetReceipt,
+    plan: &crate::capability::execution::graph::GraphPatchPlan,
+    ops_receipt: &crate::capability::execution::graph::GraphMutationOpSetReceipt,
 ) -> Value {
     json!({
         "ok": true,
@@ -749,8 +749,8 @@ fn run_optional_worktree_command(
 
 fn graph_snapshot_contract_from_graph_json(
     graph_json: &Value,
-) -> Option<crate::capability::tooling::graph_patch_contract::GraphSnapshotContract> {
-    use crate::capability::tooling::graph_patch_contract::{
+) -> Option<crate::capability::execution::graph::GraphSnapshotContract> {
+    use crate::capability::execution::graph::{
         GraphEdgeContract, GraphNodeContract, GraphSnapshotContract, GraphSourceSpan,
     };
     let schema = graph_json.get("meta")?.get("schema_version")?.as_u64()? as u32;

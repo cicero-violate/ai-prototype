@@ -625,6 +625,7 @@ This establishes the target vocabulary in code without creating a large risky mo
 - Migrated native project/agent action-tool callers from `capability::tooling::mcp_tools` to the `capability::execution::action` facade.
 - Migrated action landmark/schema callers from `capability::tooling::mcp_tools::landmarks` to `capability::execution::action::landmarks`.
 - Added `capability::execution::action::host` facade and migrated action dispatch off direct `capability::tooling::native` imports.
+- Migrated graph editor internals from `capability::tooling::graph_patch_contract` paths to the `capability::execution::graph` facade.
 
 Verified with:
 
