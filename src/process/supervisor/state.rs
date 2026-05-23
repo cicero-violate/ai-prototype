@@ -13,9 +13,9 @@ use crate::api::oauth::OAuthStore;
 use crate::api::protocol::Command as KernelCommand;
 use crate::capability::execution::action::ActionHost;
 use crate::capability::tooling::mcp_tools::SpawnAgentToolRequest;
-use crate::process::scheduler::handler::TaskReadyNotifier;
-use crate::process::supervisor::SupervisorConfig;
-use crate::process::supervisor::WorkspaceConfig;
+use crate::service::scheduler::handler::TaskReadyNotifier;
+use crate::service::supervisor::SupervisorConfig;
+use crate::service::supervisor::WorkspaceConfig;
 use std::time::Duration;
 
 #[derive(Clone)]
@@ -38,11 +38,11 @@ impl SupervisorState {
 
     pub async fn restart_supervisor(
         &self,
-    ) -> Result<crate::process::supervisor::RestartDto, String> {
+    ) -> Result<crate::service::supervisor::RestartDto, String> {
         let replacement = crate::api::routes::supervisor::control::schedule_supervisor_replacement(
             crate::api::routes::supervisor::control::SUPERVISOR_RESTART_DELAY_MS,
         )?;
-        Ok(crate::process::supervisor::RestartDto {
+        Ok(crate::service::supervisor::RestartDto {
             ok: true,
             pid: std::process::id(),
             replacement,
