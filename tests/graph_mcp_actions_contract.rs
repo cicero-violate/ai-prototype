@@ -249,7 +249,7 @@ fn run_manifest_action(dir: &Path, action: &WorkflowAction) {
         "graph:plan_patch" => {
             assert_eq!(action.args.len(), 5);
             let workspace = workspace_for(dir);
-            let value = ai::capability::tooling::graph_editor::plan_patch_tool(
+            let value = ai::capability::execution::graph::plan_patch_tool(
                 &json!({
                     "graph_contract": action.args[0],
                     "source_root": action.args[1],
@@ -327,7 +327,7 @@ fn graph_mcp_action_generates_patch_and_landing_receipt() {
     let mutation_receipt = dir.join("mutation-receipt.ndjson");
     let workspace = workspace_for(&dir);
 
-    let value = ai::capability::tooling::graph_editor::plan_patch_tool(
+    let value = ai::capability::execution::graph::plan_patch_tool(
         &json!({
             "graph_contract": old_graph.strip_prefix(&dir).expect("test path should be under temp dir").to_str().expect("test path should be valid UTF-8"),
             "source_root": source_root.strip_prefix(&dir).expect("test path should be under temp dir").to_str().expect("test path should be valid UTF-8"),
@@ -375,7 +375,7 @@ fn graph_mcp_actions_roundtrip_generated_receipts_into_ledger_verifier() {
     let mutation_receipt = dir.join("mutation-receipt.ndjson");
     let workspace = workspace_for(&dir);
 
-    let value = ai::capability::tooling::graph_editor::plan_patch_tool(
+    let value = ai::capability::execution::graph::plan_patch_tool(
         &json!({
             "graph_contract": old_graph.strip_prefix(&dir).expect("test path should be under temp dir").to_str().expect("test path should be valid UTF-8"),
             "source_root": source_root.strip_prefix(&dir).expect("test path should be under temp dir").to_str().expect("test path should be valid UTF-8"),
@@ -441,7 +441,7 @@ fn graph_mcp_actions_expose_stable_contract_surface() {
 fn graph_mcp_action_plan_patch_rejects_invalid_request_shape() {
     let dir = temp_dir("invalid-shape");
     let workspace = workspace_for(&dir);
-    let value = ai::capability::tooling::graph_editor::plan_patch_tool(&json!({}), &workspace);
+    let value = ai::capability::execution::graph::plan_patch_tool(&json!({}), &workspace);
     assert_eq!(value.get("isError"), Some(&Value::Bool(true)));
     let text = value["content"][0]["text"].as_str().expect("error text");
     assert!(text.contains("graph_contract"));
