@@ -149,15 +149,15 @@ impl NodeStatus {
 // ── Persistence ───────────────────────────────────────────────────────────────
 
 pub fn plan_path(workspace_root: &Path) -> std::path::PathBuf {
-    crate::process::scheduler::plan_store::plan_path(workspace_root)
+    crate::service::scheduler::plan_store::plan_path(workspace_root)
 }
 
 pub fn load_plan(workspace_root: &Path) -> PlanDag {
-    crate::process::scheduler::plan_store::load_plan(workspace_root)
+    crate::service::scheduler::plan_store::load_plan(workspace_root)
 }
 
 pub fn save_plan(workspace_root: &Path, plan: &PlanDag) -> Result<(), String> {
-    crate::process::scheduler::plan_store::save_plan(workspace_root, plan)
+    crate::service::scheduler::plan_store::save_plan(workspace_root, plan)
 }
 
 /// Returns nodes whose dependencies are all `Done`, and whose own status is `Pending`.
