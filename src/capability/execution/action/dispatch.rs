@@ -54,7 +54,7 @@ fn append_action_transcript_for_workspace(
     name: &str,
     args_json: &str,
     response_json: &str,
-    request: &McpCallRequest,
+    request: &ActionCallRequest,
     receipt: &McpCallReceipt,
 ) -> Option<String> {
     let mut errors = Vec::new();
@@ -172,7 +172,7 @@ mod transcript_tests {
         let workspace = WorkspaceView::new(nested.clone(), project.clone()).expect("workspace");
         let args_json = r#"{"command":"get_landmarks"}"#;
         let response_json = r#"{"content":[{"type":"text","text":"saved"}],"isError":false}"#;
-        let request = McpCallRequest::new(
+        let request = ActionCallRequest::new(
             CapabilityRegistry::canonical(),
             "ai-native:/ai/mcp",
             "get_landmarks",
@@ -225,7 +225,7 @@ mod transcript_tests {
         let workspace = WorkspaceView::new(project.clone(), project.clone()).expect("workspace");
         let args_json = r#"{"command":"get_manifest"}"#;
         let response_json = r#"{"content":[{"type":"text","text":"manifest"}],"isError":false}"#;
-        let request = McpCallRequest::new(
+        let request = ActionCallRequest::new(
             CapabilityRegistry::canonical(),
             "ai-native:/ai/mcp",
             "get_manifest",
@@ -265,7 +265,7 @@ async fn execute_recorded_gateway_tool<H: ActionHost>(name: &str, args: Value, h
         .and_then(Value::as_u64)
         .unwrap_or(65_536)
         .max(1);
-    let request = McpCallRequest::new(
+    let request = ActionCallRequest::new(
         CapabilityRegistry::canonical(),
         "ai-native:/ai/mcp",
         name,
@@ -341,7 +341,7 @@ async fn execute_recorded_native_action<H: ActionHost>(name: &str, args: Value, 
         .and_then(Value::as_u64)
         .unwrap_or(65_536)
         .max(1);
-    let request = McpCallRequest::new(
+    let request = ActionCallRequest::new(
         CapabilityRegistry::canonical(),
         "ai-native:/ai/mcp",
         name,

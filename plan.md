@@ -926,6 +926,7 @@ Remove in this order:
 - Migrated crate-root bounded execution exports from `capability::tooling` to `capability::execution`.
 - Migrated supervisor control plan-store imports to the service scheduler facade.
 - Migrated action dispatch imports to direct action request/receipt type names.
+- Migrated action dispatch request references away from MCP alias names.
 ### Quick Acceptance Criteria
 
 The migration is complete when:
