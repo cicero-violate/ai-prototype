@@ -911,6 +911,7 @@ Remove in this order:
 - Migrated loop driver agent/scheduler references to service facades.
 - Migrated task client loop HTTP imports to the service agent facade.
 - Migrated agent worker task-client imports to the service dispatch facade.
+- Migrated task runner agent/dispatch/scheduler imports to service facades.
 ### Quick Acceptance Criteria
 
 The migration is complete when:

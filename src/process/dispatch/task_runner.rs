@@ -15,13 +15,13 @@ use std::cell::Cell;
 use std::time::Duration;
 
 use crate::domain::plan::{ready_nodes_from_available_plan_state, NodeStatus, PlanNode};
-use crate::process::agent::config::AgentLoopConfig;
-use crate::process::agent::loop_driver::http::post_json_body_local;
-use crate::process::agent::loop_driver::LoopDriver;
-use crate::process::agent::worker::{complete_claim, fail_claim, run_with_heartbeat, ActiveClaim};
-use crate::process::dispatch::task_client::TaskClient;
-use crate::process::scheduler::handler::TaskReadyNotifier;
-use crate::process::scheduler::plan_store::{load_plan, load_plan_read_model};
+use crate::service::agent::config::AgentLoopConfig;
+use crate::service::agent::loop_driver::http::post_json_body_local;
+use crate::service::agent::loop_driver::LoopDriver;
+use crate::service::agent::worker::{complete_claim, fail_claim, run_with_heartbeat, ActiveClaim};
+use crate::service::dispatch::task_client::TaskClient;
+use crate::service::scheduler::handler::TaskReadyNotifier;
+use crate::service::scheduler::plan_store::{load_plan, load_plan_read_model};
 
 const DEFAULT_LEASE_TTL_MS: u64 = 120_000;
 const RETRY_AFTER_MS: u64 = 60_000;
