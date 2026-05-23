@@ -4,7 +4,7 @@ use std::io::{Read, Write};
 use std::net::TcpStream;
 use std::time::Duration;
 
-use crate::process::agent::config::AgentLoopConfig;
+use crate::service::agent::config::AgentLoopConfig;
 
 use super::mcp_workspace::parse_mcp_workspace_status;
 use super::receipt::agent_turn_kernel_command;

@@ -904,6 +904,7 @@ Remove in this order:
   capability owns bounded effects and receipts.
 
 - Migrated agent config endpoint imports from `crate::process::endpoints` to `crate::service::endpoints`.
+- Migrated loop HTTP config imports to `crate::service::agent::config`.
 ### Quick Acceptance Criteria
 
 The migration is complete when:
