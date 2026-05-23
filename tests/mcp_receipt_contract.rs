@@ -1,7 +1,7 @@
 use ai::{
     append_mcp_call_receipt_ndjson, decode_mcp_call_receipt_ndjson, encode_mcp_call_receipt_ndjson,
     load_mcp_call_receipts_ndjson, verify_mcp_call_receipts, CapabilityRegistry, Effect,
-    LiveMcpCallExecutor, McpCallReceipt, McpCallRequest, ToolSandboxError,
+    LiveActionExecutor, ActionReceipt, ActionCallRequest, ToolSandboxError,
 };
 use std::io::{Read, Write};
 use std::net::TcpListener;

@@ -941,6 +941,7 @@ Remove in this order:
 - Migrated API server contract receipt type references to ActionReceipt while preserving external command tags.
 - Renamed API server contract request helper functions to action terminology.
 - Renamed API server contract receipt helper functions to action terminology.
+- Migrated receipt contract test imports from MCP aliases to action receipt types.
 ### Quick Acceptance Criteria
 
 The migration is complete when:
