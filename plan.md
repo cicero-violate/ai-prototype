@@ -943,6 +943,49 @@ Remove in this order:
 - Renamed API server contract receipt helper functions to action terminology.
 - Migrated receipt contract test imports from MCP aliases to action receipt types.
 - Migrated receipt contract request type references to ActionCallRequest.
+- Migrated supervisor state `SpawnAgentToolRequest` import to the execution action facade.
+
+### 2026-05-22 update: latest migration batch
+
+Completed in the latest batch:
+
+- Migrated crate-root bounded execution exports to `capability::execution`.
+- Migrated supervisor control plan-store import to `service::scheduler::plan_store`.
+- Removed MCP alias names from live action dispatch request/receipt internals.
+- Renamed runtime action transcript tests away from MCP terminology.
+- Migrated graph contract tests to `capability::execution::{graph,action}` facades.
+- Migrated API server contract test helper/type names toward action terminology while preserving external command tags.
+- Migrated receipt contract test imports/request type names toward action terminology.
+- Migrated supervisor state `SpawnAgentToolRequest` import from `capability::tooling::mcp_tools` to `capability::execution::action`.
+
+Build checkpoint after the batch:
+
+```bash
+cargo build --manifest-path Cargo.toml
+```
+
+Result: passed.
+
+Current direct legacy import check:
+
+```text
+No direct `use crate::capability::tooling` imports remain outside the execution compatibility facades.
+```
+
+Focused verification after this slice:
+
+```bash
+cargo test --manifest-path ai/Cargo.toml --test architecture_boundary_contract --test mcp_receipt_contract
+```
+
+Result: passed, 28 tests.
+
+Notes:
+
+- External MCP route/protocol compatibility remains intentionally preserved.
+- `api/mcp`, `runtime/mcp_transcript`, and `capability/tooling` compatibility shims are still present by design until internal refs are fully drained.
+- Next safe slice: continue reducing remaining test naming and shim terminology while preserving external MCP protocol compatibility.
+
 ### Quick Acceptance Criteria
 
 The migration is complete when:

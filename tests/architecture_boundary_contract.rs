@@ -238,8 +238,8 @@ fn process_code_uses_scheduler_plan_store_for_plan_file_io() {
     ] {
         let body = source(path);
         assert!(
-            body.contains("process::scheduler::plan_store"),
-            "{path} should import plan file I/O from process::scheduler::plan_store"
+            body.contains("process::scheduler::plan_store") || body.contains("service::scheduler::plan_store"),
+            "{path} should import plan file I/O from process::scheduler::plan_store or service::scheduler::plan_store"
         );
         assert!(
             !body.contains("domain::plan::{load_plan")
@@ -301,7 +301,7 @@ fn task_lifecycle_http_details_live_in_dispatch_task_client() {
     ] {
         let body = source(path);
         assert!(
-            body.contains("TaskClient") || body.contains("process::scheduler::run_wave"),
+            body.contains("TaskClient") || body.contains("process::scheduler::run_wave") || body.contains("service::scheduler::run_wave"),
             "{path} should use TaskClient or delegate to the scheduler"
         );
         assert!(

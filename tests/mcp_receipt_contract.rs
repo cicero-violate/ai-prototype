@@ -44,7 +44,7 @@ fn mcp_request_hash_is_stable_and_admissible() {
 #[test]
 fn mcp_receipt_normalizes_process_effect() {
     let request = request();
-    let receipt = McpCallReceipt::from_response(&request, br#"{"ok":true}"#, 0, false);
+    let receipt = ActionReceipt::from_response(&request, br#"{"ok":true}"#, 0, false);
 
     assert!(receipt.is_contract_valid());
     assert!(receipt.is_success());
@@ -66,7 +66,7 @@ fn mcp_receipt_normalizes_process_effect() {
 #[test]
 fn mcp_receipt_roundtrips_ndjson_and_persists() {
     let request = request();
-    let receipt = McpCallReceipt::from_response(&request, br#"{"ok":true}"#, 0, false);
+    let receipt = ActionReceipt::from_response(&request, br#"{"ok":true}"#, 0, false);
     let encoded = encode_mcp_call_receipt_ndjson(&receipt);
     let decoded = match decode_mcp_call_receipt_ndjson(&encoded) {
         Ok(decoded) => decoded,
@@ -94,7 +94,7 @@ fn mcp_receipt_roundtrips_ndjson_and_persists() {
 #[test]
 fn mcp_receipt_rejects_tampered_hash_and_shape() {
     let request = request();
-    let mut receipt = McpCallReceipt::from_response(&request, br#"{"ok":true}"#, 0, false);
+    let mut receipt = ActionReceipt::from_response(&request, br#"{"ok":true}"#, 0, false);
     receipt.receipt_hash ^= 1;
 
     assert_eq!(
@@ -109,7 +109,7 @@ fn mcp_receipt_rejects_tampered_hash_and_shape() {
 
 #[test]
 fn mcp_executor_enforces_allowlist_and_args_bound() {
-    let executor = LiveMcpCallExecutor::new("http://127.0.0.1:38469/mcp_worker")
+    let executor = LiveActionExecutor::new("http://127.0.0.1:38469/mcp_worker")
         .with_allowed_tool("shell")
         .with_timeout_ms(100)
         .with_max_output_bytes(8);
@@ -156,7 +156,7 @@ fn mcp_executor_calls_local_worker_and_records_receipt() {
     });
 
     let args = r#"{"cwd":".","command":"true"}"#;
-    let executor = LiveMcpCallExecutor::new(worker_url)
+    let executor = LiveActionExecutor::new(worker_url)
         .with_allowed_tool("shell")
         .with_timeout_ms(1000)
         .with_max_output_bytes(4096);
@@ -197,7 +197,7 @@ fn mcp_executor_records_connection_failure_as_receipt() {
 
     let worker_url = format!("http://127.0.0.1:{port}/mcp_worker");
     let args = r#"{"cwd":".","command":"true"}"#;
-    let executor = LiveMcpCallExecutor::new(worker_url)
+    let executor = LiveActionExecutor::new(worker_url)
         .with_allowed_tool("shell")
         .with_timeout_ms(250)
         .with_max_output_bytes(4096);
@@ -241,7 +241,7 @@ fn mcp_executor_records_worker_timeout_as_receipt() {
     });
 
     let args = r#"{"cwd":".","command":"sleep"}"#;
-    let executor = LiveMcpCallExecutor::new(worker_url)
+    let executor = LiveActionExecutor::new(worker_url)
         .with_allowed_tool("shell")
         .with_timeout_ms(100)
         .with_max_output_bytes(4096);
@@ -297,7 +297,7 @@ fn mcp_executor_records_worker_http_failure_as_receipt() {
     });
 
     let args = r#"{"cwd":".","command":"false"}"#;
-    let executor = LiveMcpCallExecutor::new(worker_url)
+    let executor = LiveActionExecutor::new(worker_url)
         .with_allowed_tool("shell")
         .with_timeout_ms(1000)
         .with_max_output_bytes(4096);
