@@ -3,7 +3,7 @@
 //! This is an adapter client, not the task ownership authority. It keeps
 //! endpoint details out of scheduler policy and worker lifecycle wrappers.
 
-use crate::process::agent::loop_driver::http::{get_json_body_local, post_json_body_local};
+use crate::service::agent::loop_driver::http::{get_json_body_local, post_json_body_local};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TaskClaim {

@@ -909,6 +909,7 @@ Remove in this order:
 - Migrated loop receipt router imports to the service agent facade.
 - Migrated DAG scheduler agent/scheduler imports to service facades.
 - Migrated loop driver agent/scheduler references to service facades.
+- Migrated task client loop HTTP imports to the service agent facade.
 ### Quick Acceptance Criteria
 
 The migration is complete when:
