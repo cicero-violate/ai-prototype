@@ -12,7 +12,7 @@ use crate::api::protocol::Command as KernelCommand;
 use crate::capability::execution::{
     ActionCallRequest as McpCallRequest, ActionReceipt as McpCallReceipt,
 };
-use crate::capability::tooling::mcp_tools::landmarks;
+use crate::capability::execution::action::landmarks;
 use crate::capability::tooling::native;
 pub use crate::capability::tooling::native::NativeToolHost as ActionHost;
 use crate::runtime::{append_action_transcript, ActionTranscriptReceiptFacts, WorkspaceView};
