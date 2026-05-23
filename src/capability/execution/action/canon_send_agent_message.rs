@@ -8,7 +8,6 @@ use std::path::Path;
 use serde_json::{json, Value};
 
 use crate::capability::CapabilityRegistry;
-use crate::capability::CapabilityRegistry;
 use crate::capability::execution::action::common::tool_error;
 use crate::runtime::{append_mailbox_message, MailboxMessageReceipt, MailboxMessageRequest};
 

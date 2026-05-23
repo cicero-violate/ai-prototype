@@ -10,7 +10,7 @@ use crate::capability::execution::{
 };
 use crate::capability::CapabilityRegistry;
 
-use super::super::common::{native_process_output_paths, tmp_dir};
+use crate::capability::execution::action::common::{native_process_output_paths, tmp_dir};
 use crate::runtime::WorkspaceView;
 
 pub fn recorded_process_request(

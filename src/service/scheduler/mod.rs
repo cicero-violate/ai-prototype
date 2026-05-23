@@ -1,3 +1,11 @@
-//! Scheduler service compatibility facade.
+//! Process scheduler policy and plan storage boundaries.
+//!
+//! Scheduler code owns process policy over domain plan state. The domain module
+//! owns the graph model and pure rules; this module owns repository-state I/O
+//! needed by scheduler/supervisor processes.
 
-pub use crate::process::scheduler::*;
+pub mod dispatch;
+pub mod handler;
+pub mod plan_store;
+
+pub(crate) use dispatch::run_wave;

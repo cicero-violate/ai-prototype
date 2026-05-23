@@ -10,7 +10,6 @@ pub mod capability;
 pub mod codec;
 pub mod domain;
 pub mod kernel;
-pub mod process;
 pub mod runtime;
 pub mod service;
 pub use crate::capability::eval::score;
@@ -29,7 +28,7 @@ pub use crate::api::action::{
     action_err, action_kernel_command_payload, action_kernel_command_payload_tag, action_ok,
     action_schema_list, dispatch_action_plan, ActionDispatchPlan,
 };
-pub use crate::api::mcp::{
+pub use crate::api::action::{
     ai_mcp_tools_list, dispatch_ai_mcp_plan, kernel_command_payload, kernel_command_payload_tag,
     mcp_err, mcp_ok, result_with_warning, tool_error, AiMcpDispatchPlan,
 };

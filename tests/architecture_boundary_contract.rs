@@ -3,11 +3,11 @@ use std::time::Duration;
 
 use ai::capability::llm::{LlmTaskContext, LlmTurnReceipt, LlmTurnRecord};
 use ai::domain::plan::{NodeStatus, PlanDag, PlanEvidenceRef, PlanNode};
-use ai::process::agent::{heartbeat_claim, run_with_heartbeat};
-use ai::process::scheduler::plan_store::{
+use ai::service::agent::{heartbeat_claim, run_with_heartbeat};
+use ai::service::scheduler::plan_store::{
     append_evidence_patch, load_plan, load_plan_read_model, save_plan,
 };
-use ai::process::supervisor::{
+use ai::service::supervisor::{
     TaskClaimRequest, TaskCompleteRequest, TaskFailRequest, TaskHeartbeatRequest, WorkerProcess,
 };
 use ai::{
@@ -107,8 +107,8 @@ fn llm_task_receipt_types_are_public_and_bind_to_evidence_submission() {
 
 #[test]
 fn worker_heartbeat_helper_is_part_of_the_process_agent_api() {
-    let _api: fn(&str, &ai::process::agent::ActiveClaim, &str, u64) = heartbeat_claim;
-    let claim = ai::process::agent::ActiveClaim {
+    let _api: fn(&str, &ai::service::agent::ActiveClaim, &str, u64) = heartbeat_claim;
+    let claim = ai::service::agent::ActiveClaim {
         node_id: "node-1".to_string(),
         claim_id: 1,
         expires_at_ms: 2,
@@ -163,17 +163,17 @@ fn runtime_kernel_process_ownership_boundaries_are_single_source() {
     assert!(runtime.contains("event-bus"));
     assert!(runtime.contains("policy instead of duplicating"));
 
-    let process = source("src/process/mod.rs");
+    let service = source("src/service/mod.rs");
     assert!(
-        process.contains("owns autonomous agent loops and supervisor process lifecycle"),
-        "process should own scheduling and task lifecycle orchestration"
+        service.contains("owns autonomous agent loops and supervisor process lifecycle"),
+        "service should own scheduling and task lifecycle orchestration"
     );
-    assert!(process.contains("adapter code"));
+    assert!(service.contains("adapter code"));
 }
 
 #[test]
 fn scheduler_adapter_uses_runtime_wakeup_taxonomy_and_process_lifecycle_boundary() {
-    let body = source("src/process/scheduler/handler.rs");
+    let body = source("src/service/scheduler/handler.rs");
     assert!(
         body.contains("pub use crate::runtime::event_bus::WakeupKind as SchedulerWakeupKind"),
         "scheduler adapter should consume runtime-owned wakeup kinds instead of defining duplicate event taxonomy"
@@ -195,7 +195,7 @@ fn scheduler_adapter_uses_runtime_wakeup_taxonomy_and_process_lifecycle_boundary
 
 #[test]
 fn process_browser_router_files_are_compatibility_shims_only() {
-    for path in ["src/process/agent/router.rs", "src/process/agent/sse.rs"] {
+    for path in ["src/service/agent/router.rs", "src/service/agent/sse.rs"] {
         let body = source(path);
         assert!(
             body.contains("Re-export shim") && body.contains("pub use crate::capability::llm::"),
@@ -214,7 +214,7 @@ fn process_browser_router_files_are_compatibility_shims_only() {
 #[test]
 fn supervisor_uses_domain_plan_types_not_tooling_plan_types() {
     for path in [
-        "src/process/supervisor/process.rs",
+        "src/service/supervisor/process.rs",
         "src/api/routes/supervisor/control.rs",
     ] {
         let body = source(path);
@@ -232,9 +232,9 @@ fn supervisor_uses_domain_plan_types_not_tooling_plan_types() {
 #[test]
 fn process_code_uses_scheduler_plan_store_for_plan_file_io() {
     for path in [
-        "src/process/supervisor/process.rs",
+        "src/service/supervisor/process.rs",
         "src/api/routes/supervisor/control.rs",
-        "src/process/scheduler/dispatch.rs",
+        "src/service/scheduler/dispatch.rs",
     ] {
         let body = source(path);
         assert!(
@@ -253,7 +253,7 @@ fn process_code_uses_scheduler_plan_store_for_plan_file_io() {
 
 #[test]
 fn supervisor_lifecycle_does_not_save_plan_json_status() {
-    let body = source("src/process/supervisor/process.rs");
+    let body = source("src/service/supervisor/process.rs");
     assert!(
         body.contains("append_status_change_patch"),
         "supervisor lifecycle should append status changes through the plan patch TLog"
@@ -274,7 +274,7 @@ fn supervisor_lifecycle_does_not_save_plan_json_status() {
 
 #[test]
 fn scheduler_dispatch_reads_projected_plan_state() {
-    let body = source("src/process/scheduler/dispatch.rs");
+    let body = source("src/service/scheduler/dispatch.rs");
     assert!(
         body.contains("load_plan_read_model"),
         "scheduler dispatch should select ready nodes from the projected read model"
@@ -288,16 +288,16 @@ fn scheduler_dispatch_reads_projected_plan_state() {
 
 #[test]
 fn task_lifecycle_http_details_live_in_dispatch_task_client() {
-    let task_client = source("src/process/dispatch/task_client.rs");
+    let task_client = source("src/service/dispatch/task_client.rs");
     assert!(task_client.contains("/v1/task/claim"));
     assert!(task_client.contains("/v1/task/heartbeat"));
     assert!(task_client.contains("/v1/task/complete"));
     assert!(task_client.contains("/v1/task/fail"));
 
     for path in [
-        "src/process/scheduler/dispatch.rs",
-        "src/process/agent/worker.rs",
-        "src/process/agent/loop_driver/mod.rs",
+        "src/service/scheduler/dispatch.rs",
+        "src/service/agent/worker.rs",
+        "src/service/agent/loop_driver/mod.rs",
     ] {
         let body = source(path);
         assert!(
@@ -567,7 +567,7 @@ fn supervisor_failure_response_is_receipt_backed() {
 
 #[test]
 fn supervisor_task_lifecycle_submits_receipts_through_command_ingress() {
-    let source = source("src/process/supervisor/process.rs");
+    let source = source("src/service/supervisor/process.rs");
 
     assert!(source.contains("KernelCommand::SubmitEvidence"));
     assert!(source.contains("CommandEnvelope::new(receipt.receipt_hash"));

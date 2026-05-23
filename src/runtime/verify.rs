@@ -614,9 +614,11 @@ fn observational_outcome(state: State, event: &ControlEvent) -> Result<Outcome, 
         | Cause::Persisted
         | Cause::PolicyPromoted
         | Cause::EvidenceSubmitted
-        | Cause::AgentCycleEventSubmitted => {
-            // AgentCycleEventSubmitted and other pure-observational causes:
-            // state must be completely unchanged.
+        | Cause::AgentCycleEventSubmitted
+        | Cause::SymbolMutationObserved
+        | Cause::ArchitecturalDecisionMade
+        | Cause::CostGateEvaluated => {
+            // Pure-observational causes: state must be completely unchanged.
             if event.state_after != state {
                 return Err(CanonError::InvalidReplay);
             }

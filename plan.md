@@ -248,3 +248,49 @@ Required gates:
 3. Training derivation rejects rows that cannot be verified.
 4. Every training row keeps provenance back to runtime evidence.
 5. Learned models may propose and rank plans, but deterministic validation remains the acceptance gate.
+
+---
+
+## Task vocabulary placement
+
+The task vocabulary belongs in the learning layer, not in API, kernel, or refactor execution code.
+
+Add the canonical vocabulary schemas here:
+
+```text
+ai/src/capability/learning/
+├── mod.rs
+├── promote.rs
+├── vocabulary.rs        # task/symbol/tool/outcome/cost token definitions
+└── artifact.rs          # training artifact row schemas
+```
+
+Connect it to runtime evidence here:
+
+```text
+ai/src/runtime/learning_transcript.rs        # append-only hash-linked learning rows
+ai/src/service/agent/loop_driver/learning.rs # extract task words from cycles
+ai/src/service/scheduler/plan_store.rs       # task title/status/source of truth
+```
+
+Vocabulary families:
+
+- task words: fix, refactor, move, rename, extract, validate, generate, rollback
+- symbol words: scheduler, route, mailbox, kernel, dispatch, codec, runtime
+- tool words: apply_patch, shell, cargo_check, cargo_test, inspect, validate
+- outcome words: succeeded, failed, reverted, blocked, timed_out, accepted
+- cost words: fan_in, fan_out, churn, penalty, risk, barrier, rollback_cost
+
+Training-row shape:
+
+```text
+task vocabulary + symbol vocabulary + tool sequence + cost tokens + outcome -> next-plan training signal
+```
+
+Boundary rule:
+
+```text
+service extracts task context -> capability/learning normalizes vocabulary -> runtime records provenance -> transformer consumes derived training rows
+```
+
+Do not place this vocabulary in `kernel/`; kernel should only define durable event primitives. Do not place it in `api/`; API should expose protocol surfaces only. Do not place it in `refactor/src/compiler`; refactor execution must remain deterministic and validation-gated.

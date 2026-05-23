@@ -1,3 +1,32 @@
-//! Agent loop service compatibility facade.
+//! Canon agent — autonomous observe/decide/act/verify driver.
+//!
+//! Layering boundary:
+//!   agent     = objective management, loop policy, step selection, driver coordination
+//!   capability = evidence production, receipts, LLM/tool effects
+//!   api/worker = command ingress, durable state mutation
+//!   runtime   = deterministic tick/reduce/replay/recovery
+//!   kernel    = frozen state machine types
+//!
+//! The agent submits work through CommandEnvelope / ApiTransportFrame.
+//! It does not mutate State, GateSet, Packet, or TLog directly.
 
-pub use crate::process::agent::*;
+pub mod config;
+pub mod cycle;
+pub mod loop_driver;
+pub mod objective;
+pub mod prompt;
+pub mod router;
+pub mod sse;
+pub mod step;
+pub mod worker;
+pub mod worker_client;
+
+pub use config::{AgentLoopConfig, DEFAULT_EXECUTOR_COUNT, MAX_EXECUTOR_COUNT};
+pub use cycle::{AgentCycle, CycleError, StopReason};
+pub use loop_driver::LoopDriver;
+pub use objective::AgentObjective;
+pub use router::{RouterClient, RouterStreamingResult, RouterTurnResult};
+pub use sse::{ChunkLogger, SseResult};
+pub use step::{AgentActionKind, AgentDecision, AgentRunSummary, AgentStep};
+pub use worker::{complete_claim, fail_claim, heartbeat_claim, run_with_heartbeat, ActiveClaim};
+pub use worker_client::{WorkerClient, WorkerClientError, WorkerResponse};

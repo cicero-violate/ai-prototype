@@ -2,12 +2,12 @@
 
 use serde_json::Value;
 
-use super::NativeToolHost;
+use super::ActionHost;
 use crate::api::action::{result_with_warning, tool_error};
 use crate::api::protocol::Command as KernelCommand;
 use crate::capability::execution::action::{canon_read_mailbox, canon_send_agent_message};
 
-pub async fn execute<H: NativeToolHost>(name: &str, args: &Value, host: &H) -> Value {
+pub async fn execute<H: ActionHost>(name: &str, args: &Value, host: &H) -> Value {
     match name {
         "canon_spawn_agent"
         | "canon_runtime_state"
@@ -32,7 +32,7 @@ pub async fn execute<H: NativeToolHost>(name: &str, args: &Value, host: &H) -> V
     }
 }
 
-async fn run_authorized_mailbox_send<H: NativeToolHost>(args: &Value, host: &H) -> Value {
+async fn run_authorized_mailbox_send<H: ActionHost>(args: &Value, host: &H) -> Value {
     let parsed = match canon_send_agent_message::parse_args(args) {
         Ok(parsed) => parsed,
         Err(error) => return tool_error(error),

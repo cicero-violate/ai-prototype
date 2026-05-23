@@ -5,9 +5,11 @@
 
 use crate::kernel::{mix, CapabilityRegistryProjection, Evidence, GateId, State};
 
+pub mod analysis;
 pub mod context;
 pub mod eval;
 pub mod execution;
+pub mod exploration;
 pub mod judgment;
 pub mod learning;
 pub mod llm;
@@ -17,7 +19,6 @@ pub mod orchestration;
 pub mod planning;
 pub mod policy;
 pub mod skills;
-pub mod tooling;
 pub mod verification;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

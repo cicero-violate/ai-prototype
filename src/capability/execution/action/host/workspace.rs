@@ -6,17 +6,17 @@ use std::time::Duration;
 use serde_json::{json, Value};
 use tokio::process::Command;
 
-use super::NativeToolHost;
+use super::ActionHost;
 use crate::api::action::{result_with_warning, tool_error};
 use crate::api::protocol::Command as KernelCommand;
-use crate::capability::execution::{patch::apply_patch, shell};
+use crate::capability::execution::{patch, shell};
 use crate::runtime::WorkspaceView;
 
-pub async fn execute<H: NativeToolHost>(name: &str, args: &Value, host: &H) -> Value {
+pub async fn execute<H: ActionHost>(name: &str, args: &Value, host: &H) -> Value {
     match name {
         "apply_patch" => {
             let workspace = host.workspace();
-            apply_patch::run(args, &workspace).await
+            patch::run(args, &workspace).await
         }
         "shell" => {
             let workspace = host.workspace();
@@ -122,7 +122,7 @@ async fn run_python(args: &Value, workspace: &WorkspaceView) -> Value {
     })
 }
 
-pub async fn execute_recorded_shell<H: NativeToolHost>(args: &Value, host: &H) -> Value {
+pub async fn execute_recorded_shell<H: ActionHost>(args: &Value, host: &H) -> Value {
     let workspace = host.workspace();
     let request = match shell::recorded_process_request(args, &workspace) {
         Ok(request) => request,

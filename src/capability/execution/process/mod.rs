@@ -1,6 +1,6 @@
 //! Bounded process execution compatibility facade.
 
-pub use crate::capability::tooling::{
+pub use crate::capability::execution::record::{
     append_process_effect_receipt_ndjson, append_sandbox_process_receipt_ndjson,
     decode_process_effect_receipt_ndjson, decode_sandbox_process_receipt_ndjson,
     encode_process_effect_receipt_ndjson, encode_sandbox_process_receipt_ndjson,

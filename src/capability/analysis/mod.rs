@@ -1,4 +1,4 @@
-//! Rustc analysis capability.
+//! Static analysis capability.
 //!
 //! Invokes the `canon-rustc-v3-wrapper` binary via `cargo check`, parses the
 //! resulting `graph.json` artifact, and emits a typed `AnalysisReceipt`.

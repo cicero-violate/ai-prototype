@@ -9,8 +9,8 @@ use ai::domain::plan::{
 use ai::kernel::{
     PlanEdgeProjection, PlanEvidenceProjection, PlanState, PlanStatePatch, PlanStateRejection,
 };
-use ai::process::scheduler::plan_store::load_plan;
-use ai::process::scheduler::plan_store::{
+use ai::service::scheduler::plan_store::load_plan;
+use ai::service::scheduler::plan_store::{
     append_assignee_change_patch, append_evidence_patch, append_node_remove_patch,
     append_status_change_patch, load_plan_read_model, save_plan,
 };

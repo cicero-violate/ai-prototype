@@ -41,6 +41,9 @@ pub enum Cause {
     AgentCycleEventSubmitted = 21,
     WaveDispatched = 22,
     ChildTaskCompleted = 23,
+    SymbolMutationObserved = 24,
+    ArchitecturalDecisionMade = 25,
+    CostGateEvaluated = 26,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -67,6 +70,9 @@ pub enum SemanticDelta {
     Halted = 8,
     Persisted = 9,
     LearningPromoted = 10,
+    SymbolLayerChanged = 11,
+    SymbolRenamed = 12,
+    CostThresholdExceeded = 13,
 }
 
 pub type TLog = Vec<ControlEvent>;

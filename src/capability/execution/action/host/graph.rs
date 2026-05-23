@@ -2,11 +2,11 @@
 
 use serde_json::Value;
 
-use super::NativeToolHost;
+use super::ActionHost;
 use crate::api::action::tool_error;
 use crate::capability::execution::action::canon_graph_editor;
 
-pub fn execute<H: NativeToolHost>(name: &str, args: &Value, host: &H) -> Value {
+pub fn execute<H: ActionHost>(name: &str, args: &Value, host: &H) -> Value {
     let workspace = host.workspace();
     match name {
         "canon_graph_plan_patch" => canon_graph_editor::run_plan_patch(args, &workspace),

@@ -6,7 +6,7 @@ use std::time::Duration;
 use serde_json::{json, Value};
 use tokio::process::Command;
 
-use super::super::common::tool_error;
+use crate::capability::execution::action::common::tool_error;
 use crate::runtime::WorkspaceView;
 
 pub async fn run_unrecorded(args: &Value, workspace: &WorkspaceView) -> Value {

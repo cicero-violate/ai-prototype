@@ -1,3 +1,9 @@
-//! Shell execution compatibility facade.
+//! Shell execution capability.
 
-pub use crate::capability::tooling::mcp_tools::shell::*;
+mod recorded;
+mod unrecorded;
+
+pub const SHELL_TOOL: &str = "shell";
+
+pub use recorded::{recorded_process_request, render_recorded_response, run_recorded_process};
+pub use unrecorded::run_unrecorded;

@@ -18,6 +18,7 @@ use crate::kernel::{
 
 pub mod action_transcript;
 pub(crate) mod command_ledger;
+pub mod learning_transcript;
 pub(crate) mod diff;
 pub mod durable;
 pub mod event_bus;
@@ -256,6 +257,9 @@ pub fn touch_all_surfaces() -> usize {
         Cause::Persisted,
         Cause::PolicyPromoted,
         Cause::EvidenceSubmitted,
+        Cause::SymbolMutationObserved,
+        Cause::ArchitecturalDecisionMade,
+        Cause::CostGateEvaluated,
     ];
     let decisions = [
         Decision::Continue,

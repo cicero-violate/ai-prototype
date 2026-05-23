@@ -1,5 +1,9 @@
-//! Graph execution compatibility facade.
+//! Graph execution capability.
 
-pub use crate::capability::tooling::graph_artifacts::*;
-pub use crate::capability::tooling::graph_editor::*;
-pub use crate::capability::tooling::graph_patch_contract::*;
+pub mod artifacts;
+pub mod editor;
+pub mod patch_contract;
+
+pub use artifacts::*;
+pub use editor::*;
+pub use patch_contract::*;

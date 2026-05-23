@@ -2,8 +2,8 @@ use std::path::{Path, PathBuf};
 use std::thread;
 
 use ai::domain::plan::{load_plan, ready_nodes, PlanNode};
-use ai::process::agent::{AgentLoopConfig, LoopDriver, DEFAULT_EXECUTOR_COUNT};
-use ai::process::endpoints::{
+use ai::service::agent::{AgentLoopConfig, LoopDriver, DEFAULT_EXECUTOR_COUNT};
+use ai::service::endpoints::{
     mcp_connector_url_from_env, supervisor_port_from_env, DEFAULT_SUPERVISOR_PORT,
 };
 

@@ -1,4 +1,4 @@
-//! Repository search capability — fuzzy filename search and BM25 content search.
+//! Repository exploration capability — fuzzy filename search and BM25 content search.
 //!
 //! Ported from canon-tools-search. Provides deterministic local search before
 //! LLM calls to reduce prompt guessing and improve evidence collection.
@@ -317,7 +317,6 @@ mod tests {
         fs::write(dir.join("other.toml"), b"[package]").expect("write should succeed");
 
         let (results, receipt) = search_files("main", &dir, 10).expect("search should succeed");
-        // nucleo fuzzy-matches "main" against "main.rs" — must appear in results
         assert!(
             !results.is_empty(),
             "expected at least one result for query 'main'"

@@ -1,3 +1,7 @@
-//! Task dispatch service compatibility facade.
+//! Dispatch adapter support.
 
-pub use crate::process::dispatch::*;
+pub mod action;
+pub mod task_client;
+pub mod task_runner;
+
+pub use action::dispatch_action_request;

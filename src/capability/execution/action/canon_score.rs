@@ -88,11 +88,9 @@ pub fn run(args: &Value, workspace: &WorkspaceView) -> Value {
 }
 
 fn score_bin() -> Result<String, String> {
-    // Prefer explicit env override.
     if let Ok(path) = std::env::var("SCORE_BIN") {
         return Ok(path);
     }
-    // Derive from current exe: target/{profile}/supervisor → target/{profile}/score
     if let Ok(exe) = std::env::current_exe() {
         if let Some(dir) = exe.parent() {
             let candidate = dir.join("score");
@@ -101,12 +99,10 @@ fn score_bin() -> Result<String, String> {
             }
         }
     }
-    // Fallback: rely on PATH
     Ok("score".to_string())
 }
 
 fn parse_score_output(stdout: &str) -> Value {
-    // Parse lines like:  "  Architecture: 6.5"  and  "score: G = 7.12 / 10  (...)"
     let mut map = serde_json::Map::new();
     for line in stdout.lines() {
         let line = line.trim();
