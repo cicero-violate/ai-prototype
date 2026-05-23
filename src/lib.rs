@@ -162,7 +162,7 @@ pub use crate::capability::execution::graph::{
     GRAPH_MUTATION_LEDGER_RECORD, GRAPH_MUTATION_OPSET_RECORD, GRAPH_MUTATION_RECEIPT_RECORD,
     GRAPH_MUTATION_SCHEMA_VERSION, GRAPH_MUTATION_VERIFY_RECORD,
 };
-pub use crate::capability::tooling::{
+pub use crate::capability::execution::{
     append_mcp_call_receipt_ndjson, append_process_effect_receipt_ndjson,
     append_sandbox_process_receipt_ndjson, append_tool_effect_receipt_ndjson,
     decode_mcp_call_receipt_ndjson, decode_process_effect_receipt_ndjson,

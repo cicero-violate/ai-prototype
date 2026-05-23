@@ -923,6 +923,7 @@ Remove in this order:
 - Migrated MCP common process receipt import to the execution facade.
 - Migrated recorded shell process request/receipt imports to the execution facade.
 - Migrated apply-patch path categorization imports to the execution patch facade.
+- Migrated crate-root bounded execution exports from `capability::tooling` to `capability::execution`.
 ### Quick Acceptance Criteria
 
 The migration is complete when:
