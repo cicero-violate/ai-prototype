@@ -908,6 +908,7 @@ Remove in this order:
 - Migrated prompt builder config imports to the service agent facade.
 - Migrated loop receipt router imports to the service agent facade.
 - Migrated DAG scheduler agent/scheduler imports to service facades.
+- Migrated loop driver agent/scheduler references to service facades.
 ### Quick Acceptance Criteria
 
 The migration is complete when:

@@ -3,9 +3,9 @@ use std::thread;
 use std::time::Duration;
 
 use crate::capability::llm::openai::{OpenAiChatRequest, OpenAiMessage};
-use crate::process::agent::config::AgentLoopConfig;
-use crate::process::agent::router::{RouterClient, RouterTabCloseOutcome};
-use crate::process::agent::sse::ChunkLogger;
+use crate::service::agent::config::AgentLoopConfig;
+use crate::service::agent::router::{RouterClient, RouterTabCloseOutcome};
+use crate::service::agent::sse::ChunkLogger;
 use crate::MAX_OBSERVATION_PAYLOAD_BYTES;
 
 pub(crate) mod common;
@@ -188,7 +188,7 @@ impl LoopDriver {
             // that already exists in state/plan.json.  This prevents a new
             // planner/connector-activation tab from racing the mini-agent tabs
             // when the previous cycle left pending ready nodes behind.
-            if !is_spawned && crate::process::scheduler::run_wave(&self.config, &tag, cycle_num) {
+            if !is_spawned && crate::service::scheduler::run_wave(&self.config, &tag, cycle_num) {
                 eprintln!(
                     "[{tag}] DAG scheduler ran before planner startup; sleeping {}ms before next cycle",
                     self.config.loop_sleep_ms
@@ -232,7 +232,7 @@ impl LoopDriver {
                     eprintln!(
                         "[{tag2}] tab close starting  cycle={cycle_num}  target_id={target_id}"
                     );
-                    match crate::process::agent::router::close_tab_for_target_id_with_timeout(
+                    match crate::service::agent::router::close_tab_for_target_id_with_timeout(
                         &target_id, 8_000,
                     ) {
                         Ok(outcome) => {
@@ -250,7 +250,7 @@ impl LoopDriver {
                 let tag2 = tag.clone();
                 Some(thread::spawn(move || {
                     eprintln!("[{tag2}] tab close starting  cycle={cycle_num}  target={url}");
-                    match crate::process::agent::router::close_tab_for_url_with_timeout(&url, 8_000)
+                    match crate::service::agent::router::close_tab_for_url_with_timeout(&url, 8_000)
                     {
                         Ok(outcome) => {
                             eprintln!("[{tag2}] tab close  outcome={outcome:?}  cycle={cycle_num}");
@@ -384,7 +384,7 @@ impl LoopDriver {
             // If a wave ran, skip the execute turns — the child agents did the work.
             if turn == 0
                 && !is_spawned
-                && crate::process::scheduler::run_wave(&self.config, tag, cycle_num)
+                && crate::service::scheduler::run_wave(&self.config, tag, cycle_num)
             {
                 break;
             }
@@ -501,7 +501,7 @@ impl LoopDriver {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::process::agent::RouterStreamingResult;
+    use crate::service::agent::RouterStreamingResult;
     use serde_json::json;
     use std::fs;
     use std::io::{Read, Write};
