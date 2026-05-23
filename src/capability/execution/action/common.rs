@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 
 use serde_json::{json, Value};
 
-use crate::capability::tooling::SandboxProcessReceipt;
+use crate::capability::execution::SandboxProcessReceipt;
 use crate::runtime::workspace::workspace_state_dir;
 
 pub fn tool_error(message: String) -> Value {

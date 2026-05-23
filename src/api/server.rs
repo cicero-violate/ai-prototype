@@ -25,7 +25,7 @@ use crate::capability::observation::{
 use crate::capability::orchestration::{
     AgentCycleEvent, AgentCycleEventKind, ChildCompleteRecord, WaveRecord,
 };
-use crate::capability::tooling::{
+use crate::capability::execution::{
     Effect, SandboxProcessReceipt, SandboxProcessRequest, ToolEffectKind,
 };
 use crate::capability::{CapabilityId, CapabilityRegistry, EvidenceSubmission, PacketEffect};

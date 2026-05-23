@@ -4,7 +4,7 @@ use serde::Serialize;
 use serde_json::{json, Value};
 
 use crate::api::protocol::{Command as KernelCommand, CommandEnvelope};
-use crate::capability::tooling::{SandboxProcessReceipt, SandboxProcessRequest};
+use crate::capability::execution::{SandboxProcessReceipt, SandboxProcessRequest};
 use crate::runtime::{MailboxMessageReceipt, MailboxMessageRequest};
 
 pub fn kernel_command_payload_tag(command: &KernelCommand) -> &'static str {

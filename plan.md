@@ -619,6 +619,7 @@ This establishes the target vocabulary in code without creating a large risky mo
 - Moved mailbox evidence submission construction to `api::protocol` helpers.
 - Made mailbox request construction accept a caller-supplied registry policy hash.
 - Migrated selected internal API edge callers from `crate::api::mcp` to `crate::api::action` facade aliases while preserving external MCP compatibility.
+- Migrated selected sandbox process request/receipt imports from `capability::tooling` to the `capability::execution` facade.
 
 Verified with:
 

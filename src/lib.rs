@@ -4034,7 +4034,7 @@ mod tests {
         state.gates.plan = Gate::pass(Evidence::TaskReady);
 
         let mut tlog = Vec::new();
-        let request = crate::capability::tooling::SandboxProcessRequest {
+        let request = crate::capability::execution::SandboxProcessRequest {
             capability: CapabilityId::Tooling,
             registry_policy_hash: receipt.registry_policy_hash,
             command_hash: receipt.command_hash,
@@ -4184,7 +4184,7 @@ mod tests {
         let mismatched_receipt = executor
             .execute_process("/usr/bin/printf", &["authorized-different-process"], "")
             .expect("test setup should succeed");
-        let mismatched_request = crate::capability::tooling::SandboxProcessRequest {
+        let mismatched_request = crate::capability::execution::SandboxProcessRequest {
             capability: CapabilityId::Tooling,
             registry_policy_hash: mismatched_receipt.registry_policy_hash,
             command_hash: mismatched_receipt.command_hash,
