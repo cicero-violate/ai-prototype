@@ -916,6 +916,7 @@ Remove in this order:
 - Migrated supervisor config endpoint imports to the service facade.
 - Migrated supervisor runtime imports to service facades.
 - Migrated supervisor state scheduler/supervisor references to service facades.
+- Migrated scheduler handler supervisor imports to the service facade.
 ### Quick Acceptance Criteria
 
 The migration is complete when:

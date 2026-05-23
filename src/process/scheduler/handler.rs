@@ -5,7 +5,7 @@
 //! all mutation to the process boundary that owns task leases and plan writes.
 //! There is no timer polling in this module.
 
-use crate::process::supervisor::process::{
+use crate::service::supervisor::process::{
     TaskClaimDto, TaskClaimRequest, TaskCompleteDto, TaskCompleteRequest, TaskFailDto,
     TaskFailRequest, WorkerProcess,
 };
