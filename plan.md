@@ -621,6 +621,7 @@ This establishes the target vocabulary in code without creating a large risky mo
 - Migrated selected internal API edge callers from `crate::api::mcp` to `crate::api::action` facade aliases while preserving external MCP compatibility.
 - Migrated selected sandbox process request/receipt imports from `capability::tooling` to the `capability::execution` facade.
 - Migrated selected graph public exports and graph tool callers from `capability::tooling` to `capability::execution::graph` / execution action facades.
+- Migrated native workspace shell/patch callers from `capability::tooling::mcp_tools` to `capability::execution::{shell,patch}` facades.
 
 Verified with:
 
