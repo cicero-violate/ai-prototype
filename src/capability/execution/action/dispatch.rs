@@ -10,7 +10,7 @@ use crate::api::action::{
 };
 use crate::api::protocol::Command as KernelCommand;
 use crate::capability::execution::{
-    ActionCallRequest as McpCallRequest, ActionReceipt as McpCallReceipt,
+    ActionCallRequest, ActionReceipt,
 };
 use crate::capability::execution::action::landmarks;
 use crate::capability::execution::action::host;

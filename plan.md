@@ -925,6 +925,7 @@ Remove in this order:
 - Migrated apply-patch path categorization imports to the execution patch facade.
 - Migrated crate-root bounded execution exports from `capability::tooling` to `capability::execution`.
 - Migrated supervisor control plan-store imports to the service scheduler facade.
+- Migrated action dispatch imports to direct action request/receipt type names.
 ### Quick Acceptance Criteria
 
 The migration is complete when:
