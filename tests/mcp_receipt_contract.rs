@@ -20,8 +20,8 @@ fn receipt_path(name: &str) -> std::path::PathBuf {
     ))
 }
 
-fn request() -> McpCallRequest {
-    McpCallRequest::new(
+fn request() -> ActionCallRequest {
+    ActionCallRequest::new(
         CapabilityRegistry::canonical(),
         "http://127.0.0.1:38469/mcp_worker",
         "shell",

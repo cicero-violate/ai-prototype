@@ -942,6 +942,7 @@ Remove in this order:
 - Renamed API server contract request helper functions to action terminology.
 - Renamed API server contract receipt helper functions to action terminology.
 - Migrated receipt contract test imports from MCP aliases to action receipt types.
+- Migrated receipt contract request type references to ActionCallRequest.
 ### Quick Acceptance Criteria
 
 The migration is complete when:
