@@ -903,6 +903,7 @@ Remove in this order:
 - Do not collapse `service` into `capability`; service owns long-lived lifecycle,
   capability owns bounded effects and receipts.
 
+- Migrated agent config endpoint imports from `crate::process::endpoints` to `crate::service::endpoints`.
 ### Quick Acceptance Criteria
 
 The migration is complete when:

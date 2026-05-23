@@ -1,7 +1,7 @@
 use std::env;
 use std::path::PathBuf;
 
-use crate::process::endpoints::{
+use crate::service::endpoints::{
     mcp_connector_url_from_env, supervisor_port_from_env, DEFAULT_SUPERVISOR_PORT,
 };
 use crate::runtime::workspace::workspace_state_dir;
