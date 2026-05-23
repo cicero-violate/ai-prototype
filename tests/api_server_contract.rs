@@ -1,5 +1,4 @@
 use ai::{
-    mailbox_receipt_submission,
     build_router, resume_durable_runtime, tick, ApiTransportLedger, ApiTransportSession, Command,
     CommandEnvelope, CommandLedger, EvidenceSubmission, EvidenceSubmissionDto, McpCallReceipt,
     McpCallRequest, RuntimeConfig, SandboxProcessReceipt, SandboxProcessRequest, State, StateDto,
@@ -598,7 +597,7 @@ async fn command_route_accepts_mcp_receipt_submission_and_persists_tlog() {
     assert!(receipt.is_success());
     assert!(receipt.is_valid_for(&request));
 
-    let submission = mailbox_receipt_submission(receipt);
+    let submission = receipt.submission();
     assert!(submission.is_contract_valid());
     let body = command_body_with_payload(
         41,

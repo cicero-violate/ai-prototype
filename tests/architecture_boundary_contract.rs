@@ -11,7 +11,6 @@ use ai::process::supervisor::{
     TaskClaimRequest, TaskCompleteRequest, TaskFailRequest, TaskHeartbeatRequest, WorkerProcess,
 };
 use ai::{
-    mailbox_receipt_submission,
     CapabilityRegistry, Cause, Command, CommandEnvelope, Evidence, Gate, GateId, Phase,
     RuntimeConfig, State, TLog, TaskLifecycleReceipt,
 };
@@ -101,7 +100,7 @@ fn llm_task_receipt_types_are_public_and_bind_to_evidence_submission() {
     let receipt = LlmTurnReceipt::from_turn_record(&record, 5, 0x333, 7)
         .expect("turn receipt should be valid");
 
-    let submission = mailbox_receipt_submission(receipt);
+    let submission = receipt.submission();
     assert!(submission.is_contract_valid());
     assert_eq!(submission.payload_hash, receipt.receipt_hash);
 }
@@ -579,7 +578,7 @@ fn supervisor_task_lifecycle_submits_receipts_through_command_ingress() {
 #[test]
 fn task_lifecycle_receipt_is_tlog_auditable_via_command_ingress() {
     let receipt = TaskLifecycleReceipt::claim("node-1", "worker-a", 7, 101, 50_000, 10_000);
-    let command = Command::SubmitEvidence(mailbox_receipt_submission(receipt));
+    let command = Command::SubmitEvidence(receipt.submission());
     let envelope = CommandEnvelope::new(receipt.receipt_hash, command);
     let mut state = State {
         phase: Phase::Execute,

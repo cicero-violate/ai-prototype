@@ -613,6 +613,11 @@ This establishes the target vocabulary in code without creating a large risky mo
 - Moved live action dispatch implementation into `capability::execution::action::dispatch`.
 - Replaced `capability::tooling::mcp_tools::dispatch` with a legacy compatibility facade.
 - Switched supervisor route/state imports to `dispatch_action_request` and `ActionHost`.
+- Removed production runtime dependencies on capability action receipt structs by introducing `ActionTranscriptReceiptFacts`.
+- Removed runtime introspection dependency on capability eval decoding by parsing the stable eval verdict field locally.
+- Removed runtime mailbox dependency on capability ids, registry ownership, and evidence submission construction.
+- Moved mailbox evidence submission construction to `api::protocol` helpers.
+- Made mailbox request construction accept a caller-supplied registry policy hash.
 
 Verified with:
 

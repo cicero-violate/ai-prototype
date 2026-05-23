@@ -292,51 +292,39 @@ fn string_hash(value: &str) -> u64 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::capability::execution::{ActionCallRequest, ActionReceipt};
-    use crate::capability::CapabilityRegistry;
-
     fn unique_workspace() -> PathBuf {
         std::env::temp_dir().join(format!("canon-action-transcript-test-{}", Uuid::new_v4()))
     }
 
-    fn receipt_facts(request: &ActionCallRequest, receipt: &ActionReceipt) -> ActionTranscriptReceiptFacts {
+    fn receipt_facts(response: &str) -> ActionTranscriptReceiptFacts {
         ActionTranscriptReceiptFacts {
-            request_hash: request.contract_hash(),
-            receipt_hash: receipt.receipt_hash,
-            response_hash: receipt.response_hash,
-            response_bytes: receipt.response_bytes,
-            exit_status: receipt.exit_status,
-            timed_out: receipt.timed_out,
+            request_hash: 0xA11C_E001,
+            receipt_hash: 0xA11C_E002,
+            response_hash: 0xA11C_E003,
+            response_bytes: response.len() as u64,
+            exit_status: 0,
+            timed_out: false,
         }
     }
 
     #[test]
     fn mcp_transcript_appends_and_replays_hash_chain() {
         let workspace = unique_workspace();
-        let request = ActionCallRequest::new(
-            CapabilityRegistry::canonical(),
-            "ai-native:/ai/mcp",
-            "echo",
-            r#"{"text":"hello"}"#,
-            1000,
-            65_536,
-        );
         let response = r#"{"content":[{"type":"text","text":"hello"}],"isError":false}"#;
-        let receipt = ActionReceipt::from_response(&request, response.as_bytes(), 0, false);
 
         let record = append_action_transcript(
             &workspace,
             "echo",
             r#"{"text":"hello"}"#,
             response,
-            receipt_facts(&request, &receipt),
+            receipt_facts(response),
         )
         .expect("append transcript");
         assert!(record.is_contract_valid());
 
         let records = replay_action_transcripts(&workspace).expect("replay transcript");
         assert_eq!(records.len(), 1);
-        assert_eq!(records[0].receipt_hash, receipt.receipt_hash);
+        assert_eq!(records[0].receipt_hash, receipt_facts(response).receipt_hash);
         assert_eq!(records[0].response_json, response);
 
         let _ = fs::remove_dir_all(workspace);
@@ -345,22 +333,13 @@ mod tests {
     #[test]
     fn mcp_transcript_rejects_tampered_hash_chain() {
         let workspace = unique_workspace();
-        let request = ActionCallRequest::new(
-            CapabilityRegistry::canonical(),
-            "ai-native:/ai/mcp",
-            "echo",
-            r#"{"text":"hello"}"#,
-            1000,
-            65_536,
-        );
         let response = r#"{"content":[{"type":"text","text":"hello"}],"isError":false}"#;
-        let receipt = ActionReceipt::from_response(&request, response.as_bytes(), 0, false);
         append_action_transcript(
             &workspace,
             "echo",
             r#"{"text":"hello"}"#,
             response,
-            receipt_facts(&request, &receipt),
+            receipt_facts(response),
         )
         .expect("append transcript");
 
@@ -377,23 +356,14 @@ mod tests {
     #[test]
     fn mcp_transcript_append_quarantines_invalid_existing_chain() {
         let workspace = unique_workspace();
-        let request = ActionCallRequest::new(
-            CapabilityRegistry::canonical(),
-            "ai-native:/ai/mcp",
-            "echo",
-            r#"{\"text\":\"hello\"}"#,
-            1000,
-            65_536,
-        );
         let response =
             r#"{\"content\":[{\"type\":\"text\",\"text\":\"hello\"}],\"isError\":false}"#;
-        let receipt = ActionReceipt::from_response(&request, response.as_bytes(), 0, false);
         append_action_transcript(
             &workspace,
             "echo",
             r#"{\"text\":\"hello\"}"#,
             response,
-            receipt_facts(&request, &receipt),
+            receipt_facts(response),
         )
         .expect("append transcript");
 
@@ -408,7 +378,7 @@ mod tests {
             "echo",
             r#"{\"text\":\"hello\"}"#,
             response,
-            receipt_facts(&request, &receipt),
+            receipt_facts(response),
         )
         .expect("append after invalid existing transcript");
         assert_eq!(recovered.prev_hash, 0);
