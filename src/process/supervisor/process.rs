@@ -20,11 +20,11 @@ use crate::domain::plan::{
     EVIDENCE_KIND_EXECUTION_RECEIPT, EVIDENCE_TYPE_EXECUTION_RECEIPT,
 };
 use crate::kernel::{mix, PlanEvidenceProjection};
-use crate::process::agent::loop_driver::http::post_json_local;
-use crate::process::agent::{
+use crate::service::agent::loop_driver::http::post_json_local;
+use crate::service::agent::{
     AgentLoopConfig, LoopDriver, DEFAULT_EXECUTOR_COUNT, MAX_EXECUTOR_COUNT,
 };
-use crate::process::scheduler::plan_store::{
+use crate::service::scheduler::plan_store::{
     append_evidence_patch, append_node_remove_patch, append_status_change_patch, load_plan,
     load_plan_read_model, load_tlog_projected_plan_state,
 };
