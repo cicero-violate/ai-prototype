@@ -921,6 +921,7 @@ Remove in this order:
 - Migrated supervisor worker-process imports to service facades.
 - Migrated agent cycle imports and router result references to the service agent facade.
 - Migrated MCP common process receipt import to the execution facade.
+- Migrated recorded shell process request/receipt imports to the execution facade.
 ### Quick Acceptance Criteria
 
 The migration is complete when:

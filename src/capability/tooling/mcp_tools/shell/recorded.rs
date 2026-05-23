@@ -5,7 +5,7 @@ use std::path::Path;
 
 use serde_json::{json, Value};
 
-use crate::capability::tooling::{
+use crate::capability::execution::{
     LiveSandboxProcessExecutor, SandboxProcessReceipt, SandboxProcessRequest,
 };
 use crate::capability::CapabilityRegistry;
