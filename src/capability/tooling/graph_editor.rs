@@ -216,7 +216,7 @@ fn optional_new_graph_path(args: &Value) -> Result<Option<String>, String> {
 pub fn verify_cfg_delta_tool(args: &Value, workspace: &WorkspaceView) -> Value {
     match verify_cfg_delta_tool_inner(args, workspace) {
         Ok(value) => value,
-        Err(error) => crate::api::mcp::tool_error(error),
+        Err(error) => crate::api::action::tool_error(error),
     }
 }
 
@@ -262,7 +262,7 @@ fn verify_cfg_delta_tool_inner(args: &Value, workspace: &WorkspaceView) -> Resul
 pub fn auto_refactor_cfg_tool(args: &Value, workspace: &WorkspaceView) -> Value {
     match auto_refactor_cfg_tool_inner(args, workspace) {
         Ok(value) => value,
-        Err(error) => crate::api::mcp::tool_error(error),
+        Err(error) => crate::api::action::tool_error(error),
     }
 }
 
@@ -323,7 +323,7 @@ fn auto_refactor_cfg_tool_inner(args: &Value, workspace: &WorkspaceView) -> Resu
 pub fn plan_cfg_tool(args: &Value, workspace: &WorkspaceView) -> Value {
     match plan_cfg_tool_inner(args, workspace) {
         Ok(value) => value,
-        Err(error) => crate::api::mcp::tool_error(error),
+        Err(error) => crate::api::action::tool_error(error),
     }
 }
 
@@ -491,7 +491,7 @@ fn plan_cfg_op(
 pub fn apply_ops_tool(args: &Value, workspace: &WorkspaceView) -> Value {
     match apply_ops_tool_inner(args, workspace) {
         Ok(value) => value,
-        Err(error) => crate::api::mcp::tool_error(error),
+        Err(error) => crate::api::action::tool_error(error),
     }
 }
 
@@ -1200,7 +1200,7 @@ fn stable_text_u64(text: &str) -> u64 {
 pub fn plan_patch_tool(args: &Value, workspace: &WorkspaceView) -> Value {
     match plan_patch_tool_inner(args, workspace) {
         Ok(value) => value,
-        Err(error) => crate::api::mcp::tool_error(error),
+        Err(error) => crate::api::action::tool_error(error),
     }
 }
 

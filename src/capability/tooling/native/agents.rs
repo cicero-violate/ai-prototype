@@ -3,7 +3,7 @@
 use serde_json::Value;
 
 use super::NativeToolHost;
-use crate::api::mcp::{result_with_warning, tool_error};
+use crate::api::action::{result_with_warning, tool_error};
 use crate::api::protocol::Command as KernelCommand;
 use crate::capability::tooling::mcp_tools::{canon_read_mailbox, canon_send_agent_message};
 

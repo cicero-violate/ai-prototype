@@ -3,7 +3,7 @@
 use serde_json::Value;
 
 use super::NativeToolHost;
-use crate::api::mcp::tool_error;
+use crate::api::action::tool_error;
 use crate::capability::tooling::mcp_tools::{canon_plan, canon_score};
 
 pub fn execute<H: NativeToolHost>(name: &str, args: &Value, host: &H) -> Value {

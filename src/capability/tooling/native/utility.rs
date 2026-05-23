@@ -13,6 +13,6 @@ pub fn execute(name: &str, args: &Value) -> Value {
             "content": [{ "type": "text", "text": Utc::now().to_rfc3339() }],
             "isError": false
         }),
-        _ => crate::api::mcp::tool_error(format!("Unknown utility tool: {name}")),
+        _ => crate::api::action::tool_error(format!("Unknown utility tool: {name}")),
     }
 }

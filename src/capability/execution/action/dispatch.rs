@@ -5,8 +5,8 @@ use serde_json::{json, Map, Value};
 use std::fs::{self, OpenOptions};
 use std::io::Write;
 
-use crate::api::mcp::{
-    dispatch_ai_mcp_plan, mcp_ok, result_with_warning, tool_error, AiMcpDispatchPlan,
+use crate::api::action::{
+    action_ok, dispatch_action_plan, result_with_warning, tool_error, ActionDispatchPlan,
 };
 use crate::api::protocol::Command as KernelCommand;
 use crate::capability::execution::{
@@ -25,8 +25,8 @@ pub async fn dispatch_action_request<H: ActionHost>(
     host: &H,
 ) -> (Value, Option<String>) {
     let workspace = host.workspace();
-    match dispatch_ai_mcp_plan(method, id.clone(), params, Some(&workspace)) {
-        AiMcpDispatchPlan::Initialize {
+    match dispatch_action_plan(method, id.clone(), params, Some(&workspace)) {
+        ActionDispatchPlan::Initialize {
             response,
             session_id,
         } => {
@@ -34,10 +34,10 @@ pub async fn dispatch_action_request<H: ActionHost>(
             host.record_session(session_id.clone(), worker_generation, Utc::now());
             (response, Some(session_id))
         }
-        AiMcpDispatchPlan::Immediate { response } => (response, None),
-        AiMcpDispatchPlan::ToolCall { name, args } => {
+        ActionDispatchPlan::Immediate { response } => (response, None),
+        ActionDispatchPlan::ToolCall { name, args } => {
             let result = execute_recorded_action(&name, args, host).await;
-            (mcp_ok(id, result), None)
+            (action_ok(id, result), None)
         }
     }
 }

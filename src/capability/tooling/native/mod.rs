@@ -14,7 +14,7 @@ mod workspace;
 use chrono::{DateTime, Utc};
 use serde_json::Value;
 
-use crate::api::mcp::tool_error;
+use crate::api::action::tool_error;
 use crate::api::protocol::Command as KernelCommand;
 use crate::runtime::WorkspaceView;
 

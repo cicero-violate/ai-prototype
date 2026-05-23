@@ -7,7 +7,7 @@ use serde_json::{json, Value};
 use tokio::process::Command;
 
 use super::NativeToolHost;
-use crate::api::mcp::{result_with_warning, tool_error};
+use crate::api::action::{result_with_warning, tool_error};
 use crate::api::protocol::Command as KernelCommand;
 use crate::capability::tooling::mcp_tools::{apply_patch, shell};
 use crate::runtime::WorkspaceView;

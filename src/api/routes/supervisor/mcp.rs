@@ -8,7 +8,7 @@ use axum::Json;
 use futures::stream;
 use serde_json::Value;
 
-use crate::api::mcp::mcp_err;
+use crate::api::action::action_err;
 
 use super::oauth::require_ai_mcp_auth;
 use crate::capability::execution::action::dispatch_action_request;
@@ -39,7 +39,7 @@ pub async fn ai_mcp_post(
             continue;
         };
         let Some(method) = message.get("method").and_then(Value::as_str) else {
-            responses.push(mcp_err(id, -32600, "missing 'method'"));
+            responses.push(action_err(id, -32600, "missing 'method'"));
             continue;
         };
         let params = message.get("params").cloned().unwrap_or(Value::Null);

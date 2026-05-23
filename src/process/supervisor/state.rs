@@ -115,7 +115,7 @@ impl ActionHost for SupervisorState {
             let mut guard = self.inner.lock().await;
             guard.ensure_worker_alive_or_reload().await?
         };
-        crate::api::mcp::submit_mcp_kernel_command(command_id, worker_port, command).await
+        crate::api::action::proxy::submit_action_kernel_command(command_id, worker_port, command).await
     }
 
     async fn run_host_tool(&self, name: &str, args: &Value) -> Option<Value> {
@@ -158,12 +158,12 @@ impl SupervisorState {
         eprintln!("[canon-ai-supervisor] agents:spawn requested");
         let request = match SpawnAgentToolRequest::parse(args) {
             Ok(request) => request,
-            Err(error) => return crate::api::mcp::tool_error(error),
+            Err(error) => return crate::api::action::tool_error(error),
         };
         let mut guard = self.inner.lock().await;
         match guard.spawn_agent(&request.domain, &request.metric, request.max_steps) {
             Ok(dto) => json_text_result(dto),
-            Err(error) => crate::api::mcp::tool_error(error),
+            Err(error) => crate::api::action::tool_error(error),
         }
     }
 
@@ -173,7 +173,7 @@ impl SupervisorState {
             let mut guard = self.inner.lock().await;
             match guard.ensure_worker_alive_or_reload().await {
                 Ok(port) => port,
-                Err(error) => return crate::api::mcp::tool_error(error),
+                Err(error) => return crate::api::action::tool_error(error),
             }
         };
         local_json_get(&format!("http://127.0.0.1:{worker_port}/v1/state")).await
@@ -184,7 +184,7 @@ impl SupervisorState {
         let mut guard = self.inner.lock().await;
         match guard.health().await {
             Ok(dto) => json_text_result(dto),
-            Err(error) => crate::api::mcp::tool_error(error),
+            Err(error) => crate::api::action::tool_error(error),
         }
     }
 
@@ -193,7 +193,7 @@ impl SupervisorState {
         let mut guard = self.inner.lock().await;
         match guard.reload_inner().await {
             Ok(dto) => json_text_result(dto),
-            Err(error) => crate::api::mcp::tool_error(error),
+            Err(error) => crate::api::action::tool_error(error),
         }
     }
 
@@ -204,7 +204,7 @@ impl SupervisorState {
                 crate::api::routes::supervisor::control::SUPERVISOR_RESTART_DELAY_MS,
             ) {
                 Ok(replacement) => replacement,
-                Err(error) => return crate::api::mcp::tool_error(error),
+                Err(error) => return crate::api::action::tool_error(error),
             };
         let pid = std::process::id();
         let state = self.clone();
@@ -247,7 +247,7 @@ impl SupervisorState {
             .and_then(Value::as_str)
             .filter(|value| !value.is_empty())
         else {
-            return crate::api::mcp::tool_error(
+            return crate::api::action::tool_error(
                 "workspace:set requires non-empty 'root'".to_string(),
             );
         };
@@ -260,7 +260,7 @@ impl SupervisorState {
             .clone();
         let next = match WorkspaceConfig::new(root.into(), allowed) {
             Ok(next) => next,
-            Err(error) => return crate::api::mcp::tool_error(error),
+            Err(error) => return crate::api::action::tool_error(error),
         };
         *self
             .mcp
@@ -282,7 +282,7 @@ impl SupervisorState {
             .and_then(Value::as_str)
             .filter(|value| !value.is_empty())
         else {
-            return crate::api::mcp::tool_error(
+            return crate::api::action::tool_error(
                 "browser:close_tab requires non-empty 'target_id'".to_string(),
             );
         };
@@ -321,11 +321,11 @@ async fn local_json_get(url: &str) -> Value {
     eprintln!("[canon-ai-supervisor] outbound GET {url}");
     let client = match local_http_client() {
         Ok(client) => client,
-        Err(error) => return crate::api::mcp::tool_error(error),
+        Err(error) => return crate::api::action::tool_error(error),
     };
     match client.get(url).send().await {
         Ok(response) => response_to_tool_result(response).await,
-        Err(error) => crate::api::mcp::tool_error(format!("GET {url} failed: {error}")),
+        Err(error) => crate::api::action::tool_error(format!("GET {url} failed: {error}")),
     }
 }
 
@@ -333,11 +333,11 @@ async fn local_json_delete(url: &str) -> Value {
     eprintln!("[canon-ai-supervisor] outbound DELETE {url}");
     let client = match local_http_client() {
         Ok(client) => client,
-        Err(error) => return crate::api::mcp::tool_error(error),
+        Err(error) => return crate::api::action::tool_error(error),
     };
     match client.delete(url).send().await {
         Ok(response) => response_to_tool_result(response).await,
-        Err(error) => crate::api::mcp::tool_error(format!("DELETE {url} failed: {error}")),
+        Err(error) => crate::api::action::tool_error(format!("DELETE {url} failed: {error}")),
     }
 }
 
@@ -345,11 +345,11 @@ async fn local_json_post(url: &str, body: Value) -> Value {
     eprintln!("[canon-ai-supervisor] outbound POST {url}");
     let client = match local_http_client() {
         Ok(client) => client,
-        Err(error) => return crate::api::mcp::tool_error(error),
+        Err(error) => return crate::api::action::tool_error(error),
     };
     match client.post(url).json(&body).send().await {
         Ok(response) => response_to_tool_result(response).await,
-        Err(error) => crate::api::mcp::tool_error(format!("POST {url} failed: {error}")),
+        Err(error) => crate::api::action::tool_error(format!("POST {url} failed: {error}")),
     }
 }
 
@@ -358,11 +358,11 @@ async fn response_to_tool_result(response: reqwest::Response) -> Value {
     let text = match response.text().await {
         Ok(text) => text,
         Err(error) => {
-            return crate::api::mcp::tool_error(format!("response body read failed: {error}"))
+            return crate::api::action::tool_error(format!("response body read failed: {error}"))
         }
     };
     if !status.is_success() {
-        return crate::api::mcp::tool_error(format!("HTTP {}: {}", status.as_u16(), text));
+        return crate::api::action::tool_error(format!("HTTP {}: {}", status.as_u16(), text));
     }
     json!({
         "content": [{ "type": "text", "text": text }],

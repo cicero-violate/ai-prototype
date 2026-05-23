@@ -618,6 +618,7 @@ This establishes the target vocabulary in code without creating a large risky mo
 - Removed runtime mailbox dependency on capability ids, registry ownership, and evidence submission construction.
 - Moved mailbox evidence submission construction to `api::protocol` helpers.
 - Made mailbox request construction accept a caller-supplied registry policy hash.
+- Migrated selected internal API edge callers from `crate::api::mcp` to `crate::api::action` facade aliases while preserving external MCP compatibility.
 
 Verified with:
 
