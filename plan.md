@@ -940,6 +940,7 @@ Remove in this order:
 - Migrated API server contract request type references to ActionCallRequest while preserving external command tags.
 - Migrated API server contract receipt type references to ActionReceipt while preserving external command tags.
 - Renamed API server contract request helper functions to action terminology.
+- Renamed API server contract receipt helper functions to action terminology.
 ### Quick Acceptance Criteria
 
 The migration is complete when:

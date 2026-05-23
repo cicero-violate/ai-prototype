@@ -108,7 +108,7 @@ fn action_request_payload(request: &ActionCallRequest) -> serde_json::Value {
     })
 }
 
-fn mcp_receipt_payload(receipt: &ActionReceipt) -> serde_json::Value {
+fn action_receipt_payload(receipt: &ActionReceipt) -> serde_json::Value {
     serde_json::json!({
         "request_hash": receipt.request_hash,
         "registry_policy_hash": receipt.registry_policy_hash,
@@ -144,7 +144,7 @@ fn mcp_receipt_body(command_id: u64, receipt: &ActionReceipt) -> serde_json::Val
         "command_id": envelope.command_id,
         "command_hash": envelope.command_hash,
         "payload_tag": "SubmitActionReceipt",
-        "payload": mcp_receipt_payload(receipt),
+        "payload": action_receipt_payload(receipt),
     })
 }
 
