@@ -922,6 +922,7 @@ Remove in this order:
 - Migrated agent cycle imports and router result references to the service agent facade.
 - Migrated MCP common process receipt import to the execution facade.
 - Migrated recorded shell process request/receipt imports to the execution facade.
+- Migrated apply-patch path categorization imports to the execution patch facade.
 ### Quick Acceptance Criteria
 
 The migration is complete when:

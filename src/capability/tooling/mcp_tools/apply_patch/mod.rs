@@ -11,7 +11,7 @@ use std::path::{Path, PathBuf};
 use uuid::Uuid;
 
 use super::common::{tmp_dir, tool_error};
-use crate::capability::tooling::patch::{categorize_patch_paths, AffectedPaths};
+use crate::capability::execution::patch::{categorize_patch_paths, AffectedPaths};
 use crate::runtime::WorkspaceView;
 use fs_copy::{copy_dir_recursive_excluding, TempDirGuard};
 use parser::{collect_apply_patch_changed_files, validate_workspace_relative_path};
