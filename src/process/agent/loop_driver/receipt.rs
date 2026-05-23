@@ -6,7 +6,7 @@ use std::path::Path;
 
 use serde_json::json;
 
-use crate::process::agent::router::RouterStreamingResult;
+use crate::service::agent::router::RouterStreamingResult;
 use crate::{
     Command, CommandEnvelope, Evidence, EvidenceSubmission, EvidenceSubmissionDto, GateId,
     PacketEffect,
