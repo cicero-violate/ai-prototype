@@ -11,11 +11,11 @@
 //! and TLog decide whether submitted evidence advances the objective.
 
 use crate::capability::llm::openai::{OpenAiChatRequest, OpenAiError, OpenAiMessage};
-use crate::process::agent::objective::AgentObjective;
-use crate::process::agent::prompt;
-use crate::process::agent::router::{RouterClient, RouterTabCloseOutcome};
-use crate::process::agent::step::{AgentActionKind, AgentDecision, AgentRunSummary, AgentStep};
-use crate::process::agent::worker_client::WorkerClient;
+use crate::service::agent::objective::AgentObjective;
+use crate::service::agent::prompt;
+use crate::service::agent::router::{RouterClient, RouterTabCloseOutcome};
+use crate::service::agent::step::{AgentActionKind, AgentDecision, AgentRunSummary, AgentStep};
+use crate::service::agent::worker_client::WorkerClient;
 
 mod evidence;
 mod phase;
@@ -425,7 +425,7 @@ impl AgentCycle {
         &mut self,
         request: OpenAiChatRequest,
         phase: &str,
-    ) -> Result<crate::process::agent::router::RouterTurnResult, OpenAiError> {
+    ) -> Result<crate::service::agent::router::RouterTurnResult, OpenAiError> {
         let _ = use_teacher(phase);
         self.router.turn(request)
     }

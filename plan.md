@@ -919,6 +919,7 @@ Remove in this order:
 - Migrated scheduler handler supervisor imports to the service facade.
 - Migrated scheduler dispatch agent/dispatch/scheduler references to service facades.
 - Migrated supervisor worker-process imports to service facades.
+- Migrated agent cycle imports and router result references to the service agent facade.
 ### Quick Acceptance Criteria
 
 The migration is complete when:
