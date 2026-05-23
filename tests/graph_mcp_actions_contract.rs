@@ -416,7 +416,7 @@ fn graph_mcp_actions_roundtrip_generated_receipts_into_ledger_verifier() {
 #[test]
 fn graph_mcp_actions_expose_stable_contract_surface() {
     assert_eq!(
-        ai::capability::tooling::mcp_tools::CANON_GRAPH_PLAN_PATCH_TOOL,
+        ai::capability::execution::action::CANON_GRAPH_PLAN_PATCH_TOOL,
         "canon_graph_plan_patch"
     );
     assert_eq!(

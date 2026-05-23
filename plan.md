@@ -932,6 +932,7 @@ Remove in this order:
 - Renamed runtime action transcript tamper test away from MCP terminology.
 - Renamed runtime action transcript quarantine test away from MCP terminology.
 - Migrated graph contract tests to call graph helpers through capability execution graph.
+- Migrated graph plan-patch constants to the execution action facade.
 ### Quick Acceptance Criteria
 
 The migration is complete when:
