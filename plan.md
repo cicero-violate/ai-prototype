@@ -924,6 +924,7 @@ Remove in this order:
 - Migrated recorded shell process request/receipt imports to the execution facade.
 - Migrated apply-patch path categorization imports to the execution patch facade.
 - Migrated crate-root bounded execution exports from `capability::tooling` to `capability::execution`.
+- Migrated supervisor control plan-store imports to the service scheduler facade.
 ### Quick Acceptance Criteria
 
 The migration is complete when:

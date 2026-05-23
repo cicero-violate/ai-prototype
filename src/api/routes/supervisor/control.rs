@@ -8,7 +8,7 @@ use axum::Json;
 use std::process::{Command as StdCommand, Stdio};
 
 use crate::domain::plan::{ready_nodes_from_plan_state, NodeStatus};
-use crate::process::scheduler::plan_store::{load_plan, load_plan_read_model};
+use crate::service::scheduler::plan_store::{load_plan, load_plan_read_model};
 use crate::service::supervisor::{
     HealthDto, PlanStatusDto, ReloadDto, RestartDto, SpawnDto, SpawnRequest, StartLoopDto,
     StartLoopRequest, TaskClaimDto, TaskClaimRequest, TaskCompleteDto, TaskCompleteRequest,
