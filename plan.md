@@ -912,6 +912,7 @@ Remove in this order:
 - Migrated task client loop HTTP imports to the service agent facade.
 - Migrated agent worker task-client imports to the service dispatch facade.
 - Migrated task runner agent/dispatch/scheduler imports to service facades.
+- Migrated recovery event-loop supervisor imports to the service facade.
 ### Quick Acceptance Criteria
 
 The migration is complete when:
