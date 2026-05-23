@@ -934,6 +934,7 @@ Remove in this order:
 - Migrated graph contract tests to call graph helpers through capability execution graph.
 - Migrated graph plan-patch constants to the execution action facade.
 - Migrated graph apply-ops constants to the execution action facade.
+- Migrated graph plan-cfg constants to the execution action facade.
 ### Quick Acceptance Criteria
 
 The migration is complete when:
