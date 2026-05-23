@@ -17,13 +17,13 @@ use serde_json::Value;
 use crate::api::protocol::{Command, CommandEnvelope};
 use crate::capability::orchestration::{ChildCompleteRecord, WaveRecord};
 use crate::domain::plan::{ready_nodes, NodeStatus, PlanDag, PlanNode};
-use crate::process::agent::loop_driver::common::stable_agent_hash;
-use crate::process::agent::loop_driver::http::{
+use crate::service::agent::loop_driver::common::stable_agent_hash;
+use crate::service::agent::loop_driver::http::{
     agent_command_url, get_json_body_local, post_json_local,
 };
-use crate::process::agent::{AgentLoopConfig, LoopDriver, MAX_EXECUTOR_COUNT};
-use crate::process::dispatch::task_client::{TaskClaim, TaskClient};
-use crate::process::scheduler::plan_store::{
+use crate::service::agent::{AgentLoopConfig, LoopDriver, MAX_EXECUTOR_COUNT};
+use crate::service::dispatch::task_client::{TaskClaim, TaskClient};
+use crate::service::scheduler::plan_store::{
     append_status_change_patch, load_plan, load_plan_read_model,
 };
 use crate::runtime::workspace::workspace_state_dir;

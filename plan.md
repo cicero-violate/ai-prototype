@@ -917,6 +917,7 @@ Remove in this order:
 - Migrated supervisor runtime imports to service facades.
 - Migrated supervisor state scheduler/supervisor references to service facades.
 - Migrated scheduler handler supervisor imports to the service facade.
+- Migrated scheduler dispatch agent/dispatch/scheduler references to service facades.
 ### Quick Acceptance Criteria
 
 The migration is complete when:
