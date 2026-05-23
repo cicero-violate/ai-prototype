@@ -354,7 +354,7 @@ mod tests {
     }
 
     #[test]
-    fn mcp_transcript_append_quarantines_invalid_existing_chain() {
+    fn action_transcript_append_quarantines_invalid_existing_chain() {
         let workspace = unique_workspace();
         let response =
             r#"{\"content\":[{\"type\":\"text\",\"text\":\"hello\"}],\"isError\":false}"#;
