@@ -8,13 +8,13 @@ use std::env;
 use tokio::net::TcpListener;
 
 use crate::api::routes::build_supervisor_router;
-use crate::process::agent::config::AgentLoopConfig;
-use crate::process::dispatch::task_runner::TaskRunner;
-use crate::process::recovery::event_loop as recovery_event_loop;
-use crate::process::scheduler::handler::TaskReadyNotifier;
-use crate::process::supervisor::process::WorkerProcess;
-use crate::process::supervisor::SupervisorConfig;
-use crate::process::supervisor::SupervisorState;
+use crate::service::agent::config::AgentLoopConfig;
+use crate::service::dispatch::task_runner::TaskRunner;
+use crate::service::recovery::event_loop as recovery_event_loop;
+use crate::service::scheduler::handler::TaskReadyNotifier;
+use crate::service::supervisor::process::WorkerProcess;
+use crate::service::supervisor::SupervisorConfig;
+use crate::service::supervisor::SupervisorState;
 use crate::runtime::introspection::canonical_tlog_path_from_dir;
 
 pub async fn run() -> Result<(), String> {

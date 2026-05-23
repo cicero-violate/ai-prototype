@@ -914,6 +914,7 @@ Remove in this order:
 - Migrated task runner agent/dispatch/scheduler imports to service facades.
 - Migrated recovery event-loop supervisor imports to the service facade.
 - Migrated supervisor config endpoint imports to the service facade.
+- Migrated supervisor runtime imports to service facades.
 ### Quick Acceptance Criteria
 
 The migration is complete when:
