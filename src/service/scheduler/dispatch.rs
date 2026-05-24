@@ -17,6 +17,7 @@ use serde_json::Value;
 use crate::api::protocol::{Command, CommandEnvelope};
 use crate::capability::orchestration::{ChildCompleteRecord, WaveRecord};
 use crate::domain::plan::{ready_nodes, NodeStatus, PlanDag, PlanNode};
+use crate::runtime::workspace::workspace_state_dir;
 use crate::service::agent::loop_driver::common::stable_agent_hash;
 use crate::service::agent::loop_driver::http::{
     agent_command_url, get_json_body_local, post_json_local,
@@ -26,7 +27,6 @@ use crate::service::dispatch::task_client::{TaskClaim, TaskClient};
 use crate::service::scheduler::plan_store::{
     append_status_change_patch, load_plan, load_plan_read_model,
 };
-use crate::runtime::workspace::workspace_state_dir;
 
 /// Dispatch one wave: claim all currently-ready plan nodes, spawn one
 /// LoopDriver thread per node, join all threads, report complete/fail.

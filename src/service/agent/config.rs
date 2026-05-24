@@ -1,10 +1,10 @@
 use std::env;
 use std::path::PathBuf;
 
+use crate::runtime::workspace::workspace_state_dir;
 use crate::service::endpoints::{
     mcp_connector_url_from_env, supervisor_port_from_env, DEFAULT_SUPERVISOR_PORT,
 };
-use crate::runtime::workspace::workspace_state_dir;
 
 pub const DEFAULT_EXECUTOR_COUNT: u32 = 1;
 pub const MAX_EXECUTOR_COUNT: u32 = 5;

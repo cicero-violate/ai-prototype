@@ -9,19 +9,41 @@ pub const TASK_WORDS: &[&str] = &[
 ];
 
 pub const SYMBOL_WORDS: &[&str] = &[
-    "scheduler", "route", "mailbox", "kernel", "dispatch", "codec", "runtime",
+    "scheduler",
+    "route",
+    "mailbox",
+    "kernel",
+    "dispatch",
+    "codec",
+    "runtime",
 ];
 
 pub const TOOL_WORDS: &[&str] = &[
-    "apply_patch", "shell", "cargo_check", "cargo_test", "inspect", "validate",
+    "apply_patch",
+    "shell",
+    "cargo_check",
+    "cargo_test",
+    "inspect",
+    "validate",
 ];
 
 pub const OUTCOME_WORDS: &[&str] = &[
-    "succeeded", "failed", "reverted", "blocked", "timed_out", "accepted",
+    "succeeded",
+    "failed",
+    "reverted",
+    "blocked",
+    "timed_out",
+    "accepted",
 ];
 
 pub const COST_WORDS: &[&str] = &[
-    "fan_in", "fan_out", "churn", "penalty", "risk", "barrier", "rollback_cost",
+    "fan_in",
+    "fan_out",
+    "churn",
+    "penalty",
+    "risk",
+    "barrier",
+    "rollback_cost",
 ];
 
 /// Extract task vocabulary words that appear in a task title.

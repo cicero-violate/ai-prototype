@@ -32,7 +32,9 @@ pub trait ActionHost {
 pub async fn execute_native_tool<H: ActionHost>(name: &str, args: &Value, host: &H) -> Value {
     match name {
         "echo" | "get_current_time" => utility::execute(name, args),
-        "apply_patch" | "shell" | "python" => workspace::execute(name, args, host).await,
+        "apply_patch" | "shell" | "python" | "structural_edit" => {
+            workspace::execute(name, args, host).await
+        }
         "canon_graph_plan_patch"
         | "canon_graph_plan_cfg"
         | "canon_graph_apply_ops"

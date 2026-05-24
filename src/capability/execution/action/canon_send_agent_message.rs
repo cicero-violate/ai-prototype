@@ -7,8 +7,8 @@ use std::path::Path;
 
 use serde_json::{json, Value};
 
-use crate::capability::CapabilityRegistry;
 use crate::capability::execution::action::common::tool_error;
+use crate::capability::CapabilityRegistry;
 use crate::runtime::{append_mailbox_message, MailboxMessageReceipt, MailboxMessageRequest};
 
 pub const CANON_SEND_AGENT_MESSAGE_TOOL: &str = "canon_send_agent_message";

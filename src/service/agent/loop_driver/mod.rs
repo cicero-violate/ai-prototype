@@ -270,6 +270,13 @@ impl LoopDriver {
             // Spawned agents run one cycle for their specific task then exit.
             if is_spawned {
                 wait_for_spawned_tab_close(&tag, cycle_num, close_handle);
+                if let Some(node_id) = &self.config.plan_node_id {
+                    learning::try_emit_task_symbol_index(
+                        &self.config.project_dir,
+                        node_id,
+                        cycle_num,
+                    );
+                }
                 eprintln!("[{tag}] spawned agent task complete — exiting");
                 return cycle_completed;
             }

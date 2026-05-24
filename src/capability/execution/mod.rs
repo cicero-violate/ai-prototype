@@ -15,15 +15,15 @@ pub use crate::capability::exploration;
 
 // Action tool constants.
 pub use action::{
-    APPLY_PATCH_TOOL, CANON_GRAPH_APPLY_OPS_TOOL, CANON_GRAPH_AUTO_REFACTOR_CFG_TOOL,
-    CANON_GRAPH_PLAN_CFG_TOOL, CANON_GRAPH_PLAN_PATCH_TOOL, CANON_GRAPH_VERIFY_CFG_DELTA_TOOL,
-    CANON_PLAN_READ_TOOL, CANON_PLAN_UPDATE_TOOL, CANON_READ_MAILBOX_TOOL, CANON_SCORE_TOOL,
-    CANON_SEND_AGENT_MESSAGE_TOOL, CANON_SPAWN_AGENT_TOOL, McpToolHost, SHELL_TOOL,
-    SpawnAgentToolRequest,
+    McpToolHost, SpawnAgentToolRequest, APPLY_PATCH_TOOL, CANON_GRAPH_APPLY_OPS_TOOL,
+    CANON_GRAPH_AUTO_REFACTOR_CFG_TOOL, CANON_GRAPH_PLAN_CFG_TOOL, CANON_GRAPH_PLAN_PATCH_TOOL,
+    CANON_GRAPH_VERIFY_CFG_DELTA_TOOL, CANON_PLAN_READ_TOOL, CANON_PLAN_UPDATE_TOOL,
+    CANON_READ_MAILBOX_TOOL, CANON_SCORE_TOOL, CANON_SEND_AGENT_MESSAGE_TOOL,
+    CANON_SPAWN_AGENT_TOOL, SHELL_TOOL, STRUCTURAL_EDIT_TOOL,
 };
 // Action host.
-pub use action::host::{execute_native_tool, execute_recorded_shell, ActionHost};
 pub use action::host::ActionHost as NativeToolHost;
+pub use action::host::{execute_native_tool, execute_recorded_shell, ActionHost};
 // Action receipts.
 pub use action::record::{
     append_action_receipt_ndjson, decode_action_receipt_ndjson, encode_action_receipt_ndjson,
@@ -52,10 +52,8 @@ pub use action::record::{
     decode_action_receipt_ndjson as decode_mcp_call_receipt_ndjson,
     encode_action_receipt_ndjson as encode_mcp_call_receipt_ndjson,
     load_action_receipts_ndjson as load_mcp_call_receipts_ndjson,
-    verify_action_receipts as verify_mcp_call_receipts,
-    ActionCallRequest as McpCallRequest,
-    ActionReceipt as McpCallReceipt,
-    LiveActionExecutor as LiveMcpCallExecutor,
+    verify_action_receipts as verify_mcp_call_receipts, ActionCallRequest as McpCallRequest,
+    ActionReceipt as McpCallReceipt, LiveActionExecutor as LiveMcpCallExecutor,
     ACTION_RECEIPT_RECORD as MCP_CALL_RECEIPT_RECORD,
     ACTION_RECEIPT_SCHEMA_VERSION as MCP_CALL_RECEIPT_SCHEMA_VERSION,
 };

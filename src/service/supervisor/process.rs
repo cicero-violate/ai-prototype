@@ -16,10 +16,11 @@ use tokio::process::{Child, Command as TokioCommand};
 use crate::api::protocol::{Command as KernelCommand, CommandEnvelope};
 use crate::capability::orchestration::TaskLifecycleReceipt;
 use crate::domain::plan::{
-    plan_text_hash, NodeStatus, PlanEvidenceRef, EVIDENCE_GATE_EXECUTION,
+    blocked_pending_nodes, plan_text_hash, NodeStatus, PlanEvidenceRef, EVIDENCE_GATE_EXECUTION,
     EVIDENCE_KIND_EXECUTION_RECEIPT, EVIDENCE_TYPE_EXECUTION_RECEIPT,
 };
 use crate::kernel::{mix, PlanEvidenceProjection};
+use crate::runtime::workspace::workspace_state_dir;
 use crate::service::agent::loop_driver::http::post_json_local;
 use crate::service::agent::{
     AgentLoopConfig, LoopDriver, DEFAULT_EXECUTOR_COUNT, MAX_EXECUTOR_COUNT,
@@ -28,7 +29,6 @@ use crate::service::scheduler::plan_store::{
     append_evidence_patch, append_node_remove_patch, append_status_change_patch, load_plan,
     load_plan_read_model, load_tlog_projected_plan_state,
 };
-use crate::runtime::workspace::workspace_state_dir;
 
 const DEFAULT_LEASE_TTL_MS: u64 = 300_000;
 
@@ -558,6 +558,13 @@ impl WorkerProcess {
             "supervisor: task failed  node={}  worker={}  claim_id={}  retry_after_ms={}",
             req.node_id, req.worker_id, req.claim_id, req.retry_after_ms
         );
+
+        // Permanent failure (no retry) may block downstream Pending nodes. Cascade
+        // Skipped to any that can now never run, so the plan doesn't stall.
+        if req.retry_after_ms == 0 {
+            self.cascade_blocked_nodes();
+        }
+
         Ok(TaskFailDto {
             ok: true,
             receipt_hash: receipt.receipt_hash,
@@ -662,6 +669,45 @@ impl WorkerProcess {
             eprintln!(
                 "supervisor: reconcile complete — done={promoted_done} failed={promoted_failed}"
             );
+        }
+
+        self.cascade_blocked_nodes();
+    }
+
+    /// Cascade `Skipped` status to `Pending` nodes that are permanently blocked:
+    /// every upstream dependency is terminal and at least one is non-Done.
+    ///
+    /// Runs to fixpoint so multi-hop chains are fully resolved in one call. Called
+    /// after `reconcile_terminal_evidence` (startup) and after `fail_task` (runtime)
+    /// so the plan never lingers in an unresolvable state.
+    pub fn cascade_blocked_nodes(&self) {
+        loop {
+            let (plan, _) = load_plan_read_model(&self.project_dir)
+                .unwrap_or_else(|_| (load_plan(&self.project_dir), None));
+
+            let blocked = blocked_pending_nodes(&plan);
+            if blocked.is_empty() {
+                break;
+            }
+
+            let mut promoted = 0usize;
+            for node in blocked {
+                eprintln!(
+                    "supervisor: cascade — skipping {} (all upstream deps terminal, at least one failed)",
+                    node.id
+                );
+                match append_status_change_patch(&self.project_dir, &node.id, &NodeStatus::Skipped)
+                {
+                    Ok(()) => promoted += 1,
+                    Err(e) => {
+                        eprintln!("supervisor: cascade skip patch failed for {}: {e}", node.id)
+                    }
+                }
+            }
+
+            if promoted == 0 {
+                break;
+            }
         }
     }
 

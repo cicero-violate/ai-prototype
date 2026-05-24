@@ -14,7 +14,9 @@
 use std::cell::Cell;
 use std::time::Duration;
 
-use crate::domain::plan::{ready_nodes_from_available_plan_state, NodeStatus, PlanNode};
+use crate::domain::plan::{
+    blocked_pending_nodes, ready_nodes_from_available_plan_state, NodeStatus, PlanNode,
+};
 use crate::service::agent::config::AgentLoopConfig;
 use crate::service::agent::loop_driver::http::post_json_body_local;
 use crate::service::agent::loop_driver::LoopDriver;
@@ -29,6 +31,8 @@ const RETRY_AFTER_MS: u64 = 60_000;
 const REPLAY_FALLBACK_SECS: u64 = 30;
 /// Minimum gap between successive planner triggers (prevents repeated spawns while planner runs).
 const PLANNER_COOLDOWN_MS: u64 = 300_000;
+/// Emit a stall warning after this many consecutive empty scans with pending nodes present.
+const STALL_WARN_AFTER: u32 = 5;
 
 pub struct TaskRunner {
     supervisor_url: String,
@@ -37,6 +41,8 @@ pub struct TaskRunner {
     base_config: AgentLoopConfig,
     notifier: TaskReadyNotifier,
     last_planner_trigger_ms: Cell<u64>,
+    /// Consecutive empty-scan counter. Reset on every successful claim.
+    empty_scan_streak: Cell<u32>,
 }
 
 impl TaskRunner {
@@ -57,6 +63,7 @@ impl TaskRunner {
             base_config,
             notifier,
             last_planner_trigger_ms: Cell::new(0),
+            empty_scan_streak: Cell::new(0),
         }
     }
 
@@ -91,6 +98,7 @@ impl TaskRunner {
         let client = TaskClient::new(&self.supervisor_url);
         let ready = self.ready_candidates_from_replay();
         if ready.is_empty() {
+            self.check_stall();
             self.maybe_trigger_planner();
             return;
         }
@@ -115,6 +123,7 @@ impl TaskRunner {
                 }
             };
 
+            self.empty_scan_streak.set(0);
             self.run_claimed_task(assignment, ActiveClaim::from(task_claim));
             return;
         }
@@ -193,13 +202,68 @@ impl TaskRunner {
             Ok((p, _)) => p,
             Err(_) => load_plan(&self.base_config.project_dir),
         };
-        !plan.nodes.is_empty()
-            && plan.nodes.iter().all(|n| {
-                matches!(
-                    n.status,
-                    NodeStatus::Done | NodeStatus::Failed | NodeStatus::Skipped
-                )
-            })
+        if plan.nodes.is_empty() {
+            return false;
+        }
+        let terminal = |n: &PlanNode| {
+            matches!(
+                n.status,
+                NodeStatus::Done | NodeStatus::Failed | NodeStatus::Skipped
+            )
+        };
+        // All nodes terminal — normal completion.
+        if plan.nodes.iter().all(terminal) {
+            return true;
+        }
+        // All non-terminal nodes are permanently blocked by a failed/skipped upstream —
+        // the cascade hasn't run yet (e.g. supervisor restart pending), but the plan
+        // is structurally exhausted and the planner should fire.
+        !blocked_pending_nodes(&plan).is_empty()
+            && plan
+                .nodes
+                .iter()
+                .filter(|n| !terminal(n))
+                .all(|n| blocked_pending_nodes(&plan).iter().any(|b| b.id == n.id))
+    }
+
+    /// Emit a stall warning when the runner has seen N consecutive empty scans
+    /// but the plan still has non-terminal nodes. This surfaces the "pending
+    /// nodes with failed deps" deadlock that the cascade should have prevented.
+    fn check_stall(&self) {
+        let streak = self.empty_scan_streak.get() + 1;
+        self.empty_scan_streak.set(streak);
+
+        if streak < STALL_WARN_AFTER {
+            return;
+        }
+        // Only warn once at the threshold, then every doubling to avoid log spam.
+        if streak != STALL_WARN_AFTER && !streak.is_power_of_two() {
+            return;
+        }
+
+        let plan = match load_plan_read_model(&self.base_config.project_dir) {
+            Ok((p, _)) => p,
+            Err(_) => load_plan(&self.base_config.project_dir),
+        };
+        let pending_count = plan
+            .nodes
+            .iter()
+            .filter(|n| n.status == NodeStatus::Pending)
+            .count();
+        if pending_count == 0 {
+            return;
+        }
+        let blocked = blocked_pending_nodes(&plan);
+        eprintln!(
+            "[task_runner] STALL WARNING: {} consecutive empty scans, {} pending node(s), {} permanently blocked by failed deps  worker={}",
+            streak,
+            pending_count,
+            blocked.len(),
+            self.worker_id,
+        );
+        for node in &blocked {
+            eprintln!("[task_runner] STALL: blocked node — {}", node.id);
+        }
     }
 
     fn run_claimed_task(&self, assignment: PlanNode, claim: ActiveClaim) {

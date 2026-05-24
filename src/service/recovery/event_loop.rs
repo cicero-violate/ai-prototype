@@ -23,8 +23,8 @@ use std::path::PathBuf;
 use std::time::Duration;
 
 use crate::codec::ndjson::load_tlog_ndjson;
-use crate::service::supervisor::SupervisorState;
 use crate::runtime::event_bus::{replay_event_bus, WakeupKind};
+use crate::service::supervisor::SupervisorState;
 
 /// Poll interval between TLog scans.
 const POLL_INTERVAL_SECS: u64 = 5;

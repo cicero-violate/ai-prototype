@@ -70,7 +70,6 @@ impl MailboxMessageRequest {
         h = mix(h, self.payload_hash);
         h.max(1)
     }
-
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

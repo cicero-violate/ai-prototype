@@ -301,7 +301,9 @@ fn task_lifecycle_http_details_live_in_dispatch_task_client() {
     ] {
         let body = source(path);
         assert!(
-            body.contains("TaskClient") || body.contains("process::scheduler::run_wave") || body.contains("service::scheduler::run_wave"),
+            body.contains("TaskClient")
+                || body.contains("process::scheduler::run_wave")
+                || body.contains("service::scheduler::run_wave"),
             "{path} should use TaskClient or delegate to the scheduler"
         );
         assert!(

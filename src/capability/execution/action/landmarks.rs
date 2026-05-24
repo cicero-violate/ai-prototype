@@ -24,6 +24,7 @@ use serde_json::{json, Map, Value};
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum NativeTool {
     ApplyPatch,
+    StructuralEdit,
     Shell,
     Echo,
     GetCurrentTime,
@@ -55,6 +56,7 @@ impl NativeTool {
     pub fn as_str(self) -> &'static str {
         match self {
             Self::ApplyPatch => "apply_patch",
+            Self::StructuralEdit => "structural_edit",
             Self::Shell => "shell",
             Self::Echo => "echo",
             Self::GetCurrentTime => "get_current_time",
@@ -201,6 +203,15 @@ const ACTIONS: &[LandmarkAction] = &[
         native_tool: NativeTool::ApplyPatch,
         landmark: Landmark::Workspace,
         description: "Apply or check an apply_patch-format patch under the configured workspace root.",
+        read_only: false,
+        destructive: false,
+        idempotent: false,
+    },
+    LandmarkAction {
+        id: "workspace:structural_edit",
+        native_tool: NativeTool::StructuralEdit,
+        landmark: Landmark::Workspace,
+        description: "Check or apply typed Rust structural-editor operations using the shared structural-editor OpBatch schema.",
         read_only: false,
         destructive: false,
         idempotent: false,
@@ -617,6 +628,7 @@ fn inspect_one(id: &str) -> Value {
 pub fn resolve_action_id(action_id: &str) -> Option<LandmarkAction> {
     let normalized = match action_id {
         "apply_patch" => "workspace:apply_patch",
+        "structural_edit" => "workspace:structural_edit",
         "shell" => "workspace:shell",
         "echo" => "utility:echo",
         "get_current_time" => "utility:get_current_time",
@@ -690,6 +702,173 @@ fn intent_only() -> Value {
     json!({ "type": "object", "properties": { "intent": { "type": "string" } } })
 }
 
+fn node_locator_schema() -> Value {
+    json!({
+        "oneOf": [
+            {
+                "type": "object",
+                "properties": {
+                    "loc": { "const": "selector" },
+                    "path": { "type": "string" },
+                    "selector": { "type": "string" }
+                },
+                "required": ["loc", "path", "selector"]
+            },
+            {
+                "type": "object",
+                "properties": {
+                    "loc": { "const": "anchor" },
+                    "path": { "type": "string" },
+                    "byte_from": { "type": "integer" },
+                    "byte_to": { "type": "integer" }
+                },
+                "required": ["loc", "path", "byte_from", "byte_to"]
+            }
+        ]
+    })
+}
+
+fn structural_op_schema() -> Value {
+    let node_kind = json!({
+        "type": "string",
+        "enum": [
+            "file", "use_decl", "mod_decl", "extern_crate", "function", "struct", "enum",
+            "trait", "impl_block", "trait_impl", "type_alias", "const", "static",
+            "macro_def", "struct_field", "enum_variant", "impl_item", "trait_item",
+            "generic_param", "lifetime", "where_clause", "fn_param", "return_type",
+            "match_arm", "expr", "stmt", "block", "attribute", "doc_comment",
+            "type_ref", "pattern", "macro_call"
+        ]
+    });
+    let locator = node_locator_schema();
+    json!({
+        "oneOf": [
+            {
+                "type": "object",
+                "properties": {
+                    "op": { "const": "create_node" },
+                    "kind": node_kind.clone(),
+                    "at": locator.clone(),
+                    "text": { "type": "string" }
+                },
+                "required": ["op", "kind", "at", "text"]
+            },
+            {
+                "type": "object",
+                "properties": {
+                    "op": { "const": "delete_node" },
+                    "kind": node_kind.clone(),
+                    "at": locator.clone(),
+                    "compiler_proven_unused": { "type": "boolean", "default": false }
+                },
+                "required": ["op", "kind", "at"]
+            },
+            {
+                "type": "object",
+                "properties": {
+                    "op": { "const": "replace_node" },
+                    "kind": node_kind.clone(),
+                    "at": locator.clone(),
+                    "target": { "type": "string", "enum": ["whole", "body", "signature", "type", "value"] },
+                    "text": { "type": "string" }
+                },
+                "required": ["op", "kind", "at", "target", "text"]
+            },
+            {
+                "type": "object",
+                "properties": {
+                    "op": { "const": "move_node" },
+                    "kind": node_kind.clone(),
+                    "from": locator.clone(),
+                    "to": locator.clone(),
+                    "preserve_facade": { "type": "boolean", "default": false },
+                    "facade_text": { "type": ["string", "null"] }
+                },
+                "required": ["op", "kind", "from", "to"]
+            },
+            {
+                "type": "object",
+                "properties": {
+                    "op": { "const": "rename_symbol" },
+                    "kind": node_kind.clone(),
+                    "at": locator.clone(),
+                    "old_name": { "type": "string" },
+                    "new_name": { "type": "string" },
+                    "scope": { "type": "array", "items": { "type": "string" }, "default": [] }
+                },
+                "required": ["op", "kind", "at", "old_name", "new_name"]
+            },
+            {
+                "type": "object",
+                "properties": {
+                    "op": { "const": "set_attr" },
+                    "kind": node_kind.clone(),
+                    "at": locator.clone(),
+                    "key": { "type": "string", "enum": ["visibility", "derive", "cfg", "allow", "must_use", "inline", "deprecated", "doc", "repr", "custom"] },
+                    "value": { "type": "string" }
+                },
+                "required": ["op", "kind", "at", "key", "value"]
+            },
+            {
+                "type": "object",
+                "properties": {
+                    "op": { "const": "add_edge" },
+                    "file": { "type": "string" },
+                    "edge": { "type": "object" },
+                    "near": { "oneOf": [locator.clone(), { "type": "null" }] }
+                },
+                "required": ["op", "file", "edge"]
+            },
+            {
+                "type": "object",
+                "properties": {
+                    "op": { "const": "remove_edge" },
+                    "file": { "type": "string" },
+                    "edge": { "type": "object" }
+                },
+                "required": ["op", "file", "edge"]
+            },
+            {
+                "type": "object",
+                "properties": {
+                    "op": { "const": "verify" },
+                    "predicate": { "type": "object" },
+                    "message": { "type": ["string", "null"] }
+                },
+                "required": ["op", "predicate"]
+            },
+            {
+                "type": "object",
+                "properties": {
+                    "op": { "const": "cargo" },
+                    "change": { "type": "string" },
+                    "manifest": { "type": "string" }
+                },
+                "required": ["op", "change", "manifest"]
+            },
+            {
+                "type": "object",
+                "properties": {
+                    "op": { "const": "receipt" },
+                    "summary": { "type": "string" },
+                    "rollback_required": { "type": "boolean" },
+                    "receipt_path": { "type": "string" }
+                },
+                "required": ["op", "summary", "rollback_required", "receipt_path"]
+            },
+            {
+                "type": "object",
+                "properties": {
+                    "op": { "const": "rollback" },
+                    "manifest": { "type": "string" },
+                    "rollback_path": { "type": "string" }
+                },
+                "required": ["op", "manifest", "rollback_path"]
+            }
+        ]
+    })
+}
+
 /// Returns the JSON Schema for the given tool's input parameters.
 /// This match is exhaustive over `NativeTool` — the compiler will reject any
 /// new variant that lacks an arm here, preventing silent schema omissions.
@@ -706,6 +885,23 @@ fn native_input_schema(tool: NativeTool) -> Value {
                 "intent": { "type": "string" }
             },
             "required": ["patch"]
+        }),
+
+        NativeTool::StructuralEdit => json!({
+            "type": "object",
+            "description": "Typed structural-editor OpBatch. Uses the shared structural-editor schema; pass mode=check to validate shape without writing, or mode=apply to mutate files.",
+            "properties": {
+                "mode": { "type": "string", "enum": ["check", "apply"], "default": "check" },
+                "cwd": { "type": "string", "description": "Workspace-root-relative project root for structural-editor paths.", "default": "." },
+                "label": { "type": "string" },
+                "ops": {
+                    "type": "array",
+                    "items": structural_op_schema(),
+                    "description": "Array of structural-editor StructuralOp values. Each op uses serde tag field 'op'."
+                },
+                "intent": { "type": "string" }
+            },
+            "required": ["ops"]
         }),
 
         NativeTool::Shell => json!({

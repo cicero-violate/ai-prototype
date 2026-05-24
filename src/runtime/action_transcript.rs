@@ -324,7 +324,10 @@ mod tests {
 
         let records = replay_action_transcripts(&workspace).expect("replay transcript");
         assert_eq!(records.len(), 1);
-        assert_eq!(records[0].receipt_hash, receipt_facts(response).receipt_hash);
+        assert_eq!(
+            records[0].receipt_hash,
+            receipt_facts(response).receipt_hash
+        );
         assert_eq!(records[0].response_json, response);
 
         let _ = fs::remove_dir_all(workspace);

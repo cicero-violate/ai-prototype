@@ -5,11 +5,11 @@
 //! all mutation to the process boundary that owns task leases and plan writes.
 //! There is no timer polling in this module.
 
+pub use crate::runtime::event_bus::WakeupKind as SchedulerWakeupKind;
 use crate::service::supervisor::process::{
     TaskClaimDto, TaskClaimRequest, TaskCompleteDto, TaskCompleteRequest, TaskFailDto,
     TaskFailRequest, WorkerProcess,
 };
-pub use crate::runtime::event_bus::WakeupKind as SchedulerWakeupKind;
 
 /// A projected scheduler wakeup. The wakeup taxonomy comes from runtime event
 /// projection; this adapter only carries process lifecycle context.

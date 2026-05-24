@@ -249,8 +249,7 @@ pub fn replay_learning_transcripts(
     if !path.exists() {
         return Ok(Vec::new());
     }
-    let file =
-        fs::File::open(&path).map_err(|e| format!("open learning transcript: {e}"))?;
+    let file = fs::File::open(&path).map_err(|e| format!("open learning transcript: {e}"))?;
     let reader = BufReader::new(file);
     let mut records = Vec::new();
     let mut prev_hash = 0_u64;
@@ -285,8 +284,7 @@ fn append_learning_transcript(
 ) -> Result<LearningTranscriptRecord, String> {
     let tlog_path = learning_transcript_path(workspace_root);
     if let Some(parent) = tlog_path.parent() {
-        fs::create_dir_all(parent)
-            .map_err(|e| format!("create learning transcript dir: {e}"))?;
+        fs::create_dir_all(parent).map_err(|e| format!("create learning transcript dir: {e}"))?;
     }
 
     let mut record = LearningTranscriptRecord {
@@ -324,16 +322,14 @@ fn append_artifact_ndjson<T: Serialize>(path: &Path, record: &T) -> Result<(), S
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent).map_err(|e| format!("create artifact dir: {e}"))?;
     }
-    let line =
-        serde_json::to_string(record).map_err(|e| format!("serialize artifact: {e}"))?;
+    let line = serde_json::to_string(record).map_err(|e| format!("serialize artifact: {e}"))?;
     let mut file = OpenOptions::new()
         .create(true)
         .append(true)
         .open(path)
         .map_err(|e| format!("open artifact {}: {e}", path.display()))?;
     writeln!(file, "{line}").map_err(|e| format!("write artifact: {e}"))?;
-    file.sync_all()
-        .map_err(|e| format!("sync artifact: {e}"))?;
+    file.sync_all().map_err(|e| format!("sync artifact: {e}"))?;
     Ok(())
 }
 
@@ -356,8 +352,7 @@ fn learning_transcript_last_hash_or_recover(workspace_root: &Path) -> Result<u64
                 .format("%Y%m%dT%H%M%S%.fZ")
                 .to_string()
                 .replace('.', "");
-            let quarantine =
-                path.with_extension(format!("tlog.ndjson.invalid-{timestamp}"));
+            let quarantine = path.with_extension(format!("tlog.ndjson.invalid-{timestamp}"));
             fs::rename(&path, &quarantine).map_err(|rename_error| {
                 format!(
                     "{error}; failed to quarantine invalid learning transcript {} to {}: {rename_error}",
@@ -371,8 +366,7 @@ fn learning_transcript_last_hash_or_recover(workspace_root: &Path) -> Result<u64
 }
 
 fn decode_learning_transcript_record(line: &str) -> Result<LearningTranscriptRecord, String> {
-    let v: serde_json::Value =
-        serde_json::from_str(line).map_err(|e| e.to_string())?;
+    let v: serde_json::Value = serde_json::from_str(line).map_err(|e| e.to_string())?;
     let u64_field = |name: &str| {
         v.get(name)
             .and_then(|x| x.as_u64())
@@ -417,8 +411,7 @@ mod tests {
     use uuid::Uuid;
 
     fn unique_workspace() -> PathBuf {
-        std::env::temp_dir()
-            .join(format!("canon-learning-transcript-test-{}", Uuid::new_v4()))
+        std::env::temp_dir().join(format!("canon-learning-transcript-test-{}", Uuid::new_v4()))
     }
 
     #[test]
@@ -456,10 +449,15 @@ mod tests {
 
         let make_record = |ts: u64| {
             SymbolMutationRecord::new(
-                ts, 1, 0xABCD, 0xEF01,
+                ts,
+                1,
+                0xABCD,
+                0xEF01,
                 "ai/src/lib.rs".to_string(),
                 vec![],
-                true, 0, ts,
+                true,
+                0,
+                ts,
             )
         };
 
@@ -481,28 +479,42 @@ mod tests {
     fn learning_transcript_quarantines_corrupt_chain() {
         let workspace = unique_workspace();
         let r = SymbolMutationRecord::new(
-            1_000, 1, 0xDEAD, 0xBEEF,
+            1_000,
+            1,
+            0xDEAD,
+            0xBEEF,
             "ai/src/lib.rs".to_string(),
             vec![],
-            true, 0, 0xABCD,
+            true,
+            0,
+            0xABCD,
         );
         append_symbol_mutation(&workspace, &r, 0).expect("append");
 
         let path = learning_transcript_path(&workspace);
         let line = fs::read_to_string(&path).unwrap();
-        let mut tampered: LearningTranscriptRecord =
+        let mut tampered: serde_json::Value =
             serde_json::from_str(line.trim()).expect("decode transcript for tamper");
-        tampered.self_hash = tampered.self_hash.wrapping_add(1);
-        fs::write(&path, format!("{}\n", serde_json::to_string(&tampered).unwrap())).unwrap();
+        let self_hash = tampered["self_hash"].as_u64().expect("self_hash");
+        tampered["self_hash"] = serde_json::json!(self_hash.wrapping_add(1));
+        fs::write(
+            &path,
+            format!("{}\n", serde_json::to_string(&tampered).unwrap()),
+        )
+        .unwrap();
 
         let r2 = SymbolMutationRecord::new(
-            2_000, 1, 0xDEAD, 0xBEEF,
+            2_000,
+            1,
+            0xDEAD,
+            0xBEEF,
             "ai/src/other.rs".to_string(),
             vec![],
-            true, 0, 0xBEEF,
+            true,
+            0,
+            0xBEEF,
         );
-        let recovered = append_symbol_mutation(&workspace, &r2, 0)
-            .expect("append after corrupt");
+        let recovered = append_symbol_mutation(&workspace, &r2, 0).expect("append after corrupt");
         assert_eq!(recovered.prev_hash, 0);
 
         let replayed = replay_learning_transcripts(&workspace).expect("replay recovered");

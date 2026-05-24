@@ -35,7 +35,7 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 serde_yaml = { workspace = true }
 sha2 = { workspace = true }
+structural-editor = { path = "../neurosymbolic/structural-editor" }
 tokio = { workspace = true, features = ["rt-multi-thread", "macros", "net", "time", "signal", "io-util", "process"] }
 tower = { workspace = true }
 uuid = { workspace = true }
-validation = { path = "../validation" }

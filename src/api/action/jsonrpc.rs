@@ -15,8 +15,8 @@ pub fn action_err(id: Value, code: i64, message: &str) -> Value {
 }
 
 // Legacy MCP name aliases.
-pub use self::action_ok as mcp_ok;
 pub use self::action_err as mcp_err;
+pub use self::action_ok as mcp_ok;
 
 pub fn tool_error(message: String) -> Value {
     json!({ "content": [{ "type": "text", "text": format!("Error: {message}") }], "isError": true })

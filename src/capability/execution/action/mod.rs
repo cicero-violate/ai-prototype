@@ -11,7 +11,10 @@ pub mod dispatch;
 pub mod host;
 pub mod landmarks;
 pub mod record;
+pub mod structural_edit;
 
+pub use crate::capability::execution::patch::APPLY_PATCH_TOOL;
+pub use crate::capability::execution::shell::SHELL_TOOL;
 pub use canon_graph_editor::{
     CANON_GRAPH_APPLY_OPS_TOOL, CANON_GRAPH_AUTO_REFACTOR_CFG_TOOL, CANON_GRAPH_PLAN_CFG_TOOL,
     CANON_GRAPH_PLAN_PATCH_TOOL, CANON_GRAPH_VERIFY_CFG_DELTA_TOOL,
@@ -21,8 +24,6 @@ pub use canon_read_mailbox::CANON_READ_MAILBOX_TOOL;
 pub use canon_score::CANON_SCORE_TOOL;
 pub use canon_send_agent_message::CANON_SEND_AGENT_MESSAGE_TOOL;
 pub use canon_spawn_agent::{SpawnAgentToolRequest, CANON_SPAWN_AGENT_TOOL};
-pub use crate::capability::execution::patch::APPLY_PATCH_TOOL;
-pub use crate::capability::execution::shell::SHELL_TOOL;
 pub use dispatch::{dispatch_action_request, ActionHost};
 pub use host::ActionHost as McpToolHost;
 pub use record::{
@@ -30,3 +31,4 @@ pub use record::{
     load_action_receipts_ndjson, verify_action_receipts, ActionCallRequest, ActionReceipt,
     LiveActionExecutor, ACTION_RECEIPT_RECORD, ACTION_RECEIPT_SCHEMA_VERSION,
 };
+pub use structural_edit::STRUCTURAL_EDIT_TOOL;

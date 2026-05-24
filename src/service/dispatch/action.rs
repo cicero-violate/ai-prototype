@@ -9,12 +9,10 @@ use crate::api::action::{
     action_ok, dispatch_action_plan, result_with_warning, tool_error, ActionDispatchPlan,
 };
 use crate::api::protocol::Command as KernelCommand;
-use crate::capability::execution::{
-    ActionCallRequest, ActionReceipt,
-};
-use crate::capability::execution::action::landmarks;
 use crate::capability::execution::action::host;
 pub use crate::capability::execution::action::host::ActionHost;
+use crate::capability::execution::action::landmarks;
+use crate::capability::execution::{ActionCallRequest, ActionReceipt};
 use crate::capability::learning::artifact::SymbolMutationRecord;
 use crate::runtime::learning_transcript::{append_symbol_mutation, resolve_def_paths_for_file};
 use crate::runtime::{append_action_transcript, ActionTranscriptReceiptFacts, WorkspaceView};
@@ -165,6 +163,37 @@ mod transcript_tests {
 
     fn unique_project() -> PathBuf {
         std::env::temp_dir().join(format!("canon-mcp-dispatch-test-{}", Uuid::new_v4()))
+    }
+
+    #[test]
+    fn apply_patch_target_files_extracts_apply_patch_hunks() {
+        let args = json!({
+            "patch": "*** Begin Patch
+*** Update File: ai/src/lib.rs
+@@
+*** Add File: ai/src/new.rs
++fn new() {}
+*** Delete File: ai/src/old.rs
+*** End Patch
+"
+        });
+        assert_eq!(
+            apply_patch_target_files(&args),
+            vec![
+                "ai/src/lib.rs".to_string(),
+                "ai/src/new.rs".to_string(),
+                "ai/src/old.rs".to_string(),
+            ]
+        );
+    }
+
+    #[test]
+    fn apply_patch_target_files_keeps_legacy_path_field() {
+        let args = json!({ "path": "ai/src/lib.rs" });
+        assert_eq!(
+            apply_patch_target_files(&args),
+            vec!["ai/src/lib.rs".to_string()]
+        );
     }
 
     #[test]
@@ -429,28 +458,57 @@ fn try_record_symbol_mutation(
     let Ok(args) = serde_json::from_str::<Value>(args_json) else {
         return;
     };
-    let Some(file_path) = args.get("path").and_then(|v| v.as_str()) else {
+    let file_paths = apply_patch_target_files(&args);
+    if file_paths.is_empty() {
         return;
-    };
+    }
     let ts = chrono::Utc::now().timestamp_millis() as u64;
-    let def_paths = resolve_def_paths_for_file(&workspace.allowed_boundary, file_path);
-    if def_paths.is_empty() {
-        return;
+    for file_path in file_paths {
+        let def_paths = resolve_def_paths_for_file(&workspace.allowed_boundary, &file_path);
+        if def_paths.is_empty() {
+            continue;
+        }
+        let record = SymbolMutationRecord::new(
+            ts,
+            0,
+            0,
+            0,
+            file_path.clone(),
+            def_paths,
+            true,
+            receipt.exit_status,
+            receipt.receipt_hash,
+        );
+        if let Err(e) = append_symbol_mutation(&workspace.allowed_boundary, &record, 0) {
+            eprintln!("[canon-ai-learning] symbol mutation record failed path={file_path}: {e}");
+        }
     }
-    let record = SymbolMutationRecord::new(
-        ts,
-        0,
-        0,
-        0,
-        file_path.to_string(),
-        def_paths,
-        true,
-        receipt.exit_status,
-        receipt.receipt_hash,
-    );
-    if let Err(e) = append_symbol_mutation(&workspace.allowed_boundary, &record, 0) {
-        eprintln!("[canon-ai-learning] symbol mutation record failed path={file_path}: {e}");
+}
+
+fn apply_patch_target_files(args: &Value) -> Vec<String> {
+    if let Some(path) = args.get("path").and_then(|v| v.as_str()) {
+        let trimmed = path.trim();
+        if !trimmed.is_empty() {
+            return vec![trimmed.to_string()];
+        }
     }
+    let Some(patch) = args.get("patch").and_then(|v| v.as_str()) else {
+        return Vec::new();
+    };
+    let mut files = Vec::new();
+    for line in patch.lines().map(str::trim_end) {
+        let path = line
+            .strip_prefix("*** Add File: ")
+            .or_else(|| line.strip_prefix("*** Update File: "))
+            .or_else(|| line.strip_prefix("*** Delete File: "))
+            .or_else(|| line.strip_prefix("*** Move to: "));
+        if let Some(path) = path.map(str::trim).filter(|path| !path.is_empty()) {
+            files.push(path.to_string());
+        }
+    }
+    files.sort();
+    files.dedup();
+    files
 }
 
 async fn call_gateway_tool<H: ActionHost>(name: &str, args: &Value, host: &H) -> Value {

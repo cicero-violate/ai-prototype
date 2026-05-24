@@ -9,7 +9,7 @@ use tokio::process::Command;
 use super::ActionHost;
 use crate::api::action::{result_with_warning, tool_error};
 use crate::api::protocol::Command as KernelCommand;
-use crate::capability::execution::{patch, shell};
+use crate::capability::execution::{action::structural_edit, patch, shell};
 use crate::runtime::WorkspaceView;
 
 pub async fn execute<H: ActionHost>(name: &str, args: &Value, host: &H) -> Value {
@@ -25,6 +25,10 @@ pub async fn execute<H: ActionHost>(name: &str, args: &Value, host: &H) -> Value
         "python" => {
             let workspace = host.workspace();
             run_python(args, &workspace).await
+        }
+        "structural_edit" => {
+            let workspace = host.workspace();
+            structural_edit::run(args, &workspace)
         }
         _ => tool_error(format!("Unknown workspace tool: {name}")),
     }

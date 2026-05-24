@@ -1,10 +1,10 @@
 //! External command/evidence protocol.
 
 use crate::capability::execution::{ActionCallRequest, ActionReceipt};
+use crate::capability::execution::{SandboxProcessReceipt, SandboxProcessRequest};
 use crate::capability::observation::ObservationIngressBatch;
 use crate::capability::orchestration::{AgentCycleEvent, ChildCompleteRecord, WaveRecord};
 use crate::capability::planning::PlanPatchRecord;
-use crate::capability::execution::{SandboxProcessReceipt, SandboxProcessRequest};
 use crate::capability::{CapabilityRegistry, EvidenceSubmission};
 use crate::kernel::{ControlEvent, Evidence, GateId, TLog};
 pub use crate::runtime::{

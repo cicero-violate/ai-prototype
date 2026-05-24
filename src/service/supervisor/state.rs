@@ -114,7 +114,8 @@ impl ActionHost for SupervisorState {
             let mut guard = self.inner.lock().await;
             guard.ensure_worker_alive_or_reload().await?
         };
-        crate::api::action::proxy::submit_action_kernel_command(command_id, worker_port, command).await
+        crate::api::action::proxy::submit_action_kernel_command(command_id, worker_port, command)
+            .await
     }
 
     async fn run_host_tool(&self, name: &str, args: &Value) -> Option<Value> {

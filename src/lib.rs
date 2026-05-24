@@ -78,10 +78,47 @@ pub use crate::capability::eval::{
     EVAL_SCORECARD_RECORD, EVAL_SCORECARD_SCHEMA_VERSION, EVOLUTION_LEDGER_RECORD,
     EVOLUTION_LEDGER_SCHEMA_VERSION,
 };
+pub use crate::capability::execution::graph::{
+    append_graph_mutation_receipt_ndjson, append_graph_patch_receipt_ndjson,
+    decode_graph_mutation_op_row_ndjson, decode_graph_mutation_ops_ndjson,
+    decode_graph_mutation_receipt_ndjson, decode_graph_patch_receipt_ndjson,
+    decode_graph_snapshot_contract_ndjson, encode_graph_mutation_op_row_ndjson,
+    encode_graph_mutation_ops_ndjson, encode_graph_mutation_opset_receipt_ndjson,
+    encode_graph_mutation_receipt_ndjson, encode_graph_patch_receipt_ndjson,
+    encode_graph_receipt_ledger_receipt_ndjson, encode_graph_snapshot_contract_ndjson,
+    generate_graph_patch, load_graph_mutation_receipts_ndjson, load_graph_patch_receipts_ndjson,
+    load_graph_snapshot_contract_ndjson, verify_graph_mutation_landing,
+    verify_graph_mutation_ops_ndjson, verify_graph_receipt_ledger_files_ndjson,
+    verify_graph_receipt_ledgers_ndjson, GraphEdgeContract, GraphMutationOp, GraphMutationOpRow,
+    GraphMutationOpSetReceipt, GraphMutationReceipt, GraphMutationVerdict, GraphNodeContract,
+    GraphPatchError, GraphPatchPlan, GraphPatchReceipt, GraphReceiptLedgerReceipt,
+    GraphSnapshotContract, GraphSourceFile, GraphSourceSpan, GRAPH_JSON_SCHEMA_VERSION,
+    GRAPH_MUTATION_LEDGER_RECORD, GRAPH_MUTATION_OPSET_RECORD, GRAPH_MUTATION_RECEIPT_RECORD,
+    GRAPH_MUTATION_SCHEMA_VERSION, GRAPH_MUTATION_VERIFY_RECORD,
+};
 pub use crate::capability::execution::{
     append_action_receipt_ndjson, decode_action_receipt_ndjson, encode_action_receipt_ndjson,
     load_action_receipts_ndjson, verify_action_receipts, ActionCallRequest, ActionReceipt,
     LiveActionExecutor, ACTION_RECEIPT_RECORD, ACTION_RECEIPT_SCHEMA_VERSION,
+};
+pub use crate::capability::execution::{
+    append_mcp_call_receipt_ndjson, append_process_effect_receipt_ndjson,
+    append_sandbox_process_receipt_ndjson, append_tool_effect_receipt_ndjson,
+    decode_mcp_call_receipt_ndjson, decode_process_effect_receipt_ndjson,
+    decode_sandbox_process_receipt_ndjson, decode_tool_effect_receipt_ndjson,
+    encode_mcp_call_receipt_ndjson, encode_process_effect_receipt_ndjson,
+    encode_sandbox_process_receipt_ndjson, encode_tool_effect_receipt_ndjson,
+    load_mcp_call_receipts_ndjson, load_process_effect_receipts_ndjson,
+    load_sandbox_process_receipts_ndjson, load_tool_effect_receipts_ndjson,
+    verify_mcp_call_receipts, verify_process_effect_receipts, verify_sandbox_process_receipts,
+    verify_tool_effect_receipts, DeterministicToolExecutor, Effect, LiveMcpCallExecutor,
+    LiveSandboxProcessExecutor, LiveSandboxToolExecutor, McpCallReceipt, McpCallRequest,
+    ProcessEffectReceipt, SandboxProcessReceipt, SandboxProcessRequest, ToolDecision,
+    ToolEffectKind, ToolEffectReceipt, ToolExecutionRecord, ToolKind, ToolReceipt, ToolRequest,
+    ToolSandboxError, MCP_CALL_RECEIPT_RECORD, MCP_CALL_RECEIPT_SCHEMA_VERSION,
+    PROCESS_EFFECT_RECEIPT_RECORD, PROCESS_EFFECT_RECEIPT_SCHEMA_VERSION,
+    SANDBOX_PROCESS_RECEIPT_RECORD, SANDBOX_PROCESS_RECEIPT_SCHEMA_VERSION,
+    TOOL_EFFECT_RECEIPT_RECORD, TOOL_EFFECT_RECEIPT_SCHEMA_VERSION,
 };
 pub use crate::capability::judgment::{
     JudgmentRecord, PolicyJudgmentDecision, PolicyJudgmentRecord, PolicyReuseCostCatalogReceipt,
@@ -143,43 +180,6 @@ pub use crate::capability::policy::{
     PolicyEntry, PolicyLookupReceipt, PolicyProofReceipt, PolicyStore, PolicyStoreError,
     POLICY_FEEDBACK_HASH, POLICY_PROMOTION_SOURCE_SEQ,
 };
-pub use crate::capability::execution::graph::{
-    append_graph_mutation_receipt_ndjson, append_graph_patch_receipt_ndjson,
-    decode_graph_mutation_op_row_ndjson, decode_graph_mutation_ops_ndjson,
-    decode_graph_mutation_receipt_ndjson, decode_graph_patch_receipt_ndjson,
-    decode_graph_snapshot_contract_ndjson, encode_graph_mutation_op_row_ndjson,
-    encode_graph_mutation_ops_ndjson, encode_graph_mutation_opset_receipt_ndjson,
-    encode_graph_mutation_receipt_ndjson, encode_graph_patch_receipt_ndjson,
-    encode_graph_receipt_ledger_receipt_ndjson, encode_graph_snapshot_contract_ndjson,
-    generate_graph_patch, load_graph_mutation_receipts_ndjson, load_graph_patch_receipts_ndjson,
-    load_graph_snapshot_contract_ndjson, verify_graph_mutation_landing,
-    verify_graph_mutation_ops_ndjson, verify_graph_receipt_ledger_files_ndjson,
-    verify_graph_receipt_ledgers_ndjson, GraphEdgeContract, GraphMutationOp, GraphMutationOpRow,
-    GraphMutationOpSetReceipt, GraphMutationReceipt, GraphMutationVerdict, GraphNodeContract,
-    GraphPatchError, GraphPatchPlan, GraphPatchReceipt, GraphReceiptLedgerReceipt,
-    GraphSnapshotContract, GraphSourceFile, GraphSourceSpan, GRAPH_JSON_SCHEMA_VERSION,
-    GRAPH_MUTATION_LEDGER_RECORD, GRAPH_MUTATION_OPSET_RECORD, GRAPH_MUTATION_RECEIPT_RECORD,
-    GRAPH_MUTATION_SCHEMA_VERSION, GRAPH_MUTATION_VERIFY_RECORD,
-};
-pub use crate::capability::execution::{
-    append_mcp_call_receipt_ndjson, append_process_effect_receipt_ndjson,
-    append_sandbox_process_receipt_ndjson, append_tool_effect_receipt_ndjson,
-    decode_mcp_call_receipt_ndjson, decode_process_effect_receipt_ndjson,
-    decode_sandbox_process_receipt_ndjson, decode_tool_effect_receipt_ndjson,
-    encode_mcp_call_receipt_ndjson, encode_process_effect_receipt_ndjson,
-    encode_sandbox_process_receipt_ndjson, encode_tool_effect_receipt_ndjson,
-    load_mcp_call_receipts_ndjson, load_process_effect_receipts_ndjson,
-    load_sandbox_process_receipts_ndjson, load_tool_effect_receipts_ndjson,
-    verify_mcp_call_receipts, verify_process_effect_receipts, verify_sandbox_process_receipts,
-    verify_tool_effect_receipts, DeterministicToolExecutor, Effect, LiveMcpCallExecutor,
-    LiveSandboxProcessExecutor, LiveSandboxToolExecutor, McpCallReceipt, McpCallRequest,
-    ProcessEffectReceipt, SandboxProcessReceipt, SandboxProcessRequest, ToolDecision,
-    ToolEffectKind, ToolEffectReceipt, ToolExecutionRecord, ToolKind, ToolReceipt, ToolRequest,
-    ToolSandboxError, MCP_CALL_RECEIPT_RECORD, MCP_CALL_RECEIPT_SCHEMA_VERSION,
-    PROCESS_EFFECT_RECEIPT_RECORD, PROCESS_EFFECT_RECEIPT_SCHEMA_VERSION,
-    SANDBOX_PROCESS_RECEIPT_RECORD, SANDBOX_PROCESS_RECEIPT_SCHEMA_VERSION,
-    TOOL_EFFECT_RECEIPT_RECORD, TOOL_EFFECT_RECEIPT_SCHEMA_VERSION,
-};
 pub use crate::capability::verification::{
     content_hash, verify_artifact_backed_semantics, verify_verification_proof_record_bindings,
     verify_verification_proof_record_order_ndjson, verify_verification_proof_record_replay,
@@ -226,6 +226,11 @@ pub use crate::service::supervisor::WorkspaceConfig;
 pub use crate::service::supervisor::{
     ActiveWorkerDto, ErrorDto as SupervisorErrorDto, HealthDto, NativeMcpSession, NativeMcpState,
     ReloadDto, RestartDto, SpawnDto, SpawnRequest, SupervisorState, WorkerProcess,
+};
+pub use structural_editor::op::{
+    AddEdge, AttrKey, CargoChange, CreateNode, DeleteNode, EdgeKind, MoveNode, NodeKind,
+    NodeLocator, OpBatch as StructuralOpBatch, Receipt, RemoveEdge, RenameSymbol, ReplaceNode,
+    ReplaceTarget, Rollback, SetAttr, StructuralOp, Verify, VerifyPredicate,
 };
 
 #[cfg(test)]

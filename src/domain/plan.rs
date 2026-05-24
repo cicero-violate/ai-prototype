@@ -276,6 +276,51 @@ pub fn ready_nodes_from_available_plan_state<'a>(
     }
 }
 
+/// Returns `Pending` nodes that are permanently blocked: every upstream dependency
+/// is terminal (Done/Failed/Skipped) and at least one is non-Done (Failed/Skipped).
+///
+/// These nodes can never become ready under normal scheduling. The supervisor uses
+/// this to cascade `Skipped` status and to detect plan exhaustion when pending nodes
+/// exist but none can ever run.
+pub fn blocked_pending_nodes(plan: &PlanDag) -> Vec<&PlanNode> {
+    let terminal_ids: HashSet<&str> = plan
+        .nodes
+        .iter()
+        .filter(|n| {
+            matches!(
+                n.status,
+                NodeStatus::Done | NodeStatus::Failed | NodeStatus::Skipped
+            )
+        })
+        .map(|n| n.id.as_str())
+        .collect();
+
+    let non_done_terminal_ids: HashSet<&str> = plan
+        .nodes
+        .iter()
+        .filter(|n| matches!(n.status, NodeStatus::Failed | NodeStatus::Skipped))
+        .map(|n| n.id.as_str())
+        .collect();
+
+    plan.nodes
+        .iter()
+        .filter(|node| {
+            if node.status != NodeStatus::Pending {
+                return false;
+            }
+            let upstreams: Vec<&str> = plan
+                .edges
+                .iter()
+                .filter(|e| e.to == node.id)
+                .map(|e| e.from.as_str())
+                .collect();
+            !upstreams.is_empty()
+                && upstreams.iter().all(|u| terminal_ids.contains(u))
+                && upstreams.iter().any(|u| non_done_terminal_ids.contains(*u))
+        })
+        .collect()
+}
+
 fn node_status_projection(status: &NodeStatus) -> u64 {
     match status {
         NodeStatus::Pending => PROJECTED_STATUS_PENDING,
@@ -752,5 +797,93 @@ mod tests {
         let ready = ready_nodes_from_plan_state(&plan);
 
         assert!(ready.is_empty());
+    }
+
+    #[test]
+    fn blocked_pending_nodes_detects_failed_upstream() {
+        let mut plan = PlanDag {
+            version: 1,
+            nodes: vec![node("a"), node("b"), node("c")],
+            edges: vec![edge("a", "b"), edge("b", "c")],
+            ..Default::default()
+        };
+        plan.nodes[0].status = NodeStatus::Failed;
+        // b: all upstreams terminal (a=Failed), at least one non-Done → blocked
+        // c: upstream b is still Pending → not blocked yet
+
+        let blocked = blocked_pending_nodes(&plan);
+
+        assert_eq!(
+            blocked.iter().map(|n| n.id.as_str()).collect::<Vec<_>>(),
+            vec!["b"]
+        );
+    }
+
+    #[test]
+    fn blocked_pending_nodes_skipped_upstream_also_blocks() {
+        let mut plan = PlanDag {
+            version: 1,
+            nodes: vec![node("a"), node("b")],
+            edges: vec![edge("a", "b")],
+            ..Default::default()
+        };
+        plan.nodes[0].status = NodeStatus::Skipped;
+
+        let blocked = blocked_pending_nodes(&plan);
+
+        assert_eq!(
+            blocked.iter().map(|n| n.id.as_str()).collect::<Vec<_>>(),
+            vec!["b"]
+        );
+    }
+
+    #[test]
+    fn blocked_pending_nodes_done_upstream_is_not_blocked() {
+        let mut plan = PlanDag {
+            version: 1,
+            nodes: vec![node("a"), node("b")],
+            edges: vec![edge("a", "b")],
+            ..Default::default()
+        };
+        plan.nodes[0].status = NodeStatus::Done;
+
+        let blocked = blocked_pending_nodes(&plan);
+
+        assert!(blocked.is_empty());
+    }
+
+    #[test]
+    fn blocked_pending_nodes_root_node_is_never_blocked() {
+        // A Pending root node (no upstreams) must never appear as blocked.
+        let plan = PlanDag {
+            version: 1,
+            nodes: vec![node("root")],
+            edges: vec![],
+            ..Default::default()
+        };
+
+        let blocked = blocked_pending_nodes(&plan);
+
+        assert!(blocked.is_empty());
+    }
+
+    #[test]
+    fn blocked_pending_nodes_partial_terminal_upstream_not_blocked() {
+        // b depends on a (Failed) and x (Running). x is not terminal → b is not yet blocked.
+        let mut plan = PlanDag {
+            version: 1,
+            nodes: vec![node("a"), node("x"), node("b")],
+            edges: vec![edge("a", "b"), edge("x", "b")],
+            ..Default::default()
+        };
+        plan.nodes[0].status = NodeStatus::Failed;
+        plan.nodes[1].status = NodeStatus::Running;
+
+        let blocked = blocked_pending_nodes(&plan);
+
+        assert!(
+            blocked.is_empty(),
+            "b has a Running upstream — not yet permanently blocked"
+        );
     }
 }

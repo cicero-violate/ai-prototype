@@ -18,13 +18,13 @@ use crate::kernel::{
 
 pub mod action_transcript;
 pub(crate) mod command_ledger;
-pub mod learning_transcript;
 pub(crate) mod diff;
 pub mod durable;
 pub mod event_bus;
 pub mod event_check;
 pub mod event_wire;
 pub mod introspection;
+pub mod learning_transcript;
 pub mod mailbox;
 pub mod mcp_transcript;
 pub(crate) mod recovery_policy;

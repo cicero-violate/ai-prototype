@@ -19,14 +19,14 @@ use crate::api::transport::{ApiTransportDisposition, ApiTransportFrame, ApiTrans
 use crate::capability::execution::{
     ActionCallRequest as McpCallRequest, ActionReceipt as McpCallReceipt,
 };
+use crate::capability::execution::{
+    Effect, SandboxProcessReceipt, SandboxProcessRequest, ToolEffectKind,
+};
 use crate::capability::observation::{
     ObservationCursor, ObservationIngressBatch, ObservationRecord,
 };
 use crate::capability::orchestration::{
     AgentCycleEvent, AgentCycleEventKind, ChildCompleteRecord, WaveRecord,
-};
-use crate::capability::execution::{
-    Effect, SandboxProcessReceipt, SandboxProcessRequest, ToolEffectKind,
 };
 use crate::capability::{CapabilityId, CapabilityRegistry, EvidenceSubmission, PacketEffect};
 use crate::kernel::CanonError;

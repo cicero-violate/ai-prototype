@@ -8,9 +8,9 @@ use crate::api::protocol::{
 use crate::capability::execution::{
     ActionCallRequest as McpCallRequest, ActionReceipt as McpCallReceipt,
 };
+use crate::capability::execution::{SandboxProcessReceipt, SandboxProcessRequest};
 use crate::capability::orchestration::{AgentCycleEvent, ChildCompleteRecord, WaveRecord};
 use crate::capability::planning::PlanPatchRecord;
-use crate::capability::execution::{SandboxProcessReceipt, SandboxProcessRequest};
 use crate::capability::{CapabilityId, CapabilityRegistry, EvidenceSubmission};
 use crate::kernel::{
     CapabilityRegistryProjection, Cause, Decision, EventKind, Evidence, Phase, RuntimeConfig,
