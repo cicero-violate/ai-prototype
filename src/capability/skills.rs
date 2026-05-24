@@ -320,11 +320,20 @@ mod tests {
 
     static COUNTER: AtomicU32 = AtomicU32::new(0);
 
-    fn scratch_dir() -> PathBuf {
-        let n = COUNTER.fetch_add(1, Ordering::Relaxed);
-        let dir = std::env::temp_dir().join(format!("ai-skills-test-{}-{n}", std::process::id()));
+    fn test_tmp_dir() -> PathBuf {
+        let dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../state/tmp");
         fs::create_dir_all(&dir).unwrap();
         dir
+    }
+
+    fn scratch_dir() -> (PathBuf, tempfile::TempDir) {
+        let n = COUNTER.fetch_add(1, Ordering::Relaxed);
+        let tmp = tempfile::Builder::new()
+            .prefix(&format!("ai-skills-test-{}-{n}-", std::process::id()))
+            .tempdir_in(test_tmp_dir())
+            .unwrap();
+        let dir = tmp.path().to_owned();
+        (dir, tmp)
     }
 
     fn write_skill(dir: &Path, name: &str, content: &str) {
@@ -368,7 +377,7 @@ mod tests {
 
     #[test]
     fn registry_loads_skill_from_markdown() {
-        let dir = scratch_dir();
+        let (dir, _tmp) = scratch_dir();
         write_skill(
             &dir,
             "fix-lint",
@@ -393,12 +402,11 @@ Apply the lint fix here.
             .strategies
             .contains(&DevelopmentStrategyKind::FixConfigLintPolicy));
         assert!(skill.prompt.contains("Apply the lint fix here."));
-        let _ = fs::remove_dir_all(&dir);
     }
 
     #[test]
     fn registry_select_for_returns_matching_skills() {
-        let dir = scratch_dir();
+        let (dir, _tmp) = scratch_dir();
         write_skill(
             &dir,
             "a",
@@ -418,12 +426,11 @@ Apply the lint fix here.
             .unwrap();
         assert_eq!(matched.len(), 1);
         assert_eq!(matched[0].name, "a");
-        let _ = fs::remove_dir_all(&dir);
     }
 
     #[test]
     fn registry_invalidate_forces_reload() {
-        let dir = scratch_dir();
+        let (dir, _tmp) = scratch_dir();
         write_skill(&dir, "s", "---\nname: v1\n---\nVersion 1.\n");
         let reg = SkillRegistry::new(dir.clone());
         let first = reg.load("s").unwrap();
@@ -436,18 +443,16 @@ Apply the lint fix here.
         reg.invalidate("s");
         let reloaded = reg.load("s").unwrap();
         assert_eq!(reloaded.name, "v2"); // fresh load
-        let _ = fs::remove_dir_all(&dir);
     }
 
     #[test]
     fn registry_detects_include_cycle() {
-        let dir = scratch_dir();
+        let (dir, _tmp) = scratch_dir();
         write_skill(&dir, "a", "---\nincludes:\n  - b\n---\nA body.\n");
         write_skill(&dir, "b", "---\nincludes:\n  - a\n---\nB body.\n");
         let reg = SkillRegistry::new(dir.clone());
         let err = reg.load("a").unwrap_err();
         assert!(err.contains("cycle"), "{err}");
-        let _ = fs::remove_dir_all(&dir);
     }
 
     #[test]

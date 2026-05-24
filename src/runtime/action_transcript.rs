@@ -292,8 +292,17 @@ fn string_hash(value: &str) -> u64 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    fn unique_workspace() -> PathBuf {
-        std::env::temp_dir().join(format!("canon-action-transcript-test-{}", Uuid::new_v4()))
+    fn unique_workspace() -> (PathBuf, tempfile::TempDir) {
+        let tmp = tempfile::Builder::new()
+            .prefix("canon-action-transcript-test-")
+            .tempdir_in({
+                let d = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../state/tmp");
+                std::fs::create_dir_all(&d).unwrap();
+                d
+            })
+            .unwrap();
+        let path = tmp.path().to_path_buf();
+        (path, tmp)
     }
 
     fn receipt_facts(response: &str) -> ActionTranscriptReceiptFacts {
@@ -309,7 +318,7 @@ mod tests {
 
     #[test]
     fn action_transcript_appends_and_replays_hash_chain() {
-        let workspace = unique_workspace();
+        let (workspace, _tmp) = unique_workspace();
         let response = r#"{"content":[{"type":"text","text":"hello"}],"isError":false}"#;
 
         let record = append_action_transcript(
@@ -330,12 +339,11 @@ mod tests {
         );
         assert_eq!(records[0].response_json, response);
 
-        let _ = fs::remove_dir_all(workspace);
     }
 
     #[test]
     fn action_transcript_rejects_tampered_hash_chain() {
-        let workspace = unique_workspace();
+        let (workspace, _tmp) = unique_workspace();
         let response = r#"{"content":[{"type":"text","text":"hello"}],"isError":false}"#;
         append_action_transcript(
             &workspace,
@@ -353,12 +361,11 @@ mod tests {
         fs::write(&path, tampered).expect("write transcript");
 
         assert!(replay_action_transcripts(&workspace).is_err());
-        let _ = fs::remove_dir_all(workspace);
     }
 
     #[test]
     fn action_transcript_append_quarantines_invalid_existing_chain() {
-        let workspace = unique_workspace();
+        let (workspace, _tmp) = unique_workspace();
         let response =
             r#"{\"content\":[{\"type\":\"text\",\"text\":\"hello\"}],\"isError\":false}"#;
         append_action_transcript(
@@ -394,6 +401,5 @@ mod tests {
             .filter(|entry| entry.file_name().to_string_lossy().contains("invalid-"))
             .count();
         assert_eq!(quarantine_count, 1);
-        let _ = fs::remove_dir_all(workspace);
     }
 }

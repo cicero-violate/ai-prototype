@@ -283,6 +283,22 @@ pub fn run() {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::path::PathBuf;
+
+    fn test_tmp_dir() -> PathBuf {
+        let dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../state/tmp");
+        std::fs::create_dir_all(&dir).unwrap();
+        dir.canonicalize().unwrap()
+    }
+
+    fn test_tmp_dir_path(prefix: &str) -> (PathBuf, tempfile::TempDir) {
+        let tmp = tempfile::Builder::new()
+            .prefix(prefix)
+            .tempdir_in(test_tmp_dir())
+            .unwrap();
+        let path = tmp.path().to_owned();
+        (path, tmp)
+    }
 
     fn tamper_first_ollama_receipt_field(
         source: &std::path::Path,
@@ -520,18 +536,14 @@ mod tests {
         let promotion = PolicyPromotion::from_tlog(&tlog, 1).expect("test setup should succeed");
         assert!(promotion.is_valid());
 
-        let source_path = std::env::temp_dir().join(format!(
-            "ai-policy-source-helper-{}-{}.ndjson",
-            std::process::id(),
-            promotion.source_seq
-        ));
-        let feedback_path = std::env::temp_dir().join(format!(
-            "ai-policy-feedback-helper-{}-{}.ndjson",
-            std::process::id(),
-            promotion.promoted_policy_hash
-        ));
-        std::fs::remove_file(&source_path).ok();
-        std::fs::remove_file(&feedback_path).ok();
+        let (_src_tmp, source_path) = {
+            let t = tempfile::Builder::new().prefix("ai-policy-source-helper-").tempdir_in(test_tmp_dir()).unwrap();
+            let p = t.path().join("data.ndjson"); (t, p)
+        };
+        let (_fb_tmp, feedback_path) = {
+            let t = tempfile::Builder::new().prefix("ai-policy-feedback-helper-").tempdir_in(test_tmp_dir()).unwrap();
+            let p = t.path().join("data.ndjson"); (t, p)
+        };
 
         let mut source_store = PolicyStore::default();
         let source_entry = *source_store
@@ -557,21 +569,14 @@ mod tests {
         assert_eq!(feedback_store.entries(), &[feedback_entry]);
         assert_eq!(loaded_feedback.entries(), &[feedback_entry]);
 
-        std::fs::remove_file(&source_path).ok();
-        std::fs::remove_file(&feedback_path).ok();
-
-        let invalid_source_path = std::env::temp_dir().join(format!(
-            "ai-policy-source-helper-invalid-{}-{}.ndjson",
-            std::process::id(),
-            promotion.source_seq
-        ));
-        let invalid_feedback_path = std::env::temp_dir().join(format!(
-            "ai-policy-feedback-helper-invalid-{}-{}.ndjson",
-            std::process::id(),
-            promotion.promoted_policy_hash
-        ));
-        std::fs::remove_file(&invalid_source_path).ok();
-        std::fs::remove_file(&invalid_feedback_path).ok();
+        let (_inv_src_tmp, invalid_source_path) = {
+            let t = tempfile::Builder::new().prefix("ai-policy-source-helper-invalid-").tempdir_in(test_tmp_dir()).unwrap();
+            let p = t.path().join("data.ndjson"); (t, p)
+        };
+        let (_inv_fb_tmp, invalid_feedback_path) = {
+            let t = tempfile::Builder::new().prefix("ai-policy-feedback-helper-invalid-").tempdir_in(test_tmp_dir()).unwrap();
+            let p = t.path().join("data.ndjson"); (t, p)
+        };
 
         let mut invalid_promotion = promotion;
         invalid_promotion.source_seq = 0;
@@ -602,19 +607,16 @@ mod tests {
         let (_state, tlog) = run_until_done(State::ready(), RuntimeConfig::default())
             .expect("test setup should succeed");
         let promotion = PolicyPromotion::from_tlog(&tlog, 1).expect("test setup should succeed");
-        let path = std::env::temp_dir().join(format!(
-            "ai-policy-store-{}-{}.ndjson",
-            std::process::id(),
-            promotion.source_seq
-        ));
-        std::fs::remove_file(&path).ok();
+        let (_path_tmp, path) = {
+            let t = tempfile::Builder::new().prefix("ai-policy-store-").tempdir_in(test_tmp_dir()).unwrap();
+            let p = t.path().join("data.ndjson"); (t, p)
+        };
 
         let mut store = PolicyStore::default();
         let entry = *store
             .promote_durable(&path, promotion)
             .expect("test setup should succeed");
         let loaded = PolicyStore::load_ndjson(&path).expect("test setup should succeed");
-        std::fs::remove_file(&path).ok();
 
         assert_eq!(loaded.entries(), &[entry]);
         assert_eq!(loaded.latest_version(), 1);
@@ -720,12 +722,10 @@ mod tests {
             1
         );
 
-        let path = std::env::temp_dir().join(format!(
-            "ai-policy-proof-spine-{}-{}.ndjson",
-            std::process::id(),
-            proof_record.record_hash
-        ));
-        std::fs::remove_file(&path).ok();
+        let (_path_tmp, path) = {
+            let t = tempfile::Builder::new().prefix("ai-policy-proof-spine-").tempdir_in(test_tmp_dir()).unwrap();
+            let p = t.path().join("data.ndjson"); (t, p)
+        };
         write_tlog_ndjson(&path, &tlog).expect("test setup should succeed");
         crate::capability::verification::append_verification_proof_record_ndjson(
             &path,
@@ -737,7 +737,6 @@ mod tests {
                 .expect("test value should be present"),
             1
         );
-        std::fs::remove_file(&path).ok();
     }
 
     #[test]
@@ -953,11 +952,10 @@ mod tests {
 
     #[test]
     fn observation_cursor_loader_rejects_latest_corrupt_row() {
-        let cursor_path = std::env::temp_dir().join(format!(
-            "ai-observation-corrupt-cursor-{}.ndjson",
-            std::process::id()
-        ));
-        std::fs::remove_file(&cursor_path).ok();
+        let (_cursor_tmp, cursor_path) = {
+            let t = tempfile::Builder::new().prefix("ai-observation-corrupt-cursor-").tempdir_in(test_tmp_dir()).unwrap();
+            let p = t.path().join("data.ndjson"); (t, p)
+        };
         std::fs::write(
             &cursor_path,
             "[1,190709761,7,2,12345]\n[1,190709761,7,3,0]\n",
@@ -967,17 +965,16 @@ mod tests {
         let error = load_observation_cursor_ndjson(&cursor_path).expect_err("test should fail");
 
         assert_eq!(error.kind(), std::io::ErrorKind::InvalidData);
-        std::fs::remove_file(&cursor_path).ok();
     }
 
     #[test]
     fn observation_cursor_write_replaces_existing_cursor_atomically() {
-        let stem = std::env::temp_dir().join(format!(
-            "ai-observation-atomic-cursor-{}",
-            std::process::id()
-        ));
+        let _stem_tmp = tempfile::Builder::new()
+            .prefix("ai-observation-atomic-cursor-")
+            .tempdir_in(test_tmp_dir())
+            .unwrap();
+        let stem = _stem_tmp.path().join("data");
         let cursor_path = stem.with_extension("cursor.ndjson");
-        std::fs::remove_file(&cursor_path).ok();
 
         let first = ObservationCursor {
             source_id: 11,
@@ -1004,18 +1001,17 @@ mod tests {
                 .count(),
             1
         );
-
-        std::fs::remove_file(&cursor_path).ok();
     }
 
     #[test]
     fn bounded_line_observation_source_persists_cursor_and_applies_backpressure() {
-        let stem =
-            std::env::temp_dir().join(format!("ai-observation-ingress-{}", std::process::id()));
+        let _stem_tmp = tempfile::Builder::new()
+            .prefix("ai-observation-ingress-")
+            .tempdir_in(test_tmp_dir())
+            .unwrap();
+        let stem = _stem_tmp.path().join("data");
         let source_path = stem.with_extension("log");
         let cursor_path = stem.with_extension("cursor.ndjson");
-        std::fs::remove_file(&source_path).ok();
-        std::fs::remove_file(&cursor_path).ok();
         std::fs::write(&source_path, b"alpha\nbeta\ngamma\n").expect("test setup should succeed");
 
         let pressured = BoundedLineObservationSource::new(
@@ -1063,19 +1059,17 @@ mod tests {
         let finished = source.read_batch().expect("test setup should succeed");
         assert_eq!(finished.decision, ObservationIngressDecision::Empty);
         assert!(finished.records.is_empty());
-
-        std::fs::remove_file(&source_path).ok();
-        std::fs::remove_file(&cursor_path).ok();
     }
 
     #[test]
     fn observation_ingress_batch_routes_through_api_to_invariant_gate() {
-        let stem =
-            std::env::temp_dir().join(format!("ai-observation-api-ingress-{}", std::process::id()));
+        let _stem_tmp = tempfile::Builder::new()
+            .prefix("ai-observation-api-ingress-")
+            .tempdir_in(test_tmp_dir())
+            .unwrap();
+        let stem = _stem_tmp.path().join("data");
         let source_path = stem.with_extension("log");
         let cursor_path = stem.with_extension("cursor.ndjson");
-        std::fs::remove_file(&source_path).ok();
-        std::fs::remove_file(&cursor_path).ok();
         std::fs::write(&source_path, b"external-alpha\nexternal-beta\n")
             .expect("test setup should succeed");
 
@@ -1119,8 +1113,6 @@ mod tests {
         assert_eq!(ledger.len(), 1);
         verify_tlog(&tlog).expect("test setup should succeed");
 
-        std::fs::remove_file(&source_path).ok();
-        std::fs::remove_file(&cursor_path).ok();
     }
 
     #[test]
@@ -1446,12 +1438,10 @@ mod tests {
             decode_ollama_llm_effect_receipt_ndjson(&encoded).expect("test setup should succeed");
         assert_eq!(decoded, receipt);
 
-        let path = std::env::temp_dir().join(format!(
-            "ai-ollama-mixed-tlog-{}-{}.ndjson",
-            std::process::id(),
-            receipt.receipt_hash
-        ));
-        std::fs::remove_file(&path).ok();
+        let (_path_tmp, path) = {
+            let t = tempfile::Builder::new().prefix("ai-ollama-mixed-tlog-").tempdir_in(test_tmp_dir()).unwrap();
+            let p = t.path().join("data.ndjson"); (t, p)
+        };
         write_tlog_ndjson(&path, &tlog).expect("test setup should succeed");
         append_ollama_llm_effect_receipt_ndjson(&path, &receipt)
             .expect("test setup should succeed");
@@ -1459,7 +1449,6 @@ mod tests {
         let loaded_tlog = load_tlog_ndjson(&path).expect("test setup should succeed");
         let loaded_receipts =
             load_ollama_llm_effect_receipts_ndjson(&path).expect("test setup should succeed");
-        std::fs::remove_file(&path).ok();
 
         assert_eq!(loaded_tlog, tlog);
         assert_eq!(loaded_receipts, vec![receipt]);
@@ -1667,12 +1656,10 @@ mod tests {
             decode_ollama_judgment_proof_event_ndjson(&encoded).expect("test setup should succeed");
         assert_eq!(decoded, proof_event);
 
-        let path = std::env::temp_dir().join(format!(
-            "ai-ollama-proof-tlog-{}-{}.ndjson",
-            std::process::id(),
-            proof_event.proof_hash
-        ));
-        std::fs::remove_file(&path).ok();
+        let (_path_tmp, path) = {
+            let t = tempfile::Builder::new().prefix("ai-ollama-proof-tlog-").tempdir_in(test_tmp_dir()).unwrap();
+            let p = t.path().join("data.ndjson"); (t, p)
+        };
         write_tlog_ndjson(&path, &tlog).expect("test setup should succeed");
         append_ollama_llm_effect_receipt_ndjson(&path, &receipt)
             .expect("test setup should succeed");
@@ -1684,7 +1671,6 @@ mod tests {
             load_ollama_llm_effect_receipts_ndjson(&path).expect("test setup should succeed");
         let loaded_proofs =
             load_ollama_judgment_proof_events_ndjson(&path).expect("test setup should succeed");
-        std::fs::remove_file(&path).ok();
 
         assert_eq!(loaded_tlog, tlog);
         assert_eq!(loaded_receipts, vec![receipt]);
@@ -2265,18 +2251,15 @@ mod tests {
         )
         .expect("test setup should succeed");
 
-        let base = std::env::temp_dir().join(format!(
-            "ai-generic-proof-replay-{}-{}",
-            std::process::id(),
-            proof_record.record_hash
-        ));
+        let _base_dir = tempfile::Builder::new()
+            .prefix("ai-generic-proof-replay-")
+            .tempdir_in(test_tmp_dir())
+            .unwrap();
+        let base = _base_dir.path().join("data");
         let valid_path = base.with_extension("valid.ndjson");
         let missing_path = base.with_extension("missing.ndjson");
         let duplicate_path = base.with_extension("duplicate.ndjson");
         let displaced_path = base.with_extension("displaced.ndjson");
-        for path in [&valid_path, &missing_path, &duplicate_path, &displaced_path] {
-            std::fs::remove_file(path).ok();
-        }
 
         write_tlog_ndjson(&valid_path, &tlog).expect("test setup should succeed");
         crate::capability::verification::append_verification_proof_record_ndjson(
@@ -2341,9 +2324,6 @@ mod tests {
             verify_verification_proof_record_replay_ndjson(&displaced_path, &[binding]).is_err()
         );
 
-        for path in [&valid_path, &missing_path, &duplicate_path, &displaced_path] {
-            std::fs::remove_file(path).ok();
-        }
     }
 
     #[test]
@@ -2568,18 +2548,12 @@ mod tests {
         )
         .expect("test setup should succeed");
 
-        let valid_path = std::env::temp_dir().join(format!(
-            "ai-ollama-proof-order-valid-{}-{}.ndjson",
-            std::process::id(),
-            proof_event.proof_hash
-        ));
-        let displaced_path = valid_path.with_file_name(format!(
-            "ai-ollama-proof-order-displaced-{}-{}.ndjson",
-            std::process::id(),
-            proof_event.proof_hash
-        ));
-        std::fs::remove_file(&valid_path).ok();
-        std::fs::remove_file(&displaced_path).ok();
+        let _order_tmp = tempfile::Builder::new()
+            .prefix("ai-ollama-proof-order-")
+            .tempdir_in(test_tmp_dir())
+            .unwrap();
+        let valid_path = _order_tmp.path().join("valid.ndjson");
+        let displaced_path = _order_tmp.path().join("displaced.ndjson");
 
         write_tlog_ndjson(&valid_path, &tlog).expect("test setup should succeed");
         append_ollama_llm_effect_receipt_ndjson(&valid_path, &receipt)
@@ -2620,8 +2594,6 @@ mod tests {
             Err(OllamaError::InvalidReplay)
         ));
 
-        std::fs::remove_file(&valid_path).ok();
-        std::fs::remove_file(&displaced_path).ok();
     }
 
     #[test]
@@ -2840,12 +2812,11 @@ mod tests {
             .receipt_for_configured_event(client.config(), envelope.command_hash, &persisted_event)
             .expect("test setup should succeed");
 
-        let path = std::env::temp_dir().join(format!(
-            "ollama_judgment-{}-{}.tlog.ndjson",
-            std::process::id(),
-            receipt.receipt_hash
-        ));
-        std::fs::remove_file(&path).ok();
+        let _path_tmp = tempfile::Builder::new()
+            .prefix("ollama-judgment-")
+            .tempdir_in(test_tmp_dir())
+            .unwrap();
+        let path = _path_tmp.path().join("tlog.ndjson");
 
         write_tlog_ndjson(&path, &tlog).expect("test setup should succeed");
         append_ollama_llm_effect_receipt_ndjson(&path, &receipt)
@@ -2874,12 +2845,9 @@ mod tests {
             ("proof_hash", 23usize),
             ("receipt_hash", 24usize),
         ] {
-            let tampered_path = path.with_file_name(format!(
-                "ollama_judgment-{}-{}-{field_name}.tampered.tlog.ndjson",
-                std::process::id(),
-                receipt.receipt_hash
+            let tampered_path = _path_tmp.path().join(format!(
+                "{field_name}.tampered.tlog.ndjson"
             ));
-            std::fs::remove_file(&tampered_path).ok();
             tamper_first_ollama_receipt_field(&path, &tampered_path, field_index);
             assert!(
                 matches!(
@@ -2888,10 +2856,8 @@ mod tests {
                 ),
                 "field {field_name} tamper should be rejected"
             );
-            std::fs::remove_file(&tampered_path).ok();
         }
 
-        std::fs::remove_file(&path).ok();
     }
 
     #[test]
@@ -2905,12 +2871,10 @@ mod tests {
         assert!(promotion.completion_seq >= promotion.eval_seq);
         assert_ne!(promotion.promoted_policy_hash, 0);
 
-        let path = std::env::temp_dir().join(format!(
-            "ai-policy-feedback-{}-{}.ndjson",
-            std::process::id(),
-            promotion.promoted_policy_hash
-        ));
-        std::fs::remove_file(&path).ok();
+        let (_path_tmp, path) = {
+            let t = tempfile::Builder::new().prefix("ai-policy-feedback-").tempdir_in(test_tmp_dir()).unwrap();
+            let p = t.path().join("data.ndjson"); (t, p)
+        };
 
         let mut store = PolicyStore::default();
         let empty_fingerprint = store.fingerprint();
@@ -2918,7 +2882,6 @@ mod tests {
             .promote_feedback_durable(&path, promotion.clone())
             .expect("test setup should succeed");
         let loaded = PolicyStore::load_ndjson(&path).expect("test setup should succeed");
-        std::fs::remove_file(&path).ok();
 
         assert_eq!(entry.key, POLICY_FEEDBACK_HASH);
         assert_eq!(entry.value, promotion.promoted_policy_hash);
@@ -2985,12 +2948,10 @@ mod tests {
         let (_state, tlog) = run_until_done(State::ready(), RuntimeConfig::default())
             .expect("test setup should succeed");
         let promotion = PolicyPromotion::from_tlog(&tlog, 1).expect("test setup should succeed");
-        let path = std::env::temp_dir().join(format!(
-            "ai-distill-export-{}-{}.jsonl",
-            std::process::id(),
-            promotion.promoted_policy_hash
-        ));
-        std::fs::remove_file(&path).ok();
+        let (_path_tmp, path) = {
+            let t = tempfile::Builder::new().prefix("ai-distill-export-").tempdir_in(test_tmp_dir()).unwrap();
+            let p = t.path().join("data.jsonl"); (t, p)
+        };
 
         let receipt = export_verified_distillation_row(
             &tlog,
@@ -3008,7 +2969,6 @@ mod tests {
         )
         .expect("test setup should succeed");
         let output = std::fs::read_to_string(&path).expect("test setup should succeed");
-        std::fs::remove_file(&path).ok();
 
         assert_eq!(receipt.schema_version, DISTILLATION_ROW_SCHEMA_VERSION);
         assert_eq!(receipt.source_event, promotion.source_seq);
@@ -3028,12 +2988,10 @@ mod tests {
         let (_state, tlog) = run_until_done(State::ready(), RuntimeConfig::default())
             .expect("test setup should succeed");
         let promotion = PolicyPromotion::from_tlog(&tlog, 1).expect("test setup should succeed");
-        let path = std::env::temp_dir().join(format!(
-            "ai-distill-export-reject-{}-{}.jsonl",
-            std::process::id(),
-            promotion.promoted_policy_hash
-        ));
-        std::fs::remove_file(&path).ok();
+        let (_path_tmp, path) = {
+            let t = tempfile::Builder::new().prefix("ai-distill-export-reject-").tempdir_in(test_tmp_dir()).unwrap();
+            let p = t.path().join("data.jsonl"); (t, p)
+        };
 
         let valid_input = DistillationExportInput {
             promoted_policy_version: 1,
@@ -3876,12 +3834,7 @@ mod tests {
 
     #[test]
     fn live_sandbox_tooling_writes_artifact_and_durable_receipt_replays() {
-        let sandbox_root = std::env::temp_dir().join(format!(
-            "canon-live-tool-{}-{}",
-            std::process::id(),
-            0x5eed_u64
-        ));
-        let _ = std::fs::remove_dir_all(&sandbox_root);
+        let (sandbox_root, _sandbox_guard) = test_tmp_dir_path("canon-live-tool-");
         let receipt_path = sandbox_root.join("tool_effect_receipts.ndjson");
 
         let mut state = State {
@@ -3950,17 +3903,11 @@ mod tests {
         );
         verify_tlog(&tlog).expect("test setup should succeed");
 
-        let _ = std::fs::remove_dir_all(&sandbox_root);
     }
 
     #[test]
     fn live_sandbox_process_runner_records_and_replays_receipt() {
-        let sandbox_root = std::env::temp_dir().join(format!(
-            "canon-live-process-{}-{}",
-            std::process::id(),
-            0x71e5_u64
-        ));
-        let _ = std::fs::remove_dir_all(&sandbox_root);
+        let (sandbox_root, _sandbox_guard) = test_tmp_dir_path("canon-live-process-");
         let receipt_path = sandbox_root.join("process_receipts.ndjson");
 
         let executor = LiveSandboxProcessExecutor::new(&sandbox_root)
@@ -4004,17 +3951,11 @@ mod tests {
             receipt
         );
 
-        let _ = std::fs::remove_dir_all(&sandbox_root);
     }
 
     #[test]
     fn process_receipt_enters_tlog_as_process_effect_without_artifact_leakage() {
-        let sandbox_root = std::env::temp_dir().join(format!(
-            "canon-live-process-effect-{}-{}",
-            std::process::id(),
-            0x9e11_u64
-        ));
-        let _ = std::fs::remove_dir_all(&sandbox_root);
+        let (sandbox_root, _sandbox_guard) = test_tmp_dir_path("canon-live-process-effect-");
         let receipt_path = sandbox_root.join("process_effect_receipts.ndjson");
 
         let executor = LiveSandboxProcessExecutor::new(&sandbox_root)
@@ -4121,17 +4062,11 @@ mod tests {
         );
         verify_tlog(&tlog).expect("test setup should succeed");
 
-        let _ = std::fs::remove_dir_all(&sandbox_root);
     }
 
     #[test]
     fn api_rejects_unauthorized_process_receipt_without_mutation() {
-        let sandbox_root = std::env::temp_dir().join(format!(
-            "canon-unauthorized-process-receipt-{}-{}",
-            std::process::id(),
-            0xa011_u64
-        ));
-        let _ = std::fs::remove_dir_all(&sandbox_root);
+        let (sandbox_root, _sandbox_guard) = test_tmp_dir_path("canon-unauthorized-process-receipt-");
 
         let executor = LiveSandboxProcessExecutor::new(&sandbox_root)
             .with_allowed_command("/usr/bin/printf")
@@ -4165,17 +4100,11 @@ mod tests {
         assert_eq!(state, before);
         assert!(tlog.is_empty());
 
-        let _ = std::fs::remove_dir_all(&sandbox_root);
     }
 
     #[test]
     fn api_rejects_mismatched_process_authorization_without_mutation() {
-        let sandbox_root = std::env::temp_dir().join(format!(
-            "canon-mismatched-process-auth-{}-{}",
-            std::process::id(),
-            0xa012_u64
-        ));
-        let _ = std::fs::remove_dir_all(&sandbox_root);
+        let (sandbox_root, _sandbox_guard) = test_tmp_dir_path("canon-mismatched-process-auth-");
 
         let executor = LiveSandboxProcessExecutor::new(&sandbox_root)
             .with_allowed_command("/usr/bin/printf")
@@ -4234,7 +4163,6 @@ mod tests {
         assert_eq!(state, before);
         assert_eq!(tlog, before_tlog);
 
-        let _ = std::fs::remove_dir_all(&sandbox_root);
     }
 
     #[test]
@@ -4404,12 +4332,7 @@ mod tests {
 
     #[test]
     fn api_rejects_duplicate_process_receipt_batch_atomically() {
-        let sandbox_root = std::env::temp_dir().join(format!(
-            "canon-duplicate-process-batch-{}-{}",
-            std::process::id(),
-            0xd00d_u64
-        ));
-        let _ = std::fs::remove_dir_all(&sandbox_root);
+        let (sandbox_root, _sandbox_guard) = test_tmp_dir_path("canon-duplicate-process-batch-");
 
         let executor = LiveSandboxProcessExecutor::new(&sandbox_root)
             .with_allowed_command("/usr/bin/printf")
@@ -4443,17 +4366,11 @@ mod tests {
         assert_eq!(state, before);
         assert!(tlog.is_empty());
 
-        let _ = std::fs::remove_dir_all(&sandbox_root);
     }
 
     #[test]
     fn api_rejects_oversized_process_receipt_batch_atomically() {
-        let sandbox_root = std::env::temp_dir().join(format!(
-            "canon-oversized-process-batch-{}-{}",
-            std::process::id(),
-            0xbad_u64
-        ));
-        let _ = std::fs::remove_dir_all(&sandbox_root);
+        let (sandbox_root, _sandbox_guard) = test_tmp_dir_path("canon-oversized-process-batch-");
 
         let executor = LiveSandboxProcessExecutor::new(&sandbox_root)
             .with_allowed_command("/usr/bin/printf")
@@ -4493,17 +4410,11 @@ mod tests {
         assert_eq!(state, before);
         assert!(tlog.is_empty());
 
-        let _ = std::fs::remove_dir_all(&sandbox_root);
     }
 
     #[test]
     fn live_sandbox_process_runner_denies_unlisted_command() {
-        let sandbox_root = std::env::temp_dir().join(format!(
-            "canon-live-process-deny-{}-{}",
-            std::process::id(),
-            0xdec1_u64
-        ));
-        let _ = std::fs::remove_dir_all(&sandbox_root);
+        let (sandbox_root, _sandbox_guard) = test_tmp_dir_path("canon-live-process-deny-");
 
         let executor =
             LiveSandboxProcessExecutor::new(&sandbox_root).with_allowed_command("printf");
@@ -4513,7 +4424,6 @@ mod tests {
             Err(ToolSandboxError::CommandDenied)
         );
 
-        let _ = std::fs::remove_dir_all(&sandbox_root);
     }
 
     #[test]
@@ -4915,11 +4825,10 @@ mod tests {
     #[test]
     fn artifact_backed_semantic_verification_accepts_source_patch_file() {
         let artifact = b"diff --git a/src/lib.rs b/src/lib.rs\n+semantic verification profile\n";
-        let path = std::env::temp_dir().join(format!(
-            "ai-artifact-semantic-source-patch-{}-{}.patch",
-            std::process::id(),
-            content_hash(artifact)
-        ));
+        let (_path_tmp, path) = {
+            let t = tempfile::Builder::new().prefix("ai-artifact-semantic-source-patch-").tempdir_in(test_tmp_dir()).unwrap();
+            let p = t.path().join("data.patch"); (t, p)
+        };
         std::fs::write(&path, artifact).expect("test setup should succeed");
 
         let profile = ArtifactBackedSemanticProfile::new(
@@ -4936,18 +4845,15 @@ mod tests {
         assert_eq!(receipt.observed_content_hash, profile.expected_content_hash);
         assert_eq!(receipt.observed_bytes, profile.expected_bytes);
         assert!(receipt.is_valid());
-        std::fs::remove_file(path).ok();
     }
 
     #[test]
     fn artifact_backed_semantic_verification_rejects_missing_file() {
         let artifact = b"TLOG event row";
-        let path = std::env::temp_dir().join(format!(
-            "ai-missing-artifact-semantic-{}-{}.ndjson",
-            std::process::id(),
-            content_hash(artifact)
-        ));
-        std::fs::remove_file(&path).ok();
+        let (_path_tmp, path) = {
+            let t = tempfile::Builder::new().prefix("ai-missing-artifact-semantic-").tempdir_in(test_tmp_dir()).unwrap();
+            let p = t.path().join("data.ndjson"); (t, p)
+        };
 
         let profile = ArtifactBackedSemanticProfile::new(
             ArtifactVerificationProfileKind::TLogNdjson,
@@ -4969,11 +4875,10 @@ mod tests {
         let expected =
             b"distill instruction input_state action output score proof_hash source_event";
         let actual = b"unrelated row without required token";
-        let path = std::env::temp_dir().join(format!(
-            "ai-artifact-semantic-distill-tamper-{}-{}.jsonl",
-            std::process::id(),
-            content_hash(expected)
-        ));
+        let (_path_tmp, path) = {
+            let t = tempfile::Builder::new().prefix("ai-artifact-semantic-distill-tamper-").tempdir_in(test_tmp_dir()).unwrap();
+            let p = t.path().join("data.jsonl"); (t, p)
+        };
         std::fs::write(&path, actual).expect("test setup should succeed");
 
         let profile = ArtifactBackedSemanticProfile::new(
@@ -4990,7 +4895,6 @@ mod tests {
         assert_ne!(receipt.observed_content_hash, profile.expected_content_hash);
         assert_ne!(receipt.observed_bytes, profile.expected_bytes);
         assert_ne!(receipt.defect_mask, 0);
-        std::fs::remove_file(path).ok();
     }
 
     #[test]
@@ -5207,16 +5111,14 @@ mod tests {
         let initial = State::default();
         let (state, tlog) =
             run_until_done(initial, RuntimeConfig::default()).expect("test setup should succeed");
-        let path = std::env::temp_dir().join(format!(
-            "ai-tlog-roundtrip-{}-{}.ndjson",
-            std::process::id(),
-            tlog.len()
-        ));
+        let (_path_tmp, path) = {
+            let t = tempfile::Builder::new().prefix("ai-tlog-roundtrip-").tempdir_in(test_tmp_dir()).unwrap();
+            let p = t.path().join("data.ndjson"); (t, p)
+        };
 
         write_tlog_ndjson(&path, &tlog).expect("test setup should succeed");
         let loaded = load_tlog_ndjson(&path).expect("test setup should succeed");
         let replayed = replay_tlog_ndjson(initial, &path).expect("test setup should succeed");
-        std::fs::remove_file(&path).ok();
 
         assert_eq!(loaded, tlog);
         assert_eq!(replayed, state);
@@ -5224,9 +5126,10 @@ mod tests {
 
     #[test]
     fn durable_runner_resumes_from_disk_tlog() {
-        let path =
-            std::env::temp_dir().join(format!("ai-tlog-resume-{}.ndjson", std::process::id()));
-        std::fs::remove_file(&path).ok();
+        let (_path_tmp, path) = {
+            let t = tempfile::Builder::new().prefix("ai-tlog-resume-").tempdir_in(test_tmp_dir()).unwrap();
+            let p = t.path().join("data.ndjson"); (t, p)
+        };
 
         let mut partial_state = State::default();
         let mut partial_tlog = Vec::new();
@@ -5245,7 +5148,6 @@ mod tests {
                 .expect("test setup should succeed");
         let replayed =
             replay_tlog_ndjson(State::default(), &path).expect("test setup should succeed");
-        std::fs::remove_file(&path).ok();
 
         assert!(resumed_state.is_success());
         assert!(resumed_tlog.len() > partial_tlog.len());
@@ -5254,11 +5156,10 @@ mod tests {
 
     #[test]
     fn durable_resume_reconstructs_command_ledger_from_tlog() {
-        let path = std::env::temp_dir().join(format!(
-            "ai-tlog-ledger-resume-{}.ndjson",
-            std::process::id()
-        ));
-        std::fs::remove_file(&path).ok();
+        let (_path_tmp, path) = {
+            let t = tempfile::Builder::new().prefix("ai-tlog-ledger-resume-").tempdir_in(test_tmp_dir()).unwrap();
+            let p = t.path().join("data.ndjson"); (t, p)
+        };
 
         let cfg = RuntimeConfig::default();
         let mut state = State::default();
@@ -5386,15 +5287,13 @@ mod tests {
         let initial = State::default();
         let (state, tlog) =
             run_until_done(initial, RuntimeConfig::default()).expect("test setup should succeed");
-        let path = std::env::temp_dir().join(format!(
-            "ai-durable-report-{}-{}.ndjson",
-            std::process::id(),
-            tlog.len()
-        ));
+        let (_path_tmp, path) = {
+            let t = tempfile::Builder::new().prefix("ai-durable-report-").tempdir_in(test_tmp_dir()).unwrap();
+            let p = t.path().join("data.ndjson"); (t, p)
+        };
 
         write_tlog_ndjson(&path, &tlog).expect("test setup should succeed");
         let report = durable_replay_report(initial, &path).expect("test setup should succeed");
-        std::fs::remove_file(&path).ok();
 
         assert_eq!(report.final_state, state);
         assert_eq!(report.event_count, tlog.len());
@@ -5407,9 +5306,10 @@ mod tests {
     #[test]
     fn durable_tick_checked_rejects_memory_disk_drift() {
         let cfg = RuntimeConfig::default();
-        let path =
-            std::env::temp_dir().join(format!("ai-durable-drift-{}.ndjson", std::process::id()));
-        std::fs::remove_file(&path).ok();
+        let (_path_tmp, path) = {
+            let t = tempfile::Builder::new().prefix("ai-durable-drift-").tempdir_in(test_tmp_dir()).unwrap();
+            let p = t.path().join("data.ndjson"); (t, p)
+        };
 
         let mut state = State::default();
         let mut tlog = Vec::new();
@@ -5421,7 +5321,6 @@ mod tests {
         let result =
             tick_durable_checked(&mut state, &mut drifted_tlog, &path, State::default(), cfg);
 
-        std::fs::remove_file(&path).ok();
         assert_eq!(result, Err(CanonError::InvalidReplay));
         assert_eq!(state, before);
         assert!(drifted_tlog.is_empty());
@@ -5430,11 +5329,10 @@ mod tests {
     #[test]
     fn durable_tick_checked_rejects_state_disk_drift() {
         let cfg = RuntimeConfig::default();
-        let path = std::env::temp_dir().join(format!(
-            "ai-durable-state-drift-{}.ndjson",
-            std::process::id()
-        ));
-        std::fs::remove_file(&path).ok();
+        let (_path_tmp, path) = {
+            let t = tempfile::Builder::new().prefix("ai-durable-state-drift-").tempdir_in(test_tmp_dir()).unwrap();
+            let p = t.path().join("data.ndjson"); (t, p)
+        };
 
         let mut disk_state = State::default();
         let mut tlog = Vec::new();
@@ -5444,7 +5342,6 @@ mod tests {
         let result =
             tick_durable_checked(&mut drifted_state, &mut tlog, &path, State::default(), cfg);
 
-        std::fs::remove_file(&path).ok();
         assert_eq!(result, Err(CanonError::InvalidStateContinuity));
         assert_eq!(drifted_state, State::default());
     }

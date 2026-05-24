@@ -124,9 +124,7 @@ fn append_raw_action_result(
     let path = workspace
         .allowed_boundary
         .join("state")
-        .join("agent_state")
-        .join("action")
-        .join("results.ndjson");
+        .join("actions.ndjson");
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent).map_err(|error| format!("create raw result dir: {error}"))?;
     }
@@ -159,10 +157,18 @@ mod transcript_tests {
     use crate::runtime::{action_transcript_path, replay_action_transcripts};
     use std::fs;
     use std::path::PathBuf;
-    use uuid::Uuid;
 
-    fn unique_project() -> PathBuf {
-        std::env::temp_dir().join(format!("canon-mcp-dispatch-test-{}", Uuid::new_v4()))
+    fn unique_project() -> (PathBuf, tempfile::TempDir) {
+        let tmp = tempfile::Builder::new()
+            .prefix("canon-mcp-dispatch-test-")
+            .tempdir_in({
+                let d = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../state/tmp");
+                std::fs::create_dir_all(&d).unwrap();
+                d.canonicalize().unwrap()
+            })
+            .unwrap();
+        let path = tmp.path().to_path_buf();
+        (path, tmp)
     }
 
     #[test]
@@ -197,8 +203,38 @@ mod transcript_tests {
     }
 
     #[test]
+    fn structural_edit_target_files_extracts_op_paths() {
+        let args = json!({
+            "mode": "apply",
+            "ops": [
+                {
+                    "op": "set_attr",
+                    "kind": "function",
+                    "at": { "loc": "selector", "path": "ai/src/lib.rs", "selector": "fn run" },
+                    "key": "doc",
+                    "value": "Run."
+                },
+                {
+                    "op": "move_node",
+                    "kind": "function",
+                    "from": { "loc": "selector", "path": "ai/src/old.rs", "selector": "fn run" },
+                    "to": { "loc": "selector", "path": "ai/src/new.rs", "selector": "mod target" }
+                }
+            ]
+        });
+        assert_eq!(
+            structural_edit_target_files(&args),
+            vec![
+                "ai/src/lib.rs".to_string(),
+                "ai/src/new.rs".to_string(),
+                "ai/src/old.rs".to_string(),
+            ]
+        );
+    }
+
+    #[test]
     fn action_transcript_is_mirrored_from_nested_workspace_to_project_state() {
-        let project = unique_project();
+        let (project, _tmp) = unique_project();
         let nested = project.join("browser-router");
         fs::create_dir_all(&nested).expect("create nested workspace");
         fs::create_dir_all(project.join("state")).expect("create shared state");
@@ -231,12 +267,7 @@ mod transcript_tests {
         assert_eq!(project_records.len(), 1);
         assert_eq!(project_records[0].response_json, response_json);
         assert!(
-            project
-                .join("state")
-                .join("agent_state")
-                .join("action")
-                .join("results.ndjson")
-                .exists(),
+            project.join("state").join("actions.ndjson").exists(),
             "raw result sink is written under the project state root"
         );
         assert_eq!(
@@ -248,12 +279,11 @@ mod transcript_tests {
                 .join("action-transcript.tlog.ndjson")
         );
 
-        let _ = fs::remove_dir_all(project);
     }
 
     #[test]
     fn action_transcript_is_not_duplicated_when_workspace_is_project_root() {
-        let project = unique_project();
+        let (project, _tmp) = unique_project();
         fs::create_dir_all(&project).expect("create project");
         let workspace = WorkspaceView::new(project.clone(), project.clone()).expect("workspace");
         let args_json = r#"{"command":"get_manifest"}"#;
@@ -281,7 +311,6 @@ mod transcript_tests {
         let project_records = replay_action_transcripts(&project).expect("project transcript");
         assert_eq!(project_records.len(), 1);
 
-        let _ = fs::remove_dir_all(project);
     }
 }
 
@@ -441,8 +470,8 @@ async fn execute_recorded_native_action<H: ActionHost>(name: &str, args: Value, 
     }
 }
 
-/// Emit a `SymbolMutationRecord` when `apply_patch` succeeds on a file that has
-/// known symbols in the semantic index.  Errors here are non-fatal.
+/// Emit a `SymbolMutationRecord` when a file edit succeeds on a file that has
+/// known symbols in the semantic index. Errors here are non-fatal.
 ///
 /// `cycle` and `task_node_hash` are unknown at dispatch time; `derive_training.py`
 /// correlates them from `cycle-events.ndjson` by timestamp.
@@ -452,13 +481,17 @@ fn try_record_symbol_mutation(
     args_json: &str,
     receipt: &ActionReceipt,
 ) {
-    if tool_name != "apply_patch" || receipt.exit_status != 0 {
+    if !matches!(tool_name, "apply_patch" | "structural_edit") || receipt.exit_status != 0 {
         return;
     }
     let Ok(args) = serde_json::from_str::<Value>(args_json) else {
         return;
     };
-    let file_paths = apply_patch_target_files(&args);
+    let file_paths = match tool_name {
+        "apply_patch" => apply_patch_target_files(&args),
+        "structural_edit" => structural_edit_target_files(&args),
+        _ => Vec::new(),
+    };
     if file_paths.is_empty() {
         return;
     }
@@ -509,6 +542,47 @@ fn apply_patch_target_files(args: &Value) -> Vec<String> {
     files.sort();
     files.dedup();
     files
+}
+
+fn structural_edit_target_files(args: &Value) -> Vec<String> {
+    let mut files = Vec::new();
+    if let Some(ops) = args.get("ops").and_then(Value::as_array) {
+        for op in ops {
+            collect_structural_paths(op, &mut files);
+        }
+    }
+    files.sort();
+    files.dedup();
+    files
+}
+
+fn collect_structural_paths(value: &Value, files: &mut Vec<String>) {
+    match value {
+        Value::Object(map) => {
+            if let Some(path) = map
+                .get("path")
+                .or_else(|| map.get("file"))
+                .or_else(|| map.get("manifest"))
+                .or_else(|| map.get("receipt_path"))
+                .or_else(|| map.get("rollback_path"))
+                .and_then(Value::as_str)
+            {
+                let trimmed = path.trim();
+                if !trimmed.is_empty() {
+                    files.push(trimmed.to_string());
+                }
+            }
+            for child in map.values() {
+                collect_structural_paths(child, files);
+            }
+        }
+        Value::Array(items) => {
+            for child in items {
+                collect_structural_paths(child, files);
+            }
+        }
+        _ => {}
+    }
 }
 
 async fn call_gateway_tool<H: ActionHost>(name: &str, args: &Value, host: &H) -> Value {

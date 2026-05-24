@@ -1953,12 +1953,15 @@ mod tests {
             OllamaJudgmentProofEvent::finalize_receipt(base_receipt, true, true, true, true)
                 .expect("test setup should succeed");
 
-        let dir = std::env::temp_dir().join(format!(
-            "canon-ollama-ndjson-loader-{}",
-            std::thread::current().name().unwrap_or("unnamed")
-        ));
-        let _ = std::fs::remove_dir_all(&dir);
-        std::fs::create_dir_all(&dir).expect("test setup should succeed");
+        let _dir_guard = tempfile::Builder::new()
+            .prefix("canon-ollama-ndjson-loader-")
+            .tempdir_in({
+                let d = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../state/tmp");
+                std::fs::create_dir_all(&d).unwrap();
+                d
+            })
+            .expect("test setup should succeed");
+        let dir = _dir_guard.path().to_owned();
         let mixed_path = dir.join("mixed.ndjson");
         let unchecked_path = dir.join("unchecked.ndjson");
         let missing_path = dir.join("missing.ndjson");
@@ -2032,7 +2035,6 @@ mod tests {
             .expect("test value should be present")
             .is_empty());
 
-        std::fs::remove_dir_all(dir).expect("test setup should succeed");
     }
 
     #[test]

@@ -408,15 +408,23 @@ mod tests {
     use super::*;
     use crate::capability::learning::artifact::SymbolMutationRecord;
     use std::path::PathBuf;
-    use uuid::Uuid;
 
-    fn unique_workspace() -> PathBuf {
-        std::env::temp_dir().join(format!("canon-learning-transcript-test-{}", Uuid::new_v4()))
+    fn unique_workspace() -> (PathBuf, tempfile::TempDir) {
+        let tmp = tempfile::Builder::new()
+            .prefix("canon-learning-transcript-test-")
+            .tempdir_in({
+                let d = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../state/tmp");
+                std::fs::create_dir_all(&d).unwrap();
+                d
+            })
+            .unwrap();
+        let path = tmp.path().to_path_buf();
+        (path, tmp)
     }
 
     #[test]
     fn learning_transcript_appends_and_replays_hash_chain() {
-        let workspace = unique_workspace();
+        let (workspace, _tmp) = unique_workspace();
         let record = SymbolMutationRecord::new(
             1_000_000,
             1,
@@ -440,12 +448,11 @@ mod tests {
         assert_eq!(replayed.len(), 1);
         assert_eq!(replayed[0].artifact_hash, record.record_hash);
 
-        let _ = fs::remove_dir_all(workspace);
     }
 
     #[test]
     fn learning_transcript_hash_chain_links_successive_records() {
-        let workspace = unique_workspace();
+        let (workspace, _tmp) = unique_workspace();
 
         let make_record = |ts: u64| {
             SymbolMutationRecord::new(
@@ -472,12 +479,11 @@ mod tests {
         let replayed = replay_learning_transcripts(&workspace).expect("replay");
         assert_eq!(replayed.len(), 2);
 
-        let _ = fs::remove_dir_all(workspace);
     }
 
     #[test]
     fn learning_transcript_quarantines_corrupt_chain() {
-        let workspace = unique_workspace();
+        let (workspace, _tmp) = unique_workspace();
         let r = SymbolMutationRecord::new(
             1_000,
             1,
@@ -520,6 +526,5 @@ mod tests {
         let replayed = replay_learning_transcripts(&workspace).expect("replay recovered");
         assert_eq!(replayed.len(), 1);
 
-        let _ = fs::remove_dir_all(workspace);
     }
 }

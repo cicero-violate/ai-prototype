@@ -469,16 +469,18 @@ mod tests {
         CapabilityRegistryProjection, Cause, Decision, EventKind, Evidence, GateSet, Packet, Phase,
         RuntimeConfig, SemanticDelta, State,
     };
-    use std::sync::atomic::{AtomicU32, Ordering as AtomicOrd};
 
-    static COUNTER: AtomicU32 = AtomicU32::new(0);
-
-    fn scratch_dir() -> PathBuf {
-        let n = COUNTER.fetch_add(1, AtomicOrd::Relaxed);
-        let dir =
-            std::env::temp_dir().join(format!("ai-binary-tlog-test-{}-{n}", std::process::id()));
-        fs::create_dir_all(&dir).unwrap();
-        dir
+    fn scratch_dir() -> (PathBuf, tempfile::TempDir) {
+        let tmp = tempfile::Builder::new()
+            .prefix("ai-binary-tlog-test-")
+            .tempdir_in({
+                let d = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../state/tmp");
+                std::fs::create_dir_all(&d).unwrap();
+                d
+            })
+            .unwrap();
+        let path = tmp.path().to_path_buf();
+        (path, tmp)
     }
 
     fn make_event(seq: u64) -> ControlEvent {
@@ -525,16 +527,15 @@ mod tests {
 
     #[test]
     fn is_binary_tlog_detects_magic_header() {
-        let dir = scratch_dir();
+        let (dir, _tmp) = scratch_dir();
         let path = dir.join("test.log");
         fs::write(&path, &MAGIC.to_le_bytes()).unwrap();
         assert!(is_binary_tlog(&path));
-        let _ = fs::remove_dir_all(&dir);
     }
 
     #[test]
     fn write_and_read_single_event_roundtrip() {
-        let dir = scratch_dir();
+        let (dir, _tmp) = scratch_dir();
         let writer = BinaryTlogWriter::open(&dir).unwrap();
         let event = make_event(0);
         writer.append(&event).unwrap();
@@ -546,12 +547,11 @@ mod tests {
         assert_eq!(tlog[0].from, event.from);
         assert_eq!(tlog[0].to, event.to);
         assert_eq!(tlog[0].self_hash, event.self_hash);
-        let _ = fs::remove_dir_all(&dir);
     }
 
     #[test]
     fn write_multiple_events_all_round_trip() {
-        let dir = scratch_dir();
+        let (dir, _tmp) = scratch_dir();
         let writer = BinaryTlogWriter::open(&dir).unwrap();
         let events: Vec<_> = (0u64..10).map(make_event).collect();
         for e in &events {
@@ -565,12 +565,11 @@ mod tests {
             assert_eq!(original.seq, recovered.seq);
             assert_eq!(original.self_hash, recovered.self_hash);
         }
-        let _ = fs::remove_dir_all(&dir);
     }
 
     #[test]
     fn segment_rotates_at_max_bytes() {
-        let dir = scratch_dir();
+        let (dir, _tmp) = scratch_dir();
         let config = SegmentConfig {
             max_bytes: 200,
             index_stride: 256,
@@ -592,12 +591,11 @@ mod tests {
             "expected segment rotation, got {} segments",
             segments.len()
         );
-        let _ = fs::remove_dir_all(&dir);
     }
 
     #[test]
     fn retain_segments_prunes_oldest() {
-        let dir = scratch_dir();
+        let (dir, _tmp) = scratch_dir();
         let config = SegmentConfig {
             max_bytes: 100,
             index_stride: 256,
@@ -615,7 +613,6 @@ mod tests {
             "expected at most 2 segments, got {}",
             seqs.len()
         );
-        let _ = fs::remove_dir_all(&dir);
     }
 
     #[test]
@@ -625,7 +622,7 @@ mod tests {
         let events: Vec<_> = (0u64..5).map(make_event).collect();
 
         // Write via binary
-        let dir = scratch_dir();
+        let (dir, _tmp) = scratch_dir();
         let writer = BinaryTlogWriter::open(&dir).unwrap();
         for e in &events {
             writer.append(e).unwrap();
@@ -646,12 +643,11 @@ mod tests {
             assert_eq!(b.from, n.from, "from mismatch");
             assert_eq!(b.to, n.to, "to mismatch");
         }
-        let _ = fs::remove_dir_all(&dir);
     }
 
     #[test]
     fn writer_recovers_existing_segment_on_reopen() {
-        let dir = scratch_dir();
+        let (dir, _tmp) = scratch_dir();
 
         // Write 3 events
         {
@@ -676,14 +672,12 @@ mod tests {
             "expected 5 events after reopen, got {}",
             tlog.len()
         );
-        let _ = fs::remove_dir_all(&dir);
     }
 
     #[test]
     fn read_empty_dir_returns_empty_tlog() {
-        let dir = scratch_dir();
+        let (dir, _tmp) = scratch_dir();
         let tlog = read_binary_tlog(&dir).unwrap();
         assert!(tlog.is_empty());
-        let _ = fs::remove_dir_all(&dir);
     }
 }

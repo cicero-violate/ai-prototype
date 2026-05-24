@@ -183,8 +183,15 @@ mod tests {
 
     #[test]
     fn read_write_snapshot_meta_round_trips() {
-        let dir = std::env::temp_dir().join(format!("ai-snap-test-{}", std::process::id()));
-        std::fs::create_dir_all(&dir).unwrap();
+        let _dir_guard = tempfile::Builder::new()
+            .prefix("ai-snap-test-")
+            .tempdir_in({
+                let d = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../state/tmp");
+                std::fs::create_dir_all(&d).unwrap();
+                d
+            })
+            .unwrap();
+        let dir = _dir_guard.path();
         let path = dir.join("snap.meta.json");
 
         let meta = TlogSnapshotMeta {
@@ -196,7 +203,6 @@ mod tests {
         write_snapshot_meta(&path, &meta).unwrap();
         let loaded = read_snapshot_meta(&path).unwrap().unwrap();
         assert_eq!(loaded, meta);
-        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]

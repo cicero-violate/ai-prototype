@@ -74,7 +74,14 @@ mod tests {
         CapabilityRegistryProjection, Cause, Decision, EventKind, Evidence, GateSet, Packet, Phase,
         RuntimeConfig, SemanticDelta, State,
     };
+    use std::path::PathBuf;
     use std::sync::atomic::{AtomicU32, Ordering};
+
+    fn test_tmp_dir() -> PathBuf {
+        let dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../state/tmp");
+        std::fs::create_dir_all(&dir).unwrap();
+        dir
+    }
 
     static COUNTER: AtomicU32 = AtomicU32::new(0);
 
@@ -115,12 +122,14 @@ mod tests {
         }
     }
 
-    fn scratch_dir() -> std::path::PathBuf {
+    fn scratch_dir() -> (PathBuf, tempfile::TempDir) {
         let n = COUNTER.fetch_add(1, Ordering::Relaxed);
-        let dir =
-            std::env::temp_dir().join(format!("ai-graph-meta-test-{}-{n}", std::process::id()));
-        std::fs::create_dir_all(&dir).unwrap();
-        dir
+        let tmp = tempfile::Builder::new()
+            .prefix(&format!("ai-graph-meta-test-{}-{n}-", std::process::id()))
+            .tempdir_in(test_tmp_dir())
+            .unwrap();
+        let dir = tmp.path().to_owned();
+        (dir, tmp)
     }
 
     #[test]
@@ -176,7 +185,7 @@ mod tests {
 
     #[test]
     fn round_trip_read_write_meta() {
-        let dir = scratch_dir();
+        let (dir, _tmp) = scratch_dir();
         let path = dir.join("graph.meta.json");
         let meta = GraphArtifactMeta {
             tlog_seq: 42,
@@ -188,7 +197,6 @@ mod tests {
         write_graph_artifact_meta(&path, &meta).unwrap();
         let loaded = read_graph_artifact_meta(&path).unwrap().unwrap();
         assert_eq!(loaded, meta);
-        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]

@@ -2221,13 +2221,15 @@ mod tests {
         )
         .expect("valid receipt should finalize into proof event");
 
-        let mut path = std::env::temp_dir();
-        path.push(format!(
-            "canon-openai-loader-dispatch-{}-{:016x}.ndjson",
-            std::process::id(),
-            hash_text("openai loader dispatch valid")
-        ));
-        let _ = std::fs::remove_file(&path);
+        let _path_tmp = tempfile::Builder::new()
+            .prefix("canon-openai-loader-dispatch-")
+            .tempdir_in({
+                let d = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../state/tmp");
+                std::fs::create_dir_all(&d).unwrap();
+                d
+            })
+            .unwrap();
+        let path = _path_tmp.path().join("loader-dispatch.ndjson");
 
         let valid_lines = [
             encode_openai_llm_effect_receipt_ndjson(finalized_receipt),
@@ -2297,9 +2299,7 @@ mod tests {
         assert!(load_openai_llm_effect_receipts_ndjson(&malformed_path).is_err());
         assert!(load_openai_llm_effect_receipts_ndjson_unchecked(&malformed_path).is_err());
 
-        let _ = std::fs::remove_file(&path);
-        let _ = std::fs::remove_file(&missing_path);
-        let _ = std::fs::remove_file(&malformed_path);
+
     }
 
     #[test]

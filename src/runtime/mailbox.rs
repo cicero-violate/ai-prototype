@@ -363,13 +363,22 @@ fn bytes_hash(bytes: &[u8]) -> u64 {
 mod tests {
     use super::*;
 
-    fn unique_workspace() -> PathBuf {
-        std::env::temp_dir().join(format!("canon-mailbox-test-{}", Uuid::new_v4()))
+    fn unique_workspace() -> (PathBuf, tempfile::TempDir) {
+        let tmp = tempfile::Builder::new()
+            .prefix("canon-mailbox-test-")
+            .tempdir_in({
+                let d = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../state/tmp");
+                std::fs::create_dir_all(&d).unwrap();
+                d
+            })
+            .unwrap();
+        let path = tmp.path().to_path_buf();
+        (path, tmp)
     }
 
     #[test]
     fn mailbox_request_and_receipt_are_contract_valid() {
-        let workspace = unique_workspace();
+        let (workspace, _tmp) = unique_workspace();
         let request =
             MailboxMessageRequest::new(1, "agent-a", "agent-b", "Observation", "{\"ok\":true}")
                 .expect("request should parse");
@@ -388,12 +397,11 @@ mod tests {
         assert!(receipt.is_valid_for(&request));
         assert_eq!(receipt.request_hash, request.contract_hash());
 
-        let _ = fs::remove_dir_all(workspace);
     }
 
     #[test]
     fn mailbox_projection_reads_cursor_order() {
-        let workspace = unique_workspace();
+        let (workspace, _tmp) = unique_workspace();
         append_mailbox_message(&workspace, "agent-a", "agent-b", "Observation", "one")
             .expect("first append");
         append_mailbox_message(&workspace, "agent-a", "agent-b", "Observation", "two")
@@ -410,7 +418,6 @@ mod tests {
         assert_eq!(tail.next_cursor, 2);
         assert_eq!(tail.messages[0].payload, "two");
 
-        let _ = fs::remove_dir_all(workspace);
     }
 
     #[test]

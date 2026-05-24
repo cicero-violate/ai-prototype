@@ -740,12 +740,15 @@ mod tests {
 
     #[test]
     fn live_sandbox_process_executor_writes_outputs_under_workspace_state() {
-        let root = std::env::temp_dir().join(format!(
-            "canon-process-state-path-test-{}",
-            std::process::id()
-        ));
-        let _ = fs::remove_dir_all(&root);
-        fs::create_dir_all(&root).expect("fixture root should be created");
+        let tmp = tempfile::Builder::new()
+            .prefix("canon-process-state-path-test-")
+            .tempdir_in({
+                let d = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../state/tmp");
+                fs::create_dir_all(&d).unwrap();
+                d
+            })
+            .expect("fixture root should be created");
+        let root = tmp.path().to_owned();
 
         let receipt = LiveSandboxProcessExecutor::new(root.clone())
             .with_allowed_command("/usr/bin/printf")
@@ -760,7 +763,5 @@ mod tests {
             .join(format!("{:016x}.stderr", receipt.request_hash))
             .exists());
         assert!(!root.join("process").exists());
-
-        let _ = fs::remove_dir_all(root);
     }
 }

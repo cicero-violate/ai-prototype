@@ -286,33 +286,38 @@ fn make_snippet(tokens: &[String], terms: &[String]) -> Option<String> {
 mod tests {
     use super::*;
     use std::fs;
+    use std::path::PathBuf;
     use std::sync::atomic::{AtomicU32, Ordering};
 
     static TEST_COUNTER: AtomicU32 = AtomicU32::new(0);
 
-    fn scratch_dir() -> std::path::PathBuf {
-        let n = TEST_COUNTER.fetch_add(1, Ordering::Relaxed);
-        let dir = std::env::temp_dir().join(format!("ai-search-test-{}-{n}", std::process::id()));
-        fs::create_dir_all(&dir).expect("scratch dir creation should succeed");
+    fn test_tmp_dir() -> PathBuf {
+        let dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../state/tmp");
+        fs::create_dir_all(&dir).unwrap();
         dir
     }
 
-    fn cleanup(dir: &std::path::Path) {
-        let _ = fs::remove_dir_all(dir);
+    fn scratch_dir() -> (PathBuf, tempfile::TempDir) {
+        let n = TEST_COUNTER.fetch_add(1, Ordering::Relaxed);
+        let tmp = tempfile::Builder::new()
+            .prefix(&format!("ai-search-test-{}-{n}-", std::process::id()))
+            .tempdir_in(test_tmp_dir())
+            .expect("scratch dir creation should succeed");
+        let dir = tmp.path().to_owned();
+        (dir, tmp)
     }
 
     #[test]
     fn search_files_empty_query_returns_empty() {
-        let dir = scratch_dir();
+        let (dir, _tmp) = scratch_dir();
         let (results, receipt) = search_files("", &dir, 10).expect("search should succeed");
         assert!(results.is_empty());
         assert_eq!(receipt.result_count, 0);
-        cleanup(&dir);
     }
 
     #[test]
     fn search_files_finds_matching_rs_file() {
-        let dir = scratch_dir();
+        let (dir, _tmp) = scratch_dir();
         fs::write(dir.join("main.rs"), b"fn main() {}").expect("write should succeed");
         fs::write(dir.join("other.toml"), b"[package]").expect("write should succeed");
 
@@ -326,12 +331,11 @@ mod tests {
             .any(|r| r.path.to_str().unwrap().contains("main")));
         assert_ne!(receipt.query_hash, 0);
         assert_ne!(receipt.result_hash, 0);
-        cleanup(&dir);
     }
 
     #[test]
     fn search_files_bm25_finds_content_match() {
-        let dir = scratch_dir();
+        let (dir, _tmp) = scratch_dir();
         fs::write(dir.join("kernel.rs"), b"pub struct Kernel { state: State }")
             .expect("write should succeed");
         fs::write(dir.join("unrelated.rs"), b"fn noop() {}").expect("write should succeed");
@@ -341,24 +345,22 @@ mod tests {
         assert!(!results.is_empty());
         assert!(results[0].path.to_str().unwrap().contains("kernel.rs"));
         assert_ne!(receipt.query_hash, 0);
-        cleanup(&dir);
     }
 
     #[test]
     fn search_respects_limit_cap() {
-        let dir = scratch_dir();
+        let (dir, _tmp) = scratch_dir();
         for i in 0..10 {
             fs::write(dir.join(format!("file{i}.rs")), b"fn foo() {}")
                 .expect("write should succeed");
         }
         let (results, _) = search_files("file", &dir, 3).expect("search should succeed");
         assert!(results.len() <= 3);
-        cleanup(&dir);
     }
 
     #[test]
     fn receipt_is_deterministic_for_same_query_and_results() {
-        let dir = scratch_dir();
+        let (dir, _tmp) = scratch_dir();
         fs::write(dir.join("foo.rs"), b"fn foo() {}").expect("write should succeed");
 
         let (r1, receipt1) = search_files("foo", &dir, 10).expect("search should succeed");
@@ -366,6 +368,5 @@ mod tests {
 
         assert_eq!(r1.len(), r2.len());
         assert_eq!(receipt1, receipt2);
-        cleanup(&dir);
     }
 }

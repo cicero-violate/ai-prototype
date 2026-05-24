@@ -189,9 +189,16 @@ mod tests {
 
     #[test]
     fn receipt_from_graph_json_parses_counts_and_intents() {
-        let tmp = std::env::temp_dir().join("rustc_analysis_test");
-        std::fs::create_dir_all(&tmp).unwrap();
-        write_graph_json(&tmp, "my_crate", 100, 500, 80);
+        let tmp_guard = tempfile::Builder::new()
+            .prefix("ai-rustc-analysis-test-")
+            .tempdir_in({
+                let d = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../state/tmp");
+                std::fs::create_dir_all(&d).unwrap();
+                d
+            })
+            .unwrap();
+        let tmp = tmp_guard.path();
+        write_graph_json(tmp, "my_crate", 100, 500, 80);
         let receipt = receipt_from_graph_json("my_crate", &tmp.join("my_crate").join("graph.json"))
             .expect("receipt");
         assert_eq!(receipt.crate_name, "my_crate");

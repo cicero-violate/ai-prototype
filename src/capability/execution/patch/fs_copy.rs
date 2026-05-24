@@ -62,19 +62,25 @@ impl Drop for TempDirGuard {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::time::{SystemTime, UNIX_EPOCH};
 
-    fn unique_test_dir(name: &str) -> PathBuf {
-        let nanos = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .expect("clock before unix epoch")
-            .as_nanos();
-        std::env::temp_dir().join(format!("canon-ai-mcp-copy-test-{name}-{nanos}"))
+    fn test_tmp_dir() -> PathBuf {
+        let dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../state/tmp");
+        fs::create_dir_all(&dir).unwrap();
+        dir
+    }
+
+    fn unique_test_dir(name: &str) -> (PathBuf, tempfile::TempDir) {
+        let tmp = tempfile::Builder::new()
+            .prefix(&format!("canon-ai-mcp-copy-test-{name}-"))
+            .tempdir_in(test_tmp_dir())
+            .expect("test dir creation should succeed");
+        let dir = tmp.path().to_owned();
+        (dir, tmp)
     }
 
     #[test]
     fn copy_dir_recursive_excluding_skips_temp_root_inside_source() {
-        let root = unique_test_dir("exclude-temp-root");
+        let (root, _tmp) = unique_test_dir("exclude-temp-root");
         let src = root.join("workspace");
         let temp_root = src.join("state/tmp/canon-ai-mcp");
         let old_candidate = temp_root.join("apply-patch-old");
@@ -89,7 +95,5 @@ mod tests {
 
         assert!(dst.join("Cargo.toml").exists());
         assert!(!dst.join("state/tmp/canon-ai-mcp").exists());
-
-        let _ = fs::remove_dir_all(root);
     }
 }

@@ -1100,10 +1100,15 @@ mod tests {
 
     #[test]
     fn finalize_streaming_response_accepts_in_memory_sse_done_response() {
-        let temp_dir = std::env::temp_dir().join(format!(
-            "canon-router-finalize-success-{}",
-            std::process::id()
-        ));
+        let _temp_dir_guard = tempfile::Builder::new()
+            .prefix("canon-router-finalize-success-")
+            .tempdir_in({
+                let d = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../state/tmp");
+                std::fs::create_dir_all(&d).unwrap();
+                d
+            })
+            .unwrap();
+        let temp_dir = _temp_dir_guard.path().to_path_buf();
         let mut logger = ChunkLogger::new(&temp_dir, "test", 1, "success")
             .expect("chunk logger can be created for in-memory finalize test");
         let body = concat!(
@@ -1132,15 +1137,19 @@ mod tests {
         assert!(result.is_complete());
         assert_eq!(result.completion_reason(), "ok");
 
-        let _ = std::fs::remove_dir_all(temp_dir);
     }
 
     #[test]
     fn finalize_streaming_response_rejects_non_200_status() {
-        let temp_dir = std::env::temp_dir().join(format!(
-            "canon-router-finalize-http-status-{}",
-            std::process::id()
-        ));
+        let _temp_dir_guard = tempfile::Builder::new()
+            .prefix("canon-router-finalize-http-status-")
+            .tempdir_in({
+                let d = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../state/tmp");
+                std::fs::create_dir_all(&d).unwrap();
+                d
+            })
+            .unwrap();
+        let temp_dir = _temp_dir_guard.path().to_path_buf();
         let mut logger = ChunkLogger::new(&temp_dir, "test", 1, "http-status")
             .expect("chunk logger can be created for in-memory finalize test");
         let response = concat!(
@@ -1157,15 +1166,19 @@ mod tests {
 
         assert!(matches!(err, OpenAiError::HttpStatus(503)));
 
-        let _ = std::fs::remove_dir_all(temp_dir);
     }
 
     #[test]
     fn finalize_streaming_response_rejects_missing_done_frame() {
-        let temp_dir = std::env::temp_dir().join(format!(
-            "canon-router-finalize-missing-done-{}",
-            std::process::id()
-        ));
+        let _temp_dir_guard = tempfile::Builder::new()
+            .prefix("canon-router-finalize-missing-done-")
+            .tempdir_in({
+                let d = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../state/tmp");
+                std::fs::create_dir_all(&d).unwrap();
+                d
+            })
+            .unwrap();
+        let temp_dir = _temp_dir_guard.path().to_path_buf();
         let mut logger = ChunkLogger::new(&temp_dir, "test", 1, "missing-done")
             .expect("chunk logger can be created for in-memory finalize test");
         let body = concat!(
@@ -1197,7 +1210,6 @@ mod tests {
             }
         }
 
-        let _ = std::fs::remove_dir_all(temp_dir);
     }
 
     #[test]

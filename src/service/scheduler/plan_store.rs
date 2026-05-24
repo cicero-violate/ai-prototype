@@ -430,17 +430,17 @@ mod tests {
     use super::*;
     use crate::domain::plan::{PlanEdge, PlanEvidenceRef, PlanNode, EVIDENCE_KIND_VALIDATION};
 
-    fn test_root(name: &str) -> PathBuf {
-        let mut root = std::env::temp_dir();
-        root.push(format!(
-            "canon-plan-store-{name}-{}-{}",
-            std::process::id(),
-            std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .expect("clock")
-                .as_nanos()
-        ));
-        root
+    fn test_root(name: &str) -> (PathBuf, tempfile::TempDir) {
+        let tmp = tempfile::Builder::new()
+            .prefix(&format!("canon-plan-store-{name}-"))
+            .tempdir_in({
+                let d = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../state/tmp");
+                std::fs::create_dir_all(&d).unwrap();
+                d
+            })
+            .unwrap();
+        let path = tmp.path().to_path_buf();
+        (path, tmp)
     }
 
     fn node(id: &str, status: NodeStatus) -> PlanNode {
@@ -458,7 +458,7 @@ mod tests {
 
     #[test]
     fn tlog_replay_overrides_stale_plan_json_status_and_ready_nodes() {
-        let root = test_root("status");
+        let (root, _tmp) = test_root("status");
         let mut plan = PlanDag {
             version: 1,
             nodes: vec![
@@ -493,12 +493,11 @@ mod tests {
             vec!["b"]
         );
 
-        let _ = std::fs::remove_dir_all(root);
     }
 
     #[test]
     fn tlog_replay_filters_evidence_to_accepted_tlog_membership() {
-        let root = test_root("evidence");
+        let (root, _tmp) = test_root("evidence");
         let accepted = PlanEvidenceRef {
             path: "state/agent-evidence/a.md".to_string(),
             kind: EVIDENCE_KIND_VALIDATION.to_string(),
@@ -542,12 +541,11 @@ mod tests {
         assert_eq!(read_model.nodes[0].evidence.len(), 1);
         assert_eq!(read_model.nodes[0].evidence[0].path, accepted.path);
 
-        let _ = std::fs::remove_dir_all(root);
     }
 
     #[test]
     fn tlog_replay_archives_removed_nodes_from_accepted_patch() {
-        let root = test_root("node-remove");
+        let (root, _tmp) = test_root("node-remove");
         let plan = PlanDag {
             version: 1,
             nodes: vec![
@@ -585,6 +583,5 @@ mod tests {
         );
         assert!(read_model.edges.is_empty());
 
-        let _ = std::fs::remove_dir_all(root);
     }
 }

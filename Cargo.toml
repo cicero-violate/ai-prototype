@@ -39,3 +39,6 @@ structural-editor = { path = "../neurosymbolic/structural-editor" }
 tokio = { workspace = true, features = ["rt-multi-thread", "macros", "net", "time", "signal", "io-util", "process"] }
 tower = { workspace = true }
 uuid = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }

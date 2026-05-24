@@ -96,8 +96,15 @@ mod tests {
 
     #[test]
     fn workspace_state_dir_uses_shared_prototype_state_for_members() {
-        let root =
-            std::env::temp_dir().join(format!("canon-workspace-state-test-{}", std::process::id()));
+        let _root_guard = tempfile::Builder::new()
+            .prefix("canon-workspace-state-test-")
+            .tempdir_in({
+                let d = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../state/tmp");
+                std::fs::create_dir_all(&d).unwrap();
+                d.canonicalize().unwrap()
+            })
+            .unwrap();
+        let root = _root_guard.path();
         let member = root.join("canon-rustc-v3");
         std::fs::create_dir_all(&member).expect("create member");
         std::fs::create_dir_all(root.join("state")).expect("create state");
@@ -106,7 +113,5 @@ mod tests {
             workspace_state_dir(&member),
             root.join("state").join("canon-rustc-v3")
         );
-
-        let _ = std::fs::remove_dir_all(root);
     }
 }

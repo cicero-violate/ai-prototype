@@ -36,21 +36,28 @@ pub fn native_process_output_paths(
 mod tests {
     use super::*;
 
-    fn unique_test_dir(name: &str) -> PathBuf {
-        std::env::temp_dir().join(format!("canon-ai-mcp-common-{name}-{}", std::process::id()))
+    fn test_tmp_dir() -> PathBuf {
+        let dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../state/tmp");
+        fs::create_dir_all(&dir).unwrap();
+        dir.canonicalize().unwrap()
+    }
+
+    fn unique_test_dir(name: &str) -> (PathBuf, tempfile::TempDir) {
+        let tmp = tempfile::Builder::new()
+            .prefix(&format!("canon-ai-mcp-common-{name}-"))
+            .tempdir_in(test_tmp_dir())
+            .expect("test dir creation should succeed");
+        let dir = tmp.path().to_owned();
+        (dir, tmp)
     }
 
     #[test]
     fn tmp_dir_uses_workspace_state_tmp() {
-        let workspace = unique_test_dir("workspace-state");
-        let _ = fs::remove_dir_all(&workspace);
-        fs::create_dir_all(&workspace).expect("workspace dir");
+        let (workspace, _tmp) = unique_test_dir("workspace-state");
 
         let result = tmp_dir(&workspace).expect("workspace tmp dir");
 
         assert_eq!(result, workspace.join("state/tmp/canon-ai-mcp"));
         assert!(result.is_dir());
-
-        let _ = fs::remove_dir_all(&workspace);
     }
 }
