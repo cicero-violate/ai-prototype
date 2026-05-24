@@ -23,11 +23,18 @@ fn source(path: &str) -> String {
     std::fs::read_to_string(repo_root().join(path)).expect("source file should be readable")
 }
 
-fn contract_root(name: &str) -> PathBuf {
-    std::env::temp_dir().join(format!(
-        "ai-architecture-boundary-{name}-{}",
-        std::process::id()
-    ))
+fn contract_root(name: &str) -> (PathBuf, tempfile::TempDir) {
+    let base = {
+        let d = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../state/tmp");
+        std::fs::create_dir_all(&d).unwrap();
+        d.canonicalize().unwrap()
+    };
+    let tmp = tempfile::Builder::new()
+        .prefix(&format!("ai-architecture-boundary-{name}-"))
+        .tempdir_in(base)
+        .expect("contract root tempdir");
+    let path = tmp.path().to_path_buf();
+    (path, tmp)
 }
 
 fn plan_node(id: &str, status: NodeStatus, evidence: Vec<PlanEvidenceRef>) -> PlanNode {
@@ -318,8 +325,7 @@ fn task_lifecycle_http_details_live_in_dispatch_task_client() {
 
 #[test]
 fn supervisor_rejects_completion_without_plan_evidence() {
-    let root = contract_root("empty-evidence");
-    let _ = std::fs::remove_dir_all(&root);
+    let (root, _root_guard) = contract_root("empty-evidence");
     write_plan(&root, Vec::new());
     let mut worker = worker_process(&root);
 
@@ -342,13 +348,11 @@ fn supervisor_rejects_completion_without_plan_evidence() {
     assert!(err.contains("projected task evidence"));
     let plan = load_plan(&root);
     assert_ne!(plan.nodes[0].status, NodeStatus::Done);
-    let _ = std::fs::remove_dir_all(root);
 }
 
 #[test]
 fn supervisor_accepts_legacy_task_evidence_by_attaching_completion_receipt() {
-    let root = contract_root("legacy-unaccepted-evidence");
-    let _ = std::fs::remove_dir_all(&root);
+    let (root, _root_guard) = contract_root("legacy-unaccepted-evidence");
     write_plan(
         &root,
         vec![PlanEvidenceRef {
@@ -398,13 +402,11 @@ fn supervisor_accepts_legacy_task_evidence_by_attaching_completion_receipt() {
     let raw_plan = load_plan(&root);
     assert_eq!(raw_plan.nodes[0].status, NodeStatus::Done);
     assert!(!raw_plan.nodes[0].evidence.is_empty());
-    let _ = std::fs::remove_dir_all(root);
 }
 
 #[test]
 fn supervisor_accepts_completion_by_attaching_execution_receipt_to_projected_evidence() {
-    let root = contract_root("projected-evidence");
-    let _ = std::fs::remove_dir_all(&root);
+    let (root, _root_guard) = contract_root("projected-evidence");
     write_plan(
         &root,
         vec![accepted_execution_evidence(
@@ -448,13 +450,11 @@ fn supervisor_accepts_completion_by_attaching_execution_receipt_to_projected_evi
     let raw_plan = load_plan(&root);
     assert_eq!(raw_plan.nodes[0].status, NodeStatus::Done);
     assert!(!raw_plan.nodes[0].evidence.is_empty());
-    let _ = std::fs::remove_dir_all(root);
 }
 
 #[test]
 fn supervisor_rejects_completion_after_lease_expiry() {
-    let root = contract_root("expired-lease");
-    let _ = std::fs::remove_dir_all(&root);
+    let (root, _root_guard) = contract_root("expired-lease");
     write_plan(
         &root,
         vec![accepted_execution_evidence(
@@ -483,13 +483,11 @@ fn supervisor_rejects_completion_after_lease_expiry() {
     assert!(err.contains("expired"));
     let plan = load_plan(&root);
     assert_ne!(plan.nodes[0].status, NodeStatus::Done);
-    let _ = std::fs::remove_dir_all(root);
 }
 
 #[test]
 fn supervisor_task_lifecycle_responses_are_receipt_backed() {
-    let root = contract_root("lifecycle-receipts");
-    let _ = std::fs::remove_dir_all(&root);
+    let (root, _root_guard) = contract_root("lifecycle-receipts");
     write_plan(
         &root,
         vec![accepted_execution_evidence(
@@ -535,13 +533,11 @@ fn supervisor_task_lifecycle_responses_are_receipt_backed() {
     let (read_model, plan_state) = load_plan_read_model(&root).expect("read model should project");
     assert!(plan_state.is_some());
     assert_eq!(read_model.nodes[0].status, NodeStatus::Done);
-    let _ = std::fs::remove_dir_all(root);
 }
 
 #[test]
 fn supervisor_failure_response_is_receipt_backed() {
-    let root = contract_root("failure-receipts");
-    let _ = std::fs::remove_dir_all(&root);
+    let (root, _root_guard) = contract_root("failure-receipts");
     write_plan(&root, Vec::new());
     let mut worker = worker_process(&root);
 
@@ -564,7 +560,6 @@ fn supervisor_failure_response_is_receipt_backed() {
 
     assert_ne!(failed.receipt_hash, 0);
     assert!(!failed.tlog_submitted);
-    let _ = std::fs::remove_dir_all(root);
 }
 
 #[test]

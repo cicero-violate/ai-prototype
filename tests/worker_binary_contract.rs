@@ -9,8 +9,18 @@ fn free_port() -> u16 {
     listener.local_addr().expect("local addr").port()
 }
 
-fn temp_tlog_dir(name: &str) -> std::path::PathBuf {
-    std::env::temp_dir().join(format!("ai-worker-bin-{name}-{}", std::process::id()))
+fn temp_tlog_dir(name: &str) -> (std::path::PathBuf, tempfile::TempDir) {
+    let base = {
+        let d = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../state/tmp");
+        std::fs::create_dir_all(&d).unwrap();
+        d.canonicalize().unwrap()
+    };
+    let tmp = tempfile::Builder::new()
+        .prefix(&format!("ai-worker-bin-{name}-"))
+        .tempdir_in(base)
+        .expect("worker test tempdir");
+    let path = tmp.path().to_path_buf();
+    (path, tmp)
 }
 
 fn kernel_tlog_bin() -> String {
@@ -34,8 +44,7 @@ fn worker_help_does_not_require_environment() {
 #[test]
 fn worker_process_serves_health_and_initializes_tlog() {
     let port = free_port();
-    let tlog_dir = temp_tlog_dir("health");
-    let _ = std::fs::remove_dir_all(&tlog_dir);
+    let (tlog_dir, _tlog_guard) = temp_tlog_dir("health");
 
     let mut child = Command::new(kernel_tlog_bin())
         .env("PORT", port.to_string())
@@ -84,5 +93,4 @@ fn worker_process_serves_health_and_initializes_tlog() {
     child.kill().expect("worker should kill");
     let status = child.wait().expect("worker should wait");
     assert!(!status.success());
-    let _ = std::fs::remove_dir_all(&tlog_dir);
 }

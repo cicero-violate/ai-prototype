@@ -9,8 +9,18 @@ fn free_port() -> u16 {
     listener.local_addr().expect("local addr").port()
 }
 
-fn temp_tlog_dir(name: &str) -> std::path::PathBuf {
-    std::env::temp_dir().join(format!("ai-supervisor-bin-{name}-{}", std::process::id()))
+fn temp_tlog_dir(name: &str) -> (std::path::PathBuf, tempfile::TempDir) {
+    let base = {
+        let d = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../state/tmp");
+        std::fs::create_dir_all(&d).unwrap();
+        d.canonicalize().unwrap()
+    };
+    let tmp = tempfile::Builder::new()
+        .prefix(&format!("ai-supervisor-bin-{name}-"))
+        .tempdir_in(base)
+        .expect("supervisor test tempdir");
+    let path = tmp.path().to_path_buf();
+    (path, tmp)
 }
 
 fn worker_command_body(command_id: u64, payload_hash: u64) -> serde_json::Value {
@@ -66,8 +76,7 @@ fn supervisor_help_does_not_require_environment() {
 #[test]
 fn supervisor_spawns_worker_and_reloads_generation() {
     let supervisor_port = free_port();
-    let tlog_dir = temp_tlog_dir("reload");
-    let _ = std::fs::remove_dir_all(&tlog_dir);
+    let (tlog_dir, _tlog_guard) = temp_tlog_dir("reload");
 
     let mut child = ProcessCommand::new(env!("CARGO_BIN_EXE_supervisor"))
         .env("SUPERVISOR_PORT", supervisor_port.to_string())
@@ -216,5 +225,4 @@ fn supervisor_spawns_worker_and_reloads_generation() {
         child.kill().expect("supervisor should kill");
     }
     let _ = child.wait().expect("supervisor should wait");
-    let _ = std::fs::remove_dir_all(&tlog_dir);
 }
