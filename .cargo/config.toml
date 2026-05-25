@@ -46,3 +46,4 @@ SSE_CHUNKS_DIR = { value = "../state/agent_state/sse-chunks", relative = true }
 ROUTER_TURN_MAX_MS = "600000"
 ROUTER_FIRST_CAPTURE_MS = "60000"
 ROUTER_IDLE_MS = "2500"
+GROUP_CHAT_LANDMARK_ACTION_ALLOWLIST=all
