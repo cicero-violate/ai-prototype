@@ -324,8 +324,19 @@ mod tests {
     use crate::service::scheduler::plan_store::load_tlog_projected_plan_state;
     use std::path::{Path, PathBuf};
 
-    fn test_root(name: &str) -> PathBuf {
-        std::env::temp_dir().join(format!("canon-plan-tool-{name}-{}", std::process::id()))
+    fn test_tmp_dir() -> PathBuf {
+        let dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../state/tmp");
+        std::fs::create_dir_all(&dir).unwrap();
+        dir
+    }
+
+    fn test_root(name: &str) -> (PathBuf, tempfile::TempDir) {
+        let tmp = tempfile::Builder::new()
+            .prefix(&format!("canon-plan-tool-{name}-"))
+            .tempdir_in(test_tmp_dir())
+            .expect("test root dir creation should succeed");
+        let dir = tmp.path().to_owned();
+        (dir, tmp)
     }
 
     fn node(id: &str, status: NodeStatus) -> PlanNode {
@@ -356,9 +367,7 @@ mod tests {
 
     #[test]
     fn set_status_appends_tlog_patch_without_mutating_plan_json_status() {
-        let root = test_root("status-patch");
-        let _ = std::fs::remove_dir_all(&root);
-        std::fs::create_dir_all(&root).expect("root should exist");
+        let (root, _tmp) = test_root("status-patch");
         write_plan(&root, NodeStatus::Pending);
         let workspace = WorkspaceView::new(root.clone(), root.clone()).expect("workspace view");
 
@@ -375,14 +384,11 @@ mod tests {
         assert!(plan_state.is_some());
         assert_eq!(read_model.nodes[0].status, NodeStatus::Done);
 
-        let _ = std::fs::remove_dir_all(root);
     }
 
     #[test]
     fn append_evidence_writes_to_plan_json_and_tlog() {
-        let root = test_root("evidence-patch");
-        let _ = std::fs::remove_dir_all(&root);
-        std::fs::create_dir_all(&root).expect("root should exist");
+        let (root, _tmp) = test_root("evidence-patch");
         write_plan(&root, NodeStatus::Pending);
         let workspace = WorkspaceView::new(root.clone(), root.clone()).expect("workspace view");
 
@@ -421,14 +427,11 @@ mod tests {
         assert_eq!(node.status, 3);
         assert_eq!(node.evidence.len(), 1);
 
-        let _ = std::fs::remove_dir_all(root);
     }
 
     #[test]
     fn blocker_evidence_marks_node_failed_but_commit_evidence_does_not_close_it() {
-        let root = test_root("evidence-status-policy");
-        let _ = std::fs::remove_dir_all(&root);
-        std::fs::create_dir_all(&root).expect("root should exist");
+        let (root, _tmp) = test_root("evidence-status-policy");
         write_plan(&root, NodeStatus::Pending);
         let workspace = WorkspaceView::new(root.clone(), root.clone()).expect("workspace view");
 
@@ -462,14 +465,11 @@ mod tests {
         assert_eq!(blocker.get("isError").and_then(Value::as_bool), Some(false));
         assert_eq!(load_plan(&root).nodes[0].status, NodeStatus::Failed);
 
-        let _ = std::fs::remove_dir_all(root);
     }
 
     #[test]
     fn structural_updates_append_tlog_projection_patches() {
-        let root = test_root("structural-patches");
-        let _ = std::fs::remove_dir_all(&root);
-        std::fs::create_dir_all(&root).expect("root should exist");
+        let (root, _tmp) = test_root("structural-patches");
         let workspace = WorkspaceView::new(root.clone(), root.clone()).expect("workspace view");
 
         let upsert = run_update(
@@ -505,6 +505,5 @@ mod tests {
         assert_eq!(node.status, 3);
         assert_eq!(node.title_hash, plan_text_hash("Node one"));
 
-        let _ = std::fs::remove_dir_all(root);
     }
 }

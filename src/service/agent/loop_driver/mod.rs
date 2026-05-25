@@ -11,6 +11,7 @@ use crate::MAX_OBSERVATION_PAYLOAD_BYTES;
 pub(crate) mod common;
 mod cycle_log;
 mod evidence_submit;
+pub mod group_chat_loop;
 pub(crate) mod http;
 mod learning;
 mod mcp_workspace;

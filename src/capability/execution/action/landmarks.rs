@@ -546,8 +546,9 @@ Rules:
 1. Discover before execution.
 2. Inspect the relevant landmark before calling an action.
 3. Call actions by stable landmark IDs, not by guessed native tool names.
-4. For multi-step work, prefer `execute_sequence` and pipe values via `$step0`, `$step1`, or custom aliases.
-5. Effects remain authorized and receipted by the AI kernel.
+4. Use `workspace:structural_edit` as the canonical file editor. Use `workspace:apply_patch` only when the edit cannot be expressed as structural-editor ops.
+5. For multi-step work, prefer `execute_sequence` and pipe values via `$step0`, `$step1`, or custom aliases.
+6. Effects remain authorized and receipted by the AI kernel.
 "#
     .trim()
     .to_string()
@@ -1447,6 +1448,7 @@ mod tests {
     fn inspect_landmark_returns_action_ids_and_exact_schema() {
         let result = inspect_landmark_result(&json!({"landmark_id": "workspace"}));
         let text = content_text(&result);
+        assert!(text.contains("workspace:structural_edit"));
         assert!(text.contains("workspace:apply_patch"));
         assert!(text.contains("workspace:shell"));
 

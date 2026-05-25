@@ -2,13 +2,14 @@
 
 use serde::Deserialize;
 use serde_json::{json, Value};
-use structural_editor::op::{
-    CargoChange, EdgeKind, NodeLocator, OpBatch, StructuralOp, VerifyPredicate,
-};
+use structural_editor::op::{CargoChange, NodeLocator, OpBatch, StructuralOp, VerifyPredicate};
 
 use crate::api::action::tool_error;
 use crate::runtime::WorkspaceView;
 
+/// Tool name exposed for workspace structural edit operations.
+/// Tool name exposed for workspace structural edit operations.
+/// Tool name exposed for workspace structural edit operations.
 pub const STRUCTURAL_EDIT_TOOL: &str = "structural_edit";
 
 #[derive(Debug, Deserialize)]
@@ -159,17 +160,5 @@ fn manifest_path(change: &CargoChange) -> &str {
         | CargoChange::AddExampleTarget { manifest, .. }
         | CargoChange::RemoveTarget { manifest, .. }
         | CargoChange::InsertSnippet { manifest, .. } => manifest,
-    }
-}
-
-#[allow(dead_code)]
-fn edge_tokens(edge: &EdgeKind) -> Vec<&str> {
-    match edge {
-        EdgeKind::Uses { .. } => vec!["uses"],
-        EdgeKind::Declares { .. } => vec!["declares"],
-        EdgeKind::Implements { .. } => vec!["implements"],
-        EdgeKind::Bound { .. } => vec!["bound"],
-        EdgeKind::PathRef { .. } => vec!["path_ref"],
-        EdgeKind::ExternCrate(_) => vec!["extern_crate"],
     }
 }

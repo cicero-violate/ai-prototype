@@ -258,7 +258,7 @@ pub(super) fn spawned_prompt(
              ## PROTOCOL\n\
              1. Assess the current state against the success criterion before doing anything else.\n\
              2. Take the minimal actions needed to meet the criterion.\n\
-             3. Use `call_action` with action `workspace:apply_patch` for all file edits.\n\
+             3. Use `call_action` with action `workspace:structural_edit` as the canonical editor for file edits. Use `workspace:apply_patch` only when the edit cannot be expressed as structural-editor ops.\n\
              4. Every tool call must include a non-empty `intent` field explaining why.\n\
              {evidence_protocol}"
         )
@@ -275,7 +275,7 @@ pub(super) fn spawned_prompt(
              ## PROTOCOL\n\
              1. Verify the current state against the success criterion first.\n\
              2. If not met: identify the specific gap, close it, then re-verify.\n\
-             3. Use `call_action` with action `workspace:apply_patch` for all file edits.\n\
+             3. Use `call_action` with action `workspace:structural_edit` as the canonical editor for file edits. Use `workspace:apply_patch` only when the edit cannot be expressed as structural-editor ops.\n\
              4. Every tool call must include a non-empty `intent` field.\n\
              {evidence_protocol}"
         )
@@ -293,7 +293,7 @@ pub(super) fn execute_prompt(turn_num: u32, agent_id: u32, agent_count: u32) -> 
          Choose one of the following based on what you find:\n\
          - **Blocked DAG nodes**: identify and resolve the blocking dependency directly (implement the prerequisite, fix the failing test, produce the missing evidence).\n\
          - **Failed DAG nodes**: diagnose the failure, fix the root cause, write blocker or recovery evidence, and let the supervisor/recovery policy append lifecycle events for re-dispatch.\n\
-         - **Empty DAG**: do direct implementation work that moves the lowest justified score axis. Pick one concrete, bounded task — a specific file, function, or test. Use `call_action workspace:apply_patch` for all file edits.\n\n\
+         - **Empty DAG**: do direct implementation work that moves the lowest justified score axis. Pick one concrete, bounded task — a specific file, function, or test. Use `call_action workspace:structural_edit` as the canonical editor; use `workspace:apply_patch` only when structural-editor ops cannot express the edit.\n\n\
          After implementation:\n\
          - Run the relevant validation or test command and fix any failures.\n\
          - Write detailed evidence to a task-specific file under `state/agent-evidence/`.\n\

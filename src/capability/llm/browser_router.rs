@@ -81,6 +81,12 @@ impl RouterClient {
         self.target_id = None;
     }
 
+    /// Pre-seed the target URL so the first turn uses `continue_at` rather than `new_chat`.
+    /// Use this when the destination tab (e.g. a group chat) is already open.
+    pub fn pin_target_url(&mut self, url: String) {
+        self.target_url = Some(url);
+    }
+
     /// Best-effort close of the currently pinned browser tab.
     ///
     /// This uses browser-router's public tab API (`GET /tabs` and

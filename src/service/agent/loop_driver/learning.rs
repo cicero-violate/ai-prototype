@@ -385,11 +385,7 @@ fn collect_symbols_and_files(project_dir: &Path) -> (Vec<TouchedSymbol>, Vec<Str
 }
 
 fn read_tool_sequence(project_dir: &Path) -> Vec<String> {
-    let path = project_dir
-        .join("state")
-        .join("agent_state")
-        .join("action")
-        .join("results.ndjson");
+    let path = project_dir.join("state").join("actions.ndjson");
     let Ok(file) = fs::File::open(&path) else {
         return Vec::new();
     };
