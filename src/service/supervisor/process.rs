@@ -19,7 +19,9 @@ use tokio::process::{Child, Command as TokioCommand};
 
 use crate::api::protocol::{Command as KernelCommand, CommandEnvelope};
 use crate::capability::orchestration::TaskLifecycleReceipt;
-use crate::domain::plan::{blocked_pending_nodes, NodeStatus, PlanEvidenceRef};
+use crate::domain::plan::{
+    blocked_pending_nodes, AcceptedExecutionEvidenceRef, NodeStatus, PlanEvidenceRef,
+};
 use crate::kernel::mix;
 use crate::runtime::workspace::workspace_state_dir;
 use crate::service::agent::loop_driver::http::post_json_local;
@@ -973,10 +975,10 @@ impl AcceptedTaskEvidence {
             .find(|node| node.id == node_id)
             .ok_or_else(|| format!("node {node_id} not found in plan"))?;
 
-        let accepted: Vec<&PlanEvidenceRef> = node
+        let accepted: Vec<AcceptedExecutionEvidenceRef<'_>> = node
             .evidence
             .iter()
-            .filter(|evidence| evidence.is_accepted_execution_receipt())
+            .filter_map(|evidence| AcceptedExecutionEvidenceRef::try_from(evidence).ok())
             .collect();
 
         if accepted.is_empty() {
@@ -985,20 +987,19 @@ impl AcceptedTaskEvidence {
             ));
         }
 
-        let evidence_hash = accepted_evidence_refs_hash(&accepted);
+        let accepted_refs: Vec<&PlanEvidenceRef> = accepted
+            .iter()
+            .map(|evidence| evidence.evidence())
+            .collect();
+        let evidence_hash = accepted_evidence_refs_hash(&accepted_refs);
         let receipt_hash = accepted.iter().fold(0xace0_e11d_0000_0001u64, |hash, evidence| {
-            mix(hash, evidence.receipt_hash)
+            mix(hash, evidence.receipt_hash())
         }).max(1);
 
         Ok(Self {
             evidence_hash,
             receipt_hash,
         })
-    }
-
-    #[cfg(test)]
-    fn receipt_hash(&self) -> u64 {
-        self.receipt_hash
     }
 }
 

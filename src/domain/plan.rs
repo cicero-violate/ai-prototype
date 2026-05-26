@@ -90,14 +90,68 @@ pub struct PlanEvidenceRef {
 
 impl PlanEvidenceRef {
     pub fn is_accepted_execution_receipt(&self) -> bool {
-        self.accepted
-            && self.receipt_hash != 0
-            && self.gate == EVIDENCE_GATE_EXECUTION
-            && self.evidence == EVIDENCE_TYPE_EXECUTION_RECEIPT
+        AcceptedExecutionEvidenceRef::try_from(self).is_ok()
     }
 
     pub fn is_blocker(&self) -> bool {
         self.kind == EVIDENCE_KIND_BLOCKER
+    }
+}
+
+/// Typed proof that a generic plan evidence reference is accepted execution
+/// evidence. This is the only value supervisor completion may consume as a
+/// task-completion prerequisite.
+#[derive(Clone, Copy, Debug)]
+pub struct AcceptedExecutionEvidenceRef<'a> {
+    evidence: &'a PlanEvidenceRef,
+}
+
+impl<'a> AcceptedExecutionEvidenceRef<'a> {
+    pub fn evidence(self) -> &'a PlanEvidenceRef {
+        self.evidence
+    }
+
+    pub fn receipt_hash(self) -> u64 {
+        self.evidence.receipt_hash
+    }
+}
+
+impl<'a> TryFrom<&'a PlanEvidenceRef> for AcceptedExecutionEvidenceRef<'a> {
+    type Error = PlanValidationError;
+
+    fn try_from(evidence: &'a PlanEvidenceRef) -> Result<Self, Self::Error> {
+        if !evidence.accepted {
+            return Err(PlanValidationError::new(
+                "unaccepted_evidence",
+                "execution evidence must be accepted before task completion",
+            ));
+        }
+        if evidence.receipt_hash == 0 {
+            return Err(PlanValidationError::new(
+                "invalid_evidence_receipt",
+                "accepted evidence requires non-zero receipt_hash",
+            ));
+        }
+        if evidence.gate != EVIDENCE_GATE_EXECUTION {
+            return Err(PlanValidationError::new(
+                "wrong_evidence_gate",
+                format!(
+                    "task completion requires gate '{}' but found '{}'",
+                    EVIDENCE_GATE_EXECUTION, evidence.gate
+                ),
+            ));
+        }
+        if evidence.evidence != EVIDENCE_TYPE_EXECUTION_RECEIPT {
+            return Err(PlanValidationError::new(
+                "wrong_evidence_type",
+                format!(
+                    "task completion requires evidence '{}' but found '{}'",
+                    EVIDENCE_TYPE_EXECUTION_RECEIPT, evidence.evidence
+                ),
+            ));
+        }
+
+        Ok(Self { evidence })
     }
 }
 
@@ -657,6 +711,39 @@ mod tests {
         let err = validate_plan_patch_mutation(&plan).expect_err("test should fail");
 
         assert_eq!(err.code, "missing_required_field");
+    }
+
+    #[test]
+    fn accepted_execution_evidence_ref_types_completion_prerequisite_for_inv_2d8266d0f547() {
+        let accepted = node("accepted").evidence.remove(0);
+        let typed = AcceptedExecutionEvidenceRef::try_from(&accepted)
+            .expect("accepted execution receipt evidence should type-check");
+        assert_eq!(typed.receipt_hash(), 1);
+        assert_eq!(typed.evidence().path, "state/agent-evidence/accepted.md");
+
+        let mut missing_acceptance = accepted.clone();
+        missing_acceptance.accepted = false;
+        let err = AcceptedExecutionEvidenceRef::try_from(&missing_acceptance)
+            .expect_err("inv-2d8266d0f547: unaccepted evidence must not type-check");
+        assert_eq!(err.code, "unaccepted_evidence");
+
+        let mut missing_receipt = accepted.clone();
+        missing_receipt.receipt_hash = 0;
+        let err = AcceptedExecutionEvidenceRef::try_from(&missing_receipt)
+            .expect_err("accepted evidence without receipt hash must not type-check");
+        assert_eq!(err.code, "invalid_evidence_receipt");
+
+        let mut wrong_gate = accepted.clone();
+        wrong_gate.gate = "Analysis".to_string();
+        let err = AcceptedExecutionEvidenceRef::try_from(&wrong_gate)
+            .expect_err("wrong gate evidence must not type-check");
+        assert_eq!(err.code, "wrong_evidence_gate");
+
+        let mut wrong_type = accepted;
+        wrong_type.evidence = "AnalysisReport".to_string();
+        let err = AcceptedExecutionEvidenceRef::try_from(&wrong_type)
+            .expect_err("wrong evidence type must not type-check");
+        assert_eq!(err.code, "wrong_evidence_type");
     }
 
     #[test]
