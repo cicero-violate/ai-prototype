@@ -76,6 +76,11 @@ impl WorkerAppState {
         }
     }
 
+    pub fn is_ready(&self) -> Result<bool, ServerError> {
+        let guard = self.inner.lock().map_err(|_| ServerError::LockPoisoned)?;
+        Ok(guard.is_some())
+    }
+
     pub fn snapshot(&self) -> Result<StateDto, ServerError> {
         let guard = self.inner.lock().map_err(|_| ServerError::LockPoisoned)?;
         let session = guard.as_ref().ok_or(ServerError::WorkerLoading)?;
@@ -330,8 +335,14 @@ pub fn build_router(state: WorkerAppState) -> Router {
         .with_state(state)
 }
 
-pub async fn health() -> &'static str {
-    "ok"
+pub async fn health(
+    AxumState(state): AxumState<WorkerAppState>,
+) -> Result<&'static str, (StatusCode, Json<ErrorDto>)> {
+    if state.is_ready().map_err(error_response)? {
+        Ok("ok")
+    } else {
+        Err(error_response(ServerError::WorkerLoading))
+    }
 }
 
 pub async fn get_state(

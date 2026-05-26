@@ -3,6 +3,8 @@
 use std::fs;
 use std::path::Path;
 
+use crate::service::invariants::promoted_invariant_prompt_block;
+
 use crate::service::agent::config::AgentLoopConfig;
 
 use super::http::agent_command_url;
@@ -104,6 +106,7 @@ pub(super) fn build_project_planning_prompt(
 ) -> String {
     let policy_feedback = load_policy_feedback(working_dir);
     let mcp_feedback = load_mcp_feedback(working_dir);
+    let invariant_feedback = promoted_invariant_prompt_block(working_dir, 8);
     planning_prompt(
         goal,
         agent_id,
@@ -114,6 +117,7 @@ pub(super) fn build_project_planning_prompt(
         None,
         policy_feedback.as_deref(),
         mcp_feedback.as_deref(),
+        invariant_feedback.as_deref(),
     )
 }
 
@@ -127,6 +131,7 @@ pub(super) fn planning_prompt(
     _score_report: Option<&str>,
     policy_feedback: Option<&str>,
     mcp_feedback: Option<&str>,
+    invariant_feedback: Option<&str>,
 ) -> String {
     let agent_line = agent_identity(agent_id, agent_count);
     let focus_block = match (domain, metric) {
@@ -153,6 +158,14 @@ pub(super) fn planning_prompt(
         ),
         _ => String::new(),
     };
+    let invariant_block = match invariant_feedback {
+        Some(feedback) if !feedback.trim().is_empty() => format!(
+            "## PROMOTED RUNTIME INVARIANTS\n\
+             {feedback}\n\
+             Treat these as replay-validated constraints when planning or diagnosing work.\n\n"
+        ),
+        _ => String::new(),
+    };
     format!(
         "{agent_line}\n\
          You are doing the planning turn for this agent loop.\n\n\
@@ -162,6 +175,7 @@ pub(super) fn planning_prompt(
          ## GOAL\n{goal}\n\n\
          {score_block}\
          {policy_block}\
+         {invariant_block}\
          {mcp_error_block}\
          ## HOW EXECUTOR DISPATCH WORKS\n\
          After this planning turn finishes, the scheduler reads the TLog-projected plan read model and **spawns one executor per ready node in parallel**. \

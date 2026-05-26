@@ -1065,7 +1065,10 @@ mod tests {
             .as_nanos();
         let dir = std::path::PathBuf::from("target/test-tmp/ndjson-codec");
         std::fs::create_dir_all(&dir).expect("test dir should exist");
-        dir.join(format!("codec-{name}-{}-{nanos}.ndjson", std::process::id()))
+        dir.join(format!(
+            "codec-{name}-{}-{nanos}.ndjson",
+            std::process::id()
+        ))
     }
 
     fn make_events(n: usize) -> (State, TLog) {
@@ -1129,8 +1132,7 @@ mod tests {
 
         append_tlog_events_ndjson_with_policy(&path_batch, &tlog, AppendPolicy::SyncEveryBatch)
             .expect("batch policy append should succeed");
-        append_tlog_events_ndjson(&path_default, &tlog)
-            .expect("default append should succeed");
+        append_tlog_events_ndjson(&path_default, &tlog).expect("default append should succeed");
 
         let loaded_batch = load_tlog_ndjson(&path_batch).expect("batch tlog should load");
         let loaded_default = load_tlog_ndjson(&path_default).expect("default tlog should load");
@@ -1161,7 +1163,8 @@ mod tests {
         }
         append_tlog_events_ndjson(&path_batch, &tlog).expect("batch append should succeed");
 
-        let incremental = load_tlog_ndjson(&path_incremental).expect("incremental tlog should load");
+        let incremental =
+            load_tlog_ndjson(&path_incremental).expect("incremental tlog should load");
         let batch = load_tlog_ndjson(&path_batch).expect("batch tlog should load");
 
         assert_eq!(incremental.len(), batch.len());

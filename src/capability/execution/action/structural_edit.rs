@@ -74,16 +74,20 @@ fn run_inner(args: &Value, workspace: &WorkspaceView) -> Result<Value, String> {
         "rejects": if result.ok { json!([]) } else { json!(["structural_editor_apply_failed"]) }
     });
 
-    Ok(json!({
-        "content": [{ "type": "text", "text": payload.to_string() }],
-        "isError": !payload.get("ok").and_then(Value::as_bool).unwrap_or(false)
-    }))
+    Ok(tool_response(
+        payload.clone(),
+        !payload.get("ok").and_then(Value::as_bool).unwrap_or(false),
+    ))
 }
 
 fn success_response(payload: Value) -> Value {
+    tool_response(payload, false)
+}
+
+fn tool_response(payload: Value, is_error: bool) -> Value {
     json!({
         "content": [{ "type": "text", "text": payload.to_string() }],
-        "isError": false
+        "isError": is_error
     })
 }
 

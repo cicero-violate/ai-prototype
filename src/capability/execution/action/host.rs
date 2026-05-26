@@ -40,9 +40,14 @@ pub async fn execute_native_tool<H: ActionHost>(name: &str, args: &Value, host: 
         | "canon_graph_apply_ops"
         | "canon_graph_verify_cfg_delta"
         | "canon_graph_auto_refactor_cfg" => graph::execute(name, args, host),
-        "canon_score" | "canon_diagnostics_read" | "canon_plan_read" | "canon_plan_update" => {
-            project::execute(name, args, host)
-        }
+        "canon_score"
+        | "canon_diagnostics_read"
+        | "canon_invariants_mine"
+        | "canon_invariants_validate"
+        | "canon_invariants_promote"
+        | "canon_invariants_read"
+        | "canon_plan_read"
+        | "canon_plan_update" => project::execute(name, args, host),
         "canon_spawn_agent"
         | "canon_runtime_state"
         | "canon_supervisor_health"

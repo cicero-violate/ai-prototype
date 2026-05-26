@@ -37,6 +37,7 @@ use std::time::{Duration, Instant};
 use crate::codec::ndjson::load_tlog_ndjson;
 use crate::domain::plan::NodeStatus;
 use crate::runtime::event_bus::{replay_event_bus, WakeupKind};
+use crate::service::invariants::promoted_invariant_prompt_block;
 use crate::service::scheduler::plan_store::{load_plan, load_plan_read_model};
 use crate::service::supervisor::SupervisorState;
 
@@ -176,16 +177,40 @@ async fn try_llm_recovery(
         }
 
         let domain = format!("Recovery: {}", node.title);
+        let invariant_block = promoted_invariant_prompt_block(&project_dir, 5)
+            .map(|block| format!(" Relevant promoted invariants:\n{block}\n"))
+            .unwrap_or_default();
+        let prior_unaccepted = node.evidence.iter().filter(|e| !e.accepted).count();
+        let prior_hint = if prior_unaccepted > 0 {
+            let files_note = if node.files.is_empty() {
+                String::new()
+            } else {
+                format!(
+                    " Verify that the path(s) listed under files ({}) actually exist on disk before deciding whether this is retryable or permanently blocked.",
+                    node.files.join(", ")
+                )
+            };
+            format!(
+                "Note: {} prior evidence entr{} exist with none accepted.{} ",
+                prior_unaccepted,
+                if prior_unaccepted == 1 { "y" } else { "ies" },
+                files_note
+            )
+        } else {
+            String::new()
+        };
         let metric = format!(
             "Task '{}' is stuck: {}. \
              Examine the current plan state and any evidence already attached to this node. \
+             {}\
+             {}\
              If the task is permanently blocked (unsatisfiable constraint, missing dependency, \
              repeated failure with no path forward), write a blocker evidence entry so the node \
              can be marked Failed and downstream work can proceed. \
              Otherwise write a short diagnostic evidence entry describing what failed and why, \
              to help the next retry attempt. \
              Do not attempt to redo the full task — only diagnose and annotate.",
-            node.title, wakeup_reason
+            node.title, wakeup_reason, invariant_block, prior_hint
         );
 
         let result = {

@@ -9,6 +9,7 @@
 pub mod agent;
 pub mod dispatch;
 pub mod endpoints;
+pub mod invariants;
 pub mod recovery;
 pub mod scheduler;
 pub mod supervisor;

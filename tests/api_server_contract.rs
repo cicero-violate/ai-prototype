@@ -345,6 +345,30 @@ async fn worker_health_route_returns_ok() {
 }
 
 #[tokio::test]
+async fn worker_health_route_reports_loading_until_session_is_ready() {
+    let app = build_router(WorkerAppState::loading());
+    let response = app
+        .oneshot(
+            Request::builder()
+                .uri("/health/worker")
+                .body(Body::empty())
+                .expect("test operation should succeed"),
+        )
+        .await
+        .expect("test operation should succeed");
+
+    assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
+    let body = to_bytes(response.into_body(), usize::MAX)
+        .await
+        .expect("test operation should succeed");
+    assert!(
+        String::from_utf8_lossy(&body).contains("WorkerLoading"),
+        "{}",
+        String::from_utf8_lossy(&body)
+    );
+}
+
+#[tokio::test]
 async fn state_route_is_read_only() {
     let path = tlog_path("state");
     let state = WorkerAppState::new_default(&path);

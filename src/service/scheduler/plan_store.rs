@@ -85,7 +85,10 @@ impl PlanPatchCursor {
                 }
             }
         }
-        Ok(Self { last_seq, last_revision })
+        Ok(Self {
+            last_seq,
+            last_revision,
+        })
     }
 
     pub fn next_seq(&mut self) -> u64 {

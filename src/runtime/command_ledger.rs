@@ -4,6 +4,8 @@
 //! surface. API envelopes adapt into `(command_id, command_hash)` pairs at the
 //! boundary; runtime never imports API protocol types.
 
+use std::collections::BTreeMap;
+
 use crate::kernel::CanonError;
 use crate::kernel::{ControlEvent, TLog};
 
@@ -44,6 +46,7 @@ impl CommandLedger {
 
     pub fn reconstruct_from_tlog(tlog: &TLog) -> Result<Self, CanonError> {
         let mut ledger = Self::default();
+        let mut command_index_by_id = BTreeMap::<u64, (u64, usize)>::new();
 
         for event in tlog {
             if event.api_command_id == 0 && event.api_command_hash == 0 {
@@ -60,14 +63,19 @@ impl CommandLedger {
                 event_hash: event.self_hash,
             };
 
-            if ledger.receipts.iter().any(|existing| {
-                existing.command_id == receipt.command_id
-                    && existing.command_hash != receipt.command_hash
-            }) {
-                return Err(CanonError::InvalidApiCommand);
+            match command_index_by_id.get(&receipt.command_id).copied() {
+                Some((command_hash, _)) if command_hash != receipt.command_hash => {
+                    return Err(CanonError::InvalidApiCommand);
+                }
+                Some((_, index)) => {
+                    ledger.receipts[index] = receipt;
+                }
+                None => {
+                    let index = ledger.receipts.len();
+                    ledger.receipts.push(receipt);
+                    command_index_by_id.insert(receipt.command_id, (receipt.command_hash, index));
+                }
             }
-
-            ledger.insert_or_update(receipt);
         }
 
         Ok(ledger)

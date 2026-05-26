@@ -48,6 +48,10 @@ pub enum NativeTool {
     CanonGraphAutoRefactorCfg,
     CanonScore,
     CanonDiagnosticsRead,
+    CanonInvariantsMine,
+    CanonInvariantsValidate,
+    CanonInvariantsPromote,
+    CanonInvariantsRead,
     CanonPlanRead,
     CanonPlanUpdate,
     Python,
@@ -81,6 +85,10 @@ impl NativeTool {
             Self::CanonGraphAutoRefactorCfg => "canon_graph_auto_refactor_cfg",
             Self::CanonScore => "canon_score",
             Self::CanonDiagnosticsRead => "canon_diagnostics_read",
+            Self::CanonInvariantsMine => "canon_invariants_mine",
+            Self::CanonInvariantsValidate => "canon_invariants_validate",
+            Self::CanonInvariantsPromote => "canon_invariants_promote",
+            Self::CanonInvariantsRead => "canon_invariants_read",
             Self::CanonPlanRead => "canon_plan_read",
             Self::CanonPlanUpdate => "canon_plan_update",
             Self::Python => "python",
@@ -196,6 +204,42 @@ const ACTIONS: &[LandmarkAction] = &[
         native_tool: NativeTool::CanonDiagnosticsRead,
         landmark: Landmark::Project,
         description: "Read bounded, redacted runtime diagnostics for planner self-review. Returns recent console tail, recent action/TLog diagnostic lines, and key runtime configuration such as supervisor/router URLs and task-runner settings.",
+        read_only: true,
+        destructive: false,
+        idempotent: true,
+    },
+    LandmarkAction {
+        id: "project:invariants_mine",
+        native_tool: NativeTool::CanonInvariantsMine,
+        landmark: Landmark::Project,
+        description: "Mine candidate runtime invariants from durable TLog, plan, reasoning, and agent receipt state. Writes deterministic candidate artifacts and updates the invariant registry.",
+        read_only: false,
+        destructive: false,
+        idempotent: true,
+    },
+    LandmarkAction {
+        id: "project:invariants_validate",
+        native_tool: NativeTool::CanonInvariantsValidate,
+        landmark: Landmark::Project,
+        description: "Validate mined invariant candidates against replayable durable state and write deterministic validation artifacts.",
+        read_only: false,
+        destructive: false,
+        idempotent: true,
+    },
+    LandmarkAction {
+        id: "project:invariants_promote",
+        native_tool: NativeTool::CanonInvariantsPromote,
+        landmark: Landmark::Project,
+        description: "Promote validated zero-violation invariants into the invariant registry for planner and recovery feedback.",
+        read_only: false,
+        destructive: false,
+        idempotent: true,
+    },
+    LandmarkAction {
+        id: "project:invariants_read",
+        native_tool: NativeTool::CanonInvariantsRead,
+        landmark: Landmark::Project,
+        description: "Read the bounded invariant registry summary, including candidate, validated, rejected, and promoted invariants.",
         read_only: true,
         destructive: false,
         idempotent: true,
@@ -664,6 +708,10 @@ pub fn resolve_action_id(action_id: &str) -> Option<LandmarkAction> {
         "canon_graph_auto_refactor_cfg" => "graph:auto_refactor_cfg",
         "canon_score" => "project:score",
         "canon_diagnostics_read" => "project:diagnostics_read",
+        "canon_invariants_mine" => "project:invariants_mine",
+        "canon_invariants_validate" => "project:invariants_validate",
+        "canon_invariants_promote" => "project:invariants_promote",
+        "canon_invariants_read" => "project:invariants_read",
         "canon_plan_read" => "project:plan_read",
         "canon_plan_update" => "project:plan_update",
         "python" => "utility:python",
@@ -711,8 +759,32 @@ fn annotations(action: LandmarkAction) -> Value {
 
 // ── Input schemas — exhaustive match enforced by compiler ─────────────────────
 
+fn schema_string() -> Value {
+    json!({ "type": "string" })
+}
+
+fn schema_integer() -> Value {
+    json!({ "type": "integer" })
+}
+
+fn schema_boolean() -> Value {
+    json!({ "type": "boolean" })
+}
+
+fn schema_object() -> Value {
+    json!({ "type": "object" })
+}
+
+fn schema_const(value: &str) -> Value {
+    json!({ "const": value })
+}
+
+fn intent_property() -> Value {
+    schema_string()
+}
+
 fn intent_only() -> Value {
-    json!({ "type": "object", "properties": { "intent": { "type": "string" } } })
+    json!({ "type": "object", "properties": { "intent": intent_property() } })
 }
 
 fn node_locator_schema() -> Value {
@@ -721,19 +793,19 @@ fn node_locator_schema() -> Value {
             {
                 "type": "object",
                 "properties": {
-                    "loc": { "const": "selector" },
-                    "path": { "type": "string" },
-                    "selector": { "type": "string" }
+                    "loc": schema_const("selector"),
+                    "path": schema_string(),
+                    "selector": schema_string()
                 },
                 "required": ["loc", "path", "selector"]
             },
             {
                 "type": "object",
                 "properties": {
-                    "loc": { "const": "anchor" },
-                    "path": { "type": "string" },
-                    "byte_from": { "type": "integer" },
-                    "byte_to": { "type": "integer" }
+                    "loc": schema_const("anchor"),
+                    "path": schema_string(),
+                    "byte_from": schema_integer(),
+                    "byte_to": schema_integer()
                 },
                 "required": ["loc", "path", "byte_from", "byte_to"]
             }
@@ -759,17 +831,17 @@ fn structural_op_schema() -> Value {
             {
                 "type": "object",
                 "properties": {
-                    "op": { "const": "create_node" },
+                    "op": schema_const("create_node"),
                     "kind": node_kind.clone(),
                     "at": locator.clone(),
-                    "text": { "type": "string" }
+                    "text": schema_string()
                 },
                 "required": ["op", "kind", "at", "text"]
             },
             {
                 "type": "object",
                 "properties": {
-                    "op": { "const": "delete_node" },
+                    "op": schema_const("delete_node"),
                     "kind": node_kind.clone(),
                     "at": locator.clone(),
                     "compiler_proven_unused": { "type": "boolean", "default": false }
@@ -779,18 +851,18 @@ fn structural_op_schema() -> Value {
             {
                 "type": "object",
                 "properties": {
-                    "op": { "const": "replace_node" },
+                    "op": schema_const("replace_node"),
                     "kind": node_kind.clone(),
                     "at": locator.clone(),
                     "target": { "type": "string", "enum": ["whole", "body", "signature", "type", "value"] },
-                    "text": { "type": "string" }
+                    "text": schema_string()
                 },
                 "required": ["op", "kind", "at", "target", "text"]
             },
             {
                 "type": "object",
                 "properties": {
-                    "op": { "const": "move_node" },
+                    "op": schema_const("move_node"),
                     "kind": node_kind.clone(),
                     "from": locator.clone(),
                     "to": locator.clone(),
@@ -802,32 +874,32 @@ fn structural_op_schema() -> Value {
             {
                 "type": "object",
                 "properties": {
-                    "op": { "const": "rename_symbol" },
+                    "op": schema_const("rename_symbol"),
                     "kind": node_kind.clone(),
                     "at": locator.clone(),
-                    "old_name": { "type": "string" },
-                    "new_name": { "type": "string" },
-                    "scope": { "type": "array", "items": { "type": "string" }, "default": [] }
+                    "old_name": schema_string(),
+                    "new_name": schema_string(),
+                    "scope": { "type": "array", "items": schema_string(), "default": [] }
                 },
                 "required": ["op", "kind", "at", "old_name", "new_name"]
             },
             {
                 "type": "object",
                 "properties": {
-                    "op": { "const": "set_attr" },
+                    "op": schema_const("set_attr"),
                     "kind": node_kind.clone(),
                     "at": locator.clone(),
                     "key": { "type": "string", "enum": ["visibility", "derive", "cfg", "allow", "must_use", "inline", "deprecated", "doc", "repr", "custom"] },
-                    "value": { "type": "string" }
+                    "value": schema_string()
                 },
                 "required": ["op", "kind", "at", "key", "value"]
             },
             {
                 "type": "object",
                 "properties": {
-                    "op": { "const": "add_edge" },
-                    "file": { "type": "string" },
-                    "edge": { "type": "object" },
+                    "op": schema_const("add_edge"),
+                    "file": schema_string(),
+                    "edge": schema_object(),
                     "near": { "oneOf": [locator.clone(), { "type": "null" }] }
                 },
                 "required": ["op", "file", "edge"]
@@ -835,17 +907,17 @@ fn structural_op_schema() -> Value {
             {
                 "type": "object",
                 "properties": {
-                    "op": { "const": "remove_edge" },
-                    "file": { "type": "string" },
-                    "edge": { "type": "object" }
+                    "op": schema_const("remove_edge"),
+                    "file": schema_string(),
+                    "edge": schema_object()
                 },
                 "required": ["op", "file", "edge"]
             },
             {
                 "type": "object",
                 "properties": {
-                    "op": { "const": "verify" },
-                    "predicate": { "type": "object" },
+                    "op": schema_const("verify"),
+                    "predicate": schema_object(),
                     "message": { "type": ["string", "null"] }
                 },
                 "required": ["op", "predicate"]
@@ -853,28 +925,28 @@ fn structural_op_schema() -> Value {
             {
                 "type": "object",
                 "properties": {
-                    "op": { "const": "cargo" },
-                    "change": { "type": "string" },
-                    "manifest": { "type": "string" }
+                    "op": schema_const("cargo"),
+                    "change": schema_string(),
+                    "manifest": schema_string()
                 },
                 "required": ["op", "change", "manifest"]
             },
             {
                 "type": "object",
                 "properties": {
-                    "op": { "const": "receipt" },
-                    "summary": { "type": "string" },
-                    "rollback_required": { "type": "boolean" },
-                    "receipt_path": { "type": "string" }
+                    "op": schema_const("receipt"),
+                    "summary": schema_string(),
+                    "rollback_required": schema_boolean(),
+                    "receipt_path": schema_string()
                 },
                 "required": ["op", "summary", "rollback_required", "receipt_path"]
             },
             {
                 "type": "object",
                 "properties": {
-                    "op": { "const": "rollback" },
-                    "manifest": { "type": "string" },
-                    "rollback_path": { "type": "string" }
+                    "op": schema_const("rollback"),
+                    "manifest": schema_string(),
+                    "rollback_path": schema_string()
                 },
                 "required": ["op", "manifest", "rollback_path"]
             }
@@ -895,7 +967,7 @@ fn native_input_schema(tool: NativeTool) -> Value {
                 "mode": { "type": "string", "enum": ["check", "apply"], "default": "check" },
                 "strip": { "type": "integer", "minimum": 0, "maximum": 0, "default": 0 },
                 "maxBytes": { "type": "integer", "default": 200000 },
-                "intent": { "type": "string" }
+                "intent": intent_property()
             },
             "required": ["patch"]
         }),
@@ -912,7 +984,7 @@ fn native_input_schema(tool: NativeTool) -> Value {
                     "items": structural_op_schema(),
                     "description": "Array of structural-editor StructuralOp values. Each op uses serde tag field 'op'."
                 },
-                "intent": { "type": "string" }
+                "intent": intent_property()
             },
             "required": ["ops"]
         }),
@@ -920,11 +992,11 @@ fn native_input_schema(tool: NativeTool) -> Value {
         NativeTool::Shell => json!({
             "type": "object",
             "properties": {
-                "command": { "type": "string" },
+                "command": schema_string(),
                 "cwd": { "type": "string", "default": "." },
                 "timeout_ms": { "type": "integer", "default": 180000 },
                 "max_output_bytes": { "type": "integer", "default": 65536 },
-                "intent": { "type": "string" }
+                "intent": intent_property()
             },
             "required": ["command"]
         }),
@@ -932,8 +1004,8 @@ fn native_input_schema(tool: NativeTool) -> Value {
         NativeTool::Echo => json!({
             "type": "object",
             "properties": {
-                "text": { "type": "string" },
-                "intent": { "type": "string" }
+                "text": schema_string(),
+                "intent": intent_property()
             },
             "required": ["text"]
         }),
@@ -945,8 +1017,25 @@ fn native_input_schema(tool: NativeTool) -> Value {
         | NativeTool::CanonSupervisorRestart
         | NativeTool::CanonWorkspaceGet
         | NativeTool::CanonScore
+        | NativeTool::CanonInvariantsMine
         | NativeTool::CanonPlanRead
         | NativeTool::CanonBrowserListTabs => intent_only(),
+
+        NativeTool::CanonInvariantsValidate | NativeTool::CanonInvariantsPromote => json!({
+            "type": "object",
+            "properties": {
+                "min_support": { "type": "integer", "default": 1, "minimum": 1, "description": "Minimum support count required to validate or promote an invariant." },
+                "intent": { "type": "string" }
+            }
+        }),
+
+        NativeTool::CanonInvariantsRead => json!({
+            "type": "object",
+            "properties": {
+                "limit": { "type": "integer", "default": 20, "maximum": 100, "description": "Maximum invariant entries to return." },
+                "intent": { "type": "string" }
+            }
+        }),
 
         NativeTool::CanonDiagnosticsRead => json!({
             "type": "object",

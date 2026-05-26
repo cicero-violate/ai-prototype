@@ -2,6 +2,7 @@
 
 pub mod canon_diagnostics;
 pub mod canon_graph_editor;
+pub mod canon_invariants;
 pub mod canon_plan;
 pub mod canon_read_mailbox;
 pub mod canon_score;
@@ -20,6 +21,10 @@ pub use canon_diagnostics::CANON_DIAGNOSTICS_READ_TOOL;
 pub use canon_graph_editor::{
     CANON_GRAPH_APPLY_OPS_TOOL, CANON_GRAPH_AUTO_REFACTOR_CFG_TOOL, CANON_GRAPH_PLAN_CFG_TOOL,
     CANON_GRAPH_PLAN_PATCH_TOOL, CANON_GRAPH_VERIFY_CFG_DELTA_TOOL,
+};
+pub use canon_invariants::{
+    CANON_INVARIANTS_MINE_TOOL, CANON_INVARIANTS_PROMOTE_TOOL, CANON_INVARIANTS_READ_TOOL,
+    CANON_INVARIANTS_VALIDATE_TOOL,
 };
 pub use canon_plan::{CANON_PLAN_READ_TOOL, CANON_PLAN_UPDATE_TOOL};
 pub use canon_read_mailbox::CANON_READ_MAILBOX_TOOL;

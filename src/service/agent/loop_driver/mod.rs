@@ -709,6 +709,7 @@ mod tests {
             None,
             None,
             None,
+            None,
         );
         let execute = execute_prompt(2, 2, 3);
 
@@ -726,7 +727,7 @@ mod tests {
     fn project_prompts_do_not_claim_to_be_worker_certification() {
         let goal = "Ship the next deterministic runtime slice.";
         let working_dir = Path::new("/workspace/project");
-        let planning = planning_prompt(goal, 0, 1, working_dir, None, None, None, None, None);
+        let planning = planning_prompt(goal, 0, 1, working_dir, None, None, None, None, None, None);
         let execute = execute_prompt(2, 0, 1);
 
         assert!(planning.contains("planning turn for this agent loop"));

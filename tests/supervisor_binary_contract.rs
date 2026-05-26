@@ -82,6 +82,7 @@ fn supervisor_spawns_worker_and_reloads_generation() {
         .env("SUPERVISOR_PORT", supervisor_port.to_string())
         .env("AI_TLOG_DIR", &tlog_dir)
         .env("AI_KERNEL_TLOG_BIN", env!("CARGO_BIN_EXE_kernel_tlog"))
+        .env("TASK_RUNNER_ENABLED", "0")
         .stdin(Stdio::null())
         .stdout(Stdio::null())
         .stderr(Stdio::null())

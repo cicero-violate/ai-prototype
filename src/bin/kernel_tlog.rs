@@ -32,8 +32,8 @@ async fn run() -> Result<(), String> {
 
     let cfg = WorkerConfig::from_env()?;
 
-    // Bind the port before TLog replay so the supervisor health check can succeed
-    // immediately. Other routes return 503 until set_ready() is called below.
+    // Bind the port before TLog replay so the process is reachable immediately.
+    // Health and command routes return 503 until set_ready() is called below.
     let listener = TcpListener::bind(cfg.addr)
         .await
         .map_err(|err| format!("bind {} failed: {err}", cfg.addr))?;
