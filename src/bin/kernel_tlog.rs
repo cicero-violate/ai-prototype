@@ -31,12 +31,25 @@ async fn run() -> Result<(), String> {
     }
 
     let cfg = WorkerConfig::from_env()?;
-    let session = load_session(&cfg.tlog_path)?;
-    let state = WorkerAppState::new(session, &cfg.tlog_path);
-    let app = build_router(state);
+
+    // Bind the port before TLog replay so the supervisor health check can succeed
+    // immediately. Other routes return 503 until set_ready() is called below.
     let listener = TcpListener::bind(cfg.addr)
         .await
         .map_err(|err| format!("bind {} failed: {err}", cfg.addr))?;
+
+    let state = WorkerAppState::loading();
+    let app = build_router(state.clone());
+
+    let tlog_path = cfg.tlog_path.clone();
+    let state_clone = state.clone();
+    tokio::task::spawn_blocking(move || match load_session(&tlog_path) {
+        Ok(session) => state_clone.set_ready(session, &tlog_path),
+        Err(err) => {
+            eprintln!("worker error: {err}");
+            std::process::exit(1);
+        }
+    });
 
     axum::serve(listener, app)
         .with_graceful_shutdown(shutdown_signal())
@@ -129,12 +142,17 @@ fn initialize_empty_runtime(
 async fn shutdown_signal() {
     #[cfg(unix)]
     {
-        let mut terminate =
-            tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
-                .expect("install SIGTERM handler");
-        tokio::select! {
-            _ = tokio::signal::ctrl_c() => {},
-            _ = terminate.recv() => {},
+        match tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate()) {
+            Ok(mut terminate) => {
+                tokio::select! {
+                    _ = tokio::signal::ctrl_c() => {},
+                    _ = terminate.recv() => {},
+                }
+            }
+            Err(err) => {
+                eprintln!("install SIGTERM handler failed: {err}");
+                let _ = tokio::signal::ctrl_c().await;
+            }
         }
     }
 

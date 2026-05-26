@@ -1,5 +1,6 @@
 //! Action execution compatibility facade.
 
+pub mod canon_diagnostics;
 pub mod canon_graph_editor;
 pub mod canon_plan;
 pub mod canon_read_mailbox;
@@ -15,6 +16,7 @@ pub mod structural_edit;
 
 pub use crate::capability::execution::patch::APPLY_PATCH_TOOL;
 pub use crate::capability::execution::shell::SHELL_TOOL;
+pub use canon_diagnostics::CANON_DIAGNOSTICS_READ_TOOL;
 pub use canon_graph_editor::{
     CANON_GRAPH_APPLY_OPS_TOOL, CANON_GRAPH_AUTO_REFACTOR_CFG_TOOL, CANON_GRAPH_PLAN_CFG_TOOL,
     CANON_GRAPH_PLAN_PATCH_TOOL, CANON_GRAPH_VERIFY_CFG_DELTA_TOOL,

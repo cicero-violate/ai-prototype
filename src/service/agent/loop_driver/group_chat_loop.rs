@@ -19,14 +19,11 @@ use std::time::Duration;
 use serde_json::{json, Value};
 
 use crate::capability::llm::browser_router::RouterClient;
-use crate::capability::llm::openai::{
-    OpenAiChatRequest, OpenAiConfig, OpenAiMessage,
-};
+use crate::capability::llm::openai::{OpenAiChatRequest, OpenAiConfig, OpenAiMessage};
 use crate::capability::llm::sse::ChunkLogger;
 
 /// The pinned group chat URL for refactoring tasks.
-pub const GROUP_CHAT_REFACTOR_URL: &str =
-    "https://chatgpt.com/gg/6a13faffb7bc819a8b2c3a7320a238e1";
+pub const GROUP_CHAT_REFACTOR_URL: &str = "https://chatgpt.com/gg/6a13faffb7bc819a8b2c3a7320a238e1";
 
 /// Model name that resolves to the `chatgpt_group` provider adapter in the browser-router.
 const GROUP_MODEL: &str = "chatgpt-group";
@@ -76,7 +73,10 @@ pub struct GroupChatLoopConfig {
 }
 
 impl GroupChatLoopConfig {
-    pub fn new(router_base_url: impl Into<String>, sse_chunks_dir: impl Into<std::path::PathBuf>) -> Self {
+    pub fn new(
+        router_base_url: impl Into<String>,
+        sse_chunks_dir: impl Into<std::path::PathBuf>,
+    ) -> Self {
         Self {
             router_base_url: router_base_url.into(),
             max_turns: 20,
@@ -249,8 +249,7 @@ pub fn run_group_chat_task(
                     Ok(v) => (true, v),
                     Err(e) => (false, json!({ "error": e })),
                 };
-                next_user_message =
-                    format_tool_result(&call.call_id, &call.name, ok, &data);
+                next_user_message = format_tool_result(&call.call_id, &call.name, ok, &data);
             }
             GroupChatResponse::NoTag(raw) => {
                 let preview = raw.chars().take(120).collect::<String>();

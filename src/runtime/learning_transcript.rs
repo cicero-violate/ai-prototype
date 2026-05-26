@@ -447,7 +447,6 @@ mod tests {
         let replayed = replay_learning_transcripts(&workspace).expect("replay");
         assert_eq!(replayed.len(), 1);
         assert_eq!(replayed[0].artifact_hash, record.record_hash);
-
     }
 
     #[test]
@@ -478,7 +477,6 @@ mod tests {
 
         let replayed = replay_learning_transcripts(&workspace).expect("replay");
         assert_eq!(replayed.len(), 2);
-
     }
 
     #[test]
@@ -525,6 +523,5 @@ mod tests {
 
         let replayed = replay_learning_transcripts(&workspace).expect("replay recovered");
         assert_eq!(replayed.len(), 1);
-
     }
 }

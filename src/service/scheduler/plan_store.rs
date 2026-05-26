@@ -402,20 +402,10 @@ fn apply_plan_tlog_patch(
     let mutation = payload.plan_state_patch();
     match projection.apply_patch(mutation) {
         Ok(_) => Ok(()),
-        // NodeRemove on an already-removed node is idempotent.
-        Err(PlanStateRejection::MissingNode)
-            if matches!(mutation, PlanStatePatch::NodeRemove { .. }) =>
-        {
-            Ok(())
-        }
-        // StatusChange on an already-removed node is idempotent — the reconciler may
-        // write StatusChange+NodeRemove pairs on each run; later runs' StatusChange
-        // patches arrive after earlier runs' NodeRemove patches.
-        Err(PlanStateRejection::MissingNode)
-            if matches!(mutation, PlanStatePatch::StatusChange { .. }) =>
-        {
-            Ok(())
-        }
+        // Any patch targeting a node that no longer exists is silently skipped.
+        // NodeUpsert cannot produce MissingNode (it upserts), so this catch-all
+        // is safe for cross-plan-version TLog replay where old node IDs are gone.
+        Err(PlanStateRejection::MissingNode) => Ok(()),
         Err(PlanStateRejection::MissingEdge)
             if matches!(mutation, PlanStatePatch::EdgeRemove(_)) =>
         {
@@ -492,7 +482,6 @@ mod tests {
             .collect::<Vec<_>>(),
             vec!["b"]
         );
-
     }
 
     #[test]
@@ -540,7 +529,6 @@ mod tests {
         assert!(plan_state.is_some());
         assert_eq!(read_model.nodes[0].evidence.len(), 1);
         assert_eq!(read_model.nodes[0].evidence[0].path, accepted.path);
-
     }
 
     #[test]
@@ -582,6 +570,5 @@ mod tests {
             vec!["remaining"]
         );
         assert!(read_model.edges.is_empty());
-
     }
 }

@@ -2298,8 +2298,6 @@ mod tests {
         .expect("malformed loader fixture should be writable");
         assert!(load_openai_llm_effect_receipts_ndjson(&malformed_path).is_err());
         assert!(load_openai_llm_effect_receipts_ndjson_unchecked(&malformed_path).is_err());
-
-
     }
 
     #[test]

@@ -47,6 +47,7 @@ pub enum NativeTool {
     CanonGraphVerifyCfgDelta,
     CanonGraphAutoRefactorCfg,
     CanonScore,
+    CanonDiagnosticsRead,
     CanonPlanRead,
     CanonPlanUpdate,
     Python,
@@ -79,6 +80,7 @@ impl NativeTool {
             Self::CanonGraphVerifyCfgDelta => "canon_graph_verify_cfg_delta",
             Self::CanonGraphAutoRefactorCfg => "canon_graph_auto_refactor_cfg",
             Self::CanonScore => "canon_score",
+            Self::CanonDiagnosticsRead => "canon_diagnostics_read",
             Self::CanonPlanRead => "canon_plan_read",
             Self::CanonPlanUpdate => "canon_plan_update",
             Self::Python => "python",
@@ -185,6 +187,15 @@ const ACTIONS: &[LandmarkAction] = &[
         native_tool: NativeTool::CanonPlanRead,
         landmark: Landmark::Project,
         description: "Read the current plan DAG. Returns all nodes, edges, version, and ready node IDs calculated from the kernel PlanState projection, using state/plan.json as the explicit fallback import source before a kernel projection is available.",
+        read_only: true,
+        destructive: false,
+        idempotent: true,
+    },
+    LandmarkAction {
+        id: "project:diagnostics_read",
+        native_tool: NativeTool::CanonDiagnosticsRead,
+        landmark: Landmark::Project,
+        description: "Read bounded, redacted runtime diagnostics for planner self-review. Returns recent console tail, recent action/TLog diagnostic lines, and key runtime configuration such as supervisor/router URLs and task-runner settings.",
         read_only: true,
         destructive: false,
         idempotent: true,
@@ -652,6 +663,7 @@ pub fn resolve_action_id(action_id: &str) -> Option<LandmarkAction> {
         "canon_graph_verify_cfg_delta" => "graph:verify_cfg_delta",
         "canon_graph_auto_refactor_cfg" => "graph:auto_refactor_cfg",
         "canon_score" => "project:score",
+        "canon_diagnostics_read" => "project:diagnostics_read",
         "canon_plan_read" => "project:plan_read",
         "canon_plan_update" => "project:plan_update",
         "python" => "utility:python",
@@ -935,6 +947,15 @@ fn native_input_schema(tool: NativeTool) -> Value {
         | NativeTool::CanonScore
         | NativeTool::CanonPlanRead
         | NativeTool::CanonBrowserListTabs => intent_only(),
+
+        NativeTool::CanonDiagnosticsRead => json!({
+            "type": "object",
+            "properties": {
+                "max_lines": { "type": "integer", "default": 200, "maximum": 1000, "description": "Maximum recent console lines to return." },
+                "error_limit": { "type": "integer", "default": 100, "maximum": 500, "description": "Maximum recent diagnostic lines to return from action and TLog files." },
+                "intent": { "type": "string" }
+            }
+        }),
 
         NativeTool::CanonSpawnAgent => json!({
             "type": "object",

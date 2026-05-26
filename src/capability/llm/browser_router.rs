@@ -183,16 +183,18 @@ impl RouterClient {
             router_idle_ms,
         )?;
 
-        logger.write_entry(
-            "request",
-            &format!(
-                "\"router_url\":\"{}\",\"model\":\"{}\",\"new_chat\":{},\"prompt_length\":{}",
-                self.inner.config().base_url,
-                self.inner.config().model,
-                browser.new_chat,
-                body.len(),
-            ),
-        );
+        logger
+            .write_entry(
+                "request",
+                &format!(
+                    "\"router_url\":\"{}\",\"model\":\"{}\",\"new_chat\":{},\"prompt_length\":{}",
+                    self.inner.config().base_url,
+                    self.inner.config().model,
+                    browser.new_chat,
+                    body.len(),
+                ),
+            )
+            .map_err(OpenAiError::Io)?;
 
         let sse = send_streaming_request(
             self.inner.config(),
@@ -672,19 +674,23 @@ fn collect_streaming_response_bytes(
             Ok(0) => break,
             Ok(n) => {
                 full_response.extend_from_slice(&buf[..n]);
-                logger.write_entry(
-                    "http_chunk",
-                    &format!(
-                        "\"byte_length\":{},\"total_byte_length\":{}",
-                        n,
-                        full_response.len()
-                    ),
-                );
+                logger
+                    .write_entry(
+                        "http_chunk",
+                        &format!(
+                            "\"byte_length\":{},\"total_byte_length\":{}",
+                            n,
+                            full_response.len()
+                        ),
+                    )
+                    .map_err(OpenAiError::Io)?;
                 if response_bytes_have_done_frame(&full_response) {
-                    logger.write_entry(
-                        "stream_done_detected",
-                        &format!("\"total_byte_length\":{}", full_response.len()),
-                    );
+                    logger
+                        .write_entry(
+                            "stream_done_detected",
+                            &format!("\"total_byte_length\":{}", full_response.len()),
+                        )
+                        .map_err(OpenAiError::Io)?;
                     break;
                 }
                 if Instant::now() >= deadline {
@@ -777,7 +783,7 @@ fn finalize_streaming_response(
         raw_body.to_string()
     };
 
-    Ok(parse_sse_body(&body_text, logger))
+    parse_sse_body(&body_text, logger).map_err(OpenAiError::Io)
 }
 
 fn build_streaming_http_request(path: &str, host: &str, port: u16, body: &str) -> String {
@@ -1142,7 +1148,6 @@ mod tests {
         assert_eq!(result.finish_reason.as_deref(), Some("stop"));
         assert!(result.is_complete());
         assert_eq!(result.completion_reason(), "ok");
-
     }
 
     #[test]
@@ -1171,7 +1176,6 @@ mod tests {
             .expect("non-200 in-memory response should be rejected");
 
         assert!(matches!(err, OpenAiError::HttpStatus(503)));
-
     }
 
     #[test]
@@ -1215,7 +1219,6 @@ mod tests {
                 panic!("expected missing [DONE] to return UnexpectedEof, got {other:?}")
             }
         }
-
     }
 
     #[test]

@@ -383,7 +383,6 @@ mod tests {
         let (read_model, plan_state) = load_plan_read_model(&root).expect("read model projects");
         assert!(plan_state.is_some());
         assert_eq!(read_model.nodes[0].status, NodeStatus::Done);
-
     }
 
     #[test]
@@ -426,7 +425,6 @@ mod tests {
             .expect("node should project");
         assert_eq!(node.status, 3);
         assert_eq!(node.evidence.len(), 1);
-
     }
 
     #[test]
@@ -464,7 +462,6 @@ mod tests {
         );
         assert_eq!(blocker.get("isError").and_then(Value::as_bool), Some(false));
         assert_eq!(load_plan(&root).nodes[0].status, NodeStatus::Failed);
-
     }
 
     #[test]
@@ -504,6 +501,5 @@ mod tests {
             .expect("node should project from TLog");
         assert_eq!(node.status, 3);
         assert_eq!(node.title_hash, plan_text_hash("Node one"));
-
     }
 }

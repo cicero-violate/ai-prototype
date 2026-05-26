@@ -8,6 +8,10 @@ use std::env;
 use std::net::TcpListener as StdTcpListener;
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc,
+};
 use std::time::{Duration, Instant};
 
 use serde::{Deserialize, Serialize};
@@ -54,6 +58,7 @@ pub struct WorkerProcess {
     /// Active task leases keyed by node_id.
     task_leases: HashMap<String, TaskLease>,
     next_claim_id: u64,
+    main_loop_active: Arc<AtomicBool>,
 }
 
 impl WorkerProcess {
@@ -80,6 +85,7 @@ impl WorkerProcess {
             next_spawn: 0,
             task_leases: HashMap::new(),
             next_claim_id: 1,
+            main_loop_active: Arc::new(AtomicBool::new(false)),
         }
     }
 
@@ -292,8 +298,16 @@ impl WorkerProcess {
             plan_node_id: None,
         };
 
+        self.main_loop_active
+            .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
+            .map_err(|_| "main agent loop already running".to_string())?;
+
         eprintln!("supervisor: starting main agent loop  execute_turns={execute_turns}  agents={agent_count}  mini_agents={executor_count}  worker_port={worker_port}");
+        let active_guard = MainLoopActiveGuard {
+            active: Arc::clone(&self.main_loop_active),
+        };
         std::thread::spawn(move || {
+            let _active_guard = active_guard;
             LoopDriver::new(config).run_all_agents();
             eprintln!("supervisor: main agent loop finished");
         });
@@ -925,6 +939,16 @@ pub struct TaskLease {
     pub claim_id: u64,
     pub idempotency_key: u64,
     pub expires_at_ms: u64,
+}
+
+struct MainLoopActiveGuard {
+    active: Arc<AtomicBool>,
+}
+
+impl Drop for MainLoopActiveGuard {
+    fn drop(&mut self) {
+        self.active.store(false, Ordering::Release);
+    }
 }
 
 /// POST /v1/task/claim request body.

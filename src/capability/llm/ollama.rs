@@ -2034,7 +2034,6 @@ mod tests {
         assert!(load_ollama_judgment_proof_events_ndjson(&missing_path)
             .expect("test value should be present")
             .is_empty());
-
     }
 
     #[test]

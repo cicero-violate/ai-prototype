@@ -396,7 +396,6 @@ mod tests {
         assert!(receipt.is_contract_valid());
         assert!(receipt.is_valid_for(&request));
         assert_eq!(receipt.request_hash, request.contract_hash());
-
     }
 
     #[test]
@@ -417,7 +416,6 @@ mod tests {
         assert_eq!(tail.messages.len(), 1);
         assert_eq!(tail.next_cursor, 2);
         assert_eq!(tail.messages[0].payload, "two");
-
     }
 
     #[test]

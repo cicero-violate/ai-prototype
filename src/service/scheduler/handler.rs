@@ -358,20 +358,26 @@ impl TaskReadyNotifier {
         }
     }
 
-    /// Signal that one or more tasks may be ready to claim.
-    /// Idempotent: N calls before a drain collapse to a single check.
+    /// Signal waiters that a task may be ready.
     pub fn notify(&self) {
         let (lock, condvar) = &*self.inner;
-        *lock.lock().unwrap() = true;
+        match lock.lock() {
+            Ok(mut guard) => *guard = true,
+            Err(poisoned) => *poisoned.into_inner() = true,
+        }
         condvar.notify_all();
     }
 
-    /// Block until notified or until `timeout` elapses (replay-safety fallback).
-    /// Returns `true` if a signal arrived, `false` if the timeout elapsed.
     pub fn wait_or_timeout(&self, timeout: Duration) -> bool {
         let (lock, condvar) = &*self.inner;
-        let guard = lock.lock().unwrap();
-        let (mut guard, _) = condvar.wait_timeout(guard, timeout).unwrap();
+        let guard = match lock.lock() {
+            Ok(guard) => guard,
+            Err(poisoned) => poisoned.into_inner(),
+        };
+        let (mut guard, _) = match condvar.wait_timeout(guard, timeout) {
+            Ok(result) => result,
+            Err(poisoned) => poisoned.into_inner(),
+        };
         let was_notified = *guard;
         *guard = false;
         was_notified

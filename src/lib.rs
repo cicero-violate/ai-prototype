@@ -537,12 +537,20 @@ mod tests {
         assert!(promotion.is_valid());
 
         let (_src_tmp, source_path) = {
-            let t = tempfile::Builder::new().prefix("ai-policy-source-helper-").tempdir_in(test_tmp_dir()).unwrap();
-            let p = t.path().join("data.ndjson"); (t, p)
+            let t = tempfile::Builder::new()
+                .prefix("ai-policy-source-helper-")
+                .tempdir_in(test_tmp_dir())
+                .unwrap();
+            let p = t.path().join("data.ndjson");
+            (t, p)
         };
         let (_fb_tmp, feedback_path) = {
-            let t = tempfile::Builder::new().prefix("ai-policy-feedback-helper-").tempdir_in(test_tmp_dir()).unwrap();
-            let p = t.path().join("data.ndjson"); (t, p)
+            let t = tempfile::Builder::new()
+                .prefix("ai-policy-feedback-helper-")
+                .tempdir_in(test_tmp_dir())
+                .unwrap();
+            let p = t.path().join("data.ndjson");
+            (t, p)
         };
 
         let mut source_store = PolicyStore::default();
@@ -570,12 +578,20 @@ mod tests {
         assert_eq!(loaded_feedback.entries(), &[feedback_entry]);
 
         let (_inv_src_tmp, invalid_source_path) = {
-            let t = tempfile::Builder::new().prefix("ai-policy-source-helper-invalid-").tempdir_in(test_tmp_dir()).unwrap();
-            let p = t.path().join("data.ndjson"); (t, p)
+            let t = tempfile::Builder::new()
+                .prefix("ai-policy-source-helper-invalid-")
+                .tempdir_in(test_tmp_dir())
+                .unwrap();
+            let p = t.path().join("data.ndjson");
+            (t, p)
         };
         let (_inv_fb_tmp, invalid_feedback_path) = {
-            let t = tempfile::Builder::new().prefix("ai-policy-feedback-helper-invalid-").tempdir_in(test_tmp_dir()).unwrap();
-            let p = t.path().join("data.ndjson"); (t, p)
+            let t = tempfile::Builder::new()
+                .prefix("ai-policy-feedback-helper-invalid-")
+                .tempdir_in(test_tmp_dir())
+                .unwrap();
+            let p = t.path().join("data.ndjson");
+            (t, p)
         };
 
         let mut invalid_promotion = promotion;
@@ -608,8 +624,12 @@ mod tests {
             .expect("test setup should succeed");
         let promotion = PolicyPromotion::from_tlog(&tlog, 1).expect("test setup should succeed");
         let (_path_tmp, path) = {
-            let t = tempfile::Builder::new().prefix("ai-policy-store-").tempdir_in(test_tmp_dir()).unwrap();
-            let p = t.path().join("data.ndjson"); (t, p)
+            let t = tempfile::Builder::new()
+                .prefix("ai-policy-store-")
+                .tempdir_in(test_tmp_dir())
+                .unwrap();
+            let p = t.path().join("data.ndjson");
+            (t, p)
         };
 
         let mut store = PolicyStore::default();
@@ -723,8 +743,12 @@ mod tests {
         );
 
         let (_path_tmp, path) = {
-            let t = tempfile::Builder::new().prefix("ai-policy-proof-spine-").tempdir_in(test_tmp_dir()).unwrap();
-            let p = t.path().join("data.ndjson"); (t, p)
+            let t = tempfile::Builder::new()
+                .prefix("ai-policy-proof-spine-")
+                .tempdir_in(test_tmp_dir())
+                .unwrap();
+            let p = t.path().join("data.ndjson");
+            (t, p)
         };
         write_tlog_ndjson(&path, &tlog).expect("test setup should succeed");
         crate::capability::verification::append_verification_proof_record_ndjson(
@@ -953,8 +977,12 @@ mod tests {
     #[test]
     fn observation_cursor_loader_rejects_latest_corrupt_row() {
         let (_cursor_tmp, cursor_path) = {
-            let t = tempfile::Builder::new().prefix("ai-observation-corrupt-cursor-").tempdir_in(test_tmp_dir()).unwrap();
-            let p = t.path().join("data.ndjson"); (t, p)
+            let t = tempfile::Builder::new()
+                .prefix("ai-observation-corrupt-cursor-")
+                .tempdir_in(test_tmp_dir())
+                .unwrap();
+            let p = t.path().join("data.ndjson");
+            (t, p)
         };
         std::fs::write(
             &cursor_path,
@@ -1112,7 +1140,6 @@ mod tests {
         assert_eq!(state.gates.invariant.evidence, Evidence::InvariantProof);
         assert_eq!(ledger.len(), 1);
         verify_tlog(&tlog).expect("test setup should succeed");
-
     }
 
     #[test]
@@ -1439,8 +1466,12 @@ mod tests {
         assert_eq!(decoded, receipt);
 
         let (_path_tmp, path) = {
-            let t = tempfile::Builder::new().prefix("ai-ollama-mixed-tlog-").tempdir_in(test_tmp_dir()).unwrap();
-            let p = t.path().join("data.ndjson"); (t, p)
+            let t = tempfile::Builder::new()
+                .prefix("ai-ollama-mixed-tlog-")
+                .tempdir_in(test_tmp_dir())
+                .unwrap();
+            let p = t.path().join("data.ndjson");
+            (t, p)
         };
         write_tlog_ndjson(&path, &tlog).expect("test setup should succeed");
         append_ollama_llm_effect_receipt_ndjson(&path, &receipt)
@@ -1657,8 +1688,12 @@ mod tests {
         assert_eq!(decoded, proof_event);
 
         let (_path_tmp, path) = {
-            let t = tempfile::Builder::new().prefix("ai-ollama-proof-tlog-").tempdir_in(test_tmp_dir()).unwrap();
-            let p = t.path().join("data.ndjson"); (t, p)
+            let t = tempfile::Builder::new()
+                .prefix("ai-ollama-proof-tlog-")
+                .tempdir_in(test_tmp_dir())
+                .unwrap();
+            let p = t.path().join("data.ndjson");
+            (t, p)
         };
         write_tlog_ndjson(&path, &tlog).expect("test setup should succeed");
         append_ollama_llm_effect_receipt_ndjson(&path, &receipt)
@@ -2323,7 +2358,6 @@ mod tests {
         assert!(
             verify_verification_proof_record_replay_ndjson(&displaced_path, &[binding]).is_err()
         );
-
     }
 
     #[test]
@@ -2593,7 +2627,6 @@ mod tests {
             verify_ollama_judgment_proof_events_ndjson(&displaced_path),
             Err(OllamaError::InvalidReplay)
         ));
-
     }
 
     #[test]
@@ -2845,9 +2878,9 @@ mod tests {
             ("proof_hash", 23usize),
             ("receipt_hash", 24usize),
         ] {
-            let tampered_path = _path_tmp.path().join(format!(
-                "{field_name}.tampered.tlog.ndjson"
-            ));
+            let tampered_path = _path_tmp
+                .path()
+                .join(format!("{field_name}.tampered.tlog.ndjson"));
             tamper_first_ollama_receipt_field(&path, &tampered_path, field_index);
             assert!(
                 matches!(
@@ -2857,7 +2890,6 @@ mod tests {
                 "field {field_name} tamper should be rejected"
             );
         }
-
     }
 
     #[test]
@@ -2872,8 +2904,12 @@ mod tests {
         assert_ne!(promotion.promoted_policy_hash, 0);
 
         let (_path_tmp, path) = {
-            let t = tempfile::Builder::new().prefix("ai-policy-feedback-").tempdir_in(test_tmp_dir()).unwrap();
-            let p = t.path().join("data.ndjson"); (t, p)
+            let t = tempfile::Builder::new()
+                .prefix("ai-policy-feedback-")
+                .tempdir_in(test_tmp_dir())
+                .unwrap();
+            let p = t.path().join("data.ndjson");
+            (t, p)
         };
 
         let mut store = PolicyStore::default();
@@ -2949,8 +2985,12 @@ mod tests {
             .expect("test setup should succeed");
         let promotion = PolicyPromotion::from_tlog(&tlog, 1).expect("test setup should succeed");
         let (_path_tmp, path) = {
-            let t = tempfile::Builder::new().prefix("ai-distill-export-").tempdir_in(test_tmp_dir()).unwrap();
-            let p = t.path().join("data.jsonl"); (t, p)
+            let t = tempfile::Builder::new()
+                .prefix("ai-distill-export-")
+                .tempdir_in(test_tmp_dir())
+                .unwrap();
+            let p = t.path().join("data.jsonl");
+            (t, p)
         };
 
         let receipt = export_verified_distillation_row(
@@ -2989,8 +3029,12 @@ mod tests {
             .expect("test setup should succeed");
         let promotion = PolicyPromotion::from_tlog(&tlog, 1).expect("test setup should succeed");
         let (_path_tmp, path) = {
-            let t = tempfile::Builder::new().prefix("ai-distill-export-reject-").tempdir_in(test_tmp_dir()).unwrap();
-            let p = t.path().join("data.jsonl"); (t, p)
+            let t = tempfile::Builder::new()
+                .prefix("ai-distill-export-reject-")
+                .tempdir_in(test_tmp_dir())
+                .unwrap();
+            let p = t.path().join("data.jsonl");
+            (t, p)
         };
 
         let valid_input = DistillationExportInput {
@@ -3902,7 +3946,6 @@ mod tests {
             effect_receipt
         );
         verify_tlog(&tlog).expect("test setup should succeed");
-
     }
 
     #[test]
@@ -3950,7 +3993,6 @@ mod tests {
                 .expect("test value should be present"),
             receipt
         );
-
     }
 
     #[test]
@@ -4061,12 +4103,12 @@ mod tests {
             effect_receipt
         );
         verify_tlog(&tlog).expect("test setup should succeed");
-
     }
 
     #[test]
     fn api_rejects_unauthorized_process_receipt_without_mutation() {
-        let (sandbox_root, _sandbox_guard) = test_tmp_dir_path("canon-unauthorized-process-receipt-");
+        let (sandbox_root, _sandbox_guard) =
+            test_tmp_dir_path("canon-unauthorized-process-receipt-");
 
         let executor = LiveSandboxProcessExecutor::new(&sandbox_root)
             .with_allowed_command("/usr/bin/printf")
@@ -4099,7 +4141,6 @@ mod tests {
         assert_eq!(result, Err(CanonError::InvalidReplay));
         assert_eq!(state, before);
         assert!(tlog.is_empty());
-
     }
 
     #[test]
@@ -4162,7 +4203,6 @@ mod tests {
         assert_eq!(result, Err(CanonError::InvalidReplay));
         assert_eq!(state, before);
         assert_eq!(tlog, before_tlog);
-
     }
 
     #[test]
@@ -4365,7 +4405,6 @@ mod tests {
         assert_eq!(result, Err(CanonError::InvalidApiCommand));
         assert_eq!(state, before);
         assert!(tlog.is_empty());
-
     }
 
     #[test]
@@ -4409,7 +4448,6 @@ mod tests {
         assert_eq!(result, Err(CanonError::InvalidApiCommand));
         assert_eq!(state, before);
         assert!(tlog.is_empty());
-
     }
 
     #[test]
@@ -4423,7 +4461,6 @@ mod tests {
             executor.execute_process("sh", &["-c", "echo no"], ""),
             Err(ToolSandboxError::CommandDenied)
         );
-
     }
 
     #[test]
@@ -4826,8 +4863,12 @@ mod tests {
     fn artifact_backed_semantic_verification_accepts_source_patch_file() {
         let artifact = b"diff --git a/src/lib.rs b/src/lib.rs\n+semantic verification profile\n";
         let (_path_tmp, path) = {
-            let t = tempfile::Builder::new().prefix("ai-artifact-semantic-source-patch-").tempdir_in(test_tmp_dir()).unwrap();
-            let p = t.path().join("data.patch"); (t, p)
+            let t = tempfile::Builder::new()
+                .prefix("ai-artifact-semantic-source-patch-")
+                .tempdir_in(test_tmp_dir())
+                .unwrap();
+            let p = t.path().join("data.patch");
+            (t, p)
         };
         std::fs::write(&path, artifact).expect("test setup should succeed");
 
@@ -4851,8 +4892,12 @@ mod tests {
     fn artifact_backed_semantic_verification_rejects_missing_file() {
         let artifact = b"TLOG event row";
         let (_path_tmp, path) = {
-            let t = tempfile::Builder::new().prefix("ai-missing-artifact-semantic-").tempdir_in(test_tmp_dir()).unwrap();
-            let p = t.path().join("data.ndjson"); (t, p)
+            let t = tempfile::Builder::new()
+                .prefix("ai-missing-artifact-semantic-")
+                .tempdir_in(test_tmp_dir())
+                .unwrap();
+            let p = t.path().join("data.ndjson");
+            (t, p)
         };
 
         let profile = ArtifactBackedSemanticProfile::new(
@@ -4876,8 +4921,12 @@ mod tests {
             b"distill instruction input_state action output score proof_hash source_event";
         let actual = b"unrelated row without required token";
         let (_path_tmp, path) = {
-            let t = tempfile::Builder::new().prefix("ai-artifact-semantic-distill-tamper-").tempdir_in(test_tmp_dir()).unwrap();
-            let p = t.path().join("data.jsonl"); (t, p)
+            let t = tempfile::Builder::new()
+                .prefix("ai-artifact-semantic-distill-tamper-")
+                .tempdir_in(test_tmp_dir())
+                .unwrap();
+            let p = t.path().join("data.jsonl");
+            (t, p)
         };
         std::fs::write(&path, actual).expect("test setup should succeed");
 
@@ -5112,8 +5161,12 @@ mod tests {
         let (state, tlog) =
             run_until_done(initial, RuntimeConfig::default()).expect("test setup should succeed");
         let (_path_tmp, path) = {
-            let t = tempfile::Builder::new().prefix("ai-tlog-roundtrip-").tempdir_in(test_tmp_dir()).unwrap();
-            let p = t.path().join("data.ndjson"); (t, p)
+            let t = tempfile::Builder::new()
+                .prefix("ai-tlog-roundtrip-")
+                .tempdir_in(test_tmp_dir())
+                .unwrap();
+            let p = t.path().join("data.ndjson");
+            (t, p)
         };
 
         write_tlog_ndjson(&path, &tlog).expect("test setup should succeed");
@@ -5127,8 +5180,12 @@ mod tests {
     #[test]
     fn durable_runner_resumes_from_disk_tlog() {
         let (_path_tmp, path) = {
-            let t = tempfile::Builder::new().prefix("ai-tlog-resume-").tempdir_in(test_tmp_dir()).unwrap();
-            let p = t.path().join("data.ndjson"); (t, p)
+            let t = tempfile::Builder::new()
+                .prefix("ai-tlog-resume-")
+                .tempdir_in(test_tmp_dir())
+                .unwrap();
+            let p = t.path().join("data.ndjson");
+            (t, p)
         };
 
         let mut partial_state = State::default();
@@ -5157,8 +5214,12 @@ mod tests {
     #[test]
     fn durable_resume_reconstructs_command_ledger_from_tlog() {
         let (_path_tmp, path) = {
-            let t = tempfile::Builder::new().prefix("ai-tlog-ledger-resume-").tempdir_in(test_tmp_dir()).unwrap();
-            let p = t.path().join("data.ndjson"); (t, p)
+            let t = tempfile::Builder::new()
+                .prefix("ai-tlog-ledger-resume-")
+                .tempdir_in(test_tmp_dir())
+                .unwrap();
+            let p = t.path().join("data.ndjson");
+            (t, p)
         };
 
         let cfg = RuntimeConfig::default();
@@ -5288,8 +5349,12 @@ mod tests {
         let (state, tlog) =
             run_until_done(initial, RuntimeConfig::default()).expect("test setup should succeed");
         let (_path_tmp, path) = {
-            let t = tempfile::Builder::new().prefix("ai-durable-report-").tempdir_in(test_tmp_dir()).unwrap();
-            let p = t.path().join("data.ndjson"); (t, p)
+            let t = tempfile::Builder::new()
+                .prefix("ai-durable-report-")
+                .tempdir_in(test_tmp_dir())
+                .unwrap();
+            let p = t.path().join("data.ndjson");
+            (t, p)
         };
 
         write_tlog_ndjson(&path, &tlog).expect("test setup should succeed");
@@ -5307,8 +5372,12 @@ mod tests {
     fn durable_tick_checked_rejects_memory_disk_drift() {
         let cfg = RuntimeConfig::default();
         let (_path_tmp, path) = {
-            let t = tempfile::Builder::new().prefix("ai-durable-drift-").tempdir_in(test_tmp_dir()).unwrap();
-            let p = t.path().join("data.ndjson"); (t, p)
+            let t = tempfile::Builder::new()
+                .prefix("ai-durable-drift-")
+                .tempdir_in(test_tmp_dir())
+                .unwrap();
+            let p = t.path().join("data.ndjson");
+            (t, p)
         };
 
         let mut state = State::default();
@@ -5330,8 +5399,12 @@ mod tests {
     fn durable_tick_checked_rejects_state_disk_drift() {
         let cfg = RuntimeConfig::default();
         let (_path_tmp, path) = {
-            let t = tempfile::Builder::new().prefix("ai-durable-state-drift-").tempdir_in(test_tmp_dir()).unwrap();
-            let p = t.path().join("data.ndjson"); (t, p)
+            let t = tempfile::Builder::new()
+                .prefix("ai-durable-state-drift-")
+                .tempdir_in(test_tmp_dir())
+                .unwrap();
+            let p = t.path().join("data.ndjson");
+            (t, p)
         };
 
         let mut disk_state = State::default();

@@ -35,17 +35,17 @@ use crate::runtime::{CanonicalWriter, MailboxMessageReceipt, MailboxMessageReque
 
 #[derive(Clone)]
 pub struct WorkerAppState {
-    inner: Arc<Mutex<WorkerSession>>,
+    inner: Arc<Mutex<Option<WorkerSession>>>,
 }
 
 impl WorkerAppState {
     pub fn new(session: ApiTransportSession, tlog_path: impl Into<PathBuf>) -> Self {
         Self {
-            inner: Arc::new(Mutex::new(WorkerSession {
+            inner: Arc::new(Mutex::new(Some(WorkerSession {
                 session,
                 tlog_path: tlog_path.into(),
                 next_request_id: 1,
-            })),
+            }))),
         }
     }
 
@@ -56,9 +56,29 @@ impl WorkerAppState {
         )
     }
 
+    /// Create a state that serves the health endpoint immediately while session
+    /// loading is still in progress. Call `set_ready` once loading completes.
+    pub fn loading() -> Self {
+        Self {
+            inner: Arc::new(Mutex::new(None)),
+        }
+    }
+
+    /// Transition from loading to ready. Called from the background load task.
+    pub fn set_ready(&self, session: ApiTransportSession, tlog_path: impl Into<PathBuf>) {
+        if let Ok(mut guard) = self.inner.lock() {
+            *guard = Some(WorkerSession {
+                session,
+                tlog_path: tlog_path.into(),
+                next_request_id: 1,
+            });
+        }
+    }
+
     pub fn snapshot(&self) -> Result<StateDto, ServerError> {
         let guard = self.inner.lock().map_err(|_| ServerError::LockPoisoned)?;
-        Ok(state_dto(&guard.session))
+        let session = guard.as_ref().ok_or(ServerError::WorkerLoading)?;
+        Ok(state_dto(&session.session))
     }
 }
 
@@ -293,6 +313,7 @@ pub struct ObservationIngressBatchDto {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ServerError {
     LockPoisoned,
+    WorkerLoading,
     UnsupportedPayloadTag,
     InvalidPayload,
     InvalidCommand,
@@ -334,18 +355,22 @@ pub async fn post_command(
     }
 
     let mut guard = state.inner.lock().map_err(|_| ServerError::LockPoisoned)?;
-    let request_id = guard.next_request_id;
-    guard.next_request_id = guard
+    let session = match &mut *guard {
+        Some(s) => s,
+        None => return Err(error_response(ServerError::WorkerLoading)),
+    };
+    let request_id = session.next_request_id;
+    session.next_request_id = session
         .next_request_id
         .checked_add(1)
         .ok_or(ServerError::InvalidCommand)?;
 
     let frame = ApiTransportFrame::new(request_id, envelope);
-    let response = guard
+    let response = session
         .session
         .handle_frame(frame)
         .map_err(ServerError::Transport)?;
-    CanonicalWriter::persist_snapshot(&guard.tlog_path, guard.session.tlog())
+    CanonicalWriter::persist_snapshot(&session.tlog_path, session.session.tlog())
         .map_err(|_| ServerError::TlogIo)?;
 
     Ok(Json(CommandResponseDto {
@@ -894,6 +919,7 @@ fn disposition_string(disposition: ApiTransportDisposition) -> &'static str {
 fn error_response(error: ServerError) -> (StatusCode, Json<ErrorDto>) {
     let status = match error {
         ServerError::LockPoisoned | ServerError::TlogIo => StatusCode::INTERNAL_SERVER_ERROR,
+        ServerError::WorkerLoading => StatusCode::SERVICE_UNAVAILABLE,
         ServerError::UnsupportedPayloadTag
         | ServerError::InvalidPayload
         | ServerError::InvalidCommand => StatusCode::BAD_REQUEST,

@@ -278,7 +278,6 @@ mod transcript_tests {
                 .join("action")
                 .join("action-transcript.tlog.ndjson")
         );
-
     }
 
     #[test]
@@ -310,7 +309,6 @@ mod transcript_tests {
         assert!(warning.is_none());
         let project_records = replay_action_transcripts(&project).expect("project transcript");
         assert_eq!(project_records.len(), 1);
-
     }
 }
 

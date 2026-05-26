@@ -1,6 +1,7 @@
 //! Dispatch adapter support.
 
 pub mod action;
+mod reasoning_trace;
 pub mod task_client;
 pub mod task_runner;
 

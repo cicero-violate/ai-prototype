@@ -21,6 +21,9 @@ use crate::service::agent::config::AgentLoopConfig;
 use crate::service::agent::loop_driver::http::post_json_body_local;
 use crate::service::agent::loop_driver::LoopDriver;
 use crate::service::agent::worker::{complete_claim, fail_claim, run_with_heartbeat, ActiveClaim};
+use crate::service::dispatch::reasoning_trace::{
+    append_task_finish_trace, append_task_start_trace,
+};
 use crate::service::dispatch::task_client::TaskClient;
 use crate::service::scheduler::handler::TaskReadyNotifier;
 use crate::service::scheduler::plan_store::{load_plan, load_plan_read_model};
@@ -203,7 +206,9 @@ impl TaskRunner {
             Err(_) => load_plan(&self.base_config.project_dir),
         };
         if plan.nodes.is_empty() {
-            return false;
+            // No nodes means plan hasn't been seeded yet — treat as exhausted so
+            // the planner fires and creates the initial work items.
+            return true;
         }
         let terminal = |n: &PlanNode| {
             matches!(
@@ -272,13 +277,19 @@ impl TaskRunner {
             "[task_runner] claimed  node={node_id}  worker={}",
             self.worker_id
         );
+        append_task_start_trace(
+            &self.base_config.project_dir,
+            &assignment,
+            &claim,
+            &self.worker_id,
+        );
 
         let supervisor_url = self.supervisor_url.clone();
         let worker_id = self.worker_id.clone();
         let lease_ttl_ms = self.lease_ttl_ms;
         let mut config = self.base_config.clone();
-        config.domain = Some(assignment.title);
-        config.metric = Some(assignment.description);
+        config.domain = Some(assignment.title.clone());
+        config.metric = Some(assignment.description.clone());
         config.plan_node_id = Some(node_id.clone());
 
         let succeeded = run_with_heartbeat(
@@ -287,6 +298,13 @@ impl TaskRunner {
             &worker_id,
             lease_ttl_ms,
             move || LoopDriver::new(config).run_all_agents(),
+        );
+        append_task_finish_trace(
+            &self.base_config.project_dir,
+            &assignment,
+            &claim,
+            &self.worker_id,
+            succeeded,
         );
 
         if succeeded {

@@ -183,8 +183,10 @@ pub(super) fn planning_prompt(
          2. Read the current work DAG:\n\
             `call_action` → `{{\"action\": \"project:plan_read\", \"parameters\": {{}}, \"intent\": \"read current plan DAG\"}}`\n\
             Inspect `ready_node_ids`, pending, running, and failed nodes.\n\
-         3. Read the evidence references already attached to current DAG nodes.\n\
-         4. Inspect the specific files, tests, fixtures, and evidence paths that candidate nodes would touch.\n\n\
+         3. If the previous cycle failed, repeated without progress, or the runtime looks unhealthy, read bounded diagnostics:\n\
+            `call_action` → `{{\"action\": \"project:diagnostics_read\", \"parameters\": {{\"max_lines\": 200, \"error_limit\": 100}}, \"intent\": \"inspect recent runtime failures before planning\"}}`\n\
+         4. Read the evidence references already attached to current DAG nodes.\n\
+         5. Inspect the specific files, tests, fixtures, and evidence paths that candidate nodes would touch.\n\n\
          **Build or update the DAG — use `call_action` with action `project:plan_update`:**\n\
          - `op=replace` to publish a fresh DAG for this cycle, or `op=upsert_node` / `op=add_edge` to extend an existing one.\n\
          - Each node must have:\n\
@@ -289,7 +291,8 @@ pub(super) fn execute_prompt(turn_num: u32, agent_id: u32, agent_count: u32) -> 
          You are executing implementation step {turn_num} of this agent loop.\n\n\
          The DAG scheduler found no ready nodes this cycle — the DAG is either empty, \
          all nodes are blocked by unfinished dependencies, or all nodes are already done.\n\n\
-         Read the current DAG via `call_action project:plan_read` to understand what is pending, blocked, failed, and already evidenced.\n\n\
+         Read the current DAG via `call_action project:plan_read` to understand what is pending, blocked, failed, and already evidenced. \
+         If the cycle is retrying, the worker returned 5xx, the router/LLM connection failed, or the reason is unclear, call `project:diagnostics_read` before choosing work.\n\n\
          Choose one of the following based on what you find:\n\
          - **Blocked DAG nodes**: identify and resolve the blocking dependency directly (implement the prerequisite, fix the failing test, produce the missing evidence).\n\
          - **Failed DAG nodes**: diagnose the failure, fix the root cause, write blocker or recovery evidence, and let the supervisor/recovery policy append lifecycle events for re-dispatch.\n\

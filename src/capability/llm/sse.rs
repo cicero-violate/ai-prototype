@@ -29,7 +29,7 @@ impl ChunkLogger {
     }
 
     /// Append one ndjson entry. `extra_json` is the inner key-value pairs (already JSON, no outer braces).
-    pub fn write_entry(&mut self, kind: &str, extra_json: &str) {
+    pub fn write_entry(&mut self, kind: &str, extra_json: &str) -> std::io::Result<()> {
         let seq = self.sequence;
         self.sequence += 1;
         let ts = timestamp_ms();
@@ -40,7 +40,7 @@ impl ChunkLogger {
                 "{{\"sequence\":{seq},\"observed_at\":{ts},\"kind\":\"{kind}\",{extra_json}}}\n"
             )
         };
-        let _ = self.file.write_all(line.as_bytes());
+        self.file.write_all(line.as_bytes())
     }
 }
 
@@ -117,10 +117,7 @@ impl SseResult {
 }
 
 // ── SSE parsing ───────────────────────────────────────────────────────────────
-
-/// Parse a complete SSE response body into an SseResult, logging each frame.
-/// Handles both `chat.completion.chunk` and `x-turn` frame types.
-pub fn parse_sse_body(body: &str, logger: &mut ChunkLogger) -> SseResult {
+pub fn parse_sse_body(body: &str, logger: &mut ChunkLogger) -> std::io::Result<SseResult> {
     let mut content = String::new();
     let mut target_id: Option<String> = None;
     let mut target_url: Option<String> = None;
@@ -143,7 +140,7 @@ pub fn parse_sse_body(body: &str, logger: &mut ChunkLogger) -> SseResult {
                         &mut done,
                         &mut finish_reason,
                         logger,
-                    );
+                    )?;
                 }
                 break;
             }
@@ -161,23 +158,19 @@ pub fn parse_sse_body(body: &str, logger: &mut ChunkLogger) -> SseResult {
             &mut done,
             &mut finish_reason,
             logger,
-        );
+        )?;
     }
 
-    SseResult {
+    Ok(SseResult {
         content,
         target_id,
         target_url,
         message_stream_complete,
         done,
         finish_reason,
-    }
+    })
 }
 
-#[expect(
-    clippy::too_many_arguments,
-    reason = "SSE frame processing mutates several streaming accumulators together"
-)]
 fn process_sse_frame(
     raw: &str,
     content: &mut String,
@@ -187,7 +180,7 @@ fn process_sse_frame(
     done: &mut bool,
     finish_reason: &mut Option<String>,
     logger: &mut ChunkLogger,
-) {
+) -> std::io::Result<()> {
     let data: String = raw
         .lines()
         .filter(|line| line.starts_with("data:"))
@@ -196,13 +189,13 @@ fn process_sse_frame(
         .join("");
 
     if data.is_empty() {
-        return;
+        return Ok(());
     }
 
     if data == "[DONE]" {
         *done = true;
-        logger.write_entry("sse_frame", "\"done\":true");
-        return;
+        logger.write_entry("sse_frame", "\"done\":true")?;
+        return Ok(());
     }
 
     if data.contains("\"chat.completion.chunk\"") {
@@ -214,7 +207,7 @@ fn process_sse_frame(
                 *finish_reason = Some(fr);
             }
         }
-        logger.write_entry("sse_frame", "\"parsed_type\":\"chunk\"");
+        logger.write_entry("sse_frame", "\"parsed_type\":\"chunk\"")?;
     } else if data.contains("\"x-turn\"") {
         if let Some(id) = extract_sse_string(&data, "target_id") {
             *target_id = Some(id);
@@ -232,8 +225,10 @@ fn process_sse_frame(
             &format!(
                 "\"parsed_type\":\"x-turn\",\"message_stream_complete\":{message_stream_complete}"
             ),
-        );
+        )?;
     }
+
+    Ok(())
 }
 
 fn extract_delta_content(json: &str) -> Option<String> {
@@ -328,7 +323,7 @@ mod tests {
         let dir = root.join(format!("canon-sse-fixture-{}", std::process::id()));
         let mut logger =
             ChunkLogger::new(&dir, "fixture", 0, "turn").expect("test setup should succeed");
-        parse_sse_body(body, &mut logger)
+        parse_sse_body(body, &mut logger).expect("fixture SSE body should parse")
     }
 
     #[test]

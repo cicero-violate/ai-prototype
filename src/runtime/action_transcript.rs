@@ -338,7 +338,6 @@ mod tests {
             receipt_facts(response).receipt_hash
         );
         assert_eq!(records[0].response_json, response);
-
     }
 
     #[test]
