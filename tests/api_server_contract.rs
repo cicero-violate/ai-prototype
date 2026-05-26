@@ -1,8 +1,9 @@
 use ai::{
-    build_router, resume_durable_runtime, tick, ActionCallRequest, ActionReceipt,
-    ApiTransportLedger, ApiTransportSession, Command, CommandEnvelope, CommandLedger,
-    EvidenceSubmission, EvidenceSubmissionDto, RuntimeConfig, SandboxProcessReceipt,
-    SandboxProcessRequest, State, StateDto, TLog, ToolEffectKind, WorkerAppState,
+    build_router, load_tlog_ndjson, resume_durable_runtime, tick, verify_tlog, write_tlog_ndjson,
+    ActionCallRequest, ActionReceipt, ApiTransportLedger, ApiTransportSession, Command,
+    CommandEnvelope, CommandLedger, EvidenceSubmission, EvidenceSubmissionDto, RuntimeConfig,
+    SandboxProcessReceipt, SandboxProcessRequest, State, StateDto, TLog, ToolEffectKind,
+    WorkerAppState,
 };
 use axum::body::{to_bytes, Body};
 use axum::http::{Request, StatusCode};
@@ -36,16 +37,6 @@ fn missing_parent_tlog_path(name: &str) -> std::path::PathBuf {
     dir.join("tlog.ndjson")
 }
 
-fn invariant_payload(payload_hash: u64) -> EvidenceSubmissionDto {
-    EvidenceSubmissionDto {
-        gate: "Invariant".to_string(),
-        evidence: "InvariantProof".to_string(),
-        passed: true,
-        effect: Some("None".to_string()),
-        payload_hash,
-    }
-}
-
 fn execution_receipt_payload(payload_hash: u64) -> EvidenceSubmissionDto {
     EvidenceSubmissionDto {
         gate: "Execution".to_string(),
@@ -53,6 +44,47 @@ fn execution_receipt_payload(payload_hash: u64) -> EvidenceSubmissionDto {
         passed: true,
         effect: Some("None".to_string()),
         payload_hash,
+    }
+}
+
+fn submission_payload(submission: &EvidenceSubmission) -> EvidenceSubmissionDto {
+    let gate = match submission.gate {
+        ai::GateId::Invariant => "Invariant",
+        ai::GateId::Analysis => "Analysis",
+        ai::GateId::Judgment => "Judgment",
+        ai::GateId::Plan => "Plan",
+        ai::GateId::Execution => "Execution",
+        ai::GateId::Verification => "Verification",
+        ai::GateId::Eval => "Eval",
+        ai::GateId::Learning => "Learning",
+    };
+    let evidence = match submission.evidence {
+        ai::Evidence::InvariantProof => "InvariantProof",
+        ai::Evidence::AnalysisReport => "AnalysisReport",
+        ai::Evidence::JudgmentRecord => "JudgmentRecord",
+        ai::Evidence::PlanRecord => "PlanRecord",
+        ai::Evidence::TaskReady => "TaskReady",
+        ai::Evidence::ExecutionReceipt => "ExecutionReceipt",
+        ai::Evidence::ArtifactReceipt => "ArtifactReceipt",
+        ai::Evidence::VerificationReport => "VerificationReport",
+        ai::Evidence::LineageProof => "LineageProof",
+        ai::Evidence::EvalScore => "EvalScore",
+        ai::Evidence::PersistedRecord => "PersistedRecord",
+        _ => panic!("unsupported API evidence token: {:?}", submission.evidence),
+    };
+    let effect = match submission.effect {
+        ai::PacketEffect::None => "None",
+        ai::PacketEffect::BindReadyTask => "BindReadyTask",
+        ai::PacketEffect::MaterializeArtifact => "MaterializeArtifact",
+        ai::PacketEffect::RepairLineage => "RepairLineage",
+        ai::PacketEffect::CompleteObjective => "CompleteObjective",
+    };
+    EvidenceSubmissionDto {
+        gate: gate.to_string(),
+        evidence: evidence.to_string(),
+        passed: submission.passed,
+        effect: Some(effect.to_string()),
+        payload_hash: submission.payload_hash,
     }
 }
 
@@ -71,10 +103,7 @@ fn evidence_batch_body(command_id: u64, submissions: &[EvidenceSubmission]) -> s
         command_id,
         Command::SubmitEvidenceBatch(submissions.to_vec()),
     );
-    let payload: Vec<_> = submissions
-        .iter()
-        .map(|submission| invariant_payload(submission.payload_hash))
-        .collect();
+    let payload: Vec<_> = submissions.iter().map(submission_payload).collect();
     serde_json::json!({
         "command_id": envelope.command_id,
         "command_hash": envelope.command_hash,
@@ -411,6 +440,69 @@ async fn command_route_uses_transport_session_and_persists_tlog() {
             .len()
             > 0
     );
+    let _ = std::fs::remove_file(path);
+}
+
+#[tokio::test]
+async fn batch_command_append_persists_every_new_event() {
+    let path = tlog_path("batch-append-tail");
+    let _ = std::fs::remove_file(&path);
+    let cfg = RuntimeConfig::default();
+    let mut initial_state = State::default();
+    let mut initial_tlog = TLog::default();
+    assert!(tick(&mut initial_state, &mut initial_tlog, cfg).is_ok());
+    write_tlog_ndjson(&path, &initial_tlog).expect("initial TLog should persist");
+    let session = ApiTransportSession::from_parts(
+        initial_state,
+        initial_tlog,
+        cfg,
+        CommandLedger::default(),
+        ApiTransportLedger::default(),
+    )
+    .expect("initialized session should verify");
+    let state = WorkerAppState::new(session, &path);
+    let app = build_router(state.clone());
+    let submissions = [
+        EvidenceSubmission::with_payload(
+            ai::GateId::Invariant,
+            ai::Evidence::InvariantProof,
+            true,
+            0xabc,
+        ),
+        EvidenceSubmission::with_payload(
+            ai::GateId::Analysis,
+            ai::Evidence::AnalysisReport,
+            true,
+            0xdef,
+        ),
+    ];
+    let body = evidence_batch_body(12, &submissions);
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/v1/command")
+                .header("Content-Type", "application/json")
+                .body(Body::from(body.to_string()))
+                .expect("request body should build"),
+        )
+        .await
+        .expect("test operation should succeed");
+
+    let response: ai::CommandResponseDto = ok_response_json(response).await;
+    assert!(response.ok);
+    assert_eq!(response.disposition, "accepted");
+    let snapshot = state.snapshot().expect("state snapshot should succeed");
+    let disk_tlog = load_tlog_ndjson(&path).expect("persisted TLog should load");
+
+    assert_eq!(snapshot.tlog_len, 5);
+    assert_eq!(disk_tlog.len(), snapshot.tlog_len);
+    assert_eq!(
+        disk_tlog.last().map(|event| event.self_hash),
+        Some(response.event_hash)
+    );
+    verify_tlog(&disk_tlog).expect("append-persisted TLog should verify");
     let _ = std::fs::remove_file(path);
 }
 

@@ -2,12 +2,12 @@
 
 use std::path::Path;
 
-use crate::codec::ndjson::{append_tlog_ndjson, write_tlog_ndjson};
+use crate::codec::ndjson::append_tlog_ndjson;
 use crate::kernel::{
     CapabilityRegistryProjection, Cause, ControlEvent, EventKind, Phase, RuntimeConfig, State, TLog,
 };
 
-use super::verify::{hash_event, validate_event, verify_tlog, EventHashInput, EventView};
+use super::verify::{hash_event, validate_event, EventHashInput, EventView};
 use super::{semantic_diff, CanonError, Outcome};
 
 pub(crate) struct CanonicalWriter;
@@ -197,13 +197,5 @@ impl CanonicalWriter {
         append_tlog_ndjson(tlog_path, &event)?;
         tlog.push(event);
         Ok(event)
-    }
-
-    pub(crate) fn persist_snapshot(
-        tlog_path: impl AsRef<Path>,
-        tlog: &[ControlEvent],
-    ) -> Result<(), CanonError> {
-        verify_tlog(tlog)?;
-        write_tlog_ndjson(tlog_path, tlog)
     }
 }

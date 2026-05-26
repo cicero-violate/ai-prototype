@@ -29,9 +29,10 @@ use crate::capability::orchestration::{
     AgentCycleEvent, AgentCycleEventKind, ChildCompleteRecord, WaveRecord,
 };
 use crate::capability::{CapabilityId, CapabilityRegistry, EvidenceSubmission, PacketEffect};
+use crate::codec::ndjson::append_tlog_events_ndjson;
 use crate::kernel::CanonError;
-use crate::kernel::{Evidence, GateId, RuntimeConfig, State};
-use crate::runtime::{CanonicalWriter, MailboxMessageReceipt, MailboxMessageRequest};
+use crate::kernel::{ControlEvent, Evidence, GateId, RuntimeConfig, State};
+use crate::runtime::{MailboxMessageReceipt, MailboxMessageRequest};
 
 #[derive(Clone)]
 pub struct WorkerAppState {
@@ -365,12 +366,13 @@ pub async fn post_command(
         .checked_add(1)
         .ok_or(ServerError::InvalidCommand)?;
 
+    let old_tlog_len = session.session.tlog().len();
     let frame = ApiTransportFrame::new(request_id, envelope);
     let response = session
         .session
         .handle_frame(frame)
         .map_err(ServerError::Transport)?;
-    CanonicalWriter::persist_snapshot(&session.tlog_path, session.session.tlog())
+    persist_tlog_tail(&session.tlog_path, session.session.tlog(), old_tlog_len)
         .map_err(|_| ServerError::TlogIo)?;
 
     Ok(Json(CommandResponseDto {
@@ -381,6 +383,19 @@ pub async fn post_command(
         phase: format!("{:?}", response.control.event.state_after.phase),
         disposition: disposition_string(response.disposition).to_string(),
     }))
+}
+
+fn persist_tlog_tail(
+    tlog_path: &std::path::Path,
+    tlog: &[ControlEvent],
+    old_tlog_len: usize,
+) -> Result<(), CanonError> {
+    let events = if old_tlog_len > 0 && !tlog_path.exists() {
+        tlog
+    } else {
+        &tlog[old_tlog_len..]
+    };
+    append_tlog_events_ndjson(tlog_path, events)
 }
 
 fn decode_command(dto: &CommandEnvelopeDto) -> Result<Command, ServerError> {

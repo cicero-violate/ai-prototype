@@ -29,6 +29,17 @@ pub enum PlanPatchTlogRecord {
 }
 
 pub fn append_tlog_ndjson(path: impl AsRef<Path>, event: &ControlEvent) -> Result<(), CanonError> {
+    append_tlog_events_ndjson(path, std::slice::from_ref(event))
+}
+
+pub fn append_tlog_events_ndjson(
+    path: impl AsRef<Path>,
+    events: &[ControlEvent],
+) -> Result<(), CanonError> {
+    if events.is_empty() {
+        return Ok(());
+    }
+
     let path = path.as_ref();
     {
         let mut file = OpenOptions::new()
@@ -36,7 +47,10 @@ pub fn append_tlog_ndjson(path: impl AsRef<Path>, event: &ControlEvent) -> Resul
             .append(true)
             .open(path)
             .map_err(|_| CanonError::TlogIo)?;
-        writeln!(file, "{}", encode_control_event_ndjson(event)).map_err(|_| CanonError::TlogIo)?;
+        for event in events {
+            writeln!(file, "{}", encode_control_event_ndjson(event))
+                .map_err(|_| CanonError::TlogIo)?;
+        }
         file.sync_all().map_err(|_| CanonError::TlogIo)?;
     }
     sync_parent_dir(path)
