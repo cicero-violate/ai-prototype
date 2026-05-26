@@ -5,7 +5,7 @@
 
 use std::env;
 use std::net::SocketAddr;
-use std::path::PathBuf;
+use std::path::{Component, Path, PathBuf};
 
 use crate::service::endpoints::{mcp_connector_url_from_env, supervisor_port_from_env};
 
@@ -27,19 +27,25 @@ pub struct SupervisorConfig {
 impl SupervisorConfig {
     pub fn from_env() -> Result<Self, String> {
         let port = supervisor_port_from_env()?;
-        let tlog_dir =
-            PathBuf::from(env::var("AI_TLOG_DIR").unwrap_or_else(|_| "state/tlog".to_string()));
+        let project_dir = env::var("PROJECT_DIR")
+            .map(PathBuf::from)
+            .unwrap_or_else(|_| env::current_dir().unwrap_or_default());
+        let tlog_dir = env::var("AI_TLOG_DIR")
+            .map(PathBuf::from)
+            .unwrap_or_else(|_| project_dir.join("state/tlog"));
+        let tlog_dir = if tlog_dir.is_relative() {
+            project_dir.join(&tlog_dir)
+        } else {
+            tlog_dir
+        };
         let worker_bin = match env::var("AI_KERNEL_TLOG_BIN") {
-            Ok(path) => PathBuf::from(path),
+            Ok(path) => resolve_worker_bin_override(PathBuf::from(path), &project_dir),
             Err(_) => default_worker_bin()?,
         };
         let mcp_worker_url = env::var("AI_MCP_WORKER_URL")
             .unwrap_or_else(|_| "http://127.0.0.1:38469/mcp_worker".to_string());
         let router_url = env::var("CANON_OPENAI_BASE_URL")
             .unwrap_or_else(|_| "http://127.0.0.1:8082/v1".to_string());
-        let project_dir = env::var("PROJECT_DIR")
-            .map(PathBuf::from)
-            .unwrap_or_else(|_| env::current_dir().unwrap_or_default());
         let mcp_connector_url = mcp_connector_url_from_env(port);
         let mcp_base_url = env::var("AI_MCP_BASE_URL").unwrap_or_else(|_| {
             env::var("BASE_URL")
@@ -82,11 +88,65 @@ fn default_worker_bin() -> Result<PathBuf, String> {
     let dir = exe
         .parent()
         .ok_or_else(|| "supervisor binary has no parent directory".to_string())?;
-    let mut path = dir.join("kernel_tlog");
+    let mut sibling = dir.join("kernel_tlog");
+    if cfg!(windows) {
+        sibling.set_extension("exe");
+    }
+    if sibling.exists() {
+        return Ok(sibling);
+    }
+
+    let mut path = workspace_target_dir().join(profile_from_exe(&exe));
+    path.push("kernel_tlog");
     if cfg!(windows) {
         path.set_extension("exe");
     }
     Ok(path)
+}
+
+fn resolve_worker_bin_override(path: PathBuf, project_dir: &Path) -> PathBuf {
+    if path.is_absolute() {
+        return path;
+    }
+
+    if let Some(target_relative) = strip_parent_target_prefix(&path) {
+        return project_dir.join("target").join(target_relative);
+    }
+
+    let project_relative = project_dir.join(&path);
+    if project_relative.exists() {
+        return project_relative;
+    }
+
+    project_relative
+}
+
+fn strip_parent_target_prefix(path: &Path) -> Option<PathBuf> {
+    let mut components = path.components();
+    match (components.next(), components.next()) {
+        (Some(Component::ParentDir), Some(Component::Normal(target))) if target == "target" => {
+            Some(components.as_path().to_path_buf())
+        }
+        _ => None,
+    }
+}
+
+fn workspace_target_dir() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .map(|path| path.join("target"))
+        .unwrap_or_else(|| PathBuf::from("target"))
+}
+
+fn profile_from_exe(exe: &Path) -> &'static str {
+    if exe
+        .components()
+        .any(|component| component.as_os_str() == "release")
+    {
+        "release"
+    } else {
+        "debug"
+    }
 }
 
 #[cfg(test)]
@@ -99,6 +159,39 @@ mod tests {
         assert_eq!(
             default_oauth_store_file(&project_dir),
             PathBuf::from("/workspace/project/state/oauth-store.enc")
+        );
+    }
+
+    #[test]
+    fn worker_bin_override_legacy_parent_target_is_workspace_local() {
+        let project_dir = PathBuf::from("/workspace/project");
+        assert_eq!(
+            resolve_worker_bin_override(PathBuf::from("../target/debug/kernel_tlog"), &project_dir),
+            PathBuf::from("/workspace/project/target/debug/kernel_tlog")
+        );
+    }
+
+    #[test]
+    fn worker_bin_override_relative_path_stays_project_relative() {
+        let project_dir = PathBuf::from("/workspace/project");
+        assert_eq!(
+            resolve_worker_bin_override(PathBuf::from("bin/kernel_tlog"), &project_dir),
+            PathBuf::from("/workspace/project/bin/kernel_tlog")
+        );
+    }
+
+    #[test]
+    fn default_worker_bin_falls_back_to_workspace_target() {
+        let path = default_worker_bin().expect("default worker bin path");
+        assert!(
+            path.ends_with("target/debug/kernel_tlog")
+                || path.ends_with("target/release/kernel_tlog")
+        );
+        assert!(
+            !path.ends_with("ai/target/debug/kernel_tlog")
+                && !path.ends_with("ai/target/release/kernel_tlog"),
+            "default path should use the workspace target dir when no sibling binary exists: {}",
+            path.display()
         );
     }
 }

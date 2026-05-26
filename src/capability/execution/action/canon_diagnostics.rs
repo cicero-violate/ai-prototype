@@ -24,6 +24,11 @@ pub fn run_read(args: &Value, workspace: &WorkspaceView) -> Value {
     let tlog_dir = env::var("AI_TLOG_DIR")
         .map(PathBuf::from)
         .unwrap_or_else(|_| state_dir.join("tlog"));
+    let tlog_dir = if tlog_dir.is_relative() {
+        workspace.allowed_boundary.join(&tlog_dir)
+    } else {
+        tlog_dir
+    };
     let console_log = state_dir.join("console.log");
     let actions_log = state_dir.join("actions.ndjson");
     let tlog_path = tlog_dir.join("canon-agent.tlog.ndjson");

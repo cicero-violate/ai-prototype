@@ -352,6 +352,14 @@ impl WorkerProcess {
             return Err(format!("node {} is already claimed", req.node_id));
         }
 
+        let claim_cap = configured_task_claim_cap();
+        if self.task_leases.len() >= claim_cap {
+            return Err(format!(
+                "task claim cap reached: active_claims={} cap={claim_cap}",
+                self.task_leases.len()
+            ));
+        }
+
         let (plan, _) = load_plan_read_model(&self.project_dir)
             .unwrap_or_else(|_| (load_plan(&self.project_dir), None));
         let node = plan
@@ -837,6 +845,19 @@ struct WorkerInstance {
     generation: u64,
 }
 
+fn configured_task_claim_cap() -> usize {
+    env::var("CANON_TASK_CLAIM_CAP")
+        .ok()
+        .and_then(|value| value.parse::<u32>().ok())
+        .or_else(|| {
+            env::var("CANON_EXECUTOR_COUNT")
+                .ok()
+                .and_then(|value| value.parse::<u32>().ok())
+        })
+        .unwrap_or(DEFAULT_EXECUTOR_COUNT)
+        .clamp(1, MAX_EXECUTOR_COUNT) as usize
+}
+
 struct RetiredWorker {
     instance: WorkerInstance,
     retired_at: Instant,
@@ -894,7 +915,7 @@ pub struct StartLoopRequest {
     pub execute_turns: Option<u32>,
     /// Parallel agents (default: AGENT_COUNT env or 1).
     pub agent_count: Option<u32>,
-    /// Parallel bounded DAG mini-agents per scheduling wave (default: 3, max: 5).
+    /// Parallel bounded DAG mini-agents per scheduling wave (default: CANON_EXECUTOR_COUNT env or 1, max: 5).
     pub executor_count: Option<u32>,
 }
 

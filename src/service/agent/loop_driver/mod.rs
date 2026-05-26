@@ -411,6 +411,11 @@ impl LoopDriver {
                 let tlog_dir = std::env::var("AI_TLOG_DIR")
                     .map(std::path::PathBuf::from)
                     .unwrap_or_else(|_| self.config.project_dir.join("state").join("tlog"));
+                let tlog_dir = if tlog_dir.is_relative() {
+                    self.config.project_dir.join(&tlog_dir)
+                } else {
+                    tlog_dir
+                };
                 let policy_path = self.config.project_dir.join("state").join("policy.ndjson");
                 run_post_cycle_learning(
                     url,
