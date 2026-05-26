@@ -14,7 +14,6 @@
 //! call and remain available for one-shot callers.
 
 use std::collections::{BTreeMap, BTreeSet};
-use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
 
 use crate::capability::planning::{
@@ -51,44 +50,39 @@ impl PlanPatchCursor {
         if !path.exists() {
             return Ok(Self::default());
         }
-        let file = std::fs::File::open(path).map_err(|e| e.to_string())?;
-        let reader = BufReader::new(file);
-        let mut last_seq = 0u64;
-        let mut last_revision = 0u64;
+        let records = load_plan_patch_records_ndjson(path).map_err(|e| e.to_string())?;
+        Ok(Self::from_tlog_records(records))
+    }
 
-        for line_result in reader.lines() {
-            let line = line_result.map_err(|e| e.to_string())?;
-            let line = line.trim();
-            if line.is_empty() || !line.starts_with('[') {
-                continue;
+    fn from_tlog_records(records: impl IntoIterator<Item = PlanPatchTlogRecord>) -> Self {
+        let mut cursor = Self::default();
+        for record in records {
+            cursor.observe_record(record);
+        }
+        cursor
+    }
+
+    fn observe_record(&mut self, record: PlanPatchTlogRecord) {
+        match record {
+            PlanPatchTlogRecord::Patch(patch) => {
+                self.observe_patch_seq(patch.patch_seq);
             }
-            let body = line
-                .strip_prefix('[')
-                .and_then(|v| v.strip_suffix(']'))
-                .unwrap_or("");
-            let fields: Vec<u64> = body
-                .split(',')
-                .filter_map(|s| s.trim().parse::<u64>().ok())
-                .collect();
-            // Each plan patch record has at least [schema_version, record_type, source_hash, cycle_id, patch_seq, ...]
-            // patch_seq is at index 4; applied_revision is at index 7 for Accepted records.
-            let record_type = fields.get(1).copied().unwrap_or(0);
-            let patch_seq = fields.get(4).copied().unwrap_or(0);
-            if patch_seq > last_seq {
-                last_seq = patch_seq;
+            PlanPatchTlogRecord::Accepted(accepted) => {
+                self.observe_patch_seq(accepted.patch_seq);
+                self.observe_applied_revision(accepted.applied_revision);
             }
-            // PLAN_PATCH_ACCEPTED_RECORD = 3; applied_revision is at index 7
-            if record_type == crate::capability::planning::PLAN_PATCH_ACCEPTED_RECORD {
-                let applied_revision = fields.get(7).copied().unwrap_or(0);
-                if applied_revision > last_revision {
-                    last_revision = applied_revision;
-                }
+            PlanPatchTlogRecord::Rejected(rejected) => {
+                self.observe_patch_seq(rejected.patch_seq);
             }
         }
-        Ok(Self {
-            last_seq,
-            last_revision,
-        })
+    }
+
+    fn observe_patch_seq(&mut self, patch_seq: u64) {
+        self.last_seq = self.last_seq.max(patch_seq);
+    }
+
+    fn observe_applied_revision(&mut self, applied_revision: u64) {
+        self.last_revision = self.last_revision.max(applied_revision);
     }
 
     pub fn next_seq(&mut self) -> u64 {
@@ -622,6 +616,177 @@ mod tests {
             files: Vec::new(),
             evidence: Vec::new(),
         }
+    }
+
+    fn cursor_patch(seq: u64) -> PlanPatchRecord {
+        PlanPatchRecord::new(
+            plan_text_hash("cursor-test"),
+            plan_text_hash("cursor-cycle"),
+            seq,
+            PlanPatchPayload::StatusChange(PlanStatusChangePatch {
+                node_id_hash: plan_text_hash("cursor-node"),
+                status: PlanNodeStatus::Pending,
+            }),
+        )
+    }
+
+    #[test]
+    fn plan_patch_cursor_missing_or_empty_log_defaults_to_zeroes() {
+        let (root, _tmp) = test_root("cursor-empty");
+        let missing_path = root.join("state/tlog/missing-plan-patches.tlog.ndjson");
+
+        let missing = PlanPatchCursor::load_from_path(&missing_path).expect("missing log defaults");
+        assert_eq!(missing.last_seq, 0);
+        assert_eq!(missing.last_revision, 0);
+
+        let empty_path = plan_patch_tlog_path(&root);
+        std::fs::create_dir_all(empty_path.parent().expect("tlog parent")).expect("mkdir tlog");
+        std::fs::write(&empty_path, "").expect("write empty log");
+
+        let empty = PlanPatchCursor::load_from_path(&empty_path).expect("empty log defaults");
+        assert_eq!(empty.last_seq, 0);
+        assert_eq!(empty.last_revision, 0);
+    }
+
+    #[test]
+    fn plan_patch_cursor_uses_typed_records_for_seq_and_revision() {
+        let (root, _tmp) = test_root("cursor-typed-records");
+        let tlog_path = plan_patch_tlog_path(&root);
+        std::fs::create_dir_all(tlog_path.parent().expect("tlog parent")).expect("mkdir tlog");
+
+        let patch_one = cursor_patch(1);
+        let patch_five = cursor_patch(5);
+        let patch_three = cursor_patch(3);
+        append_plan_patch_record_ndjson(&tlog_path, PlanPatchTlogRecord::Patch(patch_one))
+            .expect("append patch record");
+        append_plan_patch_record_ndjson(
+            &tlog_path,
+            PlanPatchTlogRecord::Accepted(patch_five.accepted(2)),
+        )
+        .expect("append accepted record");
+        append_plan_patch_record_ndjson(
+            &tlog_path,
+            PlanPatchTlogRecord::Rejected(
+                patch_three.rejected(PlanStateRejection::InvalidEdge.reason_hash()),
+            ),
+        )
+        .expect("append rejected record");
+
+        let cursor = PlanPatchCursor::load_from_path(&tlog_path).expect("typed cursor load");
+
+        assert_eq!(cursor.last_seq, 5);
+        assert_eq!(cursor.last_revision, 2);
+    }
+
+    #[test]
+    fn plan_patch_cursor_rejects_malformed_typed_record() {
+        let (root, _tmp) = test_root("cursor-malformed");
+        let tlog_path = plan_patch_tlog_path(&root);
+        std::fs::create_dir_all(tlog_path.parent().expect("tlog parent")).expect("mkdir tlog");
+        let mut malformed = cursor_patch(7).accepted(1);
+        malformed.applied_revision = 0;
+        append_plan_patch_record_ndjson(&tlog_path, PlanPatchTlogRecord::Accepted(malformed))
+            .expect("append malformed accepted record shape");
+
+        let err = PlanPatchCursor::load_from_path(&tlog_path)
+            .expect_err("malformed log must be rejected by typed decoder");
+
+        assert!(err.contains("InvalidTlogRecord"));
+    }
+
+    fn cursor_status_patch(seq: u64) -> PlanPatchRecord {
+        PlanPatchRecord::new(
+            plan_text_hash("cursor-test-source"),
+            plan_text_hash("cursor-test-cycle"),
+            seq,
+            PlanPatchPayload::StatusChange(PlanStatusChangePatch {
+                node_id_hash: plan_text_hash("cursor-node"),
+                status: PlanNodeStatus::Done,
+            }),
+        )
+    }
+
+    #[test]
+    fn plan_patch_cursor_loads_accepted_records_from_typed_tlog_records() {
+        let (root, _tmp) = test_root("cursor-accepted");
+        let tlog_path = plan_patch_tlog_path(&root);
+        std::fs::create_dir_all(tlog_path.parent().unwrap()).unwrap();
+
+        let first = cursor_status_patch(2);
+        let second = cursor_status_patch(4);
+        append_plan_patch_record_ndjson(&tlog_path, PlanPatchTlogRecord::Patch(first)).unwrap();
+        append_plan_patch_record_ndjson(
+            &tlog_path,
+            PlanPatchTlogRecord::Accepted(first.accepted(5)),
+        )
+        .unwrap();
+        append_plan_patch_record_ndjson(&tlog_path, PlanPatchTlogRecord::Patch(second)).unwrap();
+        append_plan_patch_record_ndjson(
+            &tlog_path,
+            PlanPatchTlogRecord::Accepted(second.accepted(9)),
+        )
+        .unwrap();
+
+        let cursor = PlanPatchCursor::load_from_path(&tlog_path).unwrap();
+
+        assert_eq!(cursor.last_seq, 4);
+        assert_eq!(cursor.last_revision, 9);
+    }
+
+    #[test]
+    fn plan_patch_cursor_loads_nonaccepted_records_without_revision() {
+        let (root, _tmp) = test_root("cursor-nonaccepted");
+        let tlog_path = plan_patch_tlog_path(&root);
+        std::fs::create_dir_all(tlog_path.parent().unwrap()).unwrap();
+
+        let patch = cursor_status_patch(3);
+        let rejected = cursor_status_patch(5);
+        append_plan_patch_record_ndjson(&tlog_path, PlanPatchTlogRecord::Patch(patch)).unwrap();
+        append_plan_patch_record_ndjson(
+            &tlog_path,
+            PlanPatchTlogRecord::Rejected(rejected.rejected(17)),
+        )
+        .unwrap();
+
+        let cursor = PlanPatchCursor::load_from_path(&tlog_path).unwrap();
+
+        assert_eq!(cursor.last_seq, 5);
+        assert_eq!(cursor.last_revision, 0);
+    }
+
+    #[test]
+    fn plan_patch_cursor_rejects_malformed_plan_patch_records() {
+        use crate::capability::planning::{PLAN_PATCH_ACCEPTED_RECORD, PLAN_PATCH_SCHEMA_VERSION};
+
+        let (root, _tmp) = test_root("cursor-malformed");
+        let tlog_path = plan_patch_tlog_path(&root);
+        std::fs::create_dir_all(tlog_path.parent().unwrap()).unwrap();
+        std::fs::write(
+            &tlog_path,
+            format!(
+                "[{},{}]\n",
+                PLAN_PATCH_SCHEMA_VERSION, PLAN_PATCH_ACCEPTED_RECORD
+            ),
+        )
+        .unwrap();
+
+        assert!(PlanPatchCursor::load_from_path(&tlog_path).is_err());
+    }
+
+    #[test]
+    fn plan_patch_cursor_defaults_for_empty_and_missing_logs() {
+        let (root, _tmp) = test_root("cursor-empty-missing");
+        let missing_path = plan_patch_tlog_path(&root);
+
+        let missing = PlanPatchCursor::load_from_path(&missing_path).unwrap();
+        assert_eq!(missing.last_seq, 0);
+        assert_eq!(missing.last_revision, 0);
+
+        std::fs::create_dir_all(missing_path.parent().unwrap()).unwrap();
+        std::fs::write(&missing_path, "").unwrap();
+        let empty = PlanPatchCursor::load_from_path(&missing_path).unwrap();
+        assert_eq!(empty.last_seq, 0);
+        assert_eq!(empty.last_revision, 0);
     }
 
     #[test]
