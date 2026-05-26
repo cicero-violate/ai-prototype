@@ -27,7 +27,8 @@
 
 use crate::domain::plan::{
     load_plan, ready_nodes_from_available_plan_state, save_plan, validate_plan_patch_mutation,
-    NodeStatus, PlanDag, PlanEdge, PlanEvidenceRef, PlanNode,
+    NodeStatus, PlanDag, PlanEdge, PlanEvidenceRef, PlanNode, EVIDENCE_KIND_BLOCKER,
+    EVIDENCE_KIND_EXECUTION_RECEIPT, EVIDENCE_KIND_VALIDATION,
 };
 use crate::runtime::WorkspaceView;
 use crate::service::scheduler::plan_store::{
@@ -35,6 +36,7 @@ use crate::service::scheduler::plan_store::{
     append_evidence_patch, append_node_remove_patch, append_node_upsert_patch,
     append_status_change_patch, load_plan_read_model,
 };
+use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
 pub const CANON_PLAN_READ_TOOL: &str = "canon_plan_read";
@@ -49,10 +51,79 @@ pub fn run_read(_args: &Value, workspace: &WorkspaceView) -> Value {
         .iter()
         .map(|n| n.id.as_str())
         .collect();
-    ok(json!({ "plan": plan, "ready_node_ids": ready }))
+    tool_ok_json(json!({ "plan": plan, "ready_node_ids": ready }))
 }
 
 pub fn run_update(args: &Value, workspace: &WorkspaceView) -> Value {
+    run_update_receipt(args, workspace).to_tool_value()
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "status", rename_all = "snake_case")]
+enum CanonPlanUpdateReceipt {
+    Success(CanonPlanUpdateSuccessReceipt),
+    Error(CanonPlanUpdateErrorReceipt),
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+struct CanonPlanUpdateSuccessReceipt {
+    op: String,
+    node_count: usize,
+    edge_count: usize,
+    ready_node_ids: Vec<String>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+struct CanonPlanUpdateErrorReceipt {
+    message: String,
+    retry: CanonPlanUpdateRetry,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+enum CanonPlanUpdateRetry {
+    Retryable,
+    NotRetryable,
+}
+
+impl CanonPlanUpdateReceipt {
+    fn success(
+        op: impl Into<String>,
+        node_count: usize,
+        edge_count: usize,
+        ready_node_ids: Vec<String>,
+    ) -> Self {
+        Self::Success(CanonPlanUpdateSuccessReceipt {
+            op: op.into(),
+            node_count,
+            edge_count,
+            ready_node_ids,
+        })
+    }
+
+    fn error(msg: impl Into<String>, retry: CanonPlanUpdateRetry) -> Self {
+        Self::Error(CanonPlanUpdateErrorReceipt {
+            message: msg.into(),
+            retry,
+        })
+    }
+
+    fn is_error(&self) -> bool {
+        matches!(self, Self::Error(_))
+    }
+
+    fn to_tool_value(&self) -> Value {
+        let text = match serde_json::to_string_pretty(self) {
+            Ok(text) => text,
+            Err(err) => format!(
+                "{{\"status\":\"error\",\"message\":\"failed to serialize typed canon_plan receipt: {err}\",\"retry\":\"not_retryable\"}}"
+            ),
+        };
+        json!({ "content": [{ "type": "text", "text": text }], "isError": self.is_error() })
+    }
+}
+
+fn run_update_receipt(args: &Value, workspace: &WorkspaceView) -> CanonPlanUpdateReceipt {
     let op = match args.get("op").and_then(Value::as_str) {
         Some(o) => o,
         None => return error("canon_plan_update requires 'op'"),
@@ -165,6 +236,14 @@ pub fn run_update(args: &Value, workspace: &WorkspaceView) -> Value {
             {
                 return error("append_evidence requires non-empty evidence.path, evidence.kind, and evidence.summary");
             }
+            if evidence.kind == EVIDENCE_KIND_EXECUTION_RECEIPT {
+                if !evidence.accepted {
+                    return error("execution_receipt evidence requires accepted=true before plan completion");
+                }
+                if evidence.receipt_hash == 0 {
+                    return error("execution_receipt evidence requires non-zero receipt_hash");
+                }
+            }
             match plan.nodes.iter_mut().find(|n| n.id == node_id) {
                 Some(node) => {
                     if !node.evidence.iter().any(|existing| {
@@ -224,19 +303,19 @@ pub fn run_update(args: &Value, workspace: &WorkspaceView) -> Value {
 
     if plan_changed {
         if let Err(e) = save_plan(&workspace.root, &plan) {
-            return error(format!("failed to save plan: {e}"));
+            return retry_error(format!("failed to save plan: {e}"));
         }
     }
 
     if let Some((node_id, status)) = status_patch {
         if let Err(e) = append_status_change_patch(&workspace.root, &node_id, &status) {
-            return error(format!("failed to append plan status patch to TLog: {e}"));
+            return retry_error(format!("failed to append plan status patch to TLog: {e}"));
         }
     }
 
     for node in &node_upserts {
         if let Err(e) = append_node_upsert_patch(&workspace.root, node) {
-            return error(format!(
+            return retry_error(format!(
                 "failed to append plan node upsert patch to TLog: {e}"
             ));
         }
@@ -244,7 +323,7 @@ pub fn run_update(args: &Value, workspace: &WorkspaceView) -> Value {
 
     for edge in &edge_removes {
         if let Err(e) = append_edge_remove_patch(&workspace.root, edge) {
-            return error(format!(
+            return retry_error(format!(
                 "failed to append plan edge remove patch to TLog: {e}"
             ));
         }
@@ -252,7 +331,7 @@ pub fn run_update(args: &Value, workspace: &WorkspaceView) -> Value {
 
     for node_id in &node_removes {
         if let Err(e) = append_node_remove_patch(&workspace.root, node_id) {
-            return error(format!(
+            return retry_error(format!(
                 "failed to append plan node remove patch to TLog: {e}"
             ));
         }
@@ -260,14 +339,14 @@ pub fn run_update(args: &Value, workspace: &WorkspaceView) -> Value {
 
     for edge in &edge_adds {
         if let Err(e) = append_edge_add_patch(&workspace.root, edge) {
-            return error(format!("failed to append plan edge add patch to TLog: {e}"));
+            return retry_error(format!("failed to append plan edge add patch to TLog: {e}"));
         }
     }
 
     if let Some((node_id, assignee)) = assignee_patch {
         if let Err(e) = append_assignee_change_patch(&workspace.root, &node_id, assignee.as_deref())
         {
-            return error(format!("failed to append plan assignee patch to TLog: {e}"));
+            return retry_error(format!("failed to append plan assignee patch to TLog: {e}"));
         }
     }
 
@@ -279,28 +358,31 @@ pub fn run_update(args: &Value, workspace: &WorkspaceView) -> Value {
             &evidence.kind,
             &evidence.summary,
         ) {
-            return error(format!("failed to append plan evidence patch to TLog: {e}"));
+            return retry_error(format!("failed to append plan evidence patch to TLog: {e}"));
         }
     }
 
     let (read_model, plan_state) =
         load_plan_read_model(&workspace.root).unwrap_or_else(|_| (plan.clone(), None));
-    let ready: Vec<&str> = ready_nodes_from_available_plan_state(&read_model, plan_state.as_ref())
-        .iter()
-        .map(|n| n.id.as_str())
-        .collect();
-    ok(
-        json!({ "ok": true, "op": op, "node_count": read_model.nodes.len(), "edge_count": read_model.edges.len(), "ready_node_ids": ready }),
-    )
+    let ready: Vec<String> =
+        ready_nodes_from_available_plan_state(&read_model, plan_state.as_ref())
+            .iter()
+            .map(|n| n.id.clone())
+            .collect();
+    CanonPlanUpdateReceipt::success(op, read_model.nodes.len(), read_model.edges.len(), ready)
 }
 
-fn ok(payload: Value) -> Value {
+fn tool_ok_json(payload: Value) -> Value {
     let text = serde_json::to_string_pretty(&payload).unwrap_or_else(|_| payload.to_string());
     json!({ "content": [{ "type": "text", "text": text }], "isError": false })
 }
 
-fn error(msg: impl Into<String>) -> Value {
-    json!({ "content": [{ "type": "text", "text": format!("Error: {}", msg.into()) }], "isError": true })
+fn error(msg: impl Into<String>) -> CanonPlanUpdateReceipt {
+    CanonPlanUpdateReceipt::error(msg, CanonPlanUpdateRetry::NotRetryable)
+}
+
+fn retry_error(msg: impl Into<String>) -> CanonPlanUpdateReceipt {
+    CanonPlanUpdateReceipt::error(msg, CanonPlanUpdateRetry::Retryable)
 }
 
 fn plan_edge_exists(edges: &[PlanEdge], needle: &PlanEdge) -> bool {
@@ -311,8 +393,10 @@ fn plan_edge_exists(edges: &[PlanEdge], needle: &PlanEdge) -> bool {
 
 fn status_for_appended_evidence(kind: &str) -> Option<NodeStatus> {
     match kind {
-        "validation" | "execution-receipt" => Some(NodeStatus::Done),
-        "blocker" => Some(NodeStatus::Failed),
+        EVIDENCE_KIND_VALIDATION | EVIDENCE_KIND_EXECUTION_RECEIPT | "execution-receipt" => {
+            Some(NodeStatus::Done)
+        }
+        EVIDENCE_KIND_BLOCKER => Some(NodeStatus::Failed),
         _ => None,
     }
 }
@@ -365,17 +449,51 @@ mod tests {
         .expect("plan should write");
     }
 
+    fn assert_success(receipt: CanonPlanUpdateReceipt, expected_op: &str) {
+        match receipt {
+            CanonPlanUpdateReceipt::Success(success) => {
+                assert_eq!(success.op, expected_op);
+                assert_eq!(success.node_count, 1);
+                assert_eq!(success.edge_count, 0);
+            }
+            CanonPlanUpdateReceipt::Error(error) => {
+                panic!("expected success receipt, got typed error: {error:?}")
+            }
+        }
+    }
+
+    fn assert_error(
+        receipt: CanonPlanUpdateReceipt,
+        expected_message: &str,
+        expected_retry: CanonPlanUpdateRetry,
+    ) {
+        match receipt {
+            CanonPlanUpdateReceipt::Success(success) => {
+                panic!("expected error receipt, got typed success: {success:?}")
+            }
+            CanonPlanUpdateReceipt::Error(error) => {
+                assert!(
+                    error.message.contains(expected_message),
+                    "error message {:?} should contain {:?}",
+                    error.message,
+                    expected_message
+                );
+                assert_eq!(error.retry, expected_retry);
+            }
+        }
+    }
+
     #[test]
     fn set_status_appends_tlog_patch_without_mutating_plan_json_status() {
         let (root, _tmp) = test_root("status-patch");
         write_plan(&root, NodeStatus::Pending);
         let workspace = WorkspaceView::new(root.clone(), root.clone()).expect("workspace view");
 
-        let result = run_update(
+        let result = run_update_receipt(
             &json!({"op": "set_status", "node_id": "node-1", "status": "done"}),
             &workspace,
         );
-        assert_eq!(result.get("isError").and_then(Value::as_bool), Some(false));
+        assert_success(result, "set_status");
 
         let raw_plan = load_plan(&root);
         assert_eq!(raw_plan.nodes[0].status, NodeStatus::Done);
@@ -391,7 +509,7 @@ mod tests {
         write_plan(&root, NodeStatus::Pending);
         let workspace = WorkspaceView::new(root.clone(), root.clone()).expect("workspace view");
 
-        let result = run_update(
+        let result = run_update_receipt(
             &json!({
                 "op": "append_evidence",
                 "node_id": "node-1",
@@ -403,7 +521,7 @@ mod tests {
             }),
             &workspace,
         );
-        assert_eq!(result.get("isError").and_then(Value::as_bool), Some(false));
+        assert_success(result, "append_evidence");
 
         // Evidence and terminal status are written to plan.json so plan_read and
         // the visible artifact do not drift from the accepted TLog projection.
@@ -433,7 +551,7 @@ mod tests {
         write_plan(&root, NodeStatus::Pending);
         let workspace = WorkspaceView::new(root.clone(), root.clone()).expect("workspace view");
 
-        let commit = run_update(
+        let commit = run_update_receipt(
             &json!({
                 "op": "append_evidence",
                 "node_id": "node-1",
@@ -445,10 +563,10 @@ mod tests {
             }),
             &workspace,
         );
-        assert_eq!(commit.get("isError").and_then(Value::as_bool), Some(false));
+        assert_success(commit, "append_evidence");
         assert_eq!(load_plan(&root).nodes[0].status, NodeStatus::Pending);
 
-        let blocker = run_update(
+        let blocker = run_update_receipt(
             &json!({
                 "op": "append_evidence",
                 "node_id": "node-1",
@@ -460,8 +578,69 @@ mod tests {
             }),
             &workspace,
         );
-        assert_eq!(blocker.get("isError").and_then(Value::as_bool), Some(false));
+        assert_success(blocker, "append_evidence");
         assert_eq!(load_plan(&root).nodes[0].status, NodeStatus::Failed);
+    }
+
+    #[test]
+    fn append_evidence_missing_evidence_returns_typed_error_receipt() {
+        let (root, _tmp) = test_root("missing-evidence-receipt");
+        write_plan(&root, NodeStatus::Pending);
+        let workspace = WorkspaceView::new(root.clone(), root.clone()).expect("workspace view");
+
+        let result = run_update_receipt(
+            &json!({"op": "append_evidence", "node_id": "node-1"}),
+            &workspace,
+        );
+
+        assert_error(
+            result,
+            "append_evidence requires 'evidence'",
+            CanonPlanUpdateRetry::NotRetryable,
+        );
+        assert_eq!(load_plan(&root).nodes[0].status, NodeStatus::Pending);
+    }
+
+    #[test]
+    fn append_evidence_failed_gate_returns_typed_error_receipt() {
+        let (root, _tmp) = test_root("failed-gate-receipt");
+        write_plan(&root, NodeStatus::Pending);
+        let workspace = WorkspaceView::new(root.clone(), root.clone()).expect("workspace view");
+
+        let result = run_update_receipt(
+            &json!({
+                "op": "append_evidence",
+                "node_id": "node-1",
+                "evidence": {
+                    "path": "state/agent-evidence/node-1.md",
+                    "kind": "execution_receipt",
+                    "summary": "execution receipt was rejected by gate",
+                    "gate": "Execution",
+                    "evidence": "ExecutionReceipt",
+                    "receipt_hash": 17,
+                    "accepted": false
+                }
+            }),
+            &workspace,
+        );
+
+        assert_error(
+            result,
+            "execution_receipt evidence requires accepted=true",
+            CanonPlanUpdateRetry::NotRetryable,
+        );
+        assert_eq!(load_plan(&root).nodes[0].status, NodeStatus::Pending);
+    }
+
+    #[test]
+    fn append_evidence_retry_receipt_is_typed() {
+        let result = retry_error("failed to append plan evidence patch to TLog: disk unavailable");
+
+        assert_error(
+            result,
+            "failed to append plan evidence patch to TLog",
+            CanonPlanUpdateRetry::Retryable,
+        );
     }
 
     #[test]
@@ -469,7 +648,7 @@ mod tests {
         let (root, _tmp) = test_root("structural-patches");
         let workspace = WorkspaceView::new(root.clone(), root.clone()).expect("workspace view");
 
-        let upsert = run_update(
+        let upsert = run_update_receipt(
             &json!({
                 "op": "upsert_node",
                 "node": {
@@ -483,13 +662,13 @@ mod tests {
             }),
             &workspace,
         );
-        assert_eq!(upsert.get("isError").and_then(Value::as_bool), Some(false));
+        assert_success(upsert, "upsert_node");
 
-        let status = run_update(
+        let status = run_update_receipt(
             &json!({"op": "set_status", "node_id": "node-1", "status": "done"}),
             &workspace,
         );
-        assert_eq!(status.get("isError").and_then(Value::as_bool), Some(false));
+        assert_success(status, "set_status");
 
         std::fs::remove_file(root.join("state/plan.json")).expect("plan scaffold should delete");
         let plan_state = load_tlog_projected_plan_state(&root)
