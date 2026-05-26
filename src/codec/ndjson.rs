@@ -4,6 +4,22 @@ use std::fs::{self, File, OpenOptions};
 use std::io::{BufRead, BufReader, Write};
 use std::path::Path;
 
+/// Controls when `fsync` is called during append operations.
+///
+/// `SyncEveryBatch` (default) calls `sync_all` once after writing all events in a
+/// call, matching the current behavior of `append_tlog_events_ndjson`. Use
+/// `SyncEveryAppend` only when each individual record must survive a crash
+/// independently; it incurs one additional `sync_all` per event.
+///
+/// The tradeoff: `SyncEveryBatch` reduces fsync overhead at the cost of losing the
+/// last partial batch on a crash between events in the same call. For canonical TLog
+/// append, each `/v1/command` call is one batch, so `SyncEveryBatch` is safe.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum AppendPolicy {
+    SyncEveryBatch,
+    SyncEveryAppend,
+}
+
 use crate::capability::planning::{
     AcceptedPlanPatchRecord, PlanAssigneeChangePatch, PlanEdgePatch, PlanEvidenceAppendPatch,
     PlanFullImportPatch, PlanNodeRemovePatch, PlanNodeStatus, PlanNodeUpsertPatch, PlanPatchKind,
@@ -36,6 +52,19 @@ pub fn append_tlog_events_ndjson(
     path: impl AsRef<Path>,
     events: &[ControlEvent],
 ) -> Result<(), CanonError> {
+    append_tlog_events_ndjson_with_policy(path, events, AppendPolicy::SyncEveryBatch)
+}
+
+/// Append `events` to the NDJSON TLog at `path` using the given sync policy.
+///
+/// `SyncEveryBatch` issues one `sync_all` after writing all events (the default).
+/// `SyncEveryAppend` issues one `sync_all` per event — use only when each record
+/// must survive a crash independently.
+pub fn append_tlog_events_ndjson_with_policy(
+    path: impl AsRef<Path>,
+    events: &[ControlEvent],
+    policy: AppendPolicy,
+) -> Result<(), CanonError> {
     if events.is_empty() {
         return Ok(());
     }
@@ -50,8 +79,13 @@ pub fn append_tlog_events_ndjson(
         for event in events {
             writeln!(file, "{}", encode_control_event_ndjson(event))
                 .map_err(|_| CanonError::TlogIo)?;
+            if policy == AppendPolicy::SyncEveryAppend {
+                file.sync_all().map_err(|_| CanonError::TlogIo)?;
+            }
         }
-        file.sync_all().map_err(|_| CanonError::TlogIo)?;
+        if policy == AppendPolicy::SyncEveryBatch {
+            file.sync_all().map_err(|_| CanonError::TlogIo)?;
+        }
     }
     sync_parent_dir(path)
 }
@@ -1017,3 +1051,125 @@ decode_enum_from_u64!(
     PlanPatchKind,
     PLAN_PATCH_KIND_TAGS
 );
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::kernel::{RuntimeConfig, State, TLog};
+    use crate::runtime::{tick, verify_tlog};
+
+    fn tmp_tlog_path(name: &str) -> std::path::PathBuf {
+        let nanos = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .expect("system time should be after epoch")
+            .as_nanos();
+        let dir = std::path::PathBuf::from("target/test-tmp/ndjson-codec");
+        std::fs::create_dir_all(&dir).expect("test dir should exist");
+        dir.join(format!("codec-{name}-{}-{nanos}.ndjson", std::process::id()))
+    }
+
+    fn make_events(n: usize) -> (State, TLog) {
+        let cfg = RuntimeConfig::default();
+        let mut state = State::default();
+        let mut tlog = TLog::default();
+        for _ in 0..n {
+            tick(&mut state, &mut tlog, cfg).expect("tick should succeed");
+        }
+        (state, tlog)
+    }
+
+    #[test]
+    fn empty_event_slice_is_no_op() {
+        let path = tmp_tlog_path("empty-noop");
+        let _ = std::fs::remove_file(&path);
+        append_tlog_events_ndjson(&path, &[]).expect("empty append should succeed");
+        assert!(
+            !path.exists(),
+            "no file should be created for an empty event slice"
+        );
+    }
+
+    #[test]
+    fn empty_event_slice_with_policy_is_no_op() {
+        let path = tmp_tlog_path("empty-noop-policy");
+        let _ = std::fs::remove_file(&path);
+        append_tlog_events_ndjson_with_policy(&path, &[], AppendPolicy::SyncEveryAppend)
+            .expect("empty append should succeed");
+        assert!(!path.exists());
+    }
+
+    #[test]
+    fn multi_event_append_writes_all_events_in_order() {
+        let path = tmp_tlog_path("multi-event-order");
+        let _ = std::fs::remove_file(&path);
+        let (_, tlog) = make_events(3);
+
+        append_tlog_events_ndjson(&path, &tlog).expect("append should succeed");
+
+        let loaded = load_tlog_ndjson(&path).expect("loaded tlog should parse");
+        assert_eq!(loaded.len(), tlog.len(), "all events should be written");
+        for (written, loaded) in tlog.iter().zip(loaded.iter()) {
+            assert_eq!(written.seq, loaded.seq, "event order should be preserved");
+            assert_eq!(
+                written.self_hash, loaded.self_hash,
+                "event hash should round-trip"
+            );
+        }
+        verify_tlog(&loaded).expect("appended tlog should verify");
+        let _ = std::fs::remove_file(path);
+    }
+
+    #[test]
+    fn batch_policy_calls_sync_once_and_is_equivalent_to_default() {
+        let path_batch = tmp_tlog_path("policy-batch");
+        let path_default = tmp_tlog_path("policy-default");
+        let _ = std::fs::remove_file(&path_batch);
+        let _ = std::fs::remove_file(&path_default);
+        let (_, tlog) = make_events(4);
+
+        append_tlog_events_ndjson_with_policy(&path_batch, &tlog, AppendPolicy::SyncEveryBatch)
+            .expect("batch policy append should succeed");
+        append_tlog_events_ndjson(&path_default, &tlog)
+            .expect("default append should succeed");
+
+        let loaded_batch = load_tlog_ndjson(&path_batch).expect("batch tlog should load");
+        let loaded_default = load_tlog_ndjson(&path_default).expect("default tlog should load");
+
+        assert_eq!(
+            loaded_batch.len(),
+            loaded_default.len(),
+            "batch and default should write the same number of events"
+        );
+        for (a, b) in loaded_batch.iter().zip(loaded_default.iter()) {
+            assert_eq!(a.self_hash, b.self_hash, "event hashes should match");
+        }
+        let _ = std::fs::remove_file(path_batch);
+        let _ = std::fs::remove_file(path_default);
+    }
+
+    #[test]
+    fn incremental_appends_produce_same_result_as_single_batch() {
+        let path_incremental = tmp_tlog_path("incremental");
+        let path_batch = tmp_tlog_path("batch");
+        let _ = std::fs::remove_file(&path_incremental);
+        let _ = std::fs::remove_file(&path_batch);
+        let (_, tlog) = make_events(3);
+
+        for event in &tlog {
+            append_tlog_events_ndjson(&path_incremental, std::slice::from_ref(event))
+                .expect("incremental append should succeed");
+        }
+        append_tlog_events_ndjson(&path_batch, &tlog).expect("batch append should succeed");
+
+        let incremental = load_tlog_ndjson(&path_incremental).expect("incremental tlog should load");
+        let batch = load_tlog_ndjson(&path_batch).expect("batch tlog should load");
+
+        assert_eq!(incremental.len(), batch.len());
+        for (a, b) in incremental.iter().zip(batch.iter()) {
+            assert_eq!(a.self_hash, b.self_hash);
+        }
+        verify_tlog(&incremental).expect("incremental tlog should verify");
+        let _ = std::fs::remove_file(path_incremental);
+        let _ = std::fs::remove_file(path_batch);
+    }
+}

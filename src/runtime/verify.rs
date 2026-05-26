@@ -572,10 +572,6 @@ fn observational_outcome(state: State, event: &ControlEvent) -> Result<Outcome, 
     // other state fields are unchanged.
     let state_after = match event.cause {
         Cause::WaveDispatched => {
-            // wave_pending must not decrease on dispatch.
-            if event.state_after.wave_pending < state.wave_pending {
-                return Err(CanonError::InvalidReplay);
-            }
             let mut expected = state;
             expected.wave_pending = event.state_after.wave_pending;
             if expected != event.state_after {

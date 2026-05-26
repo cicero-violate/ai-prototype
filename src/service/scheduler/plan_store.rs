@@ -3,8 +3,18 @@
 //! `state/plan.json` is the import/export/read-model document. Durable plan
 //! truth is projected from accepted plan patch records in the canonical TLog
 //! when those records are available.
+//!
+//! # Plan patch metadata
+//!
+//! [`PlanPatchCursor`] tracks the last-written sequence number and revision so
+//! that callers which do many sequential appends can skip the O(n) log scan that
+//! would otherwise happen on every append.  Build one cursor with
+//! [`PlanPatchCursor::load_from_path`] on startup, then pass `&mut cursor` to
+//! [`PlanStore`].  The stateless free functions re-derive the cursor on every
+//! call and remain available for one-shot callers.
 
 use std::collections::{BTreeMap, BTreeSet};
+use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
 
 use crate::capability::planning::{
@@ -22,6 +32,190 @@ use crate::kernel::{PlanState, PlanStatePatch, PlanStateRejection};
 pub const PLAN_FILE: &str = "state/plan.json";
 pub const CANONICAL_TLOG_FILE: &str = "state/tlog/canon-agent.tlog.ndjson";
 pub const PLAN_PATCH_TLOG_FILE: &str = "state/tlog/plan-patches.tlog.ndjson";
+
+/// In-memory append-side metadata for the plan patch TLog.
+///
+/// Build once with [`PlanPatchCursor::load_from_path`] on startup, then update
+/// after each durable append.  Holding a cursor avoids re-scanning the entire log
+/// on every append; each update is O(1) after the initial O(n) startup scan.
+#[derive(Clone, Debug, Default)]
+pub struct PlanPatchCursor {
+    pub last_seq: u64,
+    pub last_revision: u64,
+}
+
+impl PlanPatchCursor {
+    /// Build a cursor by streaming through `path` once. O(n) on startup, O(1)
+    /// on each subsequent append when the cursor is kept alive.
+    pub fn load_from_path(path: &Path) -> Result<Self, String> {
+        if !path.exists() {
+            return Ok(Self::default());
+        }
+        let file = std::fs::File::open(path).map_err(|e| e.to_string())?;
+        let reader = BufReader::new(file);
+        let mut last_seq = 0u64;
+        let mut last_revision = 0u64;
+
+        for line_result in reader.lines() {
+            let line = line_result.map_err(|e| e.to_string())?;
+            let line = line.trim();
+            if line.is_empty() || !line.starts_with('[') {
+                continue;
+            }
+            let body = line
+                .strip_prefix('[')
+                .and_then(|v| v.strip_suffix(']'))
+                .unwrap_or("");
+            let fields: Vec<u64> = body
+                .split(',')
+                .filter_map(|s| s.trim().parse::<u64>().ok())
+                .collect();
+            // Each plan patch record has at least [schema_version, record_type, source_hash, cycle_id, patch_seq, ...]
+            // patch_seq is at index 4; applied_revision is at index 7 for Accepted records.
+            let record_type = fields.get(1).copied().unwrap_or(0);
+            let patch_seq = fields.get(4).copied().unwrap_or(0);
+            if patch_seq > last_seq {
+                last_seq = patch_seq;
+            }
+            // PLAN_PATCH_ACCEPTED_RECORD = 3; applied_revision is at index 7
+            if record_type == crate::capability::planning::PLAN_PATCH_ACCEPTED_RECORD {
+                let applied_revision = fields.get(7).copied().unwrap_or(0);
+                if applied_revision > last_revision {
+                    last_revision = applied_revision;
+                }
+            }
+        }
+        Ok(Self { last_seq, last_revision })
+    }
+
+    pub fn next_seq(&mut self) -> u64 {
+        self.last_seq = self.last_seq.saturating_add(1).max(1);
+        self.last_seq
+    }
+
+    pub fn next_revision(&mut self) -> u64 {
+        self.last_revision = self.last_revision.saturating_add(1).max(1);
+        self.last_revision
+    }
+}
+
+/// Long-lived plan patch store that maintains a cursor for O(1) append metadata.
+///
+/// Callers that do many sequential appends (e.g. supervisor processes, import
+/// flows) should create one `PlanStore` and reuse it instead of calling the
+/// stateless helpers directly.
+pub struct PlanStore {
+    workspace_root: PathBuf,
+    cursor: PlanPatchCursor,
+}
+
+impl PlanStore {
+    /// Open a plan store, scanning the existing patch log once to build the cursor.
+    pub fn open(workspace_root: &Path) -> Result<Self, String> {
+        let tlog_path = plan_patch_tlog_path(workspace_root);
+        let cursor = PlanPatchCursor::load_from_path(&tlog_path)?;
+        Ok(Self {
+            workspace_root: workspace_root.to_path_buf(),
+            cursor,
+        })
+    }
+
+    pub fn append_status_change(
+        &mut self,
+        node_id: &str,
+        status: &NodeStatus,
+    ) -> Result<(), String> {
+        append_accepted_plan_patch_with_cursor(
+            self.workspace_root.as_path(),
+            &mut self.cursor,
+            PlanPatchPayload::StatusChange(PlanStatusChangePatch {
+                node_id_hash: plan_text_hash(node_id),
+                status: plan_node_status(status),
+            }),
+        )?;
+        mirror_status_to_plan_json(self.workspace_root.as_path(), node_id, status)
+    }
+
+    pub fn append_evidence(
+        &mut self,
+        node_id: &str,
+        path: &str,
+        kind: &str,
+        summary: &str,
+    ) -> Result<(), String> {
+        append_accepted_plan_patch_with_cursor(
+            self.workspace_root.as_path(),
+            &mut self.cursor,
+            PlanPatchPayload::EvidenceAppend(PlanEvidenceAppendPatch {
+                node_id_hash: plan_text_hash(node_id),
+                path_hash: plan_text_hash(path),
+                kind_hash: plan_text_hash(kind),
+                summary_hash: plan_text_hash(summary),
+            }),
+        )?;
+        mirror_evidence_to_plan_json(self.workspace_root.as_path(), node_id, path, kind, summary)
+    }
+
+    pub fn append_node_upsert(&mut self, node: &PlanNode) -> Result<(), String> {
+        append_accepted_plan_patch_with_cursor(
+            self.workspace_root.as_path(),
+            &mut self.cursor,
+            PlanPatchPayload::NodeUpsert(PlanNodeUpsertPatch {
+                node_id_hash: plan_text_hash(&node.id),
+                title_hash: plan_text_hash(&node.title),
+                description_hash: plan_text_hash(&node.description),
+                status: plan_node_status(&node.status),
+                assignee_hash: node
+                    .assignee
+                    .as_deref()
+                    .map(plan_text_hash)
+                    .unwrap_or_default(),
+                score_axes_hash: plan_text_list_hash(&node.score_axes),
+                files_hash: plan_text_list_hash(&node.files),
+            }),
+        )
+    }
+
+    pub fn append_edge_add(&mut self, edge: &PlanEdge) -> Result<(), String> {
+        append_accepted_plan_patch_with_cursor(
+            self.workspace_root.as_path(),
+            &mut self.cursor,
+            PlanPatchPayload::EdgeAdd(PlanEdgePatch {
+                from_node_hash: plan_text_hash(&edge.from),
+                to_node_hash: plan_text_hash(&edge.to),
+            }),
+        )
+    }
+
+    pub fn append_edge_remove(&mut self, edge: &PlanEdge) -> Result<(), String> {
+        append_accepted_plan_patch_with_cursor(
+            self.workspace_root.as_path(),
+            &mut self.cursor,
+            PlanPatchPayload::EdgeRemove(PlanEdgePatch {
+                from_node_hash: plan_text_hash(&edge.from),
+                to_node_hash: plan_text_hash(&edge.to),
+            }),
+        )
+    }
+
+    pub fn append_node_remove(&mut self, node_id: &str) -> Result<(), String> {
+        append_accepted_plan_patch_with_cursor(
+            self.workspace_root.as_path(),
+            &mut self.cursor,
+            PlanPatchPayload::NodeRemove(PlanNodeRemovePatch {
+                node_id_hash: plan_text_hash(node_id),
+            }),
+        )
+    }
+
+    pub fn last_seq(&self) -> u64 {
+        self.cursor.last_seq
+    }
+
+    pub fn last_revision(&self) -> u64 {
+        self.cursor.last_revision
+    }
+}
 
 pub fn plan_path(workspace_root: &Path) -> PathBuf {
     workspace_root.join(PLAN_FILE)
@@ -177,41 +371,25 @@ pub fn append_assignee_change_patch(
     )
 }
 
-fn append_accepted_plan_patch(
+/// O(1) append using a pre-built cursor. The caller is responsible for keeping
+/// the cursor alive across calls to amortize the startup scan cost.
+fn append_accepted_plan_patch_with_cursor(
     workspace_root: &Path,
+    cursor: &mut PlanPatchCursor,
     payload: PlanPatchPayload,
 ) -> Result<(), String> {
     let tlog_path = plan_patch_tlog_path(workspace_root);
     if let Some(parent) = tlog_path.parent() {
         std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
     }
-
-    let records = if tlog_path.exists() {
-        load_plan_patch_records_ndjson(&tlog_path).map_err(|e| e.to_string())?
-    } else {
-        Vec::new()
-    };
-    let next_seq = records
-        .iter()
-        .map(plan_patch_record_seq)
-        .max()
-        .unwrap_or(0)
-        .saturating_add(1)
-        .max(1);
-    let next_revision = records
-        .iter()
-        .filter_map(plan_patch_applied_revision)
-        .max()
-        .unwrap_or(0)
-        .saturating_add(1)
-        .max(1);
+    let next_seq = cursor.next_seq();
+    let next_revision = cursor.next_revision();
     let patch = PlanPatchRecord::new(
         plan_text_hash("project:plan_update"),
         plan_text_hash("canon-plan-update"),
         next_seq,
         payload,
     );
-
     append_plan_patch_record_ndjson(&tlog_path, PlanPatchTlogRecord::Patch(patch))
         .map_err(|e| e.to_string())?;
     append_plan_patch_record_ndjson(
@@ -221,19 +399,16 @@ fn append_accepted_plan_patch(
     .map_err(|e| e.to_string())
 }
 
-fn plan_patch_record_seq(record: &PlanPatchTlogRecord) -> u64 {
-    match record {
-        PlanPatchTlogRecord::Patch(record) => record.patch_seq,
-        PlanPatchTlogRecord::Accepted(record) => record.patch_seq,
-        PlanPatchTlogRecord::Rejected(record) => record.patch_seq,
-    }
-}
-
-fn plan_patch_applied_revision(record: &PlanPatchTlogRecord) -> Option<u64> {
-    match record {
-        PlanPatchTlogRecord::Accepted(record) => Some(record.applied_revision),
-        PlanPatchTlogRecord::Patch(_) | PlanPatchTlogRecord::Rejected(_) => None,
-    }
+/// One-shot stateless append. Builds a cursor from disk on every call (O(n) in
+/// patch log length). Use [`PlanStore`] for long-lived callers that do many
+/// sequential appends.
+fn append_accepted_plan_patch(
+    workspace_root: &Path,
+    payload: PlanPatchPayload,
+) -> Result<(), String> {
+    let tlog_path = plan_patch_tlog_path(workspace_root);
+    let mut cursor = PlanPatchCursor::load_from_path(&tlog_path)?;
+    append_accepted_plan_patch_with_cursor(workspace_root, &mut cursor, payload)
 }
 
 fn plan_node_status(status: &NodeStatus) -> PlanNodeStatus {

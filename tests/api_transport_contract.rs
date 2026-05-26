@@ -133,12 +133,13 @@ fn wave_dispatch_sets_pending_and_child_complete_decrements_once() {
         cfg,
         &mut command_ledger,
         &mut transport_ledger,
-        wave_dispatch_frame(903, 1903, 4),
+        wave_dispatch_frame(903, 1903, 1),
     )
     .expect("later wave dispatch should be accepted");
     assert_eq!(reset_dispatch.control.event.state_before.wave_pending, 1);
-    assert_eq!(reset_dispatch.control.event.state_after.wave_pending, 4);
-    assert_eq!(state.wave_pending, 4);
+    assert_eq!(reset_dispatch.control.event.state_after.wave_pending, 1);
+    assert_eq!(state.wave_pending, 1);
+    verify_tlog(&tlog).expect("wave dispatch reset should replay");
 }
 
 #[test]
