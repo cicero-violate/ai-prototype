@@ -1141,8 +1141,11 @@ fn native_input_schema(tool: NativeTool) -> Value {
         NativeTool::CanonGraphPlanCfg => json!({
             "type": "object",
             "properties": {
-                "graph": { "type": "string", "description": "Workspace-relative schema-17 graph.json containing metrics.cfg." },
-                "graph_path": { "type": "string", "description": "Alias for graph." },
+                "artifact": { "type": "string", "description": "Workspace-relative artifact directory or semantic_index.jsonl containing metrics.cfg." },
+                "artifact_dir": { "type": "string", "description": "Alias for artifact." },
+                "semantic_index": { "type": "string", "description": "Workspace-relative semantic_index.jsonl path." },
+                "graph": { "type": "string", "description": "Deprecated alias for artifact." },
+                "graph_path": { "type": "string", "description": "Deprecated alias for artifact." },
                 "node": { "type": "string", "description": "Graph node path for the function to transform." },
                 "path": { "type": "string", "description": "Alias for node." },
                 "strategy": graph_cfg_strategy_schema(),
@@ -1153,26 +1156,29 @@ fn native_input_schema(tool: NativeTool) -> Value {
                 "ops_out": { "type": "string", "description": "Optional workspace-relative file to write planned ops NDJSON." },
                 "intent": { "type": "string" }
             },
-            "required": ["node", "strategy"]
+            "required": ["artifact", "node", "strategy"]
         }),
 
         NativeTool::CanonGraphApplyOps => json!({
             "type": "object",
             "properties": {
-                "graph": { "type": "string", "description": "Workspace-relative schema-17 graph.json containing files." },
-                "graph_path": { "type": "string", "description": "Alias for graph." },
+                "artifact": { "type": "string", "description": "Optional workspace-relative artifact directory or semantic_index.jsonl used as the mutation contract." },
+                "artifact_dir": { "type": "string", "description": "Alias for artifact." },
+                "semantic_index": { "type": "string", "description": "Workspace-relative semantic_index.jsonl path." },
+                "graph": { "type": "string", "description": "Deprecated alias for artifact." },
+                "graph_path": { "type": "string", "description": "Deprecated alias for artifact." },
                 "ops": { "type": "string", "description": "Workspace-relative graph mutation ops NDJSON path." },
                 "ops_path": { "type": "string", "description": "Alias for ops." },
                 "worktree_out": { "type": "string", "description": "Workspace-relative output directory for rendered mutated source tree." },
-                "graph_out": { "type": "string", "description": "Optional workspace-relative file for mutated graph.json." },
+                "graph_out": { "type": "string", "description": "Deprecated optional workspace-relative file for the reconstructed artifact snapshot." },
                 "receipt_out": { "type": "string", "description": "Optional workspace-relative file for pipeline receipt JSON." },
                 "patch_out": { "type": "string", "description": "Optional workspace-relative unified diff output path." },
                 "apply_patch_out": { "type": "string", "description": "Optional workspace-relative apply_patch-format patch output path." },
                 "apply_to_source": { "type": "boolean", "description": "Apply the generated diff to the live workspace with git apply --index." },
                 "validate_command": { "type": "string", "description": "Optional shell command run inside worktree_out." },
                 "recapture_command": { "type": "string", "description": "Optional shell command run inside worktree_out after validation." },
-                "graph_artifact_root": { "type": "string", "description": "Optional artifact root containing graph.json files to merge into rendered worktree." },
-                "artifact_root": { "type": "string", "description": "Alias for graph_artifact_root." },
+                "graph_artifact_root": { "type": "string", "description": "Deprecated alias for artifact_root." },
+                "artifact_root": { "type": "string", "description": "Optional artifact root containing semantic_index.jsonl files to merge into rendered worktree." },
                 "intent": { "type": "string" }
             },
             "required": ["ops", "worktree_out"]
@@ -1181,24 +1187,33 @@ fn native_input_schema(tool: NativeTool) -> Value {
         NativeTool::CanonGraphVerifyCfgDelta => json!({
             "type": "object",
             "properties": {
-                "old_graph": { "type": "string", "description": "Workspace-relative old schema-17 graph.json path." },
-                "old_graph_path": { "type": "string", "description": "Alias for old_graph." },
-                "new_graph": { "type": "string", "description": "Workspace-relative new schema-17 graph.json path." },
-                "new_graph_path": { "type": "string", "description": "Alias for new_graph." },
+                "old_artifact": { "type": "string", "description": "Workspace-relative old artifact directory or semantic_index.jsonl path." },
+                "old_artifact_dir": { "type": "string", "description": "Alias for old_artifact." },
+                "old_semantic_index": { "type": "string", "description": "Workspace-relative old semantic_index.jsonl path." },
+                "old_graph": { "type": "string", "description": "Deprecated alias for old_artifact." },
+                "old_graph_path": { "type": "string", "description": "Deprecated alias for old_artifact." },
+                "new_artifact": { "type": "string", "description": "Workspace-relative new artifact directory or semantic_index.jsonl path." },
+                "new_artifact_dir": { "type": "string", "description": "Alias for new_artifact." },
+                "new_semantic_index": { "type": "string", "description": "Workspace-relative new semantic_index.jsonl path." },
+                "new_graph": { "type": "string", "description": "Deprecated alias for new_artifact." },
+                "new_graph_path": { "type": "string", "description": "Deprecated alias for new_artifact." },
                 "node": { "type": "string", "description": "Function graph node path to compare." },
                 "path": { "type": "string", "description": "Alias for node." },
                 "max_complexity_increase": { "type": "integer", "description": "Optional maximum allowed cyclomatic complexity delta." },
                 "require_changed": { "type": "boolean", "description": "Require CFG summary to change." },
                 "intent": { "type": "string" }
             },
-            "required": ["old_graph", "new_graph", "node"]
+            "required": ["old_artifact", "new_artifact", "node"]
         }),
 
         NativeTool::CanonGraphAutoRefactorCfg => json!({
             "type": "object",
             "properties": {
-                "graph": { "type": "string", "description": "Workspace-relative schema-17 graph.json containing files and metrics.cfg." },
-                "graph_path": { "type": "string", "description": "Alias for graph." },
+                "artifact": { "type": "string", "description": "Workspace-relative artifact directory or semantic_index.jsonl containing files and metrics.cfg." },
+                "artifact_dir": { "type": "string", "description": "Alias for artifact." },
+                "semantic_index": { "type": "string", "description": "Workspace-relative semantic_index.jsonl path." },
+                "graph": { "type": "string", "description": "Deprecated alias for artifact." },
+                "graph_path": { "type": "string", "description": "Deprecated alias for artifact." },
                 "node": { "type": "string", "description": "Function graph node path to transform." },
                 "path": { "type": "string", "description": "Alias for node." },
                 "strategy": graph_cfg_strategy_schema(),
@@ -1208,20 +1223,22 @@ fn native_input_schema(tool: NativeTool) -> Value {
                 "hi": { "type": "integer" },
                 "ops_out": { "type": "string", "description": "Workspace-relative planned ops NDJSON output path." },
                 "worktree_out": { "type": "string", "description": "Workspace-relative rendered worktree output directory." },
-                "graph_out": { "type": "string", "description": "Optional mutated graph.json output path." },
+                "graph_out": { "type": "string", "description": "Deprecated optional reconstructed artifact snapshot output path." },
                 "receipt_out": { "type": "string", "description": "Optional pipeline receipt path." },
                 "patch_out": { "type": "string", "description": "Optional workspace-relative unified diff output path." },
                 "apply_patch_out": { "type": "string", "description": "Optional workspace-relative apply_patch-format patch output path." },
                 "apply_to_source": { "type": "boolean", "description": "Apply the generated diff to the live workspace with git apply --index." },
-                "artifact_root": { "type": "string", "description": "Optional graph artifact root for merged render; defaults to state/rustc." },
+                "artifact_root": { "type": "string", "description": "Optional artifact root for merged render; defaults to state/rustc." },
                 "graph_artifact_root": { "type": "string", "description": "Alias for artifact_root." },
                 "validate_command": { "type": "string" },
                 "recapture_command": { "type": "string" },
-                "new_graph": { "type": "string", "description": "Optional recaptured graph path for CFG delta verification." },
-                "new_graph_path": { "type": "string", "description": "Alias for new_graph." },
+                "new_artifact": { "type": "string", "description": "Optional recaptured artifact directory or semantic_index.jsonl for CFG delta verification." },
+                "new_semantic_index": { "type": "string", "description": "Optional recaptured semantic_index.jsonl for CFG delta verification." },
+                "new_graph": { "type": "string", "description": "Deprecated alias for new_artifact." },
+                "new_graph_path": { "type": "string", "description": "Deprecated alias for new_artifact." },
                 "intent": { "type": "string" }
             },
-            "required": ["graph", "node", "strategy", "ops_out", "worktree_out"]
+            "required": ["artifact", "node", "strategy", "ops_out", "worktree_out"]
         }),
 
         NativeTool::Python => json!({

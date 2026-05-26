@@ -3,7 +3,9 @@
 use std::fs;
 use std::path::Path;
 
+use crate::service::invariants::mir_cfg::mir_call_invariant_prompt_block;
 use crate::service::invariants::promoted_invariant_prompt_block;
+use crate::service::invariants::temporal::temporal_invariant_prompt_block;
 
 use crate::service::agent::config::AgentLoopConfig;
 
@@ -107,6 +109,10 @@ pub(super) fn build_project_planning_prompt(
     let policy_feedback = load_policy_feedback(working_dir);
     let mcp_feedback = load_mcp_feedback(working_dir);
     let invariant_feedback = promoted_invariant_prompt_block(working_dir, 8);
+    let tlog_path = working_dir.join("state/tlog/canon-agent.tlog.ndjson");
+    let temporal_feedback = temporal_invariant_prompt_block(&tlog_path, 8, 3);
+    let mir_path = working_dir.join("state/rustc/ai/mir.jsonl");
+    let mir_feedback = mir_call_invariant_prompt_block(&mir_path, 6, 2);
     planning_prompt(
         goal,
         agent_id,
@@ -118,6 +124,8 @@ pub(super) fn build_project_planning_prompt(
         policy_feedback.as_deref(),
         mcp_feedback.as_deref(),
         invariant_feedback.as_deref(),
+        temporal_feedback.as_deref(),
+        mir_feedback.as_deref(),
     )
 }
 
@@ -132,6 +140,8 @@ pub(super) fn planning_prompt(
     policy_feedback: Option<&str>,
     mcp_feedback: Option<&str>,
     invariant_feedback: Option<&str>,
+    temporal_feedback: Option<&str>,
+    mir_feedback: Option<&str>,
 ) -> String {
     let agent_line = agent_identity(agent_id, agent_count);
     let focus_block = match (domain, metric) {
@@ -162,7 +172,28 @@ pub(super) fn planning_prompt(
         Some(feedback) if !feedback.trim().is_empty() => format!(
             "## PROMOTED RUNTIME INVARIANTS\n\
              {feedback}\n\
-             Treat these as replay-validated constraints when planning or diagnosing work.\n\n"
+             Treat these as replay-validated constraints when planning or diagnosing work.\n\
+             Encoding Invariants into the Compile-Time Type System: when an invariant implies a durable fix, prefer encoding it into Rust types, typestates, enums, constructors, validators, or contract tests instead of leaving it as prompt-only guidance.\n\n"
+        ),
+        _ => String::new(),
+    };
+    let temporal_block = match temporal_feedback {
+        Some(feedback) if !feedback.trim().is_empty() => format!(
+            "## TEMPORAL ORDER INVARIANTS (Algorithm 3, partial-order log mining)\n\
+             {feedback}\n\
+             These A→B relations hold universally across all agent turns in the TLog. \
+             Use them to sequence DAG nodes correctly and avoid ordering violations. \
+             Encoding Invariants into the Compile-Time Type System: when an ordering invariant implies a durable fix, prefer encoding it into Rust types, typestates, enums, constructors, validators, or contract tests instead of leaving it as prompt-only guidance.\n\n"
+        ),
+        _ => String::new(),
+    };
+    let mir_block = match mir_feedback {
+        Some(feedback) if !feedback.trim().is_empty() => format!(
+            "## STRUCTURAL CALL-ORDER INVARIANTS (MIR call graph, Algorithm 3)\n\
+             {feedback}\n\
+             These ordering relations hold in the compiled MIR. \
+             Use them to understand call sequencing constraints when diagnosing runtime behaviour. \
+             Encoding Invariants into the Compile-Time Type System: when a structural invariant implies a durable fix, prefer encoding it into Rust types, typestates, enums, constructors, validators, or contract tests instead of leaving it as prompt-only guidance.\n\n"
         ),
         _ => String::new(),
     };
@@ -176,6 +207,8 @@ pub(super) fn planning_prompt(
          {score_block}\
          {policy_block}\
          {invariant_block}\
+         {temporal_block}\
+         {mir_block}\
          {mcp_error_block}\
          ## HOW EXECUTOR DISPATCH WORKS\n\
          After this planning turn finishes, the scheduler reads the TLog-projected plan read model and **spawns one executor per ready node in parallel**. \
@@ -239,7 +272,15 @@ pub(super) fn spawned_prompt(
     } else {
         metric
     };
+    let is_recovery = domain.starts_with("Recovery:");
     let evidence_protocol = match plan_node_id {
+        Some(node_id) if is_recovery => format!(
+            "5. Use `call_action` with action `project:plan_read` to inspect current node state and attached evidence.\n\
+             6. Write your diagnosis or blocker finding to `state/agent-evidence/{node_id}.md`.\n\
+             7. Append evidence with `call_action` action `project:plan_update`, parameters \
+             `{{\"op\":\"append_evidence\",\"node_id\":\"{node_id}\",\"evidence\":{{\"path\":\"state/agent-evidence/{node_id}.md\",\"kind\":\"<diagnostic|blocker>\",\"summary\":\"<one-line finding>\"}}}}`.\n\
+             8. Do not commit. Do not edit `state/plan.json`, score files, or TLog files. Stop after appending evidence."
+        ),
         Some(node_id) => format!(
             "5. Write detailed task evidence to `state/agent-evidence/{node_id}.md` with commands, validation output, artifact paths, counts, and samples.\n\
              6. When the success criterion is met, append that evidence file with `call_action` action `project:plan_update` using `op=append_evidence`, parameters \
@@ -260,6 +301,11 @@ pub(super) fn spawned_prompt(
                 .to_string()
         }
     };
+    let edit_step = if is_recovery {
+        "3. Do not edit source files, run build commands, or use workspace:structural_edit. This is a diagnosis-only task.\n"
+    } else {
+        "3. Use `call_action` with action `workspace:structural_edit` as the canonical editor for file edits. Use `workspace:apply_patch` only when the edit cannot be expressed as structural-editor ops.\n"
+    };
     if step == 1 {
         format!(
             "You are an executor with a single bounded task. You were spawned by the scheduler.\n\n\
@@ -274,7 +320,7 @@ pub(super) fn spawned_prompt(
              ## PROTOCOL\n\
              1. Assess the current state against the success criterion before doing anything else.\n\
              2. Take the minimal actions needed to meet the criterion.\n\
-             3. Use `call_action` with action `workspace:structural_edit` as the canonical editor for file edits. Use `workspace:apply_patch` only when the edit cannot be expressed as structural-editor ops.\n\
+             {edit_step}\
              4. Every tool call must include a non-empty `intent` field explaining why.\n\
              {evidence_protocol}"
         )
@@ -291,7 +337,7 @@ pub(super) fn spawned_prompt(
              ## PROTOCOL\n\
              1. Verify the current state against the success criterion first.\n\
              2. If not met: identify the specific gap, close it, then re-verify.\n\
-             3. Use `call_action` with action `workspace:structural_edit` as the canonical editor for file edits. Use `workspace:apply_patch` only when the edit cannot be expressed as structural-editor ops.\n\
+             {edit_step}\
              4. Every tool call must include a non-empty `intent` field.\n\
              {evidence_protocol}"
         )

@@ -3,8 +3,10 @@
 use chrono::Utc;
 use serde_json::{json, Value};
 
-pub fn execute(name: &str, args: &Value) -> Value {
-    match name {
+use super::ToolOutcome;
+
+pub fn execute(name: &str, args: &Value) -> ToolOutcome {
+    ToolOutcome::Ok(match name {
         "echo" => json!({
             "content": [{ "type": "text", "text": args.get("text").and_then(Value::as_str).unwrap_or("") }],
             "isError": false
@@ -13,6 +15,10 @@ pub fn execute(name: &str, args: &Value) -> Value {
             "content": [{ "type": "text", "text": Utc::now().to_rfc3339() }],
             "isError": false
         }),
-        _ => crate::api::action::tool_error(format!("Unknown utility tool: {name}")),
-    }
+        _ => {
+            return ToolOutcome::Error(crate::api::action::tool_error(format!(
+                "Unknown utility tool: {name}"
+            )))
+        }
+    })
 }

@@ -394,6 +394,7 @@ mod tests {
             FailureClass::ConvergenceFailed,
             FailureClass::LearningMissing,
             FailureClass::LearningFailed,
+            FailureClass::SignalIntegrityFailed,
         ];
 
         assert_eq!(

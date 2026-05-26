@@ -114,6 +114,20 @@ fn append_action_transcript_for_workspace(
     }
 }
 
+const RAW_FIELD_BYTE_LIMIT: usize = 64 * 1024;
+
+fn truncate_raw_field(s: &str) -> &str {
+    if s.len() <= RAW_FIELD_BYTE_LIMIT {
+        return s;
+    }
+    // Find a valid UTF-8 boundary at the limit.
+    let mut end = RAW_FIELD_BYTE_LIMIT;
+    while !s.is_char_boundary(end) {
+        end -= 1;
+    }
+    &s[..end]
+}
+
 fn append_raw_action_result(
     workspace: &WorkspaceView,
     name: &str,
@@ -131,8 +145,8 @@ fn append_raw_action_result(
     let line = json!({
         "created_at": Utc::now().to_rfc3339(),
         "tool_name": name,
-        "request_json": args_json,
-        "response_json": response_json,
+        "request_json": truncate_raw_field(args_json),
+        "response_json": truncate_raw_field(response_json),
         "receipt_hash": receipt.receipt_hash,
         "response_hash": receipt.response_hash,
         "response_bytes": receipt.response_bytes,
@@ -156,6 +170,7 @@ mod transcript_tests {
     use super::*;
     use crate::runtime::{action_transcript_path, replay_action_transcripts};
     use std::fs;
+    use std::io::{BufRead, BufReader};
     use std::path::PathBuf;
 
     fn unique_project() -> (PathBuf, tempfile::TempDir) {
@@ -169,6 +184,83 @@ mod transcript_tests {
             .unwrap();
         let path = tmp.path().to_path_buf();
         (path, tmp)
+    }
+
+    #[test]
+    fn truncate_raw_field_is_noop_for_short_input() {
+        let s = "hello";
+        assert_eq!(truncate_raw_field(s), s);
+    }
+
+    #[test]
+    fn truncate_raw_field_caps_at_limit() {
+        let s = "x".repeat(RAW_FIELD_BYTE_LIMIT + 1000);
+        let t = truncate_raw_field(&s);
+        assert_eq!(t.len(), RAW_FIELD_BYTE_LIMIT);
+    }
+
+    #[test]
+    fn truncate_raw_field_respects_utf8_boundary() {
+        // Build a string where the limit falls in the middle of a multi-byte char.
+        // '€' is 3 bytes (U+20AC). Place it so it straddles the boundary.
+        let prefix = "a".repeat(RAW_FIELD_BYTE_LIMIT - 1);
+        let s = format!("{prefix}€extra");
+        assert!(s.len() > RAW_FIELD_BYTE_LIMIT);
+        let t = truncate_raw_field(&s);
+        assert!(t.len() < RAW_FIELD_BYTE_LIMIT);
+        assert!(std::str::from_utf8(t.as_bytes()).is_ok());
+    }
+
+    #[test]
+    fn raw_action_result_truncates_oversized_fields_on_disk() {
+        // Regression: response_json was stored verbatim; canon_diagnostics_read would read
+        // raw lines back and embed them in its response, causing repeated JSON re-encoding
+        // to double all backslashes each cycle — growing to hundreds of MB per record.
+        let (project, _tmp) = unique_project();
+        fs::create_dir_all(project.join("state")).unwrap();
+        let workspace = WorkspaceView::new(project.clone(), project.clone()).unwrap();
+
+        let large_response = "r".repeat(RAW_FIELD_BYTE_LIMIT * 4);
+        let large_args = "a".repeat(RAW_FIELD_BYTE_LIMIT * 2);
+        let request = ActionCallRequest::new(
+            CapabilityRegistry::canonical(),
+            "ai-native:/ai/mcp",
+            "canon_diagnostics_read",
+            &large_args,
+            1000,
+            65_536,
+        );
+        let receipt =
+            ActionReceipt::from_response(&request, large_response.as_bytes(), 0, false);
+
+        append_raw_action_result(
+            &workspace,
+            "canon_diagnostics_read",
+            &large_args,
+            &large_response,
+            &receipt,
+        )
+        .expect("write should succeed");
+
+        let path = project.join("state").join("actions.ndjson");
+        let file = fs::File::open(&path).unwrap();
+        let line = BufReader::new(file).lines().next().unwrap().unwrap();
+        assert!(
+            line.len() <= RAW_FIELD_BYTE_LIMIT * 3,
+            "record line must be bounded, got {} bytes",
+            line.len()
+        );
+        let record: serde_json::Value = serde_json::from_str(&line).expect("must be valid JSON");
+        let stored_response = record["response_json"].as_str().unwrap_or("");
+        let stored_args = record["request_json"].as_str().unwrap_or("");
+        assert!(
+            stored_response.len() <= RAW_FIELD_BYTE_LIMIT,
+            "response_json must be capped"
+        );
+        assert!(
+            stored_args.len() <= RAW_FIELD_BYTE_LIMIT,
+            "request_json must be capped"
+        );
     }
 
     #[test]
@@ -363,7 +455,11 @@ async fn execute_recorded_gateway_tool<H: ActionHost>(name: &str, args: Value, h
     } else {
         0
     };
-    let receipt = ActionReceipt::from_response(&request, &response_bytes, exit_status, false);
+    let tool_timed_out = result
+        .get("timed_out")
+        .and_then(Value::as_bool)
+        .unwrap_or(false);
+    let receipt = ActionReceipt::from_response(&request, &response_bytes, exit_status, tool_timed_out);
     let workspace = host.workspace();
     let transcript_warning = append_action_transcript_for_workspace(
         &workspace,
@@ -418,32 +514,23 @@ async fn execute_recorded_native_action<H: ActionHost>(name: &str, args: Value, 
         ));
     }
 
-    let result = if name == "shell" {
+    let outcome = if name == "shell" {
         host::execute_recorded_shell(&args, host).await
     } else {
         host::execute_native_tool(name, &args, host).await
     };
+    let exit_status = outcome.exit_status();
+    let timed_out = outcome.timed_out();
+    let result = outcome.into_value();
     eprintln!(
-        "[canon-ai-mcp] native tool finish name={} is_error={}",
+        "[canon-ai-mcp] native tool finish name={} is_error={} timed_out={timed_out}",
         name,
-        result
-            .get("isError")
-            .and_then(Value::as_bool)
-            .unwrap_or(false)
+        exit_status != 0,
     );
     let response_bytes = serde_json::to_vec(&result).unwrap_or_default();
     let response_json =
         String::from_utf8(response_bytes.clone()).unwrap_or_else(|_| "null".to_string());
-    let exit_status = if result
-        .get("isError")
-        .and_then(Value::as_bool)
-        .unwrap_or(false)
-    {
-        1
-    } else {
-        0
-    };
-    let receipt = ActionReceipt::from_response(&request, &response_bytes, exit_status, false);
+    let receipt = ActionReceipt::from_response(&request, &response_bytes, exit_status, timed_out);
     let workspace = host.workspace();
     let transcript_warning = append_action_transcript_for_workspace(
         &workspace,

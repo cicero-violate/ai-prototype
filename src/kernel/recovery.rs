@@ -24,6 +24,7 @@ pub enum FailureClass {
     ConvergenceFailed = 19,
     LearningMissing = 20,
     LearningFailed = 21,
+    SignalIntegrityFailed = 22,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -42,7 +43,7 @@ pub enum RecoveryAction {
 }
 
 impl FailureClass {
-    pub const ALL: [FailureClass; 21] = [
+    pub const ALL: [FailureClass; 22] = [
         FailureClass::InvariantUnknown,
         FailureClass::InvariantBlocked,
         FailureClass::AnalysisMissing,
@@ -64,6 +65,7 @@ impl FailureClass {
         FailureClass::ConvergenceFailed,
         FailureClass::LearningMissing,
         FailureClass::LearningFailed,
+        FailureClass::SignalIntegrityFailed,
     ];
 
     pub fn name(self) -> &'static str {
@@ -89,6 +91,7 @@ impl FailureClass {
             FailureClass::ConvergenceFailed => "ConvergenceFailed",
             FailureClass::LearningMissing => "LearningMissing",
             FailureClass::LearningFailed => "LearningFailed",
+            FailureClass::SignalIntegrityFailed => "SignalIntegrityFailed",
         }
     }
 

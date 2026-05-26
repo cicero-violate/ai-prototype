@@ -388,6 +388,8 @@ mod tests {
             api_command_hash: 0,
             prev_hash: seq.saturating_sub(1),
             self_hash: seq.max(1),
+            origin_bb: None,
+            origin_fn: None,
         }
     }
 }

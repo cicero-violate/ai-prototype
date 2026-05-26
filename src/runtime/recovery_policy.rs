@@ -10,7 +10,7 @@ struct RecoveryPolicyRule {
     action: RecoveryAction,
 }
 
-const RECOVERY_POLICY: [RecoveryPolicyRule; 21] = [
+const RECOVERY_POLICY: [RecoveryPolicyRule; 22] = [
     RecoveryPolicyRule {
         failure: FailureClass::InvariantUnknown,
         action: RecoveryAction::RecheckInvariant,
@@ -95,6 +95,10 @@ const RECOVERY_POLICY: [RecoveryPolicyRule; 21] = [
         failure: FailureClass::LearningFailed,
         action: RecoveryAction::RecomputeEval,
     },
+    RecoveryPolicyRule {
+        failure: FailureClass::SignalIntegrityFailed,
+        action: RecoveryAction::Replan,
+    },
 ];
 
 pub(crate) fn recovery_policy_coverage_count() -> usize {
@@ -166,7 +170,8 @@ pub(crate) fn event_kind_for_failure(class: FailureClass) -> EventKind {
         | FailureClass::RecoveryExhausted
         | FailureClass::ConvergenceFailed
         | FailureClass::LearningMissing
-        | FailureClass::LearningFailed => EventKind::Failed,
+        | FailureClass::LearningFailed
+        | FailureClass::SignalIntegrityFailed => EventKind::Failed,
     }
 }
 
@@ -191,7 +196,8 @@ pub(crate) fn decision_for_failure(class: FailureClass) -> Decision {
         | FailureClass::RecoveryExhausted
         | FailureClass::ConvergenceFailed
         | FailureClass::LearningMissing
-        | FailureClass::LearningFailed => Decision::Fail,
+        | FailureClass::LearningFailed
+        | FailureClass::SignalIntegrityFailed => Decision::Fail,
     }
 }
 

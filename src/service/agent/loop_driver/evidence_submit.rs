@@ -181,6 +181,49 @@ pub(super) fn submit_eval_evidence(command_url: &str, score_hash: u64, cycle_num
     }
 }
 
+/// Submit a failed InvariantProof evidence to the kernel command URL.
+///
+/// This triggers `InvariantBlocked → RecheckInvariant` recovery on the next
+/// tick, routing the supervisor to the Recovery phase so the LLM can plan a
+/// fix for the detected signal integrity violations.
+pub(super) fn submit_invariant_failure(
+    command_url: &str,
+    violation_count: usize,
+    cycle_num: u64,
+) {
+    let payload_hash =
+        stable_agent_hash(format!("canon:signal-integrity:violations:{violation_count}:{cycle_num}").as_bytes());
+    let submission = EvidenceSubmission::with_payload(
+        GateId::Invariant,
+        Evidence::InvariantProof,
+        false,
+        payload_hash,
+    );
+    let envelope = CommandEnvelope::new(payload_hash, Command::SubmitEvidenceBatch(vec![submission]));
+    let body = json!({
+        "command_id": envelope.command_id,
+        "command_hash": envelope.command_hash,
+        "payload_tag": "SubmitEvidenceBatch",
+        "payload": [
+            EvidenceSubmissionDto {
+                gate: "Invariant".to_string(),
+                evidence: "InvariantProof".to_string(),
+                passed: false,
+                effect: Some("None".to_string()),
+                payload_hash,
+            },
+        ],
+    });
+    match post_json_local(command_url, &body) {
+        Ok(s) => eprintln!(
+            "agent: signal-integrity failure submitted  violations={violation_count}  cycle={cycle_num}  status={s}"
+        ),
+        Err(e) => eprintln!(
+            "agent: signal-integrity failure submit failed  cycle={cycle_num}  {e}"
+        ),
+    }
+}
+
 pub(super) fn read_score_hash(working_dir: &Path) -> u64 {
     let bytes = fs::read(working_dir.join("SCORE_REPORT.md")).unwrap_or_default();
     if bytes.is_empty() {

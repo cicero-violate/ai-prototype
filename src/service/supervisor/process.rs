@@ -19,19 +19,15 @@ use tokio::process::{Child, Command as TokioCommand};
 
 use crate::api::protocol::{Command as KernelCommand, CommandEnvelope};
 use crate::capability::orchestration::TaskLifecycleReceipt;
-use crate::domain::plan::{
-    blocked_pending_nodes, plan_text_hash, NodeStatus, PlanEvidenceRef, EVIDENCE_GATE_EXECUTION,
-    EVIDENCE_KIND_EXECUTION_RECEIPT, EVIDENCE_TYPE_EXECUTION_RECEIPT,
-};
-use crate::kernel::{mix, PlanEvidenceProjection};
+use crate::domain::plan::{blocked_pending_nodes, NodeStatus, PlanEvidenceRef};
+use crate::kernel::mix;
 use crate::runtime::workspace::workspace_state_dir;
 use crate::service::agent::loop_driver::http::post_json_local;
 use crate::service::agent::{
     AgentLoopConfig, LoopDriver, DEFAULT_EXECUTOR_COUNT, MAX_EXECUTOR_COUNT,
 };
 use crate::service::scheduler::plan_store::{
-    append_evidence_patch, append_node_remove_patch, append_status_change_patch, load_plan,
-    load_plan_read_model, load_tlog_projected_plan_state,
+    append_node_remove_patch, append_status_change_patch, load_plan, load_plan_read_model,
 };
 
 const DEFAULT_LEASE_TTL_MS: u64 = 300_000;
@@ -176,6 +172,7 @@ impl WorkerProcess {
         domain: &str,
         metric: &str,
         max_steps: u64,
+        plan_node_id: Option<String>,
     ) -> Result<SpawnDto, String> {
         let worker_port = self
             .active
@@ -215,7 +212,7 @@ impl WorkerProcess {
             cert_max_steps: 30,
             domain: Some(domain.to_string()),
             metric: Some(metric.to_string()),
-            plan_node_id: None,
+            plan_node_id,
         };
 
         eprintln!(
@@ -484,18 +481,7 @@ impl WorkerProcess {
         }
 
         let lease_expires_at_ms = lease.expires_at_ms;
-        let evidence_hash = projected_node_evidence_hash(&self.project_dir, &req.node_id)
-            .ok_or_else(|| format!("node {} not found in plan", req.node_id))
-            .and_then(|hash| {
-                if hash == 0 {
-                    Err(format!(
-                        "node {} cannot be completed without projected task evidence",
-                        req.node_id
-                    ))
-                } else {
-                    Ok(hash)
-                }
-            })?;
+        let accepted_evidence = AcceptedTaskEvidence::from_read_model(&self.project_dir, &req.node_id)?;
 
         let receipt = TaskLifecycleReceipt::complete(
             &req.node_id,
@@ -503,7 +489,7 @@ impl WorkerProcess {
             req.claim_id,
             lease_expires_at_ms,
             now_ms,
-            evidence_hash,
+            accepted_evidence.evidence_hash,
         );
         if !receipt.is_contract_valid() {
             return Err(format!(
@@ -515,16 +501,6 @@ impl WorkerProcess {
         if self.active.is_some() && !tlog_submitted {
             return Err(format!(
                 "node {} cannot be completed because completion receipt was not accepted",
-                req.node_id
-            ));
-        }
-
-        let execution_evidence = completion_execution_evidence(&req.node_id, receipt.receipt_hash);
-        attach_supervisor_execution_evidence(&self.project_dir, &req.node_id, &execution_evidence)
-            .map_err(|e| format!("append task completion evidence patch failed: {e}"))?;
-        if !has_projected_evidence_ref(&self.project_dir, &req.node_id, &execution_evidence) {
-            return Err(format!(
-                "node {} cannot be completed without accepted execution receipt evidence",
                 req.node_id
             ));
         }
@@ -597,6 +573,18 @@ impl WorkerProcess {
     /// On supervisor startup the in-memory lease table is empty, so any node
     /// persisted as Running in plan.json has no valid lease and is stale.
     /// Reset all such nodes to Pending so the task runner can re-claim them.
+    /// Return the IDs of all Running plan nodes before the startup reset fires.
+    /// Call this BEFORE `reset_stale_running_nodes` to capture what was interrupted.
+    pub fn scan_crash_interrupted_nodes(&self) -> Vec<String> {
+        let (plan, _) = load_plan_read_model(&self.project_dir)
+            .unwrap_or_else(|_| (load_plan(&self.project_dir), None));
+        plan.nodes
+            .into_iter()
+            .filter(|n| n.status == NodeStatus::Running)
+            .map(|n| n.id)
+            .collect()
+    }
+
     pub fn reset_stale_running_nodes(&self) {
         let (plan, _) = load_plan_read_model(&self.project_dir)
             .unwrap_or_else(|_| (load_plan(&self.project_dir), None));
@@ -962,6 +950,58 @@ pub struct TaskLease {
     pub expires_at_ms: u64,
 }
 
+/// Accepted evidence required before a task claim can move to `Done`.
+///
+/// This value is only constructible from a plan read-model entry that carries an
+/// accepted execution receipt (`accepted=true`, `gate=Execution`,
+/// `evidence=ExecutionReceipt`, non-zero `receipt_hash`) and is still present in
+/// the accepted TLog projection. Completion code consumes this typed prerequisite
+/// instead of re-deriving truth from generic evidence hashes.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct AcceptedTaskEvidence {
+    evidence_hash: u64,
+    receipt_hash: u64,
+}
+
+impl AcceptedTaskEvidence {
+    fn from_read_model(project_dir: &Path, node_id: &str) -> Result<Self, String> {
+        let (plan, _) = load_plan_read_model(project_dir)
+            .unwrap_or_else(|_| (load_plan(project_dir), None));
+        let node = plan
+            .nodes
+            .iter()
+            .find(|node| node.id == node_id)
+            .ok_or_else(|| format!("node {node_id} not found in plan"))?;
+
+        let accepted: Vec<&PlanEvidenceRef> = node
+            .evidence
+            .iter()
+            .filter(|evidence| evidence.is_accepted_execution_receipt())
+            .collect();
+
+        if accepted.is_empty() {
+            return Err(format!(
+                "node {node_id} cannot be completed without accepted execution receipt evidence"
+            ));
+        }
+
+        let evidence_hash = accepted_evidence_refs_hash(&accepted);
+        let receipt_hash = accepted.iter().fold(0xace0_e11d_0000_0001u64, |hash, evidence| {
+            mix(hash, evidence.receipt_hash)
+        }).max(1);
+
+        Ok(Self {
+            evidence_hash,
+            receipt_hash,
+        })
+    }
+
+    #[cfg(test)]
+    fn receipt_hash(&self) -> u64 {
+        self.receipt_hash
+    }
+}
+
 struct MainLoopActiveGuard {
     active: Arc<AtomicBool>,
 }
@@ -1045,8 +1085,11 @@ pub struct TaskFailDto {
     pub tlog_submitted: bool,
 }
 
-fn plan_evidence_refs_hash(evidence: &[PlanEvidenceRef]) -> u64 {
-    let mut h = 0xe11d_eace_4fd0_0101u64;
+fn accepted_evidence_refs_hash(evidence: &[&PlanEvidenceRef]) -> u64 {
+    if evidence.is_empty() {
+        return 0;
+    }
+    let mut h = 0xe11d_eace_acce_0101u64;
     h = mix(h, evidence.len() as u64);
     for item in evidence {
         h = mix(h, string_hash(&item.path));
@@ -1058,85 +1101,6 @@ fn plan_evidence_refs_hash(evidence: &[PlanEvidenceRef]) -> u64 {
         h = mix(h, u64::from(item.accepted));
     }
     h.max(1)
-}
-
-fn projected_node_evidence_hash(project_dir: &Path, node_id: &str) -> Option<u64> {
-    if let Ok(Some(plan_state)) = load_tlog_projected_plan_state(project_dir) {
-        return plan_state
-            .nodes
-            .get(&plan_text_hash(node_id))
-            .map(|node| plan_projected_evidence_hash(&node.evidence));
-    }
-
-    let plan = load_plan(project_dir);
-    plan.nodes
-        .into_iter()
-        .find(|node| node.id == node_id)
-        .map(|node| plan_evidence_refs_hash(&node.evidence))
-}
-
-fn plan_projected_evidence_hash(evidence: &[PlanEvidenceProjection]) -> u64 {
-    if evidence.is_empty() {
-        return 0;
-    }
-    let mut h = 0xe11d_eace_4fd0_0201u64;
-    h = mix(h, evidence.len() as u64);
-    for item in evidence {
-        h = mix(h, item.path_hash);
-        h = mix(h, item.kind_hash);
-        h = mix(h, item.summary_hash);
-    }
-    h.max(1)
-}
-
-fn has_projected_evidence_ref(
-    project_dir: &Path,
-    node_id: &str,
-    evidence: &PlanEvidenceRef,
-) -> bool {
-    let Ok(Some(plan_state)) = load_tlog_projected_plan_state(project_dir) else {
-        return false;
-    };
-    let Some(node) = plan_state.nodes.get(&plan_text_hash(node_id)) else {
-        return false;
-    };
-    let expected = PlanEvidenceProjection {
-        path_hash: plan_text_hash(&evidence.path),
-        kind_hash: plan_text_hash(&evidence.kind),
-        summary_hash: plan_text_hash(&evidence.summary),
-    };
-    node.evidence.contains(&expected)
-}
-
-fn completion_execution_evidence(node_id: &str, receipt_hash: u64) -> PlanEvidenceRef {
-    PlanEvidenceRef {
-        path: format!("state/agent-evidence/{node_id}.md"),
-        kind: EVIDENCE_KIND_EXECUTION_RECEIPT.to_string(),
-        summary: format!("Supervisor accepted completion ExecutionReceipt {receipt_hash}."),
-        gate: EVIDENCE_GATE_EXECUTION.to_string(),
-        evidence: EVIDENCE_TYPE_EXECUTION_RECEIPT.to_string(),
-        receipt_hash,
-        accepted: true,
-    }
-}
-
-fn attach_supervisor_execution_evidence(
-    project_dir: &Path,
-    node_id: &str,
-    evidence: &PlanEvidenceRef,
-) -> Result<(), String> {
-    let plan = load_plan(project_dir);
-    plan.nodes
-        .iter()
-        .find(|node| node.id == node_id)
-        .ok_or_else(|| format!("node {node_id} not found in plan"))?;
-    append_evidence_patch(
-        project_dir,
-        node_id,
-        &evidence.path,
-        &evidence.kind,
-        &evidence.summary,
-    )
 }
 
 fn string_hash(value: &str) -> u64 {

@@ -1,12 +1,13 @@
-//! Graph artifact metadata and freshness checking.
+//! Semantic artifact metadata and freshness checking.
 //!
 //! Adapted from canon-storage-graph artifact writer concepts.
 //! Provides a lightweight JSON sidecar (`GraphArtifactMeta`) that records
-//! which TLog position produced the current graph artifact, enabling callers
+//! which TLog position produced the current semantic artifact set, enabling callers
 //! to skip a full re-capture when the artifact is already up to date.
 //!
-//! The graph artifact itself (graph.json) remains authoritative.
-//! This module only provides metadata helpers — it never writes to graph.json.
+//! Judgement-style artifacts (`manifest.json`, `semantic_index.jsonl`, and
+//! related JSONL files) are authoritative. This module only provides metadata
+//! helpers.
 
 use std::fs;
 use std::path::Path;
@@ -119,6 +120,8 @@ mod tests {
             api_command_hash: 0,
             prev_hash: 0,
             self_hash: seq,
+            origin_bb: None,
+            origin_fn: None,
         }
     }
 

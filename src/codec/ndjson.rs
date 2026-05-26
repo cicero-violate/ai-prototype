@@ -463,6 +463,8 @@ fn pop_event(cursor: &mut Cursor<'_>) -> Result<ControlEvent, CanonError> {
         api_command_hash: command_hashes.api_command_hash,
         prev_hash: command_hashes.prev_hash,
         self_hash: command_hashes.self_hash,
+        origin_bb: None,
+        origin_fn: None,
     })
 }
 

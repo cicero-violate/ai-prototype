@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Deterministic graph-artifact recapture/check wrapper for SCORE_REPORT refreshes.
+# Deterministic rustc-artifact recapture/check wrapper for SCORE_REPORT refreshes.
 #
 # Required environment, when overriding defaults:
-#   CANON_RUSTC_V3_ARTIFACT_DIR  Graph artifact root to validate or recapture.
+#   CANON_RUSTC_V3_ARTIFACT_DIR  Artifact root to validate or recapture.
 #                                Default: ../state/rustc, matching .cargo/config.toml.
 #   CARGO                        Cargo executable. Default: cargo.
 #   TMPDIR                       Rust temporary directory. Default: target/test-tmp.
@@ -10,8 +10,8 @@
 #   RUSTC_WORKSPACE_WRAPPER      Optional workspace wrapper override.
 #
 # Modes:
-#   --check      Validate that compatible graph artifacts already exist.
-#   --recapture  Run cargo check to let the configured canon-rustc wrapper recapture graphs,
+#   --check      Validate that compatible semantic artifacts already exist.
+#   --recapture  Run cargo check to let the configured canon-rustc wrapper recapture artifacts,
 #                then validate the resulting artifact root.
 
 set -euo pipefail
@@ -20,9 +20,9 @@ usage() {
     cat >&2 <<'USAGE'
 usage: scripts/recapture_rustc_graphs.sh [--check|--recapture]
 
-Checks or recaptures canon-rustc-v3 graph artifacts for score refreshes.
-The script does not commit generated graphs. It fails closed when the wrapper,
-toolchain, or artifact root cannot produce compatible graph.json files.
+Checks or recaptures canon-rustc-v3 semantic artifacts for score refreshes.
+The script does not commit generated artifacts. It fails closed when the wrapper,
+toolchain, or artifact root cannot produce compatible judgement-style artifacts.
 USAGE
 }
 
@@ -58,25 +58,25 @@ require_file() {
     fi
 }
 
-validate_graph_root() {
+validate_artifact_root() {
     local root="$1"
 
     if [[ ! -d "$root" ]]; then
-        echo "error: graph artifact root does not exist: $root" >&2
+        echo "error: artifact root does not exist: $root" >&2
         echo "hint: run '$0 --recapture' with the canon-rustc wrapper configured" >&2
         exit 1
     fi
 
-    local graph_count
-    graph_count=$(find "$root" -mindepth 2 -maxdepth 2 -name graph.json -type f | wc -l | tr -d ' ')
-    if [[ "$graph_count" -eq 0 ]]; then
-        echo "error: no compatible graph.json files found under: $root" >&2
-        echo "hint: expected paths like $root/ai/graph.json and $root/root_validate__bin/graph.json" >&2
+    local manifest_count
+    manifest_count=$(find "$root" -mindepth 2 -maxdepth 2 -name manifest.json -type f | wc -l | tr -d ' ')
+    if [[ "$manifest_count" -eq 0 ]]; then
+        echo "error: no compatible manifest.json files found under: $root" >&2
+        echo "hint: expected paths like $root/ai/manifest.json and $root/ai/semantic_index.jsonl" >&2
         exit 1
     fi
 
-    require_file "$root/ai/graph.json"
-    require_file "$root/root_validate__bin/graph.json"
+    require_file "$root/ai/manifest.json"
+    require_file "$root/ai/semantic_index.jsonl"
 
     python3 - "$root" <<'PY'
 import json
@@ -84,19 +84,16 @@ import pathlib
 import sys
 
 root = pathlib.Path(sys.argv[1])
-required = [root / "ai" / "graph.json", root / "root_validate__bin" / "graph.json"]
-for path in required:
-    data = json.loads(path.read_text())
-    if "meta" not in data or "nodes" not in data or "edges" not in data:
-        raise SystemExit(f"error: incompatible graph schema in {path}")
-    meta = data["meta"]
-    if not meta.get("crate_name"):
-        raise SystemExit(f"error: graph meta.crate_name missing in {path}")
-    if not meta.get("schema_version"):
-        raise SystemExit(f"error: graph meta.schema_version missing in {path}")
-    if not meta.get("graph_hash"):
-        raise SystemExit(f"error: graph meta.graph_hash missing in {path}")
-print(f"graph artifact check: pass root={root} required={len(required)}")
+manifest = root / "ai" / "manifest.json"
+semantic = root / "ai" / "semantic_index.jsonl"
+data = json.loads(manifest.read_text())
+if "crate_target" not in data or "artifacts" not in data:
+    raise SystemExit(f"error: incompatible manifest schema in {manifest}")
+with semantic.open() as fh:
+    first = json.loads(fh.readline())
+if first.get("kind") != "semantic_sentinel" or not first.get("schema_version"):
+    raise SystemExit(f"error: incompatible semantic index sentinel in {semantic}")
+print(f"semantic artifact check: pass root={root}")
 PY
 }
 
@@ -108,7 +105,8 @@ if [[ "$mode" == "--recapture" ]]; then
     RUSTC_WRAPPER="${RUSTC_WRAPPER:-}" \
     RUSTC_WORKSPACE_WRAPPER="${RUSTC_WORKSPACE_WRAPPER:-}" \
     CANON_RUSTC_V3_ARTIFACT_DIR="$artifact_abs" \
+    CANON_RUSTC_V3_ARTIFACT_MODE=full \
         "$cargo_bin" check
 fi
 
-validate_graph_root "$artifact_abs"
+validate_artifact_root "$artifact_abs"

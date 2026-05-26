@@ -43,11 +43,21 @@ pub async fn run() -> Result<(), String> {
     );
     let state = SupervisorState::new(process, &cfg)?;
 
-    {
+    let interrupted_nodes = {
         let mut guard = state.inner.lock().await;
         guard.reload_inner().await?;
+        let interrupted = guard.scan_crash_interrupted_nodes();
         guard.reset_stale_running_nodes();
         guard.reconcile_terminal_evidence();
+        interrupted
+    };
+    if !interrupted_nodes.is_empty() {
+        eprintln!(
+            "supervisor: crash recovery — {} node(s) were mid-flight at last shutdown: {:?}",
+            interrupted_nodes.len(),
+            interrupted_nodes,
+        );
+        write_restart_manifest(&cfg.project_dir, &interrupted_nodes);
     }
     // Notify task runners of any tasks that were already pending at startup.
     state.task_ready_notifier.notify();
@@ -121,6 +131,30 @@ fn print_help() {
     println!("             INVARIANT_AUTO_PROMOTE (set to 1 to promote validated invariants)");
     println!("             INVARIANT_MINER_INTERVAL_SECS, INVARIANT_MINER_STARTUP_DELAY_SECS, INVARIANT_MIN_SUPPORT");
     println!("routes: GET /, GET /control, GET /health, GET /v1/task/next, POST /reload, POST /restart, POST /agent/start, POST /spawn, POST /v1/command, POST /v1/task/claim, POST /v1/task/heartbeat, POST /v1/task/complete, POST /v1/task/fail, POST /ai/mcp");
+}
+
+/// Write a restart manifest recording which nodes were mid-flight at shutdown.
+///
+/// The manifest is read by the recovery event loop on cold start to adjust
+/// recovery prompts for nodes that are failing because they were interrupted.
+fn write_restart_manifest(project_dir: &std::path::Path, interrupted: &[String]) {
+    let path = project_dir.join("state/tlog/last-restart.json");
+    if let Some(parent) = path.parent() {
+        let _ = std::fs::create_dir_all(parent);
+    }
+    let now_ms = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_millis() as u64;
+    let ids_json = interrupted
+        .iter()
+        .map(|id| format!("\"{}\"", id.replace('"', "\\\"")))
+        .collect::<Vec<_>>()
+        .join(",");
+    let json = format!("{{\"restarted_at_ms\":{now_ms},\"interrupted_node_ids\":[{ids_json}]}}\n");
+    if let Err(e) = std::fs::write(&path, json) {
+        eprintln!("supervisor: failed to write restart manifest: {e}");
+    }
 }
 
 async fn shutdown_signal() {

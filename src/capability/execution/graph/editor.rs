@@ -9,14 +9,15 @@ use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 use std::collections::BTreeMap;
 use std::fs;
-use std::path::Path;
+use std::io::{BufRead, BufReader};
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use crate::capability::execution::graph::{
     decode_graph_mutation_ops_ndjson, decode_graph_snapshot_contract_ndjson,
     encode_graph_mutation_ops_ndjson, encode_graph_mutation_opset_receipt_ndjson,
     encode_graph_patch_receipt_ndjson, generate_graph_patch, verify_graph_mutation_ops_ndjson,
-    GraphMutationOp, GraphMutationVerdict, GraphSourceFile,
+    GraphMutationOp, GraphMutationVerdict, GraphSourceFile, GRAPH_JSON_SCHEMA_VERSION,
 };
 use crate::runtime::WorkspaceView;
 
@@ -55,7 +56,7 @@ impl GraphPlanPatchRequest {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct GraphApplyOpsRequest {
-    pub graph_path: String,
+    pub artifact_path: Option<String>,
     pub ops_path: String,
     pub worktree_out: String,
     pub graph_out: Option<String>,
@@ -70,13 +71,11 @@ pub struct GraphApplyOpsRequest {
 
 impl GraphApplyOpsRequest {
     pub fn parse(args: &Value) -> Result<Self, String> {
-        let graph_path =
-            required_string(args, "graph").or_else(|_| required_string(args, "graph_path"))?;
         let ops_path =
             required_string(args, "ops").or_else(|_| required_string(args, "ops_path"))?;
         let worktree_out = required_string(args, "worktree_out")?;
         Ok(Self {
-            graph_path,
+            artifact_path: optional_artifact_path(args)?,
             ops_path,
             worktree_out,
             graph_out: optional_string(args, "graph_out")?,
@@ -94,7 +93,7 @@ impl GraphApplyOpsRequest {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct GraphPlanCfgRequest {
-    pub graph_path: String,
+    pub artifact_path: String,
     pub node: String,
     pub strategy: String,
     pub ops_out: Option<String>,
@@ -106,12 +105,11 @@ pub struct GraphPlanCfgRequest {
 
 impl GraphPlanCfgRequest {
     pub fn parse(args: &Value) -> Result<Self, String> {
-        let graph_path =
-            required_string(args, "graph").or_else(|_| required_string(args, "graph_path"))?;
+        let artifact_path = required_artifact_path(args)?;
         let node = required_string(args, "node").or_else(|_| required_string(args, "path"))?;
         let strategy = required_string(args, "strategy")?;
         Ok(Self {
-            graph_path,
+            artifact_path,
             node,
             strategy,
             ops_out: optional_string(args, "ops_out")?,
@@ -125,8 +123,8 @@ impl GraphPlanCfgRequest {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct GraphVerifyCfgDeltaRequest {
-    pub old_graph_path: String,
-    pub new_graph_path: String,
+    pub old_artifact_path: String,
+    pub new_artifact_path: String,
     pub node: String,
     pub max_complexity_increase: Option<i64>,
     pub require_changed: bool,
@@ -134,14 +132,32 @@ pub struct GraphVerifyCfgDeltaRequest {
 
 impl GraphVerifyCfgDeltaRequest {
     pub fn parse(args: &Value) -> Result<Self, String> {
-        let old_graph_path = required_string(args, "old_graph")
-            .or_else(|_| required_string(args, "old_graph_path"))?;
-        let new_graph_path = required_string(args, "new_graph")
-            .or_else(|_| required_string(args, "new_graph_path"))?;
+        let old_artifact_path = required_string_alias(
+            args,
+            &[
+                "old_artifact",
+                "old_artifact_dir",
+                "old_semantic_index",
+                "old_semantic_index_path",
+                "old_graph",
+                "old_graph_path",
+            ],
+        )?;
+        let new_artifact_path = required_string_alias(
+            args,
+            &[
+                "new_artifact",
+                "new_artifact_dir",
+                "new_semantic_index",
+                "new_semantic_index_path",
+                "new_graph",
+                "new_graph_path",
+            ],
+        )?;
         let node = required_string(args, "node").or_else(|_| required_string(args, "path"))?;
         Ok(Self {
-            old_graph_path,
-            new_graph_path,
+            old_artifact_path,
+            new_artifact_path,
             node,
             max_complexity_increase: optional_i64(args, "max_complexity_increase")?,
             require_changed: optional_bool(args, "require_changed")?.unwrap_or(false),
@@ -151,7 +167,7 @@ impl GraphVerifyCfgDeltaRequest {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct GraphAutoRefactorCfgRequest {
-    pub graph_path: String,
+    pub artifact_path: String,
     pub node: String,
     pub strategy: String,
     pub ops_out: String,
@@ -163,7 +179,7 @@ pub struct GraphAutoRefactorCfgRequest {
     pub apply_to_source: bool,
     pub validate_command: Option<String>,
     pub recapture_command: Option<String>,
-    pub new_graph_path: Option<String>,
+    pub new_artifact_path: Option<String>,
     pub artifact_root: Option<String>,
     pub replacement: Option<String>,
     pub guard: Option<String>,
@@ -173,14 +189,13 @@ pub struct GraphAutoRefactorCfgRequest {
 
 impl GraphAutoRefactorCfgRequest {
     pub fn parse(args: &Value) -> Result<Self, String> {
-        let graph_path =
-            required_string(args, "graph").or_else(|_| required_string(args, "graph_path"))?;
+        let artifact_path = required_artifact_path(args)?;
         let node = required_string(args, "node").or_else(|_| required_string(args, "path"))?;
         let strategy = required_string(args, "strategy")?;
         let ops_out = required_string(args, "ops_out")?;
         let worktree_out = required_string(args, "worktree_out")?;
         Ok(Self {
-            graph_path,
+            artifact_path,
             node,
             strategy,
             ops_out,
@@ -193,7 +208,7 @@ impl GraphAutoRefactorCfgRequest {
             validate_command: optional_string(args, "validate_command")?,
             recapture_command: optional_string(args, "recapture_command")?,
             artifact_root: optional_graph_artifact_root(args)?,
-            new_graph_path: optional_new_graph_path(args)?,
+            new_artifact_path: optional_new_artifact_path(args)?,
             replacement: optional_string(args, "replacement")?,
             guard: optional_string(args, "guard")?,
             lo: optional_usize(args, "lo")?,
@@ -209,8 +224,18 @@ fn optional_graph_artifact_root(args: &Value) -> Result<Option<String>, String> 
     )
 }
 
-fn optional_new_graph_path(args: &Value) -> Result<Option<String>, String> {
-    optional_string_alias(args, &["new_graph", "new_graph_path"])
+fn optional_new_artifact_path(args: &Value) -> Result<Option<String>, String> {
+    optional_string_alias(
+        args,
+        &[
+            "new_artifact",
+            "new_artifact_dir",
+            "new_semantic_index",
+            "new_semantic_index_path",
+            "new_graph",
+            "new_graph_path",
+        ],
+    )
 }
 
 pub fn verify_cfg_delta_tool(args: &Value, workspace: &WorkspaceView) -> Value {
@@ -222,12 +247,10 @@ pub fn verify_cfg_delta_tool(args: &Value, workspace: &WorkspaceView) -> Value {
 
 fn verify_cfg_delta_tool_inner(args: &Value, workspace: &WorkspaceView) -> Result<Value, String> {
     let request = GraphVerifyCfgDeltaRequest::parse(args)?;
-    let old_graph_path = resolve_workspace_file(workspace, &request.old_graph_path)?;
-    let new_graph_path = resolve_workspace_file(workspace, &request.new_graph_path)?;
-    let old_graph = read_json(&old_graph_path)?;
-    let new_graph = read_json(&new_graph_path)?;
-    let old_summary = cfg_summary(&old_graph, &request.node)?;
-    let new_summary = cfg_summary(&new_graph, &request.node)?;
+    let old_artifact = load_artifact_snapshot(workspace, &request.old_artifact_path)?;
+    let new_artifact = load_artifact_snapshot(workspace, &request.new_artifact_path)?;
+    let old_summary = cfg_summary(&old_artifact.graph_json, &request.node)?;
+    let new_summary = cfg_summary(&new_artifact.graph_json, &request.node)?;
     let complexity_delta = new_summary.complexity as i64 - old_summary.complexity as i64;
     let changed = old_summary != new_summary;
     let max_ok = request
@@ -239,8 +262,8 @@ fn verify_cfg_delta_tool_inner(args: &Value, workspace: &WorkspaceView) -> Resul
     let payload = json!({
         "ok": verdict,
         "node": request.node,
-        "oldGraph": workspace_relative_display(workspace, &old_graph_path),
-        "newGraph": workspace_relative_display(workspace, &new_graph_path),
+        "oldArtifact": workspace_relative_display(workspace, &old_artifact.path),
+        "newArtifact": workspace_relative_display(workspace, &new_artifact.path),
         "old": old_summary.to_json(),
         "new": new_summary.to_json(),
         "delta": {
@@ -269,7 +292,7 @@ pub fn auto_refactor_cfg_tool(args: &Value, workspace: &WorkspaceView) -> Value 
 fn auto_refactor_cfg_tool_inner(args: &Value, workspace: &WorkspaceView) -> Result<Value, String> {
     let request = GraphAutoRefactorCfgRequest::parse(args)?;
     let plan_args = json!({
-        "graph": request.graph_path,
+        "artifact": request.artifact_path,
         "node": request.node,
         "strategy": request.strategy,
         "replacement": request.replacement,
@@ -280,7 +303,7 @@ fn auto_refactor_cfg_tool_inner(args: &Value, workspace: &WorkspaceView) -> Resu
     });
     let plan = plan_cfg_tool_inner(&plan_args, workspace)?;
     let apply_args = json!({
-        "graph": request.graph_path,
+        "artifact": request.artifact_path,
         "ops": request.ops_out,
         "worktree_out": request.worktree_out,
         "graph_out": request.graph_out,
@@ -293,10 +316,10 @@ fn auto_refactor_cfg_tool_inner(args: &Value, workspace: &WorkspaceView) -> Resu
         "artifact_root": request.artifact_root,
     });
     let apply = apply_ops_tool_inner(&apply_args, workspace)?;
-    let cfg_delta = if let Some(new_graph_path) = request.new_graph_path.as_deref() {
+    let cfg_delta = if let Some(new_artifact_path) = request.new_artifact_path.as_deref() {
         let verify_args = json!({
-            "old_graph": request.graph_path,
-            "new_graph": new_graph_path,
+            "old_artifact": request.artifact_path,
+            "new_artifact": new_artifact_path,
             "node": request.node,
             "max_complexity_increase": 0,
         });
@@ -329,22 +352,20 @@ pub fn plan_cfg_tool(args: &Value, workspace: &WorkspaceView) -> Value {
 
 fn plan_cfg_tool_inner(args: &Value, workspace: &WorkspaceView) -> Result<Value, String> {
     let request = GraphPlanCfgRequest::parse(args)?;
-    let graph_path = resolve_workspace_file(workspace, &request.graph_path)?;
-    let graph_input = read_to_string(&graph_path)?;
-    let graph_json: Value = serde_json::from_str(&graph_input)
-        .map_err(|error| format!("invalid graph json {}: {error}", graph_path.display()))?;
-    let node = graph_json
+    let artifact = load_artifact_snapshot(workspace, &request.artifact_path)?;
+    let node = artifact
+        .graph_json
         .get("nodes")
         .and_then(Value::as_object)
         .and_then(|nodes| nodes.get(&request.node))
-        .ok_or_else(|| format!("graph node not found: {}", request.node))?;
+        .ok_or_else(|| format!("artifact node not found: {}", request.node))?;
     let span = node
         .get("def")
-        .ok_or_else(|| format!("graph node has no source span: {}", request.node))?;
+        .ok_or_else(|| format!("artifact node has no source span: {}", request.node))?;
     let file = span
         .get("file")
         .and_then(Value::as_str)
-        .ok_or_else(|| format!("graph node span has no file: {}", request.node))?
+        .ok_or_else(|| format!("artifact node span has no file: {}", request.node))?
         .to_string();
     let lo = request
         .lo
@@ -364,7 +385,10 @@ fn plan_cfg_tool_inner(args: &Value, workspace: &WorkspaceView) -> Result<Value,
         .ok_or_else(|| format!("graph node span has no hi: {}", request.node))?;
     let cfg = node.get("metrics").and_then(|metrics| metrics.get("cfg"));
     if cfg.is_none() {
-        return Err(format!("graph node has no metrics.cfg: {}", request.node));
+        return Err(format!(
+            "artifact node has no metrics.cfg: {}",
+            request.node
+        ));
     }
 
     let op = plan_cfg_op(&request, file, lo, hi)?;
@@ -376,7 +400,7 @@ fn plan_cfg_tool_inner(args: &Value, workspace: &WorkspaceView) -> Result<Value,
     }
     let payload = json!({
         "ok": true,
-        "graph": workspace_relative_display(workspace, &graph_path),
+        "artifact": workspace_relative_display(workspace, &artifact.path),
         "node": request.node,
         "strategy": request.strategy,
         "ops": ops_ndjson,
@@ -497,13 +521,8 @@ pub fn apply_ops_tool(args: &Value, workspace: &WorkspaceView) -> Value {
 
 fn apply_ops_tool_inner(args: &Value, workspace: &WorkspaceView) -> Result<Value, String> {
     let request = GraphApplyOpsRequest::parse(args)?;
-    let graph_path = resolve_workspace_file(workspace, &request.graph_path)?;
     let ops_path = resolve_workspace_file(workspace, &request.ops_path)?;
     let worktree_out = resolve_workspace_file(workspace, &request.worktree_out)?;
-
-    let graph_input = read_to_string(&graph_path)?;
-    let mut graph_json: Value = serde_json::from_str(&graph_input)
-        .map_err(|error| format!("invalid graph json {}: {error}", graph_path.display()))?;
     let ops_input = read_to_string(&ops_path)?;
     let ops_receipt = verify_graph_mutation_ops_ndjson(&ops_input);
     if ops_receipt.verdict == GraphMutationVerdict::Fail {
@@ -516,13 +535,17 @@ fn apply_ops_tool_inner(args: &Value, workspace: &WorkspaceView) -> Result<Value
         )
     })?;
 
-    let graph_contract = decode_graph_snapshot_contract_ndjson(&graph_input)
-        .or_else(|| graph_snapshot_contract_from_graph_json(&graph_json))
+    let artifact = load_optional_artifact_snapshot(workspace, request.artifact_path.as_deref())?;
+    let mut graph_json = artifact
+        .as_ref()
+        .map(|artifact| artifact.graph_json.clone())
+        .unwrap_or_else(|| graph_json_from_source_files(workspace, &changed_files(&ops)));
+    let graph_contract = artifact
+        .as_ref()
+        .and_then(|artifact| graph_snapshot_contract_from_graph_json(&artifact.graph_json))
+        .or_else(|| graph_snapshot_contract_from_source_files(workspace, &ops))
         .ok_or_else(|| {
-            format!(
-                "failed to derive graph mutation contract from {}",
-                graph_path.display()
-            )
+            "failed to derive graph mutation contract from artifacts or source files".to_string()
         })?;
     let sources = read_sources_from_graph_files(&graph_json, &ops)?;
     let plan = generate_graph_patch(&graph_contract, &sources, &ops)
@@ -544,7 +567,7 @@ fn apply_ops_tool_inner(args: &Value, workspace: &WorkspaceView) -> Result<Value
     let receipt_payload = apply_ops_receipt_payload(
         workspace,
         &request,
-        &graph_path,
+        artifact.as_ref().map(|artifact| artifact.path.as_path()),
         &ops_path,
         &worktree_out,
         &apply_patch_text,
@@ -561,7 +584,9 @@ fn apply_ops_tool_inner(args: &Value, workspace: &WorkspaceView) -> Result<Value
 
     let payload = json!({
         "ok": true,
-        "graph": workspace_relative_display(workspace, &graph_path),
+        "artifact": artifact
+            .as_ref()
+            .map(|artifact| workspace_relative_display(workspace, &artifact.path)),
         "ops": workspace_relative_display(workspace, &ops_path),
         "worktreeOut": workspace_relative_display(workspace, &worktree_out),
         "graphOut": request.graph_out,
@@ -596,7 +621,7 @@ fn render_apply_ops_worktree(
     };
 
     let artifact_root = resolve_workspace_file(workspace, artifact_root)?;
-    let mut render_json = merged_graph_files_json(&artifact_root)?;
+    let mut render_json = merged_artifact_files_json(workspace, &artifact_root)?;
     overlay_graph_files(&mut render_json, graph_json)?;
     render_graph_files_json(&render_json, worktree_out)?;
     complete_missing_workspace_members(&workspace.root, worktree_out)
@@ -698,7 +723,7 @@ fn apply_unified_diff_to_workspace(
 fn apply_ops_receipt_payload(
     workspace: &WorkspaceView,
     request: &GraphApplyOpsRequest,
-    graph_path: &Path,
+    artifact_path: Option<&Path>,
     ops_path: &Path,
     worktree_out: &Path,
     apply_patch_text: &str,
@@ -708,7 +733,7 @@ fn apply_ops_receipt_payload(
 ) -> Value {
     json!({
         "ok": true,
-        "graph": workspace_relative_display(workspace, graph_path),
+        "artifact": artifact_path.map(|path| workspace_relative_display(workspace, path)),
         "ops": workspace_relative_display(workspace, ops_path),
         "worktreeOut": workspace_relative_display(workspace, worktree_out),
         "graphOut": request.graph_out,
@@ -807,6 +832,189 @@ fn graph_snapshot_contract_from_graph_json(
     Some(contract)
 }
 
+fn graph_snapshot_contract_from_source_files(
+    workspace: &WorkspaceView,
+    ops: &[GraphMutationOp],
+) -> Option<crate::capability::execution::graph::GraphSnapshotContract> {
+    use crate::capability::execution::graph::{
+        GraphNodeContract, GraphSnapshotContract, GraphSourceSpan,
+    };
+    let mut contract =
+        GraphSnapshotContract::new(GRAPH_JSON_SCHEMA_VERSION, stable_text_u64("source-files"));
+    for op in ops {
+        let path = workspace.root.join(op.file());
+        let content = fs::read_to_string(path).ok()?;
+        let (line, col) = line_col_for_byte(&content, op.lo());
+        contract.insert_node(GraphNodeContract::new(
+            op.path().to_string(),
+            String::new(),
+            String::new(),
+            GraphSourceSpan::new(op.file().to_string(), line, col, op.lo(), op.hi()),
+        ));
+    }
+    Some(contract)
+}
+
+#[derive(Clone, Debug)]
+struct ArtifactSnapshot {
+    path: PathBuf,
+    graph_json: Value,
+}
+
+fn load_optional_artifact_snapshot(
+    workspace: &WorkspaceView,
+    artifact_path: Option<&str>,
+) -> Result<Option<ArtifactSnapshot>, String> {
+    artifact_path
+        .map(|path| load_artifact_snapshot(workspace, path))
+        .transpose()
+}
+
+fn load_artifact_snapshot(
+    workspace: &WorkspaceView,
+    artifact_path: &str,
+) -> Result<ArtifactSnapshot, String> {
+    let path = resolve_artifact_index_path(workspace, artifact_path)?;
+    let graph_json = graph_json_from_semantic_index(workspace, &path)?;
+    Ok(ArtifactSnapshot { path, graph_json })
+}
+
+fn resolve_artifact_index_path(
+    workspace: &WorkspaceView,
+    artifact_path: &str,
+) -> Result<PathBuf, String> {
+    let path = resolve_workspace_file(workspace, artifact_path)?;
+    if path.is_dir() {
+        return Ok(path.join("semantic_index.jsonl"));
+    }
+    Ok(path)
+}
+
+fn graph_json_from_semantic_index(workspace: &WorkspaceView, path: &Path) -> Result<Value, String> {
+    let file = fs::File::open(path)
+        .map_err(|error| format!("failed to open {}: {error}", path.display()))?;
+    let reader = BufReader::with_capacity(256 * 1024, file);
+    let mut semantic_schema_version = GRAPH_JSON_SCHEMA_VERSION;
+    let mut graph_hash = stable_text_u64(&path.display().to_string()).to_string();
+    let mut nodes = serde_json::Map::new();
+    let mut edges = Vec::new();
+    let mut source_files = Vec::new();
+
+    for line in reader.lines() {
+        let line = line.map_err(|error| format!("failed to read {}: {error}", path.display()))?;
+        if line.is_empty() {
+            continue;
+        }
+        let Ok(value) = serde_json::from_str::<Value>(&line) else {
+            continue;
+        };
+        match value.get("kind").and_then(Value::as_str) {
+            Some("semantic_sentinel") => {
+                if let Some(version) = value.get("schema_version").and_then(Value::as_u64) {
+                    semantic_schema_version = version;
+                }
+                if let Some(files_hash) = value.get("files_hash").and_then(Value::as_str) {
+                    graph_hash = files_hash.to_string();
+                }
+            }
+            Some("source_file") => {
+                if let Some(file) = value.get("file").and_then(Value::as_str) {
+                    source_files.push(file.to_string());
+                }
+            }
+            Some("symbol_def") => {
+                if let Some(def_path) = value.get("def_path").and_then(Value::as_str) {
+                    nodes.insert(def_path.to_string(), symbol_def_to_graph_node(&value));
+                }
+            }
+            Some("semantic_edge") => {
+                if let (Some(relation), Some(from), Some(to)) = (
+                    value.get("relation").and_then(Value::as_str),
+                    value.get("from").and_then(Value::as_str),
+                    value.get("to").and_then(Value::as_str),
+                ) {
+                    edges.push(json!({ "relation": relation, "from": from, "to": to }));
+                }
+            }
+            _ => {}
+        }
+    }
+
+    source_files.sort();
+    source_files.dedup();
+    Ok(json!({
+        "meta": {
+            "schema_version": GRAPH_JSON_SCHEMA_VERSION,
+            "semantic_schema_version": semantic_schema_version,
+            "graph_hash": graph_hash,
+        },
+        "nodes": Value::Object(nodes),
+        "edges": edges,
+        "files": graph_files_from_workspace(workspace, &source_files),
+    }))
+}
+
+fn symbol_def_to_graph_node(value: &Value) -> Value {
+    json!({
+        "kind": value.get("node_kind").and_then(Value::as_str).unwrap_or(""),
+        "def_id": value.get("def_id").and_then(Value::as_str).unwrap_or(""),
+        "def": value.get("span").cloned().unwrap_or(Value::Null),
+        "metrics": value.get("metrics").cloned().unwrap_or(Value::Null),
+    })
+}
+
+fn graph_json_from_source_files(workspace: &WorkspaceView, files: &[String]) -> Value {
+    json!({
+        "meta": {
+            "schema_version": GRAPH_JSON_SCHEMA_VERSION,
+            "semantic_schema_version": Value::Null,
+            "graph_hash": stable_text_u64("source-files").to_string(),
+        },
+        "nodes": {},
+        "edges": [],
+        "files": graph_files_from_workspace(workspace, files),
+    })
+}
+
+fn graph_files_from_workspace(workspace: &WorkspaceView, files: &[String]) -> Value {
+    let mut out = serde_json::Map::new();
+    for file in files {
+        if validate_relative_render_path(file).is_err() {
+            continue;
+        }
+        let path = workspace.root.join(file);
+        let Ok(text) = fs::read_to_string(&path) else {
+            continue;
+        };
+        out.insert(
+            file.clone(),
+            json!({
+                "text": text,
+                "byte_len": text.len(),
+                "sha256": sha256_text(&text),
+            }),
+        );
+    }
+    Value::Object(out)
+}
+
+fn line_col_for_byte(content: &str, byte: usize) -> (u64, u64) {
+    let mut line = 1_u64;
+    let mut col = 0_u64;
+    for (idx, ch) in content.char_indices() {
+        if idx >= byte {
+            break;
+        }
+        if ch == '\n' {
+            line += 1;
+            col = 0;
+        } else {
+            col += 1;
+        }
+    }
+    (line, col)
+}
+
 fn read_sources_from_graph_files(
     graph_json: &Value,
     ops: &[GraphMutationOp],
@@ -878,13 +1086,16 @@ fn replacement_for_op(content: &str, op: &GraphMutationOp) -> Result<String, Str
         .ok_or_else(|| format!("unsupported graph op replacement for {}", op.file()))
 }
 
-fn merged_graph_files_json(artifact_root: &Path) -> Result<Value, String> {
+fn merged_artifact_files_json(
+    workspace: &WorkspaceView,
+    artifact_root: &Path,
+) -> Result<Value, String> {
     let mut merged = json!({ "files": {} });
     let mut paths = Vec::new();
-    collect_graph_json_paths(artifact_root, &mut paths)?;
+    collect_semantic_index_paths(artifact_root, &mut paths)?;
     paths.sort();
     for path in paths {
-        let graph = read_json(&path)?;
+        let graph = graph_json_from_semantic_index(workspace, &path)?;
         overlay_graph_files(&mut merged, &graph)?;
     }
     Ok(merged)
@@ -904,7 +1115,7 @@ fn overlay_graph_files(target: &mut Value, source: &Value) -> Result<(), String>
     Ok(())
 }
 
-fn collect_graph_json_paths(dir: &Path, out: &mut Vec<std::path::PathBuf>) -> Result<(), String> {
+fn collect_semantic_index_paths(dir: &Path, out: &mut Vec<PathBuf>) -> Result<(), String> {
     let entries = fs::read_dir(dir)
         .map_err(|error| format!("failed to read artifact dir {}: {error}", dir.display()))?;
     for entry in entries {
@@ -915,9 +1126,9 @@ fn collect_graph_json_paths(dir: &Path, out: &mut Vec<std::path::PathBuf>) -> Re
             .file_type()
             .map_err(|error| format!("failed to inspect {}: {error}", path.display()))?;
         if file_type.is_dir() {
-            collect_graph_json_paths(&path, out)?;
+            collect_semantic_index_paths(&path, out)?;
         } else if file_type.is_file()
-            && path.file_name().and_then(|name| name.to_str()) == Some("graph.json")
+            && path.file_name().and_then(|name| name.to_str()) == Some("semantic_index.jsonl")
         {
             out.push(path);
         }
@@ -1122,12 +1333,6 @@ fn cfg_summary(graph: &Value, node_path: &str) -> Result<CfgSummary, String> {
     })
 }
 
-fn read_json(path: &Path) -> Result<Value, String> {
-    let input = read_to_string(path)?;
-    serde_json::from_str(&input)
-        .map_err(|error| format!("invalid json {}: {error}", path.display()))
-}
-
 fn changed_files(ops: &[GraphMutationOp]) -> Vec<String> {
     let mut files: Vec<String> = ops.iter().map(|op| op.file().to_string()).collect();
     files.sort();
@@ -1291,6 +1496,38 @@ fn required_string(args: &Value, key: &str) -> Result<String, String> {
         .ok_or_else(|| format!("{key} is required"))
 }
 
+fn required_artifact_path(args: &Value) -> Result<String, String> {
+    required_string_alias(
+        args,
+        &[
+            "artifact",
+            "artifact_dir",
+            "semantic_index",
+            "semantic_index_path",
+            "graph",
+            "graph_path",
+        ],
+    )
+}
+
+fn optional_artifact_path(args: &Value) -> Result<Option<String>, String> {
+    optional_string_alias(
+        args,
+        &[
+            "artifact",
+            "artifact_dir",
+            "semantic_index",
+            "semantic_index_path",
+            "graph",
+            "graph_path",
+        ],
+    )
+}
+
+fn required_string_alias(args: &Value, keys: &[&str]) -> Result<String, String> {
+    optional_string_alias(args, keys)?.ok_or_else(|| format!("{} is required", keys.join("|")))
+}
+
 fn optional_string(args: &Value, key: &str) -> Result<Option<String>, String> {
     optional_arg(args, key, |value| match value {
         Value::String(value) if !value.is_empty() => Ok(Some(value.clone())),
@@ -1426,10 +1663,10 @@ mod tests {
     #[test]
     fn graph_apply_ops_request_accepts_required_fields() {
         let request = GraphApplyOpsRequest::parse(&json!({
-            "graph": "state/rustc/ai/graph.json",
+            "artifact": "state/rustc/ai",
             "ops": "ops.ndjson",
             "worktree_out": "tmp/worktree",
-            "graph_out": "tmp/graph.json",
+            "graph_out": "tmp/artifact-snapshot.json",
             "patch_out": "tmp/patch.diff",
             "apply_patch_out": "tmp/apply.patch",
             "apply_to_source": true,
@@ -1437,10 +1674,13 @@ mod tests {
             "artifact_root": "state/rustc"
         }))
         .expect("valid request");
-        assert_eq!(request.graph_path, "state/rustc/ai/graph.json");
+        assert_eq!(request.artifact_path.as_deref(), Some("state/rustc/ai"));
         assert_eq!(request.ops_path, "ops.ndjson");
         assert_eq!(request.worktree_out, "tmp/worktree");
-        assert_eq!(request.graph_out.as_deref(), Some("tmp/graph.json"));
+        assert_eq!(
+            request.graph_out.as_deref(),
+            Some("tmp/artifact-snapshot.json")
+        );
         assert_eq!(request.patch_out.as_deref(), Some("tmp/patch.diff"));
         assert_eq!(request.apply_patch_out.as_deref(), Some("tmp/apply.patch"));
         assert!(request.apply_to_source);
@@ -1476,7 +1716,7 @@ mod tests {
     #[test]
     fn graph_plan_cfg_request_accepts_strategy_and_outputs() {
         let request = GraphPlanCfgRequest::parse(&json!({
-            "graph": "state/rustc/ai/graph.json",
+            "artifact": "state/rustc/ai",
             "node": "crate::f",
             "strategy": "GuardClauseInsert",
             "guard": "if !ok { return Err(e); }",
@@ -1485,7 +1725,7 @@ mod tests {
             "hi": 9
         }))
         .expect("valid plan cfg request");
-        assert_eq!(request.graph_path, "state/rustc/ai/graph.json");
+        assert_eq!(request.artifact_path, "state/rustc/ai");
         assert_eq!(request.node, "crate::f");
         assert_eq!(request.strategy, "GuardClauseInsert");
         assert_eq!(request.ops_out.as_deref(), Some("tmp/ops.ndjson"));
@@ -1496,15 +1736,15 @@ mod tests {
     #[test]
     fn graph_verify_cfg_delta_request_accepts_policy_fields() {
         let request = GraphVerifyCfgDeltaRequest::parse(&json!({
-            "old_graph": "old.json",
-            "new_graph": "new.json",
+            "old_artifact": "old",
+            "new_artifact": "new",
             "node": "crate::f",
             "max_complexity_increase": 0,
             "require_changed": true
         }))
         .expect("valid verify request");
-        assert_eq!(request.old_graph_path, "old.json");
-        assert_eq!(request.new_graph_path, "new.json");
+        assert_eq!(request.old_artifact_path, "old");
+        assert_eq!(request.new_artifact_path, "new");
         assert_eq!(request.node, "crate::f");
         assert_eq!(request.max_complexity_increase, Some(0));
         assert!(request.require_changed);
@@ -1513,7 +1753,7 @@ mod tests {
     #[test]
     fn graph_auto_refactor_cfg_request_requires_outputs() {
         let request = GraphAutoRefactorCfgRequest::parse(&json!({
-            "graph": "state/rustc/ai/graph.json",
+            "artifact": "state/rustc/ai",
             "node": "crate::f",
             "strategy": "ReplaceSpan",
             "replacement": "fn f() {}",

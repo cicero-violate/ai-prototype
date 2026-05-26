@@ -1,6 +1,6 @@
 //! TLog validation, replay, and deterministic event hashing.
 
-use std::path::Path;
+use std::{collections::BTreeSet, path::Path};
 
 use crate::codec::ndjson::load_tlog_ndjson;
 use crate::kernel::{
@@ -278,6 +278,63 @@ pub struct CommandCausalityReport {
     pub final_hash: u64,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct TemporalEventType {
+    kind: EventKind,
+    cause: Cause,
+}
+
+impl TemporalEventType {
+    const fn new(kind: EventKind, cause: Cause) -> Self {
+        Self { kind, cause }
+    }
+
+    const fn from_event(event: &ControlEvent) -> Self {
+        Self {
+            kind: event.kind,
+            cause: event.cause,
+        }
+    }
+}
+
+const PERSISTED_EVIDENCE_SUBMITTED: TemporalEventType =
+    TemporalEventType::new(EventKind::Persisted, Cause::EvidenceSubmitted);
+
+const EVIDENCE_SUBMITTED_TEMPORAL_SUCCESSORS: [TemporalEventType; 4] = [
+    TemporalEventType::new(EventKind::Recovered, Cause::RepairSelected),
+    TemporalEventType::new(EventKind::Persisted, Cause::RepairApplied),
+    TemporalEventType::new(EventKind::Failed, Cause::GateFailed),
+    TemporalEventType::new(EventKind::Failed, Cause::EvidenceMissing),
+];
+
+#[derive(Default)]
+struct EvidenceSubmittedTemporalOrder {
+    command_ids_with_evidence: BTreeSet<u64>,
+}
+
+impl EvidenceSubmittedTemporalOrder {
+    fn validate_and_record(&mut self, event: &ControlEvent) -> Result<(), CanonError> {
+        if event.api_command_id == 0 {
+            return Ok(());
+        }
+
+        let event_type = TemporalEventType::from_event(event);
+        if EVIDENCE_SUBMITTED_TEMPORAL_SUCCESSORS.contains(&event_type)
+            && !self
+                .command_ids_with_evidence
+                .contains(&event.api_command_id)
+        {
+            return Err(CanonError::InvalidReplay);
+        }
+
+        if event_type == PERSISTED_EVIDENCE_SUBMITTED {
+            self.command_ids_with_evidence.insert(event.api_command_id);
+        }
+
+        Ok(())
+    }
+}
+
 pub fn replay_report_ndjson(
     initial: State,
     path: impl AsRef<Path>,
@@ -376,6 +433,7 @@ pub fn verify_tlog_from(initial: State, tlog: &[ControlEvent]) -> Result<State, 
 
     let mut state = initial;
     let mut prev_hash = 0;
+    let mut evidence_submitted_order = EvidenceSubmittedTemporalOrder::default();
 
     for (i, event) in tlog.iter().enumerate() {
         validate_replay_event_shape(event)?;
@@ -385,6 +443,7 @@ pub fn verify_tlog_from(initial: State, tlog: &[ControlEvent]) -> Result<State, 
         validate_replay_state_continuity(event, state)?;
         validate_replay_semantic_delta(event)?;
         validate_event(event_view(event))?;
+        evidence_submitted_order.validate_and_record(event)?;
         validate_replay_self_hash(event)?;
         validate_replay_writer_identity(tlog, i, state, event)?;
 
@@ -613,7 +672,8 @@ fn observational_outcome(state: State, event: &ControlEvent) -> Result<Outcome, 
         | Cause::AgentCycleEventSubmitted
         | Cause::SymbolMutationObserved
         | Cause::ArchitecturalDecisionMade
-        | Cause::CostGateEvaluated => {
+        | Cause::CostGateEvaluated
+        | Cause::SystemRestart => {
             // Pure-observational causes: state must be completely unchanged.
             if event.state_after != state {
                 return Err(CanonError::InvalidReplay);
@@ -739,5 +799,184 @@ fn mix_option_gate(h: u64, value: Option<GateId>) -> u64 {
     match value {
         Some(v) => mix(mix(h, 1), v as u64),
         None => mix(h, 0),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::kernel::{CapabilityRegistryProjection, FailureClass};
+
+    const COMMAND_ID: u64 = 177;
+    const COMMAND_HASH: u64 = 0xA11CE;
+
+    #[test]
+    fn evidence_submission_precedes_repair_selected_per_command_trace() {
+        assert_target_requires_prior_evidence(
+            repair_selected_state(),
+            EventKind::Recovered,
+            Cause::RepairSelected,
+        );
+    }
+
+    #[test]
+    fn evidence_submission_precedes_repair_applied_per_command_trace() {
+        assert_target_requires_prior_evidence(
+            repair_applied_state(),
+            EventKind::Persisted,
+            Cause::RepairApplied,
+        );
+    }
+
+    #[test]
+    fn evidence_submission_precedes_failed_gate_failed_per_command_trace() {
+        assert_target_requires_prior_evidence(
+            failed_gate_failed_state(),
+            EventKind::Failed,
+            Cause::GateFailed,
+        );
+    }
+
+    #[test]
+    fn evidence_submission_precedes_failed_evidence_missing_per_command_trace() {
+        assert_target_requires_prior_evidence(
+            failed_evidence_missing_state(),
+            EventKind::Failed,
+            Cause::EvidenceMissing,
+        );
+    }
+
+    #[test]
+    fn prior_evidence_from_another_command_does_not_satisfy_temporal_order() {
+        let cfg = RuntimeConfig::default();
+        let initial = failed_gate_failed_state();
+        let first_command_evidence = evidence_submission_event(&[], initial, cfg, 501, 0x501);
+        let tlog = vec![
+            first_command_evidence,
+            reducer_event(
+                &[first_command_evidence],
+                first_command_evidence.state_after,
+                cfg,
+                502,
+                0x502,
+            ),
+        ];
+
+        assert_eq!(
+            verify_tlog_from(initial, &tlog),
+            Err(CanonError::InvalidReplay)
+        );
+    }
+
+    fn assert_target_requires_prior_evidence(
+        initial: State,
+        expected_kind: EventKind,
+        expected_cause: Cause,
+    ) {
+        let cfg = RuntimeConfig::default();
+        let target_without_evidence = reducer_event(&[], initial, cfg, COMMAND_ID, COMMAND_HASH);
+        assert_event_type(&target_without_evidence, expected_kind, expected_cause);
+        assert_eq!(
+            verify_tlog_from(initial, &[target_without_evidence]),
+            Err(CanonError::InvalidReplay)
+        );
+
+        let evidence = evidence_submission_event(&[], initial, cfg, COMMAND_ID, COMMAND_HASH);
+        let target_with_evidence = reducer_event(
+            &[evidence],
+            evidence.state_after,
+            cfg,
+            COMMAND_ID,
+            COMMAND_HASH,
+        );
+        assert_event_type(&target_with_evidence, expected_kind, expected_cause);
+
+        assert!(verify_tlog_from(initial, &[evidence, target_with_evidence]).is_ok());
+    }
+
+    fn assert_event_type(event: &ControlEvent, expected_kind: EventKind, expected_cause: Cause) {
+        assert_eq!(event.kind, expected_kind);
+        assert_eq!(event.cause, expected_cause);
+    }
+
+    fn evidence_submission_event(
+        tlog: &[ControlEvent],
+        before: State,
+        cfg: RuntimeConfig,
+        command_id: u64,
+        command_hash: u64,
+    ) -> ControlEvent {
+        let mut after = before;
+        after.apply_evidence(GateId::Judgment, Evidence::JudgmentRecord, true);
+
+        CanonicalWriter::build_with_command_and_registry_projection(
+            tlog,
+            before,
+            Outcome {
+                state: after,
+                kind: EventKind::Persisted,
+                cause: Cause::EvidenceSubmitted,
+                evidence: Evidence::JudgmentRecord,
+                decision: Decision::Continue,
+                failure: None,
+                recovery_action: None,
+                affected_gate: Some(GateId::Judgment),
+            },
+            cfg,
+            command_id,
+            command_hash,
+            CapabilityRegistryProjection::new(1, 0xC0FFEE),
+        )
+        .expect("evidence submission event is canonical")
+    }
+
+    fn reducer_event(
+        tlog: &[ControlEvent],
+        before: State,
+        cfg: RuntimeConfig,
+        command_id: u64,
+        command_hash: u64,
+    ) -> ControlEvent {
+        CanonicalWriter::build_with_command(
+            tlog,
+            before,
+            reduce(before, cfg),
+            cfg,
+            command_id,
+            command_hash,
+        )
+        .expect("reducer event is canonical")
+    }
+
+    fn failed_evidence_missing_state() -> State {
+        State {
+            phase: Phase::Analysis,
+            ..State::default()
+        }
+    }
+
+    fn failed_gate_failed_state() -> State {
+        let mut state = failed_evidence_missing_state();
+        state
+            .gates
+            .set_fail(GateId::Analysis, Evidence::AnalysisReport);
+        state
+    }
+
+    fn repair_selected_state() -> State {
+        State {
+            phase: Phase::Recovery,
+            failure: Some(FailureClass::AnalysisMissing),
+            ..State::default()
+        }
+    }
+
+    fn repair_applied_state() -> State {
+        State {
+            phase: Phase::Persist,
+            failure: Some(FailureClass::AnalysisMissing),
+            recovery_action: Some(RecoveryAction::RunAnalysis),
+            ..State::default()
+        }
     }
 }

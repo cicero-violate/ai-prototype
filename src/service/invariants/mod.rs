@@ -4,6 +4,9 @@
 //! registry persistence, and promotion state replay-friendly and stable.
 
 pub mod event_loop;
+pub mod lost_signal;
+pub mod mir_cfg;
+pub mod temporal;
 
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -290,7 +293,12 @@ pub fn mine_workspace(workspace_root: &Path) -> Result<Vec<InvariantCandidate>, 
 }
 
 pub fn mine_and_write_workspace(workspace_root: &Path) -> Result<Vec<InvariantCandidate>, String> {
-    let candidates = mine_workspace(workspace_root)?;
+    let mut candidates = mine_workspace(workspace_root)?;
+
+    // Merge lost-signal findings from MIR artifacts alongside runtime invariants.
+    let lost_signal = lost_signal::candidates_from_mir_artifacts(workspace_root);
+    candidates.extend(lost_signal);
+
     let mut registry = load_registry(workspace_root)?;
     for candidate in &candidates {
         write_candidate_artifact(workspace_root, candidate)?;

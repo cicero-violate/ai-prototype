@@ -9,7 +9,6 @@ pub mod workspace;
 use chrono::{DateTime, Utc};
 use serde_json::Value;
 
-use crate::api::action::tool_error;
 use crate::api::protocol::Command as KernelCommand;
 use crate::runtime::WorkspaceView;
 
@@ -29,7 +28,46 @@ pub trait ActionHost {
     async fn run_host_tool(&self, name: &str, args: &Value) -> Option<Value>;
 }
 
-pub async fn execute_native_tool<H: ActionHost>(name: &str, args: &Value, host: &H) -> Value {
+/// Single source of truth for a tool's execution outcome.
+///
+/// Callers derive `exit_status` and `timed_out` from the variant — never by
+/// re-parsing fields in the payload JSON.
+pub enum ToolOutcome {
+    Ok(Value),
+    Error(Value),
+    TimedOut(Value),
+}
+
+impl ToolOutcome {
+    /// Construct from a `Value` produced by a tool that has no timeout
+    /// capability. Maps `isError: true` → `Error`, everything else → `Ok`.
+    pub fn from_value(v: Value) -> Self {
+        if v.get("isError").and_then(Value::as_bool).unwrap_or(false) {
+            Self::Error(v)
+        } else {
+            Self::Ok(v)
+        }
+    }
+
+    pub fn exit_status(&self) -> u64 {
+        match self {
+            Self::Ok(_) => 0,
+            Self::Error(_) | Self::TimedOut(_) => 1,
+        }
+    }
+
+    pub fn timed_out(&self) -> bool {
+        matches!(self, Self::TimedOut(_))
+    }
+
+    pub fn into_value(self) -> Value {
+        match self {
+            Self::Ok(v) | Self::Error(v) | Self::TimedOut(v) => v,
+        }
+    }
+}
+
+pub async fn execute_native_tool<H: ActionHost>(name: &str, args: &Value, host: &H) -> ToolOutcome {
     match name {
         "echo" | "get_current_time" => utility::execute(name, args),
         "apply_patch" | "shell" | "python" | "structural_edit" => {
@@ -61,10 +99,12 @@ pub async fn execute_native_tool<H: ActionHost>(name: &str, args: &Value, host: 
         | "canon_browser_group_chat"
         | "canon_send_agent_message"
         | "canon_read_mailbox" => agents::execute(name, args, host).await,
-        _ => tool_error(format!("Unknown tool: {name}")),
+        _ => ToolOutcome::Error(crate::api::action::tool_error(format!(
+            "Unknown tool: {name}"
+        ))),
     }
 }
 
-pub async fn execute_recorded_shell<H: ActionHost>(args: &Value, host: &H) -> Value {
+pub async fn execute_recorded_shell<H: ActionHost>(args: &Value, host: &H) -> ToolOutcome {
     workspace::execute_recorded_shell(args, host).await
 }

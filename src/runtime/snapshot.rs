@@ -115,6 +115,8 @@ mod tests {
             api_command_hash: 0,
             prev_hash: 0,
             self_hash: seq * 1000 + 1,
+            origin_bb: None,
+            origin_fn: None,
         }
     }
 

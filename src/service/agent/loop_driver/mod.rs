@@ -19,7 +19,9 @@ mod prompt_builders;
 mod receipt;
 
 use common::stable_agent_hash;
-use evidence_submit::{read_score_hash, submit_eval_evidence, submit_observation_ingress};
+use evidence_submit::{
+    read_score_hash, submit_eval_evidence, submit_invariant_failure, submit_observation_ingress,
+};
 use http::agent_command_url;
 use learning::run_post_cycle_learning;
 use mcp_workspace::sync_mcp_workspace;
@@ -425,6 +427,21 @@ impl LoopDriver {
                     cycle_num,
                 );
             }
+
+            // Lost-signal analysis: scan MIR artifacts and write findings into
+            // the invariant registry each cycle so they feed validate → promote.
+            // When violations are found, submit failed invariant evidence so the
+            // kernel routes to Recovery → RecheckInvariant → planner path.
+            let violations = crate::service::invariants::lost_signal::run_lost_signal_cycle(
+                &self.config.project_dir,
+                cycle_num,
+                &tag,
+            );
+            if violations > 0 {
+                if let Some(url) = &command_url {
+                    submit_invariant_failure(url, violations, cycle_num);
+                }
+            }
         }
 
         Ok(())
@@ -710,6 +727,8 @@ mod tests {
             None,
             None,
             None,
+            None, // temporal_feedback
+            None, // mir_feedback
         );
         let execute = execute_prompt(2, 2, 3);
 
@@ -727,7 +746,20 @@ mod tests {
     fn project_prompts_do_not_claim_to_be_worker_certification() {
         let goal = "Ship the next deterministic runtime slice.";
         let working_dir = Path::new("/workspace/project");
-        let planning = planning_prompt(goal, 0, 1, working_dir, None, None, None, None, None, None);
+        let planning = planning_prompt(
+            goal,
+            0,
+            1,
+            working_dir,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        );
         let execute = execute_prompt(2, 0, 1);
 
         assert!(planning.contains("planning turn for this agent loop"));
@@ -757,6 +789,32 @@ mod tests {
         assert!(!execute.contains("score.md"));
         assert!(!planning.contains("AgentCycle certification"));
         assert!(!execute.contains("AgentCycle certification"));
+    }
+
+    #[test]
+    fn planning_prompt_tells_agents_to_encode_invariants_into_type_system() {
+        let planning = planning_prompt(
+            "Promote mined invariants.",
+            0,
+            1,
+            Path::new("/workspace/project"),
+            None,
+            None,
+            None,
+            None,
+            None,
+            Some("- inv-1: state transition is valid"),
+            Some("- Advanced::Start -> Completed::EvidenceSubmitted"),
+            Some("- scheduler::ready -> executor::spawn"),
+        );
+
+        assert!(planning.contains("## PROMOTED RUNTIME INVARIANTS"));
+        assert!(planning.contains("## TEMPORAL ORDER INVARIANTS"));
+        assert!(planning.contains("## STRUCTURAL CALL-ORDER INVARIANTS"));
+        assert!(planning.contains("Encoding Invariants into the Compile-Time Type System"));
+        assert!(planning.contains(
+            "Rust types, typestates, enums, constructors, validators, or contract tests"
+        ));
     }
 
     #[test]

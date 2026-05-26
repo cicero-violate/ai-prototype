@@ -136,6 +136,8 @@ impl CanonicalWriter {
             api_command_hash,
             prev_hash,
             self_hash,
+            origin_bb: None,
+            origin_fn: None,
         })
     }
 

@@ -1,7 +1,7 @@
 //! Static analysis capability.
 //!
 //! Invokes the `canon-rustc-v3-wrapper` binary via `cargo check`, parses the
-//! resulting `graph.json` artifact, and emits a typed `AnalysisReceipt`.
+//! resulting judgement-style artifacts, and emits a typed `AnalysisReceipt`.
 //!
 //! Ownership boundary:
 //!   - This module owns: binary invocation, output parsing, receipt emission.
@@ -25,23 +25,26 @@ pub struct AnalysisReceipt {
     pub intent_count: usize,
     /// Stable hash over crate_name, counts, and capture timestamp.
     pub receipt_hash: u64,
-    pub graph_path: PathBuf,
+    pub artifact_dir: PathBuf,
     pub captured_at_ms: u64,
 }
 
 impl AnalysisReceipt {
     pub fn is_contract_valid(&self) -> bool {
-        !self.crate_name.is_empty() && self.receipt_hash > 0 && self.graph_path.exists()
+        !self.crate_name.is_empty()
+            && self.receipt_hash > 0
+            && self.artifact_dir.join("manifest.json").exists()
+            && self.artifact_dir.join("semantic_index.jsonl").exists()
     }
 }
 
-/// Invoke the canon-rustc-v3 wrapper, parse the resulting graph.json, and
+/// Invoke the canon-rustc-v3 wrapper, parse the resulting artifacts, and
 /// return a typed `AnalysisReceipt`.
 ///
 /// `workspace_root` — directory containing the workspace Cargo.toml
 /// `wrapper_bin`   — path to the canon-rustc-v3-wrapper binary
-/// `artifact_root` — directory where graph.json files are written (e.g. `state/rustc`)
-/// `crate_name`    — name of the target crate whose graph.json to parse
+/// `artifact_root` — directory where artifact files are written (e.g. `state/rustc`)
+/// `crate_name`    — name of the target crate whose artifact directory to parse
 pub fn invoke_rustc_analysis(
     workspace_root: &Path,
     wrapper_bin: &Path,
@@ -72,44 +75,49 @@ pub fn invoke_rustc_analysis(
         return Err(format!("cargo check exited with {status}"));
     }
 
-    let graph_path = artifact_root.join(crate_name).join("graph.json");
-    parse_graph_receipt(crate_name, &graph_path, captured_at_ms)
+    let artifact_dir = artifact_root.join(crate_name);
+    parse_artifact_receipt(crate_name, &artifact_dir, captured_at_ms)
 }
 
-/// Parse an already-generated graph.json and emit an `AnalysisReceipt`.
+/// Parse an already-generated artifact directory and emit an `AnalysisReceipt`.
 ///
-/// Use this variant when the graph.json was produced by a prior run or
+/// Use this variant when the artifacts were produced by a prior run or
 /// captured independently (e.g., by the canon-rustc-v3-wrapper hook).
-pub fn receipt_from_graph_json(
+pub fn receipt_from_artifacts(
     crate_name: &str,
-    graph_path: &Path,
+    artifact_dir: &Path,
 ) -> Result<AnalysisReceipt, String> {
-    let captured_at_ms = graph_captured_at_ms(graph_path).unwrap_or_else(|| {
-        SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .map(|d| d.as_millis() as u64)
-            .unwrap_or(0)
-    });
-    parse_graph_receipt(crate_name, graph_path, captured_at_ms)
+    let captured_at_ms = manifest_captured_at_ms(&artifact_dir.join("manifest.json"))
+        .unwrap_or_else(|| {
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .map(|d| d.as_millis() as u64)
+                .unwrap_or(0)
+        });
+    parse_artifact_receipt(crate_name, artifact_dir, captured_at_ms)
 }
 
-fn parse_graph_receipt(
+fn parse_artifact_receipt(
     crate_name: &str,
-    graph_path: &Path,
+    artifact_dir: &Path,
     captured_at_ms: u64,
 ) -> Result<AnalysisReceipt, String> {
-    if !graph_path.exists() {
-        return Err(format!("graph.json not found at {}", graph_path.display()));
+    let manifest_path = artifact_dir.join("manifest.json");
+    let semantic_path = artifact_dir.join("semantic_index.jsonl");
+    if !manifest_path.exists() {
+        return Err(format!(
+            "manifest.json not found at {}",
+            manifest_path.display()
+        ));
+    }
+    if !semantic_path.exists() {
+        return Err(format!(
+            "semantic_index.jsonl not found at {}",
+            semantic_path.display()
+        ));
     }
 
-    let content =
-        std::fs::read_to_string(graph_path).map_err(|e| format!("read graph.json failed: {e}"))?;
-    let graph: serde_json::Value =
-        serde_json::from_str(&content).map_err(|e| format!("parse graph.json failed: {e}"))?;
-
-    let node_count = graph["meta"]["node_count"].as_u64().unwrap_or(0) as usize;
-    let edge_count = graph["meta"]["edge_count"].as_u64().unwrap_or(0) as usize;
-    let intent_count = graph["intents"].as_object().map(|m| m.len()).unwrap_or(0);
+    let (node_count, edge_count, intent_count) = semantic_counts(&semantic_path)?;
 
     let receipt_hash = compute_receipt_hash(
         crate_name,
@@ -125,15 +133,51 @@ fn parse_graph_receipt(
         edge_count,
         intent_count,
         receipt_hash,
-        graph_path: graph_path.to_path_buf(),
+        artifact_dir: artifact_dir.to_path_buf(),
         captured_at_ms,
     })
 }
 
-fn graph_captured_at_ms(graph_path: &Path) -> Option<u64> {
-    let content = std::fs::read_to_string(graph_path).ok()?;
-    let graph: serde_json::Value = serde_json::from_str(&content).ok()?;
-    graph["meta"]["captured_at_ms"].as_u64()
+fn semantic_counts(path: &Path) -> Result<(usize, usize, usize), String> {
+    use std::io::BufRead;
+
+    let file = std::fs::File::open(path).map_err(|e| format!("open semantic_index.jsonl: {e}"))?;
+    let reader = std::io::BufReader::with_capacity(256 * 1024, file);
+    let mut node_count = 0usize;
+    let mut edge_count = 0usize;
+    let mut fn_count = 0usize;
+
+    for line in reader.lines() {
+        let line = line.map_err(|e| format!("read semantic_index.jsonl: {e}"))?;
+        if line.is_empty() {
+            continue;
+        }
+        let value: serde_json::Value = match serde_json::from_str(&line) {
+            Ok(value) => value,
+            Err(_) => continue,
+        };
+        match value.get("kind").and_then(serde_json::Value::as_str) {
+            Some("symbol_def") => {
+                node_count += 1;
+                if value.get("node_kind").and_then(serde_json::Value::as_str) == Some("fn") {
+                    fn_count += 1;
+                }
+            }
+            Some("semantic_edge") => edge_count += 1,
+            _ => {}
+        }
+    }
+
+    Ok((node_count, edge_count, fn_count))
+}
+
+fn manifest_captured_at_ms(manifest_path: &Path) -> Option<u64> {
+    let metadata = std::fs::metadata(manifest_path).ok()?;
+    let modified = metadata.modified().ok()?;
+    modified
+        .duration_since(UNIX_EPOCH)
+        .ok()
+        .map(|d| d.as_millis() as u64)
 }
 
 fn compute_receipt_hash(
@@ -162,33 +206,53 @@ mod tests {
     use super::*;
     use std::io::Write;
 
-    fn write_graph_json(dir: &Path, crate_name: &str, nodes: u64, edges: u64, intents: usize) {
+    fn write_artifacts(dir: &Path, crate_name: &str, nodes: u64, edges: u64, fns: usize) {
         let crate_dir = dir.join(crate_name);
         std::fs::create_dir_all(&crate_dir).unwrap();
-        let intents_map: serde_json::Value = (0..intents)
-            .map(|i| {
-                (
-                    format!("fn_{i}"),
-                    serde_json::Value::String("pure".to_string()),
-                )
-            })
-            .collect::<serde_json::Map<_, _>>()
-            .into();
-        let graph = serde_json::json!({
-            "meta": {
-                "crate_name": crate_name,
-                "node_count": nodes,
-                "edge_count": edges,
-                "captured_at_ms": 1_700_000_000_000u64,
+        let manifest = serde_json::json!({
+            "schema_version": 1,
+            "graph_schema_version": 17,
+            "crate_target": {
+                "package_crate": crate_name,
+                "target_key": crate_name,
+                "target_kind": "lib"
             },
-            "intents": intents_map
+            "hashes": {},
+            "artifacts": {}
         });
-        let mut f = std::fs::File::create(crate_dir.join("graph.json")).unwrap();
-        write!(f, "{}", serde_json::to_string(&graph).unwrap()).unwrap();
+        let mut manifest_file = std::fs::File::create(crate_dir.join("manifest.json")).unwrap();
+        write!(
+            manifest_file,
+            "{}",
+            serde_json::to_string(&manifest).unwrap()
+        )
+        .unwrap();
+
+        let mut semantic = std::fs::File::create(crate_dir.join("semantic_index.jsonl")).unwrap();
+        writeln!(
+            semantic,
+            "{{\"kind\":\"semantic_sentinel\",\"schema_version\":17}}"
+        )
+        .unwrap();
+        for i in 0..nodes {
+            let node_kind = if (i as usize) < fns { "fn" } else { "struct" };
+            writeln!(
+                semantic,
+                "{{\"kind\":\"symbol_def\",\"def_path\":\"crate::item_{i}\",\"node_kind\":\"{node_kind}\"}}"
+            )
+            .unwrap();
+        }
+        for i in 0..edges {
+            writeln!(
+                semantic,
+                "{{\"kind\":\"semantic_edge\",\"relation\":\"call\",\"from\":\"crate::item_0\",\"to\":\"crate::item_{i}\"}}"
+            )
+            .unwrap();
+        }
     }
 
     #[test]
-    fn receipt_from_graph_json_parses_counts_and_intents() {
+    fn receipt_from_artifacts_parses_counts_and_intents() {
         let tmp_guard = tempfile::Builder::new()
             .prefix("ai-rustc-analysis-test-")
             .tempdir_in({
@@ -198,9 +262,8 @@ mod tests {
             })
             .unwrap();
         let tmp = tmp_guard.path();
-        write_graph_json(tmp, "my_crate", 100, 500, 80);
-        let receipt = receipt_from_graph_json("my_crate", &tmp.join("my_crate").join("graph.json"))
-            .expect("receipt");
+        write_artifacts(tmp, "my_crate", 100, 500, 80);
+        let receipt = receipt_from_artifacts("my_crate", &tmp.join("my_crate")).expect("receipt");
         assert_eq!(receipt.crate_name, "my_crate");
         assert_eq!(receipt.node_count, 100);
         assert_eq!(receipt.edge_count, 500);
@@ -210,10 +273,10 @@ mod tests {
     }
 
     #[test]
-    fn receipt_from_graph_json_fails_on_missing_file() {
-        let result = receipt_from_graph_json("missing", Path::new("/nonexistent/graph.json"));
+    fn receipt_from_artifacts_fails_on_missing_file() {
+        let result = receipt_from_artifacts("missing", Path::new("/nonexistent/artifacts"));
         assert!(result.is_err());
-        assert!(result.unwrap_err().contains("graph.json not found"));
+        assert!(result.unwrap_err().contains("manifest.json not found"));
     }
 
     #[test]

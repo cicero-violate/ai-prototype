@@ -6,21 +6,21 @@ use std::time::Duration;
 use serde_json::{json, Value};
 use tokio::process::Command;
 
-use super::ActionHost;
+use super::{ActionHost, ToolOutcome};
 use crate::api::action::{result_with_warning, tool_error};
 use crate::api::protocol::Command as KernelCommand;
 use crate::capability::execution::{action::structural_edit, patch, shell};
 use crate::runtime::WorkspaceView;
 
-pub async fn execute<H: ActionHost>(name: &str, args: &Value, host: &H) -> Value {
+pub async fn execute<H: ActionHost>(name: &str, args: &Value, host: &H) -> ToolOutcome {
     match name {
         "apply_patch" => {
             let workspace = host.workspace();
-            patch::run(args, &workspace).await
+            ToolOutcome::from_value(patch::run(args, &workspace).await)
         }
         "shell" => {
             let workspace = host.workspace();
-            shell::run_unrecorded(args, &workspace).await
+            ToolOutcome::from_value(shell::run_unrecorded(args, &workspace).await)
         }
         "python" => {
             let workspace = host.workspace();
@@ -28,20 +28,20 @@ pub async fn execute<H: ActionHost>(name: &str, args: &Value, host: &H) -> Value
         }
         "structural_edit" => {
             let workspace = host.workspace();
-            structural_edit::run(args, &workspace)
+            ToolOutcome::from_value(structural_edit::run(args, &workspace))
         }
-        _ => tool_error(format!("Unknown workspace tool: {name}")),
+        _ => ToolOutcome::Error(tool_error(format!("Unknown workspace tool: {name}"))),
     }
 }
 
-async fn run_python(args: &Value, workspace: &WorkspaceView) -> Value {
+async fn run_python(args: &Value, workspace: &WorkspaceView) -> ToolOutcome {
     let code = args
         .get("code")
         .and_then(Value::as_str)
         .unwrap_or("")
         .trim();
     if code.is_empty() {
-        return tool_error("empty code".to_string());
+        return ToolOutcome::Error(tool_error("empty code".to_string()));
     }
     let timeout_ms = args
         .get("timeout_ms")
@@ -56,7 +56,7 @@ async fn run_python(args: &Value, workspace: &WorkspaceView) -> Value {
     let cwd = args.get("cwd").and_then(Value::as_str).unwrap_or(".");
     let work_dir = match workspace.resolve_cwd(cwd) {
         Ok(path) => path,
-        Err(error) => return tool_error(error),
+        Err(error) => return ToolOutcome::Error(tool_error(error)),
     };
     let child = match Command::new("python3")
         .arg("-c")
@@ -68,7 +68,7 @@ async fn run_python(args: &Value, workspace: &WorkspaceView) -> Value {
         .spawn()
     {
         Ok(child) => child,
-        Err(error) => return tool_error(error.to_string()),
+        Err(error) => return ToolOutcome::Error(tool_error(error.to_string())),
     };
     let output = match tokio::time::timeout(
         Duration::from_millis(timeout_ms),
@@ -77,14 +77,14 @@ async fn run_python(args: &Value, workspace: &WorkspaceView) -> Value {
     .await
     {
         Ok(Ok(output)) => output,
-        Ok(Err(error)) => return tool_error(error.to_string()),
+        Ok(Err(error)) => return ToolOutcome::Error(tool_error(error.to_string())),
         Err(_) => {
-            return json!({
+            return ToolOutcome::TimedOut(json!({
                 "content": [{ "type": "text", "text": format!("Error: python timed out after {timeout_ms} ms") }],
                 "isError": true,
                 "exit_code": -1,
                 "timed_out": true
-            });
+            }));
         }
     };
     let mut stdout = output.stdout;
@@ -116,29 +116,34 @@ async fn run_python(args: &Value, workspace: &WorkspaceView) -> Value {
     if text.is_empty() {
         text = format!("(exit {exit_code})");
     }
-    json!({
+    let v = json!({
         "content": [{ "type": "text", "text": text }],
         "isError": !output.status.success(),
         "exit_code": exit_code,
         "timed_out": false,
         "stdout_truncated": stdout_truncated,
         "stderr_truncated": stderr_truncated
-    })
+    });
+    if output.status.success() {
+        ToolOutcome::Ok(v)
+    } else {
+        ToolOutcome::Error(v)
+    }
 }
 
-pub async fn execute_recorded_shell<H: ActionHost>(args: &Value, host: &H) -> Value {
+pub async fn execute_recorded_shell<H: ActionHost>(args: &Value, host: &H) -> ToolOutcome {
     let workspace = host.workspace();
     let request = match shell::recorded_process_request(args, &workspace) {
         Ok(request) => request,
-        Err(error) => return tool_error(error),
+        Err(error) => return ToolOutcome::Error(tool_error(error)),
     };
     if let Err(error) = host
         .submit_kernel_command(KernelCommand::AuthorizeProcessCall(request))
         .await
     {
-        return tool_error(format!(
+        return ToolOutcome::Error(tool_error(format!(
             "process execution denied before execution by ai worker: {error}"
-        ));
+        )));
     }
 
     let args_owned = args.clone();
@@ -146,20 +151,33 @@ pub async fn execute_recorded_shell<H: ActionHost>(args: &Value, host: &H) -> Va
         tokio::task::spawn_blocking(move || shell::run_recorded_process(&args_owned, &workspace))
             .await;
     match run_result {
-        Err(join_err) => tool_error(format!("shell task panicked: {join_err}")),
-        Ok(Err(error)) => tool_error(error),
+        Err(join_err) => ToolOutcome::Error(tool_error(format!(
+            "shell task panicked: {join_err}"
+        ))),
+        Ok(Err(error)) => ToolOutcome::Error(tool_error(error)),
         Ok(Ok((receipt, stdout, stderr))) => {
+            let timed_out = receipt.timed_out;
             let result = shell::render_recorded_response(&receipt, &stdout, &stderr);
             if let Err(error) = host
                 .submit_kernel_command(KernelCommand::SubmitProcessReceipt(receipt))
                 .await
             {
-                return result_with_warning(
+                return ToolOutcome::from_value(result_with_warning(
                     result,
                     format!("process receipt recording failed in ai worker: {error}"),
-                );
+                ));
             }
-            result
+            if timed_out {
+                ToolOutcome::TimedOut(result)
+            } else if result
+                .get("isError")
+                .and_then(Value::as_bool)
+                .unwrap_or(false)
+            {
+                ToolOutcome::Error(result)
+            } else {
+                ToolOutcome::Ok(result)
+            }
         }
     }
 }

@@ -104,7 +104,7 @@ pub async fn spawn_agent_handler(
     let mut guard = state.inner.lock().await;
     let max_steps = body.max_steps.unwrap_or(20).clamp(1, 100);
     guard
-        .spawn_agent(&body.domain, &body.metric, max_steps)
+        .spawn_agent(&body.domain, &body.metric, max_steps, None)
         .map(Json)
         .map_err(error_response)
 }

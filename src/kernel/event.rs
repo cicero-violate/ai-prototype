@@ -44,6 +44,9 @@ pub enum Cause {
     SymbolMutationObserved = 24,
     ArchitecturalDecisionMade = 25,
     CostGateEvaluated = 26,
+    /// Emitted once by the supervisor on startup when interrupted work is found.
+    /// api_command_id = 0 (not part of any agent trace).
+    SystemRestart = 27,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -98,4 +101,8 @@ pub struct ControlEvent {
     pub api_command_hash: u64,
     pub prev_hash: u64,
     pub self_hash: u64,
+    /// MIR basic-block index where this event originated, if known.
+    pub origin_bb: Option<u32>,
+    /// MIR function index (opaque, matches `fn_idx` in mir_cfg miner) where this event originated.
+    pub origin_fn: Option<u32>,
 }

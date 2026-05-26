@@ -517,6 +517,8 @@ mod tests {
             api_command_hash: 0,
             prev_hash: seq.wrapping_sub(1),
             self_hash: seq * 0xdeadbeef,
+            origin_bb: None,
+            origin_fn: None,
         }
     }
 

@@ -84,6 +84,9 @@ fn write_plan(root: &Path, evidence: Vec<PlanEvidenceRef>) {
         )
         .expect("plan evidence patch should write");
     }
+    let mut plan = load_plan(root);
+    plan.nodes[0].evidence = evidence;
+    save_plan(root, &plan).expect("plan evidence metadata should write");
 }
 
 fn worker_process(root: &Path) -> WorkerProcess {
@@ -266,8 +269,8 @@ fn supervisor_lifecycle_does_not_save_plan_json_status() {
         "supervisor lifecycle should append status changes through the plan patch TLog"
     );
     assert!(
-        body.contains("attach_supervisor_execution_evidence"),
-        "supervisor lifecycle should attach accepted execution evidence before completion"
+        body.contains("AcceptedTaskEvidence::from_read_model"),
+        "supervisor lifecycle should require typed accepted execution evidence before completion"
     );
     assert!(
         body.contains("load_plan_read_model"),
@@ -345,13 +348,13 @@ fn supervisor_rejects_completion_without_plan_evidence() {
         })
         .expect_err("completion without evidence should fail");
 
-    assert!(err.contains("projected task evidence"));
+    assert!(err.contains("accepted execution receipt evidence"));
     let plan = load_plan(&root);
     assert_ne!(plan.nodes[0].status, NodeStatus::Done);
 }
 
 #[test]
-fn supervisor_accepts_legacy_task_evidence_by_attaching_completion_receipt() {
+fn supervisor_rejects_legacy_unaccepted_evidence_for_inv_2d8266d0f547() {
     let (root, _root_guard) = contract_root("legacy-unaccepted-evidence");
     write_plan(
         &root,
@@ -375,33 +378,17 @@ fn supervisor_accepts_legacy_task_evidence_by_attaching_completion_receipt() {
             lease_ttl_ms: Some(60_000),
         })
         .expect("claim should succeed");
-    let complete = worker
+    let err = worker
         .complete_task(TaskCompleteRequest {
             node_id: "node-1".to_string(),
             worker_id: "worker-a".to_string(),
             claim_id: claim.claim_id,
         })
-        .expect("legacy task evidence should be completed by supervisor receipt attachment");
+        .expect_err("inv-2d8266d0f547: unaccepted evidence must not complete a task claim");
 
-    assert_ne!(complete.receipt_hash, 0);
-    let (read_model, plan_state) = load_plan_read_model(&root).expect("read model should project");
-    let node = read_model
-        .nodes
-        .iter()
-        .find(|node| node.id == "node-1")
-        .expect("node should remain projected");
-    assert_eq!(node.status, NodeStatus::Done);
-    let plan_state = plan_state.expect("projected state should exist");
-    assert!(!plan_state
-        .nodes
-        .values()
-        .next()
-        .expect("projected node should exist")
-        .evidence
-        .is_empty());
+    assert!(err.contains("accepted execution receipt evidence"));
     let raw_plan = load_plan(&root);
-    assert_eq!(raw_plan.nodes[0].status, NodeStatus::Done);
-    assert!(!raw_plan.nodes[0].evidence.is_empty());
+    assert_ne!(raw_plan.nodes[0].status, NodeStatus::Done);
 }
 
 #[test]

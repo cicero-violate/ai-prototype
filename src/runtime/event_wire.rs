@@ -184,6 +184,8 @@ mod tests {
             api_command_hash: 0,
             prev_hash: 0,
             self_hash: 0xabc,
+            origin_bb: None,
+            origin_fn: None,
         };
 
         let summary = WireEventSummary::from_event(&event);

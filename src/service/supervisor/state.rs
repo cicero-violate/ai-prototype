@@ -161,7 +161,7 @@ impl SupervisorState {
             Err(error) => return crate::api::action::tool_error(error),
         };
         let mut guard = self.inner.lock().await;
-        match guard.spawn_agent(&request.domain, &request.metric, request.max_steps) {
+        match guard.spawn_agent(&request.domain, &request.metric, request.max_steps, None) {
             Ok(dto) => json_text_result(dto),
             Err(error) => crate::api::action::tool_error(error),
         }

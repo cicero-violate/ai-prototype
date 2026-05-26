@@ -214,6 +214,7 @@ pub fn touch_all_surfaces() -> usize {
         FailureClass::ConvergenceFailed,
         FailureClass::LearningMissing,
         FailureClass::LearningFailed,
+        FailureClass::SignalIntegrityFailed,
     ];
     let actions = [
         RecoveryAction::RecheckInvariant,
@@ -260,6 +261,7 @@ pub fn touch_all_surfaces() -> usize {
         Cause::SymbolMutationObserved,
         Cause::ArchitecturalDecisionMade,
         Cause::CostGateEvaluated,
+        Cause::SystemRestart,
     ];
     let decisions = [
         Decision::Continue,
