@@ -12,11 +12,56 @@ use std::net::{SocketAddr, TcpStream};
 use std::time::Duration;
 
 const DEFAULT_TIMEOUT_MS: u64 = 5_000;
+const AI_WORKER_PORT_ENV: &str = "AI_WORKER_PORT";
 
+#[derive(Debug)]
 pub struct WorkerClient {
     port: u16,
     timeout: Duration,
 }
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct WorkerClientConfig {
+    port: u16,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum WorkerClientConfigError {
+    MissingWorkerPort,
+    InvalidWorkerPort { raw: String },
+}
+
+impl WorkerClientConfig {
+    pub fn new(port: u16) -> Self {
+        Self { port }
+    }
+
+    pub fn from_env() -> Result<Self, WorkerClientConfigError> {
+        let raw = std::env::var(AI_WORKER_PORT_ENV)
+            .map_err(|_| WorkerClientConfigError::MissingWorkerPort)?;
+        let port = raw
+            .parse::<u16>()
+            .map_err(|_| WorkerClientConfigError::InvalidWorkerPort { raw })?;
+        Ok(Self::new(port))
+    }
+
+    pub fn port(&self) -> u16 {
+        self.port
+    }
+}
+
+impl std::fmt::Display for WorkerClientConfigError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::MissingWorkerPort => write!(f, "{AI_WORKER_PORT_ENV} is required"),
+            Self::InvalidWorkerPort { raw } => {
+                write!(f, "{AI_WORKER_PORT_ENV} must be a u16, got {raw:?}")
+            }
+        }
+    }
+}
+
+impl std::error::Error for WorkerClientConfigError {}
 
 #[derive(Debug)]
 pub enum WorkerClientError {
@@ -59,13 +104,13 @@ impl WorkerClient {
         Self { port, timeout }
     }
 
-    pub fn from_env() -> Result<Self, WorkerClientError> {
-        let raw = std::env::var("AI_WORKER_PORT")
-            .map_err(|_| WorkerClientError::Connect("AI_WORKER_PORT not set".into()))?;
-        let port: u16 = raw
-            .parse()
-            .map_err(|_| WorkerClientError::Connect(format!("invalid AI_WORKER_PORT: {raw}")))?;
-        Ok(Self::new(port))
+    pub fn from_config(config: WorkerClientConfig) -> Self {
+        Self::new(config.port())
+    }
+
+    pub fn from_env() -> Result<Self, WorkerClientConfigError> {
+        let config = WorkerClientConfig::from_env()?;
+        Ok(Self::from_config(config))
     }
 
     pub fn health(&self) -> Result<bool, WorkerClientError> {
@@ -139,6 +184,32 @@ fn parse_response(bytes: Vec<u8>) -> Result<WorkerResponse, WorkerClientError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::{Mutex, OnceLock};
+
+    fn env_test_lock() -> &'static Mutex<()> {
+        static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+        LOCK.get_or_init(|| Mutex::new(()))
+    }
+
+    fn with_worker_port_env<T>(value: Option<&str>, test: impl FnOnce() -> T) -> T {
+        let _guard = env_test_lock()
+            .lock()
+            .expect("env test lock should not be poisoned");
+        let snapshot = std::env::var(AI_WORKER_PORT_ENV).ok();
+        match value {
+            Some(value) => std::env::set_var(AI_WORKER_PORT_ENV, value),
+            None => std::env::remove_var(AI_WORKER_PORT_ENV),
+        }
+
+        let result = test();
+
+        match snapshot {
+            Some(value) => std::env::set_var(AI_WORKER_PORT_ENV, value),
+            None => std::env::remove_var(AI_WORKER_PORT_ENV),
+        }
+
+        result
+    }
 
     #[test]
     fn worker_client_constructors_preserve_default_and_custom_timeouts() {
@@ -184,5 +255,43 @@ mod tests {
         assert_ne!(default_client.timeout, custom_client.timeout);
         assert_ne!(custom_client.port, zero_timeout_client.port);
         assert_ne!(custom_client.timeout, zero_timeout_client.timeout);
+    }
+
+    #[test]
+    fn worker_client_from_config_constructs_client_from_typed_config() {
+        let config = WorkerClientConfig::new(8126);
+        let client = WorkerClient::from_config(config);
+        assert_eq!(client.port, 8126);
+        assert_eq!(client.timeout, Duration::from_millis(DEFAULT_TIMEOUT_MS));
+    }
+
+    #[test]
+    fn worker_client_from_env_constructs_client_from_valid_config() {
+        with_worker_port_env(Some("8127"), || {
+            let client = WorkerClient::from_env().expect("valid worker port should configure client");
+            assert_eq!(client.port, 8127);
+            assert_eq!(client.timeout, Duration::from_millis(DEFAULT_TIMEOUT_MS));
+        });
+    }
+
+    #[test]
+    fn worker_client_from_env_returns_typed_missing_config_error() {
+        with_worker_port_env(None, || {
+            let err = WorkerClient::from_env().expect_err("missing port should be typed config error");
+            assert_eq!(err, WorkerClientConfigError::MissingWorkerPort);
+        });
+    }
+
+    #[test]
+    fn worker_client_from_env_returns_typed_invalid_config_error() {
+        with_worker_port_env(Some("not-a-port"), || {
+            let err = WorkerClient::from_env().expect_err("invalid port should be typed config error");
+            assert_eq!(
+                err,
+                WorkerClientConfigError::InvalidWorkerPort {
+                    raw: "not-a-port".to_string(),
+                }
+            );
+        });
     }
 }

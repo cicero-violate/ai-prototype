@@ -29,4 +29,6 @@ pub use router::{RouterClient, RouterStreamingResult, RouterTurnResult};
 pub use sse::{ChunkLogger, SseResult};
 pub use step::{AgentActionKind, AgentDecision, AgentRunSummary, AgentStep};
 pub use worker::{complete_claim, fail_claim, heartbeat_claim, run_with_heartbeat, ActiveClaim};
-pub use worker_client::{WorkerClient, WorkerClientError, WorkerResponse};
+pub use worker_client::{
+    WorkerClient, WorkerClientConfig, WorkerClientConfigError, WorkerClientError, WorkerResponse,
+};
