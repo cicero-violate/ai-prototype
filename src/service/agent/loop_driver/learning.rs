@@ -162,36 +162,22 @@ fn collect_mcp_stats(path: &Path) -> Result<BTreeMap<String, ToolStat>, String> 
         if line.is_empty() {
             continue;
         }
-        let Ok(record) = serde_json::from_str::<serde_json::Value>(line) else {
+        let Ok(record) = decode_mcp_transcript_record(line) else {
             continue;
         };
-        let Some(tool_name) = record.get("tool_name").and_then(|v| v.as_str()) else {
-            continue;
-        };
-        let exit_status = record
-            .get("exit_status")
-            .and_then(|v| v.as_u64())
-            .unwrap_or(0);
-        let timed_out = record
-            .get("timed_out")
-            .and_then(|v| v.as_bool())
-            .unwrap_or(false);
-        let is_error = exit_status != 0 || timed_out;
 
-        let stat = stats.entry(tool_name.to_string()).or_insert(ToolStat {
-            total: 0,
-            errors: 0,
-            last_error_hint: None,
-        });
+        let stat = stats
+            .entry(record.tool_name.as_str().to_string())
+            .or_insert(ToolStat {
+                total: 0,
+                errors: 0,
+                last_error_hint: None,
+            });
         stat.total += 1;
-        if is_error {
+        if record.outcome.is_error() {
             stat.errors += 1;
             if stat.last_error_hint.is_none() {
-                stat.last_error_hint = if timed_out {
-                    Some("timed out".to_string())
-                } else {
-                    extract_error_hint(&record)
-                };
+                stat.last_error_hint = record.error_hint().map(McpErrorHint::into_string);
             }
         }
     }
@@ -199,17 +185,175 @@ fn collect_mcp_stats(path: &Path) -> Result<BTreeMap<String, ToolStat>, String> 
     Ok(stats)
 }
 
-fn extract_error_hint(record: &serde_json::Value) -> Option<String> {
-    let response_json = record.get("response_json")?.as_str()?;
-    let response: serde_json::Value = serde_json::from_str(response_json).ok()?;
-    let text = response
-        .pointer("/content/0/text")
-        .and_then(|v| v.as_str())?;
-    let hint = text.trim_start_matches("Error: ").trim();
-    if hint.len() > 80 {
-        Some(format!("{}…", &hint[..80]))
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct McpTranscriptRecord {
+    tool_name: McpToolName,
+    outcome: McpCallOutcome,
+    response: McpResponseBody,
+}
+
+impl McpTranscriptRecord {
+    fn decode(line: &str) -> Result<Self, McpTranscriptDecodeError> {
+        let wire: McpTranscriptRecordWire =
+            serde_json::from_str(line).map_err(|_| McpTranscriptDecodeError::MalformedRecord)?;
+        let tool_name = wire
+            .tool_name
+            .ok_or(McpTranscriptDecodeError::MissingToolName)
+            .and_then(McpToolName::new)?;
+        let outcome = McpCallOutcome::from_wire(wire.exit_status, wire.timed_out);
+        let response = McpResponseBody::decode(wire.response_json);
+        Ok(Self {
+            tool_name,
+            outcome,
+            response,
+        })
+    }
+
+    fn error_hint(&self) -> Option<McpErrorHint> {
+        match self.outcome {
+            McpCallOutcome::Success => None,
+            McpCallOutcome::TimedOut => Some(McpErrorHint::new("timed out")),
+            McpCallOutcome::ExitStatus(_) => self.response.error_hint(),
+        }
+    }
+}
+
+#[derive(serde::Deserialize)]
+struct McpTranscriptRecordWire {
+    tool_name: Option<String>,
+    #[serde(default)]
+    exit_status: u64,
+    #[serde(default)]
+    timed_out: bool,
+    response_json: Option<String>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct McpToolName(String);
+
+impl McpToolName {
+    fn new(value: String) -> Result<Self, McpTranscriptDecodeError> {
+        let value = value.trim();
+        if value.is_empty() {
+            Err(McpTranscriptDecodeError::EmptyToolName)
+        } else {
+            Ok(Self(value.to_string()))
+        }
+    }
+
+    fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum McpCallOutcome {
+    Success,
+    ExitStatus(std::num::NonZeroU64),
+    TimedOut,
+}
+
+impl McpCallOutcome {
+    fn from_wire(exit_status: u64, timed_out: bool) -> Self {
+        if timed_out {
+            return Self::TimedOut;
+        }
+        match std::num::NonZeroU64::new(exit_status) {
+            Some(status) => Self::ExitStatus(status),
+            None => Self::Success,
+        }
+    }
+
+    fn is_error(self) -> bool {
+        !matches!(self, Self::Success)
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+enum McpResponseBody {
+    Text(McpResponseText),
+    Opaque,
+}
+
+impl McpResponseBody {
+    fn decode(response_json: Option<String>) -> Self {
+        let Some(response_json) = response_json else {
+            return Self::Opaque;
+        };
+        let Ok(response) = serde_json::from_str::<McpToolResponseWire>(&response_json) else {
+            return Self::Opaque;
+        };
+        let Some(first) = response.content.into_iter().next() else {
+            return Self::Opaque;
+        };
+        match first.text {
+            Some(text) => Self::Text(McpResponseText(text)),
+            None => Self::Opaque,
+        }
+    }
+
+    fn error_hint(&self) -> Option<McpErrorHint> {
+        match self {
+            Self::Text(text) => Some(text.error_hint()),
+            Self::Opaque => None,
+        }
+    }
+}
+
+#[derive(serde::Deserialize)]
+struct McpToolResponseWire {
+    #[serde(default)]
+    content: Vec<McpToolResponseContentWire>,
+}
+
+#[derive(serde::Deserialize)]
+struct McpToolResponseContentWire {
+    text: Option<String>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct McpResponseText(String);
+
+impl McpResponseText {
+    fn error_hint(&self) -> McpErrorHint {
+        let hint = self.0.trim_start_matches("Error: ").trim();
+        McpErrorHint::new(truncate_error_hint(hint))
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct McpErrorHint(String);
+
+impl McpErrorHint {
+    fn new(value: impl Into<String>) -> Self {
+        Self(value.into())
+    }
+
+    fn into_string(self) -> String {
+        self.0
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+enum McpTranscriptDecodeError {
+    MalformedRecord,
+    MissingToolName,
+    EmptyToolName,
+}
+
+fn decode_mcp_transcript_record(
+    line: &str,
+) -> Result<McpTranscriptRecord, McpTranscriptDecodeError> {
+    McpTranscriptRecord::decode(line)
+}
+
+fn truncate_error_hint(hint: &str) -> String {
+    let mut chars = hint.chars();
+    let head: String = chars.by_ref().take(80).collect();
+    if chars.next().is_some() {
+        format!("{head}…")
     } else {
-        Some(hint.to_string())
+        head
     }
 }
 
@@ -397,4 +541,139 @@ fn read_tool_sequence(project_dir: &Path) -> Vec<String> {
             v.get("tool_name")?.as_str().map(str::to_string)
         })
         .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    #[test]
+    fn typed_mcp_record_decoder_preserves_outcomes() {
+        let success = decode_mcp_transcript_record(
+            r#"{"tool_name":"workspace:get","exit_status":0,"timed_out":false}"#,
+        )
+        .expect("success record decodes");
+        assert_eq!(success.outcome, McpCallOutcome::Success);
+        assert!(!success.outcome.is_error());
+
+        let exited = decode_mcp_transcript_record(
+            r#"{"tool_name":"workspace:shell","exit_status":42,"timed_out":false}"#,
+        )
+        .expect("nonzero exit record decodes");
+        assert_eq!(
+            exited.outcome,
+            McpCallOutcome::ExitStatus(std::num::NonZeroU64::new(42).unwrap())
+        );
+        assert!(exited.outcome.is_error());
+
+        let timed_out = decode_mcp_transcript_record(
+            r#"{"tool_name":"workspace:shell","exit_status":0,"timed_out":true}"#,
+        )
+        .expect("timeout record decodes");
+        assert_eq!(timed_out.outcome, McpCallOutcome::TimedOut);
+        assert_eq!(
+            timed_out
+                .error_hint()
+                .map(McpErrorHint::into_string)
+                .as_deref(),
+            Some("timed out")
+        );
+    }
+
+    #[test]
+    fn typed_mcp_record_decoder_rejects_missing_tool_identity() {
+        assert_eq!(
+            decode_mcp_transcript_record(r#"{"exit_status":0,"timed_out":false}"#),
+            Err(McpTranscriptDecodeError::MissingToolName)
+        );
+        assert_eq!(
+            decode_mcp_transcript_record(
+                r#"{"tool_name":"   ","exit_status":0,"timed_out":false}"#
+            ),
+            Err(McpTranscriptDecodeError::EmptyToolName)
+        );
+        assert_eq!(
+            decode_mcp_transcript_record("not-json"),
+            Err(McpTranscriptDecodeError::MalformedRecord)
+        );
+    }
+
+    #[test]
+    fn collect_mcp_stats_decodes_typed_rows_and_skips_malformed_records() {
+        let path = unique_temp_file("mcp-transcript");
+        let shell_response = serde_json::json!({
+            "content": [{ "text": "Error: command failed" }]
+        })
+        .to_string();
+        let rows = vec![
+            "not-json".to_string(),
+            serde_json::json!({ "exit_status": 1, "timed_out": false }).to_string(),
+            serde_json::json!({
+                "tool_name": "workspace:shell",
+                "exit_status": 0,
+                "timed_out": false,
+                "response_json": "{}"
+            })
+            .to_string(),
+            serde_json::json!({
+                "tool_name": "workspace:shell",
+                "exit_status": 1,
+                "timed_out": false,
+                "response_json": shell_response
+            })
+            .to_string(),
+            serde_json::json!({
+                "tool_name": "workspace:slow",
+                "exit_status": 0,
+                "timed_out": true,
+                "response_json": "{}"
+            })
+            .to_string(),
+        ];
+        std::fs::write(&path, rows.join("\n")).expect("write transcript fixture");
+
+        let stats = collect_mcp_stats(&path).expect("stats decode");
+        let _ = std::fs::remove_file(&path);
+
+        let shell = stats.get("workspace:shell").expect("shell stats");
+        assert_eq!(shell.total, 2);
+        assert_eq!(shell.errors, 1);
+        assert_eq!(shell.last_error_hint.as_deref(), Some("command failed"));
+
+        let slow = stats.get("workspace:slow").expect("slow stats");
+        assert_eq!(slow.total, 1);
+        assert_eq!(slow.errors, 1);
+        assert_eq!(slow.last_error_hint.as_deref(), Some("timed out"));
+        assert_eq!(stats.len(), 2);
+    }
+
+    #[test]
+    fn mcp_error_hints_are_truncated_on_character_boundaries() {
+        let long_hint = format!("Error: {}", "é".repeat(90));
+        let response = serde_json::json!({ "content": [{ "text": long_hint }] }).to_string();
+        let line = serde_json::json!({
+            "tool_name": "workspace:shell",
+            "exit_status": 1,
+            "timed_out": false,
+            "response_json": response
+        })
+        .to_string();
+
+        let record = decode_mcp_transcript_record(&line).expect("record decodes");
+        let hint = record.error_hint().map(McpErrorHint::into_string).unwrap();
+        assert_eq!(hint.chars().count(), 81);
+        assert!(hint.ends_with('…'));
+    }
+
+    fn unique_temp_file(name: &str) -> std::path::PathBuf {
+        let nanos = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("clock after epoch")
+            .as_nanos();
+        std::env::temp_dir().join(format!(
+            "canon-ai-learning-{name}-{}-{nanos}.ndjson",
+            std::process::id()
+        ))
+    }
 }
