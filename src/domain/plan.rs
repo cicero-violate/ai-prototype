@@ -32,6 +32,10 @@ pub const EVIDENCE_GATE_EXECUTION: &str = "Execution";
 /// Evidence type name used in accepted execution-receipt evidence entries.
 pub const EVIDENCE_TYPE_EXECUTION_RECEIPT: &str = "ExecutionReceipt";
 
+pub const EVIDENCE_GATE_VERIFICATION: &str = "Verification";
+
+pub const EVIDENCE_TYPE_LINEAGE_PROOF: &str = "LineageProof";
+
 // ── Schema ───────────────────────────────────────────────────────────────────
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
@@ -90,7 +94,14 @@ pub struct PlanEvidenceRef {
 
 impl PlanEvidenceRef {
     pub fn is_accepted_execution_receipt(&self) -> bool {
-        AcceptedExecutionEvidenceRef::try_from(self).is_ok()
+        self.accepted
+            && self.receipt_hash != 0
+            && self.gate == EVIDENCE_GATE_EXECUTION
+            && self.evidence == EVIDENCE_TYPE_EXECUTION_RECEIPT
+    }
+
+    pub fn is_accepted_verification_evidence(&self) -> bool {
+        AcceptedEvidenceReceipt::try_from(self).is_ok()
     }
 
     pub fn is_blocker(&self) -> bool {
@@ -98,15 +109,15 @@ impl PlanEvidenceRef {
     }
 }
 
-/// Typed proof that a generic plan evidence reference is accepted execution
+/// Typed proof that a generic plan evidence reference is accepted verification
 /// evidence. This is the only value supervisor completion may consume as a
 /// task-completion prerequisite.
 #[derive(Clone, Copy, Debug)]
-pub struct AcceptedExecutionEvidenceRef<'a> {
+pub struct AcceptedEvidenceReceipt<'a> {
     evidence: &'a PlanEvidenceRef,
 }
 
-impl<'a> AcceptedExecutionEvidenceRef<'a> {
+impl<'a> AcceptedEvidenceReceipt<'a> {
     pub fn evidence(self) -> &'a PlanEvidenceRef {
         self.evidence
     }
@@ -116,14 +127,20 @@ impl<'a> AcceptedExecutionEvidenceRef<'a> {
     }
 }
 
-impl<'a> TryFrom<&'a PlanEvidenceRef> for AcceptedExecutionEvidenceRef<'a> {
+impl<'a> TryFrom<&'a PlanEvidenceRef> for AcceptedEvidenceReceipt<'a> {
     type Error = PlanValidationError;
 
     fn try_from(evidence: &'a PlanEvidenceRef) -> Result<Self, Self::Error> {
         if !evidence.accepted {
             return Err(PlanValidationError::new(
                 "unaccepted_evidence",
-                "execution evidence must be accepted before task completion",
+                "verification evidence must be accepted before task completion",
+            ));
+        }
+        if evidence.path.is_empty() || evidence.kind.is_empty() || evidence.summary.is_empty() {
+            return Err(PlanValidationError::new(
+                "empty_evidence_payload",
+                "accepted verification evidence requires nonempty payload fields",
             ));
         }
         if evidence.receipt_hash == 0 {
@@ -132,21 +149,21 @@ impl<'a> TryFrom<&'a PlanEvidenceRef> for AcceptedExecutionEvidenceRef<'a> {
                 "accepted evidence requires non-zero receipt_hash",
             ));
         }
-        if evidence.gate != EVIDENCE_GATE_EXECUTION {
+        if evidence.gate != EVIDENCE_GATE_VERIFICATION {
             return Err(PlanValidationError::new(
                 "wrong_evidence_gate",
                 format!(
                     "task completion requires gate '{}' but found '{}'",
-                    EVIDENCE_GATE_EXECUTION, evidence.gate
+                    EVIDENCE_GATE_VERIFICATION, evidence.gate
                 ),
             ));
         }
-        if evidence.evidence != EVIDENCE_TYPE_EXECUTION_RECEIPT {
+        if evidence.evidence != EVIDENCE_TYPE_LINEAGE_PROOF {
             return Err(PlanValidationError::new(
                 "wrong_evidence_type",
                 format!(
                     "task completion requires evidence '{}' but found '{}'",
-                    EVIDENCE_TYPE_EXECUTION_RECEIPT, evidence.evidence
+                    EVIDENCE_TYPE_LINEAGE_PROOF, evidence.evidence
                 ),
             ));
         }
@@ -638,8 +655,8 @@ mod tests {
                 path: format!("state/agent-evidence/{id}.md"),
                 kind: EVIDENCE_KIND_VALIDATION.to_string(),
                 summary: "evidence summary".to_string(),
-                gate: EVIDENCE_GATE_EXECUTION.to_string(),
-                evidence: EVIDENCE_TYPE_EXECUTION_RECEIPT.to_string(),
+                gate: EVIDENCE_GATE_VERIFICATION.to_string(),
+                evidence: EVIDENCE_TYPE_LINEAGE_PROOF.to_string(),
                 receipt_hash: 1,
                 accepted: true,
             }],
@@ -714,34 +731,41 @@ mod tests {
     }
 
     #[test]
-    fn accepted_execution_evidence_ref_types_completion_prerequisite_for_inv_2d8266d0f547() {
+    fn accepted_evidence_receipt_types_completion_prerequisite_for_inv_2d8266d0f547() {
         let accepted = node("accepted").evidence.remove(0);
-        let typed = AcceptedExecutionEvidenceRef::try_from(&accepted)
-            .expect("accepted execution receipt evidence should type-check");
+        let typed = AcceptedEvidenceReceipt::try_from(&accepted)
+            .expect("accepted verification evidence should type-check");
         assert_eq!(typed.receipt_hash(), 1);
         assert_eq!(typed.evidence().path, "state/agent-evidence/accepted.md");
 
         let mut missing_acceptance = accepted.clone();
         missing_acceptance.accepted = false;
-        let err = AcceptedExecutionEvidenceRef::try_from(&missing_acceptance)
+        let err = AcceptedEvidenceReceipt::try_from(&missing_acceptance)
             .expect_err("inv-2d8266d0f547: unaccepted evidence must not type-check");
         assert_eq!(err.code, "unaccepted_evidence");
 
         let mut missing_receipt = accepted.clone();
         missing_receipt.receipt_hash = 0;
-        let err = AcceptedExecutionEvidenceRef::try_from(&missing_receipt)
+        let err = AcceptedEvidenceReceipt::try_from(&missing_receipt)
             .expect_err("accepted evidence without receipt hash must not type-check");
         assert_eq!(err.code, "invalid_evidence_receipt");
 
+        let mut empty_payload = accepted.clone();
+        empty_payload.summary.clear();
+        let err = AcceptedEvidenceReceipt::try_from(&empty_payload)
+            .expect_err("accepted evidence without payload must not type-check");
+        assert_eq!(err.code, "empty_evidence_payload");
+
         let mut wrong_gate = accepted.clone();
-        wrong_gate.gate = "Analysis".to_string();
-        let err = AcceptedExecutionEvidenceRef::try_from(&wrong_gate)
+        wrong_gate.gate = EVIDENCE_GATE_EXECUTION.to_string();
+        wrong_gate.evidence = EVIDENCE_TYPE_EXECUTION_RECEIPT.to_string();
+        let err = AcceptedEvidenceReceipt::try_from(&wrong_gate)
             .expect_err("wrong gate evidence must not type-check");
         assert_eq!(err.code, "wrong_evidence_gate");
 
         let mut wrong_type = accepted;
-        wrong_type.evidence = "AnalysisReport".to_string();
-        let err = AcceptedExecutionEvidenceRef::try_from(&wrong_type)
+        wrong_type.evidence = "VerificationReport".to_string();
+        let err = AcceptedEvidenceReceipt::try_from(&wrong_type)
             .expect_err("wrong evidence type must not type-check");
         assert_eq!(err.code, "wrong_evidence_type");
     }

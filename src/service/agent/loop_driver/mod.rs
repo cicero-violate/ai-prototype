@@ -1,4 +1,5 @@
 use std::fs;
+use std::sync::{Mutex, OnceLock};
 use std::thread;
 use std::time::Duration;
 
@@ -34,6 +35,78 @@ use receipt::{
 };
 
 type TabCloseResult = Result<RouterTabCloseOutcome, String>;
+
+#[derive(Clone, Debug)]
+struct BaseAgentTabTarget {
+    tag: String,
+    cycle_num: u64,
+    target_id: Option<String>,
+    target_url: Option<String>,
+}
+
+static BASE_AGENT_TAB_TARGET: OnceLock<Mutex<Option<BaseAgentTabTarget>>> = OnceLock::new();
+
+fn base_agent_tab_target() -> &'static Mutex<Option<BaseAgentTabTarget>> {
+    BASE_AGENT_TAB_TARGET.get_or_init(|| Mutex::new(None))
+}
+
+fn record_base_agent_tab_target(
+    tag: &str,
+    cycle_num: u64,
+    target_id: Option<String>,
+    target_url: Option<String>,
+) {
+    if target_id.is_none() && target_url.is_none() {
+        return;
+    }
+    let Ok(mut target) = base_agent_tab_target().lock() else {
+        eprintln!("[{tag}] base agent tab tracking failed: target lock poisoned");
+        return;
+    };
+    *target = Some(BaseAgentTabTarget {
+        tag: tag.to_string(),
+        cycle_num,
+        target_id,
+        target_url,
+    });
+}
+
+pub(crate) fn close_existing_base_agent_for_recovery() {
+    let target = match base_agent_tab_target().lock() {
+        Ok(mut target) => target.take(),
+        Err(_) => {
+            eprintln!("[recovery-bus] base agent close skipped: target lock poisoned");
+            return;
+        }
+    };
+    let Some(target) = target else {
+        eprintln!("[recovery-bus] no tracked base target; closing first existing browser tab");
+        match crate::service::agent::router::close_first_tab_with_timeout(8_000) {
+            Ok(outcome) => {
+                eprintln!("[recovery-bus] base agent fallback close outcome={outcome:?}")
+            }
+            Err(e) => eprintln!("[recovery-bus] base agent fallback close failed: {e}"),
+        }
+        return;
+    };
+
+    eprintln!(
+        "[recovery-bus] closing base agent tab  tag={}  cycle={}",
+        target.tag, target.cycle_num
+    );
+    let result = if let Some(target_id) = target.target_id.as_deref() {
+        crate::service::agent::router::close_tab_for_target_id_with_timeout(target_id, 8_000)
+    } else if let Some(target_url) = target.target_url.as_deref() {
+        crate::service::agent::router::close_tab_for_url_with_timeout(target_url, 8_000)
+    } else {
+        Ok(RouterTabCloseOutcome::NoTarget)
+    };
+
+    match result {
+        Ok(outcome) => eprintln!("[recovery-bus] base agent close outcome={outcome:?}"),
+        Err(e) => eprintln!("[recovery-bus] base agent close failed: {e}"),
+    }
+}
 
 fn wait_for_spawned_tab_close(
     tag: &str,
@@ -513,6 +586,15 @@ impl LoopDriver {
                 return Err(err.to_string());
             }
         };
+
+        if self.config.domain.is_none() {
+            record_base_agent_tab_target(
+                tag,
+                cycle_num,
+                router.target_id().map(str::to_string),
+                router.target_url().map(str::to_string),
+            );
+        }
 
         Ok(finalize_run_cycle_attempt_result(
             &self.config.sse_chunks_dir,

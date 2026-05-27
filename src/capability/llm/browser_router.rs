@@ -341,6 +341,11 @@ pub fn close_tab_for_target_id_with_timeout(
     close_browser_tab_for_target_id(target_id, &config.base_url, timeout_ms)
 }
 
+pub fn close_first_tab_with_timeout(timeout_ms: u64) -> Result<RouterTabCloseOutcome, OpenAiError> {
+    let config = OpenAiConfig::from_env()?;
+    close_first_browser_tab(&config.base_url, timeout_ms)
+}
+
 fn close_browser_tab_for_target_id(
     target_id: &str,
     router_base_url: &str,
@@ -400,6 +405,34 @@ fn close_browser_tab_for_url(
     )
 }
 
+fn close_first_browser_tab(
+    router_base_url: &str,
+    timeout_ms: u64,
+) -> Result<RouterTabCloseOutcome, OpenAiError> {
+    let endpoint = parse_local_http_endpoint(router_base_url).map_err(|e| match e {
+        LocalEndpointError::InvalidUrl => OpenAiError::InvalidUrl,
+        LocalEndpointError::NonLocalHost => {
+            OpenAiError::InvalidConfig("browser-router url must be local")
+        }
+    })?;
+    let tabs_path = browser_router_path(&endpoint.path_prefix, "/tabs");
+    let (status, body) = router_get(&endpoint.host, endpoint.port, &tabs_path, timeout_ms)?;
+    if status != 200 {
+        return Ok(RouterTabCloseOutcome::CloseHttpStatus(status));
+    }
+
+    let Some(target_id) = first_browser_router_target_id(&body) else {
+        return Ok(RouterTabCloseOutcome::NoMatchingTarget);
+    };
+    close_browser_router_tab(
+        &endpoint.host,
+        endpoint.port,
+        &endpoint.path_prefix,
+        &target_id,
+        timeout_ms,
+    )
+}
+
 fn devtools_page_target(target_url: &str) -> Option<(String, u16, String)> {
     let endpoint = parse_local_http_endpoint(target_url).ok()?;
     let target_id = endpoint
@@ -423,6 +456,22 @@ fn browser_router_target_id_for_url(tabs_body: &str, target_url: &str) -> Option
             .and_then(Value::as_str)
             .is_some_and(|url| url == target_url);
         url_matches.then(|| id.to_string())
+    })
+}
+
+fn first_browser_router_target_id(tabs_body: &str) -> Option<String> {
+    let value: Value = serde_json::from_str(tabs_body).ok()?;
+    let entries = value
+        .get("targets")
+        .and_then(Value::as_array)
+        .or_else(|| value.as_array())?;
+    entries.iter().find_map(|entry| {
+        let obj = entry.as_object()?;
+        obj.get("id")
+            .or_else(|| obj.get("target_id"))
+            .and_then(Value::as_str)
+            .filter(|id| !id.is_empty())
+            .map(str::to_string)
     })
 }
 
@@ -854,6 +903,23 @@ mod tests {
             browser_router_target_id_for_url(body, "https://missing.invalid"),
             None
         );
+    }
+
+    #[test]
+    fn first_browser_router_target_id_accepts_object_and_array_tab_lists() {
+        assert_eq!(
+            first_browser_router_target_id(
+                r#"{"targets":[{"id":"target-1","url":"https://chatgpt.com/c/current"}]}"#
+            ),
+            Some("target-1".to_string())
+        );
+        assert_eq!(
+            first_browser_router_target_id(
+                r#"[{"target_id":"target-2","url":"https://chatgpt.com/c/current"}]"#
+            ),
+            Some("target-2".to_string())
+        );
+        assert_eq!(first_browser_router_target_id(r#"{"targets":[]}"#), None);
     }
 
     #[test]

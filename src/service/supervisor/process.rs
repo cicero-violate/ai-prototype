@@ -9,7 +9,7 @@ use std::net::TcpListener as StdTcpListener;
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
 use std::sync::{
-    atomic::{AtomicBool, Ordering},
+    atomic::{AtomicBool, AtomicU64, Ordering},
     Arc,
 };
 use std::time::{Duration, Instant};
@@ -20,7 +20,7 @@ use tokio::process::{Child, Command as TokioCommand};
 use crate::api::protocol::{Command as KernelCommand, CommandEnvelope};
 use crate::capability::orchestration::TaskLifecycleReceipt;
 use crate::domain::plan::{
-    blocked_pending_nodes, AcceptedExecutionEvidenceRef, NodeStatus, PlanEvidenceRef,
+    blocked_pending_nodes, AcceptedEvidenceReceipt, NodeStatus, PlanEvidenceRef,
 };
 use crate::kernel::mix;
 use crate::runtime::workspace::workspace_state_dir;
@@ -57,6 +57,7 @@ pub struct WorkerProcess {
     task_leases: HashMap<String, TaskLease>,
     next_claim_id: u64,
     main_loop_active: Arc<AtomicBool>,
+    recovery_agent_count: Arc<AtomicU64>,
 }
 
 impl WorkerProcess {
@@ -84,6 +85,7 @@ impl WorkerProcess {
             task_leases: HashMap::new(),
             next_claim_id: 1,
             main_loop_active: Arc::new(AtomicBool::new(false)),
+            recovery_agent_count: Arc::new(AtomicU64::new(0)),
         }
     }
 
@@ -176,6 +178,12 @@ impl WorkerProcess {
         max_steps: u64,
         plan_node_id: Option<String>,
     ) -> Result<SpawnDto, String> {
+        let is_recovery_agent = domain.starts_with("Recovery:");
+        let is_base_agent_spawn = plan_node_id.is_none();
+        if is_base_agent_spawn && !is_recovery_agent && self.recovery_agent_active() {
+            return Err("recovery agent active; base agent spawn blocked".to_string());
+        }
+
         let worker_port = self
             .active
             .as_ref()
@@ -220,8 +228,20 @@ impl WorkerProcess {
         eprintln!(
             "supervisor: spawning agent {spawn_id}  domain={domain:?}  metric={metric:?}  worker_port={worker_port}"
         );
+        if is_recovery_agent {
+            crate::service::agent::loop_driver::close_existing_base_agent_for_recovery();
+        }
         let sid = spawn_id.clone();
+        let recovery_guard = if is_recovery_agent {
+            self.recovery_agent_count.fetch_add(1, Ordering::AcqRel);
+            Some(RecoveryAgentActiveGuard {
+                active: Arc::clone(&self.recovery_agent_count),
+            })
+        } else {
+            None
+        };
         std::thread::spawn(move || {
+            let _recovery_guard = recovery_guard;
             LoopDriver::new(config).run_all_agents();
             eprintln!("supervisor: agent {sid} finished");
         });
@@ -237,6 +257,10 @@ impl WorkerProcess {
     }
 
     pub fn start_main_loop(&mut self, req: StartLoopRequest) -> Result<StartLoopDto, String> {
+        if self.recovery_agent_active() {
+            return Err("recovery agent active; base agent spawn blocked".to_string());
+        }
+
         let worker_port = self
             .active
             .as_ref()
@@ -318,6 +342,10 @@ impl WorkerProcess {
             agent_count,
             executor_count,
         })
+    }
+
+    fn recovery_agent_active(&self) -> bool {
+        self.recovery_agent_count.load(Ordering::Acquire) > 0
     }
 
     /// Claim a ready plan node for a worker.  Atomic under the supervisor Mutex.
@@ -620,9 +648,9 @@ impl WorkerProcess {
     /// - Any non-terminal node with a `blocker` evidence entry → Failed.
     ///   Workers that hit an unresolvable condition write a blocker and stop
     ///   without sending a completion callback, leaving the node stuck.
-    /// - Any non-terminal node with an accepted execution-receipt evidence entry
-    ///   → Done. Guards against missed completion callbacks (e.g. worker crash
-    ///   after appending evidence but before the HTTP POST returned).
+    /// - Any non-terminal node with an accepted verification evidence receipt
+    ///   → Done. Guards against missed completion callbacks only after the same
+    ///   typed evidence validator used by completion accepts the receipt.
     pub fn reconcile_terminal_evidence(&self) {
         let (plan, _) = load_plan_read_model(&self.project_dir)
             .unwrap_or_else(|_| (load_plan(&self.project_dir), None));
@@ -639,15 +667,15 @@ impl WorkerProcess {
             }
 
             let has_blocker = node.evidence.iter().any(|e| e.is_blocker());
-            let has_accepted_receipt = node
+            let accepted_verification = node
                 .evidence
                 .iter()
-                .any(|e| e.is_accepted_execution_receipt());
+                .find_map(|evidence| AcceptedEvidenceReceipt::try_from(evidence).ok());
 
             // Accepted receipt takes precedence over a blocker if somehow both exist.
-            if has_accepted_receipt {
+            if accepted_verification.is_some() {
                 eprintln!(
-                    "supervisor: reconcile — promoting {} to Done (accepted receipt evidence found)",
+                    "supervisor: reconcile — promoting {} to Done (accepted verification evidence found)",
                     node.id
                 );
                 match append_status_change_patch(&self.project_dir, &node.id, &NodeStatus::Done) {
@@ -953,17 +981,33 @@ pub struct TaskLease {
     pub expires_at_ms: u64,
 }
 
-/// Accepted evidence required before a task claim can move to `Done`.
+/// Accepted verification evidence required before a task claim can move to `Done`.
 ///
 /// This value is only constructible from a plan read-model entry that carries an
-/// accepted execution receipt (`accepted=true`, `gate=Execution`,
-/// `evidence=ExecutionReceipt`, non-zero `receipt_hash`) and is still present in
-/// the accepted TLog projection. Completion code consumes this typed prerequisite
-/// instead of re-deriving truth from generic evidence hashes.
+/// accepted verification receipt (`accepted=true`, `gate=Verification`,
+/// `evidence=LineageProof`, non-zero `receipt_hash`, nonempty payload fields)
+/// and is still present in the accepted TLog projection. Completion code
+/// consumes this typed prerequisite instead of re-deriving truth from generic
+/// evidence hashes.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct AcceptedTaskEvidence {
     evidence_hash: u64,
     receipt_hash: u64,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum CompletionEvidenceOutcome {
+    EvidenceMissing,
+    GateFailed,
+}
+
+impl CompletionEvidenceOutcome {
+    fn as_str(self) -> &'static str {
+        match self {
+            Self::EvidenceMissing => "EvidenceMissing",
+            Self::GateFailed => "GateFailed",
+        }
+    }
 }
 
 impl AcceptedTaskEvidence {
@@ -976,15 +1020,37 @@ impl AcceptedTaskEvidence {
             .find(|node| node.id == node_id)
             .ok_or_else(|| format!("node {node_id} not found in plan"))?;
 
-        let accepted: Vec<AcceptedExecutionEvidenceRef<'_>> = node
-            .evidence
-            .iter()
-            .filter_map(|evidence| AcceptedExecutionEvidenceRef::try_from(evidence).ok())
-            .collect();
+        let mut accepted = Vec::new();
+        let mut rejected_verification_attempts = 0usize;
+        for evidence in &node.evidence {
+            match AcceptedEvidenceReceipt::try_from(evidence) {
+                Ok(receipt) => accepted.push(receipt),
+                Err(err)
+                    if !evidence.is_accepted_execution_receipt()
+                        && (evidence.accepted
+                            || !evidence.gate.is_empty()
+                            || !evidence.evidence.is_empty()
+                            || evidence.receipt_hash != 0) =>
+                {
+                    rejected_verification_attempts += 1;
+                    eprintln!(
+                        "supervisor: rejected completion evidence for node {node_id}: {}",
+                        err.code
+                    );
+                }
+                Err(_) => {}
+            }
+        }
 
         if accepted.is_empty() {
+            let outcome = if rejected_verification_attempts == 0 {
+                CompletionEvidenceOutcome::EvidenceMissing
+            } else {
+                CompletionEvidenceOutcome::GateFailed
+            };
             return Err(format!(
-                "node {node_id} cannot be completed without accepted execution receipt evidence"
+                "{}: node {node_id} cannot be completed without accepted verification evidence",
+                outcome.as_str()
             ));
         }
 
@@ -1014,6 +1080,16 @@ struct MainLoopActiveGuard {
 impl Drop for MainLoopActiveGuard {
     fn drop(&mut self) {
         self.active.store(false, Ordering::Release);
+    }
+}
+
+struct RecoveryAgentActiveGuard {
+    active: Arc<AtomicU64>,
+}
+
+impl Drop for RecoveryAgentActiveGuard {
+    fn drop(&mut self) {
+        self.active.fetch_sub(1, Ordering::AcqRel);
     }
 }
 
@@ -1244,4 +1320,259 @@ async fn wait_for_health(
         "worker health deadline expired after {}s for port {port}",
         health_deadline.as_secs()
     ))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::domain::plan::{
+        PlanDag, PlanNode, EVIDENCE_GATE_EXECUTION, EVIDENCE_GATE_VERIFICATION,
+        EVIDENCE_KIND_VALIDATION, EVIDENCE_TYPE_EXECUTION_RECEIPT, EVIDENCE_TYPE_LINEAGE_PROOF,
+    };
+    use crate::service::scheduler::plan_store::save_plan;
+
+    fn test_process() -> WorkerProcess {
+        WorkerProcess::new(
+            PathBuf::from("/tmp/kernel_tlog"),
+            PathBuf::from("/tmp/tlog"),
+            "http://127.0.0.1:1".to_string(),
+            "http://127.0.0.1:3/v1".to_string(),
+            PathBuf::from("/tmp/project"),
+            "http://127.0.0.1:2/ai".to_string(),
+            9_999,
+        )
+    }
+
+    fn temp_project_root(name: &str) -> PathBuf {
+        let nonce = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_nanos();
+        std::env::temp_dir().join(format!(
+            "canon-supervisor-{name}-{}-{nonce}",
+            std::process::id()
+        ))
+    }
+
+    fn evidence(gate: &str, evidence: &str, accepted: bool, receipt_hash: u64) -> PlanEvidenceRef {
+        PlanEvidenceRef {
+            path: "state/agent-evidence/receipt.md".to_string(),
+            kind: EVIDENCE_KIND_VALIDATION.to_string(),
+            summary: "validated receipt".to_string(),
+            gate: gate.to_string(),
+            evidence: evidence.to_string(),
+            receipt_hash,
+            accepted,
+        }
+    }
+
+    fn save_node_with_evidence(root: &Path, id: &str, evidence: Vec<PlanEvidenceRef>) {
+        let plan = PlanDag {
+            version: 1,
+            nodes: vec![PlanNode {
+                id: id.to_string(),
+                title: id.to_string(),
+                description: String::new(),
+                status: NodeStatus::Pending,
+                assignee: None,
+                score_axes: Vec::new(),
+                files: Vec::new(),
+                evidence,
+            }],
+            edges: Vec::new(),
+            ..Default::default()
+        };
+        save_plan(root, &plan).expect("save test plan");
+    }
+
+    fn typed_completion_outcome(
+        root: &Path,
+        node_id: &str,
+    ) -> Result<AcceptedTaskEvidence, String> {
+        AcceptedTaskEvidence::from_read_model(root, node_id)
+    }
+
+    #[test]
+    fn accepted_verification_evidence_constructs_typed_completion_receipt() {
+        let root = temp_project_root("accepted-verification");
+        save_node_with_evidence(
+            &root,
+            "n1",
+            vec![evidence(
+                EVIDENCE_GATE_VERIFICATION,
+                EVIDENCE_TYPE_LINEAGE_PROOF,
+                true,
+                7,
+            )],
+        );
+
+        let accepted = typed_completion_outcome(&root, "n1")
+            .expect("accepted verification evidence should produce typed completion evidence");
+
+        assert_ne!(accepted.evidence_hash, 0);
+        assert_ne!(accepted.receipt_hash, 0);
+    }
+
+    #[test]
+    fn missing_evidence_is_not_completion_signal() {
+        let root = temp_project_root("missing-evidence");
+        save_node_with_evidence(&root, "n1", Vec::new());
+
+        let err =
+            typed_completion_outcome(&root, "n1").expect_err("missing evidence must not complete");
+
+        assert!(err.starts_with("EvidenceMissing:"), "{err}");
+    }
+
+    #[test]
+    fn wrong_gate_is_gate_failed_not_completion_signal() {
+        let root = temp_project_root("wrong-gate");
+        save_node_with_evidence(
+            &root,
+            "n1",
+            vec![evidence(
+                EVIDENCE_GATE_EXECUTION,
+                EVIDENCE_TYPE_LINEAGE_PROOF,
+                true,
+                7,
+            )],
+        );
+
+        let err = typed_completion_outcome(&root, "n1").expect_err("wrong gate must not complete");
+
+        assert!(err.starts_with("GateFailed:"), "{err}");
+    }
+
+    #[test]
+    fn unaccepted_evidence_is_gate_failed_not_completion_signal() {
+        let root = temp_project_root("unaccepted-evidence");
+        save_node_with_evidence(
+            &root,
+            "n1",
+            vec![evidence(
+                EVIDENCE_GATE_VERIFICATION,
+                EVIDENCE_TYPE_LINEAGE_PROOF,
+                false,
+                7,
+            )],
+        );
+
+        let err = typed_completion_outcome(&root, "n1")
+            .expect_err("unaccepted evidence must not complete");
+
+        assert!(err.starts_with("GateFailed:"), "{err}");
+    }
+
+    #[test]
+    fn zero_receipt_hash_is_gate_failed_not_completion_signal() {
+        let root = temp_project_root("zero-receipt");
+        save_node_with_evidence(
+            &root,
+            "n1",
+            vec![evidence(
+                EVIDENCE_GATE_VERIFICATION,
+                EVIDENCE_TYPE_LINEAGE_PROOF,
+                true,
+                0,
+            )],
+        );
+
+        let err =
+            typed_completion_outcome(&root, "n1").expect_err("zero receipt hash must not complete");
+
+        assert!(err.starts_with("GateFailed:"), "{err}");
+    }
+
+    #[test]
+    fn repeated_unaccepted_evidence_remains_gate_failed_not_completion_signal() {
+        let root = temp_project_root("repeated-unaccepted");
+        save_node_with_evidence(
+            &root,
+            "n1",
+            vec![
+                evidence(
+                    EVIDENCE_GATE_VERIFICATION,
+                    EVIDENCE_TYPE_LINEAGE_PROOF,
+                    false,
+                    7,
+                ),
+                evidence(
+                    EVIDENCE_GATE_VERIFICATION,
+                    EVIDENCE_TYPE_LINEAGE_PROOF,
+                    false,
+                    8,
+                ),
+            ],
+        );
+
+        let err = typed_completion_outcome(&root, "n1")
+            .expect_err("repeated unaccepted evidence must not complete");
+
+        assert!(err.starts_with("GateFailed:"), "{err}");
+    }
+
+    #[test]
+    fn execution_receipt_only_does_not_reconcile_to_done() {
+        let root = temp_project_root("execution-receipt-only");
+        save_node_with_evidence(
+            &root,
+            "n1",
+            vec![evidence(
+                EVIDENCE_GATE_EXECUTION,
+                EVIDENCE_TYPE_EXECUTION_RECEIPT,
+                true,
+                7,
+            )],
+        );
+        let mut process = test_process();
+        process.project_dir = root.clone();
+
+        process.reconcile_terminal_evidence();
+
+        let plan = load_plan(&root);
+        assert_eq!(plan.nodes[0].status, NodeStatus::Pending);
+    }
+
+    #[test]
+    fn recovery_agent_gate_blocks_base_agent_starts() {
+        let mut process = test_process();
+        process.recovery_agent_count.store(1, Ordering::Release);
+
+        let start_error = process
+            .start_main_loop(StartLoopRequest::default())
+            .expect_err("active recovery should block base loop start");
+        assert_eq!(
+            start_error,
+            "recovery agent active; base agent spawn blocked"
+        );
+
+        let spawn_error = process
+            .spawn_agent("Base", "metric", 1, None)
+            .expect_err("active recovery should block base spawn");
+        assert_eq!(
+            spawn_error,
+            "recovery agent active; base agent spawn blocked"
+        );
+    }
+
+    #[test]
+    fn recovery_agent_gate_allows_recovery_and_node_scoped_spawns_to_reach_worker_check() {
+        let mut process = test_process();
+        process.recovery_agent_count.store(1, Ordering::Release);
+
+        let recovery_error = process
+            .spawn_agent(
+                "Recovery: stuck node",
+                "metric",
+                1,
+                Some("node-1".to_string()),
+            )
+            .expect_err("test process has no active worker");
+        assert_eq!(recovery_error, "no active worker — call /reload first");
+
+        let node_scoped_error = process
+            .spawn_agent("Task", "metric", 1, Some("node-2".to_string()))
+            .expect_err("test process has no active worker");
+        assert_eq!(node_scoped_error, "no active worker — call /reload first");
+    }
 }
