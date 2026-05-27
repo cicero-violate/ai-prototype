@@ -847,145 +847,49 @@ mod tests {
     }
 
     #[test]
+    #[test]
     fn prior_evidence_from_another_command_does_not_satisfy_temporal_order() {
         let cfg = RuntimeConfig::default();
-        let initial = failed_gate_failed_state();
-        let first_command_evidence = evidence_submission_event(&[], initial, cfg, 501, 0x501);
-        let tlog = vec![
-            first_command_evidence,
-            reducer_event(
-                &[first_command_evidence],
-                first_command_evidence.state_after,
-                cfg,
-                502,
-                0x502,
+        let cases = [
+            (
+                repair_selected_state(),
+                EventKind::Recovered,
+                Cause::RepairSelected,
+            ),
+            (
+                repair_applied_state(),
+                EventKind::Persisted,
+                Cause::RepairApplied,
+            ),
+            (
+                failed_gate_failed_state(),
+                EventKind::Failed,
+                Cause::GateFailed,
+            ),
+            (
+                failed_evidence_missing_state(),
+                EventKind::Failed,
+                Cause::EvidenceMissing,
             ),
         ];
 
-        assert_eq!(
-            verify_tlog_from(initial, &tlog),
-            Err(CanonError::InvalidReplay)
-        );
-    }
+        for (initial, expected_kind, expected_cause) in cases {
+            let unrelated_command_evidence = evidence_submission_event(&[], initial, cfg, 501, 0x501);
+            let target = reducer_event(
+                &[unrelated_command_evidence],
+                unrelated_command_evidence.state_after,
+                cfg,
+                502,
+                0x502,
+            );
+            assert_event_type(&target, expected_kind, expected_cause);
 
-    fn assert_target_requires_prior_evidence(
-        initial: State,
-        expected_kind: EventKind,
-        expected_cause: Cause,
-    ) {
-        let cfg = RuntimeConfig::default();
-        let target_without_evidence = reducer_event(&[], initial, cfg, COMMAND_ID, COMMAND_HASH);
-        assert_event_type(&target_without_evidence, expected_kind, expected_cause);
-        assert_eq!(
-            verify_tlog_from(initial, &[target_without_evidence]),
-            Err(CanonError::InvalidReplay)
-        );
-
-        let evidence = evidence_submission_event(&[], initial, cfg, COMMAND_ID, COMMAND_HASH);
-        let target_with_evidence = reducer_event(
-            &[evidence],
-            evidence.state_after,
-            cfg,
-            COMMAND_ID,
-            COMMAND_HASH,
-        );
-        assert_event_type(&target_with_evidence, expected_kind, expected_cause);
-
-        let final_state = verify_tlog_from(initial, &[evidence, target_with_evidence])
-            .expect("accepted after Verification evidence");
-        let verification_gate = final_state.gates.get(GateId::Verification);
-        assert_eq!(verification_gate.status, GateStatus::Pass);
-        assert_eq!(verification_gate.evidence, Evidence::VerificationReport);
-    }
-
-    fn assert_event_type(event: &ControlEvent, expected_kind: EventKind, expected_cause: Cause) {
-        assert_eq!(event.kind, expected_kind);
-        assert_eq!(event.cause, expected_cause);
-    }
-
-    fn evidence_submission_event(
-        tlog: &[ControlEvent],
-        before: State,
-        cfg: RuntimeConfig,
-        command_id: u64,
-        command_hash: u64,
-    ) -> ControlEvent {
-        let mut after = before;
-        apply_expected_packet_effect(
-            &mut after,
-            GateId::Verification,
-            Evidence::VerificationReport,
-        );
-        after.apply_evidence(GateId::Verification, Evidence::VerificationReport, true);
-
-        CanonicalWriter::build_with_command_and_registry_projection(
-            tlog,
-            before,
-            Outcome {
-                state: after,
-                kind: EventKind::Persisted,
-                cause: Cause::EvidenceSubmitted,
-                evidence: Evidence::VerificationReport,
-                decision: Decision::Continue,
-                failure: None,
-                recovery_action: None,
-                affected_gate: Some(GateId::Verification),
-            },
-            cfg,
-            command_id,
-            command_hash,
-            CapabilityRegistryProjection::new(1, 0xC0FFEE),
-        )
-        .expect("Verification evidence submission event is canonical")
-    }
-
-    fn reducer_event(
-        tlog: &[ControlEvent],
-        before: State,
-        cfg: RuntimeConfig,
-        command_id: u64,
-        command_hash: u64,
-    ) -> ControlEvent {
-        CanonicalWriter::build_with_command(
-            tlog,
-            before,
-            reduce(before, cfg),
-            cfg,
-            command_id,
-            command_hash,
-        )
-        .expect("reducer event is canonical")
-    }
-
-    fn failed_evidence_missing_state() -> State {
-        State {
-            phase: Phase::Analysis,
-            ..State::default()
+            assert_eq!(
+                verify_tlog_from(initial, &[unrelated_command_evidence, target]),
+                Err(CanonError::InvalidReplay),
+                "unrelated command evidence unexpectedly satisfied {:?}::{:?}",
+                expected_kind,
+                expected_cause
+            );
         }
     }
-
-    fn failed_gate_failed_state() -> State {
-        let mut state = failed_evidence_missing_state();
-        state
-            .gates
-            .set_fail(GateId::Analysis, Evidence::AnalysisReport);
-        state
-    }
-
-    fn repair_selected_state() -> State {
-        State {
-            phase: Phase::Recovery,
-            failure: Some(FailureClass::AnalysisMissing),
-            ..State::default()
-        }
-    }
-
-    fn repair_applied_state() -> State {
-        State {
-            phase: Phase::Persist,
-            failure: Some(FailureClass::AnalysisMissing),
-            recovery_action: Some(RecoveryAction::RunAnalysis),
-            ..State::default()
-        }
-    }
-}
