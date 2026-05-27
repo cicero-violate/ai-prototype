@@ -110,6 +110,21 @@ impl FailureClassKind {
             Self::NoActionableFailure => "no_actionable_failure",
         }
     }
+
+    pub fn from_str(value: &str) -> Option<Self> {
+        match value {
+            "missing_module" => Some(Self::MissingModule),
+            "dead_code_forbid_conflict" => Some(Self::DeadCodeForbidConflict),
+            "missing_entrypoint" => Some(Self::MissingEntrypoint),
+            "unresolved_import" => Some(Self::UnresolvedImport),
+            "missing_symbol" => Some(Self::MissingSymbol),
+            "duplicate_definition" => Some(Self::DuplicateDefinition),
+            "trait_bound_failure" => Some(Self::TraitBoundFailure),
+            "generic_compiler_failure" => Some(Self::GenericCompilerFailure),
+            "no_actionable_failure" => Some(Self::NoActionableFailure),
+            _ => None,
+        }
+    }
 }
 
 /// One structured compiler hint, suitable for inclusion in a planner context prompt.

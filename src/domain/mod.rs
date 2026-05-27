@@ -27,6 +27,7 @@ pub mod global_intelligence;
 pub mod identity;
 pub mod plan;
 pub mod risk;
+pub mod rustc_analysis_outcome;
 pub mod scoring;
 pub mod semantic;
 pub mod trading;

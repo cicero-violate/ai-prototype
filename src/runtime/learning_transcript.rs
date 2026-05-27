@@ -16,7 +16,7 @@ use std::io::{BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
 
 use chrono::Utc;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::capability::learning::artifact::{
@@ -182,36 +182,91 @@ pub fn resolve_def_paths_for_file(workspace_root: &Path, file_path: &str) -> Vec
             if line.trim().is_empty() {
                 continue;
             }
-            let Ok(value) = serde_json::from_str::<serde_json::Value>(&line) else {
+            let Ok(record) = SemanticIndexTranscriptRecord::decode(&line) else {
                 continue;
             };
-            let kind = value.get("kind").and_then(|v| v.as_str()).unwrap_or("");
-            let dp = match kind {
-                "symbol_def" => {
-                    let span_file = value
-                        .pointer("/span/file")
-                        .and_then(|v| v.as_str())
-                        .unwrap_or("");
-                    if span_file != file_path {
-                        continue;
-                    }
-                    value.get("def_path").and_then(|v| v.as_str()).unwrap_or("")
-                }
-                "refactor_cost_profile" => {
-                    let f = value.get("file").and_then(|v| v.as_str()).unwrap_or("");
-                    if f != file_path {
-                        continue;
-                    }
-                    value.get("def_path").and_then(|v| v.as_str()).unwrap_or("")
-                }
-                _ => continue,
+            let Some(dp) = record.def_path_for_file(file_path) else {
+                continue;
             };
-            if !dp.is_empty() && !def_paths.contains(&dp.to_string()) {
-                def_paths.push(dp.to_string());
+            if !def_paths.contains(&dp) {
+                def_paths.push(dp);
             }
         }
     }
     def_paths
+}
+
+// ── Typed semantic index transcript records ──────────────────────────────────
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+enum SemanticIndexTranscriptRecord {
+    SymbolDef { def_path: String, file: String },
+    RefactorCostProfile { def_path: String, file: String },
+    Other,
+}
+
+impl SemanticIndexTranscriptRecord {
+    fn decode(line: &str) -> Result<Self, String> {
+        let raw: RawSemanticIndexTranscriptRecord =
+            serde_json::from_str(line).map_err(|e| format!("decode semantic index row: {e}"))?;
+        raw.try_into()
+    }
+
+    fn def_path_for_file(&self, file_path: &str) -> Option<String> {
+        match self {
+            Self::SymbolDef { def_path, file } | Self::RefactorCostProfile { def_path, file }
+                if file == file_path =>
+            {
+                Some(def_path.clone())
+            }
+            _ => None,
+        }
+    }
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(tag = "kind")]
+enum RawSemanticIndexTranscriptRecord {
+    #[serde(rename = "symbol_def")]
+    SymbolDef { def_path: String, span: RawSpan },
+    #[serde(rename = "refactor_cost_profile")]
+    RefactorCostProfile { def_path: String, file: String },
+    #[serde(other)]
+    Other,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+struct RawSpan {
+    file: String,
+}
+
+impl TryFrom<RawSemanticIndexTranscriptRecord> for SemanticIndexTranscriptRecord {
+    type Error = String;
+
+    fn try_from(raw: RawSemanticIndexTranscriptRecord) -> Result<Self, Self::Error> {
+        match raw {
+            RawSemanticIndexTranscriptRecord::SymbolDef { def_path, span } => {
+                let def_path = required_transcript_field("symbol_def.def_path", def_path)?;
+                let file = required_transcript_field("symbol_def.span.file", span.file)?;
+                Ok(Self::SymbolDef { def_path, file })
+            }
+            RawSemanticIndexTranscriptRecord::RefactorCostProfile { def_path, file } => {
+                let def_path =
+                    required_transcript_field("refactor_cost_profile.def_path", def_path)?;
+                let file = required_transcript_field("refactor_cost_profile.file", file)?;
+                Ok(Self::RefactorCostProfile { def_path, file })
+            }
+            RawSemanticIndexTranscriptRecord::Other => Ok(Self::Other),
+        }
+    }
+}
+
+fn required_transcript_field(name: &str, value: String) -> Result<String, String> {
+    if value.is_empty() {
+        Err(format!("empty semantic index field: {name}"))
+    } else {
+        Ok(value)
+    }
 }
 
 // ── Artifact file paths ───────────────────────────────────────────────────────
@@ -523,5 +578,67 @@ mod tests {
 
         let replayed = replay_learning_transcripts(&workspace).expect("replay recovered");
         assert_eq!(replayed.len(), 1);
+    }
+
+    #[test]
+    fn typed_semantic_transcript_records_accept_known_rows() {
+        let symbol = SemanticIndexTranscriptRecord::decode(
+            r#"{"kind":"symbol_def","def_path":"crate::module::term","span":{"file":"ai/src/lib.rs"}}"#,
+        )
+        .expect("typed symbol_def row");
+        assert_eq!(
+            symbol.def_path_for_file("ai/src/lib.rs"),
+            Some("crate::module::term".to_string())
+        );
+
+        let cost = SemanticIndexTranscriptRecord::decode(
+            r#"{"kind":"refactor_cost_profile","def_path":"crate::module::function","file":"ai/src/runtime.rs"}"#,
+        )
+        .expect("typed refactor_cost_profile row");
+        assert_eq!(
+            cost.def_path_for_file("ai/src/runtime.rs"),
+            Some("crate::module::function".to_string())
+        );
+    }
+
+    #[test]
+    fn typed_semantic_transcript_records_reject_malformed_rows() {
+        assert!(SemanticIndexTranscriptRecord::decode(
+            r#"{"kind":"symbol_def","def_path":"crate::module::term"}"#
+        )
+        .is_err());
+        assert!(SemanticIndexTranscriptRecord::decode(
+            r#"{"kind":"symbol_def","def_path":"","span":{"file":"ai/src/lib.rs"}}"#
+        )
+        .is_err());
+        assert!(SemanticIndexTranscriptRecord::decode(
+            r#"{"kind":"refactor_cost_profile","def_path":"crate::module::function","file":""}"#
+        )
+        .is_err());
+        assert!(SemanticIndexTranscriptRecord::decode("not json").is_err());
+    }
+
+    #[test]
+    fn resolve_def_paths_for_file_uses_typed_rows_and_skips_malformed_rows() {
+        let (workspace, _tmp) = unique_workspace();
+        let rustc_dir = workspace_state_dir(&workspace).join("rustc/session-1");
+        fs::create_dir_all(&rustc_dir).unwrap();
+        fs::write(
+            rustc_dir.join("semantic_index.jsonl"),
+            concat!(
+                "{\"kind\":\"symbol_def\",\"def_path\":\"crate::term\",\"span\":{\"file\":\"ai/src/lib.rs\"}}\n",
+                "{\"kind\":\"refactor_cost_profile\",\"def_path\":\"crate::function\",\"file\":\"ai/src/lib.rs\"}\n",
+                "{\"kind\":\"symbol_def\",\"def_path\":\"\",\"span\":{\"file\":\"ai/src/lib.rs\"}}\n",
+                "{\"kind\":\"symbol_def\",\"def_path\":\"crate::other\",\"span\":{\"file\":\"ai/src/other.rs\"}}\n",
+                "not json\n",
+            ),
+        )
+        .unwrap();
+
+        let def_paths = resolve_def_paths_for_file(&workspace, "ai/src/lib.rs");
+        assert_eq!(
+            def_paths,
+            vec!["crate::term".to_string(), "crate::function".to_string()]
+        );
     }
 }

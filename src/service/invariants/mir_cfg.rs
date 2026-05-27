@@ -26,6 +26,8 @@ use std::collections::HashMap;
 use std::io::{BufRead, BufReader};
 use std::path::Path;
 
+use serde::Deserialize;
+
 /// A structural call-graph invariant mined from MIR:
 /// `caller` always calls `callee_a` before `callee_b` (by BB order).
 #[derive(Clone, Debug)]
@@ -52,6 +54,91 @@ impl MirCallInvariant {
 /// A call-site event type: the callee function name (deduplicated to first BB).
 type CalleeType = String;
 
+/// Typed JSONL boundary for MIR fact records.
+#[derive(Debug, Deserialize)]
+#[serde(tag = "kind")]
+enum MirFactRecord {
+    #[serde(rename = "term")]
+    Term(MirTermFact),
+    #[serde(other)]
+    Other,
+}
+
+#[derive(Debug, Deserialize)]
+struct MirTermFact {
+    term: MirTermKind,
+    #[serde(rename = "fn")]
+    caller: Option<String>,
+    bb: Option<u32>,
+    callee: Option<String>,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Deserialize)]
+enum MirTermKind {
+    #[serde(rename = "Call")]
+    Call,
+    #[serde(other)]
+    Other,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+struct MirCallFact {
+    caller: String,
+    bb: u32,
+    callee: String,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum MirFactSkip {
+    NonTerm,
+    NonCallTerm,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+enum MirFactError {
+    InvalidJson(String),
+    MissingCaller,
+    MissingBasicBlock,
+    MissingCallee,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+enum MirFactOutcome {
+    Call(MirCallFact),
+    Skip(MirFactSkip),
+    Malformed(MirFactError),
+}
+
+impl MirTermFact {
+    fn into_outcome(self) -> MirFactOutcome {
+        if self.term != MirTermKind::Call {
+            return MirFactOutcome::Skip(MirFactSkip::NonCallTerm);
+        }
+
+        let Some(caller) = self.caller else {
+            return MirFactOutcome::Malformed(MirFactError::MissingCaller);
+        };
+        let Some(bb) = self.bb else {
+            return MirFactOutcome::Malformed(MirFactError::MissingBasicBlock);
+        };
+        let Some(callee) = self.callee else {
+            return MirFactOutcome::Malformed(MirFactError::MissingCallee);
+        };
+
+        MirFactOutcome::Call(MirCallFact { caller, bb, callee })
+    }
+}
+
+impl MirFactOutcome {
+    fn from_json_line(line: &str) -> Self {
+        match serde_json::from_str::<MirFactRecord>(line) {
+            Ok(MirFactRecord::Term(term)) => term.into_outcome(),
+            Ok(MirFactRecord::Other) => MirFactOutcome::Skip(MirFactSkip::NonTerm),
+            Err(err) => MirFactOutcome::Malformed(MirFactError::InvalidJson(err.to_string())),
+        }
+    }
+}
+
 /// Canonical key for an unordered callee pair.
 fn pair_key<'a>(a: &'a str, b: &'a str) -> (&'a str, &'a str) {
     if a <= b {
@@ -75,32 +162,16 @@ fn load_call_sequences(mir_path: &Path) -> Result<HashMap<String, Vec<(u32, Stri
         if line.is_empty() {
             continue;
         }
-        // Fast-path: skip non-term and non-Call records before JSON parse.
-        if !line.contains("\"Call\"") {
-            continue;
-        }
 
-        let Ok(record) = serde_json::from_str::<serde_json::Value>(&line) else {
-            continue;
-        };
-        if record.get("kind").and_then(|v| v.as_str()) != Some("term") {
-            continue;
+        match MirFactOutcome::from_json_line(&line) {
+            MirFactOutcome::Call(call) => {
+                by_caller
+                    .entry(call.caller)
+                    .or_default()
+                    .push((call.bb, call.callee));
+            }
+            MirFactOutcome::Skip(_) | MirFactOutcome::Malformed(_) => continue,
         }
-        if record.get("term").and_then(|v| v.as_str()) != Some("Call") {
-            continue;
-        }
-        let Some(caller) = record.get("fn").and_then(|v| v.as_str()) else {
-            continue;
-        };
-        let Some(callee) = record.get("callee").and_then(|v| v.as_str()) else {
-            continue;
-        };
-        let bb = record.get("bb").and_then(|v| v.as_u64()).unwrap_or(0) as u32;
-
-        by_caller
-            .entry(caller.to_string())
-            .or_default()
-            .push((bb, callee.to_string()));
     }
 
     Ok(by_caller)
@@ -271,6 +342,48 @@ mod tests {
             writeln!(f, "{}", r).unwrap();
         }
         f
+    }
+
+    #[test]
+    fn mir_fact_outcome_accepts_valid_call_record() {
+        let outcome = MirFactOutcome::from_json_line(
+            r#"{"kind":"term","fn":"foo","bb":7,"term":"Call","callee":"bar","args":[],"ret":{"local":"_1","ty":"()"}}"#,
+        );
+
+        assert_eq!(
+            outcome,
+            MirFactOutcome::Call(MirCallFact {
+                caller: "foo".to_string(),
+                bb: 7,
+                callee: "bar".to_string(),
+            })
+        );
+    }
+
+    #[test]
+    fn mir_fact_outcome_skips_non_call_records() {
+        assert_eq!(
+            MirFactOutcome::from_json_line(
+                r#"{"kind":"assign","fn":"foo","bb":0,"stmt":0,"lhs":{"local":"_1","ty":"u32"}}"#,
+            ),
+            MirFactOutcome::Skip(MirFactSkip::NonTerm)
+        );
+        assert_eq!(
+            MirFactOutcome::from_json_line(r#"{"kind":"term","term":"Return"}"#),
+            MirFactOutcome::Skip(MirFactSkip::NonCallTerm)
+        );
+    }
+
+    #[test]
+    fn mir_fact_outcome_marks_malformed_call_records() {
+        assert_eq!(
+            MirFactOutcome::from_json_line(r#"{"kind":"term","fn":"foo","bb":0,"term":"Call"}"#,),
+            MirFactOutcome::Malformed(MirFactError::MissingCallee)
+        );
+        assert!(matches!(
+            MirFactOutcome::from_json_line("not-json"),
+            MirFactOutcome::Malformed(MirFactError::InvalidJson(_))
+        ));
     }
 
     #[test]
