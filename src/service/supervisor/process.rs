@@ -983,6 +983,7 @@ pub struct PlanStatusDto {
     pub skipped: usize,
     pub total: usize,
     pub ready: usize,
+    pub nodes: Vec<serde_json::Value>,
 }
 
 // ── Task lifecycle (claim / heartbeat / complete / fail) ─────────────────────

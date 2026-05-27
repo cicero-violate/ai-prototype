@@ -43,6 +43,7 @@ fn render_control_page_html(health: &HealthDto) -> String {
 :root {
   color-scheme: light dark;
   --bg: #0b1020;
+  --bg-accent: #172554;
   --panel: #111827;
   --panel-2: #0f172a;
   --line: #263244;
@@ -56,12 +57,16 @@ fn render_control_page_html(health: &HealthDto) -> String {
 * { box-sizing: border-box; }
 body {
   margin: 0;
-  background: var(--bg);
+  background:
+    radial-gradient(circle at top left, rgba(37, 99, 235, 0.28), transparent 34rem),
+    radial-gradient(circle at top right, rgba(34, 197, 94, 0.12), transparent 28rem),
+    linear-gradient(180deg, var(--bg-accent), var(--bg) 19rem);
   color: var(--text);
   font: 14px/1.5 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  min-height: 100vh;
 }
 main {
-  width: min(1180px, calc(100vw - 32px));
+  width: min(1280px, calc(100vw - 32px));
   margin: 28px auto 40px;
 }
 header {
@@ -72,8 +77,8 @@ header {
   margin-bottom: 18px;
 }
 h1, h2, h3, p { margin: 0; }
-h1 { font-size: 22px; letter-spacing: -0.02em; }
-h2 { font-size: 15px; margin-bottom: 14px; }
+h1 { font-size: clamp(24px, 3vw, 34px); letter-spacing: -0.04em; }
+h2 { font-size: 15px; margin-bottom: 14px; display: flex; justify-content: space-between; gap: 12px; align-items: center; }
 h3 { font-size: 13px; color: var(--muted); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.08em; }
 .subtle { color: var(--muted); }
 .status-strip {
@@ -182,6 +187,19 @@ label { display: grid; gap: 5px; color: var(--muted); }
 .error { color: var(--bad); }
 .success { color: var(--good); }
 .warn-text { color: var(--warn); }
+.toolbar { display: flex; justify-content: space-between; gap: 12px; align-items: center; margin-top: 14px; margin-bottom: 10px; }
+.plan-list { display: grid; gap: 10px; max-height: 560px; overflow: auto; padding-right: 4px; }
+.plan-row { display: grid; grid-template-columns: minmax(120px, 170px) minmax(0, 1fr) minmax(90px, auto); gap: 12px; align-items: start; border: 1px solid var(--line); border-radius: 14px; padding: 12px; background: rgba(2,6,23,0.42); }
+.plan-row-title { font-weight: 650; }
+.plan-row-description { color: var(--muted); margin-top: 3px; }
+.plan-row-meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.status-badge { justify-self: end; border: 1px solid var(--line); border-radius: 999px; padding: 4px 8px; font-size: 12px; text-transform: capitalize; }
+.status-badge.pending { color: var(--muted); }
+.status-badge.running { color: #60a5fa; }
+.status-badge.done { color: var(--good); }
+.status-badge.failed { color: var(--bad); }
+.status-badge.skipped { color: var(--warn); }
+.empty-state { border: 1px dashed var(--line); border-radius: 14px; padding: 18px; color: var(--muted); text-align: center; }
 @media (max-width: 820px) {
   header { display: block; }
   .status-strip { justify-content: flex-start; margin-top: 12px; }
@@ -254,6 +272,11 @@ label { display: grid; gap: 5px; color: var(--muted); }
         <div class="metric"><span class="subtle">Skipped</span><strong id="plan-skipped">–</strong></div>
       </div>
       <div class="bar"><span id="plan-progress"></span></div>
+      <div class="toolbar">
+        <p class="subtle">Complete plan list</p>
+        <span class="pill"><span id="plan-list-count">0</span> nodes loaded</span>
+      </div>
+      <div id="plan-list" class="plan-list"></div>
     </section>
 
     <section class="card">
@@ -337,6 +360,48 @@ function setPlan(data) {
   const total = Number(data.total || 0);
   const done = Number(data.done || 0) + Number(data.skipped || 0);
   $('plan-progress').style.width = total > 0 ? `${Math.round((done / total) * 100)}%` : '0%';
+  setPlanList(Array.isArray(data.nodes) ? data.nodes : []);
+}
+
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>'"]/g, (char) => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    "'": '&#39;',
+    '"': '&quot;',
+  }[char]));
+}
+
+function statusClass(status) {
+  return String(status || 'pending').toLowerCase();
+}
+
+function setPlanList(nodes) {
+  $('plan-list-count').textContent = nodes.length;
+  if (nodes.length === 0) {
+    $('plan-list').innerHTML = '<div class="empty-state">No plan nodes found.</div>';
+    return;
+  }
+  $('plan-list').innerHTML = nodes.map((node) => {
+    const files = Array.isArray(node.files) ? node.files : [];
+    const meta = [
+      node.assignee ? `<span class="pill">assignee ${escapeHtml(node.assignee)}</span>` : '',
+      files.length ? `<span class="pill">${files.length} file${files.length === 1 ? '' : 's'}</span>` : '',
+    ].filter(Boolean).join('');
+    const description = node.description
+      ? `<div class="plan-row-description">${escapeHtml(node.description)}</div>`
+      : '';
+    return `<article class="plan-row">
+      <div class="mono">${escapeHtml(node.id)}</div>
+      <div>
+        <div class="plan-row-title">${escapeHtml(node.title || 'Untitled node')}</div>
+        ${description}
+        ${meta ? `<div class="plan-row-meta">${meta}</div>` : ''}
+      </div>
+      <span class="status-badge ${statusClass(node.status)}">${escapeHtml(node.status || 'pending')}</span>
+    </article>`;
+  }).join('');
 }
 
 function setTask(data) {
@@ -650,6 +715,7 @@ pub async fn get_plan_status(
         skipped: 0,
         total: plan.nodes.len(),
         ready,
+        nodes: Vec::with_capacity(plan.nodes.len()),
     };
 
     for node in &plan.nodes {
@@ -660,6 +726,21 @@ pub async fn get_plan_status(
             NodeStatus::Failed => dto.failed += 1,
             NodeStatus::Skipped => dto.skipped += 1,
         }
+        let status = match node.status {
+            NodeStatus::Pending => "pending",
+            NodeStatus::Running => "running",
+            NodeStatus::Done => "done",
+            NodeStatus::Failed => "failed",
+            NodeStatus::Skipped => "skipped",
+        };
+        dto.nodes.push(serde_json::json!({
+            "id": node.id,
+            "title": node.title,
+            "description": node.description,
+            "status": status,
+            "assignee": node.assignee,
+            "files": node.files,
+        }));
     }
 
     Ok(Json(dto))
