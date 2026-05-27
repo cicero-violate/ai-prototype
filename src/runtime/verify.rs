@@ -891,7 +891,11 @@ mod tests {
         );
         assert_event_type(&target_with_evidence, expected_kind, expected_cause);
 
-        assert!(verify_tlog_from(initial, &[evidence, target_with_evidence]).is_ok());
+        let final_state = verify_tlog_from(initial, &[evidence, target_with_evidence])
+            .expect("accepted after Verification evidence");
+        let verification_gate = final_state.gates.get(GateId::Verification);
+        assert_eq!(verification_gate.status, GateStatus::Pass);
+        assert_eq!(verification_gate.evidence, Evidence::VerificationReport);
     }
 
     fn assert_event_type(event: &ControlEvent, expected_kind: EventKind, expected_cause: Cause) {
@@ -907,7 +911,12 @@ mod tests {
         command_hash: u64,
     ) -> ControlEvent {
         let mut after = before;
-        after.apply_evidence(GateId::Judgment, Evidence::JudgmentRecord, true);
+        apply_expected_packet_effect(
+            &mut after,
+            GateId::Verification,
+            Evidence::VerificationReport,
+        );
+        after.apply_evidence(GateId::Verification, Evidence::VerificationReport, true);
 
         CanonicalWriter::build_with_command_and_registry_projection(
             tlog,
@@ -916,18 +925,18 @@ mod tests {
                 state: after,
                 kind: EventKind::Persisted,
                 cause: Cause::EvidenceSubmitted,
-                evidence: Evidence::JudgmentRecord,
+                evidence: Evidence::VerificationReport,
                 decision: Decision::Continue,
                 failure: None,
                 recovery_action: None,
-                affected_gate: Some(GateId::Judgment),
+                affected_gate: Some(GateId::Verification),
             },
             cfg,
             command_id,
             command_hash,
             CapabilityRegistryProjection::new(1, 0xC0FFEE),
         )
-        .expect("evidence submission event is canonical")
+        .expect("Verification evidence submission event is canonical")
     }
 
     fn reducer_event(

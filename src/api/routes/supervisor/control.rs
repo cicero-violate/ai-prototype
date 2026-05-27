@@ -27,40 +27,387 @@ pub async fn control_page(
         let mut guard = state.inner.lock().await;
         guard.health().await.map_err(error_response)?
     };
-    let html = format!(
-        r#"<!DOCTYPE html>
+    let html = r#"<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Canon AI Supervisor Control</title>
 <style>
-body{{font-family:system-ui,sans-serif;max-width:720px;margin:64px auto;padding:0 24px;color:#111}}
-.card{{border:1px solid #e5e7eb;border-radius:10px;padding:24px;margin-top:20px}}
-button{{padding:10px 18px;font-size:15px;border:0;border-radius:6px;cursor:pointer;margin-right:10px}}
-.reload{{background:#1d4ed8;color:#fff}}
-.restart{{background:#991b1b;color:#fff}}
-code{{background:#f3f4f6;padding:2px 5px;border-radius:4px}}
+:root {
+  color-scheme: light dark;
+  --bg: #0b1020;
+  --panel: #111827;
+  --panel-2: #0f172a;
+  --line: #263244;
+  --text: #e5e7eb;
+  --muted: #94a3b8;
+  --good: #22c55e;
+  --warn: #f59e0b;
+  --bad: #ef4444;
+  --action: #2563eb;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 14px/1.5 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+main {
+  width: min(1180px, calc(100vw - 32px));
+  margin: 28px auto 40px;
+}
+header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+  margin-bottom: 18px;
+}
+h1, h2, h3, p { margin: 0; }
+h1 { font-size: 22px; letter-spacing: -0.02em; }
+h2 { font-size: 15px; margin-bottom: 14px; }
+h3 { font-size: 13px; color: var(--muted); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.08em; }
+.subtle { color: var(--muted); }
+.status-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+.pill {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 5px 9px;
+  color: var(--muted);
+  background: rgba(255,255,255,0.03);
+}
+.pill.ok { color: var(--good); }
+.pill.bad { color: var(--bad); }
+.grid {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 14px;
+}
+.card {
+  grid-column: span 6;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: linear-gradient(180deg, var(--panel), var(--panel-2));
+  padding: 16px;
+  min-width: 0;
+}
+.wide { grid-column: span 12; }
+.third { grid-column: span 4; }
+.kv {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr);
+  gap: 8px 12px;
+  align-items: baseline;
+}
+.kv dt { color: var(--muted); }
+.kv dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+code, .mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+}
+.actions { display: flex; flex-wrap: wrap; gap: 10px; }
+button, input, textarea {
+  font: inherit;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+}
+button {
+  cursor: pointer;
+  padding: 9px 12px;
+  background: #1f2937;
+  color: var(--text);
+}
+button.primary { background: var(--action); border-color: var(--action); color: white; }
+button.warn { background: #7c2d12; border-color: #9a3412; color: white; }
+button.danger { background: #7f1d1d; border-color: #991b1b; color: white; }
+button:disabled { cursor: not-allowed; opacity: 0.55; }
+input, textarea {
+  width: 100%;
+  background: #020617;
+  color: var(--text);
+  padding: 9px 10px;
+}
+textarea { min-height: 76px; resize: vertical; }
+label { display: grid; gap: 5px; color: var(--muted); }
+.form-grid { display: grid; gap: 10px; }
+.two { display: grid; grid-template-columns: 1fr 140px; gap: 10px; }
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(88px, 1fr));
+  gap: 8px;
+}
+.metric {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 10px;
+  background: rgba(255,255,255,0.03);
+}
+.metric strong { display: block; font-size: 20px; }
+.bar {
+  height: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #020617;
+  border: 1px solid var(--line);
+  margin-top: 12px;
+}
+.bar > span {
+  display: block;
+  height: 100%;
+  width: 0%;
+  background: var(--good);
+}
+.log {
+  max-height: 230px;
+  overflow: auto;
+  padding: 10px;
+  border-radius: 10px;
+  background: #020617;
+  border: 1px solid var(--line);
+}
+.log div { padding: 3px 0; color: var(--muted); }
+.error { color: var(--bad); }
+.success { color: var(--good); }
+.warn-text { color: var(--warn); }
+@media (max-width: 820px) {
+  header { display: block; }
+  .status-strip { justify-content: flex-start; margin-top: 12px; }
+  .card, .third { grid-column: span 12; }
+  .metrics { grid-template-columns: repeat(2, minmax(120px, 1fr)); }
+  .kv { grid-template-columns: 1fr; }
+  .two { grid-template-columns: 1fr; }
+}
 </style>
 </head>
 <body>
-<h1>Canon AI Supervisor</h1>
-<div class="card">
-<p>Status: <strong>ok</strong></p>
-<p>Worker generation: <code>{generation}</code></p>
-<p>Worker port: <code>{worker_port}</code></p>
-<form method="post" action="/reload" style="display:inline">
-  <button class="reload" type="submit">Reload worker</button>
-</form>
-<form method="post" action="/restart" style="display:inline" onsubmit="return confirm('Restart the supervisor process? This briefly disconnects the control API.');">
-  <button class="restart" type="submit">Restart supervisor</button>
-</form>
-</div>
-<p><small><code>/reload</code> replaces the worker. <code>/restart</code> starts a replacement supervisor process and exits this one.</small></p>
+<main>
+  <header>
+    <div>
+      <h1>Canon AI Supervisor</h1>
+      <p class="subtle">Operator console for worker lifecycle, plan status, agents, and workspace.</p>
+    </div>
+    <div class="status-strip">
+      <span id="health-pill" class="pill ok">healthy</span>
+      <span class="pill">gen <span id="header-generation">__GENERATION__</span></span>
+      <span class="pill">worker <span id="header-worker">__WORKER_PORT__</span></span>
+      <span class="pill">updated <span id="last-updated">never</span></span>
+    </div>
+  </header>
+
+  <section class="grid">
+    <section class="card">
+      <h2>Runtime</h2>
+      <dl class="kv">
+        <dt>Status</dt><dd id="runtime-status" class="success">ok</dd>
+        <dt>Worker generation</dt><dd class="mono" id="runtime-generation">__GENERATION__</dd>
+        <dt>Worker port</dt><dd class="mono" id="runtime-worker">__WORKER_PORT__</dd>
+        <dt>Workspace</dt><dd class="mono" id="workspace-root">loading...</dd>
+        <dt>Allowed boundary</dt><dd class="mono" id="workspace-boundary">loading...</dd>
+      </dl>
+    </section>
+
+    <section class="card">
+      <h2>Actions</h2>
+      <div class="actions">
+        <button id="refresh-button" class="primary" type="button">Refresh</button>
+        <button id="start-loop-button" type="button">Start main loop</button>
+        <button id="reload-button" class="warn" type="button">Reload worker</button>
+        <button id="restart-button" class="danger" type="button">Restart supervisor</button>
+      </div>
+      <p class="subtle" style="margin-top:12px"><span class="warn-text">Reload</span> replaces the worker. <span class="error">Restart</span> briefly disconnects this API.</p>
+    </section>
+
+    <section class="card wide">
+      <h2>Plan Status</h2>
+      <div class="metrics">
+        <div class="metric"><span class="subtle">Total</span><strong id="plan-total">–</strong></div>
+        <div class="metric"><span class="subtle">Ready</span><strong id="plan-ready">–</strong></div>
+        <div class="metric"><span class="subtle">Pending</span><strong id="plan-pending">–</strong></div>
+        <div class="metric"><span class="subtle">Running</span><strong id="plan-running">–</strong></div>
+        <div class="metric"><span class="subtle">Done</span><strong id="plan-done">–</strong></div>
+        <div class="metric"><span class="subtle">Failed</span><strong id="plan-failed">–</strong></div>
+        <div class="metric"><span class="subtle">Skipped</span><strong id="plan-skipped">–</strong></div>
+      </div>
+      <div class="bar"><span id="plan-progress"></span></div>
+    </section>
+
+    <section class="card">
+      <h2>Next Ready Task</h2>
+      <dl class="kv">
+        <dt>Node</dt><dd class="mono" id="task-node">–</dd>
+        <dt>Title</dt><dd id="task-title">–</dd>
+        <dt>Ready count</dt><dd id="task-ready-count">–</dd>
+        <dt>Description</dt><dd id="task-description">–</dd>
+      </dl>
+    </section>
+
+    <section class="card">
+      <h2>Spawn Child Agent</h2>
+      <form id="spawn-form" class="form-grid">
+        <label>Domain
+          <textarea id="spawn-domain" required placeholder="implement src/domain/records.rs"></textarea>
+        </label>
+        <div class="two">
+          <label>Metric
+            <input id="spawn-metric" required placeholder="cargo test passes">
+          </label>
+          <label>Max steps
+            <input id="spawn-steps" type="number" min="1" max="100" value="20">
+          </label>
+        </div>
+        <button class="primary" type="submit">Spawn agent</button>
+      </form>
+    </section>
+
+    <section class="card wide">
+      <h2>Event / API Log</h2>
+      <div id="event-log" class="log mono"></div>
+    </section>
+  </section>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const logEl = $('event-log');
+
+function nowStamp() {
+  return new Date().toLocaleTimeString([], { hour12: false });
+}
+
+function log(message, kind = '') {
+  const row = document.createElement('div');
+  if (kind) row.className = kind;
+  row.textContent = `${nowStamp()} ${message}`;
+  logEl.prepend(row);
+  while (logEl.children.length > 50) logEl.removeChild(logEl.lastChild);
+}
+
+async function jsonFetch(url, options = {}) {
+  const response = await fetch(url, {
+    headers: { 'content-type': 'application/json', ...(options.headers || {}) },
+    ...options,
+  });
+  if (response.status === 204) return { ok: true, empty: true };
+  const text = await response.text();
+  const data = text ? JSON.parse(text) : {};
+  if (!response.ok) throw new Error(data.error || `${url} returned ${response.status}`);
+  return data;
+}
+
+function setHealth(data) {
+  $('health-pill').textContent = data.ok ? 'healthy' : 'unhealthy';
+  $('health-pill').className = `pill ${data.ok ? 'ok' : 'bad'}`;
+  $('runtime-status').textContent = data.ok ? 'ok' : 'error';
+  $('runtime-status').className = data.ok ? 'success' : 'error';
+  $('runtime-generation').textContent = data.generation ?? '–';
+  $('runtime-worker').textContent = data.worker_port ?? '–';
+  $('header-generation').textContent = data.generation ?? '–';
+  $('header-worker').textContent = data.worker_port ?? '–';
+}
+
+function setPlan(data) {
+  for (const key of ['total', 'ready', 'pending', 'running', 'done', 'failed', 'skipped']) {
+    $(`plan-${key}`).textContent = data[key] ?? '–';
+  }
+  const total = Number(data.total || 0);
+  const done = Number(data.done || 0) + Number(data.skipped || 0);
+  $('plan-progress').style.width = total > 0 ? `${Math.round((done / total) * 100)}%` : '0%';
+}
+
+function setTask(data) {
+  if (data.empty) {
+    $('task-node').textContent = '–';
+    $('task-title').textContent = 'No ready task';
+    $('task-ready-count').textContent = '0';
+    $('task-description').textContent = '–';
+    return;
+  }
+  $('task-node').textContent = data.node_id ?? '–';
+  $('task-title').textContent = data.title ?? '–';
+  $('task-ready-count').textContent = data.ready_count ?? '–';
+  $('task-description').textContent = data.description ?? '–';
+}
+
+function setWorkspace(data) {
+  $('workspace-root').textContent = data.workspaceRoot ?? '–';
+  $('workspace-boundary').textContent = data.allowedWorkspaceRoot ?? '–';
+}
+
+async function refreshAll() {
+  try {
+    setHealth(await jsonFetch('/health'));
+    log('GET /health ok', 'success');
+  } catch (error) {
+    log(`GET /health failed: ${error.message}`, 'error');
+  }
+  try {
+    setWorkspace(await jsonFetch('/ai/workspace'));
+    log('GET /ai/workspace ok', 'success');
+  } catch (error) {
+    log(`GET /ai/workspace failed: ${error.message}`, 'error');
+  }
+  try {
+    setPlan(await jsonFetch('/v1/plan/status'));
+    log('GET /v1/plan/status ok', 'success');
+  } catch (error) {
+    log(`GET /v1/plan/status failed: ${error.message}`, 'error');
+  }
+  try {
+    setTask(await jsonFetch('/v1/task/next'));
+    log('GET /v1/task/next ok', 'success');
+  } catch (error) {
+    setTask({ empty: true });
+    log(`GET /v1/task/next: ${error.message}`, 'warn-text');
+  }
+  $('last-updated').textContent = nowStamp();
+}
+
+async function postAction(path, body) {
+  const data = await jsonFetch(path, {
+    method: 'POST',
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+  log(`POST ${path} ok ${JSON.stringify(data)}`, 'success');
+  await refreshAll();
+  return data;
+}
+
+$('refresh-button').addEventListener('click', refreshAll);
+$('reload-button').addEventListener('click', async () => {
+  if (!confirm('Reload the worker and start fresh TLog state?')) return;
+  try { await postAction('/reload'); } catch (error) { log(`POST /reload failed: ${error.message}`, 'error'); }
+});
+$('restart-button').addEventListener('click', async () => {
+  if (!confirm('Restart the supervisor process? This briefly disconnects the control API.')) return;
+  try { await postAction('/restart'); } catch (error) { log(`POST /restart failed: ${error.message}`, 'error'); }
+});
+$('start-loop-button').addEventListener('click', async () => {
+  try { await postAction('/agent/start', {}); } catch (error) { log(`POST /agent/start failed: ${error.message}`, 'error'); }
+});
+$('spawn-form').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const body = {
+    domain: $('spawn-domain').value.trim(),
+    metric: $('spawn-metric').value.trim(),
+    max_steps: Number($('spawn-steps').value || 20),
+  };
+  try { await postAction('/spawn', body); } catch (error) { log(`POST /spawn failed: ${error.message}`, 'error'); }
+});
+
+refreshAll();
+setInterval(refreshAll, 10000);
+</script>
 </body>
-</html>"#,
-        generation = health.generation,
-        worker_port = health.worker_port,
-    );
+</html>"#
+        .replace("__GENERATION__", &health.generation.to_string())
+        .replace("__WORKER_PORT__", &health.worker_port.to_string());
     Ok(Html(html))
 }
 

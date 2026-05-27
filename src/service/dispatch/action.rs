@@ -60,13 +60,20 @@ fn append_action_transcript_for_workspace(
 ) -> Option<String> {
     let mut errors = Vec::new();
     let mut recorded = false;
-    let receipt_facts = ActionTranscriptReceiptFacts {
-        request_hash: request.contract_hash(),
-        receipt_hash: receipt.receipt_hash,
-        response_hash: receipt.response_hash,
-        response_bytes: receipt.response_bytes,
-        exit_status: receipt.exit_status,
-        timed_out: receipt.timed_out,
+    let receipt_facts = match ActionTranscriptReceiptFacts::from_receipt(
+        request.contract_hash(),
+        receipt.receipt_hash,
+        receipt.response_hash,
+        receipt.response_bytes,
+        receipt.exit_status,
+        receipt.timed_out,
+    ) {
+        Ok(facts) => facts,
+        Err(error) => {
+            return Some(format!(
+                "Action transcript recording failed in runtime: invalid receipt outcome: {error}"
+            ));
+        }
     };
     append_raw_action_result(workspace, name, args_json, response_json, receipt)
         .unwrap_or_else(|error| eprintln!("[canon-ai-action] raw result save failed: {error}"));

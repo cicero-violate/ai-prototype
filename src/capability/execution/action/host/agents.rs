@@ -19,11 +19,13 @@ pub async fn execute<H: ActionHost>(name: &str, args: &Value, host: &H) -> Actio
         | "canon_browser_list_tabs"
         | "canon_browser_close_tab"
         | "canon_browser_upload"
-        | "canon_browser_group_chat" => ActionToolOutcome::from_value(
-            host.run_host_tool(name, args)
-                .await
-                .unwrap_or_else(|| tool_error(format!("Unknown host tool: {name}"))),
-        ),
+        | "canon_browser_group_chat" => host
+            .run_host_tool(name, args)
+            .await
+            .map(|result| result.into_outcome())
+            .unwrap_or_else(|| {
+                ActionToolOutcome::Error(tool_error(format!("Unknown host tool: {name}")))
+            }),
         "canon_send_agent_message" => run_authorized_mailbox_send(args, host).await,
         "canon_read_mailbox" => {
             let root = host.workspace().root;

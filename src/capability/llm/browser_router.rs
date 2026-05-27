@@ -341,9 +341,11 @@ pub fn close_tab_for_target_id_with_timeout(
     close_browser_tab_for_target_id(target_id, &config.base_url, timeout_ms)
 }
 
-pub fn close_first_tab_with_timeout(timeout_ms: u64) -> Result<RouterTabCloseOutcome, OpenAiError> {
+pub fn close_all_tabs_with_timeout(
+    timeout_ms: u64,
+) -> Result<Vec<RouterTabCloseOutcome>, OpenAiError> {
     let config = OpenAiConfig::from_env()?;
-    close_first_browser_tab(&config.base_url, timeout_ms)
+    close_all_browser_tabs(&config.base_url, timeout_ms)
 }
 
 fn close_browser_tab_for_target_id(
@@ -405,10 +407,10 @@ fn close_browser_tab_for_url(
     )
 }
 
-fn close_first_browser_tab(
+fn close_all_browser_tabs(
     router_base_url: &str,
     timeout_ms: u64,
-) -> Result<RouterTabCloseOutcome, OpenAiError> {
+) -> Result<Vec<RouterTabCloseOutcome>, OpenAiError> {
     let endpoint = parse_local_http_endpoint(router_base_url).map_err(|e| match e {
         LocalEndpointError::InvalidUrl => OpenAiError::InvalidUrl,
         LocalEndpointError::NonLocalHost => {
@@ -418,19 +420,26 @@ fn close_first_browser_tab(
     let tabs_path = browser_router_path(&endpoint.path_prefix, "/tabs");
     let (status, body) = router_get(&endpoint.host, endpoint.port, &tabs_path, timeout_ms)?;
     if status != 200 {
-        return Ok(RouterTabCloseOutcome::CloseHttpStatus(status));
+        return Ok(vec![RouterTabCloseOutcome::CloseHttpStatus(status)]);
     }
 
-    let Some(target_id) = first_browser_router_target_id(&body) else {
-        return Ok(RouterTabCloseOutcome::NoMatchingTarget);
-    };
-    close_browser_router_tab(
-        &endpoint.host,
-        endpoint.port,
-        &endpoint.path_prefix,
-        &target_id,
-        timeout_ms,
-    )
+    let target_ids = browser_router_target_ids(&body);
+    if target_ids.is_empty() {
+        return Ok(vec![RouterTabCloseOutcome::NoMatchingTarget]);
+    }
+
+    target_ids
+        .into_iter()
+        .map(|target_id| {
+            close_browser_router_tab(
+                &endpoint.host,
+                endpoint.port,
+                &endpoint.path_prefix,
+                &target_id,
+                timeout_ms,
+            )
+        })
+        .collect()
 }
 
 fn devtools_page_target(target_url: &str) -> Option<(String, u16, String)> {
@@ -459,20 +468,28 @@ fn browser_router_target_id_for_url(tabs_body: &str, target_url: &str) -> Option
     })
 }
 
-fn first_browser_router_target_id(tabs_body: &str) -> Option<String> {
-    let value: Value = serde_json::from_str(tabs_body).ok()?;
-    let entries = value
+fn browser_router_target_ids(tabs_body: &str) -> Vec<String> {
+    let Ok(value) = serde_json::from_str::<Value>(tabs_body) else {
+        return Vec::new();
+    };
+    let Some(entries) = value
         .get("targets")
         .and_then(Value::as_array)
-        .or_else(|| value.as_array())?;
-    entries.iter().find_map(|entry| {
-        let obj = entry.as_object()?;
-        obj.get("id")
-            .or_else(|| obj.get("target_id"))
-            .and_then(Value::as_str)
-            .filter(|id| !id.is_empty())
-            .map(str::to_string)
-    })
+        .or_else(|| value.as_array())
+    else {
+        return Vec::new();
+    };
+    entries
+        .iter()
+        .filter_map(|entry| {
+            let obj = entry.as_object()?;
+            obj.get("id")
+                .or_else(|| obj.get("target_id"))
+                .and_then(Value::as_str)
+                .filter(|id| !id.is_empty())
+                .map(str::to_string)
+        })
+        .collect()
 }
 
 fn close_browser_router_tab(
@@ -906,20 +923,20 @@ mod tests {
     }
 
     #[test]
-    fn first_browser_router_target_id_accepts_object_and_array_tab_lists() {
+    fn browser_router_target_ids_accepts_object_and_array_tab_lists() {
         assert_eq!(
-            first_browser_router_target_id(
-                r#"{"targets":[{"id":"target-1","url":"https://chatgpt.com/c/current"}]}"#
+            browser_router_target_ids(
+                r#"{"targets":[{"id":"target-1","url":"https://chatgpt.com/c/current"},{"id":"target-2"}]}"#
             ),
-            Some("target-1".to_string())
+            vec!["target-1".to_string(), "target-2".to_string()]
         );
         assert_eq!(
-            first_browser_router_target_id(
+            browser_router_target_ids(
                 r#"[{"target_id":"target-2","url":"https://chatgpt.com/c/current"}]"#
             ),
-            Some("target-2".to_string())
+            vec!["target-2".to_string()]
         );
-        assert_eq!(first_browser_router_target_id(r#"{"targets":[]}"#), None);
+        assert!(browser_router_target_ids(r#"{"targets":[]}"#).is_empty());
     }
 
     #[test]

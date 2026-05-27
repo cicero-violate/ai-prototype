@@ -11,6 +11,7 @@ use serde_json::{json, Value};
 use super::process::WorkerProcess;
 use crate::api::oauth::OAuthStore;
 use crate::api::protocol::Command as KernelCommand;
+use crate::capability::execution::action::host::HostToolResult;
 use crate::capability::execution::action::{ActionHost, SpawnAgentToolRequest};
 use crate::service::scheduler::handler::TaskReadyNotifier;
 use crate::service::supervisor::SupervisorConfig;
@@ -118,7 +119,7 @@ impl ActionHost for SupervisorState {
             .await
     }
 
-    async fn run_host_tool(&self, name: &str, args: &Value) -> Option<Value> {
+    async fn run_host_tool(&self, name: &str, args: &Value) -> Option<HostToolResult> {
         eprintln!("[canon-ai-supervisor] host tool start name={name}");
         let result = match name {
             "canon_spawn_agent" => Some(self.run_spawn_agent(args).await),
@@ -143,68 +144,64 @@ impl ActionHost for SupervisorState {
             "[canon-ai-supervisor] host tool finish name={} handled={} is_error={}",
             name,
             result.is_some(),
-            result
-                .as_ref()
-                .and_then(|value| value.get("isError"))
-                .and_then(Value::as_bool)
-                .unwrap_or(false)
+            result.as_ref().is_some_and(HostToolResult::is_error)
         );
         result
     }
 }
 
 impl SupervisorState {
-    async fn run_spawn_agent(&self, args: &Value) -> Value {
+    async fn run_spawn_agent(&self, args: &Value) -> HostToolResult {
         eprintln!("[canon-ai-supervisor] agents:spawn requested");
         let request = match SpawnAgentToolRequest::parse(args) {
             Ok(request) => request,
-            Err(error) => return crate::api::action::tool_error(error),
+            Err(error) => return tool_error_result(error),
         };
         let mut guard = self.inner.lock().await;
         match guard.spawn_agent(&request.domain, &request.metric, request.max_steps, None) {
             Ok(dto) => json_text_result(dto),
-            Err(error) => crate::api::action::tool_error(error),
+            Err(error) => tool_error_result(error),
         }
     }
 
-    async fn run_runtime_state(&self) -> Value {
+    async fn run_runtime_state(&self) -> HostToolResult {
         eprintln!("[canon-ai-supervisor] runtime:state requested");
         let worker_port = {
             let mut guard = self.inner.lock().await;
             match guard.ensure_worker_alive_or_reload().await {
                 Ok(port) => port,
-                Err(error) => return crate::api::action::tool_error(error),
+                Err(error) => return tool_error_result(error),
             }
         };
         local_json_get(&format!("http://127.0.0.1:{worker_port}/v1/state")).await
     }
 
-    async fn run_supervisor_health(&self) -> Value {
+    async fn run_supervisor_health(&self) -> HostToolResult {
         eprintln!("[canon-ai-supervisor] supervisor:health requested");
         let mut guard = self.inner.lock().await;
         match guard.health().await {
             Ok(dto) => json_text_result(dto),
-            Err(error) => crate::api::action::tool_error(error),
+            Err(error) => tool_error_result(error),
         }
     }
 
-    async fn run_supervisor_reload_worker(&self) -> Value {
+    async fn run_supervisor_reload_worker(&self) -> HostToolResult {
         eprintln!("[canon-ai-supervisor] supervisor:reload_worker requested");
         let mut guard = self.inner.lock().await;
         match guard.reload_inner().await {
             Ok(dto) => json_text_result(dto),
-            Err(error) => crate::api::action::tool_error(error),
+            Err(error) => tool_error_result(error),
         }
     }
 
-    async fn run_supervisor_restart(&self) -> Value {
+    async fn run_supervisor_restart(&self) -> HostToolResult {
         eprintln!("[canon-ai-supervisor] supervisor:restart requested");
         let replacement =
             match crate::api::routes::supervisor::control::schedule_supervisor_replacement(
                 crate::api::routes::supervisor::control::SUPERVISOR_RESTART_DELAY_MS,
             ) {
                 Ok(replacement) => replacement,
-                Err(error) => return crate::api::action::tool_error(error),
+                Err(error) => return tool_error_result(error),
             };
         let pid = std::process::id();
         let state = self.clone();
@@ -225,7 +222,7 @@ impl SupervisorState {
         }))
     }
 
-    fn run_workspace_get(&self) -> Value {
+    fn run_workspace_get(&self) -> HostToolResult {
         eprintln!("[canon-ai-supervisor] workspace:get requested");
         let workspace = self
             .mcp
@@ -240,16 +237,14 @@ impl SupervisorState {
         }))
     }
 
-    fn run_workspace_set(&self, args: &Value) -> Value {
+    fn run_workspace_set(&self, args: &Value) -> HostToolResult {
         eprintln!("[canon-ai-supervisor] workspace:set requested");
         let Some(root) = args
             .get("root")
             .and_then(Value::as_str)
             .filter(|value| !value.is_empty())
         else {
-            return crate::api::action::tool_error(
-                "workspace:set requires non-empty 'root'".to_string(),
-            );
+            return tool_error_result("workspace:set requires non-empty 'root'".to_string());
         };
         let allowed = self
             .mcp
@@ -260,7 +255,7 @@ impl SupervisorState {
             .clone();
         let next = match WorkspaceConfig::new(root.into(), allowed) {
             Ok(next) => next,
-            Err(error) => return crate::api::action::tool_error(error),
+            Err(error) => return tool_error_result(error),
         };
         *self
             .mcp
@@ -270,19 +265,19 @@ impl SupervisorState {
         self.run_workspace_get()
     }
 
-    async fn run_browser_get(&self, path: &str) -> Value {
+    async fn run_browser_get(&self, path: &str) -> HostToolResult {
         eprintln!("[canon-ai-supervisor] browser GET requested path={path}");
         local_json_get(&format!("{}{}", self.browser_router_base_url(), path)).await
     }
 
-    async fn run_browser_close_tab(&self, args: &Value) -> Value {
+    async fn run_browser_close_tab(&self, args: &Value) -> HostToolResult {
         eprintln!("[canon-ai-supervisor] browser:close_tab requested");
         let Some(target_id) = args
             .get("target_id")
             .and_then(Value::as_str)
             .filter(|value| !value.is_empty())
         else {
-            return crate::api::action::tool_error(
+            return tool_error_result(
                 "browser:close_tab requires non-empty 'target_id'".to_string(),
             );
         };
@@ -294,7 +289,7 @@ impl SupervisorState {
         .await
     }
 
-    async fn run_browser_post(&self, path: &str, body: Value) -> Value {
+    async fn run_browser_post(&self, path: &str, body: Value) -> HostToolResult {
         eprintln!("[canon-ai-supervisor] browser POST requested path={path}");
         local_json_post(&format!("{}{}", self.browser_router_base_url(), path), body).await
     }
@@ -309,65 +304,71 @@ impl SupervisorState {
     }
 }
 
-fn json_text_result(value: impl Serialize) -> Value {
+fn json_text_result(value: impl Serialize) -> HostToolResult {
     let text = serde_json::to_string_pretty(&value).unwrap_or_else(|_| "null".to_string());
-    json!({
+    HostToolResult::success(json!({
         "content": [{ "type": "text", "text": text }],
         "isError": false
-    })
+    }))
 }
 
-async fn local_json_get(url: &str) -> Value {
+fn tool_error_result(message: String) -> HostToolResult {
+    HostToolResult::error(crate::api::action::tool_error(message))
+}
+
+async fn local_json_get(url: &str) -> HostToolResult {
     eprintln!("[canon-ai-supervisor] outbound GET {url}");
     let client = match local_http_client() {
         Ok(client) => client,
-        Err(error) => return crate::api::action::tool_error(error),
+        Err(error) => return tool_error_result(error),
     };
     match client.get(url).send().await {
         Ok(response) => response_to_tool_result(response).await,
-        Err(error) => crate::api::action::tool_error(format!("GET {url} failed: {error}")),
+        Err(error) => tool_error_result(format!("GET {url} failed: {error}")),
     }
 }
 
-async fn local_json_delete(url: &str) -> Value {
+async fn local_json_delete(url: &str) -> HostToolResult {
     eprintln!("[canon-ai-supervisor] outbound DELETE {url}");
     let client = match local_http_client() {
         Ok(client) => client,
-        Err(error) => return crate::api::action::tool_error(error),
+        Err(error) => return tool_error_result(error),
     };
     match client.delete(url).send().await {
         Ok(response) => response_to_tool_result(response).await,
-        Err(error) => crate::api::action::tool_error(format!("DELETE {url} failed: {error}")),
+        Err(error) => tool_error_result(format!("DELETE {url} failed: {error}")),
     }
 }
 
-async fn local_json_post(url: &str, body: Value) -> Value {
+async fn local_json_post(url: &str, body: Value) -> HostToolResult {
     eprintln!("[canon-ai-supervisor] outbound POST {url}");
     let client = match local_http_client() {
         Ok(client) => client,
-        Err(error) => return crate::api::action::tool_error(error),
+        Err(error) => return tool_error_result(error),
     };
     match client.post(url).json(&body).send().await {
         Ok(response) => response_to_tool_result(response).await,
-        Err(error) => crate::api::action::tool_error(format!("POST {url} failed: {error}")),
+        Err(error) => tool_error_result(format!("POST {url} failed: {error}")),
     }
 }
 
-async fn response_to_tool_result(response: reqwest::Response) -> Value {
+async fn response_to_tool_result(response: reqwest::Response) -> HostToolResult {
     let status = response.status();
     let text = match response.text().await {
         Ok(text) => text,
-        Err(error) => {
-            return crate::api::action::tool_error(format!("response body read failed: {error}"))
-        }
+        Err(error) => return tool_error_result(format!("response body read failed: {error}")),
     };
+    response_text_to_tool_result(status, text)
+}
+
+fn response_text_to_tool_result(status: reqwest::StatusCode, text: String) -> HostToolResult {
     if !status.is_success() {
-        return crate::api::action::tool_error(format!("HTTP {}: {}", status.as_u16(), text));
+        return tool_error_result(format!("HTTP {}: {}", status.as_u16(), text));
     }
-    json!({
+    HostToolResult::success(json!({
         "content": [{ "type": "text", "text": text }],
         "isError": false
-    })
+    }))
 }
 
 fn local_http_client() -> Result<reqwest::Client, String> {
@@ -439,4 +440,55 @@ fn initial_native_mcp_command_id() -> u64 {
         .unwrap_or(1)
         .unsigned_abs()
         .max(1)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::capability::execution::action::host::ActionToolOutcome;
+
+    #[test]
+    fn host_tool_success_is_typed_before_transport_envelope() {
+        let result = json_text_result(json!({ "ok": true, "generation": 7 }));
+        assert!(!result.is_error());
+
+        let HostToolResult::Success(envelope) = result else {
+            panic!("expected typed success host tool result");
+        };
+        assert_eq!(envelope.get("isError"), Some(&Value::Bool(false)));
+        let text = envelope["content"][0]["text"]
+            .as_str()
+            .expect("success text content");
+        assert!(text.contains("generation"));
+    }
+
+    #[test]
+    fn host_tool_http_error_is_typed_before_transport_envelope() {
+        let result = response_text_to_tool_result(
+            reqwest::StatusCode::BAD_GATEWAY,
+            "router unavailable".to_string(),
+        );
+        assert!(result.is_error());
+
+        let HostToolResult::Error(envelope) = result else {
+            panic!("expected typed error host tool result");
+        };
+        assert_eq!(envelope.get("isError"), Some(&Value::Bool(true)));
+        let text = envelope["content"][0]["text"]
+            .as_str()
+            .expect("error text content");
+        assert!(text.contains("HTTP 502: router unavailable"));
+    }
+
+    #[test]
+    fn host_tool_envelope_shape_does_not_recover_error_state() {
+        let malformed_envelope = json!({
+            "content": [{ "type": "text", "text": "typed success despite malformed transport flag" }],
+            "isError": true
+        });
+        let outcome = HostToolResult::success(malformed_envelope).into_outcome();
+        assert_eq!(outcome.exit_status(), 0);
+        assert!(!outcome.timed_out());
+        assert!(matches!(outcome, ActionToolOutcome::Ok(_)));
+    }
 }

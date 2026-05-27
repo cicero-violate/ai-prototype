@@ -25,7 +25,37 @@ pub trait ActionHost {
 
     async fn submit_kernel_command(&self, command: KernelCommand) -> Result<(), String>;
 
-    async fn run_host_tool(&self, name: &str, args: &Value) -> Option<Value>;
+    async fn run_host_tool(&self, name: &str, args: &Value) -> Option<HostToolResult>;
+}
+
+/// Typed boundary for supervisor-owned host tools.
+///
+/// Supervisor host tools still serialize to MCP's JSON envelope at the transport
+/// edge, but success/error state must flow through this enum until that point.
+pub enum HostToolResult {
+    Success(Value),
+    Error(Value),
+}
+
+impl HostToolResult {
+    pub fn success(value: Value) -> Self {
+        Self::Success(value)
+    }
+
+    pub fn error(value: Value) -> Self {
+        Self::Error(value)
+    }
+
+    pub fn is_error(&self) -> bool {
+        matches!(self, Self::Error(_))
+    }
+
+    pub fn into_outcome(self) -> ActionToolOutcome {
+        match self {
+            Self::Success(value) => ActionToolOutcome::Ok(value),
+            Self::Error(value) => ActionToolOutcome::Error(value),
+        }
+    }
 }
 
 /// Single source of truth for a tool's execution outcome.
@@ -111,4 +141,49 @@ pub async fn execute_native_tool<H: ActionHost>(
 
 pub async fn execute_recorded_shell<H: ActionHost>(args: &Value, host: &H) -> ActionToolOutcome {
     workspace::execute_recorded_shell(args, host).await
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::runtime::WorkspaceView;
+    use std::path::PathBuf;
+
+    struct NullHost;
+
+    impl ActionHost for NullHost {
+        fn workspace(&self) -> WorkspaceView {
+            WorkspaceView {
+                root: PathBuf::from("."),
+                allowed_boundary: PathBuf::from("."),
+            }
+        }
+
+        async fn active_generation(&self) -> u64 {
+            0
+        }
+
+        fn record_session(
+            &self,
+            _session_id: String,
+            _worker_generation: u64,
+            _created_at: DateTime<Utc>,
+        ) {
+        }
+
+        async fn submit_kernel_command(&self, _command: KernelCommand) -> Result<(), String> {
+            Ok(())
+        }
+
+        async fn run_host_tool(&self, _name: &str, _args: &Value) -> Option<HostToolResult> {
+            None
+        }
+    }
+
+    #[tokio::test]
+    async fn unknown_native_tool_is_typed_error_variant() {
+        let outcome = execute_native_tool("canon_missing_tool", &Value::Null, &NullHost).await;
+        assert_eq!(outcome.exit_status(), 1);
+        assert!(matches!(outcome, ActionToolOutcome::Error(_)));
+    }
 }
