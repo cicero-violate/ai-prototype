@@ -29,7 +29,7 @@ rustflags = [
 CANON_RUSTC_V3_ARTIFACT_DIR = { value = "/workspace/ai_sandbox/canon-mini-agent/prototype/state/rustc", relative = false }
 PROJECT_DIR = { value = "/workspace/ai_sandbox/canon-mini-agent/prototype/", relative = false }
 AI_TLOG_DIR = { value = "/workspace/ai_sandbox/canon-mini-agent/prototype/state/tlog", relative = false }
-AI_MCP_OAUTH_STORE_FILE=/workspace/ai_sandbox/canon-mini-agent/prototype/state/oauth-store.enc
+AI_MCP_OAUTH_STORE_FILE="/workspace/ai_sandbox/canon-mini-agent/prototype/state/oauth-store.enc"
 RUST_BACKTRACE = "full"
 SUPERVISOR_PORT = "9100"
 AI_WORKER_BIN = { value = "../target/debug/worker", relative = true }
