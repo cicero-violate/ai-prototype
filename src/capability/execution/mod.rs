@@ -28,7 +28,7 @@ pub use action::host::{execute_native_tool, execute_recorded_shell, ActionHost};
 pub use action::record::{
     append_action_receipt_ndjson, decode_action_receipt_ndjson, encode_action_receipt_ndjson,
     load_action_receipts_ndjson, verify_action_receipts, ActionCallRequest, ActionReceipt,
-    LiveActionExecutor, ACTION_RECEIPT_RECORD, ACTION_RECEIPT_SCHEMA_VERSION,
+    ActionReceiptStatus, LiveActionExecutor, ACTION_RECEIPT_RECORD, ACTION_RECEIPT_SCHEMA_VERSION,
 };
 // Execution records.
 pub use record::{

@@ -17,7 +17,7 @@ use serde::{Deserialize, Serialize};
 use crate::api::protocol::{Command, CommandEnvelope};
 use crate::api::transport::{ApiTransportDisposition, ApiTransportFrame, ApiTransportSession};
 use crate::capability::execution::{
-    ActionCallRequest as McpCallRequest, ActionReceipt as McpCallReceipt,
+    ActionCallRequest as McpCallRequest, ActionReceipt as McpCallReceipt, ActionReceiptStatus,
 };
 use crate::capability::execution::{
     Effect, SandboxProcessReceipt, SandboxProcessRequest, ToolEffectKind,
@@ -752,6 +752,7 @@ fn decode_mcp_call_receipt(payload: serde_json::Value) -> Result<McpCallReceipt,
         response_bytes: dto.response_bytes,
         exit_status: dto.exit_status,
         timed_out: dto.timed_out,
+        status: ActionReceiptStatus::from_process(dto.exit_status, dto.timed_out),
         receipt_hash: dto.receipt_hash,
     };
     validate_mcp_registry_policy(receipt.registry_policy_hash)?;

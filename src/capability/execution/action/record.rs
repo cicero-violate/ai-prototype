@@ -71,6 +71,41 @@ impl ActionCallRequest {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ActionReceiptStatus {
+    Succeeded,
+    Failed,
+    TimedOut,
+}
+
+impl ActionReceiptStatus {
+    pub fn from_process(exit_status: u64, timed_out: bool) -> Self {
+        if timed_out {
+            Self::TimedOut
+        } else if exit_status == 0 {
+            Self::Succeeded
+        } else {
+            Self::Failed
+        }
+    }
+
+    pub fn as_u64(self) -> u64 {
+        match self {
+            Self::Succeeded => 1,
+            Self::Failed => 2,
+            Self::TimedOut => 3,
+        }
+    }
+
+    pub fn passed(self) -> bool {
+        matches!(self, Self::Succeeded)
+    }
+
+    fn matches_process(self, exit_status: u64, timed_out: bool) -> bool {
+        self == Self::from_process(exit_status, timed_out)
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ActionReceipt {
     pub request_hash: u64,
@@ -85,6 +120,7 @@ pub struct ActionReceipt {
     pub response_bytes: u64,
     pub exit_status: u64,
     pub timed_out: bool,
+    pub status: ActionReceiptStatus,
     pub receipt_hash: u64,
 }
 
@@ -98,6 +134,7 @@ impl ActionReceipt {
         let response_hash = bytes_hash(response);
         let response_bytes = response.len() as u64;
         let effect = Effect::process(response_hash, 0, response_bytes, 0, exit_status, timed_out);
+        let status = ActionReceiptStatus::from_process(exit_status, timed_out);
         let mut receipt = Self {
             request_hash: request.contract_hash(),
             registry_policy_hash: request.registry_policy_hash,
@@ -111,6 +148,7 @@ impl ActionReceipt {
             response_bytes,
             exit_status,
             timed_out,
+            status,
             receipt_hash: 0,
         };
         receipt.receipt_hash = expected_action_receipt_hash(&receipt);
@@ -122,7 +160,7 @@ impl ActionReceipt {
     }
 
     pub fn is_success(&self) -> bool {
-        self.is_contract_valid() && self.exit_status == 0 && !self.timed_out
+        self.is_contract_valid() && self.status.passed()
     }
 
     pub fn is_contract_valid(&self) -> bool {
@@ -135,6 +173,9 @@ impl ActionReceipt {
             && self.max_output_bytes != 0
             && self.effect.is_valid()
             && self.effect_is_normalized()
+            && self
+                .status
+                .matches_process(self.exit_status, self.timed_out)
             && self.response_hash != 0
             && self.response_bytes <= self.max_output_bytes
             && self.receipt_hash == expected_action_receipt_hash(self)
@@ -403,6 +444,7 @@ pub fn encode_action_receipt_ndjson(receipt: &ActionReceipt) -> String {
         receipt.response_bytes,
         receipt.exit_status,
         receipt.timed_out as u64,
+        receipt.status.as_u64(),
         receipt.receipt_hash,
     ];
     let body = fields
@@ -417,7 +459,7 @@ pub fn decode_action_receipt_ndjson(line: &str) -> Result<ActionReceipt, ToolSan
     let fields = parse_u64_ndjson_fields(line)?;
     validate_u64_ndjson_header(
         &fields,
-        17,
+        18,
         ACTION_RECEIPT_SCHEMA_VERSION,
         ACTION_RECEIPT_RECORD,
     )?;
@@ -441,7 +483,8 @@ pub fn decode_action_receipt_ndjson(line: &str) -> Result<ActionReceipt, ToolSan
         response_bytes: fields[13],
         exit_status: fields[14],
         timed_out: fields[15] != 0,
-        receipt_hash: fields[16],
+        status: ActionReceiptStatus::from_process(fields[14], fields[15] != 0),
+        receipt_hash: fields[17],
     };
 
     if !receipt.is_contract_valid() {
@@ -468,6 +511,7 @@ fn expected_action_receipt_hash(receipt: &ActionReceipt) -> u64 {
     h = mix(h, receipt.response_bytes);
     h = mix(h, receipt.exit_status);
     h = mix(h, receipt.timed_out as u64);
+    h = mix(h, receipt.status.as_u64());
     h.max(1)
 }
 
@@ -487,6 +531,7 @@ fn action_payload_hash(receipt: &ActionReceipt) -> u64 {
     h = mix(h, receipt.response_bytes);
     h = mix(h, receipt.exit_status);
     h = mix(h, receipt.timed_out as u64);
+    h = mix(h, receipt.status.as_u64());
     h = mix(h, receipt.receipt_hash);
     h.max(1)
 }
