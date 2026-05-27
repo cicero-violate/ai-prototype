@@ -7,12 +7,16 @@
 #![forbid(unsafe_code)]
 
 use std::env;
+use std::fs;
+use std::io::{BufRead, BufReader};
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use ai::{
-    build_router, canonical_tlog_path_from_dir, resume_durable_runtime, tick_durable,
-    ApiTransportLedger, ApiTransportSession, RuntimeConfig, State, WorkerAppState,
+    build_router, canonical_tlog_path_from_dir, decode_control_event_ndjson,
+    resume_durable_runtime, tick_durable, verify_tlog_from, write_tlog_ndjson, ApiTransportLedger,
+    ApiTransportSession, CanonError, RuntimeConfig, State, TLog, WorkerAppState,
 };
 use tokio::net::TcpListener;
 
@@ -105,10 +109,111 @@ fn load_session(tlog_path: &Path) -> Result<ApiTransportSession, String> {
     ensure_tlog_dir(tlog_path)?;
 
     let cfg = RuntimeConfig::default();
-    let mut runtime = resume_durable_runtime(State::default(), tlog_path)
-        .map_err(|err| format!("resume durable runtime failed: {err}"))?;
+    let mut runtime = resume_runtime_with_repair(tlog_path)?;
     initialize_empty_runtime(&mut runtime, tlog_path, cfg)?;
     session_from_runtime(runtime, cfg)
+}
+
+fn resume_runtime_with_repair(tlog_path: &Path) -> Result<ai::DurableRuntimeState, String> {
+    match resume_durable_runtime(State::default(), tlog_path) {
+        Ok(runtime) => Ok(runtime),
+        Err(CanonError::InvalidTlogRecord) => {
+            let repaired = repair_canonical_tlog(tlog_path)
+                .map_err(|err| format!("repair invalid durable runtime TLog failed: {err}"))?;
+            eprintln!(
+                "worker: repaired invalid TLog  path={}  preserved={}  kept_events={}",
+                tlog_path.display(),
+                repaired.preserved_path.display(),
+                repaired.kept_events
+            );
+            resume_durable_runtime(State::default(), tlog_path)
+                .map_err(|err| format!("resume durable runtime after repair failed: {err}"))
+        }
+        Err(err) => Err(format!("resume durable runtime failed: {err}")),
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct TlogRepairReport {
+    kept_events: usize,
+    preserved_path: PathBuf,
+}
+
+fn repair_canonical_tlog(tlog_path: &Path) -> Result<TlogRepairReport, String> {
+    let valid_prefix = load_valid_tlog_prefix(tlog_path)?;
+    verify_tlog_from(State::default(), &valid_prefix)
+        .map_err(|err| format!("valid prefix replay failed: {err}"))?;
+
+    let preserved_path = preserved_tlog_path(tlog_path);
+    fs::rename(tlog_path, &preserved_path)
+        .map_err(|err| format!("preserve corrupt TLog failed: {err}"))?;
+    write_tlog_ndjson(tlog_path, &valid_prefix)
+        .map_err(|err| format!("rewrite repaired TLog failed: {err}"))?;
+
+    Ok(TlogRepairReport {
+        kept_events: valid_prefix.len(),
+        preserved_path,
+    })
+}
+
+fn load_valid_tlog_prefix(tlog_path: &Path) -> Result<TLog, String> {
+    if !tlog_path.exists() {
+        return Ok(Vec::new());
+    }
+
+    let file = fs::File::open(tlog_path).map_err(|err| format!("open TLog failed: {err}"))?;
+    let reader = BufReader::new(file);
+    let mut tlog = Vec::new();
+
+    for line in reader.lines() {
+        let line = line.map_err(|err| format!("read TLog line failed: {err}"))?;
+        if line.trim().is_empty() {
+            continue;
+        }
+        match decode_control_event_ndjson(&line) {
+            Ok(event) => tlog.push(event),
+            Err(_) => break,
+        }
+    }
+
+    Ok(tlog)
+}
+
+fn preserved_tlog_path(tlog_path: &Path) -> PathBuf {
+    let timestamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|duration| duration.as_millis())
+        .unwrap_or(0);
+    tlog_path.with_extension(format!("ndjson.invalid-{timestamp}"))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn repair_canonical_tlog_preserves_corrupt_file_and_keeps_valid_prefix() {
+        let dir = tempfile::Builder::new()
+            .prefix("kernel-tlog-repair-")
+            .tempdir()
+            .expect("tempdir should be created");
+        let tlog_path = dir.path().join("canon-agent.tlog.ndjson");
+
+        let cfg = RuntimeConfig::default();
+        let mut state = State::default();
+        let mut tlog = Vec::new();
+        ai::tick(&mut state, &mut tlog, cfg).expect("test event should be produced");
+        let valid_line = ai::encode_control_event_ndjson(&tlog[0]);
+        fs::write(&tlog_path, format!("{valid_line}\n[6,1,999\n"))
+            .expect("corrupt fixture should be written");
+
+        let report = repair_canonical_tlog(&tlog_path).expect("repair should succeed");
+
+        assert_eq!(report.kept_events, 1);
+        assert!(report.preserved_path.exists());
+        let repaired = ai::load_tlog_ndjson(&tlog_path).expect("repaired tlog should load");
+        assert_eq!(repaired, tlog);
+    }
 }
 
 fn session_from_runtime(

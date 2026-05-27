@@ -301,14 +301,30 @@ struct AnalysisCounts {
 }
 
 #[derive(Debug, serde::Deserialize)]
-#[serde(tag = "kind")]
-enum SemanticIndexRecord {
-    #[serde(rename = "symbol_def")]
-    SymbolDef { node_kind: Option<SemanticNodeKind> },
-    #[serde(rename = "semantic_edge")]
+struct RawSemanticIndexRecord {
+    kind: Option<SemanticRecordKind>,
+    node_kind: Option<SemanticNodeKind>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+enum SemanticRecordKind {
+    SymbolDef,
     SemanticEdge,
-    #[serde(other)]
-    Other,
+    Other(String),
+}
+
+impl<'de> serde::Deserialize<'de> for SemanticRecordKind {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let raw = String::deserialize(deserializer)?;
+        Ok(match raw.as_str() {
+            "symbol_def" => Self::SymbolDef,
+            "semantic_edge" => Self::SemanticEdge,
+            _ => Self::Other(raw),
+        })
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -360,39 +376,40 @@ fn semantic_counts(path: &Path) -> Result<AnalysisCounts, RustcAnalysisOutcome> 
         if line.is_empty() {
             continue;
         }
-        let record: SemanticIndexRecord = serde_json::from_str(&line).map_err(|error| {
-            if error.to_string().contains("missing field `kind`") {
-                RustcAnalysisOutcome::CompilerFactMissing {
-                    artifact: AnalysisArtifact::SemanticIndex,
-                    path: path.to_path_buf(),
-                    line: line_number,
-                    fact: CompilerFact::SemanticRecordKind,
-                }
-            } else {
-                RustcAnalysisOutcome::ArtifactMalformed {
-                    artifact: AnalysisArtifact::SemanticIndex,
-                    path: path.to_path_buf(),
-                    line: line_number,
-                    message: error.to_string(),
-                }
+        let record: RawSemanticIndexRecord = serde_json::from_str(&line).map_err(|error| {
+            RustcAnalysisOutcome::ArtifactMalformed {
+                artifact: AnalysisArtifact::SemanticIndex,
+                path: path.to_path_buf(),
+                line: line_number,
+                message: error.to_string(),
             }
         })?;
-        match record {
-            SemanticIndexRecord::SymbolDef { node_kind } => {
+        let kind = record
+            .kind
+            .ok_or_else(|| RustcAnalysisOutcome::CompilerFactMissing {
+                artifact: AnalysisArtifact::SemanticIndex,
+                path: path.to_path_buf(),
+                line: line_number,
+                fact: CompilerFact::SemanticRecordKind,
+            })?;
+        match kind {
+            SemanticRecordKind::SymbolDef => {
                 node_count += 1;
                 let node_kind =
-                    node_kind.ok_or_else(|| RustcAnalysisOutcome::CompilerFactMissing {
-                        artifact: AnalysisArtifact::SemanticIndex,
-                        path: path.to_path_buf(),
-                        line: line_number,
-                        fact: CompilerFact::NodeKind,
-                    })?;
+                    record
+                        .node_kind
+                        .ok_or_else(|| RustcAnalysisOutcome::CompilerFactMissing {
+                            artifact: AnalysisArtifact::SemanticIndex,
+                            path: path.to_path_buf(),
+                            line: line_number,
+                            fact: CompilerFact::NodeKind,
+                        })?;
                 if node_kind.carries_intent_classification() {
                     fn_count += 1;
                 }
             }
-            SemanticIndexRecord::SemanticEdge => edge_count += 1,
-            SemanticIndexRecord::Other => {}
+            SemanticRecordKind::SemanticEdge => edge_count += 1,
+            SemanticRecordKind::Other(_) => {}
         }
     }
 
@@ -547,6 +564,109 @@ mod tests {
                 line: 1,
                 ..
             } => {}
+            other => panic!("unexpected analysis outcome: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn receipt_from_artifacts_fails_on_missing_record_kind_without_error_string_matching() {
+        let tmp_guard = tempfile::Builder::new()
+            .prefix("ai-rustc-analysis-test-")
+            .tempdir_in({
+                let d = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../state/tmp");
+                std::fs::create_dir_all(&d).unwrap();
+                d
+            })
+            .unwrap();
+        let crate_dir = tmp_guard.path().join("my_crate");
+        std::fs::create_dir_all(&crate_dir).unwrap();
+        std::fs::write(crate_dir.join("manifest.json"), "{}").unwrap();
+        std::fs::write(
+            crate_dir.join("semantic_index.jsonl"),
+            "{\"node_kind\":\"fn\",\"def_path\":\"crate::missing_kind\"}\n",
+        )
+        .unwrap();
+
+        let result = receipt_from_artifacts("my_crate", &crate_dir);
+        match result {
+            RustcAnalysisOutcome::CompilerFactMissing {
+                artifact: AnalysisArtifact::SemanticIndex,
+                fact: CompilerFact::SemanticRecordKind,
+                line: 1,
+                ..
+            } => {}
+            other => panic!("unexpected analysis outcome: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn invoke_rustc_analysis_returns_invocation_failure_for_missing_wrapper() {
+        let tmp_guard = tempfile::Builder::new()
+            .prefix("ai-rustc-analysis-test-")
+            .tempdir_in({
+                let d = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../state/tmp");
+                std::fs::create_dir_all(&d).unwrap();
+                d
+            })
+            .unwrap();
+        let missing_wrapper = tmp_guard.path().join("missing-rustc-wrapper");
+
+        let result = invoke_rustc_analysis(
+            tmp_guard.path(),
+            &missing_wrapper,
+            &tmp_guard.path().join("artifacts"),
+            "my_crate",
+        );
+
+        match result {
+            RustcAnalysisOutcome::CompilerUnavailable { wrapper_bin } => {
+                assert_eq!(wrapper_bin, missing_wrapper);
+            }
+            other => panic!("unexpected analysis outcome: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn invoke_rustc_analysis_returns_compiler_failed_for_unsuccessful_cargo_check() {
+        let tmp_guard = tempfile::Builder::new()
+            .prefix("ai-rustc-analysis-test-")
+            .tempdir_in({
+                let d = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../state/tmp");
+                std::fs::create_dir_all(&d).unwrap();
+                d
+            })
+            .unwrap();
+        let workspace = tmp_guard.path().join("workspace");
+        std::fs::create_dir_all(workspace.join("src")).unwrap();
+        std::fs::write(
+            workspace.join("Cargo.toml"),
+            "[package]\nname = \"analysis_failure_fixture\"\nversion = \"0.1.0\"\nedition = \"2021\"\n",
+        )
+        .unwrap();
+        std::fs::write(workspace.join("src/lib.rs"), "pub fn fixture() {}\n").unwrap();
+
+        let wrapper = tmp_guard.path().join("rustc-wrapper-fails.sh");
+        std::fs::write(&wrapper, "#!/bin/sh\nexit 1\n").unwrap();
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+
+            let mut permissions = std::fs::metadata(&wrapper).unwrap().permissions();
+            permissions.set_mode(0o755);
+            std::fs::set_permissions(&wrapper, permissions).unwrap();
+        }
+
+        let result = invoke_rustc_analysis(
+            &workspace,
+            &wrapper,
+            &tmp_guard.path().join("artifacts"),
+            "analysis_failure_fixture",
+        );
+
+        match result {
+            RustcAnalysisOutcome::CompilerFailed { code } => {
+                assert!(code.is_some());
+            }
             other => panic!("unexpected analysis outcome: {other:?}"),
         }
     }

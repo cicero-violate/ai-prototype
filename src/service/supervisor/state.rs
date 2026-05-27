@@ -306,14 +306,11 @@ impl SupervisorState {
 
 fn json_text_result(value: impl Serialize) -> HostToolResult {
     let text = serde_json::to_string_pretty(&value).unwrap_or_else(|_| "null".to_string());
-    HostToolResult::success(json!({
-        "content": [{ "type": "text", "text": text }],
-        "isError": false
-    }))
+    HostToolResult::success_text(text)
 }
 
 fn tool_error_result(message: String) -> HostToolResult {
-    HostToolResult::error(crate::api::action::tool_error(message))
+    HostToolResult::error_message(message)
 }
 
 async fn local_json_get(url: &str) -> HostToolResult {
@@ -365,10 +362,7 @@ fn response_text_to_tool_result(status: reqwest::StatusCode, text: String) -> Ho
     if !status.is_success() {
         return tool_error_result(format!("HTTP {}: {}", status.as_u16(), text));
     }
-    HostToolResult::success(json!({
-        "content": [{ "type": "text", "text": text }],
-        "isError": false
-    }))
+    HostToolResult::success_text(text)
 }
 
 fn local_http_client() -> Result<reqwest::Client, String> {
@@ -452,13 +446,9 @@ mod tests {
         let result = json_text_result(json!({ "ok": true, "generation": 7 }));
         assert!(!result.is_error());
 
-        let HostToolResult::Success(envelope) = result else {
+        let HostToolResult::Success { text } = result else {
             panic!("expected typed success host tool result");
         };
-        assert_eq!(envelope.get("isError"), Some(&Value::Bool(false)));
-        let text = envelope["content"][0]["text"]
-            .as_str()
-            .expect("success text content");
         assert!(text.contains("generation"));
     }
 
@@ -470,25 +460,23 @@ mod tests {
         );
         assert!(result.is_error());
 
-        let HostToolResult::Error(envelope) = result else {
+        let HostToolResult::Error { message } = result else {
             panic!("expected typed error host tool result");
         };
-        assert_eq!(envelope.get("isError"), Some(&Value::Bool(true)));
-        let text = envelope["content"][0]["text"]
-            .as_str()
-            .expect("error text content");
-        assert!(text.contains("HTTP 502: router unavailable"));
+        assert!(message.contains("HTTP 502: router unavailable"));
     }
 
     #[test]
     fn host_tool_envelope_shape_does_not_recover_error_state() {
-        let malformed_envelope = json!({
-            "content": [{ "type": "text", "text": "typed success despite malformed transport flag" }],
-            "isError": true
-        });
-        let outcome = HostToolResult::success(malformed_envelope).into_outcome();
+        let outcome = HostToolResult::success_text(
+            "typed success cannot carry a pre-serialized isError flag".to_string(),
+        )
+        .into_outcome();
         assert_eq!(outcome.exit_status(), 0);
         assert!(!outcome.timed_out());
-        assert!(matches!(outcome, ActionToolOutcome::Ok(_)));
+        let ActionToolOutcome::Ok(envelope) = outcome else {
+            panic!("expected typed success outcome");
+        };
+        assert_eq!(envelope.get("isError"), Some(&Value::Bool(false)));
     }
 }

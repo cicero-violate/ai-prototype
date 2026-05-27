@@ -49,7 +49,7 @@ pub async fn ai_oauth_authorize_get(
     AxumState(state): AxumState<SupervisorState>,
     Query(q): Query<AuthorizeQuery>,
 ) -> Response {
-    let oauth = state
+    let mut oauth = state
         .mcp
         .oauth
         .lock()

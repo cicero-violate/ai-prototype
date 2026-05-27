@@ -490,6 +490,46 @@ pub fn is_gateway_tool(name: &str) -> bool {
     )
 }
 
+fn gateway_text_output_schema() -> Value {
+    json!({
+        "type": "object",
+        "properties": {
+            "content": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "type": { "type": "string", "const": "text" },
+                        "text": { "type": "string" }
+                    },
+                    "required": ["type", "text"]
+                }
+            }
+        },
+        "required": ["content"]
+    })
+}
+
+fn gateway_json_output_schema() -> Value {
+    json!({
+        "type": "object",
+        "properties": {
+            "content": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "type": { "type": "string", "const": "text" },
+                        "text": { "type": "string" }
+                    },
+                    "required": ["type", "text"]
+                }
+            }
+        },
+        "required": ["content"]
+    })
+}
+
 // ── Gateway tool list (action surface) ───────────────────────────────────────
 
 pub fn gateway_mcp_tools_list() -> Value {
@@ -498,12 +538,14 @@ pub fn gateway_mcp_tools_list() -> Value {
             "name": GATEWAY_GET_MANIFEST,
             "description": "Get Canon AI landmark protocol instructions and high-level topology.",
             "inputSchema": { "type": "object", "properties": { "intent": { "type": "string" } } },
+            "outputSchema": gateway_text_output_schema(),
             "annotations": { "readOnlyHint": true, "destructiveHint": false, "idempotentHint": true, "openWorldHint": false }
         },
         {
             "name": GATEWAY_GET_LANDMARKS,
             "description": "Return high-level functional areas. Use before inspect_landmark.",
             "inputSchema": { "type": "object", "properties": { "intent": { "type": "string" } } },
+            "outputSchema": gateway_text_output_schema(),
             "annotations": { "readOnlyHint": true, "destructiveHint": false, "idempotentHint": true, "openWorldHint": false }
         },
         {
@@ -522,6 +564,7 @@ pub fn gateway_mcp_tools_list() -> Value {
                 },
                 "required": ["landmark_id"]
             },
+            "outputSchema": gateway_json_output_schema(),
             "annotations": { "readOnlyHint": true, "destructiveHint": false, "idempotentHint": true, "openWorldHint": false }
         },
         {
@@ -536,6 +579,7 @@ pub fn gateway_mcp_tools_list() -> Value {
                 },
                 "required": ["action"]
             },
+            "outputSchema": gateway_json_output_schema(),
             "annotations": { "readOnlyHint": false, "destructiveHint": true, "idempotentHint": false, "openWorldHint": false }
         },
         {
@@ -574,6 +618,7 @@ pub fn gateway_mcp_tools_list() -> Value {
                     "intent": { "type": "string" }
                 }
             },
+            "outputSchema": gateway_json_output_schema(),
             "annotations": { "readOnlyHint": false, "destructiveHint": true, "idempotentHint": false, "openWorldHint": false }
         }
     ])
@@ -1570,6 +1615,14 @@ mod tests {
         );
         assert!(!names.contains(&"shell"));
         assert!(!names.contains(&"apply_patch"));
+
+        for tool in tools.as_array().expect("tools list must be an array") {
+            assert!(
+                tool.get("outputSchema").is_some(),
+                "gateway tool {} must advertise an outputSchema",
+                tool["name"].as_str().unwrap_or("<unknown>")
+            );
+        }
     }
 
     #[test]

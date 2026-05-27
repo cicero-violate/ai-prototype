@@ -205,10 +205,6 @@ pub use crate::kernel::{
     Gate, GateId, GateSet, GateStatus, Packet, Phase, RecoveryAction, RuntimeConfig, SemanticDelta,
     State, TLog, EXECUTION_GATE_ORDER, GATE_ORDER, PHASES,
 };
-pub use crate::runtime::action_transcript::{
-    action_transcript_path, append_action_transcript, replay_action_transcripts,
-    ActionTranscriptRecord, ACTION_TRANSCRIPT_RECORD_CALL_RESULT, ACTION_TRANSCRIPT_SCHEMA_VERSION,
-};
 pub use crate::runtime::{
     append_canonical_line, append_score_report_update_ndjson, append_validation_result_ndjson,
     canonical_tlog_path_from_dir, command_causality_report_from, default_canonical_tlog_path,

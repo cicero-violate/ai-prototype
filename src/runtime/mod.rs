@@ -16,7 +16,6 @@ use crate::kernel::{
     RecoveryAction, RuntimeConfig, SemanticDelta, State, TLog, GATE_ORDER, PHASES,
 };
 
-pub mod action_transcript;
 pub(crate) mod command_ledger;
 pub(crate) mod diff;
 pub mod durable;
@@ -26,7 +25,6 @@ pub mod event_wire;
 pub mod introspection;
 pub mod learning_transcript;
 pub mod mailbox;
-pub mod mcp_transcript;
 pub(crate) mod recovery_policy;
 pub(crate) mod reducer;
 pub mod snapshot;
@@ -35,11 +33,6 @@ pub mod verify;
 pub mod workspace;
 pub(crate) mod writer;
 
-pub use self::action_transcript::{
-    action_transcript_path, append_action_transcript, replay_action_transcripts,
-    ActionTranscriptReceiptFacts, ActionTranscriptRecord, ACTION_TRANSCRIPT_RECORD_CALL_RESULT,
-    ACTION_TRANSCRIPT_SCHEMA_VERSION,
-};
 pub use self::command_ledger::{CommandLedger, CommandReceipt};
 pub use self::diff::semantic_diff;
 pub use self::durable::{
@@ -60,9 +53,6 @@ pub use self::mailbox::{
     append_mailbox_message, mailbox_path, read_mailbox_projection, validate_agent_id,
     MailboxMessageReceipt, MailboxMessageRecord, MailboxMessageRequest, MailboxReadProjection,
     MAILBOX_MESSAGE_CAPABILITY_ID,
-};
-pub use self::mcp_transcript::{
-    append_mcp_transcript, mcp_transcript_path, replay_mcp_transcripts, McpTranscriptRecord,
 };
 pub use self::snapshot::{
     find_last_completed_seq, read_snapshot_meta, snapshot_meta_from_tlog, write_snapshot_meta,

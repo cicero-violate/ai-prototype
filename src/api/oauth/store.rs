@@ -1,8 +1,9 @@
 //! OAuth store, client registration, authorization, and token issuance.
 
 use std::collections::HashMap;
-use std::fs;
-use std::path::PathBuf;
+use std::fs::{self, OpenOptions};
+use std::io::Write;
+use std::path::{Path, PathBuf};
 
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Redirect, Response};
@@ -38,6 +39,11 @@ impl OAuthStore {
             refresh_tokens: HashMap::new(),
         };
         if store.path.exists() {
+            let metadata = fs::metadata(&store.path)
+                .map_err(|e| format!("stat oauth store {}: {e}", store.path.display()))?;
+            if metadata.len() == 0 {
+                return Ok(store);
+            }
             let blob = fs::read_to_string(&store.path)
                 .map_err(|e| format!("read oauth store {}: {e}", store.path.display()))?;
             let plaintext = decrypt_blob(blob.trim(), &store.key_material)?;
@@ -92,11 +98,23 @@ impl OAuthStore {
         reason = "OAuth route helper returns concrete axum Response errors for direct into_response use"
     )]
     pub fn authorize_page_context(
-        &self,
+        &mut self,
         q: &AuthorizeQuery,
     ) -> Result<AuthorizePageContext, Response> {
-        let Some(client) = self.clients.get(&q.client_id).cloned() else {
-            return Err((StatusCode::BAD_REQUEST, "Unknown client_id").into_response());
+        let client = match self.clients.get(&q.client_id).cloned() {
+            Some(client) => client,
+            None if self.recover_chatgpt_client(
+                &q.client_id,
+                &q.redirect_uri,
+                &q.code_challenge,
+            ) =>
+            {
+                self.clients
+                    .get(&q.client_id)
+                    .cloned()
+                    .expect("recovered client should be present")
+            }
+            None => return Err((StatusCode::BAD_REQUEST, "Unknown client_id").into_response()),
         };
         if !client.redirect_uris.contains(&q.redirect_uri) {
             return Err((StatusCode::BAD_REQUEST, "Invalid redirect_uri").into_response());
@@ -120,8 +138,20 @@ impl OAuthStore {
             .as_deref()
             .filter(|value| !value.is_empty())
             .map_or(String::new(), |value| format!("&state={value}"));
-        let Some(client) = self.clients.get(&form.client_id).cloned() else {
-            return (StatusCode::BAD_REQUEST, "Unknown client_id").into_response();
+        let client = match self.clients.get(&form.client_id).cloned() {
+            Some(client) => client,
+            None if self.recover_chatgpt_client(
+                &form.client_id,
+                &form.redirect_uri,
+                &form.code_challenge,
+            ) =>
+            {
+                self.clients
+                    .get(&form.client_id)
+                    .cloned()
+                    .expect("recovered client should be present")
+            }
+            None => return (StatusCode::BAD_REQUEST, "Unknown client_id").into_response(),
         };
         if !client.redirect_uris.contains(&form.redirect_uri) {
             return (StatusCode::BAD_REQUEST, "Invalid redirect_uri").into_response();
@@ -175,8 +205,45 @@ impl OAuthStore {
             fs::create_dir_all(parent)
                 .map_err(|e| format!("create oauth store dir {}: {e}", parent.display()))?;
         }
-        fs::write(&self.path, blob)
-            .map_err(|e| format!("write oauth store {}: {e}", self.path.display()))
+        write_oauth_store_atomic(&self.path, blob.as_bytes())
+    }
+
+    fn recover_chatgpt_client(
+        &mut self,
+        client_id: &str,
+        redirect_uri: &str,
+        code_challenge: &str,
+    ) -> bool {
+        if Uuid::parse_str(client_id).is_err()
+            || code_challenge.is_empty()
+            || !redirect_uri.starts_with("https://chatgpt.com/connector/oauth/")
+        {
+            return false;
+        }
+
+        self.clients.insert(
+            client_id.to_string(),
+            ClientRecord {
+                redirect_uris: vec![redirect_uri.to_string()],
+                client_name: Some("ChatGPT".to_string()),
+            },
+        );
+        if let Err(error) = self.save() {
+            self.clients.remove(client_id);
+            eprintln!("supervisor: ai mcp oauth store save failed after client recovery: {error}");
+            return false;
+        }
+        eprintln!("supervisor: recovered ChatGPT OAuth client_id after missing local store");
+        true
+    }
+
+    #[cfg(test)]
+    fn debug_counts(&self) -> OAuthStoreDebugCounts {
+        OAuthStoreDebugCounts {
+            clients: self.clients.len(),
+            access_tokens: self.access_tokens.len(),
+            refresh_tokens: self.refresh_tokens.len(),
+        }
     }
 
     fn prune_expired(&mut self) {
@@ -288,5 +355,132 @@ impl OAuthStore {
             "expires_in": 900
         }))
         .into_response()
+    }
+}
+
+#[cfg(test)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct OAuthStoreDebugCounts {
+    clients: usize,
+    access_tokens: usize,
+    refresh_tokens: usize,
+}
+
+fn write_oauth_store_atomic(path: &Path, bytes: &[u8]) -> Result<(), String> {
+    let tmp_path = oauth_store_tmp_path(path);
+    {
+        let mut file = OpenOptions::new()
+            .create(true)
+            .write(true)
+            .truncate(true)
+            .open(&tmp_path)
+            .map_err(|e| format!("open oauth store temp {}: {e}", tmp_path.display()))?;
+        file.write_all(bytes)
+            .map_err(|e| format!("write oauth store temp {}: {e}", tmp_path.display()))?;
+        file.sync_all()
+            .map_err(|e| format!("sync oauth store temp {}: {e}", tmp_path.display()))?;
+    }
+
+    fs::rename(&tmp_path, path).map_err(|e| {
+        format!(
+            "rename oauth store temp {} -> {}: {e}",
+            tmp_path.display(),
+            path.display()
+        )
+    })?;
+    sync_oauth_store_parent(path)
+}
+
+fn oauth_store_tmp_path(path: &Path) -> PathBuf {
+    let mut tmp = path.to_path_buf();
+    let extension = path
+        .extension()
+        .and_then(|value| value.to_str())
+        .filter(|value| !value.is_empty())
+        .map_or_else(|| "tmp".to_string(), |value| format!("{value}.tmp"));
+    tmp.set_extension(extension);
+    tmp
+}
+
+fn sync_oauth_store_parent(path: &Path) -> Result<(), String> {
+    let Some(parent) = path.parent() else {
+        return Ok(());
+    };
+    if parent.as_os_str().is_empty() {
+        return Ok(());
+    }
+    let dir = fs::File::open(parent)
+        .map_err(|e| format!("open oauth store dir {}: {e}", parent.display()))?;
+    dir.sync_all()
+        .map_err(|e| format!("sync oauth store dir {}: {e}", parent.display()))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn load_empty_oauth_store_is_empty_without_error() {
+        let tmp = tempfile::Builder::new()
+            .prefix("oauth-store-empty-")
+            .tempfile()
+            .expect("temp oauth store should be created");
+
+        let store = OAuthStore::load(tmp.path().to_path_buf(), "test-key".to_string())
+            .expect("empty oauth store should load");
+
+        assert_eq!(
+            store.debug_counts(),
+            OAuthStoreDebugCounts {
+                clients: 0,
+                access_tokens: 0,
+                refresh_tokens: 0,
+            }
+        );
+    }
+
+    #[test]
+    fn atomic_oauth_store_write_replaces_existing_file_with_nonempty_blob() {
+        let dir = tempfile::Builder::new()
+            .prefix("oauth-store-atomic-")
+            .tempdir()
+            .expect("tempdir should be created");
+        let path = dir.path().join("oauth-store.enc");
+        fs::write(&path, "old-store").expect("fixture store should be written");
+
+        write_oauth_store_atomic(&path, b"new-store").expect("atomic write should succeed");
+
+        assert_eq!(fs::read_to_string(&path).unwrap(), "new-store");
+        assert!(!oauth_store_tmp_path(&path).exists());
+    }
+
+    #[test]
+    fn authorize_recovers_chatgpt_client_after_missing_store() {
+        let dir = tempfile::Builder::new()
+            .prefix("oauth-store-recover-chatgpt-")
+            .tempdir()
+            .expect("tempdir should be created");
+        let path = dir.path().join("oauth-store.enc");
+        let key = "test-key".to_string();
+        let client_id = Uuid::new_v4().to_string();
+        let redirect_uri = "https://chatgpt.com/connector/oauth/test-connector".to_string();
+        let query = AuthorizeQuery {
+            client_id: client_id.clone(),
+            redirect_uri: redirect_uri.clone(),
+            code_challenge: "challenge".to_string(),
+            code_challenge_method: "S256".to_string(),
+            state: "state".to_string(),
+        };
+
+        let mut store = OAuthStore::load(path.clone(), key.clone()).unwrap();
+        let page = store
+            .authorize_page_context(&query)
+            .expect("ChatGPT client should recover");
+
+        assert_eq!(page.client_name, "ChatGPT");
+        assert!(path.exists());
+
+        let reloaded = OAuthStore::load(path, key).unwrap();
+        assert!(reloaded.clients.contains_key(&client_id));
     }
 }

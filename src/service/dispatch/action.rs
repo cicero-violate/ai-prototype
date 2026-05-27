@@ -14,9 +14,7 @@ pub use crate::capability::execution::action::host::ActionHost;
 use crate::capability::execution::action::host::ActionToolOutcome;
 use crate::capability::execution::action::landmarks;
 use crate::capability::execution::{ActionCallRequest, ActionReceipt};
-use crate::capability::learning::artifact::SymbolMutationRecord;
-use crate::runtime::learning_transcript::{append_symbol_mutation, resolve_def_paths_for_file};
-use crate::runtime::{append_action_transcript, ActionTranscriptReceiptFacts, WorkspaceView};
+use crate::runtime::WorkspaceView;
 use crate::CapabilityRegistry;
 
 pub async fn dispatch_action_request<H: ActionHost>(
@@ -50,76 +48,16 @@ async fn execute_recorded_action<H: ActionHost>(name: &str, args: Value, host: &
     execute_recorded_native_action(name, args, host).await
 }
 
-fn append_action_transcript_for_workspace(
+fn record_action_result_for_workspace(
     workspace: &WorkspaceView,
     name: &str,
     args_json: &str,
     response_json: &str,
-    request: &ActionCallRequest,
     receipt: &ActionReceipt,
 ) -> Option<String> {
-    let mut errors = Vec::new();
-    let mut recorded = false;
-    let receipt_facts = match ActionTranscriptReceiptFacts::from_receipt(
-        request.contract_hash(),
-        receipt.receipt_hash,
-        receipt.response_hash,
-        receipt.response_bytes,
-        receipt.exit_status,
-        receipt.timed_out,
-    ) {
-        Ok(facts) => facts,
-        Err(error) => {
-            return Some(format!(
-                "Action transcript recording failed in runtime: invalid receipt outcome: {error}"
-            ));
-        }
-    };
     append_raw_action_result(workspace, name, args_json, response_json, receipt)
-        .unwrap_or_else(|error| eprintln!("[canon-ai-action] raw result save failed: {error}"));
-
-    match append_action_transcript(
-        &workspace.root,
-        name,
-        args_json,
-        response_json,
-        receipt_facts,
-    ) {
-        Ok(_) => recorded = true,
-        Err(error) => errors.push(format!("workspace {}: {error}", workspace.root.display())),
-    }
-
-    if workspace.allowed_boundary != workspace.root {
-        match append_action_transcript(
-            &workspace.allowed_boundary,
-            name,
-            args_json,
-            response_json,
-            receipt_facts,
-        ) {
-            Ok(_) => recorded = true,
-            Err(error) => errors.push(format!(
-                "project {}: {error}",
-                workspace.allowed_boundary.display()
-            )),
-        }
-    }
-
-    try_record_symbol_mutation(workspace, name, args_json, receipt);
-
-    if errors.is_empty() {
-        None
-    } else if recorded {
-        Some(format!(
-            "Action transcript mirror warning: {}",
-            errors.join("; ")
-        ))
-    } else {
-        Some(format!(
-            "Action transcript recording failed in runtime: {}",
-            errors.join("; ")
-        ))
-    }
+        .err()
+        .map(|error| format!("Action raw result recording failed: {error}"))
 }
 
 const RAW_FIELD_BYTE_LIMIT: usize = 64 * 1024;
@@ -134,6 +72,30 @@ fn truncate_raw_field(s: &str) -> &str {
         end -= 1;
     }
     &s[..end]
+}
+
+fn gateway_max_output_bytes(args: &Value, default_limit: u64) -> u64 {
+    fn nested_limit(value: &Value) -> Option<u64> {
+        value
+            .get("max_output_bytes")
+            .and_then(Value::as_u64)
+            .filter(|limit| *limit > 0)
+    }
+
+    let mut limit = default_limit.max(1);
+    if let Some(nested) = args.get("parameters").and_then(nested_limit) {
+        limit = limit.max(nested);
+    }
+    for key in ["actions", "steps"] {
+        if let Some(items) = args.get(key).and_then(Value::as_array) {
+            for item in items {
+                if let Some(nested) = item.get("parameters").and_then(nested_limit) {
+                    limit = limit.max(nested);
+                }
+            }
+        }
+    }
+    limit
 }
 
 fn append_raw_action_result(
@@ -176,7 +138,6 @@ fn append_raw_action_result(
 #[cfg(test)]
 mod transcript_tests {
     use super::*;
-    use crate::runtime::{action_transcript_path, replay_action_transcripts};
     use std::fs;
     use std::io::{BufRead, BufReader};
     use std::path::PathBuf;
@@ -192,6 +153,48 @@ mod transcript_tests {
             .unwrap();
         let path = tmp.path().to_path_buf();
         (path, tmp)
+    }
+
+    fn apply_patch_target_files(args: &Value) -> Vec<String> {
+        let mut files = std::collections::BTreeSet::new();
+        if let Some(path) = args.get("path").and_then(Value::as_str) {
+            files.insert(path.to_string());
+        }
+        if let Some(patch) = args.get("patch").and_then(Value::as_str) {
+            for line in patch.lines() {
+                for prefix in ["*** Update File: ", "*** Add File: ", "*** Delete File: "] {
+                    if let Some(path) = line.strip_prefix(prefix) {
+                        files.insert(path.trim().to_string());
+                    }
+                }
+            }
+        }
+        files.into_iter().collect()
+    }
+
+    fn structural_edit_target_files(args: &Value) -> Vec<String> {
+        fn collect(value: &Value, files: &mut std::collections::BTreeSet<String>) {
+            match value {
+                Value::Object(map) => {
+                    if let Some(path) = map.get("path").and_then(Value::as_str) {
+                        files.insert(path.to_string());
+                    }
+                    for value in map.values() {
+                        collect(value, files);
+                    }
+                }
+                Value::Array(values) => {
+                    for value in values {
+                        collect(value, files);
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        let mut files = std::collections::BTreeSet::new();
+        collect(args, &mut files);
+        files.into_iter().collect()
     }
 
     #[test]
@@ -330,85 +333,6 @@ mod transcript_tests {
             ]
         );
     }
-
-    #[test]
-    fn action_transcript_is_mirrored_from_nested_workspace_to_project_state() {
-        let (project, _tmp) = unique_project();
-        let nested = project.join("browser-router");
-        fs::create_dir_all(&nested).expect("create nested workspace");
-        fs::create_dir_all(project.join("state")).expect("create shared state");
-        let workspace = WorkspaceView::new(nested.clone(), project.clone()).expect("workspace");
-        let args_json = r#"{"command":"get_landmarks"}"#;
-        let response_json = r#"{"content":[{"type":"text","text":"saved"}],"isError":false}"#;
-        let request = ActionCallRequest::new(
-            CapabilityRegistry::canonical(),
-            "ai-native:/ai/mcp",
-            "get_landmarks",
-            args_json,
-            1000,
-            65_536,
-        );
-        let receipt = ActionReceipt::from_response(&request, response_json.as_bytes(), 0, false);
-
-        let warning = append_action_transcript_for_workspace(
-            &workspace,
-            "get_landmarks",
-            args_json,
-            response_json,
-            &request,
-            &receipt,
-        );
-
-        assert!(warning.is_none());
-        let nested_records = replay_action_transcripts(&nested).expect("nested transcript");
-        let project_records = replay_action_transcripts(&project).expect("project transcript");
-        assert_eq!(nested_records.len(), 1);
-        assert_eq!(project_records.len(), 1);
-        assert_eq!(project_records[0].response_json, response_json);
-        assert!(
-            project.join("state").join("actions.ndjson").exists(),
-            "raw result sink is written under the project state root"
-        );
-        assert_eq!(
-            action_transcript_path(&project),
-            project
-                .join("state")
-                .join("agent_state")
-                .join("action")
-                .join("action-transcript.tlog.ndjson")
-        );
-    }
-
-    #[test]
-    fn action_transcript_is_not_duplicated_when_workspace_is_project_root() {
-        let (project, _tmp) = unique_project();
-        fs::create_dir_all(&project).expect("create project");
-        let workspace = WorkspaceView::new(project.clone(), project.clone()).expect("workspace");
-        let args_json = r#"{"command":"get_manifest"}"#;
-        let response_json = r#"{"content":[{"type":"text","text":"manifest"}],"isError":false}"#;
-        let request = ActionCallRequest::new(
-            CapabilityRegistry::canonical(),
-            "ai-native:/ai/mcp",
-            "get_manifest",
-            args_json,
-            1000,
-            65_536,
-        );
-        let receipt = ActionReceipt::from_response(&request, response_json.as_bytes(), 0, false);
-
-        let warning = append_action_transcript_for_workspace(
-            &workspace,
-            "get_manifest",
-            args_json,
-            response_json,
-            &request,
-            &receipt,
-        );
-
-        assert!(warning.is_none());
-        let project_records = replay_action_transcripts(&project).expect("project transcript");
-        assert_eq!(project_records.len(), 1);
-    }
 }
 
 async fn execute_recorded_gateway_tool<H: ActionHost>(name: &str, args: Value, host: &H) -> Value {
@@ -419,11 +343,12 @@ async fn execute_recorded_gateway_tool<H: ActionHost>(name: &str, args: Value, h
         .and_then(Value::as_u64)
         .unwrap_or(180_000)
         .max(1);
-    let max_output_bytes = args
-        .get("max_output_bytes")
-        .and_then(Value::as_u64)
-        .unwrap_or(65_536)
-        .max(1);
+    let max_output_bytes = gateway_max_output_bytes(
+        &args,
+        args.get("max_output_bytes")
+            .and_then(Value::as_u64)
+            .unwrap_or(65_536),
+    );
     let request = ActionCallRequest::new(
         CapabilityRegistry::canonical(),
         "ai-native:/ai/mcp",
@@ -456,14 +381,8 @@ async fn execute_recorded_gateway_tool<H: ActionHost>(name: &str, args: Value, h
     let receipt =
         ActionReceipt::from_response(&request, &response_bytes, exit_status, tool_timed_out);
     let workspace = host.workspace();
-    let transcript_warning = append_action_transcript_for_workspace(
-        &workspace,
-        name,
-        &args_json,
-        &response_json,
-        &request,
-        &receipt,
-    );
+    let transcript_warning =
+        record_action_result_for_workspace(&workspace, name, &args_json, &response_json, &receipt);
     if let Err(error) = host
         .submit_kernel_command(KernelCommand::SubmitActionReceipt(receipt))
         .await
@@ -527,14 +446,8 @@ async fn execute_recorded_native_action<H: ActionHost>(name: &str, args: Value, 
         String::from_utf8(response_bytes.clone()).unwrap_or_else(|_| "null".to_string());
     let receipt = ActionReceipt::from_response(&request, &response_bytes, exit_status, timed_out);
     let workspace = host.workspace();
-    let transcript_warning = append_action_transcript_for_workspace(
-        &workspace,
-        name,
-        &args_json,
-        &response_json,
-        &request,
-        &receipt,
-    );
+    let transcript_warning =
+        record_action_result_for_workspace(&workspace, name, &args_json, &response_json, &receipt);
     if let Err(error) = host
         .submit_kernel_command(KernelCommand::SubmitActionReceipt(receipt))
         .await
@@ -547,121 +460,6 @@ async fn execute_recorded_native_action<H: ActionHost>(name: &str, args: Value, 
     match transcript_warning {
         Some(warning) => result_with_warning(result, warning),
         None => result,
-    }
-}
-
-/// Emit a `SymbolMutationRecord` when a file edit succeeds on a file that has
-/// known symbols in the semantic index. Errors here are non-fatal.
-///
-/// `cycle` and `task_node_hash` are unknown at dispatch time; `derive_training.py`
-/// correlates them from `cycle-events.ndjson` by timestamp.
-fn try_record_symbol_mutation(
-    workspace: &WorkspaceView,
-    tool_name: &str,
-    args_json: &str,
-    receipt: &ActionReceipt,
-) {
-    if !matches!(tool_name, "apply_patch" | "structural_edit") || receipt.exit_status != 0 {
-        return;
-    }
-    let Ok(args) = serde_json::from_str::<Value>(args_json) else {
-        return;
-    };
-    let file_paths = match tool_name {
-        "apply_patch" => apply_patch_target_files(&args),
-        "structural_edit" => structural_edit_target_files(&args),
-        _ => Vec::new(),
-    };
-    if file_paths.is_empty() {
-        return;
-    }
-    let ts = chrono::Utc::now().timestamp_millis() as u64;
-    for file_path in file_paths {
-        let def_paths = resolve_def_paths_for_file(&workspace.allowed_boundary, &file_path);
-        if def_paths.is_empty() {
-            continue;
-        }
-        let record = SymbolMutationRecord::new(
-            ts,
-            0,
-            0,
-            0,
-            file_path.clone(),
-            def_paths,
-            true,
-            receipt.exit_status,
-            receipt.receipt_hash,
-        );
-        if let Err(e) = append_symbol_mutation(&workspace.allowed_boundary, &record, 0) {
-            eprintln!("[canon-ai-learning] symbol mutation record failed path={file_path}: {e}");
-        }
-    }
-}
-
-fn apply_patch_target_files(args: &Value) -> Vec<String> {
-    if let Some(path) = args.get("path").and_then(|v| v.as_str()) {
-        let trimmed = path.trim();
-        if !trimmed.is_empty() {
-            return vec![trimmed.to_string()];
-        }
-    }
-    let Some(patch) = args.get("patch").and_then(|v| v.as_str()) else {
-        return Vec::new();
-    };
-    let mut files = Vec::new();
-    for line in patch.lines().map(str::trim_end) {
-        let path = line
-            .strip_prefix("*** Add File: ")
-            .or_else(|| line.strip_prefix("*** Update File: "))
-            .or_else(|| line.strip_prefix("*** Delete File: "))
-            .or_else(|| line.strip_prefix("*** Move to: "));
-        if let Some(path) = path.map(str::trim).filter(|path| !path.is_empty()) {
-            files.push(path.to_string());
-        }
-    }
-    files.sort();
-    files.dedup();
-    files
-}
-
-fn structural_edit_target_files(args: &Value) -> Vec<String> {
-    let mut files = Vec::new();
-    if let Some(ops) = args.get("ops").and_then(Value::as_array) {
-        for op in ops {
-            collect_structural_paths(op, &mut files);
-        }
-    }
-    files.sort();
-    files.dedup();
-    files
-}
-
-fn collect_structural_paths(value: &Value, files: &mut Vec<String>) {
-    match value {
-        Value::Object(map) => {
-            if let Some(path) = map
-                .get("path")
-                .or_else(|| map.get("file"))
-                .or_else(|| map.get("manifest"))
-                .or_else(|| map.get("receipt_path"))
-                .or_else(|| map.get("rollback_path"))
-                .and_then(Value::as_str)
-            {
-                let trimmed = path.trim();
-                if !trimmed.is_empty() {
-                    files.push(trimmed.to_string());
-                }
-            }
-            for child in map.values() {
-                collect_structural_paths(child, files);
-            }
-        }
-        Value::Array(items) => {
-            for child in items {
-                collect_structural_paths(child, files);
-            }
-        }
-        _ => {}
     }
 }
 

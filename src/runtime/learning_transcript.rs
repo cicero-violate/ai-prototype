@@ -1,7 +1,7 @@
 //! Hash-linked learning transcript writer.
 //!
 //! Records which learning artifacts were emitted and links each row to the TLog
-//! event and receipt that justify it. Mirrors `action_transcript.rs`.
+//! event and receipt that justify it.
 //!
 //! Artifact files written under `state/learning/`:
 //!   symbol_mutation_log.ndjson

@@ -33,27 +33,39 @@ pub trait ActionHost {
 /// Supervisor host tools still serialize to MCP's JSON envelope at the transport
 /// edge, but success/error state must flow through this enum until that point.
 pub enum HostToolResult {
-    Success(Value),
-    Error(Value),
+    Success { text: String },
+    Error { message: String },
 }
 
 impl HostToolResult {
-    pub fn success(value: Value) -> Self {
-        Self::Success(value)
+    pub fn success_text(text: String) -> Self {
+        Self::Success { text }
     }
 
-    pub fn error(value: Value) -> Self {
-        Self::Error(value)
+    pub fn error_message(message: String) -> Self {
+        Self::Error { message }
     }
 
     pub fn is_error(&self) -> bool {
-        matches!(self, Self::Error(_))
+        self.is_error_variant()
+    }
+
+    fn is_error_variant(&self) -> bool {
+        match self {
+            Self::Error { .. } => true,
+            Self::Success { .. } => false,
+        }
     }
 
     pub fn into_outcome(self) -> ActionToolOutcome {
         match self {
-            Self::Success(value) => ActionToolOutcome::Ok(value),
-            Self::Error(value) => ActionToolOutcome::Error(value),
+            Self::Success { text } => ActionToolOutcome::Ok(serde_json::json!({
+                "content": [{ "type": "text", "text": text }],
+                "isError": false
+            })),
+            Self::Error { message } => {
+                ActionToolOutcome::Error(crate::api::action::tool_error(message))
+            }
         }
     }
 }
@@ -183,6 +195,13 @@ mod tests {
     #[tokio::test]
     async fn unknown_native_tool_is_typed_error_variant() {
         let outcome = execute_native_tool("canon_missing_tool", &Value::Null, &NullHost).await;
+        assert_eq!(outcome.exit_status(), 1);
+        assert!(matches!(outcome, ActionToolOutcome::Error(_)));
+    }
+
+    #[tokio::test]
+    async fn unknown_supervisor_host_tool_is_typed_error_variant() {
+        let outcome = execute_native_tool("canon_supervisor_health", &Value::Null, &NullHost).await;
         assert_eq!(outcome.exit_status(), 1);
         assert!(matches!(outcome, ActionToolOutcome::Error(_)));
     }

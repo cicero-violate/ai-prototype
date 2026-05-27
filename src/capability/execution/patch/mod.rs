@@ -10,7 +10,7 @@ use uuid::Uuid;
 
 use crate::capability::execution::action::common::{tmp_dir, tool_error};
 use crate::runtime::WorkspaceView;
-use fs_copy::{copy_dir_recursive_excluding, TempDirGuard};
+use fs_copy::{copy_patch_inputs, TempDirGuard};
 use parser::{collect_apply_patch_changed_files, validate_workspace_relative_path};
 use runner::{format_apply_patch_failure, run_apply_patch_binary};
 
@@ -136,7 +136,7 @@ async fn run_inner(args: &Value, workspace: &WorkspaceView) -> Result<Value, Str
         categorize_patch_paths(request.patch_text).unwrap_or_else(|_| AffectedPaths::default());
 
     let (run_dir, _guard) =
-        prepare_apply_patch_run_dir(request.do_apply, &workspace.root, &work_dir)?;
+        prepare_apply_patch_run_dir(request.do_apply, &workspace.root, &work_dir, &changed_files)?;
     let stdout = run_validated_apply_patch(request.patch_text, &run_dir).await?;
 
     Ok(success_response(
@@ -208,13 +208,14 @@ fn prepare_apply_patch_run_dir(
     do_apply: bool,
     workspace_root: &Path,
     work_dir: &Path,
+    changed_files: &[String],
 ) -> Result<(PathBuf, Option<TempDirGuard>), String> {
     if do_apply {
         Ok((work_dir.to_path_buf(), None))
     } else {
         let temp_root = tmp_dir(workspace_root)?;
         let temp = temp_root.join(format!("apply-patch-{}", Uuid::new_v4()));
-        copy_dir_recursive_excluding(work_dir, &temp, &[temp_root])?;
+        copy_patch_inputs(work_dir, &temp, changed_files)?;
         Ok((temp.clone(), Some(TempDirGuard(temp))))
     }
 }

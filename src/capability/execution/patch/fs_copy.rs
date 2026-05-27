@@ -3,6 +3,24 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
+pub(super) fn copy_patch_inputs(src: &Path, dst: &Path, paths: &[String]) -> Result<(), String> {
+    fs::create_dir_all(dst)
+        .map_err(|error| format!("create temp cwd {}: {error}", dst.display()))?;
+    for relative in paths {
+        let source_path = src.join(relative);
+        if !source_path.exists() {
+            continue;
+        }
+        let dest_path = dst.join(relative);
+        if let Some(parent) = dest_path.parent() {
+            fs::create_dir_all(parent)
+                .map_err(|error| format!("create temp parent {}: {error}", parent.display()))?;
+        }
+        copy_path(&source_path, &dest_path)?;
+    }
+    Ok(())
+}
+
 pub(super) fn copy_dir_recursive_excluding(
     src: &Path,
     dst: &Path,
@@ -27,26 +45,37 @@ pub(super) fn copy_dir_recursive_excluding(
             .map_err(|error| format!("read file type {}: {error}", source_path.display()))?;
         if file_type.is_dir() {
             copy_dir_recursive_excluding(&source_path, &dest_path, excluded_roots)?;
-        } else if file_type.is_file() {
-            fs::copy(&source_path, &dest_path).map_err(|error| {
-                format!(
-                    "copy {} to {}: {error}",
-                    source_path.display(),
-                    dest_path.display()
-                )
-            })?;
-        } else if file_type.is_symlink() {
-            let target = fs::read_link(&source_path)
-                .map_err(|error| format!("read symlink {}: {error}", source_path.display()))?;
-            #[cfg(unix)]
-            std::os::unix::fs::symlink(&target, &dest_path).map_err(|error| {
-                format!(
-                    "copy symlink {} to {}: {error}",
-                    source_path.display(),
-                    dest_path.display()
-                )
-            })?;
+        } else {
+            copy_path(&source_path, &dest_path)?;
         }
+    }
+    Ok(())
+}
+
+fn copy_path(source_path: &Path, dest_path: &Path) -> Result<(), String> {
+    let metadata = fs::symlink_metadata(source_path)
+        .map_err(|error| format!("read file type {}: {error}", source_path.display()))?;
+    if metadata.is_file() {
+        fs::copy(source_path, dest_path).map_err(|error| {
+            format!(
+                "copy {} to {}: {error}",
+                source_path.display(),
+                dest_path.display()
+            )
+        })?;
+    } else if metadata.file_type().is_symlink() {
+        let target = fs::read_link(source_path)
+            .map_err(|error| format!("read symlink {}: {error}", source_path.display()))?;
+        #[cfg(unix)]
+        std::os::unix::fs::symlink(&target, dest_path).map_err(|error| {
+            format!(
+                "copy symlink {} to {}: {error}",
+                source_path.display(),
+                dest_path.display()
+            )
+        })?;
+    } else if metadata.is_dir() {
+        copy_dir_recursive_excluding(source_path, dest_path, &[])?;
     }
     Ok(())
 }
@@ -95,5 +124,30 @@ mod tests {
 
         assert!(dst.join("Cargo.toml").exists());
         assert!(!dst.join("state/tmp/canon-ai-mcp").exists());
+    }
+
+    #[test]
+    fn copy_patch_inputs_copies_only_touched_files() {
+        let (root, _tmp) = unique_test_dir("sparse-inputs");
+        let src = root.join("workspace");
+        let dst = root.join("patch-check");
+        fs::create_dir_all(src.join("src")).expect("create source dirs");
+        fs::create_dir_all(src.join("target/debug")).expect("create ignored dirs");
+        fs::write(src.join("src/lib.rs"), "fn changed() {}\n").expect("write changed");
+        fs::write(src.join("target/debug/huge"), "not copied").expect("write ignored");
+
+        copy_patch_inputs(
+            &src,
+            &dst,
+            &["src/lib.rs".to_string(), "new.rs".to_string()],
+        )
+        .expect("copy sparse patch inputs");
+
+        assert_eq!(
+            fs::read_to_string(dst.join("src/lib.rs")).expect("read copied file"),
+            "fn changed() {}\n"
+        );
+        assert!(!dst.join("target").exists());
+        assert!(!dst.join("new.rs").exists());
     }
 }
