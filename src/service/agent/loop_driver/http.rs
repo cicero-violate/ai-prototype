@@ -7,7 +7,7 @@ use std::time::Duration;
 use crate::service::agent::config::AgentLoopConfig;
 
 use super::mcp_workspace::parse_mcp_workspace_status;
-use super::receipt::agent_turn_kernel_command;
+use super::receipt::{agent_turn_kernel_command, AgentTurnStatus};
 
 pub(crate) fn agent_command_url(config: &AgentLoopConfig) -> Option<String> {
     config
@@ -32,8 +32,12 @@ pub(crate) fn agent_command_url(config: &AgentLoopConfig) -> Option<String> {
         })
 }
 
-pub(super) fn submit_agent_turn_receipt(command_url: &str, receipt: &serde_json::Value) {
-    let command = match serde_json::to_value(agent_turn_kernel_command(receipt)) {
+pub(super) fn submit_agent_turn_receipt(
+    command_url: &str,
+    receipt: &serde_json::Value,
+    status: AgentTurnStatus,
+) {
+    let command = match serde_json::to_value(agent_turn_kernel_command(receipt, status)) {
         Ok(command) => command,
         Err(err) => {
             eprintln!(

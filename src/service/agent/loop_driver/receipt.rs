@@ -37,11 +37,7 @@ pub(super) fn finalize_run_cycle_attempt_result(
         label,
         attempt,
         request_hash,
-        status: if result.complete {
-            "completed"
-        } else {
-            "incomplete"
-        },
+        status: AgentTurnStatus::from_completed(result.complete),
         reason: &reason,
         finish_reason: result.finish_reason.as_deref(),
         target_url: result.target_url.as_deref(),
@@ -76,6 +72,33 @@ pub(super) fn finalize_run_cycle_attempt_result(
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum AgentTurnStatus {
+    Completed,
+    Incomplete,
+}
+
+impl AgentTurnStatus {
+    pub(super) const fn from_completed(completed: bool) -> Self {
+        if completed {
+            Self::Completed
+        } else {
+            Self::Incomplete
+        }
+    }
+
+    pub(super) const fn as_str(self) -> &'static str {
+        match self {
+            Self::Completed => "completed",
+            Self::Incomplete => "incomplete",
+        }
+    }
+
+    pub(super) const fn is_completed(self) -> bool {
+        matches!(self, Self::Completed)
+    }
+}
+
 pub(super) struct AgentTurnReceiptInput<'a> {
     pub(super) dir: &'a Path,
     pub(super) tag: &'a str,
@@ -83,7 +106,7 @@ pub(super) struct AgentTurnReceiptInput<'a> {
     pub(super) label: &'a str,
     pub(super) attempt: u32,
     pub(super) request_hash: u64,
-    pub(super) status: &'a str,
+    pub(super) status: AgentTurnStatus,
     pub(super) reason: &'a str,
     pub(super) finish_reason: Option<&'a str>,
     pub(super) target_url: Option<&'a str>,
@@ -102,7 +125,7 @@ pub(super) fn write_agent_turn_receipt(input: AgentTurnReceiptInput<'_>) {
         "cycle": input.cycle_num,
         "label": input.label,
         "attempt": input.attempt,
-        "status": input.status,
+        "status": input.status.as_str(),
         "reason": input.reason,
         "finish_reason": input.finish_reason,
         "request_hash": input.request_hash,
@@ -115,9 +138,9 @@ pub(super) fn write_agent_turn_receipt(input: AgentTurnReceiptInput<'_>) {
         let _ = writeln!(file, "{receipt}");
     }
     if let Some(command_url) = input.command_url {
-        submit_agent_turn_receipt(command_url, &receipt);
+        submit_agent_turn_receipt(command_url, &receipt, input.status);
         // Analysis + Judgment gates: the planning turn's output is the judgment.
-        if input.label == "plan" && input.status == "completed" {
+        if input.label == "plan" && input.status.is_completed() {
             let content_hash = stable_agent_hash(input.content.as_bytes());
             submit_judgment_evidence(command_url, content_hash);
         }
@@ -130,7 +153,10 @@ pub(super) struct RunCycleAttemptOutcome {
     pub(super) retry_is_safe: bool,
 }
 
-pub(super) fn agent_turn_kernel_command(receipt: &serde_json::Value) -> CommandEnvelopeDto {
+pub(super) fn agent_turn_kernel_command(
+    receipt: &serde_json::Value,
+    status: AgentTurnStatus,
+) -> CommandEnvelopeDto {
     let payload_hash = stable_agent_hash(receipt.to_string().as_bytes());
     let plan_payload_hash = stable_agent_hash(
         json!({
@@ -140,8 +166,7 @@ pub(super) fn agent_turn_kernel_command(receipt: &serde_json::Value) -> CommandE
         .to_string()
         .as_bytes(),
     );
-    let execution_passed =
-        receipt.get("status").and_then(serde_json::Value::as_str) == Some("completed");
+    let execution_passed = status.is_completed();
     let plan_submission = EvidenceSubmission::with_effect_payload(
         GateId::Plan,
         Evidence::TaskReady,

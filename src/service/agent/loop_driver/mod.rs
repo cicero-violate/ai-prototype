@@ -76,35 +76,36 @@ pub(crate) fn close_existing_base_agent_for_recovery() {
         Ok(mut target) => target.take(),
         Err(_) => {
             eprintln!("[recovery-bus] base agent close skipped: target lock poisoned");
-            return;
+            None
         }
-    };
-    let Some(target) = target else {
-        eprintln!("[recovery-bus] no tracked base target; closing first existing browser tab");
-        match crate::service::agent::router::close_first_tab_with_timeout(8_000) {
-            Ok(outcome) => {
-                eprintln!("[recovery-bus] base agent fallback close outcome={outcome:?}")
-            }
-            Err(e) => eprintln!("[recovery-bus] base agent fallback close failed: {e}"),
-        }
-        return;
     };
 
-    eprintln!(
-        "[recovery-bus] closing base agent tab  tag={}  cycle={}",
-        target.tag, target.cycle_num
-    );
-    let result = if let Some(target_id) = target.target_id.as_deref() {
-        crate::service::agent::router::close_tab_for_target_id_with_timeout(target_id, 8_000)
-    } else if let Some(target_url) = target.target_url.as_deref() {
-        crate::service::agent::router::close_tab_for_url_with_timeout(target_url, 8_000)
+    if let Some(target) = target {
+        eprintln!(
+            "[recovery-bus] closing tracked base agent tab  tag={}  cycle={}",
+            target.tag, target.cycle_num
+        );
+        let result = if let Some(target_id) = target.target_id.as_deref() {
+            crate::service::agent::router::close_tab_for_target_id_with_timeout(target_id, 8_000)
+        } else if let Some(target_url) = target.target_url.as_deref() {
+            crate::service::agent::router::close_tab_for_url_with_timeout(target_url, 8_000)
+        } else {
+            Ok(RouterTabCloseOutcome::NoTarget)
+        };
+        match result {
+            Ok(outcome) => eprintln!("[recovery-bus] tracked base agent close outcome={outcome:?}"),
+            Err(e) => eprintln!("[recovery-bus] tracked base agent close failed: {e}"),
+        }
     } else {
-        Ok(RouterTabCloseOutcome::NoTarget)
-    };
+        eprintln!("[recovery-bus] no tracked base target");
+    }
 
-    match result {
-        Ok(outcome) => eprintln!("[recovery-bus] base agent close outcome={outcome:?}"),
-        Err(e) => eprintln!("[recovery-bus] base agent close failed: {e}"),
+    match crate::service::agent::router::close_all_tabs_with_timeout(8_000) {
+        Ok(outcomes) => eprintln!(
+            "[recovery-bus] base agent close-all outcomes={outcomes:?}  count={}",
+            outcomes.len()
+        ),
+        Err(e) => eprintln!("[recovery-bus] base agent close-all failed: {e}"),
     }
 }
 
@@ -152,6 +153,7 @@ use prompt_builders::{
 };
 #[cfg(test)]
 use receipt::agent_turn_kernel_command;
+use receipt::AgentTurnStatus;
 
 /// Outer project-loop driver. Mirrors agentLoop / runCycle from
 /// chatgpt-agent-loop/agent-loop.mjs.
@@ -575,7 +577,7 @@ impl LoopDriver {
                     label: &attempt_label,
                     attempt,
                     request_hash,
-                    status: "failed",
+                    status: AgentTurnStatus::Incomplete,
                     reason: &err.to_string(),
                     finish_reason: None,
                     target_url: None,
@@ -997,13 +999,35 @@ mod tests {
             "retry_is_safe": false,
         });
 
-        let command = agent_turn_kernel_command(&receipt);
+        let command = agent_turn_kernel_command(&receipt, AgentTurnStatus::Completed);
 
         assert_eq!(command.payload_tag, "SubmitEvidenceBatch");
         assert_ne!(command.command_id, 0);
         assert_ne!(command.command_hash, 0);
         assert_eq!(command.payload[0]["gate"], "Plan");
         assert_eq!(command.payload[0]["effect"], "BindReadyTask");
+        assert_eq!(command.payload[1]["gate"], "Execution");
+        assert_eq!(command.payload[1]["passed"], true);
+    }
+
+    #[test]
+    fn agent_turn_receipt_status_is_typed_not_recovered_from_json() {
+        let receipt = json!({
+            "schema": "canon.agent.router_turn_receipt.v1",
+            "agent": "agent",
+            "cycle": 1,
+            "label": "plan",
+            "attempt": 0,
+            "status": "incomplete",
+            "reason": "serialized field is stale",
+            "request_hash": 7,
+            "content_hash": 11,
+            "content_len": 42,
+            "retry_is_safe": false,
+        });
+
+        let command = agent_turn_kernel_command(&receipt, AgentTurnStatus::Completed);
+
         assert_eq!(command.payload[1]["gate"], "Execution");
         assert_eq!(command.payload[1]["passed"], true);
     }
@@ -1023,7 +1047,7 @@ mod tests {
             "content_len": 42,
             "retry_is_safe": false,
         });
-        let command = agent_turn_kernel_command(&receipt);
+        let command = agent_turn_kernel_command(&receipt, AgentTurnStatus::Completed);
         let tlog = tempfile::NamedTempFile::new().expect("temp tlog should be created");
         let state = crate::WorkerAppState::new_default(tlog.path());
 
@@ -1060,7 +1084,7 @@ mod tests {
             "content_len": 42,
             "retry_is_safe": true,
         });
-        let command = agent_turn_kernel_command(&receipt);
+        let command = agent_turn_kernel_command(&receipt, AgentTurnStatus::Incomplete);
         let tlog = tempfile::NamedTempFile::new().expect("temp tlog should be created");
         let state = crate::WorkerAppState::new_default(tlog.path());
 
