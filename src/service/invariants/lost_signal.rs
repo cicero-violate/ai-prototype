@@ -100,8 +100,8 @@ pub fn run_lost_signal_cycle(project_dir: &Path, cycle_num: u64, tag: &str) -> u
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 fn collect_mir_dirs(rustc_dir: &Path) -> Result<Vec<PathBuf>, String> {
-    let entries = fs::read_dir(rustc_dir)
-        .map_err(|e| format!("read_dir {}: {e}", rustc_dir.display()))?;
+    let entries =
+        fs::read_dir(rustc_dir).map_err(|e| format!("read_dir {}: {e}", rustc_dir.display()))?;
     let mut dirs: Vec<PathBuf> = entries
         .filter_map(|e| e.ok())
         .map(|e| e.path())
@@ -119,11 +119,7 @@ fn judgement_to_candidate(j: judgement::Judgement) -> InvariantCandidate {
         .collect::<Vec<_>>()
         .join("; ");
 
-    let first_summary = j
-        .evidence
-        .first()
-        .map(|e| e.summary.as_str())
-        .unwrap_or("");
+    let first_summary = j.evidence.first().map(|e| e.summary.as_str()).unwrap_or("");
 
     let mut candidate = InvariantCandidate::new(
         InvariantScope::Custom("LostSignal".into()),

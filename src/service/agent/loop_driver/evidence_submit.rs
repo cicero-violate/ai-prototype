@@ -186,20 +186,18 @@ pub(super) fn submit_eval_evidence(command_url: &str, score_hash: u64, cycle_num
 /// This triggers `InvariantBlocked → RecheckInvariant` recovery on the next
 /// tick, routing the supervisor to the Recovery phase so the LLM can plan a
 /// fix for the detected signal integrity violations.
-pub(super) fn submit_invariant_failure(
-    command_url: &str,
-    violation_count: usize,
-    cycle_num: u64,
-) {
-    let payload_hash =
-        stable_agent_hash(format!("canon:signal-integrity:violations:{violation_count}:{cycle_num}").as_bytes());
+pub(super) fn submit_invariant_failure(command_url: &str, violation_count: usize, cycle_num: u64) {
+    let payload_hash = stable_agent_hash(
+        format!("canon:signal-integrity:violations:{violation_count}:{cycle_num}").as_bytes(),
+    );
     let submission = EvidenceSubmission::with_payload(
         GateId::Invariant,
         Evidence::InvariantProof,
         false,
         payload_hash,
     );
-    let envelope = CommandEnvelope::new(payload_hash, Command::SubmitEvidenceBatch(vec![submission]));
+    let envelope =
+        CommandEnvelope::new(payload_hash, Command::SubmitEvidenceBatch(vec![submission]));
     let body = json!({
         "command_id": envelope.command_id,
         "command_hash": envelope.command_hash,

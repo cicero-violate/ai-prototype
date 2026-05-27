@@ -268,7 +268,8 @@ mod tests {
     #[test]
     fn worker_client_from_env_constructs_client_from_valid_config() {
         with_worker_port_env(Some("8127"), || {
-            let client = WorkerClient::from_env().expect("valid worker port should configure client");
+            let client =
+                WorkerClient::from_env().expect("valid worker port should configure client");
             assert_eq!(client.port, 8127);
             assert_eq!(client.timeout, Duration::from_millis(DEFAULT_TIMEOUT_MS));
         });
@@ -277,7 +278,8 @@ mod tests {
     #[test]
     fn worker_client_from_env_returns_typed_missing_config_error() {
         with_worker_port_env(None, || {
-            let err = WorkerClient::from_env().expect_err("missing port should be typed config error");
+            let err =
+                WorkerClient::from_env().expect_err("missing port should be typed config error");
             assert_eq!(err, WorkerClientConfigError::MissingWorkerPort);
         });
     }
@@ -285,7 +287,8 @@ mod tests {
     #[test]
     fn worker_client_from_env_returns_typed_invalid_config_error() {
         with_worker_port_env(Some("not-a-port"), || {
-            let err = WorkerClient::from_env().expect_err("invalid port should be typed config error");
+            let err =
+                WorkerClient::from_env().expect_err("invalid port should be typed config error");
             assert_eq!(
                 err,
                 WorkerClientConfigError::InvalidWorkerPort {

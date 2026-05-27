@@ -33,7 +33,15 @@ pub(crate) fn agent_command_url(config: &AgentLoopConfig) -> Option<String> {
 }
 
 pub(super) fn submit_agent_turn_receipt(command_url: &str, receipt: &serde_json::Value) {
-    let command = agent_turn_kernel_command(receipt);
+    let command = match serde_json::to_value(agent_turn_kernel_command(receipt)) {
+        Ok(command) => command,
+        Err(err) => {
+            eprintln!(
+                "agent: failed to serialize turn receipt kernel command url={command_url} error={err}"
+            );
+            return;
+        }
+    };
     match post_json_local(command_url, &command) {
         Ok(status) if (200..300).contains(&status) => {
             eprintln!(

@@ -6,21 +6,21 @@ use std::time::Duration;
 use serde_json::{json, Value};
 use tokio::process::Command;
 
-use super::{ActionHost, ToolOutcome};
+use super::{ActionHost, ActionToolOutcome};
 use crate::api::action::{result_with_warning, tool_error};
 use crate::api::protocol::Command as KernelCommand;
 use crate::capability::execution::{action::structural_edit, patch, shell};
 use crate::runtime::WorkspaceView;
 
-pub async fn execute<H: ActionHost>(name: &str, args: &Value, host: &H) -> ToolOutcome {
+pub async fn execute<H: ActionHost>(name: &str, args: &Value, host: &H) -> ActionToolOutcome {
     match name {
         "apply_patch" => {
             let workspace = host.workspace();
-            ToolOutcome::from_value(patch::run(args, &workspace).await)
+            ActionToolOutcome::from_value(patch::run(args, &workspace).await)
         }
         "shell" => {
             let workspace = host.workspace();
-            ToolOutcome::from_value(shell::run_unrecorded(args, &workspace).await)
+            ActionToolOutcome::from_value(shell::run_unrecorded(args, &workspace).await)
         }
         "python" => {
             let workspace = host.workspace();
@@ -28,20 +28,20 @@ pub async fn execute<H: ActionHost>(name: &str, args: &Value, host: &H) -> ToolO
         }
         "structural_edit" => {
             let workspace = host.workspace();
-            ToolOutcome::from_value(structural_edit::run(args, &workspace))
+            ActionToolOutcome::from_value(structural_edit::run(args, &workspace))
         }
-        _ => ToolOutcome::Error(tool_error(format!("Unknown workspace tool: {name}"))),
+        _ => ActionToolOutcome::Error(tool_error(format!("Unknown workspace tool: {name}"))),
     }
 }
 
-async fn run_python(args: &Value, workspace: &WorkspaceView) -> ToolOutcome {
+async fn run_python(args: &Value, workspace: &WorkspaceView) -> ActionToolOutcome {
     let code = args
         .get("code")
         .and_then(Value::as_str)
         .unwrap_or("")
         .trim();
     if code.is_empty() {
-        return ToolOutcome::Error(tool_error("empty code".to_string()));
+        return ActionToolOutcome::Error(tool_error("empty code".to_string()));
     }
     let timeout_ms = args
         .get("timeout_ms")
@@ -56,7 +56,7 @@ async fn run_python(args: &Value, workspace: &WorkspaceView) -> ToolOutcome {
     let cwd = args.get("cwd").and_then(Value::as_str).unwrap_or(".");
     let work_dir = match workspace.resolve_cwd(cwd) {
         Ok(path) => path,
-        Err(error) => return ToolOutcome::Error(tool_error(error)),
+        Err(error) => return ActionToolOutcome::Error(tool_error(error)),
     };
     let child = match Command::new("python3")
         .arg("-c")
@@ -68,7 +68,7 @@ async fn run_python(args: &Value, workspace: &WorkspaceView) -> ToolOutcome {
         .spawn()
     {
         Ok(child) => child,
-        Err(error) => return ToolOutcome::Error(tool_error(error.to_string())),
+        Err(error) => return ActionToolOutcome::Error(tool_error(error.to_string())),
     };
     let output = match tokio::time::timeout(
         Duration::from_millis(timeout_ms),
@@ -77,9 +77,9 @@ async fn run_python(args: &Value, workspace: &WorkspaceView) -> ToolOutcome {
     .await
     {
         Ok(Ok(output)) => output,
-        Ok(Err(error)) => return ToolOutcome::Error(tool_error(error.to_string())),
+        Ok(Err(error)) => return ActionToolOutcome::Error(tool_error(error.to_string())),
         Err(_) => {
-            return ToolOutcome::TimedOut(json!({
+            return ActionToolOutcome::TimedOut(json!({
                 "content": [{ "type": "text", "text": format!("Error: python timed out after {timeout_ms} ms") }],
                 "isError": true,
                 "exit_code": -1,
@@ -125,23 +125,23 @@ async fn run_python(args: &Value, workspace: &WorkspaceView) -> ToolOutcome {
         "stderr_truncated": stderr_truncated
     });
     if output.status.success() {
-        ToolOutcome::Ok(v)
+        ActionToolOutcome::Ok(v)
     } else {
-        ToolOutcome::Error(v)
+        ActionToolOutcome::Error(v)
     }
 }
 
-pub async fn execute_recorded_shell<H: ActionHost>(args: &Value, host: &H) -> ToolOutcome {
+pub async fn execute_recorded_shell<H: ActionHost>(args: &Value, host: &H) -> ActionToolOutcome {
     let workspace = host.workspace();
     let request = match shell::recorded_process_request(args, &workspace) {
         Ok(request) => request,
-        Err(error) => return ToolOutcome::Error(tool_error(error)),
+        Err(error) => return ActionToolOutcome::Error(tool_error(error)),
     };
     if let Err(error) = host
         .submit_kernel_command(KernelCommand::AuthorizeProcessCall(request))
         .await
     {
-        return ToolOutcome::Error(tool_error(format!(
+        return ActionToolOutcome::Error(tool_error(format!(
             "process execution denied before execution by ai worker: {error}"
         )));
     }
@@ -151,32 +151,29 @@ pub async fn execute_recorded_shell<H: ActionHost>(args: &Value, host: &H) -> To
         tokio::task::spawn_blocking(move || shell::run_recorded_process(&args_owned, &workspace))
             .await;
     match run_result {
-        Err(join_err) => ToolOutcome::Error(tool_error(format!(
-            "shell task panicked: {join_err}"
-        ))),
-        Ok(Err(error)) => ToolOutcome::Error(tool_error(error)),
+        Err(join_err) => {
+            ActionToolOutcome::Error(tool_error(format!("shell task panicked: {join_err}")))
+        }
+        Ok(Err(error)) => ActionToolOutcome::Error(tool_error(error)),
         Ok(Ok((receipt, stdout, stderr))) => {
             let timed_out = receipt.timed_out;
+            let exit_status = receipt.exit_status;
             let result = shell::render_recorded_response(&receipt, &stdout, &stderr);
             if let Err(error) = host
                 .submit_kernel_command(KernelCommand::SubmitProcessReceipt(receipt))
                 .await
             {
-                return ToolOutcome::from_value(result_with_warning(
+                return ActionToolOutcome::from_value(result_with_warning(
                     result,
                     format!("process receipt recording failed in ai worker: {error}"),
                 ));
             }
             if timed_out {
-                ToolOutcome::TimedOut(result)
-            } else if result
-                .get("isError")
-                .and_then(Value::as_bool)
-                .unwrap_or(false)
-            {
-                ToolOutcome::Error(result)
+                ActionToolOutcome::TimedOut(result)
+            } else if exit_status != 0 {
+                ActionToolOutcome::Error(result)
             } else {
-                ToolOutcome::Ok(result)
+                ActionToolOutcome::Ok(result)
             }
         }
     }

@@ -177,7 +177,7 @@ fn collect_mcp_stats(path: &Path) -> Result<BTreeMap<String, ToolStat>, String> 
         if record.outcome.is_error() {
             stat.errors += 1;
             if stat.last_error_hint.is_none() {
-                stat.last_error_hint = record.error_hint().map(McpErrorHint::into_string);
+                stat.last_error_hint = record.error_hint().map(ErrorHint::into_string);
             }
         }
     }
@@ -188,7 +188,7 @@ fn collect_mcp_stats(path: &Path) -> Result<BTreeMap<String, ToolStat>, String> 
 #[derive(Clone, Debug, PartialEq, Eq)]
 struct McpTranscriptRecord {
     tool_name: McpToolName,
-    outcome: McpCallOutcome,
+    outcome: ToolOutcome,
     response: McpResponseBody,
 }
 
@@ -200,7 +200,7 @@ impl McpTranscriptRecord {
             .tool_name
             .ok_or(McpTranscriptDecodeError::MissingToolName)
             .and_then(McpToolName::new)?;
-        let outcome = McpCallOutcome::from_wire(wire.exit_status, wire.timed_out);
+        let outcome = ToolOutcome::from_wire(wire.exit_status, wire.timed_out);
         let response = McpResponseBody::decode(wire.response_json);
         Ok(Self {
             tool_name,
@@ -209,12 +209,8 @@ impl McpTranscriptRecord {
         })
     }
 
-    fn error_hint(&self) -> Option<McpErrorHint> {
-        match self.outcome {
-            McpCallOutcome::Success => None,
-            McpCallOutcome::TimedOut => Some(McpErrorHint::new("timed out")),
-            McpCallOutcome::ExitStatus(_) => self.response.error_hint(),
-        }
+    fn error_hint(&self) -> Option<ErrorHint> {
+        extract_error_hint(self)
     }
 }
 
@@ -247,13 +243,13 @@ impl McpToolName {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum McpCallOutcome {
+enum ToolOutcome {
     Success,
     ExitStatus(std::num::NonZeroU64),
     TimedOut,
 }
 
-impl McpCallOutcome {
+impl ToolOutcome {
     fn from_wire(exit_status: u64, timed_out: bool) -> Self {
         if timed_out {
             return Self::TimedOut;
@@ -283,16 +279,17 @@ impl McpResponseBody {
         let Ok(response) = serde_json::from_str::<McpToolResponseWire>(&response_json) else {
             return Self::Opaque;
         };
-        let Some(first) = response.content.into_iter().next() else {
-            return Self::Opaque;
-        };
-        match first.text {
+        match response
+            .content
+            .into_iter()
+            .find_map(|content| content.text)
+        {
             Some(text) => Self::Text(McpResponseText(text)),
             None => Self::Opaque,
         }
     }
 
-    fn error_hint(&self) -> Option<McpErrorHint> {
+    fn error_hint(&self) -> Option<ErrorHint> {
         match self {
             Self::Text(text) => Some(text.error_hint()),
             Self::Opaque => None,
@@ -315,16 +312,16 @@ struct McpToolResponseContentWire {
 struct McpResponseText(String);
 
 impl McpResponseText {
-    fn error_hint(&self) -> McpErrorHint {
+    fn error_hint(&self) -> ErrorHint {
         let hint = self.0.trim_start_matches("Error: ").trim();
-        McpErrorHint::new(truncate_error_hint(hint))
+        ErrorHint::new(truncate_error_hint(hint))
     }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-struct McpErrorHint(String);
+struct ErrorHint(String);
 
-impl McpErrorHint {
+impl ErrorHint {
     fn new(value: impl Into<String>) -> Self {
         Self(value.into())
     }
@@ -345,6 +342,14 @@ fn decode_mcp_transcript_record(
     line: &str,
 ) -> Result<McpTranscriptRecord, McpTranscriptDecodeError> {
     McpTranscriptRecord::decode(line)
+}
+
+fn extract_error_hint(record: &McpTranscriptRecord) -> Option<ErrorHint> {
+    match record.outcome {
+        ToolOutcome::Success => None,
+        ToolOutcome::TimedOut => Some(ErrorHint::new("timed out")),
+        ToolOutcome::ExitStatus(_) => record.response.error_hint(),
+    }
 }
 
 fn truncate_error_hint(hint: &str) -> String {
@@ -554,7 +559,7 @@ mod tests {
             r#"{"tool_name":"workspace:get","exit_status":0,"timed_out":false}"#,
         )
         .expect("success record decodes");
-        assert_eq!(success.outcome, McpCallOutcome::Success);
+        assert_eq!(success.outcome, ToolOutcome::Success);
         assert!(!success.outcome.is_error());
 
         let exited = decode_mcp_transcript_record(
@@ -563,7 +568,7 @@ mod tests {
         .expect("nonzero exit record decodes");
         assert_eq!(
             exited.outcome,
-            McpCallOutcome::ExitStatus(std::num::NonZeroU64::new(42).unwrap())
+            ToolOutcome::ExitStatus(std::num::NonZeroU64::new(42).unwrap())
         );
         assert!(exited.outcome.is_error());
 
@@ -571,11 +576,10 @@ mod tests {
             r#"{"tool_name":"workspace:shell","exit_status":0,"timed_out":true}"#,
         )
         .expect("timeout record decodes");
-        assert_eq!(timed_out.outcome, McpCallOutcome::TimedOut);
+        assert_eq!(timed_out.outcome, ToolOutcome::TimedOut);
         assert_eq!(
-            timed_out
-                .error_hint()
-                .map(McpErrorHint::into_string)
+            extract_error_hint(&timed_out)
+                .map(ErrorHint::into_string)
                 .as_deref(),
             Some("timed out")
         );
@@ -603,7 +607,10 @@ mod tests {
     fn collect_mcp_stats_decodes_typed_rows_and_skips_malformed_records() {
         let path = unique_temp_file("mcp-transcript");
         let shell_response = serde_json::json!({
-            "content": [{ "text": "Error: command failed" }]
+            "content": [
+                { "type": "text" },
+                { "type": "text", "text": "Error: nested command failed" }
+            ]
         })
         .to_string();
         let rows = vec![
@@ -639,7 +646,10 @@ mod tests {
         let shell = stats.get("workspace:shell").expect("shell stats");
         assert_eq!(shell.total, 2);
         assert_eq!(shell.errors, 1);
-        assert_eq!(shell.last_error_hint.as_deref(), Some("command failed"));
+        assert_eq!(
+            shell.last_error_hint.as_deref(),
+            Some("nested command failed")
+        );
 
         let slow = stats.get("workspace:slow").expect("slow stats");
         assert_eq!(slow.total, 1);
@@ -661,7 +671,9 @@ mod tests {
         .to_string();
 
         let record = decode_mcp_transcript_record(&line).expect("record decodes");
-        let hint = record.error_hint().map(McpErrorHint::into_string).unwrap();
+        let hint = extract_error_hint(&record)
+            .map(ErrorHint::into_string)
+            .unwrap();
         assert_eq!(hint.chars().count(), 81);
         assert!(hint.ends_with('…'));
     }

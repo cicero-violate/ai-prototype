@@ -102,6 +102,39 @@ pub struct CommandEnvelopeDto {
     pub payload: serde_json::Value,
 }
 
+impl CommandEnvelopeDto {
+    pub fn from_command(command_id: u64, command: Command) -> Self {
+        let envelope = CommandEnvelope::new(command_id, command.clone());
+        let (payload_tag, payload) = command_payload_dto(command);
+        Self {
+            command_id: envelope.command_id,
+            command_hash: envelope.command_hash,
+            payload_tag,
+            payload,
+        }
+    }
+
+    pub fn submit_evidence_batch(command_id: u64, submissions: Vec<EvidenceSubmission>) -> Self {
+        Self::from_command(command_id, Command::SubmitEvidenceBatch(submissions))
+    }
+}
+
+fn command_payload_dto(command: Command) -> (String, serde_json::Value) {
+    match command {
+        Command::SubmitEvidenceBatch(submissions) => (
+            "SubmitEvidenceBatch".to_string(),
+            serde_json::to_value(
+                submissions
+                    .into_iter()
+                    .map(EvidenceSubmissionDto::from)
+                    .collect::<Vec<_>>(),
+            )
+            .expect("evidence submission DTOs serialize to JSON"),
+        ),
+        other => panic!("unsupported command DTO conversion: {other:?}"),
+    }
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct CommandResponseDto {
     pub ok: bool,
@@ -129,6 +162,18 @@ pub struct EvidenceSubmissionDto {
     pub passed: bool,
     pub effect: Option<String>,
     pub payload_hash: u64,
+}
+
+impl From<EvidenceSubmission> for EvidenceSubmissionDto {
+    fn from(submission: EvidenceSubmission) -> Self {
+        Self {
+            gate: gate_name(submission.gate).to_string(),
+            evidence: evidence_name(submission.evidence).to_string(),
+            passed: submission.passed,
+            effect: Some(effect_name(submission.effect).to_string()),
+            payload_hash: submission.payload_hash,
+        }
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
@@ -863,6 +908,55 @@ fn submission_from_dto(dto: EvidenceSubmissionDto) -> Result<EvidenceSubmission,
         .ok_or(ServerError::InvalidCommand)
 }
 
+fn gate_name(gate: GateId) -> &'static str {
+    match gate {
+        GateId::Invariant => "Invariant",
+        GateId::Analysis => "Analysis",
+        GateId::Judgment => "Judgment",
+        GateId::Plan => "Plan",
+        GateId::Execution => "Execution",
+        GateId::Verification => "Verification",
+        GateId::Eval => "Eval",
+        GateId::Learning => "Learning",
+    }
+}
+
+fn evidence_name(evidence: Evidence) -> &'static str {
+    match evidence {
+        Evidence::Missing => "Missing",
+        Evidence::DeltaComputed => "DeltaComputed",
+        Evidence::InvariantProof => "InvariantProof",
+        Evidence::AnalysisReport => "AnalysisReport",
+        Evidence::JudgmentRecord => "JudgmentRecord",
+        Evidence::PlanRecord => "PlanRecord",
+        Evidence::TaskReady => "TaskReady",
+        Evidence::ExecutionReceipt => "ExecutionReceipt",
+        Evidence::ArtifactReceipt => "ArtifactReceipt",
+        Evidence::VerificationReport => "VerificationReport",
+        Evidence::LineageProof => "LineageProof",
+        Evidence::EvalScore => "EvalScore",
+        Evidence::RecoveryPolicy => "RecoveryPolicy",
+        Evidence::CompletionProof => "CompletionProof",
+        Evidence::ConvergenceLimit => "ConvergenceLimit",
+        Evidence::PersistedRecord => "PersistedRecord",
+        Evidence::LearningRecord => "LearningRecord",
+        Evidence::PolicyPromotion => "PolicyPromotion",
+        Evidence::AgentCycleEvent => "AgentCycleEvent",
+        Evidence::WaveDispatched => "WaveDispatched",
+        Evidence::ChildTaskComplete => "ChildTaskComplete",
+    }
+}
+
+fn effect_name(effect: PacketEffect) -> &'static str {
+    match effect {
+        PacketEffect::None => "None",
+        PacketEffect::BindReadyTask => "BindReadyTask",
+        PacketEffect::MaterializeArtifact => "MaterializeArtifact",
+        PacketEffect::RepairLineage => "RepairLineage",
+        PacketEffect::CompleteObjective => "CompleteObjective",
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum ApiSubmissionToken {
     Gate(GateId),
@@ -1011,6 +1105,41 @@ mod tests {
             evidence_from_str("UnknownEvidence"),
             Err(ServerError::InvalidPayload)
         );
+    }
+
+    #[test]
+    fn command_envelope_dto_from_submit_evidence_batch_decodes_to_valid_contract() {
+        let plan = EvidenceSubmission::with_effect_payload(
+            GateId::Plan,
+            Evidence::TaskReady,
+            true,
+            PacketEffect::BindReadyTask,
+            101,
+        );
+        let execution = EvidenceSubmission::with_payload(
+            GateId::Execution,
+            Evidence::ExecutionReceipt,
+            false,
+            202,
+        );
+        let command = Command::SubmitEvidenceBatch(vec![plan, execution]);
+
+        let dto = CommandEnvelopeDto::from_command(77, command.clone());
+        let decoded = decode_command(&dto).expect("typed envelope payload should decode");
+        let envelope = CommandEnvelope {
+            schema_version: crate::api::protocol::API_PROTOCOL_SCHEMA_VERSION,
+            command_id: dto.command_id,
+            command_hash: dto.command_hash,
+            command: decoded.clone(),
+        };
+
+        assert_eq!(dto.payload_tag, "SubmitEvidenceBatch");
+        assert_eq!(
+            dto.command_hash,
+            CommandEnvelope::new(77, command).command_hash
+        );
+        assert_eq!(decoded, Command::SubmitEvidenceBatch(vec![plan, execution]));
+        assert!(envelope.is_contract_valid());
     }
 
     #[test]

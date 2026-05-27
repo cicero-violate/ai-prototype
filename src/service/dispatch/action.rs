@@ -11,6 +11,7 @@ use crate::api::action::{
 use crate::api::protocol::Command as KernelCommand;
 use crate::capability::execution::action::host;
 pub use crate::capability::execution::action::host::ActionHost;
+use crate::capability::execution::action::host::ActionToolOutcome;
 use crate::capability::execution::action::landmarks;
 use crate::capability::execution::{ActionCallRequest, ActionReceipt};
 use crate::capability::learning::artifact::SymbolMutationRecord;
@@ -230,8 +231,7 @@ mod transcript_tests {
             1000,
             65_536,
         );
-        let receipt =
-            ActionReceipt::from_response(&request, large_response.as_bytes(), 0, false);
+        let receipt = ActionReceipt::from_response(&request, large_response.as_bytes(), 0, false);
 
         append_raw_action_result(
             &workspace,
@@ -434,32 +434,20 @@ async fn execute_recorded_gateway_tool<H: ActionHost>(name: &str, args: Value, h
         ));
     }
 
-    let result = call_gateway_tool(name, &args, host).await;
+    let outcome = call_gateway_tool(name, &args, host).await;
+    let exit_status = outcome.exit_status();
+    let tool_timed_out = outcome.timed_out();
+    let result = outcome.into_value();
     eprintln!(
-        "[canon-ai-mcp] gateway tool finish name={} is_error={}",
+        "[canon-ai-mcp] gateway tool finish name={} is_error={} timed_out={tool_timed_out}",
         name,
-        result
-            .get("isError")
-            .and_then(Value::as_bool)
-            .unwrap_or(false)
+        exit_status != 0,
     );
     let response_bytes = serde_json::to_vec(&result).unwrap_or_default();
     let response_json =
         String::from_utf8(response_bytes.clone()).unwrap_or_else(|_| "null".to_string());
-    let exit_status = if result
-        .get("isError")
-        .and_then(Value::as_bool)
-        .unwrap_or(false)
-    {
-        1
-    } else {
-        0
-    };
-    let tool_timed_out = result
-        .get("timed_out")
-        .and_then(Value::as_bool)
-        .unwrap_or(false);
-    let receipt = ActionReceipt::from_response(&request, &response_bytes, exit_status, tool_timed_out);
+    let receipt =
+        ActionReceipt::from_response(&request, &response_bytes, exit_status, tool_timed_out);
     let workspace = host.workspace();
     let transcript_warning = append_action_transcript_for_workspace(
         &workspace,
@@ -670,39 +658,47 @@ fn collect_structural_paths(value: &Value, files: &mut Vec<String>) {
     }
 }
 
-async fn call_gateway_tool<H: ActionHost>(name: &str, args: &Value, host: &H) -> Value {
+async fn call_gateway_tool<H: ActionHost>(name: &str, args: &Value, host: &H) -> ActionToolOutcome {
     match name {
-        landmarks::GATEWAY_GET_MANIFEST => landmarks::manifest_result(),
-        landmarks::GATEWAY_GET_LANDMARKS => landmarks::landmarks_result(),
-        landmarks::GATEWAY_INSPECT_LANDMARK => landmarks::inspect_landmark_result(args),
+        landmarks::GATEWAY_GET_MANIFEST => ActionToolOutcome::Ok(landmarks::manifest_result()),
+        landmarks::GATEWAY_GET_LANDMARKS => ActionToolOutcome::Ok(landmarks::landmarks_result()),
+        landmarks::GATEWAY_INSPECT_LANDMARK => {
+            ActionToolOutcome::from_value(landmarks::inspect_landmark_result(args))
+        }
         landmarks::GATEWAY_CALL_ACTION => run_gateway_call_action(args, host).await,
         landmarks::GATEWAY_EXECUTE_SEQUENCE => run_gateway_sequence(args, host).await,
-        _ => tool_error(format!("Unknown gateway tool: {name}")),
+        _ => ActionToolOutcome::Error(tool_error(format!("Unknown gateway tool: {name}"))),
     }
 }
 
-async fn run_gateway_call_action<H: ActionHost>(args: &Value, host: &H) -> Value {
+async fn run_gateway_call_action<H: ActionHost>(args: &Value, host: &H) -> ActionToolOutcome {
     let (action_id, parameters) = match landmarks::parameters_from_call_action(args) {
         Ok(parsed) => parsed,
-        Err(error) => return landmarks::error_result(error),
+        Err(error) => return ActionToolOutcome::Error(landmarks::error_result(error)),
     };
     run_gateway_action(action_id, parameters, host).await
 }
 
-async fn run_gateway_action<H: ActionHost>(action_id: &str, parameters: Value, host: &H) -> Value {
+async fn run_gateway_action<H: ActionHost>(
+    action_id: &str,
+    parameters: Value,
+    host: &H,
+) -> ActionToolOutcome {
     eprintln!("[canon-ai-mcp] landmark action dispatch action={action_id}");
     let Some(action) = landmarks::resolve_action_id(action_id) else {
-        return landmarks::error_result(format!(
+        return ActionToolOutcome::Error(landmarks::error_result(format!(
             "Unknown action '{action_id}'. Use get_landmarks then inspect_landmark before calling actions."
-        ));
+        )));
     };
-    execute_recorded_native_action(action.native_tool.as_str(), parameters, host).await
+    ActionToolOutcome::from_value(
+        execute_recorded_native_action(action.native_tool.as_str(), parameters, host).await,
+    )
 }
 
-async fn run_gateway_sequence<H: ActionHost>(args: &Value, host: &H) -> Value {
+async fn run_gateway_sequence<H: ActionHost>(args: &Value, host: &H) -> ActionToolOutcome {
     let steps = match landmarks::sequence_steps(args) {
         Ok(steps) => steps,
-        Err(error) => return landmarks::error_result(error),
+        Err(error) => return ActionToolOutcome::Error(landmarks::error_result(error)),
     };
 
     let mut aliases = Map::new();
@@ -727,27 +723,28 @@ async fn run_gateway_sequence<H: ActionHost>(args: &Value, host: &H) -> Value {
                     "alias": alias,
                     "result": result
                 }));
-                if step.on_error == "stop" {
+                if step.on_error.should_stop() {
                     break;
                 }
                 continue;
             }
         };
 
-        let result = run_gateway_action(&step.action, resolved, host).await;
+        let outcome = run_gateway_action(&step.action, resolved, host).await;
+        let is_error = outcome.exit_status() != 0;
+        let result = outcome.into_value();
         aliases.insert(format!("step{idx}"), result.clone());
         aliases.insert(alias.clone(), result.clone());
-        let is_error = landmarks::result_is_error(&result);
         results.push(json!({
             "step": idx,
             "action": step.action,
             "alias": alias,
             "result": result
         }));
-        if is_error && step.on_error == "stop" {
+        if is_error && step.on_error.should_stop() {
             break;
         }
     }
 
-    landmarks::json_result(Value::Array(results))
+    ActionToolOutcome::Ok(landmarks::json_result(Value::Array(results)))
 }

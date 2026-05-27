@@ -483,7 +483,8 @@ impl WorkerProcess {
         }
 
         let lease_expires_at_ms = lease.expires_at_ms;
-        let accepted_evidence = AcceptedTaskEvidence::from_read_model(&self.project_dir, &req.node_id)?;
+        let accepted_evidence =
+            AcceptedTaskEvidence::from_read_model(&self.project_dir, &req.node_id)?;
 
         let receipt = TaskLifecycleReceipt::complete(
             &req.node_id,
@@ -967,8 +968,8 @@ pub struct AcceptedTaskEvidence {
 
 impl AcceptedTaskEvidence {
     fn from_read_model(project_dir: &Path, node_id: &str) -> Result<Self, String> {
-        let (plan, _) = load_plan_read_model(project_dir)
-            .unwrap_or_else(|_| (load_plan(project_dir), None));
+        let (plan, _) =
+            load_plan_read_model(project_dir).unwrap_or_else(|_| (load_plan(project_dir), None));
         let node = plan
             .nodes
             .iter()
@@ -992,9 +993,12 @@ impl AcceptedTaskEvidence {
             .map(|evidence| evidence.evidence())
             .collect();
         let evidence_hash = accepted_evidence_refs_hash(&accepted_refs);
-        let receipt_hash = accepted.iter().fold(0xace0_e11d_0000_0001u64, |hash, evidence| {
-            mix(hash, evidence.receipt_hash())
-        }).max(1);
+        let receipt_hash = accepted
+            .iter()
+            .fold(0xace0_e11d_0000_0001u64, |hash, evidence| {
+                mix(hash, evidence.receipt_hash())
+            })
+            .max(1);
 
         Ok(Self {
             evidence_hash,

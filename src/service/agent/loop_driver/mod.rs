@@ -531,6 +531,7 @@ impl LoopDriver {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::api::server::post_command;
     use crate::service::agent::RouterStreamingResult;
     use serde_json::json;
     use std::fs;
@@ -916,25 +917,86 @@ mod tests {
 
         let command = agent_turn_kernel_command(&receipt);
 
-        assert_eq!(command["payload_tag"], "SubmitEvidenceBatch");
-        assert_eq!(command["source"], "agent");
-        assert_eq!(command["agent_turn"]["label"], "plan");
-        assert!(
-            command["command_id"]
-                .as_u64()
-                .expect("test value should be present")
-                != 0
-        );
-        assert!(
-            command["command_hash"]
-                .as_u64()
-                .expect("test value should be present")
-                != 0
-        );
-        assert_eq!(command["payload"][0]["gate"], "Plan");
-        assert_eq!(command["payload"][0]["effect"], "BindReadyTask");
-        assert_eq!(command["payload"][1]["gate"], "Execution");
-        assert_eq!(command["payload"][1]["passed"], true);
+        assert_eq!(command.payload_tag, "SubmitEvidenceBatch");
+        assert_ne!(command.command_id, 0);
+        assert_ne!(command.command_hash, 0);
+        assert_eq!(command.payload[0]["gate"], "Plan");
+        assert_eq!(command.payload[0]["effect"], "BindReadyTask");
+        assert_eq!(command.payload[1]["gate"], "Execution");
+        assert_eq!(command.payload[1]["passed"], true);
+    }
+
+    #[tokio::test]
+    async fn completed_agent_turn_receipt_command_is_accepted_by_post_command_contract() {
+        let receipt = json!({
+            "schema": "canon.agent.router_turn_receipt.v1",
+            "agent": "agent",
+            "cycle": 1,
+            "label": "plan",
+            "attempt": 0,
+            "status": "completed",
+            "reason": "ok",
+            "request_hash": 7,
+            "content_hash": 11,
+            "content_len": 42,
+            "retry_is_safe": false,
+        });
+        let command = agent_turn_kernel_command(&receipt);
+        let tlog = tempfile::NamedTempFile::new().expect("temp tlog should be created");
+        let state = crate::WorkerAppState::new_default(tlog.path());
+
+        let response = post_command(axum::extract::State(state), axum::Json(command)).await;
+
+        match response {
+            Ok(_) => {}
+            Err((_status, axum::Json(body))) => {
+                assert!(
+                    body.error.contains("Transport("),
+                    "completed receipt command should reach transport after /v1/command validation: {body:?}"
+                );
+                assert!(
+                    !body.error.contains("InvalidCommand"),
+                    "completed receipt command must not be rejected as InvalidCommand: {body:?}"
+                );
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn incomplete_agent_turn_receipt_command_is_accepted_by_post_command_contract() {
+        let receipt = json!({
+            "schema": "canon.agent.router_turn_receipt.v1",
+            "agent": "agent",
+            "cycle": 1,
+            "label": "execute-1",
+            "attempt": 0,
+            "status": "incomplete",
+            "reason": "no final response",
+            "finish_reason": "length",
+            "request_hash": 7,
+            "content_hash": 11,
+            "content_len": 42,
+            "retry_is_safe": true,
+        });
+        let command = agent_turn_kernel_command(&receipt);
+        let tlog = tempfile::NamedTempFile::new().expect("temp tlog should be created");
+        let state = crate::WorkerAppState::new_default(tlog.path());
+
+        let response = post_command(axum::extract::State(state), axum::Json(command)).await;
+
+        match response {
+            Ok(_) => {}
+            Err((_status, axum::Json(body))) => {
+                assert!(
+                    body.error.contains("Transport("),
+                    "incomplete receipt command should reach transport after /v1/command validation: {body:?}"
+                );
+                assert!(
+                    !body.error.contains("InvalidCommand"),
+                    "incomplete receipt command must not be rejected as InvalidCommand: {body:?}"
+                );
+            }
+        }
     }
 
     #[test]

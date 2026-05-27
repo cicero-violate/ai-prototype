@@ -32,13 +32,13 @@ pub trait ActionHost {
 ///
 /// Callers derive `exit_status` and `timed_out` from the variant — never by
 /// re-parsing fields in the payload JSON.
-pub enum ToolOutcome {
+pub enum ActionToolOutcome {
     Ok(Value),
     Error(Value),
     TimedOut(Value),
 }
 
-impl ToolOutcome {
+impl ActionToolOutcome {
     /// Construct from a `Value` produced by a tool that has no timeout
     /// capability. Maps `isError: true` → `Error`, everything else → `Ok`.
     pub fn from_value(v: Value) -> Self {
@@ -67,7 +67,11 @@ impl ToolOutcome {
     }
 }
 
-pub async fn execute_native_tool<H: ActionHost>(name: &str, args: &Value, host: &H) -> ToolOutcome {
+pub async fn execute_native_tool<H: ActionHost>(
+    name: &str,
+    args: &Value,
+    host: &H,
+) -> ActionToolOutcome {
     match name {
         "echo" | "get_current_time" => utility::execute(name, args),
         "apply_patch" | "shell" | "python" | "structural_edit" => {
@@ -99,12 +103,12 @@ pub async fn execute_native_tool<H: ActionHost>(name: &str, args: &Value, host: 
         | "canon_browser_group_chat"
         | "canon_send_agent_message"
         | "canon_read_mailbox" => agents::execute(name, args, host).await,
-        _ => ToolOutcome::Error(crate::api::action::tool_error(format!(
+        _ => ActionToolOutcome::Error(crate::api::action::tool_error(format!(
             "Unknown tool: {name}"
         ))),
     }
 }
 
-pub async fn execute_recorded_shell<H: ActionHost>(args: &Value, host: &H) -> ToolOutcome {
+pub async fn execute_recorded_shell<H: ActionHost>(args: &Value, host: &H) -> ActionToolOutcome {
     workspace::execute_recorded_shell(args, host).await
 }

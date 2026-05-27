@@ -1329,11 +1329,31 @@ pub fn parameters_from_call_action(args: &Value) -> Result<(&str, Value), String
 }
 
 #[derive(Clone, Debug)]
+pub enum SequenceOnError {
+    Stop,
+    Continue,
+}
+
+impl SequenceOnError {
+    fn parse(value: Option<&Value>, idx: usize) -> Result<Self, String> {
+        match value.and_then(Value::as_str).unwrap_or("stop") {
+            "stop" => Ok(Self::Stop),
+            "continue" => Ok(Self::Continue),
+            _ => Err(format!("step {idx} on_error must be 'stop' or 'continue'")),
+        }
+    }
+
+    pub fn should_stop(self) -> bool {
+        matches!(self, Self::Stop)
+    }
+}
+
+#[derive(Clone, Debug)]
 pub struct SequenceStep {
     pub action: String,
     pub alias: Option<String>,
     pub parameters: Value,
-    pub on_error: String,
+    pub on_error: SequenceOnError,
 }
 
 pub fn sequence_steps(args: &Value) -> Result<Vec<SequenceStep>, String> {
@@ -1366,18 +1386,12 @@ pub fn sequence_steps(args: &Value) -> Result<Vec<SequenceStep>, String> {
             if !parameters.is_object() {
                 return Err(format!("step {idx} parameters must be an object"));
             }
-            let on_error = item
-                .get("on_error")
-                .and_then(Value::as_str)
-                .unwrap_or("stop");
-            if on_error != "stop" && on_error != "continue" {
-                return Err(format!("step {idx} on_error must be 'stop' or 'continue'"));
-            }
+            let on_error = SequenceOnError::parse(item.get("on_error"), idx)?;
             Ok(SequenceStep {
                 action,
                 alias,
                 parameters,
-                on_error: on_error.to_string(),
+                on_error,
             })
         })
         .collect()
@@ -1640,7 +1654,7 @@ mod tests {
         .expect("valid sequence");
         assert_eq!(steps.len(), 2);
         assert_eq!(steps[0].alias.as_deref(), Some("first"));
-        assert_eq!(steps[1].on_error, "stop");
+        assert!(matches!(steps[1].on_error, SequenceOnError::Stop));
 
         let mut aliases = Map::new();
         aliases.insert(
@@ -1651,5 +1665,23 @@ mod tests {
             .expect("piping resolves");
         assert_eq!(resolved["text"], "hello");
         assert!(resolve_piping(json!("$missing.value"), &aliases).is_err());
+    }
+
+    #[test]
+    fn execute_sequence_on_error_is_typed_at_parse_boundary() {
+        let steps = sequence_steps(&json!({
+            "actions": [
+                {"action": "utility:echo", "parameters": {}, "on_error": "continue"},
+                {"action": "utility:echo", "parameters": {}}
+            ]
+        }))
+        .expect("valid sequence");
+
+        assert!(!steps[0].on_error.clone().should_stop());
+        assert!(steps[1].on_error.clone().should_stop());
+        assert!(sequence_steps(&json!({
+            "actions": [{"action": "utility:echo", "parameters": {}, "on_error": "halt"}]
+        }))
+        .is_err());
     }
 }

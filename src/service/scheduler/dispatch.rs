@@ -233,6 +233,7 @@ fn claim_node_via_supervisor(
     TaskClient::new(sv_url)
         .claim(node_id, worker_id, idempotency_key, 600_000)
         .map(|claim| claim.claim_id)
+        .map_err(|err| err.to_string())
 }
 
 fn complete_node_via_supervisor(sv_url: &str, node_id: &str, worker_id: &str, claim_id: u64) {

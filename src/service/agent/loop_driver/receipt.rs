@@ -7,10 +7,7 @@ use std::path::Path;
 use serde_json::json;
 
 use crate::service::agent::router::RouterStreamingResult;
-use crate::{
-    Command, CommandEnvelope, Evidence, EvidenceSubmission, EvidenceSubmissionDto, GateId,
-    PacketEffect,
-};
+use crate::{CommandEnvelopeDto, Evidence, EvidenceSubmission, GateId, PacketEffect};
 
 use super::common::{stable_agent_hash, timestamp_ms};
 use super::evidence_submit::submit_judgment_evidence;
@@ -133,7 +130,7 @@ pub(super) struct RunCycleAttemptOutcome {
     pub(super) retry_is_safe: bool,
 }
 
-pub(super) fn agent_turn_kernel_command(receipt: &serde_json::Value) -> serde_json::Value {
+pub(super) fn agent_turn_kernel_command(receipt: &serde_json::Value) -> CommandEnvelopeDto {
     let payload_hash = stable_agent_hash(receipt.to_string().as_bytes());
     let plan_payload_hash = stable_agent_hash(
         json!({
@@ -158,31 +155,8 @@ pub(super) fn agent_turn_kernel_command(receipt: &serde_json::Value) -> serde_js
         execution_passed,
         payload_hash,
     );
-    let envelope = CommandEnvelope::new(
+    CommandEnvelopeDto::from_command(
         payload_hash,
-        Command::SubmitEvidenceBatch(vec![plan_submission, execution_submission]),
-    );
-    json!({
-        "command_id": envelope.command_id,
-        "command_hash": envelope.command_hash,
-        "payload_tag": "SubmitEvidenceBatch",
-        "source": "agent",
-        "agent_turn": receipt,
-        "payload": [
-            EvidenceSubmissionDto {
-                gate: "Plan".to_string(),
-                evidence: "TaskReady".to_string(),
-                passed: true,
-                effect: Some("BindReadyTask".to_string()),
-                payload_hash: plan_payload_hash,
-            },
-            EvidenceSubmissionDto {
-                gate: "Execution".to_string(),
-                evidence: "ExecutionReceipt".to_string(),
-                passed: execution_passed,
-                effect: Some("None".to_string()),
-                payload_hash,
-            },
-        ],
-    })
+        crate::Command::SubmitEvidenceBatch(vec![plan_submission, execution_submission]),
+    )
 }

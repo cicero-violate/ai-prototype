@@ -2,14 +2,14 @@
 
 use serde_json::Value;
 
-use super::{ActionHost, ToolOutcome};
+use super::{ActionHost, ActionToolOutcome};
 use crate::capability::execution::action::{
     canon_diagnostics, canon_invariants, canon_plan, canon_score,
 };
 
-pub fn execute<H: ActionHost>(name: &str, args: &Value, host: &H) -> ToolOutcome {
+pub fn execute<H: ActionHost>(name: &str, args: &Value, host: &H) -> ActionToolOutcome {
     let workspace = host.workspace();
-    ToolOutcome::from_value(match name {
+    ActionToolOutcome::from_value(match name {
         "canon_score" => canon_score::run(args, &workspace),
         "canon_diagnostics_read" => canon_diagnostics::run_read(args, &workspace),
         "canon_invariants_mine" => canon_invariants::run_mine(args, &workspace),
@@ -19,7 +19,7 @@ pub fn execute<H: ActionHost>(name: &str, args: &Value, host: &H) -> ToolOutcome
         "canon_plan_read" => canon_plan::run_read(args, &workspace),
         "canon_plan_update" => canon_plan::run_update(args, &workspace),
         _ => {
-            return ToolOutcome::Error(crate::api::action::tool_error(format!(
+            return ActionToolOutcome::Error(crate::api::action::tool_error(format!(
                 "Unknown project tool: {name}"
             )))
         }
