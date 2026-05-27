@@ -10,9 +10,10 @@ use std::process::{Command as StdCommand, Stdio};
 use crate::domain::plan::{ready_nodes_from_plan_state, NodeStatus};
 use crate::service::scheduler::plan_store::{load_plan, load_plan_read_model};
 use crate::service::supervisor::{
-    HealthDto, PlanStatusDto, ReloadDto, RestartDto, SpawnDto, SpawnRequest, StartLoopDto,
-    StartLoopRequest, TaskClaimDto, TaskClaimRequest, TaskCompleteDto, TaskCompleteRequest,
-    TaskFailDto, TaskFailRequest, TaskHeartbeatDto, TaskHeartbeatRequest, TaskNextDto,
+    AgentStatusDto, HealthDto, PlanStatusDto, ReloadDto, RestartDto, SpawnDto, SpawnRequest,
+    StartLoopDto, StartLoopRequest, TaskClaimDto, TaskClaimRequest, TaskCompleteDto,
+    TaskCompleteRequest, TaskFailDto, TaskFailRequest, TaskHeartbeatDto, TaskHeartbeatRequest,
+    TaskNextDto,
 };
 
 use crate::service::supervisor::{ErrorDto, SupervisorState};
@@ -207,24 +208,36 @@ label { display: grid; gap: 5px; color: var(--muted); }
   </header>
 
   <section class="grid">
-    <section class="card">
+    <section class="card third">
       <h2>Runtime</h2>
       <dl class="kv">
         <dt>Status</dt><dd id="runtime-status" class="success">ok</dd>
         <dt>Worker generation</dt><dd class="mono" id="runtime-generation">__GENERATION__</dd>
-        <dt>Worker port</dt><dd class="mono" id="runtime-worker">__WORKER_PORT__</dd>
+        <dt>Worker port</dt><dd class="mono" id="runtime-worker"><code>__WORKER_PORT__</code></dd>
         <dt>Workspace</dt><dd class="mono" id="workspace-root">loading...</dd>
         <dt>Allowed boundary</dt><dd class="mono" id="workspace-boundary">loading...</dd>
       </dl>
     </section>
 
-    <section class="card">
+    <section class="card third">
+      <h2>Agent Loop</h2>
+      <dl class="kv">
+        <dt>Main loop</dt><dd id="agent-running">loading...</dd>
+        <dt>Recovery agents</dt><dd class="mono" id="recovery-agent-count">–</dd>
+      </dl>
+    </section>
+
+    <section class="card third">
       <h2>Actions</h2>
       <div class="actions">
         <button id="refresh-button" class="primary" type="button">Refresh</button>
         <button id="start-loop-button" type="button">Start main loop</button>
-        <button id="reload-button" class="warn" type="button">Reload worker</button>
-        <button id="restart-button" class="danger" type="button">Restart supervisor</button>
+        <form method="post" action="/reload">
+          <button id="reload-button" class="warn" type="submit">Reload worker</button>
+        </form>
+        <form method="post" action="/restart" onsubmit="return confirm('Restart the supervisor process? This briefly disconnects the control API.');">
+          <button id="restart-button" class="danger" type="submit">Restart supervisor</button>
+        </form>
       </div>
       <p class="subtle" style="margin-top:12px"><span class="warn-text">Reload</span> replaces the worker. <span class="error">Restart</span> briefly disconnects this API.</p>
     </section>
@@ -345,6 +358,12 @@ function setWorkspace(data) {
   $('workspace-boundary').textContent = data.allowedWorkspaceRoot ?? '–';
 }
 
+function setAgentStatus(data) {
+  $('agent-running').textContent = data.running ? 'running' : 'stopped';
+  $('agent-running').className = data.running ? 'success' : 'subtle';
+  $('recovery-agent-count').textContent = data.recovery_agent_count ?? 0;
+}
+
 async function refreshAll() {
   try {
     setHealth(await jsonFetch('/health'));
@@ -357,6 +376,12 @@ async function refreshAll() {
     log('GET /ai/workspace ok', 'success');
   } catch (error) {
     log(`GET /ai/workspace failed: ${error.message}`, 'error');
+  }
+  try {
+    setAgentStatus(await jsonFetch('/agent/status'));
+    log('GET /agent/status ok', 'success');
+  } catch (error) {
+    log(`GET /agent/status failed: ${error.message}`, 'error');
   }
   try {
     setPlan(await jsonFetch('/v1/plan/status'));
@@ -385,11 +410,13 @@ async function postAction(path, body) {
 }
 
 $('refresh-button').addEventListener('click', refreshAll);
-$('reload-button').addEventListener('click', async () => {
+$('reload-button').form.addEventListener('submit', async (event) => {
+  event.preventDefault();
   if (!confirm('Reload the worker and start fresh TLog state?')) return;
   try { await postAction('/reload'); } catch (error) { log(`POST /reload failed: ${error.message}`, 'error'); }
 });
-$('restart-button').addEventListener('click', async () => {
+$('restart-button').form.addEventListener('submit', async (event) => {
+  event.preventDefault();
   if (!confirm('Restart the supervisor process? This briefly disconnects the control API.')) return;
   try { await postAction('/restart'); } catch (error) { log(`POST /restart failed: ${error.message}`, 'error'); }
 });
@@ -437,6 +464,13 @@ pub async fn restart(
         .await
         .map(Json)
         .map_err(error_response)
+}
+
+pub async fn agent_status_handler(
+    AxumState(state): AxumState<SupervisorState>,
+) -> Result<Json<AgentStatusDto>, (StatusCode, Json<ErrorDto>)> {
+    let guard = state.inner.lock().await;
+    Ok(Json(guard.agent_status()))
 }
 
 pub async fn start_agent_loop_handler(
@@ -790,8 +824,12 @@ mod tests {
             "id=\"start-loop-button\"",
             "id=\"reload-button\"",
             "id=\"restart-button\"",
+            "action=\"/reload\"",
+            "action=\"/restart\"",
+            "id=\"agent-running\"",
             "id=\"spawn-form\"",
             "id=\"event-log\"",
+            "GET /agent/status ok",
             "GET /v1/plan/status ok",
             "GET /v1/task/next ok",
             "POST /agent/start",
@@ -807,6 +845,7 @@ mod tests {
 
         assert!(html.contains("gen <span id=\"header-generation\">7</span>"));
         assert!(html.contains("worker <span id=\"header-worker\">43123</span>"));
+        assert!(html.contains("<code>43123</code>"));
     }
 }
 

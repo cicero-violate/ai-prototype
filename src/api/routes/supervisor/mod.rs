@@ -9,8 +9,8 @@ pub mod workspace;
 
 pub use action::{ai_action_delete, ai_action_get_sse, ai_action_post};
 pub use control::{
-    command_gateway, control_page, get_task_next, health, reload, restart, spawn_agent_handler,
-    start_agent_loop_handler,
+    agent_status_handler, command_gateway, control_page, get_task_next, health, reload, restart,
+    spawn_agent_handler, start_agent_loop_handler,
 };
 pub use mcp::{ai_mcp_delete, ai_mcp_get_sse, ai_mcp_post};
 pub use oauth::{

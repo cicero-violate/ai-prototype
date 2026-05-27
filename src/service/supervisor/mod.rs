@@ -8,8 +8,8 @@ pub mod workspace;
 
 pub use config::SupervisorConfig;
 pub use process::{
-    ActiveWorkerDto, HealthDto, PlanStatusDto, ReloadDto, RestartDto, SpawnDto, SpawnRequest,
-    StartLoopDto, StartLoopRequest, TaskClaimDto, TaskClaimRequest, TaskCompleteDto,
+    ActiveWorkerDto, AgentStatusDto, HealthDto, PlanStatusDto, ReloadDto, RestartDto, SpawnDto,
+    SpawnRequest, StartLoopDto, StartLoopRequest, TaskClaimDto, TaskClaimRequest, TaskCompleteDto,
     TaskCompleteRequest, TaskFailDto, TaskFailRequest, TaskHeartbeatDto, TaskHeartbeatRequest,
     TaskNextDto, WorkerProcess,
 };

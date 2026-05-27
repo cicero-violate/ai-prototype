@@ -344,6 +344,14 @@ impl WorkerProcess {
         })
     }
 
+    pub fn agent_status(&self) -> AgentStatusDto {
+        AgentStatusDto {
+            ok: true,
+            running: self.main_loop_active.load(Ordering::Acquire),
+            recovery_agent_count: self.recovery_agent_count.load(Ordering::Acquire),
+        }
+    }
+
     fn recovery_agent_active(&self) -> bool {
         self.recovery_agent_count.load(Ordering::Acquire) > 0
     }
@@ -945,6 +953,13 @@ pub struct StartLoopDto {
     pub execute_turns: u32,
     pub agent_count: u32,
     pub executor_count: u32,
+}
+
+#[derive(Clone, Debug, Serialize, PartialEq, Eq)]
+pub struct AgentStatusDto {
+    pub ok: bool,
+    pub running: bool,
+    pub recovery_agent_count: u64,
 }
 
 /// A single dequeued task returned by GET /v1/task/next.
