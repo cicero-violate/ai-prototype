@@ -50,6 +50,175 @@ pub enum RouterTabCloseOutcome {
     CloseHttpStatus(u16),
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum DomActionDecodeFailure {
+    MalformedScriptOutput(&'static str),
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum AutoApprovalProbeOutcome {
+    ApproveAvailable { method: Option<String> },
+    DenyAnchored,
+    Blocked { reason: String },
+    Unavailable { reason: String },
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum AutoApprovalClickOutcome {
+    Clicked { method: Option<String> },
+    Scrolled { method: Option<String> },
+    DenyAnchored,
+    Blocked { reason: String },
+    NotClicked { reason: String },
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum MessageSubmitOutcome {
+    Submitted { method: Option<String> },
+    Typed { method: Option<String> },
+    Blocked { reason: String },
+    NotSubmitted { reason: String },
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum ConnectorActivationOutcome {
+    MenuOpened { method: Option<String> },
+    ConnectorActivated { method: Option<String> },
+    ComposerReady { method: Option<String> },
+    Blocked { reason: String },
+    NotActivated { reason: String },
+}
+
+impl AutoApprovalProbeOutcome {
+    pub fn from_script_value(value: &Value) -> Result<Self, DomActionDecodeFailure> {
+        let object = dom_action_object(value)?;
+        if dom_action_bool(object, "deny_anchored")? {
+            return Ok(Self::DenyAnchored);
+        }
+        if dom_action_bool(object, "blocked")? {
+            return Ok(Self::Blocked {
+                reason: dom_action_reason(object, "blocked approval probe")?,
+            });
+        }
+        if dom_action_bool(object, "ok")? {
+            return Ok(Self::ApproveAvailable {
+                method: dom_action_optional_string(object, "method")?,
+            });
+        }
+        Ok(Self::Unavailable {
+            reason: dom_action_reason(object, "approval unavailable")?,
+        })
+    }
+}
+
+impl AutoApprovalClickOutcome {
+    pub fn from_script_value(value: &Value) -> Result<Self, DomActionDecodeFailure> {
+        let object = dom_action_object(value)?;
+        if dom_action_bool(object, "deny_anchored")? {
+            return Ok(Self::DenyAnchored);
+        }
+        if dom_action_bool(object, "blocked")? {
+            return Ok(Self::Blocked {
+                reason: dom_action_reason(object, "blocked approval click")?,
+            });
+        }
+        let method = dom_action_optional_string(object, "method")?;
+        if dom_action_bool(object, "ok")? {
+            return Ok(Self::Clicked { method });
+        }
+        if dom_action_bool(object, "scrolled")? {
+            return Ok(Self::Scrolled { method });
+        }
+        Ok(Self::NotClicked {
+            reason: dom_action_reason(object, "approval click unavailable")?,
+        })
+    }
+}
+
+impl MessageSubmitOutcome {
+    pub fn from_script_value(value: &Value) -> Result<Self, DomActionDecodeFailure> {
+        let object = dom_action_object(value)?;
+        if dom_action_bool(object, "blocked")? {
+            return Ok(Self::Blocked {
+                reason: dom_action_reason(object, "blocked message submit")?,
+            });
+        }
+        let method = dom_action_optional_string(object, "method")?;
+        if dom_action_bool(object, "submitted")? || dom_action_bool(object, "ok")? {
+            return Ok(Self::Submitted { method });
+        }
+        if dom_action_bool(object, "typed")? {
+            return Ok(Self::Typed { method });
+        }
+        Ok(Self::NotSubmitted {
+            reason: dom_action_reason(object, "message not submitted")?,
+        })
+    }
+}
+
+impl ConnectorActivationOutcome {
+    pub fn from_script_value(value: &Value) -> Result<Self, DomActionDecodeFailure> {
+        let object = dom_action_object(value)?;
+        if dom_action_bool(object, "blocked")? {
+            return Ok(Self::Blocked {
+                reason: dom_action_reason(object, "blocked connector activation")?,
+            });
+        }
+        let method = dom_action_optional_string(object, "method")?;
+        if dom_action_bool(object, "composer_ready")? {
+            return Ok(Self::ComposerReady { method });
+        }
+        if dom_action_bool(object, "activated")? || dom_action_bool(object, "ok")? {
+            return Ok(Self::ConnectorActivated { method });
+        }
+        if dom_action_bool(object, "menu_opened")? {
+            return Ok(Self::MenuOpened { method });
+        }
+        Ok(Self::NotActivated {
+            reason: dom_action_reason(object, "connector not activated")?,
+        })
+    }
+}
+
+fn dom_action_object(
+    value: &Value,
+) -> Result<&serde_json::Map<String, Value>, DomActionDecodeFailure> {
+    value
+        .as_object()
+        .ok_or(DomActionDecodeFailure::MalformedScriptOutput(
+            "script output is not a JSON object",
+        ))
+}
+
+fn dom_action_bool(
+    object: &serde_json::Map<String, Value>,
+    field: &'static str,
+) -> Result<bool, DomActionDecodeFailure> {
+    match object.get(field) {
+        None => Ok(false),
+        Some(Value::Bool(value)) => Ok(*value),
+        Some(_) => Err(DomActionDecodeFailure::MalformedScriptOutput(field)),
+    }
+}
+
+fn dom_action_optional_string(
+    object: &serde_json::Map<String, Value>,
+    field: &'static str,
+) -> Result<Option<String>, DomActionDecodeFailure> {
+    match object.get(field) {
+        None | Some(Value::Null) => Ok(None),
+        Some(Value::String(value)) => Ok(Some(value.clone())),
+        Some(_) => Err(DomActionDecodeFailure::MalformedScriptOutput(field)),
+    }
+}
+
+fn dom_action_reason(
+    object: &serde_json::Map<String, Value>,
+    default: &'static str,
+) -> Result<String, DomActionDecodeFailure> {
+    Ok(dom_action_optional_string(object, "reason")?.unwrap_or_else(|| default.to_string()))
+}
+
 impl RouterClient {
     pub fn new(config: OpenAiConfig) -> Result<Self, OpenAiError> {
         Ok(Self {
@@ -893,6 +1062,122 @@ mod tests {
                 None => env::remove_var(key),
             }
         }
+    }
+
+    #[test]
+    fn auto_approval_probe_outcome_preserves_deny_anchor_before_ok() {
+        let value: Value = serde_json::json!({
+            "ok": true,
+            "deny_anchored": true,
+            "method": "button-text"
+        });
+
+        assert_eq!(
+            AutoApprovalProbeOutcome::from_script_value(&value),
+            Ok(AutoApprovalProbeOutcome::DenyAnchored)
+        );
+    }
+
+    #[test]
+    fn auto_approval_click_outcome_types_click_scroll_and_blocked() {
+        assert_eq!(
+            AutoApprovalClickOutcome::from_script_value(&serde_json::json!({
+                "ok": true,
+                "method": "primary-button"
+            })),
+            Ok(AutoApprovalClickOutcome::Clicked {
+                method: Some("primary-button".to_string())
+            })
+        );
+        assert_eq!(
+            AutoApprovalClickOutcome::from_script_value(&serde_json::json!({
+                "scrolled": true,
+                "method": "scroll-into-view"
+            })),
+            Ok(AutoApprovalClickOutcome::Scrolled {
+                method: Some("scroll-into-view".to_string())
+            })
+        );
+        assert_eq!(
+            AutoApprovalClickOutcome::from_script_value(&serde_json::json!({
+                "blocked": true,
+                "reason": "deny button is nearest actionable control"
+            })),
+            Ok(AutoApprovalClickOutcome::Blocked {
+                reason: "deny button is nearest actionable control".to_string()
+            })
+        );
+    }
+
+    #[test]
+    fn message_submit_outcome_types_typing_and_submission() {
+        assert_eq!(
+            MessageSubmitOutcome::from_script_value(&serde_json::json!({
+                "typed": true,
+                "method": "textarea"
+            })),
+            Ok(MessageSubmitOutcome::Typed {
+                method: Some("textarea".to_string())
+            })
+        );
+        assert_eq!(
+            MessageSubmitOutcome::from_script_value(&serde_json::json!({
+                "submitted": true,
+                "method": "enter-key"
+            })),
+            Ok(MessageSubmitOutcome::Submitted {
+                method: Some("enter-key".to_string())
+            })
+        );
+    }
+
+    #[test]
+    fn connector_activation_outcome_types_menu_activation_and_composer() {
+        assert_eq!(
+            ConnectorActivationOutcome::from_script_value(&serde_json::json!({
+                "menu_opened": true,
+                "method": "tools-menu"
+            })),
+            Ok(ConnectorActivationOutcome::MenuOpened {
+                method: Some("tools-menu".to_string())
+            })
+        );
+        assert_eq!(
+            ConnectorActivationOutcome::from_script_value(&serde_json::json!({
+                "activated": true,
+                "method": "connector-item"
+            })),
+            Ok(ConnectorActivationOutcome::ConnectorActivated {
+                method: Some("connector-item".to_string())
+            })
+        );
+        assert_eq!(
+            ConnectorActivationOutcome::from_script_value(&serde_json::json!({
+                "composer_ready": true,
+                "method": "composer-probe"
+            })),
+            Ok(ConnectorActivationOutcome::ComposerReady {
+                method: Some("composer-probe".to_string())
+            })
+        );
+    }
+
+    #[test]
+    fn malformed_dom_action_outputs_are_typed_failures() {
+        assert_eq!(
+            AutoApprovalProbeOutcome::from_script_value(&Value::Null),
+            Err(DomActionDecodeFailure::MalformedScriptOutput(
+                "script output is not a JSON object"
+            ))
+        );
+        assert_eq!(
+            MessageSubmitOutcome::from_script_value(&serde_json::json!({"ok":"true"})),
+            Err(DomActionDecodeFailure::MalformedScriptOutput("ok"))
+        );
+        assert_eq!(
+            ConnectorActivationOutcome::from_script_value(&serde_json::json!({"method": 7})),
+            Err(DomActionDecodeFailure::MalformedScriptOutput("method"))
+        );
     }
 
     #[test]
