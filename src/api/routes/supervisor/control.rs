@@ -27,7 +27,12 @@ pub async fn control_page(
         let mut guard = state.inner.lock().await;
         guard.health().await.map_err(error_response)?
     };
-    let html = r#"<!DOCTYPE html>
+    let html = render_control_page_html(&health);
+    Ok(Html(html))
+}
+
+fn render_control_page_html(health: &HealthDto) -> String {
+    r#"<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -407,8 +412,7 @@ setInterval(refreshAll, 10000);
 </body>
 </html>"#
         .replace("__GENERATION__", &health.generation.to_string())
-        .replace("__WORKER_PORT__", &health.worker_port.to_string());
-    Ok(Html(html))
+        .replace("__WORKER_PORT__", &health.worker_port.to_string())
 }
 
 pub async fn health(
@@ -765,6 +769,45 @@ fn supervisor_replacement_command() -> Result<SupervisorRestartCommand, String> 
         exe.display(),
         release_supervisor.display(),
     ))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn control_page_dashboard_contains_operator_markers() {
+        let html = render_control_page_html(&HealthDto {
+            ok: true,
+            generation: 7,
+            worker_port: 43123,
+        });
+
+        for marker in [
+            "Canon AI Supervisor",
+            "Operator console for worker lifecycle, plan status, agents, and workspace.",
+            "id=\"refresh-button\"",
+            "id=\"start-loop-button\"",
+            "id=\"reload-button\"",
+            "id=\"restart-button\"",
+            "id=\"spawn-form\"",
+            "id=\"event-log\"",
+            "GET /v1/plan/status ok",
+            "GET /v1/task/next ok",
+            "POST /agent/start",
+            "POST /spawn",
+            "POST /reload",
+            "POST /restart",
+        ] {
+            assert!(
+                html.contains(marker),
+                "missing control page marker: {marker}"
+            );
+        }
+
+        assert!(html.contains("gen <span id=\"header-generation\">7</span>"));
+        assert!(html.contains("worker <span id=\"header-worker\">43123</span>"));
+    }
 }
 
 fn error_response(error: String) -> (StatusCode, Json<ErrorDto>) {
