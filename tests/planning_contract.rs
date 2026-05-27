@@ -4,7 +4,8 @@ use ai::capability::planning::{
 };
 use ai::domain::plan::{
     plan_state_projection, ready_nodes_from_plan_state_projection, validate_plan_patch_mutation,
-    NodeStatus, PlanDag, PlanEdge, PlanEvidenceRef, PlanNode,
+    NodeStatus, PlanDag, PlanEdge, PlanEvidenceRef, PlanNode, EVIDENCE_GATE_VERIFICATION,
+    EVIDENCE_TYPE_LINEAGE_PROOF,
 };
 use ai::kernel::{
     PlanEdgeProjection, PlanEvidenceProjection, PlanState, PlanStatePatch, PlanStateRejection,
@@ -65,6 +66,20 @@ fn replay_contract_root(name: &str) -> PathBuf {
 }
 
 fn contract_node(id: &str, status: NodeStatus) -> PlanNode {
+    let evidence = if status == NodeStatus::Done {
+        vec![PlanEvidenceRef {
+            path: format!("state/agent-evidence/{id}.md"),
+            kind: "validation".to_string(),
+            summary: format!("{id} accepted verification evidence"),
+            gate: EVIDENCE_GATE_VERIFICATION.to_string(),
+            evidence: EVIDENCE_TYPE_LINEAGE_PROOF.to_string(),
+            receipt_hash: 1,
+            accepted: true,
+        }]
+    } else {
+        Vec::new()
+    };
+
     PlanNode {
         id: id.to_string(),
         title: format!("{id} title"),
@@ -73,7 +88,7 @@ fn contract_node(id: &str, status: NodeStatus) -> PlanNode {
         assignee: None,
         score_axes: vec!["Determinism".to_string()],
         files: vec![format!("ai/src/{id}.rs")],
-        evidence: Vec::new(),
+        evidence,
     }
 }
 
@@ -111,6 +126,73 @@ fn accepted_payload(seq: u64, payload: PlanPatchPayload) -> PlanPatchPayload {
     let accepted = patch.accepted(seq);
     assert!(accepted.is_self_consistent());
     patch.payload
+}
+
+fn assert_done_projection(evidence: PlanEvidenceRef, expected_status: u64, case: &str) {
+    let mut node = contract_node(case, NodeStatus::Done);
+    node.evidence = vec![evidence];
+    let plan = PlanDag {
+        version: 1,
+        nodes: vec![node],
+        edges: Vec::new(),
+        ..Default::default()
+    };
+
+    let projection = plan_state_projection(&plan);
+    let projected = projection
+        .nodes
+        .values()
+        .next()
+        .expect("single projected node");
+
+    assert_eq!(projected.status, expected_status, "{case}");
+}
+
+#[test]
+fn plan_state_projection_rejects_done_without_typed_accepted_verification_receipt() {
+    let valid = PlanEvidenceRef {
+        path: "state/agent-evidence/valid.md".to_string(),
+        kind: "validation".to_string(),
+        summary: "valid accepted verification evidence".to_string(),
+        gate: EVIDENCE_GATE_VERIFICATION.to_string(),
+        evidence: EVIDENCE_TYPE_LINEAGE_PROOF.to_string(),
+        receipt_hash: 42,
+        accepted: true,
+    };
+
+    let mut missing_accepted = valid.clone();
+    missing_accepted.accepted = false;
+    assert_done_projection(
+        missing_accepted,
+        PROJECTED_STATUS_PENDING,
+        "missing accepted=true",
+    );
+
+    let mut wrong_gate = valid.clone();
+    wrong_gate.gate = "Execution".to_string();
+    assert_done_projection(
+        wrong_gate,
+        PROJECTED_STATUS_PENDING,
+        "missing gate=Verification",
+    );
+
+    let mut empty_evidence = valid.clone();
+    empty_evidence.evidence.clear();
+    assert_done_projection(
+        empty_evidence,
+        PROJECTED_STATUS_PENDING,
+        "empty evidence field",
+    );
+
+    let mut zero_receipt_hash = valid.clone();
+    zero_receipt_hash.receipt_hash = 0;
+    assert_done_projection(
+        zero_receipt_hash,
+        PROJECTED_STATUS_PENDING,
+        "zero receipt_hash",
+    );
+
+    assert_done_projection(valid, PROJECTED_STATUS_DONE, "valid receipt");
 }
 
 #[test]
@@ -218,6 +300,15 @@ fn plan_state_replay_contract_imports_accepts_rejects_and_reconstructs_ready_nod
             files_hash: node.files_hash,
         })
         .collect();
+    accepted_mutations.extend(imported_projection.nodes.values().flat_map(|node| {
+        node.evidence
+            .iter()
+            .copied()
+            .map(|evidence| PlanStatePatch::EvidenceAppend {
+                node_id_hash: node.node_id_hash,
+                evidence,
+            })
+    }));
     accepted_mutations.extend(
         imported_projection
             .edges

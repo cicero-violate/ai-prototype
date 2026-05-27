@@ -109,6 +109,18 @@ impl PlanEvidenceRef {
     }
 }
 
+impl PlanNode {
+    pub fn accepted_evidence_receipt(&self) -> Option<AcceptedEvidenceReceipt<'_>> {
+        self.evidence
+            .iter()
+            .find_map(|evidence| AcceptedEvidenceReceipt::try_from(evidence).ok())
+    }
+
+    pub fn can_project_complete(&self) -> bool {
+        self.accepted_evidence_receipt().is_some()
+    }
+}
+
 /// Typed proof that a generic plan evidence reference is accepted verification
 /// evidence. This is the only value supervisor completion may consume as a
 /// task-completion prerequisite.
@@ -278,7 +290,7 @@ pub fn plan_state_projection(plan: &PlanDag) -> PlanState {
                 node_id_hash,
                 title_hash: plan_text_hash(&node.title),
                 description_hash: plan_text_hash(&node.description),
-                status: node_status_projection(&node.status),
+                status: node_projected_status(node),
                 assignee_hash: node
                     .assignee
                     .as_deref()
@@ -399,6 +411,13 @@ fn node_status_projection(status: &NodeStatus) -> u64 {
         NodeStatus::Done => PROJECTED_STATUS_DONE,
         NodeStatus::Failed => 4,
         NodeStatus::Skipped => 5,
+    }
+}
+
+fn node_projected_status(node: &PlanNode) -> u64 {
+    match node.status {
+        NodeStatus::Done if !node.can_project_complete() => PROJECTED_STATUS_PENDING,
+        _ => node_status_projection(&node.status),
     }
 }
 
