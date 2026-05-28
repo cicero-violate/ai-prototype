@@ -3,6 +3,7 @@
 use std::fs;
 use std::path::Path;
 
+use crate::runtime::CANONICAL_TLOG_RELATIVE_PATH;
 use crate::service::invariants::mir_cfg::mir_call_invariant_prompt_block;
 use crate::service::invariants::promoted_invariant_prompt_block;
 use crate::service::invariants::temporal::temporal_invariant_prompt_block;
@@ -109,7 +110,7 @@ pub(super) fn build_project_planning_prompt(
     let policy_feedback = load_policy_feedback(working_dir);
     let mcp_feedback = load_mcp_feedback(working_dir);
     let invariant_feedback = promoted_invariant_prompt_block(working_dir, 8);
-    let tlog_path = working_dir.join("state/tlog/canon-agent.tlog.ndjson");
+    let tlog_path = working_dir.join(CANONICAL_TLOG_RELATIVE_PATH);
     let temporal_feedback = temporal_invariant_prompt_block(&tlog_path, 8, 3);
     let mir_path = working_dir.join("state/rustc/ai/mir.jsonl");
     let mir_feedback = mir_call_invariant_prompt_block(&mir_path, 6, 2);

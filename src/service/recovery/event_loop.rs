@@ -40,6 +40,7 @@ use std::time::{Duration, Instant};
 use crate::codec::ndjson::load_tlog_ndjson;
 use crate::domain::plan::NodeStatus;
 use crate::runtime::event_bus::{replay_event_bus, WakeupKind};
+use crate::runtime::CANONICAL_TLOG_RELATIVE_PATH;
 use crate::service::invariants::mir_cfg::mir_call_invariant_prompt_block;
 use crate::service::invariants::promoted_invariant_prompt_block;
 use crate::service::invariants::temporal::temporal_invariant_prompt_block;
@@ -229,7 +230,7 @@ async fn maybe_trigger_replan(state: &SupervisorState, last_replan: &mut Option<
     }
 
     let failed_block = summary_lines.join("\n");
-    let tlog_path = project_dir.join("state/tlog/canon-agent.tlog.ndjson");
+    let tlog_path = project_dir.join(CANONICAL_TLOG_RELATIVE_PATH);
     let mir_path = project_dir.join("state/rustc/ai/mir.jsonl");
     let temporal_block = temporal_invariant_prompt_block(&tlog_path, 5, 3)
         .map(|block| format!("\nTemporal order invariants (Algorithm 3, always-precedes relations from TLog):\n{block}\n"))
@@ -326,7 +327,7 @@ async fn try_llm_recovery(
         } else {
             ""
         };
-        let tlog_path = project_dir.join("state/tlog/canon-agent.tlog.ndjson");
+        let tlog_path = project_dir.join(CANONICAL_TLOG_RELATIVE_PATH);
         let mir_path = project_dir.join("state/rustc/ai/mir.jsonl");
         let invariant_block = promoted_invariant_prompt_block(&project_dir, 5)
             .map(|block| format!(" Relevant promoted invariants:\n{block}\n"))

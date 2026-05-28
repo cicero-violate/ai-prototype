@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 
 use serde_json::{json, Value};
 
-use crate::runtime::WorkspaceView;
+use crate::runtime::{WorkspaceView, CANONICAL_TLOG_FILE_NAME};
 
 pub const CANON_DIAGNOSTICS_READ_TOOL: &str = "canon_diagnostics_read";
 
@@ -31,7 +31,7 @@ pub fn run_read(args: &Value, workspace: &WorkspaceView) -> Value {
     };
     let console_log = state_dir.join("console.log");
     let actions_log = state_dir.join("actions.ndjson");
-    let tlog_path = tlog_dir.join("canon-agent.tlog.ndjson");
+    let tlog_path = tlog_dir.join(CANONICAL_TLOG_FILE_NAME);
 
     let console_tail = tail_lines(&console_log, max_lines);
     let action_errors = matching_tail_lines(&actions_log, error_limit, diagnostic_line);

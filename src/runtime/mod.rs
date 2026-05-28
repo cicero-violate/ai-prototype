@@ -46,8 +46,8 @@ pub use self::event_wire::{wire_class, wire_transition_allowed, WireEventClass, 
 pub use self::introspection::{
     append_canonical_line, append_score_report_update_ndjson, append_validation_result_ndjson,
     canonical_tlog_path_from_dir, default_canonical_tlog_path, introspect_canonical_tlog,
-    CanonicalIntrospectionReport, WorkerStateReport, CANONICAL_TLOG_RELATIVE_PATH,
-    LEGACY_WORKER_TLOG_FILE_NAME,
+    CanonicalIntrospectionReport, WorkerStateReport, CANONICAL_TLOG_DIR_RELATIVE_PATH,
+    CANONICAL_TLOG_FILE_NAME, CANONICAL_TLOG_RELATIVE_PATH, LEGACY_WORKER_TLOG_FILE_NAME,
 };
 pub use self::mailbox::{
     append_mailbox_message, mailbox_path, read_mailbox_projection, validate_agent_id,

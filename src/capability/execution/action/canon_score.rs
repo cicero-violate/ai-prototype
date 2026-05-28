@@ -12,6 +12,7 @@ use std::process::Command;
 use serde_json::{json, Value};
 
 use crate::runtime::WorkspaceView;
+use crate::service::scheduler::plan_store::PLAN_FILE;
 
 pub const CANON_SCORE_TOOL: &str = "canon_score";
 
@@ -28,7 +29,7 @@ pub fn run(args: &Value, workspace: &WorkspaceView) -> Value {
     let plan_seed = args
         .get("plan_seed")
         .and_then(Value::as_str)
-        .unwrap_or("state/plan.json");
+        .unwrap_or(PLAN_FILE);
     let seed_threshold = args
         .get("seed_threshold")
         .and_then(Value::as_f64)

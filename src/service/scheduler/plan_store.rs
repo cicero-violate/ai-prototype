@@ -28,8 +28,9 @@ use crate::domain::plan::{
 };
 use crate::kernel::{PlanState, PlanStatePatch, PlanStateRejection};
 
+pub use crate::runtime::CANONICAL_TLOG_RELATIVE_PATH as CANONICAL_TLOG_FILE;
+
 pub const PLAN_FILE: &str = "state/plan.json";
-pub const CANONICAL_TLOG_FILE: &str = "state/tlog/canon-agent.tlog.ndjson";
 pub const PLAN_PATCH_TLOG_FILE: &str = "state/tlog/plan-patches.tlog.ndjson";
 
 /// In-memory append-side metadata for the plan patch TLog.

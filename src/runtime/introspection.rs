@@ -9,6 +9,8 @@ use serde_json::Value;
 use crate::codec::ndjson::load_tlog_ndjson;
 use crate::kernel::CanonError;
 
+pub const CANONICAL_TLOG_DIR_RELATIVE_PATH: &str = "state/tlog";
+pub const CANONICAL_TLOG_FILE_NAME: &str = "canon-agent.tlog.ndjson";
 pub const CANONICAL_TLOG_RELATIVE_PATH: &str = "state/tlog/canon-agent.tlog.ndjson";
 pub const LEGACY_WORKER_TLOG_FILE_NAME: &str = "worker-tlog.ndjson";
 
@@ -37,7 +39,7 @@ struct CanonicalEvidenceScan {
 }
 
 pub fn canonical_tlog_path_from_dir(dir: &Path) -> PathBuf {
-    dir.join("canon-agent.tlog.ndjson")
+    dir.join(CANONICAL_TLOG_FILE_NAME)
 }
 
 pub fn default_canonical_tlog_path() -> PathBuf {

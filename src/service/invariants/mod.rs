@@ -16,6 +16,10 @@ use std::fs;
 use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
 
+use crate::runtime::CANONICAL_TLOG_RELATIVE_PATH;
+use crate::service::dispatch::REASONING_TRACE_FILE;
+use crate::service::scheduler::plan_store::PLAN_FILE;
+
 pub const INVARIANT_REGISTRY_RELATIVE_PATH: &str = "state/invariants/registry.json";
 pub const INVARIANT_CANDIDATES_RELATIVE_DIR: &str = "state/invariants/candidates";
 pub const INVARIANT_VALIDATED_RELATIVE_DIR: &str = "state/invariants/validated";
@@ -259,11 +263,11 @@ pub fn write_validation_evidence(
 
 pub fn mine_workspace(workspace_root: &Path) -> Result<Vec<InvariantCandidate>, String> {
     let mut candidates = fixed_candidates();
-    let reasoning = read_lines(workspace_root.join("state/reasoning-loop.jsonl"))?;
-    let plan = read_json_optional(workspace_root.join("state/plan.json"))?;
+    let reasoning = read_lines(workspace_root.join(REASONING_TRACE_FILE))?;
+    let plan = read_json_optional(workspace_root.join(PLAN_FILE))?;
     let _receipts =
         read_lines(workspace_root.join("state/agent_state/sse-chunks/agent-turn-receipts.ndjson"))?;
-    let tlog = read_lines(workspace_root.join("state/tlog/canon-agent.tlog.ndjson"))?;
+    let tlog = read_lines(workspace_root.join(CANONICAL_TLOG_RELATIVE_PATH))?;
 
     for candidate in &mut candidates {
         match candidate.predicate {
@@ -544,7 +548,7 @@ fn mine_active_seed_cycles(candidate: &mut InvariantCandidate, plan: Option<&Val
     candidate.support = active_cycles.len() as u64;
     candidate.violations = active_cycles.len().saturating_sub(1) as u64;
     candidate.evidence_refs.push(EventRef {
-        source: "state/plan.json".to_string(),
+        source: PLAN_FILE.to_string(),
         line: None,
         event_seq: None,
         hash: Some(hash_string(&format!("{:?}", active_cycles))),
@@ -575,7 +579,7 @@ fn mine_known_crate_paths(
                 candidate.violations += 1;
             }
             candidate.evidence_refs.push(EventRef {
-                source: "state/plan.json".to_string(),
+                source: PLAN_FILE.to_string(),
                 line: None,
                 event_seq: None,
                 hash: Some(hash_string(file)),
@@ -645,9 +649,9 @@ fn read_json_optional(path: PathBuf) -> Result<Option<Value>, String> {
 fn replay_input_hashes(workspace_root: &Path) -> Result<Vec<String>, String> {
     let mut hashes = Vec::new();
     for rel in [
-        "state/tlog/canon-agent.tlog.ndjson",
-        "state/reasoning-loop.jsonl",
-        "state/plan.json",
+        CANONICAL_TLOG_RELATIVE_PATH,
+        REASONING_TRACE_FILE,
+        PLAN_FILE,
         "state/agent_state/sse-chunks/agent-turn-receipts.ndjson",
     ] {
         let path = workspace_root.join(rel);
@@ -810,7 +814,7 @@ mod tests {
         fs::write(tmp.path().join("real/src/lib.rs"), "pub fn ok() {}\n").unwrap();
         fs::create_dir_all(tmp.path().join("state")).unwrap();
         fs::write(
-            tmp.path().join("state/plan.json"),
+            tmp.path().join(PLAN_FILE),
             serde_json::to_vec(&json!({
                 "version": 1,
                 "nodes": [
@@ -847,7 +851,7 @@ mod tests {
         let tmp = tmp_workspace();
         fs::create_dir_all(tmp.path().join("state")).unwrap();
         fs::write(
-            tmp.path().join("state/reasoning-loop.jsonl"),
+            tmp.path().join(REASONING_TRACE_FILE),
             r#"{"trace_id":1,"record_id":"Verification:1","node_id":"n","output":{"next_supervisor_transition":"fail_claim","passed":false}}"#,
         )
         .unwrap();

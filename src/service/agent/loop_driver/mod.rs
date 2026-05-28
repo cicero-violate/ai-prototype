@@ -4,6 +4,7 @@ use std::thread;
 use std::time::Duration;
 
 use crate::capability::llm::openai::{OpenAiChatRequest, OpenAiMessage};
+use crate::runtime::CANONICAL_TLOG_FILE_NAME;
 use crate::service::agent::config::AgentLoopConfig;
 use crate::service::agent::router::{RouterClient, RouterTabCloseOutcome};
 use crate::service::agent::sse::ChunkLogger;
@@ -496,7 +497,7 @@ impl LoopDriver {
                 let policy_path = self.config.project_dir.join("state").join("policy.ndjson");
                 run_post_cycle_learning(
                     url,
-                    &tlog_dir.join("canon-agent.tlog.ndjson"),
+                    &tlog_dir.join(CANONICAL_TLOG_FILE_NAME),
                     &policy_path,
                     &self.config.working_dir,
                     cycle_num,
